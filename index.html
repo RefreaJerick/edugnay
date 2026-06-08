@@ -4,9 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EdUgnay</title>
-  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="icon" href="./assets/images/edUgnay-logo-circle.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="./assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body>
@@ -24,7 +24,7 @@
       <!-- Top: school branding -->
       <div class="school-mark">
         <div class="school-crest">
-          <img src="../../assets/images/st-columban-logo.jpg" alt="St. Columban's College logo" />
+          <img src="./assets/images/st-columban-logo.jpg" alt="St. Columban's College logo" />
         </div>
         <div class="school-info">
           <div class="school-name">St. Columban's College</div>
@@ -152,9 +152,9 @@
 
   function initPhotoSlideshow() {
     const images = [
-      '../../assets/images/udd-campus.jpg',
-      '../../assets/images/escalator-profs.jpg',
-      '../../assets/images/meeting-3.jpg',
+      './assets/images/udd-campus.jpg',
+      './assets/images/escalator-profs.jpg',
+      './assets/images/meeting-3.jpg',
     ];
     const slides = Array.from(document.querySelectorAll('.photo-panel .slide'));
     if (slides.length < 2 || images.length === 0) return;
