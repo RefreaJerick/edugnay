@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link  rel="stylesheet" href="../../assets/css/styles.css">
+  <link  rel="stylesheet" href="../../assets/css/admin/dashboard.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<!-- ASSIGN STUDENT MODAL -->
+<div class="student-modal-backdrop" id="studentModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="studentModalTitle">Assign Student</div>
+        <div class="modal-sub">Place a student into a section.</div>
+      </div>
+      <button class="modal-close" onclick="closeStudentModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignStudentForm" method="post" action="/assignments/students/create">
+      <div class="modal-context">
+        <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+        <div>
+          <div class="ctx-label">Assigning to</div>
+          <div class="ctx-val" id="ctxVal">Select a section below</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Student</label>
+        <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
+          <option value="">— Select a student —</option>
+          <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
+          <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
+          <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
+          <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
+          <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
+          <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
+          <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
+          <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+        </select>
+        <div class="student-preview" id="studentPreview">
+          <div class="sp-av" id="spAv">JD</div>
+          <div>
+            <div class="sp-name" id="spName">Juan Dela Cruz</div>
+            <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Assign to Section</label>
+        <select class="form-select" id="modalSection" name="sectionId">
+          <option value="">— Select a section —</option>
+          <optgroup label="Grade 7">
+            <option>Grade 7 – St. Matthew (38/40)</option>
+            <option>Grade 7 – St. Mark (34/40)</option>
+          </optgroup>
+          <optgroup label="Grade 8">
+            <option>Grade 8 – St. Luke (36/40)</option>
+            <option>Grade 8 – St. John (34/40)</option>
+          </optgroup>
+          <optgroup label="Grade 9">
+            <option>Grade 9 – St. Peter (37/40)</option>
+            <option>Grade 9 – St. Paul (37/40)</option>
+          </optgroup>
+          <optgroup label="Grade 10">
+            <option>Grade 10 – St. James (35/40)</option>
+            <option>Grade 10 – St. Thomas (33/40)</option>
+          </optgroup>
+        </select>
+      </div>
+      </form>
+
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeStudentModal()">Cancel</button>
+      <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD NEW ACCOUNT MODAL -->
+<div class="account-modal-backdrop" id="accountModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add New Account</div>
+        <div class="modal-sub">Fill in the details to create a new user.</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeAccountModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="createAccountForm" method="post" action="/users/create">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input class="form-input" name="firstName" type="text" placeholder="e.g. Maria" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input class="form-input" name="lastName" type="text" placeholder="e.g. Reyes" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">School Email</label>
+          <input class="form-input" name="email" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <input type="hidden" id="roleValue" name="role" value=""/>
+          <div class="role-opts">
+            <div class="role-opt" onclick="selectRole(this, 'adm')">
+              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'fac')">
+              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'stud')">
+              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'parents')">
+              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="users" style="width:14px;height:14px;"></i></div><span>Parent</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Temporary Password</label>
+          <input class="form-input" name="password" type="password" placeholder="Set a temporary password" />
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+          <button type="submit" class="btn btn-save">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- POST ANNOUNCEMENT MODAL -->
+<div class="announcement-modal-backdrop" id="announcementModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Post Announcement</div>
+        <div class="modal-sub">Broadcast a message to the school community.</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeAnnouncementModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="postAnnouncementForm" method="post" action="/announcements/create">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Title</label>
+          <input class="form-input" type="text" name="title" placeholder="e.g. Q2 Grade Encoding Deadline" />
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Content</label>
+          <textarea class="form-textarea" name="content" style="min-height:120px;" placeholder="Write your announcement here..."></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Priority</label>
+          <input type="hidden" id="modalPriorityValue" name="priority" value="normal"/>
+          <div class="priority-opts">
+            <div class="priority-opt p-high" onclick="selectModalPriority(this, 'high')">
+              <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i> Urgent
+            </div>
+            <div class="priority-opt p-normal selected" onclick="selectModalPriority(this, 'normal')">
+              <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i> Normal
+            </div>
+            <div class="priority-opt p-event" onclick="selectModalPriority(this, 'event')">
+              <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i> Event
+            </div>
+            <div class="priority-opt p-low" onclick="selectModalPriority(this, 'low')">
+              <i data-lucide="minus-circle" style="width:13px;height:13px;color:var(--gray-400);"></i> Low
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Send To</label>
+          <div class="audience-opts">
+            <label class="aud-opt checked">
+              <input type="checkbox" name="audience" value="all" checked/>
+              <div class="aud-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="users" style="width:13px;height:13px;"></i></div>
+              <span class="aud-opt-label">All Users</span>
+            </label>
+            <label class="aud-opt">
+              <input type="checkbox" name="audience" value="teachers"/>
+              <div class="aud-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
+              <span class="aud-opt-label">Teachers Only</span>
+            </label>
+            <label class="aud-opt">
+              <input type="checkbox" name="audience" value="students"/>
+              <div class="aud-opt-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="book" style="width:13px;height:13px;"></i></div>
+              <span class="aud-opt-label">Students Only</span>
+            </label>
+            <label class="aud-opt">
+              <input type="checkbox" name="audience" value="parents"/>
+              <div class="aud-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart" style="width:13px;height:13px;"></i></div>
+              <span class="aud-opt-label">Parents Only</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" onclick="closeAnnouncementModal()">Cancel</button>
+          <button type="submit" class="btn btn-save">Post Announcement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN TEACHER MODAL -->
+<!-- <div class="modal-backdrop" id="assignTeacherModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="assignTeacherTitle">Assign Teacher to Section</div>
+        <div class="modal-sub" id="assignTeacherSub">Step 1 of 2: Select section and subject</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeAssignTeacherModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignTeacherForm" method="post" action="/assignments/create"> -->
+        <!-- STEP 1: Section & Subject Selection -->
+        <!-- <div id="step1">
+          <div class="form-group">
+            <label class="form-label">Section</label>
+            <select class="form-select" id="sectionSelect" name="section" onchange="updateSubjects()">
+              <option value="">— Select a section —</option>
+              <option value="grade7-matthew">Grade 7 – St. Matthew</option>
+              <option value="grade7-mark">Grade 7 – St. Mark</option>
+              <option value="grade8-luke">Grade 8 – St. Luke</option>
+              <option value="grade8-john">Grade 8 – St. John</option>
+              <option value="grade9-peter">Grade 9 – St. Peter</option>
+              <option value="grade9-paul">Grade 9 – St. Paul</option>
+              <option value="grade10-james">Grade 10 – St. James</option>
+              <option value="grade10-thomas">Grade 10 – St. Thomas</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Subject</label>
+            <select class="form-select" id="subjectSelect" name="subject">
+              <option value="">— Select a subject —</option>
+            </select>
+          </div>
+        </div> -->
+
+        <!-- STEP 2: Teacher Selection -->
+        <!-- <div id="step2" style="display: none;">
+          <div class="modal-context">
+            <div class="ctx-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+            <div>
+              <div class="ctx-label">Assigning to</div>
+              <div class="ctx-val" id="assignmentContextVal">Grade 7 – St. Matthew · Mathematics</div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Faculty Member</label>
+            <select class="form-select" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
+              <option value="">— Select a teacher —</option>
+              <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes</option>
+              <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva</option>
+              <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan</option>
+              <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos</option>
+              <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon</option>
+              <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez</option>
+              <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia</option>
+            </select>
+            <div class="teacher-preview" id="teacherPreview">
+              <div class="tp-av" id="tpAv">MR</div>
+              <div>
+                <div class="tp-name" id="tpName">Ms. Maria Reyes</div>
+                <div class="tp-detail" id="tpDetail">m.reyes.fac@stcolumban.edu.ph</div>
+              </div>
+              <div class="tp-check"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" id="backBtn" class="btn btn-cancel" onclick="goToStep1()" style="display: none;">← Back</button>
+          <button type="button" class="btn btn-cancel" onclick="closeAssignTeacherModal()">Cancel</button>
+          <button type="button" id="nextBtn" class="btn btn-save" onclick="goToStep2()">Next →</button>
+          <button type="submit" id="submitBtn" class="btn btn-save" style="display: none;">Assign Teacher</button>
+        </div>
+      </form> -->
+    <!-- </div>
+  </div>
+</div> -->
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════════════════════
+       SIDEBAR
+  ══════════════════════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <!-- Main nav -->
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+
+      <a href="" class="nav-item active">
+        <div class="nav-icon">
+          <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="edugnay-admin-users.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="users" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">User Accounts</span>
+        <span class="nav-badge">3</span>
+      </a>
+
+      <a href="edugnay-admin-sections.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="door-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Sections</span>
+      </a>
+
+      <a href="edugnay-admin-subjects.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Subjects</span>
+      </a>
+
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="clipboard-list" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Teachers</span>
+      </a>
+
+      <a href="edugnay-admin-assign-students.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="user-plus" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Students</span>
+      </a>
+    </div>
+
+    <!-- Reports & Content -->
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+
+      <a href="edugnay-admin-reports.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Reports</span>
+      </a>
+
+      <a href="edugnay-admin-announcements.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <!-- Settings -->
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+
+      <a href="edugnay-admin-system-config.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="settings" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Config</span>
+      </a>
+
+      <a href="edugnay-admin-archive.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="archive" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Archive Data</span>
+      </a>
+    </div>
+
+    <!-- Admin profile -->
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">SA</div>
+        <div class="admin-info">
+          <div class="admin-name">Sr. Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:16px;height:16px;"></i></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════
+       TOPBAR
+  ══════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Admin</div>
+        <div class="page-title">Dashboard</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+
+    </div>
+  </header>
+
+  <!-- ══════════════════════
+       MAIN
+  ══════════════════════ -->
+  <main class="main">
+
+    <!-- Gold accent bar (matches login page) -->
+    <div class="accent-bar"></div>
+
+    <!-- GRADING PERIOD BANNER -->
+    <div class="grading-banner">
+      <div class="grading-banner-left">
+        <div class="grading-period-badge">Q2</div>
+        <div class="grading-info">
+          <div class="grading-label">Active Grading Period</div>
+          <div class="grading-value">2nd Quarter · S.Y. 2024–2025</div>
+        </div>
+      </div>
+      <div class="grading-banner-right">
+        <div class="grading-deadline">
+          <i data-lucide="clock" style="width:14px;height:14px;"></i>
+          <span>Quarter ends: <strong>June 20, 2025</strong></span>
+        </div>
+        <div class="grading-status-pill">
+          <i data-lucide="circle-check" style="width:13px;height:13px;color:#4ade80;"></i> Q2 Ongoing
+        </div>
+      </div>
+    </div>
+
+    <!-- System announcement -->
+    <!-- <div class="announce-banner">
+      <div class="announce-icon"><i data-lucide="megaphone" style="width:20px;height:20px;"></i></div>
+      <div class="announce-body">
+        <div class="announce-title">System Announcement</div>
+        <div class="announce-text">2nd Quarter grading period is now open. Ensure all teacher and section assignments are finalized before the encoding deadline.</div>
+      </div>
+      <div class="announce-dismiss" onclick="this.parentElement.style.display='none'"><i data-lucide="x" style="width:18px;height:18px;"></i></div>
+    </div> -->
+
+    <!-- STAT CARDS -->
+    <div class="stat-grid">
+
+      <div class="stat-card blue">
+        <div class="stat-card-top">
+          <div class="stat-card-icon"><i data-lucide="users" style="width:20px;height:20px;"></i></div>
+          <span class="stat-card-trend trend-up">▲ 4%</span>
+        </div>
+        <div class="stat-card-num">284</div>
+        <div class="stat-card-label">Students</div>
+        <div class="stat-card-sub">Across 8 sections · JHS</div>
+      </div>
+
+      <div class="stat-card gold">
+        <div class="stat-card-top">
+          <div class="stat-card-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div>
+          <span class="stat-card-trend trend-neu">— 0%</span>
+        </div>
+        <div class="stat-card-num">24</div>
+        <div class="stat-card-label">Faculty</div>
+        <div class="stat-card-sub">Active teachers this quarter</div>
+      </div>
+
+      <div class="stat-card green">
+        <div class="stat-card-top">
+          <div class="stat-card-icon"><i data-lucide="users" style="width:20px;height:20px;"></i></div>
+          <span class="stat-card-trend trend-up">▲ 11%</span>
+        </div>
+        <div class="stat-card-num">261</div>
+        <div class="stat-card-label">Parents</div>
+        <div class="stat-card-sub">Linked to student accounts</div>
+      </div>
+
+      <!-- <div class="stat-card orange">
+        <div class="stat-card-top">
+          <div class="stat-card-icon"><i data-lucide="clock" style="width:20px;height:20px;"></i></div>
+          <span class="stat-card-trend trend-down">▼ Pending</span>
+        </div>
+        <div class="stat-card-num">3</div>
+        <div class="stat-card-label">Pending Accounts</div>
+        <div class="stat-card-sub">Awaiting admin approval</div>
+      </div> -->
+
+    </div>
+
+    <!-- TWO COLUMN: User table + Quick Actions -->
+    <div class="two-col">
+      <!-- Activity feed -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Recent Activity</div>
+          <a href="#" class="panel-action">View all →</a>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="act-dot green"></div>
+            <div class="act-body">
+              <div class="act-text"><strong>Ms. Maria Reyes</strong> confirmed a narrative report for Grade 7 – St. Matthew.</div>
+              <div class="act-time">Today, 9:42 AM</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot blue"></div>
+            <div class="act-body">
+              <div class="act-text"><strong>Admin</strong> assigned Mr. Paolo Tan to Grade 8 – Mathematics.</div>
+              <div class="act-time">Today, 8:15 AM</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot orange"></div>
+            <div class="act-body">
+              <div class="act-text"><strong>3 new parent accounts</strong> are pending approval.</div>
+              <div class="act-time">Yesterday, 4:30 PM</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot gold"></div>
+            <div class="act-body">
+              <div class="act-text"><strong>System Config</strong> updated — Q2 grading period activated.</div>
+              <div class="act-time">Yesterday, 2:00 PM</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot red"></div>
+            <div class="act-body">
+              <div class="act-text"><strong>Ana Santos</strong> flagged by system — 4 consecutive absences.</div>
+              <div class="act-time">May 24, 10:05 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Quick Actions</div>
+        </div>
+        <div class="quick-actions">
+          <a href="#" class="qa-item" onclick="openAccountModal(); return false;">
+            <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Add New Account</div>
+              <div class="qa-desc">Create teacher, student or parent</div>
+            </div>
+            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+          </a>
+          <a href="#" class="qa-item" onclick="openStudentModal();">
+            <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Enroll Student to Section</div>
+              <div class="qa-desc">Place students in their sections</div>
+            </div>
+            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+          </a>
+          <a href="#" class="qa-item" onclick="openAnnouncementModal(); return false;">
+            <div class="qa-icon"><i data-lucide="megaphone" style="width:18px;height:18px;"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Post Announcement</div>
+              <div class="qa-desc">Broadcast to all user groups</div>
+            </div>
+            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW: Activity + System Config -->
+    <div class="bottom-row">
+
+    </div>
+
+  </main>
+
+</div>
+
+<script>
+  lucide.createIcons();
+</script>
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  function openAccountModal() {
+    document.getElementById('accountModalBackdrop').classList.add('open');
+  }
+
+  function closeAccountModal() {
+    document.getElementById('accountModalBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('accountModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeAccountModal();
+  });
+
+
+
+  function openStudentModal(studentName) {
+    const title = document.getElementById('studentModalTitle');
+    title.textContent = studentName ? `Assign — ${studentName}` : 'Assign Student';
+    document.getElementById('ctxVal').textContent = 'Select a section below';
+    document.getElementById('modalStudent').value = '';
+    document.getElementById('studentPreview').classList.remove('visible');
+    document.getElementById('studentModalBackdrop').classList.add('open');
+  }
+
+  function closeStudentModal() {
+    document.getElementById('studentModalBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('studentModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeStudentModal();
+  });
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });
+
+  function previewStudent(val) {
+    const preview = document.getElementById('studentPreview');
+    if (!val) { preview.classList.remove('visible'); return; }
+    const [name, email, initials] = val.split('|');
+    document.getElementById('spAv').textContent     = initials;
+    document.getElementById('spName').textContent   = name;
+    document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
+    preview.classList.add('visible');
+  }
+
+  function openAnnouncementModal() {
+    document.getElementById('announcementModalBackdrop').classList.add('open');
+  }
+
+  function closeAnnouncementModal() {
+    document.getElementById('announcementModalBackdrop').classList.remove('open');
+  }
+
+  document.querySelector('.announcement-modal-backdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeAnnouncementModal();
+  });
+
+  function selectModalPriority(el, value) {
+    document.querySelectorAll('.announcement-modal-backdrop .priority-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('modalPriorityValue').value = value;
+  }
+
+  document.querySelectorAll('.announcement-modal-backdrop .aud-opt').forEach(opt => {
+    opt.addEventListener('click', function() {
+      const cb = this.querySelector('input[type="checkbox"]');
+      this.classList.toggle('checked', cb.checked);
+    });
+  });
+
+  function selectRole(el, value) {
+    document.querySelectorAll('.account-modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('roleValue').value = value;
+  }
+</script>
+
+</body>
+</html>

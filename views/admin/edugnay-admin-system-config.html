@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/system-config.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html"       class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">User Accounts</span><span class="nav-badge">3</span></a>
+      <a href="edugnay-admin-sections.html"        class="nav-item"><div class="nav-icon"><i data-lucide="door-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Sections</span></a>
+      <a href="edugnay-admin-subjects.html"        class="nav-item"><div class="nav-icon"><i data-lucide="book-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Subjects</span></a>
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item"><div class="nav-icon"><i data-lucide="clipboard-list"  style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Teachers</span></a>
+      <a href="edugnay-admin-assign-students.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-plus"       style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Students</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html"       class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"   style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+      <a href="#" class="nav-item active"><div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div><span class="nav-label">System Config</span></a>
+      <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"  style="width:16px;height:16px;"></i></div><span class="nav-label">Archive Data</span></a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">SA</div>
+        <div class="admin-info">
+          <div class="admin-name">Sr. Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Admin</div>
+        <div class="page-title">System Configuration</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="top-btn secondary"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Reset Defaults</button>
+      <button class="top-btn primary" onclick="saveAll()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save All Changes</button>
+      <!-- <div class="notif-btn"><i data-lucide="bell" style="width:16px;height:16px;"></i><div class="notif-dot"></div></div> -->
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+    <div class="accent-bar"></div>
+
+    <div class="config-layout">
+
+      <!-- ── LEFT: Config nav ── -->
+      <div class="config-nav">
+        <div class="config-nav-title">Configuration Sections</div>
+        <a href="#academic" class="config-nav-item active">
+          <div class="config-nav-icon"><i data-lucide="calendar" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Academic Year</span>
+        </a>
+        <a href="#grading" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="percent" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Grading Weights</span>
+        </a>
+        <a href="#attendance" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="user-check" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Attendance</span>
+        </a>
+        <a href="#journal" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="notebook-pen" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Journal</span>
+        </a>
+        <a href="#notifications" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="bell" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Notifications</span>
+        </a>
+        <a href="#archive" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="archive" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Archive</span>
+        </a>
+      </div>
+
+      <!-- ── RIGHT: Config panels ── -->
+      <div class="config-sections">
+
+        <!-- 1. Academic Year & Grading Period -->
+        <form id="academicConfigForm" method="post" action="/config/academic/update">
+        <div class="config-panel" id="academic">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="calendar" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Academic Year & Grading Period</div>
+              <div class="cph-sub">Set the active school year, quarter, and key academic dates.</div>
+            </div>
+            <span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Active</span>
+          </div>
+          <div class="config-panel-body">
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">School Year</label>
+                <select class="form-select" name="schoolYear">
+                  <option value="2025-2026" selected>S.Y. 2025–2026</option>
+                  <option value="2024-2025">S.Y. 2024–2025</option>
+                  <option value="2026-2027">S.Y. 2026–2027</option>
+                </select>
+                <span class="form-hint">Currently active school year</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Active Grading Quarter</label>
+                <select class="form-select" name="activeQuarter">
+                  <option value="1">Quarter 1</option>
+                  <option value="2" selected>Quarter 2</option>
+                  <option value="3">Quarter 3</option>
+                  <option value="4">Quarter 4</option>
+                </select>
+                <span class="form-hint">Determines which quarter teachers encode grades for</span>
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Quarter Start Date</label>
+                <input class="form-input" type="date" name="quarterStartDate" value="2025-05-05"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Quarter End Date</label>
+                <input class="form-input" type="date" name="quarterEndDate" value="2025-07-18"/>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Grade Encoding Open</div>
+                <div class="toggle-desc">Allow teachers to encode and update grades for the active quarter.</div>
+              </div>
+              <input type="hidden" name="gradeEncodingOpen" value="on"/>
+              <div class="toggle on" onclick="this.previousElementSibling.value=(this.previousElementSibling.value==='on'?'off':'on');this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Lock Previous Quarters</div>
+                <div class="toggle-desc">Prevent teachers from editing grades from past grading periods.</div>
+              </div>
+              <input type="hidden" name="lockPreviousQuarters" value="on"/>
+              <div class="toggle on" onclick="this.previousElementSibling.value=(this.previousElementSibling.value==='on'?'off':'on');this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button type="button" class="btn btn-cancel">Discard</button>
+            <button type="submit" form="academicConfigForm" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          </div>
+        </div>
+        </form>
+
+        <!-- 2. Grading Components & Weights -->
+        <form id="gradingConfigForm" method="post" action="/config/grading/update">
+        <div class="config-panel" id="grading">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="percent" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Grading Components & Weights</div>
+              <div class="cph-sub">Define the weight of each grading component. Total must equal 100%.</div>
+            </div>
+            <span class="badge badge-green">100% ✓</span>
+          </div>
+          <div class="config-panel-body">
+            <div class="weight-rows">
+              <div class="weight-row">
+                <span class="weight-label">Written Work</span>
+                <div class="weight-bar-wrap">
+                  <div class="weight-track"><div class="weight-fill" id="wwFill" style="width:30%;background:#7c3aed;"></div></div>
+                </div>
+                <div class="weight-input-wrap">
+                  <input class="weight-input" type="number" id="wwInput" value="30" min="0" max="100" oninput="updateWeights()"/>
+                  <span class="weight-pct">%</span>
+                </div>
+              </div>
+              <div class="weight-row">
+                <span class="weight-label">Performance Task</span>
+                <div class="weight-bar-wrap">
+                  <div class="weight-track"><div class="weight-fill" id="ptFill" style="width:50%;background:var(--blue-mid);"></div></div>
+                </div>
+                <div class="weight-input-wrap">
+                  <input class="weight-input" type="number" id="ptInput" value="50" min="0" max="100" oninput="updateWeights()"/>
+                  <span class="weight-pct">%</span>
+                </div>
+              </div>
+              <div class="weight-row">
+                <span class="weight-label">Quarterly Assessment</span>
+                <div class="weight-bar-wrap">
+                  <div class="weight-track"><div class="weight-fill" id="qaFill" style="width:20%;background:var(--green);"></div></div>
+                </div>
+                <div class="weight-input-wrap">
+                  <input class="weight-input" type="number" id="qaInput" value="20" min="0" max="100" oninput="updateWeights()"/>
+                  <span class="weight-pct">%</span>
+                </div>
+              </div>
+            </div>
+            <div class="weight-total">
+              <span class="weight-total-label">Total Weight</span>
+              <span class="weight-total-val wt-ok" id="totalVal">100%</span>
+            </div>
+            <div class="divider"></div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label">Passing Grade Threshold</label>
+                <input class="form-input" type="number" name="passingGradeThreshold" value="75" min="0" max="100"/>
+                <span class="form-hint">Students below this grade will be flagged</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Grade Rounding</label>
+                <select class="form-select" name="gradeRounding">
+                  <option value="round" selected>Round to nearest whole number</option>
+                  <option value="roundup">Round up always</option>
+                  <option value="truncate">Truncate (no rounding)</option>
+                </select>
+                <span class="form-hint">How final grades are calculated</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button type="button" class="btn btn-cancel">Discard</button>
+            <button type="submit" form="gradingConfigForm" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          </div>
+        </div>
+        </form>
+
+        <!-- 3. Attendance Settings -->
+        <form id="attendanceConfigForm" method="post" action="/config/attendance/update">
+        <div class="config-panel" id="attendance">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Attendance Settings</div>
+              <div class="cph-sub">Define attendance codes and allowed absence thresholds before a flag is raised.</div>
+            </div>
+          </div>
+          <div class="config-panel-body">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Attendance Status Codes</div>
+            <div class="att-codes" style="margin-bottom:20px;">
+              <div class="att-code">
+                <div class="att-code-dot dot-present"></div>
+                <div class="att-code-info">
+                  <div class="att-code-name">Present</div>
+                  <div class="att-code-desc">Student attended class</div>
+                </div>
+                <span class="att-code-key">P</span>
+              </div>
+              <div class="att-code">
+                <div class="att-code-dot dot-absent"></div>
+                <div class="att-code-info">
+                  <div class="att-code-name">Absent</div>
+                  <div class="att-code-desc">Student did not attend</div>
+                </div>
+                <span class="att-code-key">A</span>
+              </div>
+              <div class="att-code">
+                <div class="att-code-dot dot-late"></div>
+                <div class="att-code-info">
+                  <div class="att-code-name">Late / Tardy</div>
+                  <div class="att-code-desc">Student arrived after roll call</div>
+                </div>
+                <span class="att-code-key">L</span>
+              </div>
+              <div class="att-code">
+                <div class="att-code-dot dot-excused"></div>
+                <div class="att-code-info">
+                  <div class="att-code-name">Excused</div>
+                  <div class="att-code-desc">Absence with valid reason</div>
+                </div>
+                <span class="att-code-key">E</span>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Absence Thresholds</div>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label">Max Absences (Unexcused)</label>
+                <input class="form-input" type="number" name="maxUnexcusedAbsences" value="5" min="1"/>
+                <span class="form-hint">Before system flag is raised</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Consecutive Absences Alert</label>
+                <input class="form-input" type="number" name="consecutiveAbsencesAlert" value="3" min="1"/>
+                <span class="form-hint">Days in a row before parent is notified</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Late Count = 1 Absence</label>
+                <input class="form-input" type="number" name="lateCountAsAbsence" value="3" min="1"/>
+                <span class="form-hint">Number of lates that equal one absence</span>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Count Excused Absences in Total</div>
+                <div class="toggle-desc">If enabled, excused absences are counted toward the maximum allowed limit.</div>
+              </div>
+              <input type="hidden" name="countExcusedAbsences" value="off"/>
+              <div class="toggle" onclick="this.previousElementSibling.value=(this.previousElementSibling.value==='on'?'off':'on');this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Allow Teachers to Edit Past Attendance</div>
+                <div class="toggle-desc">If enabled, teachers can correct attendance records from previous days.</div>
+              </div>
+              <input type="hidden" name="allowEditPastAttendance" value="on"/>
+              <div class="toggle on" onclick="this.previousElementSibling.value=(this.previousElementSibling.value==='on'?'off':'on');this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button type="button" class="btn btn-cancel">Discard</button>
+            <button type="submit" form="attendanceConfigForm" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          </div>
+        </div>
+        </form>
+
+        <!-- 4. Journal Settings -->
+        <form id="journalConfigForm" method="post" action="/config/journal/update">
+        <div class="config-panel" id="journal">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Journal Settings</div>
+              <div class="cph-sub">Configure the weekly journal submission schedule and AI analysis behavior.</div>
+            </div>
+          </div>
+          <div class="config-panel-body">
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Submission Day</label>
+                <select class="form-select">
+                  <option>Monday</option>
+                  <option>Tuesday</option>
+                  <option>Wednesday</option>
+                  <option>Thursday</option>
+                  <option selected>Friday</option>
+                </select>
+                <span class="form-hint">Day the journal window opens and closes</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Submission Deadline</label>
+                <input class="form-input" type="time" value="23:59"/>
+                <span class="form-hint">Time the submission window closes</span>
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Minimum Word Count</label>
+                <input class="form-input" type="number" value="50" min="10"/>
+                <span class="form-hint">Minimum words required per journal entry</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Maximum Word Count</label>
+                <input class="form-input" type="number" value="500" min="50"/>
+                <span class="form-hint">Maximum words allowed per entry</span>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Journal Window Currently Open</div>
+                <div class="toggle-desc">Manually open or close the journal submission window for this week.</div>
+              </div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Auto-Open Window Every Submission Day</div>
+                <div class="toggle-desc">System automatically opens the journal window on the scheduled day.</div>
+              </div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">Allow Late Submissions</div>
+                <div class="toggle-desc">Students can still submit after the deadline. The entry will be marked as late.</div>
+              </div>
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">AI Welfare Analysis</div>
+                <div class="toggle-desc">Automatically analyze journal entries using AI to generate a welfare summary.</div>
+              </div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button class="btn btn-cancel">Discard</button>
+            <button class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          </div>
+        </div>
+        </form>
+
+        <!-- 5. Parent Notification Triggers -->
+        <div class="config-panel" id="notifications">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="bell" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Parent Notification Triggers</div>
+              <div class="cph-sub">Configure when the system automatically notifies parents about their child's status.</div>
+            </div>
+          </div>
+          <div class="config-panel-body">
+            <div class="trigger-rows">
+
+              <!-- <div class="trigger-row">
+                <div class="trigger-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
+                <div class="trigger-info">
+                  <div class="trigger-label">Grade Falls Below Threshold</div>
+                  <div class="trigger-desc">Notify parent when a student's grade in any subject drops below the set value.</div>
+                </div>
+                <div class="trigger-input-wrap">
+                  <input class="trigger-input" type="number" value="75" min="0" max="100"/>
+                  <span class="trigger-unit">pts</span>
+                </div>
+                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
+              </div> -->
+
+              <div class="trigger-row">
+                <div class="trigger-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="calendar-x" style="width:16px;height:16px;"></i></div>
+                <div class="trigger-info">
+                  <div class="trigger-label">Consecutive Absences</div>
+                  <div class="trigger-desc">Notify parent when a student has this many absences in a row.</div>
+                </div>
+                <div class="trigger-input-wrap">
+                  <input class="trigger-input" type="number" value="3" min="1"/>
+                  <span class="trigger-unit">days</span>
+                </div>
+                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
+              </div>
+
+              <!-- <div class="trigger-row">
+                <div class="trigger-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="alert-circle" style="width:16px;height:16px;"></i></div>
+                <div class="trigger-info">
+                  <div class="trigger-label">Welfare Concern Detected</div>
+                  <div class="trigger-desc">Notify parent when AI flags a journal entry as emotionally concerning.</div>
+                </div>
+                <div class="trigger-input-wrap" style="visibility:hidden;">
+                  <input class="trigger-input" type="number" value="1"/>
+                  <span class="trigger-unit"></span>
+                </div>
+                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
+              </div> -->
+
+              <div class="trigger-row">
+                <div class="trigger-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+                <div class="trigger-info">
+                  <div class="trigger-label">Narrative Report Released</div>
+                  <div class="trigger-desc">Notify parent when a teacher confirms and releases a narrative report.</div>
+                </div>
+                <div class="trigger-input-wrap" style="visibility:hidden;">
+                  <input class="trigger-input" type="number" value="1"/>
+                  <span class="trigger-unit"></span>
+                </div>
+                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
+              </div>
+
+              <div class="trigger-row">
+                <div class="trigger-icon" style="background:var(--gray-100);color:var(--gray-500);"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+                <div class="trigger-info">
+                  <div class="trigger-label">Journal Not Submitted</div>
+                  <div class="trigger-desc">Notify parent when a student misses this many consecutive journal submissions.</div>
+                </div>
+                <div class="trigger-input-wrap">
+                  <input class="trigger-input" type="number" value="2" min="1"/>
+                  <span class="trigger-unit">weeks</span>
+                </div>
+                <div class="toggle" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
+              </div>
+
+            </div>
+            <div class="divider"></div>
+            <div class="form-group">
+              <label class="form-label">Notification Delivery Method</label>
+              <select class="form-select">
+                <option selected>In-app notification (EdUgnay parent dashboard)</option>
+                <option>Email + In-app</option>
+                <option>SMS + In-app</option>
+              </select>
+              <span class="form-hint">How parents receive notifications from the system</span>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button class="btn btn-cancel">Discard</button>
+            <button class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          </div>
+        </div>
+
+        <!-- 6. Archive Data -->
+        <div class="config-panel" id="archive">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--gray-100);color:var(--gray-500);"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Archive School Year Data</div>
+              <div class="cph-sub">Move completed school year records to archive. This action cannot be undone.</div>
+            </div>
+            <span class="badge badge-gray">Last: S.Y. 2024–2025</span>
+          </div>
+          <div class="config-panel-body">
+            <div class="warn-banner">
+              <div class="warn-icon"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i></div>
+              <div>
+                <div class="warn-title">This action is permanent</div>
+                <div class="warn-text">Archiving a school year moves all grades, attendance records, journal entries, and narrative reports to a read-only archive. Users will no longer be able to edit archived data. Make sure all grades are finalized and all reports are confirmed before archiving.</div>
+              </div>
+            </div>
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">School Year to Archive</label>
+                <select class="form-select">
+                  <option selected>S.Y. 2024–2025</option>
+                  <option>S.Y. 2023–2024</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Archive Status</label>
+                <input class="form-input" type="text" value="284 students · 8 sections · 4 quarters" readonly style="color:var(--gray-500);cursor:not-allowed;"/>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <div class="toggle-label">I confirm all data for this school year is finalized</div>
+                <div class="toggle-desc">Enable this toggle to unlock the archive button.</div>
+              </div>
+              <div class="toggle" id="archiveConfirm" onclick="toggleArchiveConfirm()"></div>
+            </div>
+          </div>
+          <div class="config-panel-foot">
+            <button class="btn btn-cancel">Cancel</button>
+            <button class="btn btn-danger" id="archiveBtn" disabled onclick="archiveData()"><i data-lucide="archive" style="width:13px;height:13px;"></i> Archive S.Y. 2024–2025</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // e.preventDefault();
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  // Config nav highlight on click
+  document.querySelectorAll('.config-nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // e.preventDefault();
+
+      // active state
+      document.querySelectorAll('.config-nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+
+      const target = document.querySelector(this.getAttribute('href'));
+      if (!target) return;
+
+      const topbar = document.querySelector('.topbar');
+      const configNav = document.querySelector('.config-nav');
+      const topbarBottom = topbar.getBoundingClientRect().bottom;
+      const topbarOffset = topbarBottom > 0 ? topbarBottom : 0;
+      const navHeight = configNav ? configNav.offsetHeight : 0;
+
+      const offset = Math.max(0, target.getBoundingClientRect().top + window.scrollY - topbarOffset - navHeight - 16);
+      window.scrollTo({ top: offset, behavior: 'smooth' });
+
+      history.replaceState(null, '', window.location.pathname);
+    });
+  });
+
+  // Grading weight calculator
+  function updateWeights() {
+    const ww = parseInt(document.getElementById('wwInput').value) || 0;
+    const pt = parseInt(document.getElementById('ptInput').value) || 0;
+    const qa = parseInt(document.getElementById('qaInput').value) || 0;
+    const total = ww + pt + qa;
+
+    document.getElementById('wwFill').style.width = Math.min(ww, 100) + '%';
+    document.getElementById('ptFill').style.width = Math.min(pt, 100) + '%';
+    document.getElementById('qaFill').style.width = Math.min(qa, 100) + '%';
+
+    const totalEl = document.getElementById('totalVal');
+    totalEl.textContent = total + '%';
+    totalEl.className = 'weight-total-val ' + (total === 100 ? 'wt-ok' : 'wt-err');
+  }
+
+  // Archive confirm toggle
+  function toggleArchiveConfirm() {
+    const toggle = document.getElementById('archiveConfirm');
+    const btn    = document.getElementById('archiveBtn');
+    toggle.classList.toggle('on');
+    btn.disabled = !toggle.classList.contains('on');
+  }
+
+  function archiveData() {
+    alert('Archive process initiated. S.Y. 2024–2025 data is being moved to read-only archive.');
+  }
+
+  function saveAll() {
+    alert('All configuration changes saved successfully.');
+  }
+
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

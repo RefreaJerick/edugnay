@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/announcements.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Edit Announcement</div>
+        <div class="modal-sub">Make changes and repost to notify users.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="editAnnouncementForm" method="post" action="/announcements/update">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Title</label>
+        <input class="form-input" type="text" name="title" value="Q2 Grade Encoding Deadline"/>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Content</label>
+        <textarea class="form-textarea" name="content" style="min-height:120px;">All subject teachers are required to complete encoding of Q2 grades no later than June 14, 2025. Please coordinate with your section adviser for any discrepancies.</textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Priority</label>
+        <select class="form-select" name="priority">
+          <option value="high">High Priority</option>
+          <option value="normal" selected>Normal</option>
+          <option value="low">Low Priority</option>
+          <option value="event">Event / Reminder</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Audience</label>
+        <select class="form-select" name="audience">
+          <option value="all">All Users</option>
+          <option value="teachers" selected>Teachers Only</option>
+          <option value="students">Students Only</option>
+          <option value="parents">Parents Only</option>
+          <option value="teachers-students">Teachers & Students</option>
+        </select>
+      </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button type="submit" form="editAnnouncementForm" class="btn-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-admin-users.html"     class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">User Accounts</span><span class="nav-badge">3</span></a>
+      <a href="edugnay-admin-sections.html"  class="nav-item"><div class="nav-icon"><i data-lucide="door-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Sections</span></a>
+      <a href="edugnay-admin-subjects.html"  class="nav-item"><div class="nav-icon"><i data-lucide="book-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Subjects</span></a>
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item"><div class="nav-icon"><i data-lucide="clipboard-list" style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Teachers</span></a>
+      <a href="edugnay-admin-assign-students.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-plus"  style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Students</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item active"><div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+      <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div><span class="nav-label">System Config</span></a>
+      <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"  style="width:16px;height:16px;"></i></div><span class="nav-label">Archive Data</span></a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">SA</div>
+        <div class="admin-info">
+          <div class="admin-name">Sr. Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Admin</div>
+        <div class="page-title">Announcements</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- <button class="top-btn secondary"><i data-lucide="download" style="width:14px;height:14px;"></i> Export</button> -->
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card blue">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="megaphone" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">14</div>
+        <div class="sc-label">Total Posted</div>
+        <div class="sc-sub">This school year</div>
+      </div>
+      <div class="stat-card green">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">12</div>
+        <div class="sc-label">Active</div>
+        <div class="sc-sub">Visible to users</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="file-edit" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">2</div>
+        <div class="sc-label">Drafts</div>
+        <div class="sc-sub">Not yet published</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">1</div>
+        <div class="sc-label">High Priority</div>
+        <div class="sc-sub">Urgent announcements</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+
+      <!-- LEFT: Announcements list -->
+      <div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+            <input class="search-input" type="text" id="searchInput" placeholder="Search announcements..." oninput="filterAnnouncements()"/>
+          </div>
+          <select class="filter-select" id="audienceFilter" onchange="filterAnnouncements()">
+            <option value="all">All Audiences</option>
+            <option value="all-users">All Users</option>
+            <option value="teachers">Teachers</option>
+            <option value="students">Students</option>
+            <option value="parents">Parents</option>
+          </select>
+          <select class="filter-select" id="priorityFilter" onchange="filterAnnouncements()">
+            <option value="all">All Priorities</option>
+            <option value="high">High Priority</option>
+            <option value="normal">Normal</option>
+            <option value="event">Event</option>
+            <option value="low">Low Priority</option>
+          </select>
+        </div>
+
+        <!-- Announcement cards -->
+        <div class="announcements-list" id="annList">
+
+          <!-- Pinned + High Priority -->
+          <div class="ann-card priority-high" data-priority="high" data-audience="all-users">
+            <div class="pinned-strip">
+              <i data-lucide="pin" style="width:12px;height:12px;"></i>
+              Pinned Announcement
+            </div>
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-high"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Q2 Grade Encoding Deadline — June 14</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-red"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Urgent</span>
+                  <span class="badge badge-green">Active</span>
+                </div>
+              </div>
+              <div class="ann-content">All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-all"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 284 users</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn pin" onclick="unpinCard(this)"><i data-lucide="pin-off" style="width:11px;height:11px;"></i> Unpin</button>
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Normal -->
+          <div class="ann-card priority-normal" data-priority="normal" data-audience="teachers">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-normal"><i data-lucide="book-open" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Journal Submission Window — This Friday</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-blue">Normal</span>
+                  <span class="badge badge-green">Active</span>
+                </div>
+              </div>
+              <div class="ann-content">The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-teacher"><i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Teachers</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 24 teachers</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Event -->
+          <div class="ann-card priority-event" data-priority="event" data-audience="all-users">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-event"><i data-lucide="calendar" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Foundation Day — June 20, 2025</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-gold"><i data-lucide="calendar" style="width:10px;height:10px;"></i> Event</span>
+                  <span class="badge badge-green">Active</span>
+                </div>
+              </div>
+              <div class="ann-content">St. Columban's College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All students are encouraged to participate in the school activities. More details to follow.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-all"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 312 users</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parents only -->
+          <div class="ann-card priority-normal" data-priority="normal" data-audience="parents">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-normal"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Q2 Narrative Reports Now Available</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 28, 9:00 AM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-blue">Normal</span>
+                  <span class="badge badge-green">Active</span>
+                </div>
+              </div>
+              <div class="ann-content">Q2 narrative reports have been confirmed by your child's teachers and are now available to view in your EdUgnay parent dashboard. Please log in to review the reports and the attached welfare summary.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-parent"><i data-lucide="heart" style="width:10px;height:10px;"></i> Parents</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 198 parents</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Students only -->
+          <div class="ann-card priority-normal" data-priority="normal" data-audience="students">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-normal"><i data-lucide="pencil" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Weekly Journal is Now Open for Submission</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 24, 7:00 AM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-blue">Normal</span>
+                  <span class="badge badge-green">Active</span>
+                </div>
+              </div>
+              <div class="ann-content">This week's journal submission is now open. Please write about your week — your experiences, feelings, and anything you want to share. Submissions close <strong>Friday at 11:59 PM</strong>.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-student"><i data-lucide="book" style="width:10px;height:10px;"></i> Students</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 253 students</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Draft -->
+          <div class="ann-card priority-low" data-priority="low" data-audience="all-users">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-low"><i data-lucide="file-edit" style="width:16px;height:16px;"></i></div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM</span>
+                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-gray"><i data-lucide="file" style="width:10px;height:10px;"></i> Draft</span>
+                </div>
+              </div>
+              <div class="ann-content" style="color:var(--gray-400);font-style:italic;">This announcement is saved as a draft and is not yet visible to any users. Click Edit to review and publish it.</div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-all" style="opacity:0.5;"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left" style="color:var(--orange);"><i data-lucide="eye-off" style="width:12px;height:12px;"></i> Not yet published</div>
+              <div class="ann-footer-right">
+                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit & Publish</button>
+                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: Compose panel -->
+      <div>
+        <div class="compose-panel" id="composePanel">
+          <div class="panel-head">
+            <div class="panel-title">New Announcement</div>
+            <span style="font-size:11px;color:var(--gray-400);">Broadcast to users</span>
+          </div>
+          <div class="compose-body">
+            <form id="composeAnnouncementForm" method="post" action="/announcements/create">
+
+              <div class="form-group">
+                <label class="form-label">Title</label>
+                <input class="form-input" type="text" name="title" placeholder="e.g. Reminder: Grade Submission Deadline"/>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Content</label>
+                <textarea class="form-textarea" name="content" placeholder="Write the announcement here..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Priority</label>
+                <input type="hidden" id="priorityValue" name="priority" value="normal"/>
+                <div class="priority-opts">
+                  <div class="priority-opt p-high" onclick="selectPriority(this, 'high')">
+                    <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i> Urgent
+                  </div>
+                  <div class="priority-opt p-normal selected" onclick="selectPriority(this, 'normal')">
+                    <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i> Normal
+                  </div>
+                  <div class="priority-opt p-event" onclick="selectPriority(this, 'event')">
+                    <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i> Event
+                  </div>
+                  <div class="priority-opt p-low" onclick="selectPriority(this, 'low')">
+                    <i data-lucide="minus-circle" style="width:13px;height:13px;color:var(--gray-400);"></i> Low
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Send To</label>
+                <div class="audience-opts">
+                  <label class="aud-opt checked">
+                    <input type="checkbox" name="audience" value="all" checked/>
+                    <div class="aud-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="users" style="width:13px;height:13px;"></i></div>
+                    <span class="aud-opt-label">All Users</span>
+                  </label>
+                  <label class="aud-opt">
+                    <input type="checkbox" name="audience" value="teachers"/>
+                    <div class="aud-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
+                    <span class="aud-opt-label">Teachers Only</span>
+                  </label>
+                  <label class="aud-opt">
+                    <input type="checkbox" name="audience" value="students"/>
+                    <div class="aud-opt-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="book" style="width:13px;height:13px;"></i></div>
+                    <span class="aud-opt-label">Students Only</span>
+                  </label>
+                  <label class="aud-opt">
+                    <input type="checkbox" name="audience" value="parents"/>
+                    <div class="aud-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart" style="width:13px;height:13px;"></i></div>
+                    <span class="aud-opt-label">Parents Only</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Schedule (optional)</label>
+                <input class="form-input" type="datetime-local" name="schedule"/>
+              </div>
+
+              <div class="compose-footer">
+                <button type="button" class="btn btn-draft" onclick="saveDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
+                <button type="submit" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post Announcement</button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // e.preventDefault();
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  function openModal() { document.getElementById('editModal').classList.add('open'); }
+  function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+  document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function scrollToCompose() {
+    document.getElementById('composePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function selectPriority(el, value) {
+    document.querySelectorAll('.priority-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('priorityValue').value = value;
+  }
+
+  function saveDraft() {
+    const form = document.getElementById('composeAnnouncementForm');
+    const formData = new FormData(form);
+    formData.append('isDraft', 'true');
+    // Send to backend or handle draft saving
+    console.log('Saving draft:', Object.fromEntries(formData));
+  }
+
+  document.querySelectorAll('.aud-opt').forEach(opt => {
+    opt.addEventListener('click', function() {
+      const cb = this.querySelector('input[type="checkbox"]');
+      this.classList.toggle('checked', cb.checked);
+    });
+  });
+
+  function filterAnnouncements() {
+    const search   = document.getElementById('searchInput').value.toLowerCase();
+    const audience = document.getElementById('audienceFilter').value;
+    const priority = document.getElementById('priorityFilter').value;
+
+    document.querySelectorAll('.ann-card').forEach(card => {
+      const title    = card.querySelector('.ann-title').textContent.toLowerCase();
+      const content  = card.querySelector('.ann-content').textContent.toLowerCase();
+      const aud      = card.dataset.audience;
+      const pri      = card.dataset.priority;
+
+      const matchSearch   = title.includes(search) || content.includes(search);
+      const matchAudience = audience === 'all' || aud === audience;
+      const matchPriority = priority === 'all' || pri === priority;
+
+      card.style.display = (matchSearch && matchAudience && matchPriority) ? '' : 'none';
+    });
+  }
+
+  function pinCard(btn) {
+    const card = btn.closest('.ann-card');
+    const list = document.getElementById('annList');
+
+    const strip = document.createElement('div');
+    strip.className = 'pinned-strip';
+    strip.innerHTML = '<i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement';
+    card.prepend(strip);
+
+    list.prepend(card);
+
+    btn.onclick = function () { unpinCard(this); };
+    btn.innerHTML = '<i data-lucide="pin-off" style="width:11px;height:11px;"></i> Unpin';
+
+    lucide.createIcons();
+  }
+
+  function unpinCard(btn) {
+    const card = btn.closest('.ann-card');
+    const list = document.getElementById('annList');
+
+    card.querySelector('.pinned-strip').remove();
+
+    const pinned = list.querySelectorAll('.ann-card .pinned-strip');
+    if (pinned.length > 0) {
+      pinned[pinned.length - 1].closest('.ann-card').insertAdjacentElement('afterend', card);
+    } else {
+      list.prepend(card);
+    }
+
+    btn.onclick = function () { pinCard(this); };
+    btn.innerHTML = '<i data-lucide="pin" style="width:11px;height:11px;"></i> Pin';
+
+    lucide.createIcons();
+  }
+
+  function deleteCard(btn) {
+    const card = btn.closest('.ann-card');
+    const title = card.querySelector('.ann-title')?.textContent || 'this announcement';
+
+    if (!confirm(`Delete "${title}"?\nThis cannot be undone.`)) return;
+
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(10px)';
+    setTimeout(() => card.remove(), 300);
+  }
+
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

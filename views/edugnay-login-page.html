@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── LEFT: PHOTO PANEL ── -->
+  <div class="photo-panel">
+    <div class="photo-slideshow" aria-hidden="true">
+      <div class="slide"></div>
+      <div class="slide"></div>
+    </div>
+    <div class="photo-content">
+
+      <!-- Top: school branding -->
+      <div class="school-mark">
+        <div class="school-crest">
+          <img src="../../assets/images/st-columban-logo.jpg" alt="St. Columban's College logo" />
+        </div>
+        <div class="school-info">
+          <div class="school-name">St. Columban's College</div>
+          <div class="school-dept">Junior High School Department</div>
+        </div>
+      </div>
+
+      <!-- Bottom: headline and stats -->
+      <div class="photo-bottom">
+        <div class="system-badge">
+          <span>✦ &nbsp;EdUgnay Portal</span>
+        </div>
+
+        <h2 class="photo-heading">
+          Where every student<br/>
+          <em>is seen, heard,</em><br/>
+          and supported.
+        </h2>
+
+        <p class="photo-sub">
+          An AI-powered monitoring system that connects teachers, students, and parents — built for St. Columban's College JHS.
+        </p>
+
+        <div class="stat-strip">
+          <div class="stat-block">
+            <div class="stat-val">4<span>+</span></div>
+            <div class="stat-key">User Roles</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-val">AI<span>✦</span></div>
+            <div class="stat-key">Reports</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-val">24<span>/7</span></div>
+            <div class="stat-key">Parent Access</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── RIGHT: LOGIN PANEL ── -->
+  <div class="login-panel">
+
+    <!-- System announcement (generic, pre-login safe) -->
+    <div class="announcement">
+      <div class="announce-icon"><i data-lucide="megaphone" style="width:20px;height:20px;"></i></div>
+      <div class="announcement-body">
+        <div class="announcement-title">System Announcement</div>
+        <div class="announcement-text">2nd Quarter grading period is now open.</div>
+      </div>
+    </div>
+
+    <div class="login-top">
+      <div class="login-eyebrow">EdUgnay Portal</div>
+      <h1 class="login-title">Sign in to<br/>your account</h1>
+      <p class="login-sub">Enter your school email to get started.</p>
+    </div>
+
+    <form class="login-form" action="" method="post">
+      <!-- Email -->
+    <div class="form-group">
+      <label class="form-label" for="emailInput">School Email</label>
+      <div class="input-wrap">
+        <input
+          class="form-input"
+          type="email"
+          id="emailInput"
+          name="email"
+          placeholder="firstname.lastname.fac@stcolumban.edu.ph"
+          autocomplete="email"
+          required
+        />
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="form-group">
+      <label class="form-label" for="passwordInput">Password</label>
+      <div class="input-wrap">
+        <input
+          class="form-input"
+          type="password"
+          id="passwordInput"
+          name="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        />
+        <!-- <span class="input-icon" id="togglePw" style="cursor:pointer;pointer-events:all;" onclick="togglePassword()">👁️</span> -->
+      </div>
+    </div>
+
+    <div class="form-bottom">
+      <label class="remember" for="rememberMe">
+        <input type="checkbox" id="rememberMe" name="remember" value="yes"/> Keep me signed in
+      </label>
+      <a href="#" class="forgot">Forgot password?</a>
+    </div>
+
+    <button class="btn-login" type="submit">Sign In</button>
+    </form>
+
+    <div class="login-footer">
+      <p>
+        <!-- <strong>Role-based access</strong> is determined automatically<br/>
+        from your school email address.<br/> -->
+        Contact your administrator if you cannot log in.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function togglePassword() {
+    const pw = document.getElementById('passwordInput')
+    pw.type = pw.type === 'password' ? 'text' : 'password'
+  }
+
+  function initPhotoSlideshow() {
+    const images = [
+      '../../assets/images/udd-campus.jpg',
+      '../../assets/images/escalator-profs.jpg',
+      '../../assets/images/meeting-3.jpg',
+    ];
+    const slides = Array.from(document.querySelectorAll('.photo-panel .slide'));
+    if (slides.length < 2 || images.length === 0) return;
+
+    let activeSlide = 0;
+    let imageIndex = 0;
+
+    function setBackground(slide, index) {
+      slide.style.backgroundImage = `url('${images[index]}')`;
+    }
+
+    setBackground(slides[0], 0);
+    setBackground(slides[1], 1 % images.length);
+    slides[0].classList.add('active');
+    imageIndex = 1 % images.length;
+
+    setInterval(() => {
+      const nextImageIndex = (imageIndex + 1) % images.length;
+      const nextSlide = slides[1 - activeSlide];
+      setBackground(nextSlide, nextImageIndex);
+      slides[activeSlide].classList.remove('active');
+      nextSlide.classList.add('active');
+      activeSlide = 1 - activeSlide;
+      imageIndex = nextImageIndex;
+    }, 6000);
+  }
+
+  document.addEventListener('DOMContentLoaded', initPhotoSlideshow);
+</script>
+
+<script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

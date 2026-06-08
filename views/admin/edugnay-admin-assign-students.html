@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/assign-students.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<!-- ASSIGN MODAL -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">Assign Student</div>
+        <div class="modal-sub">Place a student into a section.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignStudentForm" method="post" action="/assignments/students/create">
+      <div class="modal-context">
+        <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+        <div>
+          <div class="ctx-label">Assigning to</div>
+          <div class="ctx-val" id="ctxVal">Select a section below</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Student</label>
+        <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
+          <option value="">— Select a student —</option>
+          <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
+          <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
+          <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
+          <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
+          <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
+          <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
+          <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
+          <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+        </select>
+        <div class="student-preview" id="studentPreview">
+          <div class="sp-av" id="spAv">JD</div>
+          <div>
+            <div class="sp-name" id="spName">Juan Dela Cruz</div>
+            <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Assign to Section</label>
+        <select class="form-select" id="modalSection" name="sectionId">
+          <option value="">— Select a section —</option>
+          <optgroup label="Grade 7">
+            <option>Grade 7 – St. Matthew (38/40)</option>
+            <option>Grade 7 – St. Mark (34/40)</option>
+          </optgroup>
+          <optgroup label="Grade 8">
+            <option>Grade 8 – St. Luke (36/40)</option>
+            <option>Grade 8 – St. John (34/40)</option>
+          </optgroup>
+          <optgroup label="Grade 9">
+            <option>Grade 9 – St. Peter (37/40)</option>
+            <option>Grade 9 – St. Paul (37/40)</option>
+          </optgroup>
+          <optgroup label="Grade 10">
+            <option>Grade 10 – St. James (35/40)</option>
+            <option>Grade 10 – St. Thomas (33/40)</option>
+          </optgroup>
+        </select>
+      </div>
+      </form>
+
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <!-- Main nav -->
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+
+      <a href="edugnay-admin-dashboard.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="edugnay-admin-users.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="users" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">User Accounts</span>
+        <span class="nav-badge">3</span>
+      </a>
+
+      <a href="edugnay-admin-sections.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="door-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Sections</span>
+      </a>
+
+      <a href="edugnay-admin-subjects.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Subjects</span>
+      </a>
+
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="clipboard-list" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Teachers</span>
+      </a>
+
+      <a href="edugnay-admin-assign-students.html" class="nav-item active">
+        <div class="nav-icon">
+          <i data-lucide="user-plus" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Students</span>
+      </a>
+    </div>
+
+    <!-- Reports & Content -->
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+
+      <a href="edugnay-admin-reports.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Reports</span>
+      </a>
+
+      <a href="edugnay-admin-announcements.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <!-- Settings -->
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+
+      <a href="edugnay-admin-system-config.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="settings" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Config</span>
+      </a>
+
+      <a href="edugnay-admin-archive.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="archive" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Archive Data</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">SA</div>
+        <div class="admin-info">
+          <div class="admin-name">Sr. Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:16px;height:16px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Admin</div>
+        <div class="page-title">Assign Students</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="top-btn primary" onclick="openModal()"><i data-lucide="plus" style="width:16px;height:16px;margin-right:6px;display:inline;"></i>Assign Student</button>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card blue">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="book-open" style="width:18px;height:18px;color:var(--blue-mid);"></i></div></div>
+        <div class="sc-num">284</div>
+        <div class="sc-label">Total Students</div>
+        <div class="sc-sub">Registered in the system</div>
+      </div>
+      <div class="stat-card green">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div></div>
+        <div class="sc-num">271</div>
+        <div class="sc-label">Assigned</div>
+        <div class="sc-sub">Placed in a section</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;color:#d97706;"></i></div></div>
+        <div class="sc-num">13</div>
+        <div class="sc-label">Unassigned</div>
+        <div class="sc-sub">Still needs a section</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="building-2" style="width:18px;height:18px;color:#92400e;"></i></div></div>
+        <div class="sc-num">8</div>
+        <div class="sc-label">Active Sections</div>
+        <div class="sc-sub">Across Grades 7 – 10</div>
+      </div>
+    </div>
+
+    <!-- Unassigned banner -->
+    <div class="unassigned-banner">
+      <div class="ub-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;color:#d97706;"></i></div>
+      <div class="ub-body">
+        <div class="ub-title">13 students are not yet assigned to any section</div>
+        <div class="ub-text">These students have accounts but are not enrolled in a section. Assign them before the grading period starts.</div>
+      </div>
+      <button class="ub-btn" onclick="switchTab('unassigned', null)">View Unassigned</button>
+    </div>
+
+    <!-- Grade tabs -->
+    <div class="grade-tabs">
+      <div class="grade-tab active" id="tab-all" onclick="switchTab('all', this)">
+        All Sections <span class="tab-count">284</span>
+      </div>
+      <div class="grade-tab" id="tab-7" onclick="switchTab('7', this)">
+        Grade 7 <span class="tab-count">72</span>
+      </div>
+      <div class="grade-tab" id="tab-8" onclick="switchTab('8', this)">
+        Grade 8 <span class="tab-count">70</span>
+      </div>
+      <div class="grade-tab" id="tab-9" onclick="switchTab('9', this)">
+        Grade 9 <span class="tab-count">74</span>
+      </div>
+      <div class="grade-tab" id="tab-10" onclick="switchTab('10', this)">
+        Grade 10 <span class="tab-count">68</span>
+      </div>
+      <div class="grade-tab" id="tab-unassigned" onclick="switchTab('unassigned', this)" style="border-color:#fcd34d;color:#d97706;">
+        Unassigned <span class="tab-count" style="background:var(--orange-pale);color:#92400e;">13</span>
+      </div>
+    </div>
+
+    <!-- Two-panel layout -->
+    <div class="two-panel">
+
+      <!-- LEFT: Enrolled students table -->
+      <div class="panel">
+        <div class="enrolled-head">
+          <div>
+            <div class="enrolled-title" id="enrolledTitle">All Enrolled Students</div>
+            <div class="enrolled-meta" id="enrolledMeta">Showing 271 students across 8 sections</div>
+          </div>
+        </div>
+        <div class="enrolled-search">
+          <span class="es-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+          <input class="es-input" type="text" id="studentSearch" placeholder="Search students by name or email..." oninput="filterStudents()"/>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="enrolledTable">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Section</th>
+                <th>Grade</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="enrolledBody">
+              <tr data-grade="7" data-section="st. matthew" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">CM</div><div><div class="user-name">Carlo Mendoza</div><div class="user-email">c.mendoza.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Matthew</td>
+                <td><span class="badge badge-blue">Grade 7</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="7" data-section="st. matthew" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">LR</div><div><div class="user-name">Liza Reyes</div><div class="user-email">l.reyes.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Matthew</td>
+                <td><span class="badge badge-blue">Grade 7</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="7" data-section="st. mark" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">RC</div><div><div class="user-name">Rico Cruz</div><div class="user-email">r.cruz.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Mark</td>
+                <td><span class="badge badge-blue">Grade 7</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="8" data-section="st. luke" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">JD</div><div><div class="user-name">Juan Dela Cruz</div><div class="user-email">j.delacruz.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Luke</td>
+                <td><span class="badge badge-gold" style="background:#fefce8;color:#92400e;">Grade 8</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="8" data-section="st. john" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">ET</div><div><div class="user-name">Ella Tan</div><div class="user-email">e.tan.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. John</td>
+                <td><span class="badge badge-gold" style="background:#fefce8;color:#92400e;">Grade 8</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="9" data-section="st. peter" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">ML</div><div><div class="user-name">Maria Lopez</div><div class="user-email">m.lopez.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Peter</td>
+                <td><span class="badge badge-green">Grade 9</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="9" data-section="st. paul" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">BG</div><div><div class="user-name">Ben Garcia</div><div class="user-email">b.garcia.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. Paul</td>
+                <td><span class="badge badge-green">Grade 9</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grade="10" data-section="st. james" data-assigned="true">
+                <td><div class="user-cell"><div class="user-av">AS</div><div><div class="user-name">Ana Santos</div><div class="user-email">a.santos.stud@stcolumban.edu.ph</div></div></div></td>
+                <td>St. James</td>
+                <td><span class="badge badge-orange">Grade 10</span></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <!-- Unassigned students -->
+              <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">KS</div><div><div class="user-name">Karl Santiago</div><div class="user-email">k.santiago.stud@stcolumban.edu.ph</div></div></div></td>
+                <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                <td><span class="badge badge-gray">—</span></td>
+                <td><button class="row-btn move" style="background:var(--orange-pale);color:#92400e;border-color:#fcd34d;" onclick="openModal('Karl Santiago')">＋ Assign</button></td>
+              </tr>
+              <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">PN</div><div><div class="user-name">Paula Nieves</div><div class="user-email">p.nieves.stud@stcolumban.edu.ph</div></div></div></td>
+                <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                <td><span class="badge badge-gray">—</span></td>
+                <td><button class="row-btn move" style="background:var(--orange-pale);color:#92400e;border-color:#fcd34d;" onclick="openModal('Paula Nieves')">＋ Assign</button></td>
+              </tr>
+              <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">DO</div><div><div class="user-name">Dan Ocampo</div><div class="user-email">d.ocampo.stud@stcolumban.edu.ph</div></div></div></td>
+                <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                <td><span class="badge badge-gray">—</span></td>
+                <td><button class="row-btn move" style="background:var(--orange-pale);color:#92400e;border-color:#fcd34d;" onclick="openModal('Dan Ocampo')">＋ Assign</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT: Sections overview -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Sections Overview</div>
+            <div class="panel-meta">Click a section to filter students</div>
+          </div>
+        </div>
+        <div class="section-list">
+
+          <div class="section-card" onclick="filterBySection('st. matthew', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-7"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Matthew</div><div class="sc-grade-text">Grade 7</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">38</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-blue" style="width:95%"></div></div>
+              <div class="sc-cap-text">38 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. mark', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-7"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Mark</div><div class="sc-grade-text">Grade 7</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">34</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-blue" style="width:85%"></div></div>
+              <div class="sc-cap-text">34 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. luke', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-8"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Luke</div><div class="sc-grade-text">Grade 8</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">36</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-gold" style="width:90%"></div></div>
+              <div class="sc-cap-text">36 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. john', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-8"></div>
+              <div class="sc-info"><div class="sc-section-name">St. John</div><div class="sc-grade-text">Grade 8</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">34</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-gold" style="width:85%"></div></div>
+              <div class="sc-cap-text">34 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. peter', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-9"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Peter</div><div class="sc-grade-text">Grade 9</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">37</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-green" style="width:92%"></div></div>
+              <div class="sc-cap-text">37 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. paul', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-9"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Paul</div><div class="sc-grade-text">Grade 9</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">37</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-green" style="width:92%"></div></div>
+              <div class="sc-cap-text">37 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. james', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-10"></div>
+              <div class="sc-info"><div class="sc-section-name">St. James</div><div class="sc-grade-text">Grade 10</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">35</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-orange" style="width:87%"></div></div>
+              <div class="sc-cap-text">35 / 40 capacity</div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="filterBySection('st. thomas', this)">
+            <div class="sc-head">
+              <div class="sc-stripe stripe-10"></div>
+              <div class="sc-info"><div class="sc-section-name">St. Thomas</div><div class="sc-grade-text">Grade 10</div></div>
+              <div class="sc-count-wrap"><div class="sc-count-num">33</div><div class="sc-count-label">Students</div></div>
+            </div>
+            <div class="sc-bar-wrap">
+              <div class="sc-bar"><div class="sc-fill bar-orange" style="width:82%"></div></div>
+              <div class="sc-cap-text">33 / 40 capacity</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // e.preventDefault();
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  function openModal(studentName) {
+    const title = document.getElementById('modalTitle');
+    title.textContent = studentName ? `Assign — ${studentName}` : 'Assign Student';
+    document.getElementById('ctxVal').textContent = 'Select a section below';
+    document.getElementById('modalStudent').value = '';
+    document.getElementById('studentPreview').classList.remove('visible');
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('modalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function previewStudent(val) {
+    const preview = document.getElementById('studentPreview');
+    if (!val) { preview.classList.remove('visible'); return; }
+    const [name, email, initials] = val.split('|');
+    document.getElementById('spAv').textContent     = initials;
+    document.getElementById('spName').textContent   = name;
+    document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
+    preview.classList.add('visible');
+  }
+
+  let activeGrade   = 'all';
+  let activeSection = null;
+
+  const tabTitles = {
+    all:         { title: 'All Enrolled Students',     meta: 'Showing students across all sections' },
+    '7':         { title: 'Grade 7 Students',          meta: 'Showing students enrolled in Grade 7 sections' },
+    '8':         { title: 'Grade 8 Students',          meta: 'Showing students enrolled in Grade 8 sections' },
+    '9':         { title: 'Grade 9 Students',          meta: 'Showing students enrolled in Grade 9 sections' },
+    '10':        { title: 'Grade 10 Students',         meta: 'Showing students enrolled in Grade 10 sections' },
+    unassigned:  { title: 'Unassigned Students',       meta: '13 students not yet placed in any section' },
+  };
+
+  function switchTab(grade, el) {
+    activeGrade   = grade;
+    activeSection = null;
+
+    document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section-card').forEach(c => c.classList.remove('selected'));
+
+    if (el) el.classList.add('active');
+    else {
+      const tab = document.getElementById('tab-unassigned');
+      if (tab) tab.classList.add('active');
+    }
+
+    const info = tabTitles[grade] || tabTitles.all;
+    document.getElementById('enrolledTitle').textContent = info.title;
+    document.getElementById('enrolledMeta').textContent  = info.meta;
+
+    applyFilters();
+  }
+
+  function filterBySection(section, card) {
+    activeSection = activeSection === section ? null : section;
+    document.querySelectorAll('.section-card').forEach(c => c.classList.remove('selected'));
+    if (activeSection) card.classList.add('selected');
+
+    document.getElementById('enrolledTitle').textContent = activeSection
+      ? `Students in ${section.replace(/\b\w/g, l => l.toUpperCase())}`
+      : tabTitles[activeGrade]?.title || 'All Students';
+
+    applyFilters();
+  }
+
+  function filterStudents() { applyFilters(); }
+
+  function applyFilters() {
+    const search  = document.getElementById('studentSearch').value.toLowerCase();
+    const rows    = document.querySelectorAll('#enrolledBody tr');
+
+    rows.forEach(row => {
+      const grade   = row.dataset.grade;
+      const section = row.dataset.section;
+      const name    = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
+      const email   = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
+
+      const matchSearch  = name.includes(search) || email.includes(search);
+      const matchGrade   = activeGrade === 'all' || grade === activeGrade;
+      const matchSection = !activeSection || section === activeSection;
+
+      row.style.display = (matchSearch && matchGrade && matchSection) ? '' : 'none';
+    });
+  }
+</script>
+
+<script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #0b1f3a;
+      --blue:        #1a4080;
+      --blue-mid:    #1d5cb4;
+      --blue-light:  #3b82f6;
+      --blue-pale:   #dbeafe;
+      --blue-xpale:  #eff6ff;
+      --gold:        #c9a84c;
+      --gold-pale:   #fefce8;
+      --white:       #ffffff;
+      --gray-50:     #f8fafc;
+      --gray-100:    #f1f5f9;
+      --gray-200:    #e2e8f0;
+      --gray-300:    #cbd5e1;
+      --gray-400:    #94a3b8;
+      --gray-500:    #64748b;
+      --gray-600:    #475569;
+      --gray-700:    #334155;
+      --gray-800:    #1e293b;
+      --green:       #22c55e;
+      --green-pale:  #dcfce7;
+      --orange:      #f59e0b;
+      --orange-pale: #fef3c7;
+      --red:         #ef4444;
+      --red-pale:    #fee2e2;
+      --sidebar-w:   240px;
+    }
+
+    html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--gray-100); color: var(--gray-800); }
+    .shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; grid-template-rows: 64px 1fr; min-height: 100vh; }
+
+    /* ══════ SIDEBAR ══════ */
+    .sidebar { grid-row: 1 / -1; background: linear-gradient(180deg, rgba(11,31,58,0.98) 0%, rgba(11,31,58,1) 100%); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); transition: transform 0.25s ease; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(11,31,58,0.55); z-index: 14; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; }
+    body.drawer-open .sidebar-overlay { display: block; opacity: 1; visibility: visible; }
+    body.drawer-open .sidebar { transform: translateX(0); }
+    .sidebar-brand { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .brand-crest { width: 36px; height: 36px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+    .brand-crest img { width: 100%; height: 100%; object-fit: cover; }
+    .brand-initials { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 800; color: var(--navy); }
+    .brand-name { font-size: 14px; font-weight: 700; color: var(--white); line-height: 1.2; }
+    .brand-sub { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.5px; text-transform: uppercase; }
+    .nav-section { padding: 20px 12px 8px; flex-shrink: 0; }
+    .nav-section-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.28); padding: 0 8px; margin-bottom: 6px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; text-decoration: none; }
+    .nav-item:hover { background: rgba(255,255,255,0.07); }
+    .nav-item.active { background: rgba(29,92,180,0.35); border-left: 3px solid var(--gold); padding-left: 7px; }
+    .nav-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.65); }
+    .nav-item.active .nav-icon { background: rgba(29,92,180,0.4); color: var(--white); }
+    .nav-label { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.65); flex: 1; }
+    .nav-item.active .nav-label { color: var(--white); font-weight: 600; }
+    .nav-badge { font-size: 10px; font-weight: 700; background: var(--red); color: white; border-radius: 999px; padding: 2px 7px; min-width: 18px; text-align: center; }
+    .nav-badge.gold { background: var(--gold); color: var(--navy); }
+    .sidebar-footer { margin-top: auto; padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+    .admin-profile { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; cursor: pointer; transition: background 0.15s; }
+    .admin-profile:hover { background: rgba(255,255,255,0.06); }
+    .admin-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--blue-mid), var(--blue-light)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+    .admin-name { font-size: 12px; font-weight: 700; color: var(--white); line-height: 1.2; }
+    .admin-role { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+    .logout-btn { margin-left: auto; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; color: white; display: flex; align-items: center; }
+    .logout-btn:hover { opacity: 1; }
+
+    /* ══════ TOPBAR ══════ */
+    .topbar { background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; padding: 0 32px; gap: 16px; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(16,40,80,0.08); }
+    .topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .page-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--blue-mid); margin-bottom: 1px; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; color: var(--gray-800); letter-spacing: -0.3px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .hamburger { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-700); place-items: center; cursor: pointer; transition: background 0.15s; }
+    .hamburger:hover { background: var(--gray-100); }
+    .top-btn { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .top-btn.secondary { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
+    .top-btn.secondary:hover { background: var(--gray-200); }
+    .top-btn.danger { background: var(--red-pale); color: var(--red); border: 1.5px solid #fca5a5; }
+    .top-btn.danger:hover { background: #fecaca; }
+    .notif-btn { width: 38px; height: 38px; border-radius: 8px; background: var(--gray-100); border: 1.5px solid var(--gray-200); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: background 0.15s; color: var(--gray-600); }
+    .notif-btn:hover { background: var(--gray-200); }
+    .notif-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--red); border-radius: 50%; border: 2px solid white; }
+
+    /* ══════ MAIN ══════ */
+    .main { padding: 28px 32px; overflow-y: auto; background: var(--gray-100); }
+    .accent-bar { height: 4px; background: linear-gradient(to right, var(--gold), var(--blue-mid)); border-radius: 999px; margin-bottom: 28px; width: 80px; }
+
+    /* ── WARNING BANNER ── */
+    .warn-banner { display: flex; align-items: flex-start; gap: 14px; background: var(--orange-pale); border: 1px solid #fcd34d; border-left: 4px solid var(--orange); border-radius: 0 12px 12px 0; padding: 16px 20px; margin-bottom: 28px; }
+    .warn-icon { color: var(--orange); flex-shrink: 0; margin-top: 2px; }
+    .warn-title { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 3px; }
+    .warn-text { font-size: 12px; color: #78350f; line-height: 1.6; }
+
+    /* ── STAT CARDS ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--white); border-radius: 14px; padding: 20px 22px; border: 1px solid var(--gray-200); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; animation: fadeUp 0.4s ease both; }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.10s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.20s; }
+    .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; }
+    .stat-card.blue::before   { background: var(--blue-mid); }
+    .stat-card.gold::before   { background: var(--gold); }
+    .stat-card.green::before  { background: var(--green); }
+    .stat-card.gray::before   { background: var(--gray-400); }
+    .sc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .sc-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .stat-card.blue  .sc-icon { background: var(--blue-xpale); color: var(--blue-mid); }
+    .stat-card.gold  .sc-icon { background: var(--gold-pale);  color: #92400e; }
+    .stat-card.green .sc-icon { background: var(--green-pale); color: #16a34a; }
+    .stat-card.gray  .sc-icon { background: var(--gray-100);   color: var(--gray-500); }
+    .sc-num { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 800; color: var(--gray-800); line-height: 1; margin-bottom: 3px; }
+    .sc-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sc-sub { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
+
+    /* ── TWO COL ── */
+    .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+
+    /* ── PANEL ── */
+    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 4px 16px rgba(16,40,80,0.05); animation: fadeUp 0.4s ease both; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; gap: 10px; }
+    .panel-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
+    .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    /* ── ARCHIVE YEAR CARDS ── */
+    .archive-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    .archive-year-card {
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .archive-year-card:hover { border-color: var(--blue-pale); box-shadow: 0 4px 16px rgba(16,40,80,0.08); }
+
+    .ayc-head {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px; cursor: pointer; user-select: none;
+      transition: background 0.15s;
+    }
+    .ayc-head:hover { background: var(--gray-50); }
+
+    .ayc-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--gray-100); color: var(--gray-500); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    .ayc-info { flex: 1; }
+    .ayc-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 800; color: var(--gray-800); }
+    .ayc-meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .ayc-right { display: flex; align-items: center; gap: 10px; }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .badge-green  { background: var(--green-pale); color: #15803d; }
+    .badge-blue   { background: var(--blue-xpale); color: var(--blue); }
+    .badge-gray   { background: var(--gray-100);   color: var(--gray-500); }
+    .badge-gold   { background: var(--gold-pale);  color: #92400e; }
+    .badge-orange { background: var(--orange-pale);color: #92400e; }
+
+    .collapse-arrow { color: var(--gray-400); transition: transform 0.2s; flex-shrink: 0; display: flex; }
+    .archive-year-card.collapsed .collapse-arrow { transform: rotate(-90deg); }
+
+    /* Expanded details */
+    .ayc-body { border-top: 1px solid var(--gray-100); }
+    .archive-year-card.collapsed .ayc-body { display: none; }
+
+    .ayc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--gray-100); }
+    .ayc-stat { background: var(--white); padding: 14px 16px; text-align: center; }
+    .ayc-stat-num { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 800; color: var(--gray-800); line-height: 1; }
+    .ayc-stat-label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
+
+    /* Quarter breakdown */
+    .ayc-quarters { padding: 16px 18px; border-top: 1px solid var(--gray-100); }
+    .ayc-quarters-title { font-size: 10px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    .quarter-rows { display: flex; flex-direction: column; gap: 8px; }
+    .quarter-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-100); }
+    .quarter-label { font-size: 12px; font-weight: 700; color: var(--gray-700); width: 80px; flex-shrink: 0; }
+    .quarter-bar-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .quarter-bar { flex: 1; height: 6px; background: var(--gray-200); border-radius: 999px; overflow: hidden; }
+    .quarter-fill { height: 100%; border-radius: 999px; background: var(--blue-mid); }
+    .quarter-pass { font-size: 11px; font-weight: 700; color: #16a34a; }
+    .quarter-date { font-size: 11px; color: var(--gray-400); white-space: nowrap; }
+
+    /* Footer actions */
+    .ayc-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--gray-100); background: var(--gray-50); }
+    .ayc-footer-info { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--gray-400); }
+    .ayc-footer-actions { display: flex; gap: 8px; }
+    .footer-btn { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .footer-btn.view   { background: var(--blue-xpale); color: var(--blue-mid); border-color: var(--blue-pale); }
+    .footer-btn.view:hover { background: var(--blue-pale); }
+    .footer-btn.export { background: var(--gray-100); color: var(--gray-600); border-color: var(--gray-200); }
+    .footer-btn.export:hover { background: var(--gray-200); }
+    .footer-btn.restore { background: var(--orange-pale); color: #92400e; border-color: #fcd34d; }
+    .footer-btn.restore:hover { background: #fef08a; }
+
+    /* ── RIGHT: New Archive Panel ── */
+    .archive-form-panel { position: sticky; top: 84px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .form-hint  { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+    .form-input, .form-select { width: 100%; padding: 10px 12px; background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-800); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-input:focus, .form-select:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); background: var(--white); }
+    .form-input[readonly] { color: var(--gray-500); cursor: not-allowed; }
+
+    /* Checklist */
+    .checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .check-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; border: 1.5px solid var(--gray-200); background: var(--white); }
+    .check-item.done   { border-color: #86efac; background: var(--green-pale); }
+    .check-item.warn   { border-color: #fcd34d; background: var(--orange-pale); }
+    .check-icon-wrap { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .check-item.done .check-icon-wrap { background: #16a34a; color: white; }
+    .check-item.warn .check-icon-wrap { background: var(--orange); color: white; }
+    .check-item:not(.done):not(.warn) .check-icon-wrap { background: var(--gray-200); color: var(--gray-400); }
+    .check-text { font-size: 12px; font-weight: 600; }
+    .check-item.done .check-text { color: #15803d; }
+    .check-item.warn .check-text { color: #92400e; }
+    .check-item:not(.done):not(.warn) .check-text { color: var(--gray-500); }
+
+    /* Confirm toggle */
+    .confirm-toggle-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--gray-200); border-radius: 10px; margin-bottom: 14px; background: var(--gray-50); }
+    .toggle { width: 44px; height: 24px; background: var(--gray-200); border-radius: 999px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.on { background: var(--blue-mid); }
+    .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .toggle.on::after { transform: translateX(20px); }
+    .confirm-text { font-size: 12px; font-weight: 600; color: var(--gray-700); flex: 1; }
+
+    .btn-archive-full { width: 100%; padding: 13px; border-radius: 10px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; }
+    .btn-archive-full.enabled  { background: var(--red); color: white; box-shadow: 0 2px 10px rgba(239,68,68,0.3); }
+    .btn-archive-full.enabled:hover { background: #dc2626; }
+    .btn-archive-full.disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+
+    /* ── MODAL ── */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(11,31,58,0.6); z-index: 50; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; padding: 20px; }
+    .modal-backdrop.open { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: 16px; width: 100%; max-width: 480px; box-shadow: 0 24px 64px rgba(11,31,58,0.25); transform: translateY(20px); transition: transform 0.25s ease; overflow: hidden; }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-head { padding: 22px 28px 18px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; justify-content: space-between; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; color: var(--gray-800); margin-bottom: 3px; }
+    .modal-sub { font-size: 13px; color: var(--gray-400); }
+    .modal-close { width: 32px; height: 32px; border-radius: 8px; background: var(--gray-100); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--gray-500); transition: background 0.15s; flex-shrink: 0; }
+    .modal-close:hover { background: var(--gray-200); }
+    .modal-body { padding: 24px 28px; }
+    .modal-footer { padding: 16px 28px 22px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px; }
+    .btn { display: flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.15s; }
+    .btn-cancel { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
+    .btn-cancel:hover { background: var(--gray-200); }
+    .btn-confirm { background: var(--red); color: white; box-shadow: 0 2px 8px rgba(239,68,68,0.3); }
+    .btn-confirm:hover { background: #dc2626; }
+
+    /* ── VIEW MODAL (read-only archive) ── */
+    .view-modal { max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
+    .view-modal .modal-body { overflow-y: auto; flex: 1; padding: 20px 28px; }
+    .readonly-banner { display: flex; align-items: center; gap: 10px; background: var(--gray-100); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; }
+    .readonly-text { font-size: 12px; font-weight: 600; color: var(--gray-500); }
+    .view-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+    .view-stat { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; padding: 12px 14px; text-align: center; }
+    .view-stat-num { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 800; color: var(--gray-800); }
+    .view-stat-label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+    .view-section-title { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    .view-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+    .view-table th { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--gray-400); padding: 8px 12px; text-align: left; background: var(--gray-50); border-bottom: 1px solid var(--gray-100); }
+    .view-table td { font-size: 12px; color: var(--gray-700); padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
+    .view-table tr:last-child td { border-bottom: none; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1100px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .two-col { grid-template-columns: 1fr; } .archive-form-panel { position: static; } }
+    @media (max-width: 980px) {
+      .shell { display: block; }
+      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
+      .sidebar-overlay { display: block; }
+      .topbar { flex-wrap: wrap; padding: 16px 20px; }
+      .topbar-left { width: 100%; }
+      .hamburger { display: grid; }
+      .topbar-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 20px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .top-btn { width: 100%; justify-content: center; }
+      .topbar-right { justify-content: space-between; }
+      .ayc-stats { grid-template-columns: repeat(2, 1fr); }
+      .view-stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONFIRM ARCHIVE MODAL -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Confirm Archive</div>
+        <div class="modal-sub">This action cannot be undone.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('confirmModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:flex-start;gap:14px;background:var(--red-pale);border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+        <div style="color:var(--red);flex-shrink:0;margin-top:2px;"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:3px;">Are you absolutely sure?</div>
+          <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">You are about to archive <strong>S.Y. 2024–2025</strong>. All records will become read-only. Teachers will no longer be able to edit grades, attendance, or reports from this school year.</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Type <strong style="color:var(--gray-800);">ARCHIVE 2024-2025</strong> to confirm:</div>
+      <input class="form-input" type="text" id="confirmInput" placeholder="ARCHIVE 2024-2025" oninput="checkConfirmInput()"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
+      <button class="btn btn-confirm" id="confirmArchiveBtn" disabled onclick="finalizeArchive()"><i data-lucide="archive" style="width:13px;height:13px;"></i> Yes, Archive Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW ARCHIVED DATA MODAL -->
+<div class="modal-backdrop" id="viewModal">
+  <div class="modal view-modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">S.Y. 2024–2025 — Archive</div>
+        <div class="modal-sub">Read-only archived records</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('viewModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="readonly-banner">
+        <i data-lucide="lock" style="width:14px;height:14px;color:var(--gray-400);"></i>
+        <span class="readonly-text">This is a read-only archive. No changes can be made to this data.</span>
+      </div>
+
+      <div class="view-stats-grid">
+        <div class="view-stat">
+          <div class="view-stat-num">271</div>
+          <div class="view-stat-label">Students</div>
+        </div>
+        <div class="view-stat">
+          <div class="view-stat-num">22</div>
+          <div class="view-stat-label">Teachers</div>
+        </div>
+        <div class="view-stat">
+          <div class="view-stat-num">8</div>
+          <div class="view-stat-label">Sections</div>
+        </div>
+        <div class="view-stat">
+          <div class="view-stat-num">1,084</div>
+          <div class="view-stat-label">Reports</div>
+        </div>
+        <div class="view-stat">
+          <div class="view-stat-num">92%</div>
+          <div class="view-stat-label">Pass Rate</div>
+        </div>
+        <div class="view-stat">
+          <div class="view-stat-num">89%</div>
+          <div class="view-stat-label">Attendance</div>
+        </div>
+      </div>
+
+      <div class="view-section-title">Sections</div>
+      <table class="view-table">
+        <thead>
+          <tr><th>Section</th><th>Grade</th><th>Students</th><th>Pass Rate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>St. Matthew</td><td>Grade 7</td><td>38</td><td style="color:#16a34a;font-weight:700;">94%</td></tr>
+          <tr><td>St. Mark</td><td>Grade 7</td><td>34</td><td style="color:#16a34a;font-weight:700;">91%</td></tr>
+          <tr><td>St. Luke</td><td>Grade 8</td><td>36</td><td style="color:#16a34a;font-weight:700;">89%</td></tr>
+          <tr><td>St. John</td><td>Grade 8</td><td>33</td><td style="color:#d97706;font-weight:700;">85%</td></tr>
+          <tr><td>St. Peter</td><td>Grade 9</td><td>35</td><td style="color:#16a34a;font-weight:700;">93%</td></tr>
+          <tr><td>St. Paul</td><td>Grade 9</td><td>35</td><td style="color:#16a34a;font-weight:700;">91%</td></tr>
+          <tr><td>St. James</td><td>Grade 10</td><td>32</td><td style="color:#16a34a;font-weight:700;">97%</td></tr>
+          <tr><td>St. Thomas</td><td>Grade 10</td><td>28</td><td style="color:#d97706;font-weight:700;">82%</td></tr>
+        </tbody>
+      </table>
+
+      <div class="view-section-title">Grading Quarters</div>
+      <table class="view-table">
+        <thead>
+          <tr><th>Quarter</th><th>Period</th><th>Pass Rate</th><th>Reports</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Quarter 1</td><td>Jun – Aug 2024</td><td style="color:#16a34a;font-weight:700;">93%</td><td>271</td></tr>
+          <tr><td>Quarter 2</td><td>Sep – Nov 2024</td><td style="color:#16a34a;font-weight:700;">91%</td><td>271</td></tr>
+          <tr><td>Quarter 3</td><td>Jan – Mar 2025</td><td style="color:#16a34a;font-weight:700;">90%</td><td>271</td></tr>
+          <tr><td>Quarter 4</td><td>Apr – Jun 2025</td><td style="color:#d97706;font-weight:700;">88%</td><td>271</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn" style="background:var(--blue);color:white;box-shadow:0 2px 8px rgba(26,64,128,0.25);"><i data-lucide="download" style="width:13px;height:13px;"></i> Export as PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="images/st-columban-logo.jpg" alt="School logo" onerror="this.style.display='none'"/>
+        <span class="brand-initials">SC</span>
+      </div>
+      <div>
+        <div class="brand-name">EdUgnay</div>
+        <div class="brand-sub">Admin Portal</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html"       class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">User Accounts</span><span class="nav-badge">3</span></a>
+      <a href="edugnay-admin-sections.html"        class="nav-item"><div class="nav-icon"><i data-lucide="door-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Sections</span></a>
+      <a href="edugnay-admin-subjects.html"        class="nav-item"><div class="nav-icon"><i data-lucide="book-open"        style="width:16px;height:16px;"></i></div><span class="nav-label">Subjects</span></a>
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item"><div class="nav-icon"><i data-lucide="clipboard-list"  style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Teachers</span></a>
+      <a href="edugnay-admin-assign-students.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-plus"       style="width:16px;height:16px;"></i></div><span class="nav-label">Assign Students</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html"       class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"   style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+      <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div><span class="nav-label">System Config</span></a>
+      <a href="#" class="nav-item active"><div class="nav-icon"><i data-lucide="archive"  style="width:16px;height:16px;"></i></div><span class="nav-label">Archive Data</span></a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">SA</div>
+        <div class="admin-info">
+          <div class="admin-name">Sr. Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Admin</div>
+        <div class="page-title">Archive Data</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="top-btn secondary"><i data-lucide="download" style="width:14px;height:14px;"></i> Export All Archives</button>
+      <div class="notif-btn"><i data-lucide="bell" style="width:16px;height:16px;"></i><div class="notif-dot"></div></div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- Warning banner -->
+    <div class="warn-banner">
+      <div class="warn-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
+      <div>
+        <div class="warn-title">Archived data is read-only</div>
+        <div class="warn-text">Once a school year is archived, all grades, attendance records, journal entries, and narrative reports from that year become permanently read-only. Archiving cannot be undone. Make sure all data for the school year is finalized and all reports are confirmed before proceeding.</div>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card blue">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">3</div>
+        <div class="sc-label">Archived Years</div>
+        <div class="sc-sub">S.Y. 2022–2023 to 2024–2025</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">743</div>
+        <div class="sc-label">Archived Students</div>
+        <div class="sc-sub">Across all archived years</div>
+      </div>
+      <div class="stat-card green">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">2,981</div>
+        <div class="sc-label">Archived Reports</div>
+        <div class="sc-sub">Narrative reports stored</div>
+      </div>
+      <div class="stat-card gray">
+        <div class="sc-top"><div class="sc-icon"><i data-lucide="hard-drive" style="width:18px;height:18px;"></i></div></div>
+        <div class="sc-num">1.2<span style="font-size:16px;font-weight:600;">GB</span></div>
+        <div class="sc-label">Storage Used</div>
+        <div class="sc-sub">Total archived data size</div>
+      </div>
+    </div>
+
+    <!-- Two column -->
+    <div class="two-col">
+
+      <!-- LEFT: Archived years list -->
+      <div class="panel" style="animation-delay:0.05s;">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Archived School Years</div>
+            <div class="panel-sub">3 school years archived · Read-only</div>
+          </div>
+          <span class="badge badge-gray"><i data-lucide="lock" style="width:10px;height:10px;"></i> Read-only</span>
+        </div>
+
+        <div class="archive-list">
+
+          <!-- S.Y. 2024-2025 -->
+          <div class="archive-year-card" id="card2024">
+            <div class="ayc-head" onclick="toggleCard('card2024')">
+              <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
+              <div class="ayc-info">
+                <div class="ayc-title">S.Y. 2024–2025</div>
+                <div class="ayc-meta">Archived on June 28, 2025 · By Sr. Admin</div>
+              </div>
+              <div class="ayc-right">
+                <span class="badge badge-blue">Latest</span>
+                <span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span>
+                <div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div>
+              </div>
+            </div>
+            <div class="ayc-body">
+              <div class="ayc-stats">
+                <div class="ayc-stat"><div class="ayc-stat-num">271</div><div class="ayc-stat-label">Students</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">8</div><div class="ayc-stat-label">Sections</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">22</div><div class="ayc-stat-label">Teachers</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">1,084</div><div class="ayc-stat-label">Reports</div></div>
+              </div>
+              <div class="ayc-quarters">
+                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="quarter-rows">
+                  <div class="quarter-row">
+                    <span class="quarter-label">Quarter 1</span>
+                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:93%;"></div></div><span class="quarter-pass">93%</span></div>
+                    <span class="quarter-date">Jun – Aug 2024</span>
+                  </div>
+                  <div class="quarter-row">
+                    <span class="quarter-label">Quarter 2</span>
+                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:91%;"></div></div><span class="quarter-pass">91%</span></div>
+                    <span class="quarter-date">Sep – Nov 2024</span>
+                  </div>
+                  <div class="quarter-row">
+                    <span class="quarter-label">Quarter 3</span>
+                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:90%;"></div></div><span class="quarter-pass">90%</span></div>
+                    <span class="quarter-date">Jan – Mar 2025</span>
+                  </div>
+                  <div class="quarter-row">
+                    <span class="quarter-label">Quarter 4</span>
+                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div>
+                    <span class="quarter-date">Apr – Jun 2025</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ayc-footer">
+                <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
+                <div class="ayc-footer-actions">
+                  <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
+                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- S.Y. 2023-2024 -->
+          <div class="archive-year-card collapsed" id="card2023">
+            <div class="ayc-head" onclick="toggleCard('card2023')">
+              <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
+              <div class="ayc-info">
+                <div class="ayc-title">S.Y. 2023–2024</div>
+                <div class="ayc-meta">Archived on July 5, 2024 · By Sr. Admin</div>
+              </div>
+              <div class="ayc-right">
+                <span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span>
+                <div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div>
+              </div>
+            </div>
+            <div class="ayc-body">
+              <div class="ayc-stats">
+                <div class="ayc-stat"><div class="ayc-stat-num">258</div><div class="ayc-stat-label">Students</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">8</div><div class="ayc-stat-label">Sections</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">20</div><div class="ayc-stat-label">Teachers</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">1,032</div><div class="ayc-stat-label">Reports</div></div>
+              </div>
+              <div class="ayc-quarters">
+                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="quarter-rows">
+                  <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:90%;"></div></div><span class="quarter-pass">90%</span></div><span class="quarter-date">Jun – Aug 2023</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div><span class="quarter-date">Sep – Nov 2023</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 3</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:87%;"></div></div><span class="quarter-pass">87%</span></div><span class="quarter-date">Jan – Mar 2024</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 4</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:86%;"></div></div><span class="quarter-pass">86%</span></div><span class="quarter-date">Apr – Jun 2024</span></div>
+                </div>
+              </div>
+              <div class="ayc-footer">
+                <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
+                <div class="ayc-footer-actions">
+                  <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
+                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- S.Y. 2022-2023 -->
+          <div class="archive-year-card collapsed" id="card2022">
+            <div class="ayc-head" onclick="toggleCard('card2022')">
+              <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
+              <div class="ayc-info">
+                <div class="ayc-title">S.Y. 2022–2023</div>
+                <div class="ayc-meta">Archived on June 30, 2023 · By Sr. Admin</div>
+              </div>
+              <div class="ayc-right">
+                <span class="badge badge-gray">Oldest</span>
+                <span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span>
+                <div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div>
+              </div>
+            </div>
+            <div class="ayc-body">
+              <div class="ayc-stats">
+                <div class="ayc-stat"><div class="ayc-stat-num">214</div><div class="ayc-stat-label">Students</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">7</div><div class="ayc-stat-label">Sections</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">18</div><div class="ayc-stat-label">Teachers</div></div>
+                <div class="ayc-stat"><div class="ayc-stat-num">865</div><div class="ayc-stat-label">Reports</div></div>
+              </div>
+              <div class="ayc-quarters">
+                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="quarter-rows">
+                  <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div><span class="quarter-date">Jun – Aug 2022</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:85%;"></div></div><span class="quarter-pass">85%</span></div><span class="quarter-date">Sep – Nov 2022</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 3</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:87%;"></div></div><span class="quarter-pass">87%</span></div><span class="quarter-date">Jan – Mar 2023</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 4</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:84%;"></div></div><span class="quarter-pass">84%</span></div><span class="quarter-date">Apr – Jun 2023</span></div>
+                </div>
+              </div>
+              <div class="ayc-footer">
+                <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
+                <div class="ayc-footer-actions">
+                  <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
+                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: Archive new year -->
+      <div class="archive-form-panel">
+        <div class="panel" style="animation-delay:0.10s;">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Archive New School Year</div>
+              <div class="panel-sub">Move current year data to archive</div>
+            </div>
+          </div>
+
+          <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">School Year to Archive</label>
+              <select class="form-select">
+                <option selected>S.Y. 2025–2026 (Current)</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Summary</label>
+              <input class="form-input" type="text" value="284 students · 8 sections · 4 quarters" readonly/>
+            </div>
+
+            <div style="height:1px;background:var(--gray-100);"></div>
+
+            <!-- Pre-archive checklist -->
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Pre-Archive Checklist</div>
+              <div class="checklist">
+                <div class="check-item done">
+                  <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+                  <span class="check-text">All 4 quarters finalized</span>
+                </div>
+                <div class="check-item done">
+                  <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+                  <span class="check-text">All grades encoded</span>
+                </div>
+                <div class="check-item warn">
+                  <div class="check-icon-wrap"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i></div>
+                  <span class="check-text">23 reports pending confirmation</span>
+                </div>
+                <div class="check-item done">
+                  <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+                  <span class="check-text">All parents notified</span>
+                </div>
+                <div class="check-item done">
+                  <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+                  <span class="check-text">Attendance records complete</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:var(--orange-pale);border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;">
+              <div style="color:var(--orange);flex-shrink:0;margin-top:1px;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i></div>
+              <div style="font-size:12px;color:#92400e;line-height:1.6;"><strong>23 narrative reports</strong> are still pending teacher confirmation. It is recommended to resolve these before archiving.</div>
+            </div>
+
+            <!-- Confirm toggle -->
+            <div class="confirm-toggle-row">
+              <div class="toggle" id="archiveToggle" onclick="toggleArchive()"></div>
+              <span class="confirm-text">I confirm all data for S.Y. 2025–2026 is finalized and ready to archive.</span>
+            </div>
+
+            <button class="btn-archive-full disabled" id="archiveNowBtn" onclick="openModal('confirmModal')">
+              <i data-lucide="archive" style="width:14px;height:14px;"></i>
+              Archive S.Y. 2025–2026
+            </button>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      // e.preventDefault();
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+  });
+
+  // Collapse/expand archive year cards
+  function toggleCard(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  // Archive confirm toggle
+  function toggleArchive() {
+    const toggle = document.getElementById('archiveToggle');
+    const btn    = document.getElementById('archiveNowBtn');
+    toggle.classList.toggle('on');
+    const isOn = toggle.classList.contains('on');
+    btn.className = 'btn-archive-full ' + (isOn ? 'enabled' : 'disabled');
+    if (!isOn) btn.setAttribute('onclick', '');
+    else btn.setAttribute('onclick', "openModal('confirmModal')");
+  }
+
+  // Confirm archive text input
+  function checkConfirmInput() {
+    const val = document.getElementById('confirmInput').value;
+    const btn = document.getElementById('confirmArchiveBtn');
+    btn.disabled = val.trim() !== 'ARCHIVE 2024-2025';
+  }
+
+  function finalizeArchive() {
+    closeModal('confirmModal');
+    alert('S.Y. 2024–2025 has been archived successfully. All records are now read-only.');
+  }
+
+  lucide.createIcons();
+</script>
+
+</body>
+</html>
