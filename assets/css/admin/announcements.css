@@ -31,7 +31,12 @@
 .search-input { width: 100%; padding: 10px 12px 10px 36px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-800); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .search-input::placeholder { color: var(--gray-300); }
 .search-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); }
-.filter-select { padding: 10px 14px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-600); outline: none; cursor: pointer; transition: border-color 0.2s; }
+.filter-select { padding: 10px 14px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-600); outline: none; cursor: pointer; transition: border-color 0.2s;  
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px; }
 .filter-select:focus { border-color: var(--blue-mid); }
 
 /* ── ANNOUNCEMENT CARDS ── */

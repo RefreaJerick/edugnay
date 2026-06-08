@@ -6,92 +6,9 @@
   <title>EdUgnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --navy:        #0b1f3a;
-      --blue:        #1a4080;
-      --blue-mid:    #1d5cb4;
-      --blue-light:  #3b82f6;
-      --blue-pale:   #dbeafe;
-      --blue-xpale:  #eff6ff;
-      --gold:        #c9a84c;
-      --gold-pale:   #fefce8;
-      --white:       #ffffff;
-      --gray-50:     #f8fafc;
-      --gray-100:    #f1f5f9;
-      --gray-200:    #e2e8f0;
-      --gray-300:    #cbd5e1;
-      --gray-400:    #94a3b8;
-      --gray-500:    #64748b;
-      --gray-600:    #475569;
-      --gray-700:    #334155;
-      --gray-800:    #1e293b;
-      --green:       #22c55e;
-      --green-pale:  #dcfce7;
-      --orange:      #f59e0b;
-      --orange-pale: #fef3c7;
-      --red:         #ef4444;
-      --red-pale:    #fee2e2;
-      --sidebar-w:   240px;
-    }
-
-    html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--gray-100); color: var(--gray-800); }
-    .shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; grid-template-rows: 64px 1fr; min-height: 100vh; }
-
-    /* ══════ SIDEBAR ══════ */
-    .sidebar { grid-row: 1 / -1; background: linear-gradient(180deg, rgba(11,31,58,0.98) 0%, rgba(11,31,58,1) 100%); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); transition: transform 0.25s ease; }
-    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(11,31,58,0.55); z-index: 14; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; }
-    body.drawer-open .sidebar-overlay { display: block; opacity: 1; visibility: visible; }
-    body.drawer-open .sidebar { transform: translateX(0); }
-    .sidebar-brand { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-    .brand-crest { width: 36px; height: 36px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-    .brand-crest img { width: 100%; height: 100%; object-fit: cover; }
-    .brand-initials { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 800; color: var(--navy); }
-    .brand-name { font-size: 14px; font-weight: 700; color: var(--white); line-height: 1.2; }
-    .brand-sub { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.5px; text-transform: uppercase; }
-    .nav-section { padding: 20px 12px 8px; flex-shrink: 0; }
-    .nav-section-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.28); padding: 0 8px; margin-bottom: 6px; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; text-decoration: none; }
-    .nav-item:hover { background: rgba(255,255,255,0.07); }
-    .nav-item.active { background: rgba(29,92,180,0.35); border-left: 3px solid var(--gold); padding-left: 7px; }
-    .nav-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.65); }
-    .nav-item.active .nav-icon { background: rgba(29,92,180,0.4); color: var(--white); }
-    .nav-label { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.65); flex: 1; }
-    .nav-item.active .nav-label { color: var(--white); font-weight: 600; }
-    .nav-badge { font-size: 10px; font-weight: 700; background: var(--red); color: white; border-radius: 999px; padding: 2px 7px; min-width: 18px; text-align: center; }
-    .nav-badge.gold { background: var(--gold); color: var(--navy); }
-    .sidebar-footer { margin-top: auto; padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
-    .admin-profile { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; cursor: pointer; transition: background 0.15s; }
-    .admin-profile:hover { background: rgba(255,255,255,0.06); }
-    .admin-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--blue-mid), var(--blue-light)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
-    .admin-name { font-size: 12px; font-weight: 700; color: var(--white); line-height: 1.2; }
-    .admin-role { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
-    .logout-btn { margin-left: auto; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; color: white; display: flex; align-items: center; }
-    .logout-btn:hover { opacity: 1; }
-
-    /* ══════ TOPBAR ══════ */
-    .topbar { background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; padding: 0 32px; gap: 16px; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(16,40,80,0.08); }
-    .topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
-    .page-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--blue-mid); margin-bottom: 1px; }
-    .page-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; color: var(--gray-800); letter-spacing: -0.3px; }
-    .topbar-right { display: flex; align-items: center; gap: 10px; }
-    .hamburger { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-700); place-items: center; cursor: pointer; transition: background 0.15s; }
-    .hamburger:hover { background: var(--gray-100); }
-    .top-btn { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
-    .top-btn.secondary { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
-    .top-btn.secondary:hover { background: var(--gray-200); }
-    .top-btn.danger { background: var(--red-pale); color: var(--red); border: 1.5px solid #fca5a5; }
-    .top-btn.danger:hover { background: #fecaca; }
-    .notif-btn { width: 38px; height: 38px; border-radius: 8px; background: var(--gray-100); border: 1.5px solid var(--gray-200); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: background 0.15s; color: var(--gray-600); }
-    .notif-btn:hover { background: var(--gray-200); }
-    .notif-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--red); border-radius: 50%; border: 2px solid white; }
-
-    /* ══════ MAIN ══════ */
-    .main { padding: 28px 32px; overflow-y: auto; background: var(--gray-100); }
-    .accent-bar { height: 4px; background: linear-gradient(to right, var(--gold), var(--blue-mid)); border-radius: 999px; margin-bottom: 28px; width: 80px; }
 
     /* ── WARNING BANNER ── */
     .warn-banner { display: flex; align-items: flex-start; gap: 14px; background: var(--orange-pale); border: 1px solid #fcd34d; border-left: 4px solid var(--orange); border-radius: 0 12px 12px 0; padding: 16px 20px; margin-bottom: 28px; }
@@ -206,7 +123,12 @@
     .form-group { margin-bottom: 16px; }
     .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .form-hint  { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
-    .form-input, .form-select { width: 100%; padding: 10px 12px; background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-800); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-input, .form-select { width: 100%; padding: 10px 12px; background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--gray-800); outline: none; transition: border-color 0.2s, box-shadow 0.2s; 
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px; }
     .form-input:focus, .form-select:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); background: var(--white); }
     .form-input[readonly] { color: var(--gray-500); cursor: not-allowed; }
 
@@ -410,12 +332,11 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="images/st-columban-logo.jpg" alt="School logo" onerror="this.style.display='none'"/>
-        <span class="brand-initials">SC</span>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
       </div>
       <div>
-        <div class="brand-name">EdUgnay</div>
-        <div class="brand-sub">Admin Portal</div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
       </div>
     </div>
 
