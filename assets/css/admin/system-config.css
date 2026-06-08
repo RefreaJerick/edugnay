@@ -195,6 +195,35 @@
   background: var(--gray-100);
   margin: 20px 0;
 }
+
+.time-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.time-input-icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--gray-400);
+  pointer-events: none;
+  z-index: 1;
+}
+.form-input.time-input {
+  padding-left: 36px;
+}
+
+.form-input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 /* ── TOGGLE SWITCH ── */
 .toggle-row {
   display: flex;
