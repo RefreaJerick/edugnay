@@ -37,16 +37,22 @@
           <label class="form-label">School Email</label>
           <input class="form-input" name="email" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph"/>
         </div>
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Role</label>
-            <select class="form-select" id="roleSelect" name="role" onchange="updateEmailHint()">
-              <option value="">Select role</option>
-              <option value="adm">Administrator</option>
-              <option value="fac">Faculty / Teacher</option>
-              <option value="stud">Student</option>
-              <option value="parents">Parent / Guardian</option>
-            </select>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <input type="hidden" id="roleValue" name="role" value=""/>
+          <div class="role-opts">
+            <div class="role-opt" onclick="selectRole(this, 'adm')">
+              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'fac')">
+              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'stud')">
+              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
+            </div>
+            <div class="role-opt" onclick="selectRole(this, 'parents')">
+              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="users" style="width:14px;height:14px;"></i></div><span>Parent</span>
+            </div>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:0">
@@ -825,6 +831,12 @@
       closeDeleteModal();
     }
   });
+
+  function selectRole(el, value) {
+    document.querySelectorAll('.modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('roleValue').value = value;
+  }
 </script>
 
 </body>

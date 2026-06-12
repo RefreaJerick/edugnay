@@ -306,6 +306,76 @@ tbody td { padding: 14px 20px; font-size: 13px; color: var(--gray-700); vertical
 
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
+.role-opts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.role-opt {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  transition: all 0.15s;
+  user-select: none;
+}
+.role-opt:hover {
+  border-color: var(--blue-mid);
+}
+.role-opt.selected {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.role-opt.selected .role-opt-icon {
+  background: var(--blue-pale) !important;
+  color: var(--blue-mid) !important;
+}
+.role-opt:nth-child(2).selected {
+  border-color: var(--gold);
+  background: var(--gold-pale);
+  color: #92400e;
+}
+.role-opt:nth-child(2).selected .role-opt-icon {
+  background: #fef3c7 !important;
+  color: var(--gold) !important;
+}
+.role-opt:nth-child(3).selected {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.role-opt:nth-child(3).selected .role-opt-icon {
+  background: #dcfce7 !important;
+  color: #16a34a !important;
+}
+.role-opt:nth-child(4).selected {
+  border-color: #7c3aed;
+  background: #fdf4ff;
+  color: #7c3aed;
+}
+.role-opt:nth-child(4).selected .role-opt-icon {
+  background: #f3e8ff !important;
+  color: #7c3aed !important;
+}
+.role-opt-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .form-group { margin-bottom: 18px; }
 
 .form-label {
