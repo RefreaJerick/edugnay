@@ -440,6 +440,36 @@ tbody td { padding: 14px 20px; font-size: 13px; color: var(--gray-700); vertical
   background: #fef2f2;
 }
 
+/* ── MODAL CONTEXT BLOCK ── */
+.modal-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+}
+
+.ctx-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.ctx-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ctx-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-top: 1px;
+}
+
 /* Animations */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }

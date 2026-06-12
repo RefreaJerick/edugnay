@@ -12,106 +12,65 @@
 </head>
 <body>
 
-<div class="modal-backdrop" id="modalBackdrop">
+<!-- ACCOUNT MODAL (Add / Edit) -->
+<div class="modal-backdrop" id="accountModalBackdrop">
   <div class="modal">
     <div class="modal-head">
       <div>
-        <div class="modal-title">Add New Account</div>
-        <div class="modal-sub">Fill in the details to create a new user.</div>
+        <div class="modal-title" id="accountModalTitle">Add New Account</div>
+        <div class="modal-sub" id="accountModalSub">Fill in the details to create a new user.</div>
       </div>
-      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      <button class="modal-close" onclick="closeAccountModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
-      <form id="createAccountForm" method="post" action="/users/create">
+      <!-- EJS NOTE: action gets set dynamically by JS (create vs edit/:id).
+           If you'd rather render server-side, you could template action="<%= mode === 'edit' ? `/users/${user._id}/edit` : '/users/create' %>" -->
+      <form id="accountForm" method="post" action="/users/create">
+        <input type="hidden" name="userId" id="accountUserId" value=""/>
+
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">First Name</label>
-            <input class="form-input" name="firstName" type="text" placeholder="e.g. Maria"/>
+            <input class="form-input" name="firstName" id="accountFirstName" type="text" placeholder="e.g. Maria"/>
           </div>
           <div class="form-group">
             <label class="form-label">Last Name</label>
-            <input class="form-input" name="lastName" type="text" placeholder="e.g. Reyes"/>
+            <input class="form-input" name="lastName" id="accountLastName" type="text" placeholder="e.g. Reyes"/>
           </div>
         </div>
+
         <div class="form-group">
           <label class="form-label">School Email</label>
-          <input class="form-input" name="email" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph"/>
+          <input class="form-input" name="email" id="accountEmail" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph"/>
         </div>
+
         <div class="form-group">
           <label class="form-label">Role</label>
-          <input type="hidden" id="roleValue" name="role" value=""/>
-          <div class="role-opts">
-            <div class="role-opt" onclick="selectRole(this, 'adm')">
+          <input type="hidden" id="accountRole" name="role" value=""/>
+          <div class="role-opts" id="accountRoleOpts">
+            <div class="role-opt" data-role="adm" onclick="selectAccountRole(this, 'adm')">
               <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
             </div>
-            <div class="role-opt" onclick="selectRole(this, 'fac')">
+            <div class="role-opt" data-role="fac" onclick="selectAccountRole(this, 'fac')">
               <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Teacher</span>
             </div>
-            <div class="role-opt" onclick="selectRole(this, 'stud')">
+            <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
               <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
             </div>
-            <div class="role-opt" onclick="selectRole(this, 'parents')">
+            <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
               <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="users" style="width:14px;height:14px;"></i></div><span>Parent</span>
             </div>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Temporary Password</label>
-          <input class="form-input" name="password" type="password" placeholder="Set a temporary password"/>
-        </div>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-save">Create Account</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
 
-<!-- EDIT MODAL -->
-<div class="modal-backdrop" id="editModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Edit Account</div>
-        <div class="modal-sub">Update the user's details.</div>
-      </div>
-      <button class="modal-close" onclick="closeEditModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <form id="editAccountForm" method="post" action="/users/edit">
-        <input type="hidden" name="userId" id="editUserId"/>
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">First Name</label>
-            <input class="form-input" name="firstName" id="editFirstName" type="text"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Last Name</label>
-            <input class="form-input" name="lastName" id="editLastName" type="text"/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">School Email</label>
-          <input class="form-input" name="email" id="editEmail" type="email"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Role</label>
-          <select class="form-select" name="role" id="editRole">
-            <option value="">Select role</option>
-            <option value="adm">Administrator</option>
-            <option value="fac">Faculty / Teacher</option>
-            <option value="stud">Student</option>
-            <option value="parents">Parent / Guardian</option>
-          </select>
-        </div>
         <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Reset Password <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(leave blank to keep current)</span></label>
-          <input class="form-input" name="password" type="password" placeholder="New temporary password"/>
+          <label class="form-label" id="accountPasswordLabel">Temporary Password</label>
+          <input class="form-input" name="password" id="accountPassword" type="password" placeholder="Set a temporary password"/>
         </div>
+
         <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
-          <button type="submit" class="btn btn-save">Save Changes</button>
+          <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+          <button type="submit" class="btn btn-save" id="accountSaveBtn">Create Account</button>
         </div>
       </form>
     </div>
@@ -120,7 +79,7 @@
 
 <!-- DEACTIVATE / REACTIVATE CONFIRM MODAL -->
 <div class="modal-backdrop" id="deactivateModalBackdrop">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:400px;">
     <div class="modal-head">
       <div>
         <div class="modal-title" id="deactivateModalTitle">Confirm Action</div>
@@ -129,38 +88,54 @@
       <button class="modal-close" onclick="closeDeactivateModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
-      <p id="deactivateModalMsg" style="margin:0 0 20px;color:var(--gray-600);font-size:14px;line-height:1.6;"></p>
+      <div class="modal-context" id="deactivateModalContext">
+        <div class="ctx-icon"><i data-lucide="user-x" id="deactivateCtxIcon" style="width:18px;height:18px;"></i></div>
+        <div>
+          <div class="ctx-label" id="deactivateCtxLabel">Deactivating</div>
+          <div class="ctx-val" id="deactivateModalName">—</div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;" id="deactivateModalMsg"></p>
       <form id="deactivateForm" method="post" action="/users/status">
         <input type="hidden" name="userId" id="deactivateUserId"/>
         <input type="hidden" name="action" id="deactivateAction"/>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeDeactivateModal()">Cancel</button>
-          <button type="submit" class="btn btn-danger" id="deactivateConfirmBtn">Confirm</button>
-        </div>
       </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeDeactivateModal()">Cancel</button>
+      <button type="submit" form="deactivateForm" class="btn btn-save" id="deactivateConfirmBtn">Confirm</button>
     </div>
   </div>
 </div>
 
 <!-- DELETE CONFIRM MODAL -->
 <div class="modal-backdrop" id="deleteModalBackdrop">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:400px;">
     <div class="modal-head">
       <div>
-        <div class="modal-title">Delete Account</div>
+        <div class="modal-title" id="deleteModalTitle">Delete Account</div>
         <div class="modal-sub">This action cannot be undone.</div>
       </div>
       <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
-      <p id="deleteModalMsg" style="margin:0 0 20px;color:var(--gray-600);font-size:14px;line-height:1.6;"></p>
+      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
+        <div class="ctx-icon"><i data-lucide="user-x" style="width:18px;height:18px;color:#dc2626;"></i></div>
+        <div>
+          <div class="ctx-label" style="color:#dc2626;">Deleting</div>
+          <div class="ctx-val" id="deleteModalName">—</div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
+        This will permanently delete <strong id="deleteModalNameInline">this account</strong>. All associated data will be removed and this cannot be undone.
+      </p>
       <form id="deleteForm" method="post" action="/users/delete">
         <input type="hidden" name="userId" id="deleteUserId"/>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-          <button type="submit" class="btn btn-danger">Delete Account</button>
-        </div>
       </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button type="submit" form="deleteForm" class="btn btn-save" style="background:#dc2626;border-color:#dc2626;">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -289,7 +264,7 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="top-btn primary" onclick="openModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
+      <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
     </div>
   </header>
 
@@ -518,7 +493,6 @@
                   <button class="row-btn edit">Edit</button>
                   <button class="row-btn reactivate">Reactivate</button>
                   <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
                 </div>
               </td>
             </tr>
@@ -653,39 +627,78 @@
     });
   });
 
-  /* ── ADD MODAL ── */
-  function openModal() {
-    document.getElementById('modalBackdrop').classList.add('open');
-  }
-  function closeModal() {
-    document.getElementById('modalBackdrop').classList.remove('open');
-  }
-  document.getElementById('modalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
+  /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
 
-  /* ── EDIT MODAL ── */
+  function openAddModal() {
+    const form = document.getElementById('accountForm');
+    form.reset();
+
+    document.getElementById('accountModalTitle').textContent = 'Add New Account';
+    document.getElementById('accountModalSub').textContent = 'Fill in the details to create a new user.';
+    document.getElementById('accountUserId').value = '';
+    form.action = '/users/create';
+
+    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    document.getElementById('accountRole').value = '';
+
+    document.getElementById('accountPasswordLabel').textContent = 'Temporary Password';
+    document.getElementById('accountPassword').placeholder = 'Set a temporary password';
+    document.getElementById('accountSaveBtn').textContent = 'Create Account';
+
+    document.getElementById('accountModalBackdrop').classList.add('open');
+  }
+
   function openEditModal(row) {
+    const form = document.getElementById('accountForm');
+    form.reset();
+
     const fullName = row.querySelector('.user-name').textContent.trim();
     const nameParts = fullName.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/i, '').trim().split(' ');
 
-    document.getElementById('editFirstName').value = nameParts[0] || '';
-    document.getElementById('editLastName').value  = nameParts.slice(1).join(' ') || '';
-    document.getElementById('editEmail').value     = row.querySelector('.user-email').textContent.trim();
-    document.getElementById('editRole').value      = row.dataset.role || '';
+    document.getElementById('accountModalTitle').textContent = 'Edit Account';
+    document.getElementById('accountModalSub').textContent = "Update the user's details.";
 
-    // Ready for EJS: just replace with action="/users/<%= user._id %>/edit"
-    document.getElementById('editUserId').value = row.dataset.userId || '';
+    document.getElementById('accountFirstName').value = nameParts[0] || '';
+    document.getElementById('accountLastName').value  = nameParts.slice(1).join(' ') || '';
+    document.getElementById('accountEmail').value     = row.querySelector('.user-email').textContent.trim();
 
-    document.getElementById('editModalBackdrop').classList.add('open');
+    const userId = row.dataset.userId || '';
+    document.getElementById('accountUserId').value = userId;
+
+    // EJS NOTE: when wired up, route is POST /users/:id/edit (or PATCH via method-override)
+    form.action = `/users/${userId}/edit`;
+
+    // Normalize table's data-role values to the role-opt values
+    const roleMap = { admin: 'adm', adm: 'adm', fac: 'fac', stud: 'stud', par: 'parents', parents: 'parents' };
+    const role = roleMap[row.dataset.role] || '';
+    document.getElementById('accountRole').value = role;
+
+    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    const selectedOpt = document.querySelector(`#accountRoleOpts .role-opt[data-role="${role}"]`);
+    if (selectedOpt) selectedOpt.classList.add('selected');
+
+    document.getElementById('accountPasswordLabel').innerHTML =
+      'Reset Password <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(leave blank to keep current)</span>';
+    document.getElementById('accountPassword').placeholder = 'New temporary password';
+    document.getElementById('accountSaveBtn').textContent = 'Save Changes';
+
+    document.getElementById('accountModalBackdrop').classList.add('open');
     lucide.createIcons();
   }
-  function closeEditModal() {
-    document.getElementById('editModalBackdrop').classList.remove('open');
+
+  function closeAccountModal() {
+    document.getElementById('accountModalBackdrop').classList.remove('open');
   }
-  document.getElementById('editModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeEditModal();
+
+  document.getElementById('accountModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeAccountModal();
   });
+
+  function selectAccountRole(el, value) {
+    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('accountRole').value = value;
+  }
 
   /* ── DEACTIVATE MODAL ── */
   function openDeactivateModal(row) {
@@ -693,29 +706,60 @@
     const isActive = row.dataset.status === 'active';
     const action   = isActive ? 'deactivate' : 'reactivate';
 
-    document.getElementById('deactivateUserId').value        = row.dataset.userId || '';
-    document.getElementById('deactivateAction').value        = action;
+    document.getElementById('deactivateUserId').value = row.dataset.userId || '';
+    document.getElementById('deactivateAction').value = action;
     document.getElementById('deactivateModalTitle').textContent = isActive ? 'Deactivate Account' : 'Reactivate Account';
     document.getElementById('deactivateModalSub').textContent   = isActive ? 'This user will lose access.' : 'This user will regain access.';
-    document.getElementById('deactivateModalMsg').textContent   = isActive
-      ? `Are you sure you want to deactivate ${name}? They will no longer be able to log in.`
-      : `Are you sure you want to reactivate ${name}? They will regain access to the system.`;
+    document.getElementById('deactivateModalName').textContent  = name;
+    document.getElementById('deactivateCtxLabel').textContent   = isActive ? 'Deactivating' : 'Reactivating';
+    document.getElementById('deactivateModalMsg').innerHTML     = isActive
+      ? `This will deactivate <strong>${name}</strong>'s account. They will no longer be able to log in until reactivated.`
+      : `This will reactivate <strong>${name}</strong>'s account. They will regain full access to the system.`;
 
-    const btn = document.getElementById('deactivateConfirmBtn');
-    btn.textContent       = isActive ? 'Deactivate' : 'Reactivate';
-    btn.style.background  = isActive ? '#dc2626' : '#16a34a';
+    // context block colors
+    const ctx   = document.getElementById('deactivateModalContext');
+    const icon  = document.getElementById('deactivateCtxIcon');
+    const label = document.getElementById('deactivateCtxLabel');
+    const btn   = document.getElementById('deactivateConfirmBtn');
 
-    // Ready for EJS: replace with action="/users/<%= user._id %>/status"
+    if (isActive) {
+      ctx.style.background   = '#fef2f2';
+      ctx.style.borderColor  = '#fecaca';
+      icon.style.color       = '#dc2626';
+      icon.setAttribute('data-lucide', 'user-x');
+      label.style.color      = '#dc2626';
+      btn.style.background   = '#dc2626';
+      btn.style.borderColor  = '#dc2626';
+      btn.textContent        = 'Yes, Deactivate';
+    } else {
+      ctx.style.background   = '#f0fdf4';
+      ctx.style.borderColor  = '#86efac';
+      icon.style.color       = '#16a34a';
+      icon.setAttribute('data-lucide', 'user-check');
+      label.style.color      = '#16a34a';
+      btn.style.background   = '#16a34a';
+      btn.style.borderColor  = '#16a34a';
+      btn.textContent        = 'Yes, Reactivate';
+    }
+
     document.getElementById('deactivateForm').action = `/users/${row.dataset.userId || 'unknown'}/status`;
 
     document.getElementById('deactivateModalBackdrop').classList.add('open');
     lucide.createIcons();
   }
+
   function closeDeactivateModal() {
     document.getElementById('deactivateModalBackdrop').classList.remove('open');
   }
+
   document.getElementById('deactivateModalBackdrop').addEventListener('click', function(e) {
     if (e.target === this) closeDeactivateModal();
+  });
+
+  document.querySelectorAll('.row-btn.deactivate').forEach(btn => {
+    btn.addEventListener('click', function() {
+      openDeactivateModal(this.closest('tr'));
+    });
   });
 
   document.querySelectorAll('.row-btn.reactivate').forEach(btn => {
@@ -728,26 +772,26 @@
   function openDeleteModal(row) {
     const name = row.querySelector('.user-name').textContent.trim();
 
-    document.getElementById('deleteUserId').value    = row.dataset.userId || '';
-    document.getElementById('deleteModalMsg').textContent =
-      `You are about to permanently delete ${name}'s account. This cannot be undone.`;
-
-    // EJS: replace with action="/users/<%= user._id %>/delete"
+    document.getElementById('deleteModalTitle').textContent = `Delete — ${name}`;
+    document.getElementById('deleteModalName').textContent = name;
+    document.getElementById('deleteModalNameInline').textContent = name;
+    document.getElementById('deleteUserId').value = row.dataset.userId || '';
     document.getElementById('deleteForm').action = `/users/${row.dataset.userId || 'unknown'}/delete`;
 
     document.getElementById('deleteModalBackdrop').classList.add('open');
     lucide.createIcons();
   }
+
   function closeDeleteModal() {
     document.getElementById('deleteModalBackdrop').classList.remove('open');
   }
+
   document.getElementById('deleteModalBackdrop').addEventListener('click', function(e) {
     if (e.target === this) closeDeleteModal();
   });
 
   document.querySelectorAll('.row-btn.delete').forEach(btn => {
     btn.addEventListener('click', function() {
-      console.log(this.closest('tr'));
       openDeleteModal(this.closest('tr'));
     });
   });
@@ -775,12 +819,6 @@
   document.querySelectorAll('.row-btn.edit').forEach(btn => {
     btn.addEventListener('click', function() {
       openEditModal(this.closest('tr'));
-    });
-  });
-
-  document.querySelectorAll('.row-btn.deactivate').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openDeactivateModal(this.closest('tr'));
     });
   });
 
@@ -825,8 +863,7 @@
   /* ── ESCAPE KEY ── */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeModal();
-      closeEditModal();
+      closeAccountModal();
       closeDeactivateModal();
       closeDeleteModal();
     }

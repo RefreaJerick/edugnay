@@ -627,13 +627,6 @@
     if (e.target === this) closeConfirmModal();
   });
 
-  document.getElementById('removeStudentForm').addEventListener('submit', function(e) {
-    e.preventDefault(); // remove this line when backend is ready
-    const row = this._rowElement;
-    if (row) row.closest('tr').remove();
-    closeConfirmModal();
-  });
-
   function closeModal() {
     document.getElementById('modalBackdrop').classList.remove('open');
   }
