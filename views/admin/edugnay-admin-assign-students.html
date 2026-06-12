@@ -12,7 +12,6 @@
 </head>
 <body>
 
-<!-- ASSIGN MODAL -->
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
     <div class="modal-head">
@@ -24,64 +23,132 @@
     </div>
     <div class="modal-body">
       <form id="assignStudentForm" method="post" action="/assignments/students/create">
-      <div class="modal-context">
-        <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
-        <div>
-          <div class="ctx-label">Assigning to</div>
-          <div class="ctx-val" id="ctxVal">Select a section below</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Student</label>
-        <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
-          <option value="">— Select a student —</option>
-          <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
-          <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
-          <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
-          <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
-          <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
-          <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
-          <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
-          <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
-        </select>
-        <div class="student-preview" id="studentPreview">
-          <div class="sp-av" id="spAv">JD</div>
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
           <div>
-            <div class="sp-name" id="spName">Juan Dela Cruz</div>
-            <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+            <div class="ctx-label">Assigning to</div>
+            <div class="ctx-val" id="ctxVal">Select a section below</div>
           </div>
         </div>
-      </div>
 
-      <div class="form-group" style="margin-bottom:0">
-        <label class="form-label">Assign to Section</label>
-        <select class="form-select" id="modalSection" name="sectionId">
-          <option value="">— Select a section —</option>
-          <optgroup label="Grade 7">
-            <option>Grade 7 – St. Matthew (38/40)</option>
-            <option>Grade 7 – St. Mark (34/40)</option>
-          </optgroup>
-          <optgroup label="Grade 8">
-            <option>Grade 8 – St. Luke (36/40)</option>
-            <option>Grade 8 – St. John (34/40)</option>
-          </optgroup>
-          <optgroup label="Grade 9">
-            <option>Grade 9 – St. Peter (37/40)</option>
-            <option>Grade 9 – St. Paul (37/40)</option>
-          </optgroup>
-          <optgroup label="Grade 10">
-            <option>Grade 10 – St. James (35/40)</option>
-            <option>Grade 10 – St. Thomas (33/40)</option>
-          </optgroup>
-        </select>
-      </div>
+        <div class="form-group">
+          <label class="form-label">Student</label>
+          <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
+            <option value="">— Select a student —</option>
+            <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
+            <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
+            <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
+            <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
+            <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
+            <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
+            <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
+            <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+          </select>
+          <div class="student-preview" id="studentPreview">
+            <div class="sp-av" id="spAv">JD</div>
+            <div>
+              <div class="sp-name" id="spName">Juan Dela Cruz</div>
+              <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Assign to Section</label>
+          <select class="form-select" id="modalSection" name="sectionId">
+            <option value="">— Select a section —</option>
+            <optgroup label="Grade 7">
+              <option>Grade 7 – St. Matthew (38/40)</option>
+              <option>Grade 7 – St. Mark (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 8">
+              <option>Grade 8 – St. Luke (36/40)</option>
+              <option>Grade 8 – St. John (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 9">
+              <option>Grade 9 – St. Peter (37/40)</option>
+              <option>Grade 9 – St. Paul (37/40)</option>
+            </optgroup>
+            <optgroup label="Grade 10">
+              <option>Grade 10 – St. James (35/40)</option>
+              <option>Grade 10 – St. Thomas (33/40)</option>
+            </optgroup>
+          </select>
+        </div>
+      </form>
+      <form id="moveStudentForm" method="post" action="/assignments/students/move" style="display:none;">
+        <input type="hidden" name="_method" value="PUT">
+        <input type="hidden" name="studentId" id="moveStudentId">
+
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="move-right" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+          <div>
+            <div class="ctx-label">Moving</div>
+            <div class="ctx-val" id="moveCtxVal">Select a new section below</div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Move to Section</label>
+          <select class="form-select" name="sectionId">
+            <option value="">— Select a section —</option>
+            <optgroup label="Grade 7">
+              <option>Grade 7 – St. Matthew (38/40)</option>
+              <option>Grade 7 – St. Mark (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 8">
+              <option>Grade 8 – St. Luke (36/40)</option>
+              <option>Grade 8 – St. John (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 9">
+              <option>Grade 9 – St. Peter (37/40)</option>
+              <option>Grade 9 – St. Paul (37/40)</option>
+            </optgroup>
+            <optgroup label="Grade 10">
+              <option>Grade 10 – St. James (35/40)</option>
+              <option>Grade 10 – St. Thomas (33/40)</option>
+            </optgroup>
+          </select>
+        </div>
       </form>
 
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-      <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
+      <button type="submit" form="assignStudentForm" id="modalSubmitBtn" class="btn btn-save">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM REMOVE MODAL -->
+<div class="modal-backdrop" id="confirmBackdrop">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="confirmTitle">Remove Student</div>
+        <div class="modal-sub">This action cannot be undone.</div>
+      </div>
+      <button class="modal-close" onclick="closeConfirmModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
+        <div class="ctx-icon"><i data-lucide="user-minus" style="width:18px;height:18px;color:#dc2626;"></i></div>
+        <div>
+          <div class="ctx-label" style="color:#dc2626;">Removing</div>
+          <div class="ctx-val" id="confirmStudentName">—</div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
+        This will remove <strong id="confirmStudentNameInline">the student</strong> from <strong id="confirmSectionName">this section</strong>. They will appear as unassigned and will need to be re-enrolled.
+      </p>
+      <form id="removeStudentForm" method="post" action="/assignments/students/remove">
+        <input type="hidden" name="_method" value="DELETE">
+        <input type="hidden" name="studentId" id="removeStudentId">
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+      <button type="submit" form="removeStudentForm" class="btn btn-save" style="background:#dc2626;border-color:#dc2626;">Yes, Remove</button>
     </div>
   </div>
 </div>
@@ -309,49 +376,49 @@
                 <td><div class="user-cell"><div class="user-av">CM</div><div><div class="user-name">Carlo Mendoza</div><div class="user-email">c.mendoza.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Matthew</td>
                 <td><span class="badge badge-blue">Grade 7</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Carlo Mendoza', 'cm-001', 'St. Matthew')">Move</button><button class="row-btn remove" onclick="removeStudent('Carlo Mendoza', 'St. Matthew', 'cm-001', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="7" data-section="st. matthew" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">LR</div><div><div class="user-name">Liza Reyes</div><div class="user-email">l.reyes.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Matthew</td>
                 <td><span class="badge badge-blue">Grade 7</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Liza Reyes', 'cm-001', 'St. Matthew')">Move</button><button class="row-btn remove" onclick="removeStudent('Liza Reyes', 'St. Matthew', 'lr-002', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="7" data-section="st. mark" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">RC</div><div><div class="user-name">Rico Cruz</div><div class="user-email">r.cruz.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Mark</td>
                 <td><span class="badge badge-blue">Grade 7</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Rico Cruz', 'cm-001', 'St. Mark')">Move</button><button class="row-btn remove" onclick="removeStudent('Rico Cruz', 'St. Mark', 'rc-003', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="8" data-section="st. luke" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">JD</div><div><div class="user-name">Juan Dela Cruz</div><div class="user-email">j.delacruz.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Luke</td>
                 <td><span class="badge badge-gold" style="background:#fefce8;color:#92400e;">Grade 8</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Juan Dela Cruz', 'cm-001', 'St. Luke')">Move</button><button class="row-btn remove" onclick="removeStudent('Juan Dela Cruz', 'St. Luke', 'jd-004', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="8" data-section="st. john" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">ET</div><div><div class="user-name">Ella Tan</div><div class="user-email">e.tan.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. John</td>
                 <td><span class="badge badge-gold" style="background:#fefce8;color:#92400e;">Grade 8</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Ella Tan', 'cm-001', 'St. John')">Move</button><button class="row-btn remove" onclick="removeStudent('Ella Tan', 'St. John', 'et-005', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="9" data-section="st. peter" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">ML</div><div><div class="user-name">Maria Lopez</div><div class="user-email">m.lopez.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Peter</td>
                 <td><span class="badge badge-green">Grade 9</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Maria Lopez', 'cm-001', 'St. Peter')">Move</button><button class="row-btn remove" onclick="removeStudent('Maria Lopez', 'St. Peter', 'ml-006', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="9" data-section="st. paul" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">BG</div><div><div class="user-name">Ben Garcia</div><div class="user-email">b.garcia.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. Paul</td>
                 <td><span class="badge badge-green">Grade 9</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Ben Garcia', 'cm-001', 'St. Paul')">Move</button><button class="row-btn remove" onclick="removeStudent('Ben Garcia', 'St. Paul', 'bg-007', this)">Remove</button></div></td>
               </tr>
               <tr data-grade="10" data-section="st. james" data-assigned="true">
                 <td><div class="user-cell"><div class="user-av">AS</div><div><div class="user-name">Ana Santos</div><div class="user-email">a.santos.stud@stcolumban.edu.ph</div></div></div></td>
                 <td>St. James</td>
                 <td><span class="badge badge-orange">Grade 10</span></td>
-                <td><div style="display:flex;gap:6px;"><button class="row-btn move">Move</button><button class="row-btn remove">Remove</button></div></td>
+                <td><div style="display:flex;gap:6px;"><button class="row-btn move" onclick="openMoveModal('Ana Santos', 'cm-001', 'St. James')">Move</button><button class="row-btn remove" onclick="removeStudent('Ana Santos', 'St. James', 'as-008', this)">Remove</button></div></td>
               </tr>
               <!-- Unassigned students -->
               <tr data-grade="unassigned" data-section="none" data-assigned="false">
@@ -507,13 +574,65 @@
   });
 
   function openModal(studentName) {
-    const title = document.getElementById('modalTitle');
-    title.textContent = studentName ? `Assign — ${studentName}` : 'Assign Student';
+    const isQuickAssign = !!studentName;
+
+    document.getElementById('modalTitle').textContent = isQuickAssign ? `Assign — ${studentName}` : 'Assign Student';
     document.getElementById('ctxVal').textContent = 'Select a section below';
-    document.getElementById('modalStudent').value = '';
+
+    const studentGroup = document.getElementById('modalStudent').closest('.form-group');
+    studentGroup.style.display = isQuickAssign ? 'none' : '';
     document.getElementById('studentPreview').classList.remove('visible');
+    document.getElementById('modalStudent').value = '';
+
+    document.getElementById('assignStudentForm').style.display = '';
+    document.getElementById('moveStudentForm').style.display = 'none';
+    document.getElementById('modalSubmitBtn').setAttribute('form', 'assignStudentForm');
+    document.getElementById('modalSubmitBtn').textContent = 'Save Assignment';
+
+    document.getElementById('modalBackdrop').classList.add('open');
+
+  }
+
+  function openMoveModal(studentName, studentId, currentSection) {
+    document.getElementById('modalTitle').textContent = `Move — ${studentName}`;
+    document.getElementById('moveCtxVal').textContent = `Currently in ${currentSection}`;
+    document.getElementById('moveStudentId').value = studentId;
+
+    document.getElementById('assignStudentForm').style.display = 'none';
+    document.getElementById('moveStudentForm').style.display = '';
+    document.getElementById('modalSubmitBtn').setAttribute('form', 'moveStudentForm');
+    document.getElementById('modalSubmitBtn').textContent = 'Save Move';
+
     document.getElementById('modalBackdrop').classList.add('open');
   }
+
+  function removeStudent(studentName, section, studentId, rowElement) {
+    document.getElementById('confirmTitle').textContent = `Remove — ${studentName}`;
+    document.getElementById('confirmStudentName').textContent = studentName;
+    document.getElementById('confirmStudentNameInline').textContent = studentName;
+    document.getElementById('confirmSectionName').textContent = section;
+    document.getElementById('removeStudentId').value = studentId;
+
+    // store the row so we can remove it from DOM on success
+    document.getElementById('removeStudentForm')._rowElement = rowElement;
+
+    document.getElementById('confirmBackdrop').classList.add('open');
+  }
+
+  function closeConfirmModal() {
+    document.getElementById('confirmBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('confirmBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeConfirmModal();
+  });
+
+  document.getElementById('removeStudentForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // remove this line when backend is ready
+    const row = this._rowElement;
+    if (row) row.closest('tr').remove();
+    closeConfirmModal();
+  });
 
   function closeModal() {
     document.getElementById('modalBackdrop').classList.remove('open');
