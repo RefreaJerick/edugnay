@@ -140,6 +140,85 @@
   </div>
 </div>
 
+<!-- IMPORT USERS MODAL -->
+<div class="modal-backdrop" id="importModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Import Users</div>
+        <div class="modal-sub">School email and login credentials will be auto-generated and sent to each person's personal email.</div>
+      </div>
+      <button class="modal-close" onclick="closeImportModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="importUsersForm" method="post" action="/users/import" enctype="multipart/form-data">
+
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <input type="hidden" id="importUserRole" name="role" value=""/>
+          <div class="role-opts" id="importRoleOpts">
+            <div class="role-opt" data-role="adm" onclick="selectImportRole(this, 'adm')">
+              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+            </div>
+            <div class="role-opt" data-role="fac" onclick="selectImportRole(this, 'fac')">
+              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+            </div>
+            <div class="role-opt" data-role="stud" onclick="selectImportRole(this, 'stud')">
+              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
+            </div>
+            <div class="role-opt" data-role="parents" onclick="selectImportRole(this, 'parents')">
+              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="users" style="width:14px;height:14px;"></i></div><span>Parent</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">CSV File</label>
+
+          <input type="file" name="csvFile" id="importUsersFileInput" accept=".csv" required
+                 style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
+                 onchange="previewImportCSV(this)"/>
+
+          <div class="file-upload-wrap">
+            <button type="button" class="file-upload-btn" onclick="document.getElementById('importUsersFileInput').click()">
+              <i data-lucide="upload" style="width:14px;height:14px;"></i>
+              Choose File
+            </button>
+            <span class="file-upload-name" id="importUsersFileName">No file selected</span>
+          </div>
+
+          <div class="csv-hint">
+            <i data-lucide="info" style="width:14px;height:14px;"></i>
+            <div>
+              <span class="csv-hint-label">Expected columns</span>
+              <div class="csv-hint-cols">
+                <span class="csv-col-tag">firstName</span>
+                <span class="csv-col-tag">lastName</span>
+                <span class="csv-col-tag">personalEmail</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="importUsersPreviewWrap" style="display:none;margin-top:14px;">
+          <div class="form-label" style="margin-bottom:6px;">Preview</div>
+          <div style="max-height:220px;overflow:auto;border:1px solid var(--gray-200);border-radius:8px;">
+            <table style="width:100%;font-size:12px;">
+              <thead id="importUsersPreviewHead"></thead>
+              <tbody id="importUsersPreviewBody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:12px;color:var(--gray-mid);margin-top:6px;" id="importUsersPreviewCount"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeImportModal()">Cancel</button>
+      <button type="submit" form="importUsersForm" class="btn btn-save">Upload & Create Accounts</button>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -264,6 +343,7 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Users</button>
       <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
     </div>
   </header>
@@ -873,6 +953,66 @@
     document.querySelectorAll('.modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
     document.getElementById('roleValue').value = value;
+  }
+
+  /* ── IMPORT USERS MODAL ── */
+  function openImportModal() {
+    document.getElementById('importUsersForm').reset();
+    document.getElementById('importUsersPreviewWrap').style.display = 'none';
+
+    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    document.getElementById('importUserRole').value = '';
+
+    document.getElementById('importUsersFileName').textContent = 'No file selected';
+    document.getElementById('importUsersFileName').classList.remove('has-file');
+
+    document.getElementById('importModalBackdrop').classList.add('open');
+  }
+
+  function closeImportModal() {
+    document.getElementById('importModalBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('importModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeImportModal();
+  });
+
+  function selectImportRole(el, value) {
+    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('importUserRole').value = value;
+  }
+
+  function previewImportCSV(input) {
+    const file = input.files[0];
+
+    const nameEl = document.getElementById('importUsersFileName');
+    if (!file) {
+      nameEl.textContent = 'No file selected';
+      nameEl.classList.remove('has-file');
+      return;
+    }
+    nameEl.textContent = file.name;
+    nameEl.classList.add('has-file');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const lines = e.target.result.split(/\r?\n/).filter(l => l.trim().length);
+      if (!lines.length) return;
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1, 6).map(l => l.split(',').map(c => c.trim()));
+
+      document.getElementById('importUsersPreviewHead').innerHTML =
+        '<tr>' + headers.map(h => `<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--gray-200);">${h}</th>`).join('') + '</tr>';
+
+      document.getElementById('importUsersPreviewBody').innerHTML =
+        rows.map(r => '<tr>' + r.map(c => `<td style="padding:6px 8px;border-bottom:1px solid var(--gray-100);">${c}</td>`).join('') + '</tr>').join('');
+
+      document.getElementById('importUsersPreviewCount').textContent = `Showing ${rows.length} of ${lines.length - 1} rows`;
+      document.getElementById('importUsersPreviewWrap').style.display = '';
+    };
+    reader.readAsText(file);
   }
 </script>
 
