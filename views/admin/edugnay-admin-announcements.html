@@ -23,7 +23,7 @@
       <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
     <div class="modal-body">
-      <form id="editAnnouncementForm" method="post" action="/announcements/update">
+      <form id="editAnnouncementForm" method="post" action="/announcements/update" enctype="multipart/form-data">
       <div class="form-group" style="margin-bottom:14px;">
         <label class="form-label">Title</label>
         <input class="form-input" type="text" name="title" value="Q2 Grade Encoding Deadline"/>
@@ -51,11 +51,61 @@
           <option value="teachers-students">Teachers & Students</option>
         </select>
       </div>
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
+        <div class="image-upload-area" id="editUploadArea" onclick="document.getElementById('editImageInput').click()">
+          <input type="file" id="editImageInput" name="image" accept="image/*" style="display:none;" onchange="handleImagePreview(this, 'editPreview', 'editPlaceholder')"/>
+          <div class="upload-placeholder" id="editPlaceholder">
+            <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
+            <span class="upload-text">Click or drag an image here</span>
+            <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
+          </div>
+          <!-- EJS later: set src="<%= announcement.imageUrl %>" and start this wrap visible (display:block) if an image already exists, hide #editPlaceholder instead -->
+          <div class="image-preview-wrap" id="editPreview" style="display:none;">
+            <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
+            <button type="button" class="remove-image-btn" onclick="removeImage(event, 'editImageInput', 'editPreview', 'editPlaceholder')">
+              <i data-lucide="x" style="width:12px;height:12px;"></i>
+            </button>
+          </div>
+        </div>
+      </div>
       </form>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button type="submit" form="editAnnouncementForm" class="btn-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-backdrop" id="deleteModalBackdrop">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Delete Announcement</div>
+        <div class="modal-sub">This action cannot be undone.</div>
+      </div>
+      <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
+        <div class="ctx-icon"><i data-lucide="megaphone" style="width:18px;height:18px;color:#dc2626;"></i></div>
+        <div>
+          <div class="ctx-label" style="color:#dc2626;">Deleting</div>
+          <div class="ctx-val" id="deleteModalTitleVal">—</div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--gray-500);line-height:1.6;">
+        This will permanently delete <strong id="deleteModalTitleInline">this announcement</strong>. This cannot be undone.
+      </p>
+      <form id="deleteAnnouncementForm" method="post" action="/announcements/delete">
+        <input type="hidden" name="announcementId" id="deleteAnnouncementId"/>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button type="submit" form="deleteAnnouncementForm" class="btn-save" style="background:#dc2626;box-shadow:none;">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -210,6 +260,10 @@
                 </div>
               </div>
               <div class="ann-content">All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.</div>
+              <!-- Attached image (optional — only render if announcement has imageUrl) -->
+              <div class="ann-image-wrap">
+                <img class="ann-image" src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png" alt="Announcement image"/>
+              </div>
               <div class="ann-audience">
                 <span class="aud-label">To:</span>
                 <span class="aud-tag aud-all"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
@@ -409,7 +463,7 @@
             <span style="font-size:11px;color:var(--gray-400);">Broadcast to users</span>
           </div>
           <div class="compose-body">
-            <form id="composeAnnouncementForm" method="post" action="/announcements/create">
+            <form id="composeAnnouncementForm" method="post" action="/announcements/create" enctype="multipart/form-data">
 
               <div class="form-group">
                 <label class="form-label">Title</label>
@@ -463,6 +517,24 @@
                     <div class="aud-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart" style="width:13px;height:13px;"></i></div>
                     <span class="aud-opt-label">Parents Only</span>
                   </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
+                <div class="image-upload-area" id="composeUploadArea" onclick="document.getElementById('composeImageInput').click()">
+                  <input type="file" id="composeImageInput" name="image" accept="image/*" style="display:none;" onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')"/>
+                  <div class="upload-placeholder" id="composePlaceholder">
+                    <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
+                    <span class="upload-text">Click or drag an image here</span>
+                    <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
+                  </div>
+                  <div class="image-preview-wrap" id="composePreview" style="display:none;">
+                    <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
+                    <button type="button" class="remove-image-btn" onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
+                      <i data-lucide="x" style="width:12px;height:12px;"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -588,14 +660,62 @@
 
   function deleteCard(btn) {
     const card = btn.closest('.ann-card');
-    const title = card.querySelector('.ann-title')?.textContent || 'this announcement';
+    const title = card.querySelector('.ann-title')?.textContent.trim() || 'this announcement';
 
-    if (!confirm(`Delete "${title}"?\nThis cannot be undone.`)) return;
+    document.getElementById('deleteModalTitleVal').textContent = title;
+    document.getElementById('deleteModalTitleInline').textContent = title;
+    document.getElementById('deleteAnnouncementId').value = card.dataset.id || '';
+    document.getElementById('deleteAnnouncementForm').action = `/announcements/${card.dataset.id || 'unknown'}/delete`;
 
-    card.style.opacity = '0';
-    card.style.transform = 'translateX(10px)';
-    setTimeout(() => card.remove(), 300);
+    document.getElementById('deleteModalBackdrop').classList.add('open');
+    lucide.createIcons();
   }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteModalBackdrop').classList.remove('open');
+  }
+
+  document.getElementById('deleteModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+  });
+
+  function handleImagePreview(input, previewWrapId, placeholderId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById(previewWrapId).querySelector('.image-preview').src = e.target.result;
+      document.getElementById(previewWrapId).style.display = 'block';
+      document.getElementById(placeholderId).style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage(event, inputId, previewWrapId, placeholderId) {
+    event.stopPropagation();
+    document.getElementById(inputId).value = '';
+    document.getElementById(previewWrapId).style.display = 'none';
+    document.getElementById(placeholderId).style.display = 'flex';
+  }
+
+  function setupDropzone(areaId, inputId, previewWrapId, placeholderId) {
+    const area = document.getElementById(areaId);
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
+      e.preventDefault();
+      area.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        document.getElementById(inputId).files = e.dataTransfer.files;
+        handleImagePreview(document.getElementById(inputId), previewWrapId, placeholderId);
+      }
+    });
+  }
+
+  setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
+  setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');
 
   lucide.createIcons();
 </script>

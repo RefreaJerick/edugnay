@@ -193,6 +193,50 @@
 .btn-save { background: var(--blue); color: white; padding: 10px 22px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; border: none; box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
 .btn-save:hover { background: var(--blue-mid); }
 
+
+/* ── IMAGE UPLOAD ── */
+.optional-tag { font-weight: 500; color: var(--gray-400); text-transform: none; letter-spacing: 0; }
+
+.image-upload-area {
+  border: 1.5px dashed var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-50);
+  padding: 18px;
+  cursor: pointer;
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.image-upload-area:hover,
+.image-upload-area.dragover { border-color: var(--blue-mid); background: var(--blue-xpale); }
+
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--gray-400); text-align: center; pointer-events: none; }
+.upload-placeholder i { color: var(--gray-300); }
+.upload-text { font-size: 12px; font-weight: 600; color: var(--gray-500); }
+.upload-sub  { font-size: 10px; color: var(--gray-400); }
+
+.image-preview-wrap { position: relative; width: 100%; border-radius: 8px; overflow: hidden; }
+.image-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; display: block; }
+.remove-image-btn {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(11,31,58,0.6); color: white; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.remove-image-btn:hover { background: rgba(11,31,58,0.85); }
+
+/* ── ANNOUNCEMENT ATTACHED IMAGE ── */
+.ann-image-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--gray-100); }
+.ann-image { width: 100%; aspect-ratio: 2.4 / 1; object-fit: cover; display: block; }
+
+
+/* ── DELETE MODAL CONTEXT ── */
+.modal-context { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--gray-200); margin-bottom: 14px; }
+.ctx-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ctx-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.ctx-val { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 800; color: var(--gray-800); }
+
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── RESPONSIVE ── */
