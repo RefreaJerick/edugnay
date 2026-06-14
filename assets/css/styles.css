@@ -988,11 +988,6 @@ html, body {
 
 
 /* Responsive */
-@media (max-width: 1100px) {
-  .two-col { grid-template-columns: 1fr; }
-  .summary-strip { flex-wrap: wrap; }
-  .summary-item { min-width: 150px; }
-}
 
 @media (max-width: 860px) {
   .page { grid-template-columns: 1fr; }
