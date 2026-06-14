@@ -5,6 +5,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+@media (hover: none) and (pointer: coarse) {
+  * {
+    outline: none;
+  }
+}
+
 :root {
   --navy:        #0b1f3a;
   --blue:        #1a4080;
