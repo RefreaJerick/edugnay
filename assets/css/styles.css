@@ -124,7 +124,7 @@ body.drawer-open .sidebar {
 
 .brand-text {}
 .brand-name {
-  font-family: 'Times New Roman';
+  font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
   color: var(--white);
