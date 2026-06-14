@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css"/>
+  <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* ── PAGE-SPECIFIC: teacher/dashboard.css ── */
+
+    /* Summary strip */
+    .summary-strip {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(16,40,80,0.05);
+    }
+
+    .summary-item {
+      flex: 1;
+      padding: 18px 24px;
+      border-right: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .summary-item:last-child { border-right: none; }
+
+    .summary-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .summary-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px; font-weight: 800;
+      color: var(--gray-800); line-height: 1;
+    }
+    .summary-label {
+      font-size: 11px; font-weight: 600;
+      color: var(--gray-400); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-top: 3px;
+    }
+
+    /* ── GRADING PERIOD BANNER ── */
+    .grading-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-left: 4px solid var(--gold);
+      border-radius: 14px;
+      padding: 16px 22px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
+    }
+
+    .grading-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .grading-period-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
+      color: #fff;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+      flex-shrink: 0;
+    }
+
+    .grading-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(212, 175, 55, 0.8);
+      margin-bottom: 3px;
+    }
+
+    .grading-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .grading-banner-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .grading-deadline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .grading-deadline strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .grading-deadline i {
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .grading-status-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(22, 163, 74, 0.15);
+      border: 1px solid rgba(22, 163, 74, 0.35);
+      color: #4ade80;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 13px;
+      border-radius: 999px;
+    }
+
+    .grading-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade80;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    /* Two col layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    /* Panel */
+    .panel {
+      background: var(--white);
+      border-radius: 14px;
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(16,40,80,0.05);
+    }
+
+    .panel-head {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--gray-100);
+      flex-wrap: wrap; gap: 10px;
+    }
+
+    .panel-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px; font-weight: 800; color: var(--gray-800);
+    }
+
+    .panel-action {
+      font-size: 12px; font-weight: 600;
+      color: var(--blue-mid); text-decoration: none;
+      display: flex; align-items: center; gap: 4px;
+      transition: color 0.15s;
+    }
+    .panel-action:hover { color: var(--blue-light); }
+
+    /* Sections table */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: 0.8px; text-transform: uppercase;
+      color: var(--gray-400); padding: 10px 20px;
+      text-align: left; background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-100);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s; cursor: pointer;
+    }
+    tbody tr:hover { background: var(--gray-50); }
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody td {
+      padding: 13px 20px; font-size: 13px;
+      color: var(--gray-700); vertical-align: middle;
+    }
+
+    .section-name-cell { display: flex; align-items: center; gap: 10px; }
+
+    .section-stripe {
+      width: 4px; height: 32px; border-radius: 999px; flex-shrink: 0;
+    }
+    .stripe-7  { background: var(--blue-mid); }
+    .stripe-8  { background: var(--gold); }
+    .stripe-9  { background: var(--green); }
+    .stripe-10 { background: var(--orange); }
+
+    .section-cell-name { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+    .section-cell-sub  { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+    .subject-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--blue-xpale); color: var(--blue-mid);
+      white-space: nowrap;
+    }
+
+    .progress-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .progress-bar {
+      width: 80px; height: 6px;
+      background: var(--gray-100); border-radius: 999px; overflow: hidden;
+    }
+    .progress-fill { height: 100%; border-radius: 999px; background: var(--blue-mid); }
+    .progress-text { font-size: 11px; font-weight: 700; color: var(--gray-600); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .badge-green  { background: var(--green-pale);  color: #15803d; }
+    .badge-orange { background: var(--orange-pale); color: #92400e; }
+    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
+    .badge-red    { background: var(--red-pale);    color: var(--red); }
+    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
+    .badge-gold   { background: var(--gold-pale);   color: #92400e; }
+
+    .row-btn {
+      padding: 5px 12px; border-radius: 7px;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      border: 1.5px solid transparent; transition: all 0.15s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .row-btn.primary { background: var(--blue-xpale); color: var(--blue-mid); border-color: var(--blue-pale); }
+    .row-btn.primary:hover { background: var(--blue-pale); }
+
+    /* Pending tasks */
+    .task-list { padding: 8px 0; }
+
+    .task-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 20px; border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s; cursor: pointer;
+    }
+    .task-item:hover { background: var(--gray-50); }
+    .task-item:last-child { border-bottom: none; }
+
+    .task-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: 13px; font-weight: 700; color: var(--gray-800); margin-bottom: 2px; }
+    .task-sub   { font-size: 11px; color: var(--gray-400); line-height: 1.5; }
+
+    .task-action {
+      flex-shrink: 0; font-size: 11px; font-weight: 700;
+      color: var(--blue-mid); text-decoration: none;
+      display: flex; align-items: center; gap: 3px;
+      margin-top: 2px; transition: color 0.15s;
+    }
+    .task-action:hover { color: var(--blue-light); }
+
+    /* Announcements list */
+    .ann-list { padding: 8px 0; }
+
+    .ann-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s; cursor: pointer;
+    }
+    .ann-item:hover { background: var(--gray-50); }
+    .ann-item:last-child { border-bottom: none; }
+
+    .ann-item-head {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 8px; margin-bottom: 6px;
+    }
+
+    .ann-item-title {
+      font-size: 13px; font-weight: 700;
+      color: var(--gray-800); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .ann-item-body { font-size: 12px; color: var(--gray-500); line-height: 1.5; margin-bottom: 6px; }
+
+    .ann-item-img {
+      width: 100%; aspect-ratio: 2.4 / 1; 
+      object-fit: cover; border-radius: 8px;
+      margin-bottom: 6px; display: block;
+    }
+
+    .ann-item-meta {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; color: var(--gray-400);
+    }
+
+    /* Accent bar */
+    .accent-bar {
+      height: 4px;
+      background: linear-gradient(to right, var(--gold), var(--blue-mid));
+      border-radius: 999px; margin-bottom: 28px; width: 80px;
+    }
+
+    MAIN
+    .main { padding: 28px 32px; overflow-y: auto; background: var(--gray-100); }
+
+    /* animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .panel { animation: fadeUp 0.4s ease both; }
+    .panel:nth-child(1) { animation-delay: 0.05s; }
+    .panel:nth-child(2) { animation-delay: 0.10s; }
+    .summary-strip { animation: fadeUp 0.35s ease both; }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .two-col { grid-template-columns: 1fr; }
+      .summary-strip { flex-wrap: wrap; }
+      .summary-item { min-width: 150px; }
+    }
+    @media (max-width: 980px) {
+      .shell { display: block; }
+      .sidebar {
+        position: fixed; top: 0; left: 0;
+        width: min(280px, 80vw); height: 100vh;
+        transform: translateX(-100%); z-index: 20;
+        box-shadow: 6px 0 24px rgba(0,0,0,0.18);
+      }
+      .sidebar-overlay { display: block; }
+      .topbar { flex-wrap: wrap; padding: 16px 20px; }
+      .topbar-left { width: 100%; }
+      .hamburger { display: grid; }
+      .topbar-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 20px; }
+      .top-btn { width: 100%; justify-content: center; }
+      .topbar-right { justify-content: space-between; }
+      .grading-banner { flex-direction: column; align-items: flex-start; }
+      thead th:nth-child(4), tbody td:nth-child(4),
+      thead th:nth-child(5), tbody td:nth-child(5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="EdUgnay logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="teacher-dashboard.html" class="nav-item active">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="teacher-sections.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">My Sections</span>
+      </a>
+      <a href="teacher-grades.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="clipboard-pen" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Grade Encoding</span>
+      </a>
+      <a href="teacher-attendance.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="user-check" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Attendance</span>
+      </a>
+      <a href="teacher-materials.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Learning Materials</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <a href="teacher-reports.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Narrative Reports</span>
+        <span class="nav-badge">5</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Communication</div>
+      <a href="teacher-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">MR</div>
+        <div class="admin-info">
+          <div class="admin-name">Ms. Maria Reyes</div>
+          <div class="admin-role">Faculty</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Teacher</div>
+        <div class="page-title">Dashboard</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <a href="teacher-grades.html" class="top-btn secondary">
+        <i data-lucide="clipboard-pen" style="width:14px;height:14px;"></i> Encode Grades
+      </a>
+      <a href="teacher-attendance.html" class="top-btn primary">
+        <i data-lucide="user-check" style="width:14px;height:14px;"></i> Take Attendance
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- GRADING PERIOD BANNER -->
+    <div class="grading-banner">
+      <div class="grading-banner-left">
+        <div class="grading-period-badge">Q2</div>
+        <div class="grading-info">
+          <div class="grading-label">Active Grading Period</div>
+          <div class="grading-value">2nd Quarter · S.Y. 2024–2025</div>
+        </div>
+      </div>
+      <div class="grading-banner-right">
+        <div class="grading-deadline">
+          <i data-lucide="clock" style="width:14px;height:14px;"></i>
+          <span>Quarter ends: <strong>June 20, 2025</strong></span>
+        </div>
+        <div class="grading-status-pill">
+          <i data-lucide="circle-check" style="width:13px;height:13px;color:#4ade80;"></i> Q2 Ongoing
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="summary-strip">
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+          <i data-lucide="door-open" style="width:18px;height:18px;"></i>
+        </div>
+        <div class="summary-text">
+          <div class="summary-num">3</div>
+          <div class="summary-label">Sections Handled</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:#f0fdf4;color:#16a34a;">
+          <i data-lucide="users" style="width:18px;height:18px;"></i>
+        </div>
+        <div class="summary-text">
+          <div class="summary-num">108</div>
+          <div class="summary-label">Total Students</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--orange-pale);color:#d97706;">
+          <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+        </div>
+        <div class="summary-text">
+          <div class="summary-num">5</div>
+          <div class="summary-label">Reports to Confirm</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="calendar-x" style="width:18px;height:18px;"></i>
+        </div>
+        <div class="summary-text">
+          <div class="summary-num">4</div>
+          <div class="summary-label">Flagged Absences</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections table -->
+    <div class="panel" style="margin-bottom:24px;">
+      <div class="panel-head">
+        <div class="panel-title">My Sections</div>
+        <a href="teacher-sections.html" class="panel-action">
+          View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+        </a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Section</th>
+              <th>Subject</th>
+              <th>Students</th>
+              <th>Grades Encoded</th>
+              <th>Attendance Today</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="window.location='teacher-grades.html'">
+              <td>
+                <div class="section-name-cell">
+                  <div class="section-stripe stripe-7"></div>
+                  <div>
+                    <div class="section-cell-name">Grade 7 – St. Matthew</div>
+                    <div class="section-cell-sub">Grade 7 · Class Adviser</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
+              <td>38</td>
+              <td>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:100%;"></div></div>
+                  <span class="progress-text">38/38</span>
+                </div>
+              </td>
+              <td><span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span></td>
+              <td><span class="badge badge-green">Complete</span></td>
+              <td>
+                <button class="row-btn primary" onclick="event.stopPropagation();window.location='teacher-grades.html'">
+                  <i data-lucide="clipboard-pen" style="width:11px;height:11px;"></i> Grades
+                </button>
+              </td>
+            </tr>
+            <tr onclick="window.location='teacher-grades.html'">
+              <td>
+                <div class="section-name-cell">
+                  <div class="section-stripe stripe-8"></div>
+                  <div>
+                    <div class="section-cell-name">Grade 8 – St. Luke</div>
+                    <div class="section-cell-sub">Grade 8</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
+              <td>36</td>
+              <td>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:72%;background:var(--orange);"></div></div>
+                  <span class="progress-text">26/36</span>
+                </div>
+              </td>
+              <td><span class="badge badge-orange">⚠ Pending</span></td>
+              <td><span class="badge badge-orange">Incomplete</span></td>
+              <td>
+                <button class="row-btn primary" onclick="event.stopPropagation();window.location='teacher-grades.html'">
+                  <i data-lucide="clipboard-pen" style="width:11px;height:11px;"></i> Grades
+                </button>
+              </td>
+            </tr>
+            <tr onclick="window.location='teacher-grades.html'">
+              <td>
+                <div class="section-name-cell">
+                  <div class="section-stripe stripe-9"></div>
+                  <div>
+                    <div class="section-cell-name">Grade 9 – St. Peter</div>
+                    <div class="section-cell-sub">Grade 9</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
+              <td>37</td>
+              <td>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar"><div class="progress-fill" style="width:0%;"></div></div>
+                  <span class="progress-text">0/37</span>
+                </div>
+              </td>
+              <td><span class="badge badge-red">Not taken</span></td>
+              <td><span class="badge badge-red">Not started</span></td>
+              <td>
+                <button class="row-btn primary" onclick="event.stopPropagation();window.location='teacher-grades.html'">
+                  <i data-lucide="clipboard-pen" style="width:11px;height:11px;"></i> Grades
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Two col: Tasks + Announcements -->
+    <div class="two-col">
+
+      <!-- Pending tasks -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Pending Tasks</div>
+          <span style="font-size:11px;color:var(--gray-400);">7 items need attention</span>
+        </div>
+        <div class="task-list">
+
+          <div class="task-item">
+            <div class="task-icon" style="background:var(--orange-pale);color:#d97706;">
+              <i data-lucide="file-text" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="task-body">
+              <div class="task-title">5 Narrative Reports Awaiting Confirmation</div>
+              <div class="task-sub">AI has generated reports for Grade 7 – St. Matthew. Review and confirm before sending to parents.</div>
+            </div>
+            <a href="teacher-reports.html" class="task-action">
+              Review <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
+            </a>
+          </div>
+
+          <div class="task-item">
+            <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
+              <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="task-body">
+              <div class="task-title">Grade Encoding Incomplete — Gr. 8 St. Luke</div>
+              <div class="task-sub">10 students still have no Q2 grades. Deadline is June 14.</div>
+            </div>
+            <a href="teacher-grades.html" class="task-action">
+              Encode <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
+            </a>
+          </div>
+
+          <div class="task-item">
+            <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
+              <i data-lucide="user-check" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="task-body">
+              <div class="task-title">Attendance Not Taken — Gr. 9 St. Peter</div>
+              <div class="task-sub">Today's attendance for Grade 9 – St. Peter has not been logged yet.</div>
+            </div>
+            <a href="teacher-attendance.html" class="task-action">
+              Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
+            </a>
+          </div>
+
+          <div class="task-item">
+            <div class="task-icon" style="background:#fdf4ff;color:#7c3aed;">
+              <i data-lucide="alert-circle" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="task-body">
+              <div class="task-title">4 Students Flagged — Consecutive Absences</div>
+              <div class="task-sub">System detected students with 3+ consecutive absences. Parents have been notified.</div>
+            </div>
+            <a href="teacher-attendance.html" class="task-action">
+              View <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
+            </a>
+          </div>
+
+          <div class="task-item">
+            <div class="task-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+              <i data-lucide="folder-open" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="task-body">
+              <div class="task-title">No Learning Materials for Gr. 9 This Week</div>
+              <div class="task-sub">Consider uploading materials for Grade 9 – St. Peter for the current week.</div>
+            </div>
+            <a href="teacher-materials.html" class="task-action">
+              Upload <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Announcements</div>
+          <a href="teacher-announcements.html" class="panel-action">
+            View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+          </a>
+        </div>
+        <div class="ann-list">
+
+          <div class="ann-item">
+            <div class="ann-item-head">
+              <span class="ann-item-title">Q2 Grade Encoding Deadline — June 14</span>
+              <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
+            </div>
+            <img class="ann-item-img" src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png"/>
+            <div class="ann-item-body">All subject teachers must complete Q2 grade encoding no later than June 14, 2025.</div>
+            <div class="ann-item-meta">
+              <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
+              <span>·</span>
+              <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+            </div>
+          </div>
+
+          <div class="ann-item">
+            <div class="ann-item-head">
+              <span class="ann-item-title">Foundation Day — June 20, 2025</span>
+              <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
+            </div>
+            <div class="ann-item-body">Classes are suspended. All faculty are expected to attend.</div>
+            <div class="ann-item-meta">
+              <i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM
+              <span>·</span>
+              <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+            </div>
+          </div>
+
+          <div class="ann-item">
+            <div class="ann-item-head">
+              <span class="ann-item-title">Journal Window Open — Friday</span>
+              <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Normal</span>
+            </div>
+            <div class="ann-item-body">Please remind your students to submit their weekly journal entries before 11:59 PM Friday.</div>
+            <div class="ann-item-meta">
+              <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM
+              <span>·</span>
+              <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function toggleDrawer(open) {
+    const isOpen = open === undefined
+      ? !document.body.classList.contains('drawer-open')
+      : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      toggleDrawer(false);
+    });
+  });
+
+  // Close drawer on overlay click already handled by onclick in HTML
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') toggleDrawer(false);
+  });
+</script>
+
+</body>
+</html>

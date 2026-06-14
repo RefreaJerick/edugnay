@@ -128,7 +128,7 @@
 
     <!-- <button class="btn-login" type="submit">Sign In</button> -->
 
-    <button class="btn-login" type="button" onclick="window.location.href='./views/admin/edugnay-admin-dashboard.html'">
+    <button class="btn-login" type="button" onclick="checkEmail()">
       Sign In
     </button>
     </form>
@@ -145,6 +145,17 @@
 </div>
 
 <script>
+
+  function checkEmail() {
+    const email = document.getElementById("emailInput").value;
+
+    if (email === "adm") {
+      window.location.href='./views/admin/edugnay-admin-dashboard.html';
+    } else if (email === "fac") {
+      window.location.href='./views/teacher/edugnay-teacher-dashboard.html';
+    }
+  }
+
   function togglePassword() {
     const pw = document.getElementById('passwordInput')
     pw.type = pw.type === 'password' ? 'text' : 'password'

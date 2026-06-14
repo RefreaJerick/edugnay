@@ -322,6 +322,10 @@ body.drawer-open .sidebar {
   gap: 10px;
 }
 
+.topbar-right a {
+  text-decoration: none;
+}
+
 .hamburger {
   display: none;
   width: 44px;
