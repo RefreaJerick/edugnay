@@ -36,6 +36,9 @@
   --orange-pale: #fef3c7;
   --red:         #ef4444;
   --red-pale:    #fee2e2;
+  --purple:      #7c3aed;
+  --purple-pale: #fdf4ff;
+  --gold-pale:   #fef9ec;
   --error:      #ef4444;
   --success:    #22c55e;
   --sidebar-w:   240px;
@@ -142,7 +145,7 @@ body.drawer-open .sidebar {
   line-height: 1.3;
 }
 .brand-name span {
-  color: #60A5FA;
+  color: var(--gold);
   margin-left: 1px;
 }
 .brand-sub {
@@ -590,6 +593,221 @@ body.drawer-open .sidebar {
   width: 80px;
 }
 
+/* ── GRADING PERIOD BANNER ── */
+.grading-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-left: 4px solid var(--gold);
+  border-radius: 14px;
+  padding: 16px 22px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
+}
+
+.grading-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.grading-period-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
+  color: #fff;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+  flex-shrink: 0;
+}
+
+.grading-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(212, 175, 55, 0.8);
+  margin-bottom: 3px;
+}
+
+.grading-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.grading-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.grading-deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.grading-deadline strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.grading-deadline i {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.grading-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(22, 163, 74, 0.15);
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  color: #4ade80;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 999px;
+}
+
+.grading-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+
+/* ══════════════════════════════
+    SIDEBAR — NAV SCROLL WRAPPER
+══════════════════════════════ */
+.nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 0;
+}
+
+/* ══════════════════════════════
+    SIDEBAR — COLLAPSIBLE NAV GROUP
+══════════════════════════════ */
+.nav-group { margin: 1px 0; }
+
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.nav-group-toggle:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--white);
+}
+
+/* .nav-group-toggle.active {
+  background: rgba(29,92,180,0.35);
+  color: var(--white);
+} */
+
+.nav-chevron {
+  margin-left: auto;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.4);
+}
+
+.nav-group.open .nav-chevron {
+  transform: rotate(90deg);
+}
+
+.nav-children {
+  display: none;
+  padding: 5px 0 2px 20px;
+}
+
+.nav-group.open .nav-children {
+  display: block;
+}
+
+.nav-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 8px;
+  border-radius: 7px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-child-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.nav-child:hover {
+  color: var(--white);
+  background: rgba(255,255,255,0.06);
+}
+
+.nav-child.active {
+  color: var(--white);
+  font-weight: 600;
+  background: rgba(29,92,180,0.25);
+}
+
+/* ══════════════════════════════
+    TOPBAR — BREADCRUMB
+══════════════════════════════ */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-bottom: 1px;
+}
+
+.breadcrumb a {
+  color: var(--blue-mid);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+.breadcrumb-sep { color: var(--gray-300); }
 
 /* =============================
   LOGIN PAGE
