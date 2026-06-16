@@ -1,468 +1,190 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EdUgnay</title>
+  <title>EdUgnay — Grade 7 St. Matthew</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="../../assets/css/styles.css"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css"/>
+  <link rel="stylesheet" href="../../assets/css/teacher/sections.css"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <style>
-
-
-    /* Section header */
-    .section-header {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-200);
-      border-radius: 14px;
-      padding: 20px 32px 0;
-      flex-shrink: 0;
-    }
-
-    .section-meta {
-      display: flex; align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px; margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .section-left { display: flex; align-items: center; gap: 14px; }
-    .section-color-bar {
-      width: 6px; height: 52px; border-radius: 999px; flex-shrink: 0;
-    }
-    .section-info-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 22px; font-weight: 800; color: var(--gray-800);
-    }
-    .section-info-sub {
-      display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap;
-    }
-    .section-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600;
-      padding: 3px 10px; border-radius: 999px;
-      background: var(--blue-xpale); color: var(--blue-mid);
-    }
-    .section-stat {
-      font-size: 12px; color: var(--gray-500);
-      display: flex; align-items: center; gap: 4px;
-    }
-
-    .section-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-    /* Tabs */
-    .tabs {
-      display: flex; gap: 0;
-      overflow-x: auto;
-    }
-    .tab-btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 11px 18px; border: none; background: none;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px; font-weight: 600;
-      color: var(--gray-400); cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.15s; white-space: nowrap;
-    }
-    .tab-btn:hover { color: var(--gray-700); }
-    .tab-btn.active { color: var(--blue-mid); border-bottom-color: var(--blue-mid); }
-
-    .tab-badge {
-      background: var(--red); color: var(--white);
-      font-size: 9px; font-weight: 700;
-      padding: 1px 5px; border-radius: 999px;
-    }
-
-    /* ── TAB CONTENT ── */
-    .tab-body {
-      flex: 1; overflow-y: auto;
-      padding: 24px 32px;
-    }
-
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
-
-    /* Cards row */
-    .cards-row {
-      display: grid; gap: 16px;
-      margin-bottom: 24px;
-    }
-    .cards-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
-    .cards-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
-
-    .stat-card {
-      background: var(--white); border: 1px solid var(--gray-200);
-      border-radius: 12px; padding: 16px 18px;
-      display: flex; align-items: center; gap: 12px;
-      box-shadow: 0 2px 8px rgba(16,40,80,0.04);
-    }
-    .stat-card-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .stat-card-num { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 800; color: var(--gray-800); line-height: 1; }
-    .stat-card-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
-
-    /* Panel */
-    .panel {
-      background: var(--white); border-radius: 14px;
-      border: 1px solid var(--gray-200); overflow: hidden;
-      box-shadow: 0 2px 10px rgba(16,40,80,0.05);
-      margin-bottom: 20px;
-    }
-    .panel-head {
-      display: flex; align-items: center;
-      justify-content: space-between;
-      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
-      flex-wrap: wrap; gap: 10px;
-    }
-    .panel-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 800; color: var(--gray-800); }
-    .panel-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-    /* Table shared */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      font-size: 10.5px; font-weight: 700; letter-spacing: 0.8px;
-      text-transform: uppercase; color: var(--gray-400);
-      padding: 10px 16px; text-align: left; background: var(--gray-50);
-      border-bottom: 1px solid var(--gray-100); white-space: nowrap;
-    }
-    tbody tr { border-bottom: 1px solid var(--gray-100); transition: background 0.12s; }
-    tbody tr:hover { background: var(--gray-50); }
-    tbody tr:last-child { border-bottom: none; }
-    tbody td { padding: 11px 16px; font-size: 13px; color: var(--gray-700); vertical-align: middle; }
-
-    .student-cell { display: flex; align-items: center; gap: 10px; }
-    .student-avatar {
-      width: 30px; height: 30px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; flex-shrink: 0;
-      background: var(--blue-xpale); color: var(--blue-mid);
-    }
-    .student-name { font-weight: 600; color: var(--gray-800); font-size: 13px; }
-    .student-id { font-size: 10.5px; color: var(--gray-400); margin-top: 1px; }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 700;
-      padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-    }
-    .badge-green  { background: var(--green-pale);  color: #15803d; }
-    .badge-orange { background: var(--orange-pale); color: #92400e; }
-    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
-    .badge-red    { background: var(--red-pale);    color: var(--red); }
-    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
-    .badge-purple { background: var(--purple-pale); color: var(--purple); }
-
-    /* Btn small */
-    .btn-sm {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 7px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      border: 1.5px solid transparent;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      transition: all 0.15s;
-    }
-    .btn-sm.primary { background: var(--blue-xpale); color: var(--blue-mid); border-color: var(--blue-pale); }
-    .btn-sm.primary:hover { background: var(--blue-pale); }
-    .btn-sm.danger { background: var(--red-pale); color: var(--red); border-color: #fecaca; }
-    .btn-sm.danger:hover { background: #fecaca; }
-    .btn-sm.success { background: var(--green-pale); color: #16a34a; border-color: #bbf7d0; }
-    .btn-sm.success:hover { background: #bbf7d0; }
-    .btn-sm.ghost { background: var(--gray-100); color: var(--gray-600); border-color: var(--gray-200); }
-    .btn-sm.ghost:hover { background: var(--gray-200); }
-
-    /* ── SCORE RECORDING TAB ── */
-    .scores-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
-
-    /* Component sidebar */
-    .component-sidebar { position: sticky; top: 0; }
-
-    .component-list { padding: 8px 0; }
-    .component-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; cursor: pointer; transition: background 0.12s;
-      border-bottom: 1px solid var(--gray-100);
-    }
-    .component-item:last-child { border-bottom: none; }
-    .component-item:hover { background: var(--gray-50); }
-    .component-item.active { background: var(--blue-xpale); }
-    .component-item-left { display: flex; align-items: center; gap: 10px; }
-    .component-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-    .component-name { font-size: 13px; font-weight: 600; color: var(--gray-800); }
-    .component-weight { font-size: 10.5px; color: var(--gray-400); margin-top: 1px; }
-    .component-count { font-size: 11px; font-weight: 600; color: var(--gray-500); background: var(--gray-100); padding: 2px 7px; border-radius: 999px; }
-
-    .add-component-btn {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      width: 100%; padding: 10px; border: none; background: none;
-      font-size: 12px; font-weight: 600; color: var(--blue-mid);
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      cursor: pointer; transition: background 0.12s; border-top: 1px solid var(--gray-100);
-    }
-    .add-component-btn:hover { background: var(--blue-xpale); }
-
-    /* Score table */
-    .score-table thead th { padding: 10px 12px; }
-    .score-table tbody td { padding: 9px 12px; }
-
-    .score-input {
-      width: 58px; padding: 5px 7px;
-      border: 1.5px solid var(--gray-200);
-      border-radius: 7px; font-size: 13px; font-weight: 600;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      text-align: center; color: var(--gray-800);
-      transition: border-color 0.15s; background: var(--white);
-    }
-    .score-input:focus { outline: none; border-color: var(--blue-mid); background: var(--blue-xpale); }
-    .score-input.over { border-color: var(--red); background: var(--red-pale); }
-
-    .score-max { font-size: 10px; color: var(--gray-400); text-align: center; margin-top: 2px; }
-
-    .final-grade-cell {
-      font-family: 'Playfair Display', serif;
-      font-size: 16px; font-weight: 800; text-align: center;
-    }
-    .fg-high { color: #15803d; }
-    .fg-mid  { color: var(--blue); }
-    .fg-low  { color: var(--orange); }
-    .fg-fail { color: var(--red); }
-
-    .component-header-row {
-      background: var(--gray-50);
-    }
-    .component-header-cell {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-      text-transform: uppercase; color: var(--gray-400);
-      padding: 6px 12px; text-align: center;
-      border-bottom: 1px solid var(--gray-100);
-    }
-
-    .col-component {
-      padding: 3px 8px; border-radius: 999px;
-      font-size: 10px; font-weight: 700;
-      display: inline-flex; align-items: center; gap: 3px;
-    }
-
-    /* Publish bar */
-    .publish-bar {
-      background: linear-gradient(135deg, var(--navy), var(--blue));
-      border-radius: 12px; padding: 16px 22px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-    }
-    .publish-bar-left { display: flex; align-items: center; gap: 12px; }
-    .publish-bar-icon {
-      width: 40px; height: 40px; background: rgba(255,255,255,0.1);
-      border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    }
-    .publish-bar-title { font-size: 14px; font-weight: 700; color: var(--white); }
-    .publish-bar-sub { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 1px; }
-    .publish-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 20px; border-radius: 9px; border: none;
-      background: var(--gold); color: var(--navy);
-      font-size: 13px; font-weight: 700;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      cursor: pointer; transition: all 0.15s;
-      box-shadow: 0 4px 12px rgba(201,168,76,0.3);
-    }
-    .publish-btn:hover { background: #dfc06a; }
-
-    /* Weight summary strip */
-    .weight-strip {
-      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
-    }
-    .weight-pill {
-      display: flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 999px;
-      font-size: 11px; font-weight: 700; border: 1.5px solid transparent;
-    }
-    .weight-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-
-    /* Task definition area */
-    .task-def-area {
-      display: flex; gap: 16px;
-      padding: 16px; flex-wrap: wrap;
-    }
-    .task-def-card {
-      flex: 1; min-width: 160px;
-      border: 1.5px dashed var(--gray-200);
-      border-radius: 10px; padding: 12px 14px;
-      display: flex; flex-direction: column; gap: 8px;
-      cursor: pointer; transition: border-color 0.15s;
-    }
-    .task-def-card:hover { border-color: var(--blue-mid); background: var(--blue-xpale); }
-    .task-def-card-title { font-size: 12px; font-weight: 700; color: var(--gray-700); }
-    .task-def-card-count { font-size: 11px; color: var(--gray-400); }
-
-    /* ── ATTENDANCE TAB ── */
-    .attendance-date-strip {
-      display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto;
-      padding-bottom: 4px;
-    }
-    .date-btn {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--gray-200);
-      background: var(--white); cursor: pointer; transition: all 0.15s;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      flex-shrink: 0;
-    }
-    .date-btn:hover { border-color: var(--blue-mid); background: var(--blue-xpale); }
-    .date-btn.active { border-color: var(--blue-mid); background: var(--blue-mid); color: var(--white); }
-    .date-day { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); }
-    .date-btn.active .date-day { color: rgba(255,255,255,0.7); }
-    .date-num { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 800; color: var(--gray-800); }
-    .date-btn.active .date-num { color: var(--white); }
-
-    .attendance-status-select {
-      padding: 5px 10px; border-radius: 7px;
-      border: 1.5px solid var(--gray-200);
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 12px; font-weight: 600;
-      background: var(--white); color: var(--gray-700);
-      cursor: pointer;
-    }
-    .attendance-status-select:focus { outline: none; border-color: var(--blue-mid); }
-
-    .att-present { background: var(--green-pale); color: #15803d; }
-    .att-absent  { background: var(--red-pale);   color: var(--red); }
-    .att-late    { background: var(--orange-pale); color: #92400e; }
-    .att-excused { background: var(--blue-xpale);  color: var(--blue); }
-
-    /* ── MATERIALS TAB ── */
-    .materials-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 16px;
-    }
-    .material-card {
-      background: var(--white); border: 1px solid var(--gray-200);
-      border-radius: 12px; overflow: hidden;
-      box-shadow: 0 2px 8px rgba(16,40,80,0.04);
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .material-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16,40,80,0.1); }
-    .material-card-thumb {
-      height: 100px; display: flex; align-items: center; justify-content: center;
-    }
-    .material-card-body { padding: 12px 14px; }
-    .material-card-title { font-size: 13px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
-    .material-card-meta { font-size: 11px; color: var(--gray-400); display: flex; align-items: center; gap: 6px; }
-    .material-card-foot { padding: 10px 14px; border-top: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }
-
-    .upload-drop {
-      border: 2px dashed var(--gray-200);
-      border-radius: 12px; padding: 36px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 10px; cursor: pointer; transition: all 0.15s;
-      background: var(--white); margin-bottom: 20px; text-align: center;
-    }
-    .upload-drop:hover { border-color: var(--blue-mid); background: var(--blue-xpale); }
-    .upload-drop-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--blue-xpale); color: var(--blue-mid); display: flex; align-items: center; justify-content: center; }
-    .upload-drop-title { font-size: 14px; font-weight: 700; color: var(--gray-800); }
-    .upload-drop-sub { font-size: 12px; color: var(--gray-400); }
-
-    /* Filter/search row */
-    .filter-row {
-      display: flex; align-items: center; gap: 10px;
-      flex-wrap: wrap;
-    }
-    .search-input {
-      flex: 1; min-width: 180px;
-      padding: 7px 12px 7px 34px;
-      border: 1.5px solid var(--gray-200);
-      border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px; background: var(--white); color: var(--gray-800);
-      transition: border-color 0.15s; position: relative;
-    }
-    .search-input:focus { outline: none; border-color: var(--blue-mid); }
-    .search-wrap { position: relative; flex: 1; min-width: 180px; }
-    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray-400); pointer-events: none; }
-
-    .filter-select {
-      padding: 7px 12px; border: 1.5px solid var(--gray-200);
-      border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 12px; background: var(--white); color: var(--gray-700); cursor: pointer;
-    }
-    .filter-select:focus { outline: none; border-color: var(--blue-mid); }
-
-    /* Modal */
-    .modal-backdrop {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45); z-index: 50;
-      align-items: center; justify-content: center;
-    }
-    .modal-backdrop.open { display: flex; }
-    .modal {
-      background: var(--white); border-radius: 16px;
-      width: 90%; max-width: 480px;
-      padding: 28px; position: relative;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-      animation: fadeUp 0.2s ease;
-    }
-    .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 800; color: var(--gray-800); margin-bottom: 4px; }
-    .modal-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 20px; }
-    .modal-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; border-radius: 7px; background: var(--gray-100); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--gray-500); }
-    .modal-close:hover { background: var(--gray-200); }
-    .form-row { margin-bottom: 14px; }
-    .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-600); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-input {
-      width: 100%; padding: 8px 12px;
-      border: 1.5px solid var(--gray-200); border-radius: 8px;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px; color: var(--gray-800);
-      transition: border-color 0.15s;
-    }
-    .form-input:focus { outline: none; border-color: var(--blue-mid); }
-    select.form-input { cursor: pointer; }
-    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-
-    /* Overlay & drawer */
-    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9; }
-
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Responsive */
-    @media (max-width: 1100px) {
-      .scores-layout { grid-template-columns: 1fr; }
-      .component-sidebar { position: static; }
-      .cards-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 980px) {
-      .shell { grid-template-columns: 1fr; grid-template-rows: 56px 1fr; }
-      .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); transition: transform 0.25s ease; z-index: 10; }
-      .sidebar.open { transform: translateX(0); }
-      .sidebar-overlay.open { display: block; }
-      .topbar { grid-column: 1; }
-      .main { grid-column: 1; }
-      .hamburger { display: flex; }
-      .section-header { padding: 16px 20px 0; }
-      .tab-body { padding: 20px; }
-    }
-    @media (max-width: 760px) {
-      .cards-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
-      .cards-row.cols-3 { grid-template-columns: 1fr 1fr; }
-      .form-row-2 { grid-template-columns: 1fr; }
-      .section-meta { flex-direction: column; }
-    }
-    @media (max-width: 520px) {
-      .cards-row.cols-4, .cards-row.cols-3 { grid-template-columns: 1fr 1fr; }
-    }
-  </style>
 </head>
 <body>
 
+<!-- ══════ ADD COMPONENT MODAL ══════ -->
+<div class="modal-backdrop" id="addCompModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add Score Component</div>
+        <div class="modal-sub">Define a quiz, activity, seatwork, or task.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('addCompModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="form-label">Component Type</label>
+        <div class="comp-type-opts" id="compTypeOpts">
+          <div class="comp-type-opt selected" onclick="selectCompType(this,'Quiz','WW')" data-cat="WW">
+            <div class="comp-type-icon">📝</div>
+            <div class="comp-type-name">Quiz</div>
+            <div class="comp-type-cat">Written Work</div>
+          </div>
+          <div class="comp-type-opt" onclick="selectCompType(this,'Activity','WW')" data-cat="WW">
+            <div class="comp-type-icon">✏️</div>
+            <div class="comp-type-name">Activity</div>
+            <div class="comp-type-cat">Written Work</div>
+          </div>
+          <div class="comp-type-opt" onclick="selectCompType(this,'Seatwork','WW')" data-cat="WW">
+            <div class="comp-type-icon">📄</div>
+            <div class="comp-type-name">Seatwork</div>
+            <div class="comp-type-cat">Written Work</div>
+          </div>
+          <div class="comp-type-opt" onclick="selectCompType(this,'Performance Task','PT')" data-cat="PT">
+            <div class="comp-type-icon">🎯</div>
+            <div class="comp-type-name">Performance Task</div>
+            <div class="comp-type-cat">Perf. Task</div>
+          </div>
+          <div class="comp-type-opt" onclick="selectCompType(this,'Project','PT')" data-cat="PT">
+            <div class="comp-type-icon">📦</div>
+            <div class="comp-type-name">Project</div>
+            <div class="comp-type-cat">Perf. Task</div>
+          </div>
+          <div class="comp-type-opt" onclick="selectCompType(this,'Quarterly Exam','QA')" data-cat="QA">
+            <div class="comp-type-icon">📋</div>
+            <div class="comp-type-name">Quarterly Exam</div>
+            <div class="comp-type-cat">Quarterly Assessment</div>
+          </div>
+        </div>
+        <div id="selectedCatBadge" class="cat-badge cat-ww">
+          <i data-lucide="pencil" style="width:10px;height:10px;"></i>
+          Written Work (30%)
+        </div>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Component Name</label>
+          <input class="form-input" type="text" id="compNameInput" placeholder="e.g. Quiz 1"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Highest Possible Score</label>
+          <input class="form-input" type="number" id="compMaxInput" placeholder="e.g. 50" min="1"/>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Date Given <span style="color:var(--gray-300);font-weight:400;">(optional)</span></label>
+        <input class="form-input" type="date"/>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('addCompModal')">Cancel</button>
+      <button class="btn btn-save" onclick="addComponent()">
+        <i data-lucide="plus" style="width:13px;height:13px;"></i> Add Component
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ PUBLISH CONFIRM MODAL ══════ -->
+<div class="modal-backdrop" id="publishModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Publish Grades</div>
+        <div class="modal-sub">Grades will be visible to students and parents.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('publishModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="publish-warn">
+        <div class="publish-warn-icon">
+          <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+        </div>
+        <div>
+          <div class="publish-warn-title">Once published, parents will be notified</div>
+          <div class="publish-warn-text">
+            Publishing grades for <strong>Grade 7 – St. Matthew · Mathematics</strong> will make final grades visible on the student and parent portal. You can still edit and re-publish if corrections are needed.
+          </div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--gray-600);line-height:1.7;">
+        <strong style="color:var(--gray-800);">38 students</strong> will have their Q2 final grades published.<br/>
+        Missing scores will be treated as <strong style="color:var(--red);">0</strong>.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('publishModal')">Cancel</button>
+      <button class="btn btn-save" style="background:var(--green);" onclick="publishGrades()">
+        <i data-lucide="send" style="width:13px;height:13px;"></i> Publish Grades
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ UPLOAD MATERIAL MODAL ══════ -->
+<div class="modal-backdrop" id="uploadModal">
+  <div class="modal upload-modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Upload Learning Material</div>
+        <div class="modal-sub">Students in this section can access this file.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('uploadModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.png,.mp4"/>
+        <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--gray-400);margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;"></i>
+        <div style="font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:4px;">Click to browse or drag files here</div>
+        <div style="font-size:12px;color:var(--gray-400);">PDF, Word, PowerPoint, Excel, Images, Video</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input class="form-input" type="text" placeholder="e.g. Module 3 – Quadratic Equations"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span style="color:var(--gray-300);font-weight:400;">(optional)</span></label>
+        <input class="form-input" type="text" placeholder="Brief note about this material"/>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Visible to Students</label>
+        <select class="form-select">
+          <option selected>Immediately after upload</option>
+          <option>Schedule a date</option>
+          <option>Hidden (draft)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('uploadModal')">Cancel</button>
+      <button class="btn btn-save">
+        <i data-lucide="upload" style="width:13px;height:13px;"></i> Upload
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        <img src="../../assets/images/edUgnay-logo.png" alt="EdUgnay logo" onerror="this.style.display='none'"/>
       </div>
       <div>
         <div class="brand-name">Ed<span>Ugnay</span></div>
@@ -470,55 +192,54 @@
       </div>
     </div>
 
-    <div class="nav-scroll">
-      <div class="nav-section">
-        <div class="nav-section-label">Main</div>
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
 
-        <a class="nav-item" href="edugnay-teacher-dashboard.html">
-          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Dashboard</span>
-        </a>
+      <a href="edugnay-teacher-dashboard.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
 
-        <div class="nav-group open" id="sections-group">
-          <div class="nav-group-toggle active" onclick="toggleGroup('sections-group')">
-            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
-            <span>My Sections</span>
-            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
-          </div>
-          <div class="nav-children">
-            <a class="nav-child active" id="nav-7-matthew" onclick="loadSection('7-matthew')">
-              <span class="nav-child-dot" style="background:var(--blue-mid);"></span>
-              Grade 7 – St. Matthew
-            </a>
-            <a class="nav-child" id="nav-8-luke" onclick="loadSection('8-luke')">
-              <span class="nav-child-dot" style="background:var(--gold);"></span>
-              Grade 8 – St. Luke
-            </a>
-            <a class="nav-child" id="nav-9-peter" onclick="loadSection('9-peter')">
-              <span class="nav-child-dot" style="background:var(--green);"></span>
-              Grade 9 – St. Peter
-            </a>
-          </div>
+      <!-- My Sections with subnav -->
+      <div class="nav-item-toggle open" onclick="toggleSubnav(this)">
+        <div class="nav-icon" style="background:rgba(29,92,180,0.4);color:var(--white);">
+          <i data-lucide="door-open" style="width:16px;height:16px;"></i>
         </div>
+        <span class="nav-label" style="color:var(--white);font-weight:600;">My Sections</span>
+        <i data-lucide="chevron-right" class="nav-chevron" style="width:14px;height:14px;"></i>
       </div>
 
-      <div class="nav-section">
-        <div class="nav-section-label">Reports</div>
-        <a class="nav-item" href="teacher-reports.html">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
+      <div class="nav-subnav" id="sectionsSubnav">
+        <a href="teacher-section.html?id=1" class="subnav-item active">
+          Grade 7 – St. Matthew
+        </a>
+        <a href="teacher-section.html?id=2" class="subnav-item">
+          Grade 8 – St. Luke
+        </a>
+        <a href="teacher-section.html?id=3" class="subnav-item">
+          Grade 9 – St. Peter
         </a>
       </div>
 
-      <div class="nav-section">
-        <div class="nav-section-label">Communication</div>
-        <a class="nav-item" href="teacher-announcements.html">
-          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
-        </a>
-      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <!-- Only renders if teacher is journal subject handler (controlled by backend) -->
+      <a href="teacher-reports.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Narrative Reports</span>
+        <span class="nav-badge">5</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Communication</div>
+      <a href="teacher-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
     </div>
 
     <div class="sidebar-footer">
@@ -528,7 +249,9 @@
           <div class="admin-name">Ms. Maria Reyes</div>
           <div class="admin-role">Faculty</div>
         </div>
-        <div class="logout-btn"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+        <div class="logout-btn" title="Sign out">
+          <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+        </div>
       </div>
     </div>
   </aside>
@@ -540,22 +263,16 @@
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
       <div>
-        <div class="breadcrumb">
-          <a href="teacher-dashboard.html">Dashboard</a>
-          <span class="breadcrumb-sep">/</span>
-          <span id="breadcrumb-section">Grade 7 – St. Matthew</span>
-        </div>
-        <div class="page-title" id="topbar-title">Grade 7 – St. Matthew</div>
+        <div class="page-eyebrow">EdUgnay · Teacher · My Sections</div>
+        <div class="page-title">Grade 7 – St. Matthew</div>
       </div>
     </div>
     <div class="topbar-right">
-      <button class="top-btn secondary" onclick="openTab('attendance')">
-        <i data-lucide="user-check" style="width:14px;height:14px;"></i>
-        <span>Attendance</span>
+      <button class="top-btn secondary" onclick="switchTab('attendance')">
+        <i data-lucide="user-check" style="width:14px;height:14px;"></i> Take Attendance
       </button>
-      <button class="top-btn primary" onclick="openTab('scores')">
-        <i data-lucide="clipboard-pen" style="width:14px;height:14px;"></i>
-        <span>Score Recording</span>
+      <button class="top-btn primary" onclick="openModal('addCompModal')">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Component
       </button>
     </div>
   </header>
@@ -563,923 +280,935 @@
   <!-- ══════ MAIN ══════ -->
   <main class="main">
 
-    <!-- Section header with tabs -->
+    <div class="accent-bar"></div>
+
+    <!-- Section header -->
     <div class="section-header">
-      <div class="section-meta">
-        <div class="section-left">
-          <div class="section-color-bar" id="section-color-bar" style="background:var(--blue-mid);"></div>
-          <div>
-            <div class="section-info-title" id="section-title">Grade 7 – St. Matthew</div>
-            <div class="section-info-sub">
-              <span class="section-pill" id="section-subject-pill">
-                <i data-lucide="hash" style="width:11px;height:11px;"></i>
-                <span id="section-subject">Mathematics</span>
-              </span>
-              <span class="section-stat" id="section-student-count">
-                <i data-lucide="users" style="width:12px;height:12px;"></i> 38 students
-              </span>
-              <span class="section-stat">
-                <i data-lucide="calendar" style="width:12px;height:12px;"></i> S.Y. 2025–2026 · Q2
-              </span>
-              <span class="badge badge-green" id="section-adviser-badge">Class Adviser</span>
+      <div class="section-header-left">
+        <div class="section-badge">G7</div>
+        <div class="section-info">
+          <div class="section-name">Grade 7 – St. Matthew</div>
+          <div class="section-meta">
+            <div class="section-meta-item">
+              <i data-lucide="book-open" style="width:13px;height:13px;"></i>
+              Subject: <strong>Mathematics</strong>
+            </div>
+            <div class="section-meta-item">
+              <i data-lucide="users" style="width:13px;height:13px;"></i>
+              <strong>38</strong> students
+            </div>
+            <div class="section-meta-item">
+              <i data-lucide="star" style="width:13px;height:13px;"></i>
+              Class Adviser
+            </div>
+            <div class="section-meta-item">
+              <i data-lucide="calendar" style="width:13px;height:13px;"></i>
+              Q2 · S.Y. 2025–2026
             </div>
           </div>
         </div>
-        <div class="section-right">
-          <span class="badge badge-orange">⚠ Grades Incomplete</span>
-        </div>
       </div>
-
-      <!-- Tabs -->
-      <div class="tabs" id="tabs-bar">
-        <button class="tab-btn active" onclick="openTab('students')" id="tab-students">
-          <i data-lucide="users" style="width:13px;height:13px;"></i> Students
-        </button>
-        <button class="tab-btn" onclick="openTab('scores')" id="tab-scores">
-          <i data-lucide="clipboard-list" style="width:13px;height:13px;"></i> Score Recording
-        </button>
-        <button class="tab-btn" onclick="openTab('attendance')" id="tab-attendance">
-          <i data-lucide="user-check" style="width:13px;height:13px;"></i> Attendance
-          <span class="tab-badge">!</span>
-        </button>
-        <button class="tab-btn" onclick="openTab('materials')" id="tab-materials">
-          <i data-lucide="folder-open" style="width:13px;height:13px;"></i> Learning Materials
-        </button>
-        <!-- Journal tab: only visible for journal handler (class isJournalHandler = true) -->
-        <button class="tab-btn" onclick="openTab('journal')" id="tab-journal" style="display:none;">
-          <i data-lucide="book-open" style="width:13px;height:13px;"></i> Journal &amp; Reports
-          <span class="tab-badge">5</span>
-        </button>
+      <div class="section-header-right">
+        <span class="badge badge-green">
+          <i data-lucide="check-circle" style="width:10px;height:10px;"></i>
+          Grades Published
+        </span>
+        <span class="badge badge-blue">38/38 Encoded</span>
       </div>
     </div>
 
-    <!-- Tab body -->
-    <div class="tab-body">
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('students')" id="tab-students">
+        <i data-lucide="users" style="width:14px;height:14px;"></i>
+        Students <span class="tab-count">38</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('scores')" id="tab-scores">
+        <i data-lucide="clipboard-pen" style="width:14px;height:14px;"></i>
+        Score Recording
+      </button>
+      <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance">
+        <i data-lucide="user-check" style="width:14px;height:14px;"></i>
+        Attendance
+      </button>
+      <button class="tab-btn" onclick="switchTab('materials')" id="tab-materials">
+        <i data-lucide="folder-open" style="width:14px;height:14px;"></i>
+        Learning Materials <span class="tab-count">6</span>
+      </button>
+    </div>
 
-      <!-- ── STUDENTS TAB ── -->
-      <div class="tab-pane active" id="pane-students">
-        <div class="cards-row cols-4" style="margin-bottom:20px;">
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num" id="stat-total">38</div><div class="stat-card-label">Total Students</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">35</div><div class="stat-card-label">Present Today</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="calendar-x" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">2</div><div class="stat-card-label">Flagged Absences</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="star" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">92.4</div><div class="stat-card-label">Class Average</div></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title">Student List</div>
-            <div class="panel-head-right">
-              <div class="filter-row">
-                <div class="search-wrap">
-                  <i data-lucide="search" style="width:13px;height:13px;" class="search-icon"></i>
-                  <input type="text" class="search-input" placeholder="Search student..."/>
-                </div>
-                <select class="filter-select">
-                  <option>All Students</option>
-                  <option>With Flags</option>
-                  <option>Incomplete Grades</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student</th>
-                  <th>LRN</th>
-                  <th>Q2 Grade</th>
-                  <th>Attendance</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="students-tbody">
-                <!-- JS generated -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── SCORE RECORDING TAB ── -->
-      <div class="tab-pane" id="pane-scores">
-
-        <!-- Publish bar -->
-        <div class="publish-bar">
-          <div class="publish-bar-left">
-            <div class="publish-bar-icon">
-              <i data-lucide="send" style="width:18px;height:18px;color:var(--gold);"></i>
-            </div>
-            <div>
-              <div class="publish-bar-title">Publish Q2 Grades</div>
-              <div class="publish-bar-sub">38 students · Last saved 2 min ago · Not yet published to portal</div>
-            </div>
-          </div>
-          <button class="publish-btn" onclick="publishGrades()">
-            <i data-lucide="send" style="width:14px;height:14px;"></i>
-            Publish to Student/Parent Portal
-          </button>
-        </div>
-
-        <div class="scores-layout">
-          <!-- Component sidebar -->
-          <div class="component-sidebar">
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Components</div>
-                <button class="btn-sm primary" onclick="openAddComponent()">
-                  <i data-lucide="plus" style="width:11px;height:11px;"></i> Add
-                </button>
-              </div>
-
-              <!-- Weight summary -->
-              <div class="weight-strip" style="padding:12px 16px 0;">
-                <div class="weight-pill" style="background:var(--blue-xpale);border-color:var(--blue-pale);color:var(--blue-mid);">
-                  <div class="weight-dot" style="background:var(--blue-mid);"></div> Written · 25%
-                </div>
-                <div class="weight-pill" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d;">
-                  <div class="weight-dot" style="background:var(--green);"></div> Perf. · 50%
-                </div>
-                <div class="weight-pill" style="background:var(--orange-pale);border-color:#fde68a;color:#92400e;">
-                  <div class="weight-dot" style="background:var(--orange);"></div> QE · 25%
-                </div>
-              </div>
-
-              <div class="component-list" id="component-list">
-                <!-- JS generated -->
-              </div>
-              <button class="add-component-btn" onclick="openAddComponent()">
-                <i data-lucide="plus-circle" style="width:13px;height:13px;"></i> Add New Task
-              </button>
-            </div>
-          </div>
-
-          <!-- Score table panel -->
+    <!-- ══════ TAB 1: STUDENTS ══════ -->
+    <div class="tab-content active" id="content-students">
+      <div class="panel">
+        <div class="panel-head">
           <div>
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title" id="score-panel-title">Quiz 1 – Basic Operations</div>
-                <div class="panel-head-right">
-                  <span style="font-size:11px;color:var(--gray-400);">Max score: <strong id="current-max">20</strong></span>
-                  <button class="btn-sm ghost" onclick="fillAllPerfect()">
-                    <i data-lucide="zap" style="width:11px;height:11px;"></i> Fill Perfect
-                  </button>
-                  <button class="btn-sm primary" onclick="saveScores()">
-                    <i data-lucide="save" style="width:11px;height:11px;"></i> Save
-                  </button>
-                </div>
-              </div>
-              <div class="table-wrap">
-                <table class="score-table">
-                  <thead>
-                    <tr>
-                      <th style="min-width:180px;">Student</th>
-                      <th style="text-align:center;">Score</th>
-                      <th style="text-align:center;">/ Max</th>
-                      <th style="text-align:center;">%</th>
-                      <th style="text-align:center;min-width:100px;">Final Grade</th>
-                      <th style="text-align:center;">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody id="score-tbody">
-                    <!-- JS generated -->
-                  </tbody>
-                </table>
-              </div>
+            <div class="panel-title">Student List</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · 38 enrolled students</div>
+          </div>
+        </div>
+        <div class="search-toolbar">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+            <input class="search-input" type="text" placeholder="Search student..." oninput="filterStudents(this.value)"/>
+          </div>
+          <select style="padding:9px 14px;background:var(--white);border:1.5px solid var(--gray-200);border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--gray-600);outline:none;">
+            <option>All Students</option>
+            <option>Active</option>
+            <option>Flagged</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table id="studentTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Student</th>
+                <th>Email</th>
+                <th>Attendance Rate</th>
+                <th>Q2 Final Grade</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="studentTbody">
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">1</td>
+                <td><div class="student-cell"><div class="student-av av-a">JD</div><div><div class="student-name">Juan Dela Cruz</div></div></div></td>
+                <td style="font-size:12px;color:var(--gray-400);">j.delacruz.stud@stcolumban.edu.ph</td>
+                <td><span class="badge badge-green">96%</span></td>
+                <td><span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#16a34a;">88</span></td>
+                <td><span class="badge badge-green">Passing</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">2</td>
+                <td><div class="student-cell"><div class="student-av av-b">AS</div><div><div class="student-name">Ana Santos</div></div></div></td>
+                <td style="font-size:12px;color:var(--gray-400);">a.santos.stud@stcolumban.edu.ph</td>
+                <td><span class="badge badge-green">100%</span></td>
+                <td><span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#16a34a;">92</span></td>
+                <td><span class="badge badge-green">Passing</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">3</td>
+                <td><div class="student-cell"><div class="student-av av-c">BG</div><div><div class="student-name">Ben Garcia</div></div></div></td>
+                <td style="font-size:12px;color:var(--gray-400);">b.garcia.stud@stcolumban.edu.ph</td>
+                <td><span class="badge badge-red">72%</span></td>
+                <td><span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:var(--red);">71</span></td>
+                <td><span class="badge badge-red">⚠ Failing</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">4</td>
+                <td><div class="student-cell"><div class="student-av av-d">ML</div><div><div class="student-name">Maria Lopez</div></div></div></td>
+                <td style="font-size:12px;color:var(--gray-400);">m.lopez.stud@stcolumban.edu.ph</td>
+                <td><span class="badge badge-green">94%</span></td>
+                <td><span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#16a34a;">85</span></td>
+                <td><span class="badge badge-green">Passing</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">5</td>
+                <td><div class="student-cell"><div class="student-av av-e">CM</div><div><div class="student-name">Carlo Mendoza</div></div></div></td>
+                <td style="font-size:12px;color:var(--gray-400);">c.mendoza.stud@stcolumban.edu.ph</td>
+                <td><span class="badge badge-orange">80%</span></td>
+                <td><span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#d97706;">76</span></td>
+                <td><span class="badge badge-orange">Near Failing</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);">
+          Showing 5 of 38 students · <a href="#" style="color:var(--blue-mid);font-weight:600;">View all</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ TAB 2: SCORE RECORDING ══════ -->
+    <div class="tab-content" id="content-scores">
+
+      <!-- Published banner (shows when grades are published) -->
+      <div class="publish-banner">
+        <div class="publish-banner-left">
+          <i data-lucide="check-circle" style="width:20px;height:20px;color:var(--blue-mid);flex-shrink:0;"></i>
+          <div>
+            <div class="publish-info-title">Grades Published — Q2</div>
+            <div class="publish-info-sub">Published on June 10, 2025 · Visible to students and parents. You can still edit and re-publish.</div>
+          </div>
+        </div>
+        <button class="top-btn success" onclick="openModal('publishModal')">
+          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Re-publish
+        </button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Score Recording — Mathematics</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · Q2 · Weights: WW 30% · PT 50% · QA 20%</div>
+          </div>
+          <div class="panel-head-actions">
+            <button class="top-btn secondary" onclick="openModal('addCompModal')">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Component
+            </button>
+            <button class="top-btn success" onclick="openModal('publishModal')">
+              <i data-lucide="send" style="width:14px;height:14px;"></i> Publish Grades
+            </button>
+          </div>
+        </div>
+
+        <!-- Category filter tabs -->
+        <div class="cat-tabs">
+          <div class="cat-tab active" onclick="switchCatTab(this,'all')">
+            All Components
+          </div>
+          <div class="cat-tab" onclick="switchCatTab(this,'WW')">
+            <i data-lucide="pencil" style="width:12px;height:12px;"></i>
+            Written Work <span class="cat-weight">30%</span>
+          </div>
+          <div class="cat-tab" onclick="switchCatTab(this,'PT')">
+            <i data-lucide="target" style="width:12px;height:12px;"></i>
+            Performance Task <span class="cat-weight">50%</span>
+          </div>
+          <div class="cat-tab" onclick="switchCatTab(this,'QA')">
+            <i data-lucide="clipboard-list" style="width:12px;height:12px;"></i>
+            Quarterly Assessment <span class="cat-weight">20%</span>
+          </div>
+        </div>
+
+        <div class="score-toolbar">
+          <div class="score-toolbar-left">
+            <div class="search-wrap" style="min-width:160px;">
+              <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+              <input class="search-input" type="text" placeholder="Search student..."/>
             </div>
           </div>
+          <div class="score-toolbar-right">
+            <button class="top-btn secondary" onclick="fillAllPresent()">
+              <i data-lucide="copy" style="width:13px;height:13px;"></i> Fill Perfect
+            </button>
+            <button class="top-btn secondary">
+              <i data-lucide="download" style="width:13px;height:13px;"></i> Export
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="max-height:520px;overflow-y:auto;">
+          <table id="scoreTable">
+            <thead>
+              <tr>
+                <th class="sticky-col" style="min-width:180px;">#  Student</th>
+                <!-- Written Work -->
+                <th class="comp-head-cell center" data-cat="WW">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Quiz 1</div>
+                    <div class="comp-head-max">/ 50</div>
+                    <div class="comp-head-type type-ww">WW</div>
+                  </div>
+                </th>
+                <th class="comp-head-cell center" data-cat="WW">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Activity 1</div>
+                    <div class="comp-head-max">/ 30</div>
+                    <div class="comp-head-type type-ww">WW</div>
+                  </div>
+                </th>
+                <th class="comp-head-cell center" data-cat="WW">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Seatwork 1</div>
+                    <div class="comp-head-max">/ 20</div>
+                    <div class="comp-head-type type-ww">WW</div>
+                  </div>
+                </th>
+                <!-- Performance Task -->
+                <th class="comp-head-cell center" data-cat="PT">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Perf. Task 1</div>
+                    <div class="comp-head-max">/ 100</div>
+                    <div class="comp-head-type type-pt">PT</div>
+                  </div>
+                </th>
+                <th class="comp-head-cell center" data-cat="PT">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Project</div>
+                    <div class="comp-head-max">/ 100</div>
+                    <div class="comp-head-type type-pt">PT</div>
+                  </div>
+                </th>
+                <!-- Quarterly Assessment -->
+                <th class="comp-head-cell center" data-cat="QA">
+                  <div class="comp-head-inner">
+                    <div class="comp-head-name">Qtrly Exam</div>
+                    <div class="comp-head-max">/ 100</div>
+                    <div class="comp-head-type type-qa">QA</div>
+                  </div>
+                </th>
+                <!-- Computed -->
+                <th class="center" style="min-width:80px;background:#f0f4ff;">WW Avg</th>
+                <th class="center" style="min-width:80px;background:#f0f4ff;">PT Avg</th>
+                <th class="center" style="min-width:80px;background:#f0f4ff;">QA</th>
+                <th class="center" style="min-width:100px;background:var(--navy);color:var(--gold);">Final Grade</th>
+              </tr>
+            </thead>
+            <tbody id="scoreTbody">
+              <!-- Row template: each student -->
+              <tr data-student="Juan Dela Cruz">
+                <td class="sticky-col">
+                  <div class="student-cell">
+                    <div class="student-av av-a" style="width:26px;height:26px;font-size:10px;">JD</div>
+                    <div>
+                      <div class="student-name" style="font-size:12px;">Juan Dela Cruz</div>
+                      <div class="student-num">#1</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="45" min="0" max="50" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="28" min="0" max="30" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="18" min="0" max="20" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="88" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="90" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="QA"><input class="score-input" type="number" value="82" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">91.0</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">89.0</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">82.0</td>
+                <td class="center computed-cell computed-final grade-pass" style="background:var(--navy);">88</td>
+              </tr>
+              <tr data-student="Ana Santos">
+                <td class="sticky-col">
+                  <div class="student-cell">
+                    <div class="student-av av-b" style="width:26px;height:26px;font-size:10px;">AS</div>
+                    <div>
+                      <div class="student-name" style="font-size:12px;">Ana Santos</div>
+                      <div class="student-num">#2</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="50" min="0" max="50" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="30" min="0" max="30" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="20" min="0" max="20" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="95" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="92" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="QA"><input class="score-input" type="number" value="90" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">100.0</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">93.5</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">90.0</td>
+                <td class="center computed-cell computed-final grade-pass" style="background:var(--navy);">95</td>
+              </tr>
+              <tr data-student="Ben Garcia">
+                <td class="sticky-col">
+                  <div class="student-cell">
+                    <div class="student-av av-c" style="width:26px;height:26px;font-size:10px;">BG</div>
+                    <div>
+                      <div class="student-name" style="font-size:12px;">Ben Garcia</div>
+                      <div class="student-num">#3</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="30" min="0" max="50" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="18" min="0" max="30" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="12" min="0" max="20" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="70" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="65" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="QA"><input class="score-input" type="number" value="68" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">65.0</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">67.5</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">68.0</td>
+                <td class="center computed-cell computed-final grade-fail" style="background:var(--navy);">67</td>
+              </tr>
+              <tr data-student="Maria Lopez">
+                <td class="sticky-col">
+                  <div class="student-cell">
+                    <div class="student-av av-d" style="width:26px;height:26px;font-size:10px;">ML</div>
+                    <div>
+                      <div class="student-name" style="font-size:12px;">Maria Lopez</div>
+                      <div class="student-num">#4</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="42" min="0" max="50" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="25" min="0" max="30" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="17" min="0" max="20" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="85" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="88" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="QA"><input class="score-input" type="number" value="80" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">86.7</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">86.5</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">80.0</td>
+                <td class="center computed-cell computed-final grade-pass" style="background:var(--navy);">85</td>
+              </tr>
+              <tr data-student="Carlo Mendoza">
+                <td class="sticky-col">
+                  <div class="student-cell">
+                    <div class="student-av av-e" style="width:26px;height:26px;font-size:10px;">CM</div>
+                    <div>
+                      <div class="student-name" style="font-size:12px;">Carlo Mendoza</div>
+                      <div class="student-num">#5</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="38" min="0" max="50" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="20" min="0" max="30" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="WW"><input class="score-input" type="number" value="14" min="0" max="20" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="78" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="PT"><input class="score-input" type="number" value="75" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center" data-cat="QA"><input class="score-input" type="number" value="72" min="0" max="100" oninput="computeRow(this)"/></td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">74.0</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">76.5</td>
+                <td class="center computed-cell computed-avg" style="background:#f8faff;">72.0</td>
+                <td class="center computed-cell computed-final grade-warn" style="background:var(--navy);">76</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);display:flex;justify-content:space-between;align-items:center;">
+          <span>Showing 5 of 38 students · <a href="#" style="color:var(--blue-mid);font-weight:600;">Load all</a></span>
+          <span style="color:var(--gray-500);font-weight:600;">Auto-saved · Last saved 2 mins ago</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ TAB 3: ATTENDANCE ══════ -->
+    <div class="tab-content" id="content-attendance">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Attendance — Today</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · Log student attendance for the selected date</div>
+          </div>
+          <div class="panel-head-actions">
+            <button class="top-btn secondary" onclick="markAll('P')">
+              <i data-lucide="check-circle" style="width:14px;height:14px;"></i> All Present
+            </button>
+            <button class="top-btn primary" onclick="saveAttendance()">
+              <i data-lucide="save" style="width:14px;height:14px;"></i> Save Attendance
+            </button>
+          </div>
+        </div>
+
+        <div class="att-toolbar">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <i data-lucide="calendar" style="width:15px;height:15px;color:var(--gray-400);"></i>
+            <input class="date-input" type="date" id="attDate" value="2025-06-10"/>
+          </div>
+          <div class="att-summary" style="padding:0;border:none;margin:0;">
+            <div class="att-summary-item"><div class="att-dot present"></div><span style="color:#16a34a;">Present: <strong id="countP">0</strong></span></div>
+            <div class="att-summary-item"><div class="att-dot absent"></div><span style="color:var(--red);">Absent: <strong id="countA">0</strong></span></div>
+            <div class="att-summary-item"><div class="att-dot late"></div><span style="color:#d97706;">Late: <strong id="countL">0</strong></span></div>
+            <div class="att-summary-item"><div class="att-dot excused"></div><span style="color:var(--blue-mid);">Excused: <strong id="countE">0</strong></span></div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="attTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Student</th>
+                <th class="center">Status</th>
+                <th>Remarks <span style="font-weight:400;text-transform:none;font-size:10px;">(optional)</span></th>
+              </tr>
+            </thead>
+            <tbody id="attTbody">
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">1</td>
+                <td><div class="student-cell"><div class="student-av av-a" style="width:28px;height:28px;font-size:10px;">JD</div><div class="student-name">Juan Dela Cruz</div></div></td>
+                <td class="center">
+                  <div class="att-btn-group" style="justify-content:center;">
+                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
+                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
+                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
+                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
+                  </div>
+                </td>
+                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="e.g. sick leave"/></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">2</td>
+                <td><div class="student-cell"><div class="student-av av-b" style="width:28px;height:28px;font-size:10px;">AS</div><div class="student-name">Ana Santos</div></div></td>
+                <td class="center">
+                  <div class="att-btn-group" style="justify-content:center;">
+                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
+                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
+                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
+                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
+                  </div>
+                </td>
+                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder=""/></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">3</td>
+                <td><div class="student-cell"><div class="student-av av-c" style="width:28px;height:28px;font-size:10px;">BG</div><div class="student-name">Ben Garcia</div></div></td>
+                <td class="center">
+                  <div class="att-btn-group" style="justify-content:center;">
+                    <button class="att-btn P" onclick="setAtt(this,'P')">P</button>
+                    <button class="att-btn A selected" onclick="setAtt(this,'A')">A</button>
+                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
+                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
+                  </div>
+                </td>
+                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="4th consecutive absence"/></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">4</td>
+                <td><div class="student-cell"><div class="student-av av-d" style="width:28px;height:28px;font-size:10px;">ML</div><div class="student-name">Maria Lopez</div></div></td>
+                <td class="center">
+                  <div class="att-btn-group" style="justify-content:center;">
+                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
+                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
+                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
+                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
+                  </div>
+                </td>
+                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder=""/></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:12px;">5</td>
+                <td><div class="student-cell"><div class="student-av av-e" style="width:28px;height:28px;font-size:10px;">CM</div><div class="student-name">Carlo Mendoza</div></div></td>
+                <td class="center">
+                  <div class="att-btn-group" style="justify-content:center;">
+                    <button class="att-btn P" onclick="setAtt(this,'P')">P</button>
+                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
+                    <button class="att-btn L selected" onclick="setAtt(this,'L')">L</button>
+                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
+                  </div>
+                </td>
+                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="arrived 15 minutes late"/></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 24px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100);">
+          Showing 5 of 38 · <a href="#" style="color:var(--blue-mid);font-weight:600;">Load all</a>
         </div>
       </div>
 
-      <!-- ── ATTENDANCE TAB ── -->
-      <div class="tab-pane" id="pane-attendance">
-        <div class="cards-row cols-4" style="margin-bottom:20px;">
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">35</div><div class="stat-card-label">Present</div></div>
+      <!-- Attendance history -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Attendance History</div>
+          <div class="panel-head-actions">
+            <button class="top-btn secondary">
+              <i data-lucide="download" style="width:14px;height:14px;"></i> Export
+            </button>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="user-x" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">1</div><div class="stat-card-label">Absent</div></div>
+        </div>
+        <div class="att-legend">
+          <div class="att-legend-item"><div class="att-legend-dot" style="background:var(--green);"></div> Present</div>
+          <div class="att-legend-item"><div class="att-legend-dot" style="background:var(--red);"></div> Absent</div>
+          <div class="att-legend-item"><div class="att-legend-dot" style="background:var(--orange);"></div> Late</div>
+          <div class="att-legend-item"><div class="att-legend-dot" style="background:var(--blue-mid);"></div> Excused</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="sticky-col">Student</th>
+                <th class="center">Jun 2</th>
+                <th class="center">Jun 3</th>
+                <th class="center">Jun 4</th>
+                <th class="center">Jun 5</th>
+                <th class="center">Jun 6</th>
+                <th class="center">Jun 9</th>
+                <th class="center">Jun 10</th>
+                <th class="center" style="background:var(--blue-xpale);color:var(--blue-mid);">Total Absences</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="sticky-col"><div class="student-name" style="font-size:12px;">Juan Dela Cruz</div></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-L">L</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="badge badge-green">0</span></td>
+              </tr>
+              <tr>
+                <td class="sticky-col"><div class="student-name" style="font-size:12px;">Ana Santos</div></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="badge badge-green">0</span></td>
+              </tr>
+              <tr>
+                <td class="sticky-col"><div class="student-name" style="font-size:12px;">Ben Garcia</div></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="badge badge-red">6 ⚠</span></td>
+              </tr>
+              <tr>
+                <td class="sticky-col"><div class="student-name" style="font-size:12px;">Maria Lopez</div></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-E">E</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="badge badge-green">0</span></td>
+              </tr>
+              <tr>
+                <td class="sticky-col"><div class="student-name" style="font-size:12px;">Carlo Mendoza</div></td>
+                <td class="center"><span class="att-record-cell att-L">L</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-A">A</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-P">P</span></td>
+                <td class="center"><span class="att-record-cell att-L">L</span></td>
+                <td class="center"><span class="badge badge-orange">1</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ TAB 4: LEARNING MATERIALS ══════ -->
+    <div class="tab-content" id="content-materials">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Learning Materials</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · Mathematics · 6 files uploaded</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="clock" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">2</div><div class="stat-card-label">Late</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="file-check" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">0</div><div class="stat-card-label">Excused</div></div>
+          <div class="panel-head-actions">
+            <!-- <button class="top-btn primary" onclick="openModal('uploadModal')">
+              <i data-lucide="upload" style="width:14px;height:14px;"></i> Upload Material
+            </button> -->
           </div>
         </div>
 
-        <!-- Date strip -->
-        <div class="attendance-date-strip" id="date-strip">
-          <!-- JS generated -->
+        <!-- Drop zone shortcut -->
+        <div class="upload-zone" onclick="openModal('uploadModal')" id="uploadZone">
+          <div class="upload-icon">
+            <i data-lucide="upload-cloud" style="width:32px;height:32px;"></i>
+          </div>
+          <div class="upload-title">Drop files here or click to upload</div>
+          <div class="upload-sub">Students in this section will be able to view and download uploaded files</div>
+          <div class="upload-types">
+            <span class="file-type-tag">PDF</span>
+            <span class="file-type-tag">Word</span>
+            <span class="file-type-tag">PowerPoint</span>
+            <span class="file-type-tag">Excel</span>
+            <span class="file-type-tag">Images</span>
+            <span class="file-type-tag">Video</span>
+          </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title" id="att-panel-title">Attendance — June 14, 2025</div>
-            <div class="panel-head-right">
-              <button class="btn-sm ghost" onclick="markAllPresent()">
-                <i data-lucide="check-check" style="width:11px;height:11px;"></i> Mark All Present
+        <div class="materials-list">
+
+          <div class="material-item">
+            <div class="material-icon" style="background:#fee2e2;">
+              <i data-lucide="file-text" style="width:18px;height:18px;color:var(--red);"></i>
+            </div>
+            <div class="material-info">
+              <div class="material-name">Module 3 – Quadratic Equations.pdf</div>
+              <div class="material-meta">PDF · 2.4 MB · Uploaded June 3, 2025 · <span style="color:#16a34a;font-weight:600;">Visible to students</span></div>
+            </div>
+            <div class="material-actions">
+              <span class="badge badge-green" style="font-size:10px;">32 views</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Preview
               </button>
-              <button class="btn-sm primary" onclick="saveAttendance()">
-                <i data-lucide="save" style="width:11px;height:11px;"></i> Save Attendance
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
               </button>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student</th>
-                  <th>Status</th>
-                  <th>Time In</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody id="att-tbody">
-                <!-- JS generated -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
 
-      <!-- ── LEARNING MATERIALS TAB ── -->
-      <div class="tab-pane" id="pane-materials">
-        <div class="upload-drop" onclick="alert('File picker would open here')">
-          <div class="upload-drop-icon"><i data-lucide="upload-cloud" style="width:24px;height:24px;"></i></div>
-          <div class="upload-drop-title">Upload Learning Material</div>
-          <div class="upload-drop-sub">Drag & drop or click to browse · PDF, DOCX, PPTX, MP4, images</div>
-        </div>
-
-        <div class="panel" style="margin-bottom:20px;">
-          <div class="panel-head">
-            <div class="panel-title">Materials Library</div>
-            <div class="panel-head-right">
-              <div class="filter-row">
-                <div class="search-wrap">
-                  <i data-lucide="search" style="width:13px;height:13px;" class="search-icon"></i>
-                  <input type="text" class="search-input" placeholder="Search materials..."/>
-                </div>
-                <select class="filter-select">
-                  <option>All Types</option>
-                  <option>PDF</option>
-                  <option>Slides</option>
-                  <option>Video</option>
-                  <option>Activity Sheet</option>
-                </select>
-                <select class="filter-select">
-                  <option>All Weeks</option>
-                  <option>Week 1</option>
-                  <option>Week 2</option>
-                  <option>Week 3</option>
-                </select>
-              </div>
+          <div class="material-item">
+            <div class="material-icon" style="background:#dbeafe;">
+              <i data-lucide="presentation" style="width:18px;height:18px;color:var(--blue-mid);"></i>
             </div>
-          </div>
-          <div style="padding:16px;">
-            <div class="materials-grid" id="materials-grid">
-              <!-- JS generated -->
+            <div class="material-info">
+              <div class="material-name">Q2 Lesson 4 – Systems of Linear Equations.pptx</div>
+              <div class="material-meta">PowerPoint · 5.1 MB · Uploaded May 28, 2025 · <span style="color:#16a34a;font-weight:600;">Visible to students</span></div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── JOURNAL & REPORTS TAB ── -->
-      <div class="tab-pane" id="pane-journal">
-        <div class="cards-row cols-3" style="margin-bottom:20px;">
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--purple-pale);color:var(--purple);"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">38</div><div class="stat-card-label">Journal Entries</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="hourglass" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">5</div><div class="stat-card-label">Reports Pending</div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-            <div><div class="stat-card-num">33</div><div class="stat-card-label">Reports Confirmed</div></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title">Student Journal Entries & AI Reports</div>
-            <div class="panel-head-right">
-              <button class="btn-sm primary" onclick="alert('AI generation dialog')">
-                <i data-lucide="sparkles" style="width:11px;height:11px;"></i> Generate Reports
+            <div class="material-actions">
+              <span class="badge badge-green" style="font-size:10px;">28 views</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Preview
+              </button>
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
               </button>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student</th>
-                  <th>Journal Status</th>
-                  <th>AI Report</th>
-                  <th>Last Entry</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="journal-tbody">
-                <!-- JS generated -->
-              </tbody>
-            </table>
+
+          <div class="material-item">
+            <div class="material-icon" style="background:#dcfce7;">
+              <i data-lucide="table" style="width:18px;height:18px;color:#16a34a;"></i>
+            </div>
+            <div class="material-info">
+              <div class="material-name">Activity Sheet 3 – Practice Exercises.xlsx</div>
+              <div class="material-meta">Excel · 0.8 MB · Uploaded May 22, 2025 · <span style="color:#16a34a;font-weight:600;">Visible to students</span></div>
+            </div>
+            <div class="material-actions">
+              <span class="badge badge-green" style="font-size:10px;">25 views</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Preview
+              </button>
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
+              </button>
+            </div>
           </div>
+
+          <div class="material-item">
+            <div class="material-icon" style="background:#fee2e2;">
+              <i data-lucide="file-text" style="width:18px;height:18px;color:var(--red);"></i>
+            </div>
+            <div class="material-info">
+              <div class="material-name">Reference – Mathematics Formula Sheet.pdf</div>
+              <div class="material-meta">PDF · 1.2 MB · Uploaded May 15, 2025 · <span style="color:#16a34a;font-weight:600;">Visible to students</span></div>
+            </div>
+            <div class="material-actions">
+              <span class="badge badge-green" style="font-size:10px;">38 views</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Preview
+              </button>
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="material-item">
+            <div class="material-icon" style="background:var(--gold-pale);">
+              <i data-lucide="image" style="width:18px;height:18px;color:#92400e;"></i>
+            </div>
+            <div class="material-info">
+              <div class="material-name">Number Line Visual Aid.png</div>
+              <div class="material-meta">Image · 0.4 MB · Uploaded May 10, 2025 · <span style="color:#16a34a;font-weight:600;">Visible to students</span></div>
+            </div>
+            <div class="material-actions">
+              <span class="badge badge-green" style="font-size:10px;">19 views</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Preview
+              </button>
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="material-item">
+            <div class="material-icon" style="background:#fdf4ff;">
+              <i data-lucide="file-text" style="width:18px;height:18px;color:#7c3aed;"></i>
+            </div>
+            <div class="material-info">
+              <div class="material-name">Q2 Study Guide.docx</div>
+              <div class="material-meta">Word · 0.6 MB · Uploaded June 8, 2025 · <span style="color:#d97706;font-weight:600;">Draft — Hidden from students</span></div>
+            </div>
+            <div class="material-actions">
+              <span class="badge badge-gray" style="font-size:10px;">Draft</span>
+              <button class="row-btn edit">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i> Publish
+              </button>
+              <button class="row-btn danger">
+                <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
+    </div>
 
-    </div><!-- /tab-body -->
   </main>
 </div>
 
-<!-- ══════ ADD TASK MODAL ══════ -->
-<div class="modal-backdrop" id="add-component-modal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('add-component-modal')">
-      <i data-lucide="x" style="width:14px;height:14px;"></i>
-    </button>
-    <div class="modal-title">Add Scored Task</div>
-    <div class="modal-sub">Define a new task for score recording.</div>
-
-    <div class="form-row">
-      <label class="form-label">Component Type</label>
-      <select class="form-input" id="comp-type">
-        <option value="written">Written Works</option>
-        <option value="performance">Performance Tasks</option>
-        <option value="quarterly">Quarterly Exam</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label class="form-label">Task Type</label>
-      <select class="form-input" id="task-type">
-        <option>Quiz</option>
-        <option>Seatwork</option>
-        <option>Activity</option>
-        <option>Assignment</option>
-        <option>Performance Task</option>
-        <option>Project</option>
-        <option>Laboratory</option>
-        <option>Recitation</option>
-        <option>Quarterly Exam</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label class="form-label">Task Title</label>
-      <input type="text" class="form-input" id="task-title" placeholder="e.g. Quiz 2 – Fractions"/>
-    </div>
-
-    <div class="form-row-2">
-      <div class="form-row" style="margin-bottom:0;">
-        <label class="form-label">Max Score</label>
-        <input type="number" class="form-input" id="task-max" value="50" min="1"/>
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <label class="form-label">Date Given</label>
-        <input type="date" class="form-input" id="task-date" value="2025-06-14"/>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn-sm ghost" onclick="closeModal('add-component-modal')">Cancel</button>
-      <button class="btn-sm primary" onclick="addComponent()">
-        <i data-lucide="plus" style="width:11px;height:11px;"></i> Add Task
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Publish confirm modal -->
-<div class="modal-backdrop" id="publish-modal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('publish-modal')">
-      <i data-lucide="x" style="width:14px;height:14px;"></i>
-    </button>
-    <div class="modal-title">Publish Grades to Portal</div>
-    <div class="modal-sub">This will make Q2 grades visible to students and parents. This action can be undone by an admin.</div>
-    <div style="background:var(--gold-pale);border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:4px;font-size:13px;color:#92400e;">
-      <strong>⚠ Make sure all grades are final before publishing.</strong><br/>
-      Grades published to 38 students in Grade 7 – St. Matthew.
-    </div>
-    <div class="modal-footer">
-      <button class="btn-sm ghost" onclick="closeModal('publish-modal')">Cancel</button>
-      <button class="top-btn success" onclick="confirmPublish()" style="font-size:12px;padding:7px 16px;">
-        <i data-lucide="send" style="width:13px;height:13px;"></i> Confirm & Publish
-      </button>
-    </div>
-  </div>
-</div>
-
 <script>
-lucide.createIcons();
-
-/* ── DATA ── */
-const STUDENTS = [
-  { id:1, name:'Alcantara, Juan B.', lrn:'100-201-0001', grade:92.5, absences:1, status:'enrolled' },
-  { id:2, name:'Bautista, Maria C.', lrn:'100-201-0002', grade:88.0, absences:0, status:'enrolled' },
-  { id:3, name:'Cruz, Ramon D.',     lrn:'100-201-0003', grade:95.0, absences:2, status:'flagged' },
-  { id:4, name:'Dela Torre, Ana F.', lrn:'100-201-0004', grade:null, absences:0, status:'enrolled' },
-  { id:5, name:'Estrada, Jose G.',   lrn:'100-201-0005', grade:79.5, absences:3, status:'flagged' },
-  { id:6, name:'Garcia, Luisa H.',   lrn:'100-201-0006', grade:91.0, absences:0, status:'enrolled' },
-  { id:7, name:'Hernandez, Carlo I.',lrn:'100-201-0007', grade:85.5, absences:1, status:'enrolled' },
-  { id:8, name:'Ibarra, Rosa J.',    lrn:'100-201-0008', grade:null, absences:0, status:'enrolled' },
-];
-
-// Components (task definitions)
-let components = [
-  { id:'ww-q1', category:'written',     type:'Quiz',         title:'Quiz 1 – Basic Operations', max:20,  scores: {1:18,2:16,3:20,4:null,5:14,6:19,7:17,8:null} },
-  { id:'ww-sw1',category:'written',     type:'Seatwork',     title:'Seatwork 1 – Variables',     max:10,  scores: {1:9,2:8,3:10,4:null,5:7,6:9,7:8,8:null} },
-  { id:'pt-pt1', category:'performance',type:'Activity',     title:'Activity 1 – Problem Solving',max:50, scores: {1:45,2:40,3:48,4:null,5:38,6:44,7:42,8:null} },
-  { id:'qe-1',   category:'quarterly',  type:'Quarterly Exam',title:'Q2 Quarterly Exam',          max:100, scores: {1:88,2:82,3:94,4:null,5:76,6:89,7:85,8:null} },
-];
-
-let activeComponent = components[0];
-const isJournalHandler = true; // from backend
-
-// Color map
-const catColors = {
-  written:     { bg:'var(--blue-xpale)',  dot:'var(--blue-mid)', label:'Written' },
-  performance: { bg:'#f0fdf4',           dot:'var(--green)',    label:'Performance' },
-  quarterly:   { bg:'var(--orange-pale)', dot:'var(--orange)',  label:'Quarterly Exam' },
-};
-
-const catWeights = { written:0.25, performance:0.50, quarterly:0.25 };
-
-/* Compute final grade for a student */
-function computeFinalGrade(studentId) {
-  let totals = { written:0, performance:0, quarterly:0 };
-  let maxes  = { written:0, performance:0, quarterly:0 };
-
-  components.forEach(c => {
-    const score = c.scores[studentId];
-    if (score !== null && score !== undefined) {
-      totals[c.category] += score;
-      maxes[c.category]  += c.max;
-    }
-  });
-
-  let wScore = 0;
-  if (maxes.written     > 0) wScore = (totals.written     / maxes.written)     * 100 * catWeights.written;
-  if (maxes.performance > 0) wScore += (totals.performance / maxes.performance) * 100 * catWeights.performance;
-  if (maxes.quarterly   > 0) wScore += (totals.quarterly   / maxes.quarterly)   * 100 * catWeights.quarterly;
-
-  const hasAny = maxes.written > 0 || maxes.performance > 0 || maxes.quarterly > 0;
-  return hasAny ? Math.round(wScore * 100) / 100 : null;
-}
-
-function gradeClass(g) {
-  if (g === null) return '';
-  if (g >= 90) return 'fg-high';
-  if (g >= 80) return 'fg-mid';
-  if (g >= 75) return 'fg-low';
-  return 'fg-fail';
-}
-
-function gradeRemarks(g) {
-  if (g === null) return '<span class="badge badge-gray">No Data</span>';
-  if (g >= 90) return '<span class="badge badge-green">Outstanding</span>';
-  if (g >= 85) return '<span class="badge badge-green">Very Satisfactory</span>';
-  if (g >= 80) return '<span class="badge badge-blue">Satisfactory</span>';
-  if (g >= 75) return '<span class="badge badge-orange">Fairly Satisfactory</span>';
-  return '<span class="badge badge-red">Did Not Meet</span>';
-}
-
-function initials(name) {
-  const parts = name.split(',');
-  const last = parts[0].trim();
-  const first = (parts[1] || '').trim();
-  return (first[0] || '') + (last[0] || '');
-}
-
-/* ── STUDENTS TAB ── */
-function renderStudents() {
-  const tbody = document.getElementById('students-tbody');
-  tbody.innerHTML = STUDENTS.map((s, i) => {
-    const grade = computeFinalGrade(s.id);
-    const gradeDisplay = grade !== null ? grade.toFixed(1) : '—';
-    const flagBadge = s.status === 'flagged'
-      ? '<span class="badge badge-red" style="margin-left:6px;">Flagged</span>' : '';
-    return `
-      <tr onclick="openTab('scores')">
-        <td style="color:var(--gray-400);font-weight:600;">${i+1}</td>
-        <td>
-          <div class="student-cell">
-            <div class="student-avatar">${initials(s.name)}</div>
-            <div>
-              <div class="student-name">${s.name}${flagBadge}</div>
-              <div class="student-id">${s.lrn}</div>
-            </div>
-          </div>
-        </td>
-        <td>${s.lrn}</td>
-        <td class="final-grade-cell ${gradeClass(grade)}">${gradeDisplay}</td>
-        <td>${s.absences > 0
-          ? `<span class="badge badge-orange">${s.absences} absent</span>`
-          : '<span class="badge badge-green">No absences</span>'}</td>
-        <td>${grade !== null ? gradeRemarks(grade) : '<span class="badge badge-gray">Incomplete</span>'}</td>
-        <td><button class="btn-sm ghost">View</button></td>
-      </tr>`;
-  }).join('');
   lucide.createIcons();
-}
 
-/* ── COMPONENT LIST ── */
-function renderComponentList() {
-  const list = document.getElementById('component-list');
-  const grouped = {};
-  components.forEach(c => {
-    if (!grouped[c.category]) grouped[c.category] = [];
-    grouped[c.category].push(c);
+  /* ── DRAWER ── */
+  function toggleDrawer(open) {
+    const isOpen = open === undefined
+      ? !document.body.classList.contains('drawer-open')
+      : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { toggleDrawer(false); closeAllModals(); }
   });
 
-  let html = '';
-  ['written','performance','quarterly'].forEach(cat => {
-    if (!grouped[cat]) return;
-    html += `<div style="padding:6px 16px;font-size:9.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);">${catColors[cat].label}</div>`;
-    grouped[cat].forEach(c => {
-      const isActive = c.id === activeComponent.id;
-      html += `
-        <div class="component-item ${isActive ? 'active':''}" onclick="selectComponent('${c.id}')">
-          <div class="component-item-left">
-            <div class="component-dot" style="background:${catColors[c.category].dot};"></div>
-            <div>
-              <div class="component-name">${c.type}</div>
-              <div class="component-weight">${c.title}</div>
-            </div>
-          </div>
-          <div class="component-count">/${c.max}</div>
-        </div>`;
+  /* ── SIDEBAR SUBNAV ── */
+  function toggleSubnav(el) {
+    el.classList.toggle('open');
+  }
+
+  /* ── MODALS ── */
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function closeAllModals() {
+    document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  }
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  /* ── TABS ── */
+  function switchTab(name) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('content-' + name).classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  /* ── SCORE CATEGORY FILTER ── */
+  function switchCatTab(el, cat) {
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('#scoreTable thead th[data-cat]').forEach(th => {
+      th.style.display = (cat === 'all' || th.dataset.cat === cat) ? '' : 'none';
     });
-  });
-  list.innerHTML = html;
-}
+    document.querySelectorAll('#scoreTable tbody td[data-cat]').forEach(td => {
+      td.style.display = (cat === 'all' || td.dataset.cat === cat) ? '' : 'none';
+    });
+  }
 
-/* ── SCORE TABLE ── */
-function renderScoreTable() {
-  const tbody = document.getElementById('score-tbody');
-  document.getElementById('score-panel-title').textContent = `${activeComponent.type} – ${activeComponent.title}`;
-  document.getElementById('current-max').textContent = activeComponent.max;
+  /* ── COMPONENT TYPE MODAL ── */
+  const catMap = {
+    WW: { label: 'Written Work (30%)',          cls: 'cat-ww', icon: 'pencil' },
+    PT: { label: 'Performance Task (50%)',       cls: 'cat-pt', icon: 'target' },
+    QA: { label: 'Quarterly Assessment (20%)',   cls: 'cat-qa', icon: 'clipboard-list' },
+  };
 
-  tbody.innerHTML = STUDENTS.map((s, i) => {
-    const score = activeComponent.scores[s.id];
-    const finalGrade = computeFinalGrade(s.id);
-    const pct = score !== null && score !== undefined
-      ? ((score / activeComponent.max) * 100).toFixed(0) + '%' : '—';
-    return `
-      <tr>
-        <td>
-          <div class="student-cell">
-            <div class="student-avatar" style="font-size:10px;">${initials(s.name)}</div>
-            <div class="student-name">${s.name}</div>
-          </div>
-        </td>
-        <td style="text-align:center;">
-          <input type="number" class="score-input" id="score-${s.id}"
-            min="0" max="${activeComponent.max}"
-            value="${score !== null && score !== undefined ? score : ''}"
-            placeholder="—"
-            onchange="updateScore(${s.id}, this)"
-            oninput="validateScore(${s.id}, this)"/>
-        </td>
-        <td style="text-align:center;color:var(--gray-400);font-size:12px;">/${activeComponent.max}</td>
-        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--gray-600);">${pct}</td>
-        <td class="final-grade-cell ${gradeClass(finalGrade)}">
-          ${finalGrade !== null ? finalGrade.toFixed(1) : '<span style="font-family:Plus Jakarta Sans;font-size:12px;color:var(--gray-300);">—</span>'}
-        </td>
-        <td>${finalGrade !== null ? gradeRemarks(finalGrade) : '<span class="badge badge-gray">Pending</span>'}</td>
-      </tr>`;
-  }).join('');
-  lucide.createIcons();
-}
+  let selectedCompType = 'Quiz';
+  let selectedCompCat  = 'WW';
 
-function validateScore(studentId, input) {
-  const val = parseFloat(input.value);
-  const max = activeComponent.max;
-  input.classList.toggle('over', val > max && input.value !== '');
-}
+  function selectCompType(el, type, cat) {
+    document.querySelectorAll('.comp-type-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCompType = type;
+    selectedCompCat  = cat;
+    document.getElementById('compNameInput').placeholder = 'e.g. ' + type + ' 1';
+    const badge = document.getElementById('selectedCatBadge');
+    const info  = catMap[cat];
+    badge.className = 'cat-badge ' + info.cls;
+    badge.innerHTML = `<i data-lucide="${info.icon}" style="width:10px;height:10px;"></i> ${info.label}`;
+    lucide.createIcons();
+  }
 
-function updateScore(studentId, input) {
-  let val = parseFloat(input.value);
-  if (isNaN(val)) val = null;
-  activeComponent.scores[studentId] = val;
-  // Re-render just the final grade cells
-  renderScoreTable();
-}
+  function addComponent() {
+    const name = document.getElementById('compNameInput').value.trim();
+    const max  = document.getElementById('compMaxInput').value.trim();
+    if (!name || !max) { alert('Please fill in component name and highest score.'); return; }
+    closeModal('addCompModal');
+    alert(`Component "${name}" (/${max}) added to ${selectedCompCat}. Refresh score table to see it.`);
+  }
 
-function selectComponent(id) {
-  activeComponent = components.find(c => c.id === id);
-  renderComponentList();
-  renderScoreTable();
-}
+  /* ── GRADE COMPUTATION ── */
+  // Weights (match system config)
+  const WEIGHTS = { WW: 0.30, PT: 0.50, QA: 0.20 };
 
-function fillAllPerfect() {
-  STUDENTS.forEach(s => { activeComponent.scores[s.id] = activeComponent.max; });
-  renderScoreTable();
-}
+  // Column max scores (index based, matching table columns after sticky)
+  // WW: Quiz1/50, Activity1/30, Seatwork1/20
+  // PT: PT1/100, Project/100
+  // QA: QuarterlyExam/100
+  const COL_MAX = [50, 30, 20, 100, 100, 100];
+  const COL_CAT = ['WW','WW','WW','PT','PT','QA'];
 
-function saveScores() {
-  showToast('Scores saved successfully', 'success');
-}
+  function computeRow(input) {
+    const row = input.closest('tr');
+    const inputs = row.querySelectorAll('.score-input');
 
-/* ── ATTENDANCE ── */
-const DATES = [
-  { day:'Mon', num:9,  label:'June 9' },
-  { day:'Tue', num:10, label:'June 10' },
-  { day:'Wed', num:11, label:'June 11' },
-  { day:'Thu', num:12, label:'June 12' },
-  { day:'Fri', num:13, label:'June 13' },
-  { day:'Mon', num:14, label:'June 14', active:true },
-];
+    // Validate max
+    const max = parseFloat(input.max);
+    const val = parseFloat(input.value);
+    input.classList.toggle('over-max', !isNaN(val) && val > max);
 
-let attData = {};
-STUDENTS.forEach(s => { attData[s.id] = 'present'; });
+    // Group scores by category
+    const groups = { WW: { sum: 0, maxSum: 0, count: 0 }, PT: { sum: 0, maxSum: 0, count: 0 }, QA: { sum: 0, maxSum: 0, count: 0 } };
+    inputs.forEach((inp, i) => {
+      const cat   = COL_CAT[i];
+      const mxVal = COL_MAX[i];
+      const v     = parseFloat(inp.value);
+      if (!isNaN(v)) {
+        groups[cat].sum    += v;
+        groups[cat].maxSum += mxVal;
+        groups[cat].count++;
+      }
+    });
 
-function renderDateStrip() {
-  const strip = document.getElementById('date-strip');
-  strip.innerHTML = DATES.map(d => `
-    <button class="date-btn ${d.active?'active':''}" onclick="selectDate(this, '${d.label}')">
-      <div class="date-day">${d.day}</div>
-      <div class="date-num">${d.num}</div>
-    </button>`).join('');
-}
+    // Average as percentage per category
+    const wwAvg = groups.WW.maxSum > 0 ? (groups.WW.sum / groups.WW.maxSum) * 100 : 0;
+    const ptAvg = groups.PT.maxSum > 0 ? (groups.PT.sum / groups.PT.maxSum) * 100 : 0;
+    const qaAvg = groups.QA.maxSum > 0 ? (groups.QA.sum / groups.QA.maxSum) * 100 : 0;
 
-function selectDate(btn, label) {
-  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('att-panel-title').textContent = `Attendance — ${label}, 2025`;
-}
+    // Weighted final
+    const final = (wwAvg * WEIGHTS.WW) + (ptAvg * WEIGHTS.PT) + (qaAvg * WEIGHTS.QA);
+    const rounded = Math.round(final);
 
-function renderAttendanceTable() {
-  const tbody = document.getElementById('att-tbody');
-  const statuses = ['present','absent','late','excused'];
-  tbody.innerHTML = STUDENTS.map((s, i) => {
-    const status = attData[s.id] || 'present';
-    const opts = statuses.map(st => `<option value="${st}" ${status===st?'selected':''}>${st.charAt(0).toUpperCase()+st.slice(1)}</option>`).join('');
-    return `
-      <tr>
-        <td style="color:var(--gray-400);font-weight:600;">${i+1}</td>
-        <td>
-          <div class="student-cell">
-            <div class="student-avatar">${initials(s.name)}</div>
-            <div>
-              <div class="student-name">${s.name}</div>
-              <div class="student-id">${s.lrn}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <select class="attendance-status-select att-${status}" id="att-${s.id}"
-            onchange="updateAttStatus(${s.id}, this)">${opts}</select>
-        </td>
-        <td style="color:var(--gray-500);font-size:12px;">${status==='present'?'7:30 AM' : status==='late'?'8:15 AM':'—'}</td>
-        <td><input type="text" class="score-input" style="width:120px;text-align:left;" placeholder="Optional note..."/></td>
-      </tr>`;
-  }).join('');
-  lucide.createIcons();
-}
+    // Update computed cells
+    const computed = row.querySelectorAll('.computed-cell');
+    if (computed.length >= 4) {
+      computed[0].textContent = wwAvg.toFixed(1);
+      computed[1].textContent = ptAvg.toFixed(1);
+      computed[2].textContent = qaAvg.toFixed(1);
+      computed[3].textContent = rounded;
+      computed[3].className = 'center computed-cell computed-final ' + (rounded >= 75 ? 'grade-pass' : rounded >= 70 ? 'grade-warn' : 'grade-fail');
+    }
+  }
 
-function updateAttStatus(id, select) {
-  attData[id] = select.value;
-  select.className = `attendance-status-select att-${select.value}`;
-}
+  /* ── ATTENDANCE ── */
+  function setAtt(btn, status) {
+    const group = btn.closest('.att-btn-group');
+    group.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    updateAttCount();
+  }
 
-function markAllPresent() {
-  STUDENTS.forEach(s => { attData[s.id] = 'present'; });
-  renderAttendanceTable();
-}
+  function updateAttCount() {
+    const counts = { P: 0, A: 0, L: 0, E: 0 };
+    document.querySelectorAll('#attTbody .att-btn.selected').forEach(btn => {
+      const status = ['P','A','L','E'].find(s => btn.classList.contains(s));
+      if (status) counts[status]++;
+    });
+    document.getElementById('countP').textContent = counts.P;
+    document.getElementById('countA').textContent = counts.A;
+    document.getElementById('countL').textContent = counts.L;
+    document.getElementById('countE').textContent = counts.E;
+  }
 
-function saveAttendance() {
-  showToast('Attendance saved for June 14, 2025', 'success');
-}
+  function markAll(status) {
+    document.querySelectorAll('#attTbody .att-btn-group').forEach(group => {
+      group.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
+      group.querySelector('.att-btn.' + status).classList.add('selected');
+    });
+    updateAttCount();
+  }
 
-/* ── MATERIALS ── */
-const MATERIALS = [
-  { title:'Q2 Lesson 1 – Algebra Basics', type:'PDF', week:'Week 1', size:'2.4 MB', color:'#fef2f2', icon:'file-text', iconColor:'var(--red)' },
-  { title:'Activity Sheet 1', type:'DOCX', week:'Week 1', size:'340 KB', color:'#eff6ff', icon:'file-text', iconColor:'var(--blue-mid)' },
-  { title:'Lesson 2 Slides – Equations', type:'PPTX', week:'Week 2', size:'8.1 MB', color:'#fef9ec', icon:'presentation', iconColor:'var(--orange)' },
-  { title:'Quiz 1 Answer Key', type:'PDF', week:'Week 2', size:'1.2 MB', color:'#fef2f2', icon:'file-check', iconColor:'var(--red)' },
-  { title:'Video: Solving for X', type:'MP4', week:'Week 3', size:'45 MB', color:'#f0fdf4', icon:'video', iconColor:'var(--green)' },
-];
+  function saveAttendance() {
+    alert('Attendance saved for ' + document.getElementById('attDate').value);
+  }
 
-function renderMaterials() {
-  const grid = document.getElementById('materials-grid');
-  grid.innerHTML = MATERIALS.map(m => `
-    <div class="material-card">
-      <div class="material-card-thumb" style="background:${m.color};">
-        <i data-lucide="${m.icon}" style="width:32px;height:32px;color:${m.iconColor};"></i>
-      </div>
-      <div class="material-card-body">
-        <div class="material-card-title">${m.title}</div>
-        <div class="material-card-meta">
-          <span class="badge badge-gray" style="padding:2px 7px;">${m.type}</span>
-          <span>${m.week}</span>
-          <span>${m.size}</span>
-        </div>
-      </div>
-      <div class="material-card-foot">
-        <button class="btn-sm ghost"><i data-lucide="download" style="width:11px;height:11px;"></i> Download</button>
-        <button class="btn-sm danger"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
-      </div>
-    </div>`).join('');
-  lucide.createIcons();
-}
+  /* ── STUDENT FILTER ── */
+  function filterStudents(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#studentTbody tr').forEach(row => {
+      const name = row.querySelector('.student-name').textContent.toLowerCase();
+      row.style.display = name.includes(q) ? '' : 'none';
+    });
+  }
 
-/* ── JOURNAL ── */
-function renderJournal() {
-  const tbody = document.getElementById('journal-tbody');
-  tbody.innerHTML = STUDENTS.map((s, i) => {
-    const submitted = i < 6;
-    const confirmed = i < 5;
-    return `
-      <tr>
-        <td style="color:var(--gray-400);font-weight:600;">${i+1}</td>
-        <td>
-          <div class="student-cell">
-            <div class="student-avatar">${initials(s.name)}</div>
-            <div class="student-name">${s.name}</div>
-          </div>
-        </td>
-        <td>${submitted ? '<span class="badge badge-green">Submitted</span>' : '<span class="badge badge-gray">Pending</span>'}</td>
-        <td>${confirmed
-          ? '<span class="badge badge-green">Confirmed</span>'
-          : submitted
-            ? '<span class="badge badge-orange">Awaiting Review</span>'
-            : '<span class="badge badge-gray">Not Generated</span>'}</td>
-        <td style="font-size:11px;color:var(--gray-500);">${submitted ? 'June 13, 2025' : '—'}</td>
-        <td>
-          ${submitted && !confirmed
-            ? '<button class="btn-sm success"><i data-lucide="check" style="width:11px;height:11px;"></i> Confirm</button>'
-            : confirmed
-              ? '<button class="btn-sm ghost">View</button>'
-              : '<span style="font-size:11px;color:var(--gray-300);">—</span>'}
-        </td>
-      </tr>`;
-  }).join('');
-  lucide.createIcons();
-}
+  /* ── PUBLISH ── */
+  function publishGrades() {
+    closeModal('publishModal');
+    alert('Grades published successfully. Students and parents can now view Q2 final grades.');
+  }
 
-/* ── ADD COMPONENT ── */
-function openAddComponent() {
-  openModal('add-component-modal');
-}
-
-function addComponent() {
-  const cat   = document.getElementById('comp-type').value;
-  const type  = document.getElementById('task-type').value;
-  const title = document.getElementById('task-title').value.trim() || type;
-  const max   = parseInt(document.getElementById('task-max').value) || 50;
-
-  const existing = components.filter(c => c.category === cat);
-  const id = `${cat}-${Date.now()}`;
-  const newComp = { id, category:cat, type, title, max, scores:{} };
-  STUDENTS.forEach(s => { newComp.scores[s.id] = null; });
-  components.push(newComp);
-  activeComponent = newComp;
-
-  renderComponentList();
-  renderScoreTable();
-  closeModal('add-component-modal');
-  showToast(`"${type} – ${title}" added`, 'success');
-}
-
-/* ── PUBLISH ── */
-function publishGrades() {
-  openModal('publish-modal');
-}
-
-function confirmPublish() {
-  closeModal('publish-modal');
-  showToast('Grades published to student & parent portal!', 'success');
-  setTimeout(() => {
-    document.querySelector('.publish-bar-sub').textContent = '38 students · Published just now ✓';
-    document.querySelector('.publish-btn').textContent = '✓ Published';
-    document.querySelector('.publish-btn').disabled = true;
-  }, 400);
-}
-
-/* ── TABS ── */
-function openTab(id) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const pane = document.getElementById('pane-' + id);
-  const btn  = document.getElementById('tab-' + id);
-  if (pane) pane.classList.add('active');
-  if (btn)  btn.classList.add('active');
-  toggleDrawer(false);
-}
-
-/* ── SECTION SWITCHING ── */
-const SECTION_DATA = {
-  '7-matthew': { title:'Grade 7 – St. Matthew', color:'var(--blue-mid)', subject:'Mathematics', students:38, adviser:true },
-  '8-luke':    { title:'Grade 8 – St. Luke',    color:'var(--gold)',     subject:'Mathematics', students:36, adviser:false },
-  '9-peter':   { title:'Grade 9 – St. Peter',   color:'var(--green)',    subject:'Mathematics', students:37, adviser:false },
-};
-
-function loadSection(sectionId) {
-  const data = SECTION_DATA[sectionId];
-  if (!data) return;
-
-  document.getElementById('section-title').textContent = data.title;
-  document.getElementById('section-color-bar').style.background = data.color;
-  document.getElementById('section-subject').textContent = data.subject;
-  document.getElementById('section-student-count').innerHTML =
-    `<i data-lucide="users" style="width:12px;height:12px;"></i> ${data.students} students`;
-  document.getElementById('breadcrumb-section').textContent = data.title;
-  document.getElementById('topbar-title').textContent = data.title;
-  document.getElementById('stat-total').textContent = data.students;
-
-  const adviserBadge = document.getElementById('section-adviser-badge');
-  adviserBadge.style.display = data.adviser ? 'inline-flex' : 'none';
-
-  // Update nav active state
-  document.querySelectorAll('.nav-child').forEach(c => c.classList.remove('active'));
-  const navItem = document.getElementById('nav-' + sectionId);
-  if (navItem) navItem.classList.add('active');
-
-  openTab('students');
-  lucide.createIcons();
-  toggleDrawer(false);
-}
-
-/* ── MODAL ── */
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-/* ── DRAWER ── */
-function toggleDrawer(open) {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('overlay');
-  const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
-  sidebar.classList.toggle('open', isOpen);
-  overlay.classList.toggle('open', isOpen);
-}
-
-function toggleGroup(id) {
-  document.getElementById(id).classList.toggle('open');
-  lucide.createIcons();
-}
-
-/* ── TOAST ── */
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.style.cssText = `
-    position:fixed; bottom:24px; right:24px;
-    padding:12px 18px; border-radius:10px;
-    font-size:13px; font-weight:600;
-    background:${type==='success'?'#16a34a':'var(--red)'};
-    color:#fff; z-index:999;
-    box-shadow:0 4px 16px rgba(0,0,0,0.15);
-    display:flex; align-items:center; gap:8px;
-    animation: fadeUp 0.2s ease;`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-/* ── INIT ── */
-// Show journal tab if handler
-if (isJournalHandler) {
-  document.getElementById('tab-journal').style.display = 'flex';
-}
-
-// Read URL params
-const params = new URLSearchParams(window.location.search);
-const sectionParam = params.get('section') || '7-matthew';
-const tabParam     = params.get('tab') || 'students';
-
-loadSection(sectionParam);
-renderStudents();
-renderComponentList();
-renderScoreTable();
-renderDateStrip();
-renderAttendanceTable();
-renderMaterials();
-renderJournal();
-openTab(tabParam);
-
-document.addEventListener('keydown', e => { if (e.key==='Escape') { toggleDrawer(false); document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open')); } });
+  // Init attendance count
+  updateAttCount();
 </script>
+
 </body>
 </html>
