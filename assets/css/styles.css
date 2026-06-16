@@ -187,7 +187,7 @@ body.drawer-open .sidebar {
   background: rgba(255,255,255,0.07);
 }
 
-.nav-item.active {
+.nav-item.active, .nav-group-toggle.active {
   background: rgba(29,92,180,0.35);
   border-left: 3px solid var(--gold);
   padding-left: 7px;
@@ -203,7 +203,7 @@ body.drawer-open .sidebar {
   color: rgba(255,255,255,0.65);
 }
 
-.nav-item.active .nav-icon {
+.nav-item.active .nav-icon, .nav-group-toggle.active .nav-icon {
   background: rgba(29,92,180,0.4);
   color: var(--white);
 }
@@ -215,7 +215,7 @@ body.drawer-open .sidebar {
   flex: 1;
 }
 
-.nav-item.active .nav-label {
+.nav-item.active .nav-label, .nav-group-toggle.active span {
   color: var(--white);
   font-weight: 600;
 }

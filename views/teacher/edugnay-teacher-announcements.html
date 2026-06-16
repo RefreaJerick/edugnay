@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css"/>
+  <link rel="stylesheet" href="../../assets/css/teacher/announcements.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- ══════ ANNOUNCEMENT DETAIL MODAL ══════ -->
+<div class="modal-backdrop" id="annDetailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <!-- EJS: <%= announcement.title %> -->
+        <div class="modal-title" id="modalAnnTitle">Announcement Title</div>
+        <div class="modal-sub" id="modalAnnMeta">Posted by Admin · Today, 8:00 AM</div>
+      </div>
+      <button class="modal-close" onclick="closeAnnModal()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <!-- EJS: <% if (announcement.imageUrl) { %> -->
+      <div class="modal-ann-image-wrap" id="modalImageWrap" style="display:none;">
+        <img class="modal-ann-image" id="modalAnnImage" src="" alt="Announcement image"/>
+      </div>
+      <!-- EJS: <% } %> -->
+
+      <div class="modal-meta-row">
+        <span class="modal-meta-label">Priority</span>
+        <span class="badge" id="modalPriorityBadge"></span>
+      </div>
+      <div class="modal-meta-row">
+        <span class="modal-meta-label">Audience</span>
+        <span class="aud-tag" id="modalAudienceTag"></span>
+      </div>
+      <div class="modal-meta-row" style="margin-bottom:18px;">
+        <span class="modal-meta-label">Posted</span>
+        <span style="font-size:12px;color:var(--gray-500);" id="modalPostedAt">—</span>
+      </div>
+
+      <!-- EJS: <%- announcement.content %> -->
+      <div class="modal-ann-content" id="modalAnnContent"></div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn-close-modal" onclick="closeAnnModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div>
+          <div class="brand-name">Ed<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <div class="nav-scroll">
+        <div class="nav-section">
+          <div class="nav-section-label">Main</div>
+
+          <a class="nav-item" onclick="navigate('dashboard')">
+            <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Dashboard</span>
+          </a>
+
+          <!-- My Sections (expandable) -->
+          <div class="nav-group" id="sections-group">
+            <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+              <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+              <span>My Sections</span>
+              <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+            </div>
+            <div class="nav-children">
+              <a class="nav-child" onclick="navigate('section', '7-matthew')">
+                <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 7 – St. Matthew
+              </a>
+              <a class="nav-child" onclick="navigate('section', '8-luke')">
+                <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 8 – St. Luke
+              </a>
+              <a class="nav-child" onclick="navigate('section', '9-peter')">
+                <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 9 – St. Peter
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Narrative Reports — only shown for journal handler -->
+        <div class="nav-section" id="reports-nav">
+          <div class="nav-section-label">Reports</div>
+          <a class="nav-item" onclick="navigate('reports')">
+            <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Narrative Reports</span>
+            <span class="nav-badge">5</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-label">Communication</div>
+          <a class="nav-item active" onclick="navigate('announcements')">
+            <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Announcements</span>
+            <span class="nav-badge gold">2</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="admin-profile">
+          <div class="admin-avatar">MR</div>
+          <div class="admin-info">
+            <div class="admin-name">Ms. Maria Reyes</div>
+            <div class="admin-role">Faculty</div>
+          </div>
+          <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+        </div>
+      </div>
+    </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Teacher</div>
+        <div class="page-title">Announcements</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- Read-only for teachers; admin manages posting -->
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- Summary strip -->
+    <!-- EJS: counts would come from server: totalCount, unreadCount, urgentCount, eventCount -->
+    <div class="ann-summary-strip">
+      <div class="ann-summary-item">
+        <div class="ann-sum-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+          <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <!-- EJS: <%= announcements.length %> -->
+          <div class="ann-sum-num">6</div>
+          <div class="ann-sum-label">Total</div>
+        </div>
+      </div>
+      <div class="ann-summary-item">
+        <div class="ann-sum-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="bell-ring" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <!-- EJS: <%= announcements.filter(a => !a.readBy.includes(currentUser._id)).length %> -->
+          <div class="ann-sum-num" id="unreadCount">2</div>
+          <div class="ann-sum-label">Unread</div>
+        </div>
+      </div>
+      <div class="ann-summary-item">
+        <div class="ann-sum-icon" style="background:var(--orange-pale);color:#d97706;">
+          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <!-- EJS: <%= announcements.filter(a => a.priority === 'high').length %> -->
+          <div class="ann-sum-num">1</div>
+          <div class="ann-sum-label">Urgent</div>
+        </div>
+      </div>
+      <div class="ann-summary-item">
+        <div class="ann-sum-icon" style="background:var(--gold-pale);color:#92400e;">
+          <i data-lucide="calendar" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <!-- EJS: <%= announcements.filter(a => a.priority === 'event').length %> -->
+          <div class="ann-sum-num">1</div>
+          <div class="ann-sum-label">Events</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+        <input class="search-input" type="text" id="searchInput" placeholder="Search announcements…" oninput="filterCards()"/>
+      </div>
+      <select class="filter-select" id="priorityFilter" onchange="filterCards()">
+        <option value="all">All Priorities</option>
+        <option value="high">Urgent</option>
+        <option value="normal">Normal</option>
+        <option value="event">Events</option>
+        <option value="low">Low Priority</option>
+      </select>
+      <select class="filter-select" id="statusFilter" onchange="filterCards()">
+        <option value="all">All</option>
+        <option value="unread">Unread Only</option>
+        <option value="read">Read</option>
+      </select>
+    </div>
+
+    <!-- Main two-col layout -->
+    <div class="ann-layout">
+
+      <!-- LEFT: Announcement cards -->
+      <div>
+        <!-- EJS: <% announcements.forEach(function(ann) { %> -->
+        <div class="ann-list" id="annList">
+
+          <!-- ─── CARD 1: Pinned + Urgent ─── -->
+          <!-- EJS: data-id="<%= ann._id %>" data-priority="<%= ann.priority %>" data-read="<%= ann.readBy.includes(currentUser._id) ? 'true' : 'false' %>" -->
+          <div class="ann-card priority-high" data-priority="high" data-read="false"
+               onclick="openAnnModal(this)">
+            <div class="pinned-strip">
+              <i data-lucide="pin" style="width:12px;height:12px;"></i>
+              Pinned Announcement
+            </div>
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-high">
+                    <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+                  </div>
+                  <div class="ann-title-wrap">
+                    <!-- EJS: <%= ann.title %> -->
+                    <div class="ann-title">Q2 Grade Encoding Deadline — June 14</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
+                      </span>
+                      <span class="ann-meta-item">
+                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-red">
+                    <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Urgent
+                  </span>
+                  <span class="badge badge-orange" id="unread-badge-0">
+                    <span class="unread-indicator"></span> Unread
+                  </span>
+                </div>
+              </div>
+              <!-- EJS: <%= ann.content %> -->
+              <div class="ann-content" data-full="All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline. Failure to submit on time may result in incomplete student records for Q2.">
+                All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline…
+              </div>
+              <!-- EJS: <% if (ann.imageUrl) { %> -->
+              <div class="ann-image-wrap">
+                <img class="ann-image" src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png" alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'"/>
+              </div>
+              <!-- EJS: <% } %> -->
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <!-- EJS: audience tag rendered per ann.audience -->
+                <span class="aud-tag aud-teacher">
+                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Teachers
+                </span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left">
+                <i data-lucide="eye" style="width:12px;height:12px;"></i>
+                <!-- EJS: Seen by <%= ann.readBy.length %> teachers -->
+                Seen by 18 teachers
+              </div>
+              <div class="ann-footer-right">
+                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── CARD 2: Normal ─── -->
+          <div class="ann-card priority-normal" data-priority="normal" data-read="false"
+               onclick="openAnnModal(this)">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-normal">
+                    <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+                  </div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Journal Submission Window — This Friday</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM
+                      </span>
+                      <span class="ann-meta-item">
+                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-blue">Normal</span>
+                  <span class="badge badge-orange" id="unread-badge-1">
+                    <span class="unread-indicator"></span> Unread
+                  </span>
+                </div>
+              </div>
+              <div class="ann-content" data-full="The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.">
+                The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM…
+              </div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-teacher">
+                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Teachers
+                </span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left">
+                <i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 20 teachers
+              </div>
+              <div class="ann-footer-right">
+                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── CARD 3: Event ─── -->
+          <div class="ann-card priority-event" data-priority="event" data-read="true"
+               onclick="openAnnModal(this)">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-event">
+                    <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                  </div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Foundation Day — June 20, 2025</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM
+                      </span>
+                      <span class="ann-meta-item">
+                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-gold">
+                    <i data-lucide="calendar" style="width:10px;height:10px;"></i> Event
+                  </span>
+                  <span class="badge badge-green">Read</span>
+                </div>
+              </div>
+              <div class="ann-content" data-full="St. Columban's College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All faculty are expected to attend the program. A detailed schedule of activities will be sent separately. Formal attire is required.">
+                St. Columban's College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All faculty are expected to attend the program…
+              </div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-all">
+                  <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
+                </span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left">
+                <i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 312 users
+              </div>
+              <div class="ann-footer-right">
+                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── CARD 4: Normal (All users) ─── -->
+          <div class="ann-card priority-normal" data-priority="normal" data-read="true"
+               onclick="openAnnModal(this)">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-normal">
+                    <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+                  </div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">Q2 Narrative Reports Now Available</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> May 28, 9:00 AM
+                      </span>
+                      <span class="ann-meta-item">
+                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-blue">Normal</span>
+                  <span class="badge badge-green">Read</span>
+                </div>
+              </div>
+              <div class="ann-content" data-full="Q2 narrative reports have been confirmed by section teachers and are now available to view in the teacher dashboard. Please log in, review the AI-generated summaries for your sections, and confirm before they are forwarded to parents.">
+                Q2 narrative reports have been confirmed by section teachers and are now available to view in the teacher dashboard…
+              </div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-teacher">
+                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Teachers
+                </span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left">
+                <i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 24 teachers
+              </div>
+              <div class="ann-footer-right">
+                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── CARD 5: Low / General ─── -->
+          <div class="ann-card priority-low" data-priority="low" data-read="true"
+               onclick="openAnnModal(this)">
+            <div class="ann-body">
+              <div class="ann-head">
+                <div class="ann-head-left">
+                  <div class="ann-type-icon icon-low">
+                    <i data-lucide="info" style="width:16px;height:16px;"></i>
+                  </div>
+                  <div class="ann-title-wrap">
+                    <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
+                    <div class="ann-meta">
+                      <span class="ann-meta-item">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM
+                      </span>
+                      <span class="ann-meta-item">
+                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ann-badges">
+                  <span class="badge badge-gray">General</span>
+                  <span class="badge badge-green">Read</span>
+                </div>
+              </div>
+              <div class="ann-content" data-full="As Q2 draws to a close, please ensure all your records are finalized — attendance logs, narrative reports, and grade sheets. The registrar will run a final audit on June 15. Coordinate with your co-teachers if shared subject records are incomplete.">
+                As Q2 draws to a close, please ensure all your records are finalized — attendance logs, narrative reports, and grade sheets…
+              </div>
+              <div class="ann-audience">
+                <span class="aud-label">To:</span>
+                <span class="aud-tag aud-all">
+                  <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
+                </span>
+              </div>
+            </div>
+            <div class="ann-footer">
+              <div class="ann-footer-left">
+                <i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 287 users
+              </div>
+              <div class="ann-footer-right">
+                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- EJS: <% }); %> -->
+
+        <!-- Empty state -->
+        <div class="ann-empty" id="annEmpty">
+          <div class="ann-empty-icon"><i data-lucide="inbox" style="width:36px;height:36px;"></i></div>
+          <div class="ann-empty-title">No announcements found</div>
+          <div class="ann-empty-sub">Try adjusting your filters or search query.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Info rail -->
+      <div class="info-rail">
+
+        <!-- Deadlines & Events -->
+        <div class="rail-card">
+          <div class="rail-head">
+            <div class="rail-title">Upcoming Deadlines</div>
+            <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
+          </div>
+          <div class="rail-body">
+            <!-- EJS: deadlines rendered from backend -->
+            <div class="deadline-item">
+              <div class="deadline-dot" style="background:var(--red);box-shadow:0 0 5px rgba(239,68,68,0.4);"></div>
+              <div class="deadline-info" style="flex:1;">
+                <div class="deadline-title">Q2 Grade Encoding</div>
+                <div class="deadline-date">June 14, 2025 · 11:59 PM</div>
+              </div>
+              <span class="deadline-badge badge badge-red">2 days</span>
+            </div>
+            <div class="deadline-item">
+              <div class="deadline-dot" style="background:var(--gold);"></div>
+              <div class="deadline-info" style="flex:1;">
+                <div class="deadline-title">Foundation Day</div>
+                <div class="deadline-date">June 20, 2025</div>
+              </div>
+              <span class="deadline-badge badge badge-gold">Event</span>
+            </div>
+            <div class="deadline-item">
+              <div class="deadline-dot" style="background:var(--blue-mid);"></div>
+              <div class="deadline-info" style="flex:1;">
+                <div class="deadline-title">Journal Window Closes</div>
+                <div class="deadline-date">Friday, June 7 · 11:59 PM</div>
+              </div>
+              <span class="deadline-badge badge badge-blue">Soon</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification settings -->
+        <div class="rail-card">
+          <div class="rail-head">
+            <div class="rail-title">Notification Settings</div>
+            <i data-lucide="settings-2" style="width:15px;height:15px;color:var(--gray-400);"></i>
+          </div>
+          <div class="rail-body">
+            <!-- EJS: user.notifPrefs would control checked state -->
+            <div class="notif-row">
+              <span class="notif-label">
+                <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i>
+                Urgent announcements
+              </span>
+              <label class="toggle">
+                <input type="checkbox" checked onchange="saveNotifPref(this, 'urgent')"/>
+                <div class="toggle-slider"></div>
+              </label>
+            </div>
+            <div class="notif-row">
+              <span class="notif-label">
+                <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i>
+                General announcements
+              </span>
+              <label class="toggle">
+                <input type="checkbox" checked onchange="saveNotifPref(this, 'normal')"/>
+                <div class="toggle-slider"></div>
+              </label>
+            </div>
+            <div class="notif-row">
+              <span class="notif-label">
+                <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i>
+                Events & reminders
+              </span>
+              <label class="toggle">
+                <input type="checkbox" checked onchange="saveNotifPref(this, 'event')"/>
+                <div class="toggle-slider"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Posted by info -->
+        <div class="rail-card">
+          <div class="rail-head">
+            <div class="rail-title">About Announcements</div>
+          </div>
+          <div class="rail-body" style="font-size:12px;color:var(--gray-500);line-height:1.7;">
+            Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong>. As a teacher, you receive announcements directed at <strong style="color:var(--gray-700);">teachers</strong> and <strong style="color:var(--gray-700);">all users</strong>.<br/><br/>
+            To request an announcement be posted, please contact the admin office or email <a href="mailto:admin@stcolumban.edu.ph" style="color:var(--blue-mid);font-weight:600;">admin@stcolumban.edu.ph</a>.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  /* ── DRAWER ── */
+  function toggleDrawer(open) {
+    const isOpen = open === undefined
+      ? !document.body.classList.contains('drawer-open')
+      : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  /* ── SIDEBAR SUBNAV ── */
+  function toggleGroup(id) {
+    document.getElementById(id).classList.toggle('open');
+    lucide.createIcons();
+  }
+
+  /* ── FILTER ── */
+  function filterCards() {
+    const query    = document.getElementById('searchInput').value.toLowerCase();
+    const priority = document.getElementById('priorityFilter').value;
+    const status   = document.getElementById('statusFilter').value;
+    const cards    = document.querySelectorAll('#annList .ann-card');
+    let visible    = 0;
+
+    cards.forEach(card => {
+      const title   = card.querySelector('.ann-title')?.textContent.toLowerCase() || '';
+      const content = card.querySelector('.ann-content')?.textContent.toLowerCase() || '';
+      const pri     = card.dataset.priority;
+      const read    = card.dataset.read;
+
+      const matchSearch   = title.includes(query) || content.includes(query);
+      const matchPriority = priority === 'all' || pri === priority;
+      const matchStatus   = status === 'all'
+        || (status === 'unread' && read === 'false')
+        || (status === 'read'   && read === 'true');
+
+      const show = matchSearch && matchPriority && matchStatus;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    const empty = document.getElementById('annEmpty');
+    empty.classList.toggle('visible', visible === 0);
+  }
+
+  /* ── MODAL: open ── */
+  function openAnnModal(card) {
+    const title   = card.querySelector('.ann-title')?.textContent.trim() || '';
+    const content = card.querySelector('.ann-content')?.dataset.full
+                 || card.querySelector('.ann-content')?.innerHTML || '';
+    const timeEl  = card.querySelector('.ann-meta-item');
+    const postedAt= timeEl ? timeEl.textContent.trim() : '—';
+    const priority= card.dataset.priority;
+    const imgEl   = card.querySelector('.ann-image');
+    const audTag  = card.querySelector('.aud-tag');
+
+    // Title & meta
+    document.getElementById('modalAnnTitle').textContent = title;
+    document.getElementById('modalPostedAt').textContent = 'Posted · ' + postedAt;
+    document.getElementById('modalAnnContent').innerHTML = content;
+
+    // Priority badge
+    const badgeMap = {
+      high:   { cls: 'badge-red',    label: '⚠ Urgent' },
+      normal: { cls: 'badge-blue',   label: 'Normal' },
+      event:  { cls: 'badge-gold',   label: '📅 Event' },
+      low:    { cls: 'badge-gray',   label: 'General' },
+    };
+    const b = badgeMap[priority] || badgeMap.normal;
+    const badge = document.getElementById('modalPriorityBadge');
+    badge.className = 'badge ' + b.cls;
+    badge.textContent = b.label;
+
+    // Audience
+    const modalAud = document.getElementById('modalAudienceTag');
+    if (audTag) {
+      modalAud.className = audTag.className;
+      modalAud.innerHTML = audTag.innerHTML;
+    }
+
+    // Image
+    const imgWrap = document.getElementById('modalImageWrap');
+    if (imgEl && imgEl.src && !imgEl.src.endsWith('undefined')) {
+      document.getElementById('modalAnnImage').src = imgEl.src;
+      imgWrap.style.display = 'block';
+    } else {
+      imgWrap.style.display = 'none';
+    }
+
+    document.getElementById('annDetailModal').classList.add('open');
+
+    // Mark as read
+    markAsRead(card);
+  }
+
+  function closeAnnModal() {
+    document.getElementById('annDetailModal').classList.remove('open');
+  }
+
+  document.getElementById('annDetailModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAnnModal();
+  });
+
+  /* ── MARK AS READ ── */
+  function markAsRead(card) {
+    if (card.dataset.read === 'true') return;
+    card.dataset.read = 'true';
+
+    // Swap unread badge to read badge
+    const unreadBadge = card.querySelector('.badge-orange');
+    if (unreadBadge) {
+      unreadBadge.className = 'badge badge-green';
+      unreadBadge.innerHTML = 'Read';
+    }
+
+    // Decrement unread counter
+    const countEl = document.getElementById('unreadCount');
+    const current = parseInt(countEl.textContent, 10);
+    if (current > 0) countEl.textContent = current - 1;
+
+    // EJS/backend: POST /announcements/:id/read (mark as read for current user)
+    // fetch(`/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
+  }
+
+  /* ── NOTIFICATION PREFS (stub) ── */
+  function saveNotifPref(input, type) {
+    // EJS/backend: PATCH /users/me/notif-prefs { [type]: input.checked }
+    console.log('Notif pref:', type, input.checked);
+  }
+
+  // Navigation stub — in production, these would be real routes
+  function navigate(page, section, tab) {
+    if (page === 'dashboard') {
+      window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'section') {
+      // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
+      window.location.href = './edugnay-teacher-sections.html';
+    } else if (page === 'reports') {
+      window.location.href = 'teacher-reports.html';
+    } else if (page === 'announcements') {
+      window.location.href = 'edugnay-teacher-announcements.html';
+    }
+  }
+
+  /* ── ESC KEY ── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeAnnModal(); toggleDrawer(false); }
+  });
+</script>
+
+</body>
+</html>

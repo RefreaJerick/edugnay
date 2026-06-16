@@ -181,10 +181,10 @@
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="EdUgnay logo" onerror="this.style.display='none'"/>
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
       </div>
       <div>
         <div class="brand-name">Ed<span>Ugnay</span></div>
@@ -192,54 +192,58 @@
       </div>
     </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
 
-      <a href="edugnay-teacher-dashboard.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Dashboard</span>
-      </a>
+        <a class="nav-item" onclick="navigate('dashboard')">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
 
-      <!-- My Sections with subnav -->
-      <div class="nav-item-toggle open" onclick="toggleSubnav(this)">
-        <div class="nav-icon" style="background:rgba(29,92,180,0.4);color:var(--white);">
-          <i data-lucide="door-open" style="width:16px;height:16px;"></i>
+        <!-- My Sections (expandable) -->
+        <div class="nav-group open" id="sections-group">
+          <div class="nav-group-toggle active" onclick="toggleGroup('sections-group')">
+            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+            <span>My Sections</span>
+            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child active" onclick="navigate('section', '7-matthew')">
+              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 7 – St. Matthew
+            </a>
+            <a class="nav-child" onclick="navigate('section', '8-luke')">
+              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 8 – St. Luke
+            </a>
+            <a class="nav-child" onclick="navigate('section', '9-peter')">
+              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 9 – St. Peter
+            </a>
+          </div>
         </div>
-        <span class="nav-label" style="color:var(--white);font-weight:600;">My Sections</span>
-        <i data-lucide="chevron-right" class="nav-chevron" style="width:14px;height:14px;"></i>
+
       </div>
 
-      <div class="nav-subnav" id="sectionsSubnav">
-        <a href="teacher-section.html?id=1" class="subnav-item active">
-          Grade 7 – St. Matthew
-        </a>
-        <a href="teacher-section.html?id=2" class="subnav-item">
-          Grade 8 – St. Luke
-        </a>
-        <a href="teacher-section.html?id=3" class="subnav-item">
-          Grade 9 – St. Peter
+      <!-- Narrative Reports — only shown for journal handler -->
+      <div class="nav-section" id="reports-nav">
+        <div class="nav-section-label">Reports</div>
+        <a class="nav-item" onclick="navigate('reports')">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
+          <span class="nav-badge">5</span>
         </a>
       </div>
 
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Reports</div>
-      <!-- Only renders if teacher is journal subject handler (controlled by backend) -->
-      <a href="teacher-reports.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Narrative Reports</span>
-        <span class="nav-badge">5</span>
-      </a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Communication</div>
-      <a href="teacher-announcements.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
-      </a>
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a class="nav-item" onclick="navigate('announcements')">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
     </div>
 
     <div class="sidebar-footer">
@@ -249,9 +253,7 @@
           <div class="admin-name">Ms. Maria Reyes</div>
           <div class="admin-role">Faculty</div>
         </div>
-        <div class="logout-btn" title="Sign out">
-          <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
       </div>
     </div>
   </aside>
@@ -1043,6 +1045,20 @@
   /* ── SIDEBAR SUBNAV ── */
   function toggleSubnav(el) {
     el.classList.toggle('open');
+  }
+
+  // Navigation stub — in production, these would be real routes
+  function navigate(page, section, tab) {
+    if (page === 'dashboard') {
+      window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'section') {
+      // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
+      window.location.href = './edugnay-teacher-sections.html';
+    } else if (page === 'reports') {
+      window.location.href = 'teacher-reports.html';
+    } else if (page === 'announcements') {
+      window.location.href = 'edugnay-teacher-announcements.html';
+    }
   }
 
   /* ── MODALS ── */
