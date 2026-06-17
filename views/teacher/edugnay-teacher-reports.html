@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay — Narrative Reports</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <!--
+    TODO: link page-specific stylesheet once extracted:
+    <link rel="stylesheet" href="../../assets/css/adviser/narrative-reports.css">
+  -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       NARRATIVE REPORTS — PAGE-SPECIFIC STYLES
+       (extract to adviser/narrative-reports.css later)
+    ═══════════════════════════════════════════════════ */
+
+    /* ── PIPELINE BANNER ── */
+    .pipeline-banner {
+      background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-left: 4px solid var(--gold);
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 6px 20px rgba(11,31,58,0.18);
+    }
+
+    .pipeline-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pipeline-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pipeline-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--white);
+    }
+
+    .pipeline-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+
+    .pipeline-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      min-width: 96px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .flow-step-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .flow-step.ai .flow-step-icon {
+      background: rgba(124,58,237,0.35);
+      border-color: rgba(124,58,237,0.6);
+      color: #c4b5fd;
+    }
+
+    .flow-step.final .flow-step-icon {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--navy);
+    }
+
+    .flow-step-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .flow-step-sub {
+      font-size: 9.5px;
+      color: rgba(255,255,255,0.38);
+      line-height: 1.3;
+    }
+
+    .flow-arrow {
+      color: rgba(255,255,255,0.25);
+      flex-shrink: 0;
+      margin: 0 2px;
+      padding-bottom: 20px; /* visually center with icon row */
+    }
+
+    /* ── SUMMARY STRIP ── */
+    .summary-strip {
+      display: flex;
+      align-items: stretch;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(16,40,80,0.05);
+    }
+
+    .summary-item {
+      flex: 1;
+      padding: 18px 20px;
+      border-right: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .summary-item:last-child { border-right: none; }
+
+    .summary-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .summary-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gray-800);
+      line-height: 1;
+    }
+
+    .summary-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 3px;
+    }
+
+    /* ── PANEL HEADER (shared pattern) ── */
+    .panel {
+      background: var(--white);
+      border-radius: 14px;
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(16,40,80,0.05);
+      margin-bottom: 20px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--gray-100);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gray-800);
+    }
+
+    .panel-head-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ── FILTER ROW ── */
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 7px 12px 7px 34px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      background: var(--white);
+      color: var(--gray-800);
+      transition: border-color 0.15s;
+    }
+
+    .search-input:focus { outline: none; border-color: var(--blue-mid); }
+
+    .search-icon {
+      position: absolute;
+      left: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray-400);
+      pointer-events: none;
+    }
+
+    .select-filter {
+      padding: 7px 12px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 12px;
+      background: var(--white);
+      color: var(--gray-700);
+      cursor: pointer;
+    }
+
+    .select-filter:focus { outline: none; border-color: var(--blue-mid); }
+
+    /* ── BADGE (small inline) ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .badge-green  { background: var(--green-pale);  color: #15803d; }
+    .badge-orange { background: var(--orange-pale); color: #92400e; }
+    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
+    .badge-red    { background: var(--red-pale);    color: var(--red); }
+    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
+    .badge-purple { background: var(--purple-pale); color: var(--purple); }
+    .badge-gold   { background: var(--gold-pale);   color: #92400e; }
+
+    /* ── SMALL BUTTONS ── */
+    .btn-sm {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .btn-sm.ghost   { background: var(--gray-100);    color: var(--gray-600);  border-color: var(--gray-200); }
+    .btn-sm.ghost:hover   { background: var(--gray-200); }
+    .btn-sm.primary { background: var(--blue-xpale);  color: var(--blue-mid);  border-color: var(--blue-pale); }
+    .btn-sm.primary:hover { background: var(--blue-pale); }
+    .btn-sm.purple  { background: var(--purple-pale); color: var(--purple);    border-color: #ddd6fe; }
+    .btn-sm.purple:hover  { background: #ede9fe; }
+    .btn-sm.success { background: var(--green-pale);  color: #16a34a;          border-color: #bbf7d0; }
+    .btn-sm.success:hover { background: #bbf7d0; }
+
+    /* ── REPORT CARDS GRID ── */
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .report-card {
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px;
+      background: var(--white);
+      overflow: hidden;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+
+    .report-card:hover {
+      box-shadow: 0 6px 20px rgba(16,40,80,0.09);
+      transform: translateY(-1px);
+    }
+
+    .report-card.at-risk {
+      border-color: #fecaca;
+    }
+
+    /* Card header */
+    .report-card-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 16px 0;
+    }
+
+    .report-avatar {
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+      background: var(--blue-xpale);
+      color: var(--blue-mid);
+    }
+
+    .report-card-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--gray-800);
+      line-height: 1.3;
+    }
+
+    .report-card-meta {
+      font-size: 10.5px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+
+    .at-risk-flag {
+      margin-left: auto;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--red-pale);
+      color: var(--red);
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    /* Metrics row */
+    .report-card-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 12px 16px;
+      margin-top: 10px;
+    }
+
+    .rc-metric {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 8px;
+      background: var(--gray-50);
+    }
+
+    .rc-metric-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--gray-800);
+    }
+
+    .rc-metric-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-top: 2px;
+    }
+
+    .rc-metric.good .rc-metric-val { color: #16a34a; }
+    .rc-metric.warn .rc-metric-val { color: var(--orange); }
+    .rc-metric.bad  .rc-metric-val { color: var(--red); }
+
+    /* AI excerpt */
+    .report-card-excerpt { padding: 0 16px; }
+
+    .excerpt-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .excerpt-text {
+      font-size: 12px;
+      color: var(--gray-600);
+      line-height: 1.55;
+      background: var(--purple-pale);
+      border-radius: 8px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--purple);
+    }
+
+    .excerpt-text.pending {
+      background: var(--gray-50);
+      border-left-color: var(--gray-300);
+      color: var(--gray-400);
+      font-style: italic;
+    }
+
+    /* Card footer */
+    .report-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      margin-top: 12px;
+      border-top: 1px solid var(--gray-100);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .status-confirmed { background: var(--green-pale);  color: #15803d; }
+    .status-pending   { background: var(--orange-pale); color: #92400e; }
+
+    .report-card-actions { display: flex; gap: 6px; }
+
+    /* ── REVIEW MODAL ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.48);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .review-modal {
+      background: var(--white);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 660px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+      overflow: hidden;
+    }
+
+    .review-modal-head {
+      padding: 22px 26px 18px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .review-avatar {
+      width: 44px; height: 44px;
+      border-radius: 11px;
+      background: var(--blue-xpale);
+      color: var(--blue-mid);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .review-modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--gray-800);
+    }
+
+    .review-modal-sub {
+      font-size: 11.5px;
+      color: var(--gray-400);
+      margin-top: 3px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 18px; right: 18px;
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: var(--gray-100);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gray-500);
+      transition: background 0.15s;
+    }
+
+    .modal-close:hover { background: var(--gray-200); }
+
+    .review-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 26px;
+    }
+
+    .review-section { margin-bottom: 20px; }
+
+    .review-section-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Data source cards */
+    .data-source-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .data-source-card {
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ds-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ds-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-800);
+    }
+
+    .ds-label {
+      font-size: 10px;
+      color: var(--gray-400);
+      margin-top: 1px;
+    }
+
+    /* At-risk banner in modal */
+    .at-risk-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: var(--red-pale);
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      color: #991b1b;
+      line-height: 1.55;
+    }
+
+    .at-risk-banner strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 12.5px;
+    }
+
+    /* AI report textarea */
+    .ai-report-text {
+      width: 100%;
+      font-size: 13.5px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--gray-700);
+      line-height: 1.7;
+      background: var(--blue-xpale);
+      border: 1.5px solid var(--blue-pale);
+      border-radius: 10px;
+      padding: 16px 18px;
+      resize: vertical;
+      min-height: 140px;
+      transition: border-color 0.15s;
+    }
+
+    .ai-report-text:focus {
+      outline: none;
+      border-color: var(--blue-mid);
+    }
+
+    .regenerate-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    /* Modal footer */
+    .review-modal-foot {
+      padding: 16px 26px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .review-modal-foot-left {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    .review-modal-foot-actions { display: flex; gap: 8px; }
+
+    .top-btn.confirm-btn {
+      background: #16a34a;
+      color: var(--white);
+    }
+    .top-btn.confirm-btn:hover { background: #15803d; }
+
+    /* ── GENERATE MODAL ── */
+    .gen-modal { max-width: 480px; }
+
+    .gen-progress-wrap {
+      padding: 26px;
+      text-align: center;
+    }
+
+    .gen-spinner {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      border: 4px solid var(--blue-xpale);
+      border-top-color: var(--blue-mid);
+      margin: 0 auto 18px;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .gen-progress-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+    }
+
+    .gen-progress-sub {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-bottom: 18px;
+    }
+
+    .gen-bar-track {
+      height: 7px;
+      background: var(--gray-100);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .gen-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue-mid), var(--purple));
+      border-radius: 999px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .gen-progress-count {
+      font-size: 11px;
+      color: var(--gray-500);
+      font-weight: 600;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 760px) {
+      .summary-strip { flex-wrap: wrap; }
+      .summary-item { min-width: 45%; border-right: none; border-bottom: 1px solid var(--gray-100); }
+      .summary-item:last-child { border-bottom: none; }
+      .reports-grid { grid-template-columns: 1fr; padding: 14px; }
+      .data-source-grid { grid-template-columns: 1fr; }
+      .pipeline-flow { justify-content: flex-start; }
+    }
+
+    @media (max-width: 520px) {
+      .summary-item { min-width: 100%; }
+      .review-modal-foot { flex-direction: column; align-items: stretch; }
+      .review-modal-foot-actions { justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+
+        <a class="nav-item" onclick="navigate('dashboard')">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <!-- My Sections (expandable) -->
+        <div class="nav-group" id="sections-group">
+          <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+            <span>My Sections</span>
+            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" onclick="navigate('section', '7-matthew')">
+              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 7 – St. Matthew
+            </a>
+            <a class="nav-child" onclick="navigate('section', '8-luke')">
+              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 8 – St. Luke
+            </a>
+            <a class="nav-child" onclick="navigate('section', '9-peter')">
+              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 9 – St. Peter
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Narrative Reports — only shown for journal handler -->
+      <div class="nav-section" id="reports-nav">
+        <div class="nav-section-label">Reports</div>
+        <a class="nav-item active" onclick="navigate('reports')">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
+          <span class="nav-badge">5</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a class="nav-item" onclick="navigate('announcements')">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">MR</div>
+        <div class="admin-info">
+          <div class="admin-name">Ms. Maria Reyes</div>
+          <div class="admin-role">Faculty</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Adviser</div>
+        <!--
+          EJS: <div class="page-title">Narrative Reports — <%= currentWeekLabel %></div>
+        -->
+        <div class="page-title">Narrative Reports</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- <button class="top-btn secondary" onclick="exportReports()">
+        <i data-lucide="download" style="width:14px;height:14px;"></i>
+        <span>Export</span>
+      </button> -->
+      <button class="top-btn primary" onclick="openGenModal()">
+        <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
+        <span>Generate Reports</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- ── PIPELINE BANNER ── -->
+    <div class="pipeline-banner">
+      <div class="pipeline-head">
+        <div class="pipeline-title-wrap">
+          <div class="pipeline-icon">
+            <i data-lucide="workflow" style="width:18px;height:18px;color:var(--gold);"></i>
+          </div>
+          <div>
+            <div class="pipeline-title">Weekly Report Generation Pipeline</div>
+            <!--
+              EJS:
+              <div class="pipeline-sub">
+                Week of <%= weekStart %> – <%= weekEnd %> &nbsp;·&nbsp;
+                <%= adviser.sectionName %> &nbsp;·&nbsp;
+                Data aggregated across all subjects
+              </div>
+            -->
+            <div class="pipeline-sub">
+              Week of June 9–14, 2025 &nbsp;·&nbsp; Grade 7 – St. Matthew &nbsp;·&nbsp; Data aggregated across all subjects
+            </div>
+          </div>
+        </div>
+        <span class="badge badge-green">
+          <i data-lucide="circle-check-big" style="width:10px;height:10px;"></i>
+          AI Welfare Analysis: On
+        </span>
+      </div>
+
+      <div class="pipeline-flow">
+        <div class="flow-step">
+          <div class="flow-step-icon"><i data-lucide="user-check" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">Attendance</div>
+          <div class="flow-step-sub">All subjects</div>
+        </div>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
+        <div class="flow-step">
+          <div class="flow-step-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">Assignments</div>
+          <div class="flow-step-sub">All subjects</div>
+        </div>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
+        <div class="flow-step">
+          <div class="flow-step-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">Academic</div>
+          <div class="flow-step-sub">At-risk only</div>
+        </div>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
+        <div class="flow-step">
+          <div class="flow-step-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">Journal</div>
+          <div class="flow-step-sub">Reflections</div>
+        </div>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
+        <div class="flow-step ai">
+          <div class="flow-step-icon"><i data-lucide="sparkles" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">AI Synthesis</div>
+          <div class="flow-step-sub">Welfare check</div>
+        </div>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
+        <div class="flow-step final">
+          <div class="flow-step-icon"><i data-lucide="send" style="width:16px;height:16px;"></i></div>
+          <div class="flow-step-label">To Parent</div>
+          <div class="flow-step-sub">After confirm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SUMMARY STRIP ── -->
+    <!--
+      EJS: stats.total, stats.pending, stats.confirmed, stats.atRisk
+      rendered server-side inside the strip below
+    -->
+    <div class="summary-strip">
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--purple-pale);color:var(--purple);">
+          <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num" id="stat-total">38</div>
+          <div class="summary-label">Reports This Week</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--orange-pale);color:#d97706;">
+          <i data-lucide="hourglass" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num" id="stat-pending">5</div>
+          <div class="summary-label">Awaiting Confirmation</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--green-pale);color:#16a34a;">
+          <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num" id="stat-confirmed">33</div>
+          <div class="summary-label">Confirmed & Sent</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num" id="stat-atrisk">3</div>
+          <div class="summary-label">At-Risk Students</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORTS PANEL ── -->
+    <div class="panel">
+      <div class="panel-head">
+        <!--
+          EJS: <%= weekLabel %> e.g. "Weekly Reports — June 9–14, 2025"
+        -->
+        <div class="panel-title">Weekly Reports — June 9–14, 2025</div>
+        <div class="panel-head-right">
+          <div class="filter-row">
+            <div class="search-wrap">
+              <i data-lucide="search" style="width:13px;height:13px;" class="search-icon"></i>
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Search student…"
+                id="search-input"
+                onkeyup="filterReports()"
+              />
+            </div>
+            <select class="select-filter" id="status-filter" onchange="filterReports()">
+              <option value="all">All Statuses</option>
+              <option value="pending">Awaiting Confirmation</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="at-risk">At-Risk Only</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        EJS: <% reports.forEach(function(r) { %>
+        render each card here using r.* properties
+        <% }); %>
+
+        Static JS rendering is used below for the prototype.
+        In production, replace the reports-grid div contents with EJS loop,
+        and remove the renderReports() JS call at the bottom.
+      -->
+      <div class="reports-grid" id="reports-grid">
+        <!-- Populated by renderReports() in prototype; replace with EJS loop in production -->
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════ REVIEW MODAL ══════ -->
+<!--
+  EJS note: this modal is populated via JS from the REPORTS array.
+  In production, consider either:
+  (a) keeping this client-side pattern and fetching report data via AJAX/fetch
+  (b) rendering a hidden JSON data block: <script>const REPORTS = <%- JSON.stringify(reports) %>;</script>
+  Option (b) is easiest to integrate with the current JS.
+-->
+<div class="modal-backdrop" id="review-modal">
+  <div class="review-modal">
+    <div class="review-modal-head">
+      <div class="review-avatar" id="rm-avatar">JA</div>
+      <div>
+        <div class="review-modal-title" id="rm-name">Student Name</div>
+        <div class="review-modal-sub" id="rm-sub">Grade 7 – St. Matthew · Week of June 9–14, 2025</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('review-modal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+
+    <div class="review-body">
+
+      <!-- At-risk alert (shown conditionally) -->
+      <div class="at-risk-banner" id="rm-at-risk-banner" style="display:none;">
+        <i data-lucide="alert-triangle" style="width:16px;height:16px;flex-shrink:0;margin-top:1px;"></i>
+        <div>
+          <strong>Student flagged as at-risk</strong>
+          Consistent low scores across subjects triggered inclusion of full academic records in this report.
+        </div>
+      </div>
+
+      <!-- Data sources -->
+      <div class="review-section">
+        <div class="review-section-label">
+          <i data-lucide="database" style="width:11px;height:11px;"></i>
+          Data Sources Used (All Subjects Aggregated)
+        </div>
+        <div class="data-source-grid">
+          <div class="data-source-card" style="grid-column: 1 / -1;">
+            <div class="ds-icon" style="background:var(--green-pale);color:#16a34a;">
+              <i data-lucide="user-check" style="width:14px;height:14px;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="ds-val" id="rm-attendance">30/30 sessions</div>
+              <div class="ds-label" id="rm-attendance-detail" style="margin-top:3px;line-height:1.5;">Present all days</div>
+            </div>
+          </div>
+          <div class="data-source-card">
+            <div class="ds-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+              <i data-lucide="clipboard-check" style="width:14px;height:14px;"></i>
+            </div>
+            <div>
+              <div class="ds-val" id="rm-assignments">4/4 completed</div>
+              <div class="ds-label">Assignment completion (all subjects)</div>
+            </div>
+          </div>
+          <div class="data-source-card" id="rm-academic-card">
+            <div class="ds-icon" style="background:var(--orange-pale);color:#d97706;">
+              <i data-lucide="bar-chart-2" style="width:14px;height:14px;"></i>
+            </div>
+            <div>
+              <div class="ds-val" id="rm-academic">Not included</div>
+              <div class="ds-label">Academic records</div>
+            </div>
+          </div>
+          <div class="data-source-card">
+            <div class="ds-icon" style="background:var(--purple-pale);color:var(--purple);">
+              <i data-lucide="notebook-pen" style="width:14px;height:14px;"></i>
+            </div>
+            <div>
+              <div class="ds-val" id="rm-journal">1 entry submitted</div>
+              <div class="ds-label">Journal reflections</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI report -->
+      <div class="review-section">
+        <div class="review-section-label">
+          <i data-lucide="sparkles" style="width:11px;height:11px;"></i>
+          AI-Generated Parent Report
+        </div>
+        <!--
+          EJS: value="<%= report.generatedText %>"
+          In production this textarea is editable before confirming.
+          POST the edited value to /adviser/reports/:reportId/confirm
+        -->
+        <textarea
+          class="ai-report-text"
+          id="rm-report-text"
+          name="reportText"
+        ></textarea>
+        <div class="regenerate-row">
+          <button class="btn-sm purple" onclick="regenerateReport()">
+            <i data-lucide="refresh-cw" style="width:11px;height:11px;"></i>
+            Regenerate
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="review-modal-foot">
+      <div class="review-modal-foot-left" id="rm-status-note">
+        Generated June 14, 8:02 AM · Not yet confirmed
+      </div>
+      <div class="review-modal-foot-actions">
+        <button class="top-btn secondary" onclick="closeModal('review-modal')">Cancel</button>
+        <button class="top-btn confirm-btn" onclick="confirmReport()">
+          <i data-lucide="check" style="width:14px;height:14px;"></i>
+          Confirm & Send to Parent
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ GENERATE MODAL ══════ -->
+<div class="modal-backdrop" id="gen-modal">
+  <div class="review-modal gen-modal">
+    <div class="review-modal-head" style="border-bottom:none;">
+      <div class="review-avatar" style="background:var(--purple-pale);color:var(--purple);">
+        <i data-lucide="sparkles" style="width:20px;height:20px;"></i>
+      </div>
+      <div>
+        <div class="review-modal-title">Generate Weekly Reports</div>
+        <!--
+          EJS: <div class="review-modal-sub"><%= adviser.sectionName %> · <%= stats.total %> students</div>
+        -->
+        <div class="review-modal-sub">Grade 7 – St. Matthew · 38 students</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('gen-modal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+
+    <!-- Confirm view -->
+    <div class="gen-progress-wrap" id="gen-confirm-view">
+      <p style="font-size:13px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;text-align:left;">
+        This will pull <strong>attendance, assignment completion, and journal reflections</strong>
+        for the week of <strong>June 9–14, 2025</strong> across <strong>all subjects</strong>,
+        then generate a narrative report for each student in your section.
+        Students flagged as at-risk will also have their academic records included.
+      </p>
+      <button class="top-btn primary" style="width:100%;justify-content:center;padding:11px;" onclick="startGeneration()">
+        <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
+        Start Generation
+      </button>
+    </div>
+
+    <!-- Progress view -->
+    <div class="gen-progress-wrap" id="gen-progress-view" style="display:none;">
+      <div class="gen-spinner"></div>
+      <div class="gen-progress-title">Generating reports…</div>
+      <div class="gen-progress-sub" id="gen-progress-sub">Pulling attendance records</div>
+      <div class="gen-bar-track">
+        <div class="gen-bar-fill" id="gen-bar-fill"></div>
+      </div>
+      <div class="gen-progress-count" id="gen-progress-count">0 of 38 students</div>
+    </div>
+
+    <!-- Done view -->
+    <div class="gen-progress-wrap" id="gen-done-view" style="display:none;">
+      <div style="width:54px;height:54px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+        <i data-lucide="check" style="width:26px;height:26px;color:#16a34a;"></i>
+      </div>
+      <div class="gen-progress-title">38 reports generated</div>
+      <div class="gen-progress-sub" style="margin-bottom:20px;">5 ready for review · 3 students flagged as at-risk</div>
+      <button class="top-btn primary" style="width:100%;justify-content:center;padding:11px;" onclick="closeModal('gen-modal')">
+        Review Reports
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  /* ─────────────────────────────────────────────────────
+     REPORT DATA
+     In production, replace this with:
+       const REPORTS = <%- JSON.stringify(reports) %>;
+     where `reports` is the array passed from your Express route.
+     Each report object should have:
+       id, studentName, studentId (LRN or school ID),
+       attendance (e.g. "5/5"), attendanceDetail,
+       assignments (e.g. "4/4"), journal (count),
+       atRisk (bool), status ("pending" | "confirmed"),
+       report (string), generatedAt (ISO string)
+  ───────────────────────────────────────────────────── */
+// EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
+  const SYSTEM_CONFIG = {
+    atRiskAbsenceThreshold: 3
+  };
+
+  // EJS: const REPORTS = <%- JSON.stringify(reports) %>;
+  const REPORTS = [
+    {
+      id: 1, studentName: 'Alcantara, Juan B.', studentId: '2025-0001',
+      atRisk: false,
+      attendance: {
+        total: '30/30',
+        absences: [], // { subject, day } e.g. { subject: 'Math', day: 'Tue' }
+      },
+      assignments: '4/4', journal: 1,
+      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
+      report: `Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week — keep up the encouragement at home!`
+    },
+    {
+      id: 2, studentName: 'Bautista, Maria C.', studentId: '2025-0002',
+      atRisk: false,
+      attendance: {
+        total: '30/30',
+        absences: [],
+      },
+      assignments: '4/4', journal: 1,
+      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
+      report: `Maria continues to show consistent effort this week. She was present for all sessions and submitted all assignments on schedule. Her journal entry mentioned feeling more confident after a recent quiz. No concerns at this time.`
+    },
+    {
+      id: 3, studentName: 'Cruz, Ramon D.', studentId: '2025-0003',
+      atRisk: true,
+      attendance: {
+        total: '18/30',
+        absences: [
+          { subject: 'Math',     day: 'Tue' }, { subject: 'Math',     day: 'Thu' },
+          { subject: 'Science',  day: 'Tue' }, { subject: 'Science',  day: 'Thu' },
+          { subject: 'Filipino', day: 'Tue' }, { subject: 'Filipino', day: 'Thu' },
+          { subject: 'English',  day: 'Tue' }, { subject: 'English',  day: 'Thu' },
+          { subject: 'MAPEH',    day: 'Tue' }, { subject: 'MAPEH',    day: 'Thu' },
+          { subject: 'TLE',      day: 'Tue' }, { subject: 'TLE',      day: 'Thu' },
+        ],
+      },
+      assignments: '2/4', journal: 0,
+      status: 'pending', generatedAt: 'June 14, 8:02 AM',
+      report: `Ramon is flagged as at-risk this week. He was absent on Tuesday and Thursday across all subjects and completed only 2 of 4 assignments. Academic records show scores below 75 in two subjects. No journal entry was submitted. A check-in at home would be helpful.`
+    },
+    {
+      id: 4, studentName: 'Dela Torre, Ana F.', studentId: '2025-0004',
+      atRisk: false,
+      attendance: {
+        total: '30/30',
+        absences: [],
+      },
+      assignments: '3/4', journal: 1,
+      status: 'pending', generatedAt: 'June 14, 8:02 AM',
+      report: `Ana had a solid week overall. She attended every session and completed 3 of 4 assignments, with one pending. Her journal reflection showed good self-awareness about time management. A gentle reminder about the missing task would be helpful.`
+    },
+    {
+      id: 5, studentName: 'Estrada, Jose G.', studentId: '2025-0005',
+      atRisk: true,
+      attendance: {
+        total: '12/30',
+        absences: [
+          { subject: 'Math',     day: 'Tue' }, { subject: 'Math',     day: 'Wed' }, { subject: 'Math',     day: 'Thu' },
+          { subject: 'Science',  day: 'Tue' }, { subject: 'Science',  day: 'Wed' }, { subject: 'Science',  day: 'Thu' },
+          { subject: 'Filipino', day: 'Tue' }, { subject: 'Filipino', day: 'Thu' },
+          { subject: 'English',  day: 'Tue' }, { subject: 'English',  day: 'Wed' }, { subject: 'English',  day: 'Thu' },
+          { subject: 'MAPEH',    day: 'Tue' }, { subject: 'MAPEH',    day: 'Wed' },
+          { subject: 'TLE',      day: 'Tue' }, { subject: 'TLE',      day: 'Wed' }, { subject: 'TLE',      day: 'Thu' },
+        ],
+      },
+      assignments: '1/4', journal: 0,
+      status: 'pending', generatedAt: 'June 14, 8:02 AM',
+      report: `Jose is flagged as at-risk this week with multiple absences across subjects and only 1 of 4 assignments completed. Academic records show scores trending below the passing threshold. No journal entry was submitted. We strongly recommend reaching out to discuss what may be affecting his attendance and engagement.`
+    },
+    {
+      id: 6, studentName: 'Garcia, Luisa H.', studentId: '2025-0006',
+      atRisk: false,
+      attendance: {
+        total: '30/30',
+        absences: [],
+      },
+      assignments: '4/4', journal: 1,
+      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
+      report: `Luisa had an excellent week — perfect attendance across all sessions and all assignments submitted. Her journal entry expressed enthusiasm about an upcoming group project. No concerns to report.`
+    },
+    {
+      id: 7, studentName: 'Hernandez, Carlo I.', studentId: '2025-0007',
+      atRisk: false,
+      attendance: {
+        total: '29/30',
+        absences: [
+          { subject: 'Science', day: 'Mon' },
+        ],
+      },
+      assignments: '4/4', journal: 1,
+      status: 'pending', generatedAt: 'June 14, 8:02 AM',
+      report: `Carlo had a good week with one absence in Science on Monday but completed all assignments regardless. His journal entry mentioned working through a difficult topic with help from peers. No concerns at this time.`
+    },
+    {
+      id: 8, studentName: 'Ibarra, Rosa J.', studentId: '2025-0008',
+      atRisk: true,
+      attendance: {
+        total: '26/30',
+        absences: [
+          { subject: 'Math',    day: 'Wed' },
+          { subject: 'Science', day: 'Wed' },
+          { subject: 'English', day: 'Wed' },
+          { subject: 'TLE',     day: 'Wed' },
+        ],
+      },
+      assignments: '2/4', journal: 1,
+      status: 'pending', generatedAt: 'June 14, 8:02 AM',
+      report: `Rosa is flagged as at-risk this week. She was absent in Math, Science, English, and TLE on Wednesday and completed only 2 of 4 assignments, continuing a pattern from prior weeks. Her journal described feeling overwhelmed. We recommend a supportive conversation at home about pacing.`
+    },
+  ];
+
+  let activeReportId = null;
+
+  /* ── HELPERS ── */
+  function getInitials(name) {
+    const parts = name.split(',');
+    const last  = parts[0].trim();
+    const first = (parts[1] || '').trim();
+    return (first[0] || '') + (last[0] || '');
+  }
+
+  function attClass(r) {
+    const absentCount = r.attendance.absences.length;
+    if (absentCount === 0) return 'good';
+    if (absentCount >= SYSTEM_CONFIG.atRiskAbsenceThreshold) return 'bad';
+    return 'warn';
+  }
+
+  function asnClass(r) {
+    const parts = r.assignments.split('/');
+    const ratio = parseInt(parts[0]) / parseInt(parts[1]);
+    if (ratio === 1) return 'good';
+    if (ratio >= 0.5) return 'warn';
+    return 'bad';
+  }
+
+  // Groups absences by day for display: "Tue: Math, Science · Thu: Math, Science"
+  function formatAbsences(absences) {
+    if (absences.length === 0) return 'Present — all subjects';
+    const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const byDay = {};
+    absences.forEach(a => {
+      if (!byDay[a.day]) byDay[a.day] = [];
+      byDay[a.day].push(a.subject);
+    });
+    return DAY_ORDER
+      .filter(d => byDay[d])
+      .map(d => `<strong>${d}:</strong> ${byDay[d].join(', ')}`)
+      .join('<br>');
+  }
+
+  // Groups absences by subject for the modal: "Math: Tue, Thu"
+  function formatAbsencesBySubject(absences) {
+    if (absences.length === 0) return 'Present all days';
+    const bySubject = {};
+    absences.forEach(a => {
+      if (!bySubject[a.subject]) bySubject[a.subject] = [];
+      bySubject[a.subject].push(a.day);
+    });
+    return Object.entries(bySubject)
+      .map(([subj, days]) => `${subj}: absent ${days.join(', ')}`)
+      .join(' · ');
+  }
+
+  /* ── RENDER CARDS ── */
+  function renderReports() {
+    const grid        = document.getElementById('reports-grid');
+    const searchTerm  = (document.getElementById('search-input').value || '').toLowerCase();
+    const statusFilter = document.getElementById('status-filter').value;
+
+    const filtered = REPORTS.filter(r => {
+      if (searchTerm && !r.studentName.toLowerCase().includes(searchTerm)) return false;
+      if (statusFilter === 'pending'   && r.status !== 'pending')   return false;
+      if (statusFilter === 'confirmed' && r.status !== 'confirmed') return false;
+      if (statusFilter === 'at-risk'   && !r.atRisk)                return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div style="padding:48px 24px;text-align:center;color:var(--gray-400);grid-column:1/-1;">
+          <i data-lucide="search-x" style="width:32px;height:32px;margin-bottom:10px;opacity:0.4;"></i>
+          <div style="font-size:13px;font-weight:600;">No reports match your filters.</div>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    grid.innerHTML = filtered.map(r => {
+      const ac = attClass(r);
+      const absentCount = r.attendance.absences.length;
+      const attDetail = formatAbsences(r.attendance.absences);
+      const sc = asnClass(r);
+      const jc = r.journal === 0 ? 'bad' : 'good';
+      const excerpt = r.report.slice(0, 120) + (r.report.length > 120 ? '…' : '');
+      const isPending = r.status === 'pending';
+
+      return `
+        <div class="report-card${r.atRisk ? ' at-risk' : ''}">
+
+          <div class="report-card-head">
+            <div class="report-avatar">${getInitials(r.studentName)}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="report-card-name">${r.studentName}</div>
+              <div class="report-card-meta">${r.studentId} · Grade 7 – St. Matthew</div>
+            </div>
+            ${r.atRisk ? `<div class="at-risk-flag"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> At-Risk</div>` : ''}
+          </div>
+
+          <div class="report-card-metrics">
+            <div class="rc-metric ${ac}" style="grid-column: 1 / -1; align-items: flex-start; text-align: left; gap: 2px; padding: 8px 10px;">
+              <div style="display:flex;align-items:baseline;gap:5px;">
+                <span class="rc-metric-val">${absentCount}</span>
+                <span style="font-size:9px;font-weight:700;color:inherit;opacity:0.8;text-transform:uppercase;letter-spacing:0.3px;">${absentCount === 1 ? 'absence' : 'absences'}</span>
+              </div>
+              <div style="font-size:9.5px;color:inherit;opacity:0.7;margin-top:2px;line-height:1.6;">${attDetail}</div>
+              <div class="rc-metric-label" style="margin-top:3px;">Attendance</div>
+            </div>
+            <div class="rc-metric ${sc}">
+              <div class="rc-metric-val">${r.assignments}</div>
+              <div class="rc-metric-label">Assignments</div>
+            </div>
+            <div class="rc-metric ${jc}">
+              <div class="rc-metric-val">${r.journal}</div>
+              <div class="rc-metric-label">Journal</div>
+            </div>
+          </div>
+
+          <div class="report-card-excerpt">
+            <div class="excerpt-label">
+              <i data-lucide="sparkles" style="width:10px;height:10px;"></i>
+              AI Summary
+            </div>
+            <div class="excerpt-text${!r.report ? ' pending' : ''}">${r.report ? excerpt : 'No report generated yet.'}</div>
+          </div>
+
+          <div class="report-card-foot">
+            <span class="status-pill ${isPending ? 'status-pending' : 'status-confirmed'}">
+              <i data-lucide="${isPending ? 'hourglass' : 'check-circle'}" style="width:11px;height:11px;"></i>
+              ${isPending ? 'Awaiting Review' : 'Confirmed'}
+            </span>
+            <div class="report-card-actions">
+              <button class="btn-sm ghost" onclick="openReview(${r.id})">
+                <i data-lucide="eye" style="width:11px;height:11px;"></i>
+                Review
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    lucide.createIcons();
+  }
+
+  function filterReports() { renderReports(); }
+
+  /* ── REVIEW MODAL ── */
+  function openReview(id) {
+    const r = REPORTS.find(x => x.id === id);
+    if (!r) return;
+    activeReportId = id;
+
+    document.getElementById('rm-avatar').textContent = getInitials(r.studentName);
+    document.getElementById('rm-name').textContent   = r.studentName;
+    document.getElementById('rm-sub').textContent    = `Grade 7 – St. Matthew · Week of June 9–14, 2025`;
+
+    document.getElementById('rm-attendance').textContent = r.attendance.total + ' sessions';
+    document.getElementById('rm-attendance-detail').textContent = formatAbsencesBySubject(r.attendance.absences);
+    document.getElementById('rm-assignments').textContent = `${r.assignments} completed`;
+    document.getElementById('rm-journal').textContent     = r.journal === 0 ? 'No entry submitted' : `${r.journal} entr${r.journal === 1 ? 'y' : 'ies'} submitted`;
+    document.getElementById('rm-report-text').value       = r.report;
+
+    const riskBanner   = document.getElementById('rm-at-risk-banner');
+    const academicCard = document.getElementById('rm-academic-card');
+    const academicVal  = document.getElementById('rm-academic');
+    const dsIcon       = academicCard.querySelector('.ds-icon');
+
+    if (r.atRisk) {
+      riskBanner.style.display        = 'flex';
+      academicVal.textContent          = 'Included (low scores)';
+      dsIcon.style.background          = 'var(--red-pale)';
+      dsIcon.style.color               = 'var(--red)';
+    } else {
+      riskBanner.style.display        = 'none';
+      academicVal.textContent          = 'Not included';
+      dsIcon.style.background          = 'var(--orange-pale)';
+      dsIcon.style.color               = '#d97706';
+    }
+
+    document.getElementById('rm-status-note').textContent = r.status === 'confirmed'
+      ? `Generated ${r.generatedAt} · Confirmed and sent to parent`
+      : `Generated ${r.generatedAt} · Not yet confirmed`;
+
+    lucide.createIcons();
+    openModal('review-modal');
+  }
+
+  function regenerateReport() {
+    const textarea = document.getElementById('rm-report-text');
+    textarea.value    = 'Regenerating…';
+    textarea.disabled = true;
+    /* TODO: replace setTimeout with actual API call:
+       POST /adviser/reports/:id/regenerate → returns { report: '...' } */
+    setTimeout(() => {
+      const r = REPORTS.find(x => x.id === activeReportId);
+      textarea.value    = r.report;
+      textarea.disabled = false;
+      showToast('Report regenerated', 'success');
+    }, 1100);
+  }
+
+  function confirmReport() {
+    /* TODO: POST /adviser/reports/:id/confirm with body { reportText: textarea.value }
+       On success: update local REPORTS array and re-render */
+    const r = REPORTS.find(x => x.id === activeReportId);
+    if (r) {
+      r.status = 'confirmed';
+      r.report = document.getElementById('rm-report-text').value;
+    }
+    closeModal('review-modal');
+    renderReports();
+    showToast('Report confirmed and sent to parent', 'success');
+  }
+
+  /* ── GENERATE MODAL ── */
+  function openGenModal() {
+    document.getElementById('gen-confirm-view').style.display  = 'block';
+    document.getElementById('gen-progress-view').style.display = 'none';
+    document.getElementById('gen-done-view').style.display     = 'none';
+    openModal('gen-modal');
+  }
+
+  function startGeneration() {
+    document.getElementById('gen-confirm-view').style.display  = 'none';
+    document.getElementById('gen-progress-view').style.display = 'block';
+
+    /* TODO: replace this simulation with a POST /adviser/reports/generate
+       that returns progress via SSE or polling, then show gen-done-view on completion */
+    const steps = [
+      'Pulling attendance records across all subjects',
+      'Checking assignment completion per subject',
+      'Reading journal reflections',
+      'Identifying at-risk patterns',
+      'Pulling academic records for flagged students',
+      'Generating AI narrative summaries',
+    ];
+    let stepIndex = 0, count = 0;
+    const total = 38;
+    const bar       = document.getElementById('gen-bar-fill');
+    const sub       = document.getElementById('gen-progress-sub');
+    const countLbl  = document.getElementById('gen-progress-count');
+
+    const interval = setInterval(() => {
+      count += Math.ceil(total / steps.length);
+      if (count > total) count = total;
+      bar.style.width        = (count / total * 100) + '%';
+      countLbl.textContent   = `${count} of ${total} students`;
+      if (stepIndex < steps.length) { sub.textContent = steps[stepIndex++]; }
+      if (count >= total) {
+        clearInterval(interval);
+        setTimeout(() => {
+          document.getElementById('gen-progress-view').style.display = 'none';
+          document.getElementById('gen-done-view').style.display     = 'block';
+          lucide.createIcons();
+        }, 400);
+      }
+    }, 500);
+  }
+
+  function exportReports() {
+    /* TODO: GET /adviser/reports/export?week=...&section=... */
+    showToast('Export feature coming soon', 'info');
+  }
+
+  /* ── MODAL / DRAWER HELPERS ── */
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  function showToast(msg, type = 'success') {
+    const colors = { success: '#16a34a', error: 'var(--red)', info: 'var(--blue-mid)' };
+    const t = document.createElement('div');
+    t.style.cssText = `
+      position:fixed; bottom:24px; right:24px;
+      padding:12px 18px; border-radius:10px;
+      font-size:13px; font-weight:600; font-family:'Plus Jakarta Sans',sans-serif;
+      background:${colors[type] || colors.success}; color:#fff;
+      z-index:999; box-shadow:0 4px 16px rgba(0,0,0,0.15);
+      animation:fadeUp 0.2s ease;`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      toggleDrawer(false);
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  /* ── SIDEBAR SUBNAV ── */
+  function toggleGroup(id) {
+    document.getElementById(id).classList.toggle('open');
+    lucide.createIcons();
+  }
+
+  // Navigation stub — in production, these would be real routes
+  function navigate(page, section, tab) {
+    if (page === 'dashboard') {
+      window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'section') {
+      // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
+      window.location.href = './edugnay-teacher-sections.html';
+    } else if (page === 'reports') {
+      window.location.href = './edugnay-teacher-reports.html';
+    } else if (page === 'announcements') {
+      window.location.href = 'edugnay-teacher-announcements.html';
+    }
+  }
+
+  /* ── INIT ── */
+  renderReports();
+</script>
+</body>
+</html>
