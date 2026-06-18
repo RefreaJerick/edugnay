@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EdUgnay — Narrative Reports</title>
+  <title>EdUgnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="../../assets/css/styles.css">
@@ -793,6 +793,10 @@
           <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
+        </a>
+        <a class="nav-item" onclick="navigate('journals')">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Student Journals</span>
         </a>
       </div>
 
@@ -1620,6 +1624,8 @@
   function navigate(page, section, tab) {
     if (page === 'dashboard') {
       window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'journals') {
+      window.location.href = './edugnay-teacher-journals.html';
     } else if (page === 'section') {
       // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
       window.location.href = './edugnay-teacher-sections.html';

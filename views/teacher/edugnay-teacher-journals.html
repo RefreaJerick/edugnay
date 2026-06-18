@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    
+
+    /* ── SUMMARY STRIP ── */
+    .summary-strip {
+      display: flex; align-items: stretch; gap: 0;
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(16,40,80,0.05);
+      animation: fadeUp 0.35s ease both;
+    }
+    .summary-item { flex: 1; padding: 18px 22px; border-right: 1px solid var(--gray-100); display: flex; align-items: center; gap: 14px; }
+    .summary-item:last-child { border-right: none; }
+    .summary-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .summary-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 800; color: var(--gray-800); line-height: 1; }
+    .summary-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+
+    /* ── SECTION TABS ── */
+    .section-tab-bar {
+      display: flex; align-items: center; gap: 2px;
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 12px; padding: 5px; margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(16,40,80,0.05);
+      animation: fadeUp 0.38s ease both;
+    }
+    .section-tab {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 9px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600;
+      color: var(--gray-500); cursor: pointer; border: none; background: transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .section-tab:hover { background: var(--gray-100); color: var(--gray-700); }
+    .section-tab.active { background: var(--blue); color: var(--white); box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
+    .section-tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .section-tab:not(.active) .section-tab-dot { opacity: 0.4; }
+    .tab-count { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.25); }
+    .section-tab:not(.active) .tab-count { background: var(--gray-100); color: var(--gray-500); }
+
+    /* ── PANEL ── */
+    .panel {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid var(--gray-200); overflow: hidden;
+      box-shadow: 0 2px 10px rgba(16,40,80,0.05);
+      margin-bottom: 20px; animation: fadeUp 0.4s ease both;
+    }
+    .panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--gray-100);
+      flex-wrap: wrap; gap: 10px;
+    }
+    .panel-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
+    .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .panel-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px; border-bottom: 1px solid var(--gray-100);
+      flex-wrap: wrap;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 180px; }
+    .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--gray-400); pointer-events: none; display: flex; align-items: center; }
+    .search-input {
+      width: 100%; padding: 9px 12px 9px 34px;
+      background: var(--gray-50); border: 1.5px solid var(--gray-200);
+      border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; color: var(--gray-800); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-input::placeholder { color: var(--gray-300); }
+    .search-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); background: var(--white); }
+
+    .filter-select {
+      padding: 9px 14px; background: var(--white);
+      border: 1.5px solid var(--gray-200); border-radius: 9px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px;
+      color: var(--gray-600); outline: none; transition: border-color 0.2s;
+      cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--blue-mid); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      color: var(--gray-400); padding: 10px 20px; text-align: left;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-100); white-space: nowrap;
+    }
+    thead th.center { text-align: center; }
+    tbody tr { border-bottom: 1px solid var(--gray-100); transition: background 0.15s; cursor: pointer; }
+    tbody tr:hover { background: var(--gray-50); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 13px 20px; font-size: 13px; color: var(--gray-700); vertical-align: middle; }
+    tbody td.center { text-align: center; }
+
+    .student-cell { display: flex; align-items: center; gap: 10px; }
+    .student-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+    .av-a { background: var(--blue-mid); }
+    .av-b { background: #16a34a; }
+    .av-c { background: #d97706; }
+    .av-d { background: #7c3aed; }
+    .av-e { background: #0d9488; }
+    .av-f { background: #be185d; }
+    .student-name { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+    .student-sub { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+    .entry-preview {
+      font-size: 12px; color: var(--gray-500); line-height: 1.5;
+      max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .badge-green  { background: var(--green-pale);  color: #15803d; }
+    .badge-orange { background: var(--orange-pale); color: #92400e; }
+    .badge-red    { background: var(--red-pale);    color: var(--red); }
+    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
+    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
+    .badge-purple { background: var(--purple-pale); color: var(--purple); }
+    .badge-gold   { background: var(--gold-pale);   color: #92400e; }
+
+    .row-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 7px; font-size: 11px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .row-btn.primary { background: var(--blue-xpale); color: var(--blue-mid); border-color: var(--blue-pale); }
+    .row-btn.primary:hover { background: var(--blue-pale); }
+
+    /* score chip */
+    .score-chip {
+      display: inline-flex; align-items: baseline; gap: 2px;
+      font-family: 'Playfair Display', serif;
+    }
+    .score-val { font-size: 17px; font-weight: 800; }
+    .score-max { font-size: 11px; font-weight: 600; color: var(--gray-400); }
+    .score-pass { color: #16a34a; }
+    .score-warn { color: #d97706; }
+    .score-none { color: var(--gray-300); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; }
+
+    /* ── WEEK HEADER ROW ── */
+    .week-row td {
+      background: var(--gray-50); padding: 8px 20px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--gray-500);
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(11,31,58,0.5);
+      z-index: 50; display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s; padding: 20px;
+    }
+    .modal-backdrop.open { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white); border-radius: 16px;
+      width: 100%; max-width: 580px; max-height: 90vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 24px 64px rgba(11,31,58,0.25);
+      transform: translateY(20px); transition: transform 0.25s ease;
+      overflow: hidden;
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+
+    .modal-head {
+      padding: 22px 28px 18px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+      flex-shrink: 0;
+    }
+    .modal-head-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 0; }
+    .modal-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 800; color: var(--gray-800); }
+    .modal-sub { font-size: 11.5px; color: var(--gray-400); margin-top: 3px; }
+    .modal-close { width: 32px; height: 32px; border-radius: 8px; background: var(--gray-100); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--gray-500); transition: background 0.15s; flex-shrink: 0; }
+    .modal-close:hover { background: var(--gray-200); }
+
+    .modal-body { flex: 1; overflow-y: auto; padding: 20px 28px; }
+
+    .modal-section { margin-bottom: 20px; }
+    .modal-section-label { font-size: 10.5px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+
+    /* prompt card */
+    .prompt-card {
+      background: var(--navy); border-radius: 10px; padding: 14px 16px;
+      border-left: 4px solid var(--gold); margin-bottom: 16px;
+    }
+    .prompt-label { font-size: 9.5px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+    .prompt-text { font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.5; font-style: italic; }
+
+    /* entry text */
+    .entry-body {
+      font-size: 13.5px; color: var(--gray-700); line-height: 1.75;
+      background: var(--gray-50); border-radius: 10px; padding: 16px 18px;
+      border: 1px solid var(--gray-100); white-space: pre-wrap;
+    }
+    .entry-body.no-entry { color: var(--gray-400); font-style: italic; background: var(--gray-50); border: 1.5px dashed var(--gray-200); }
+
+    /* score section */
+    .score-section { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .score-input-wrap { flex: 1; min-width: 160px; }
+    .score-input-label { font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .score-input-row { display: flex; align-items: center; gap: 8px; }
+    .score-num-input {
+      width: 80px; padding: 9px 12px; text-align: center;
+      background: var(--white); border: 1.5px solid var(--gray-200);
+      border-radius: 9px; font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 800; color: var(--gray-800); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .score-num-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); }
+    .score-divider { font-size: 16px; color: var(--gray-300); font-weight: 600; }
+    .score-max-label { font-size: 20px; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--gray-300); }
+    .score-hint { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
+
+    .modal-foot {
+      padding: 14px 28px 20px; display: flex; justify-content: space-between;
+      align-items: center; gap: 10px; flex-shrink: 0;
+      border-top: 1px solid var(--gray-100); flex-wrap: wrap;
+    }
+    .modal-foot-left { font-size: 11px; color: var(--gray-400); display: flex; align-items: center; gap: 6px; }
+    .modal-foot-actions { display: flex; gap: 8px; }
+
+    .btn { display: flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.15s; }
+    .btn-cancel { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
+    .btn-cancel:hover { background: var(--gray-200); }
+    .btn-save { background: var(--blue); color: white; box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
+    .btn-save:hover { background: var(--blue-mid); }
+    .btn-mark { background: var(--green-pale); color: #15803d; border: 1.5px solid #bbf7d0; }
+    .btn-mark:hover { background: #bbf7d0; }
+
+    /* nav arrows in modal */
+    .modal-nav { display: flex; align-items: center; gap: 6px; }
+    .modal-nav-btn { width: 30px; height: 30px; border-radius: 7px; background: var(--gray-100); border: 1.5px solid var(--gray-200); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--gray-500); transition: all 0.15s; }
+    .modal-nav-btn:hover { background: var(--gray-200); }
+    .modal-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .modal-nav-label { font-size: 11px; font-weight: 600; color: var(--gray-400); }
+
+    /* reviewed overlay on row */
+    tbody tr.reviewed td { opacity: 0.65; }
+
+    /* empty state */
+    .empty-state { padding: 48px 24px; text-align: center; }
+    .empty-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--gray-400); }
+    .empty-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
+    .empty-sub { font-size: 13px; color: var(--gray-400); }
+
+    /* toast */
+    @keyframes toastIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+    /* animations */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 980px) {
+      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
+      body { overflow-y: auto; }
+      .shell { display: block; }
+      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
+      .sidebar-overlay { display: block; }
+      .topbar { flex-wrap: wrap; padding: 16px 20px; }
+      .hamburger { display: grid; }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 20px; }
+      .summary-strip { flex-wrap: wrap; }
+      .summary-item { min-width: 45%; }
+      .entry-preview { display: none; }
+    }
+    @media (max-width: 520px) {
+      .summary-item { min-width: 100%; border-right: none; border-bottom: 1px solid var(--gray-100); }
+      .summary-item:last-child { border-bottom: none; }
+      .top-btn span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════ JOURNAL ENTRY MODAL ══════ -->
+<div class="modal-backdrop" id="journalModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-avatar av-a" id="modal-avatar">JD</div>
+        <div>
+          <div class="modal-title" id="modal-student-name">Juan Dela Cruz</div>
+          <div class="modal-sub" id="modal-meta">Grade 7 – St. Matthew · Week 3 · June 9–14, 2025</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <div class="modal-nav">
+          <button class="modal-nav-btn" id="prevBtn" onclick="navigateEntry(-1)" title="Previous student">
+            <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+          </button>
+          <span class="modal-nav-label" id="modal-nav-label">1 / 5</span>
+          <button class="modal-nav-btn" id="nextBtn" onclick="navigateEntry(1)" title="Next student">
+            <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
+        <button class="modal-close" onclick="closeModal('journalModal')">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Prompt -->
+      <div class="modal-section">
+        <div class="prompt-card">
+          <div class="prompt-label">This Week's Prompt</div>
+          <div class="prompt-text" id="modal-prompt">"Describe a challenge you faced this week in class and how you handled it."</div>
+        </div>
+      </div>
+
+      <!-- Entry -->
+      <div class="modal-section">
+        <div class="modal-section-label">
+          <i data-lucide="notebook-pen" style="width:11px;height:11px;"></i> Student Entry
+        </div>
+        <div class="entry-body" id="modal-entry-body">Loading…</div>
+      </div>
+
+      <!-- Score -->
+      <div class="modal-section">
+        <div class="modal-section-label">
+          <i data-lucide="star" style="width:11px;height:11px;"></i> Score
+        </div>
+        <div class="score-section">
+          <div class="score-input-wrap">
+            <div class="score-input-label">Points Earned</div>
+            <div class="score-input-row">
+              <input class="score-num-input" type="number" id="modal-score-input" min="0" max="50" placeholder="—"/>
+              <span class="score-divider">/</span>
+              <span class="score-max-label">50</span>
+            </div>
+            <div class="score-hint">Graded out of 50 points</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-foot">
+      <div class="modal-foot-left" id="modal-status-note">
+        <i data-lucide="clock" style="width:12px;height:12px;"></i>
+        Not yet reviewed
+      </div>
+      <div class="modal-foot-actions">
+        <button class="btn btn-cancel" onclick="closeModal('journalModal')">Close</button>
+        <button class="btn btn-mark" id="markReviewedBtn" onclick="markReviewed()">
+          <i data-lucide="check" style="width:13px;height:13px;"></i> Save & Mark Reviewed
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+      </div>
+      <div>
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+
+        <a class="nav-item" onclick="navigate('dashboard')">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <!-- My Sections (expandable) -->
+        <div class="nav-group" id="sections-group">
+          <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+            <span>My Sections</span>
+            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" onclick="navigate('section', '7-matthew')">
+              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 7 – St. Matthew
+            </a>
+            <a class="nav-child" onclick="navigate('section', '8-luke')">
+              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 8 – St. Luke
+            </a>
+            <a class="nav-child" onclick="navigate('section', '9-peter')">
+              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 9 – St. Peter
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Narrative Reports — only shown for journal handler -->
+      <div class="nav-section" id="reports-nav">
+        <div class="nav-section-label">Reports</div>
+        <a class="nav-item" onclick="navigate('reports')">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
+          <span class="nav-badge">5</span>
+        </a>
+        <a class="nav-item active">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Student Journals</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a class="nav-item" onclick="navigate('announcements')">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">MR</div>
+        <div class="admin-info">
+          <div class="admin-name">Ms. Maria Reyes</div>
+          <div class="admin-role">Faculty</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Teacher</div>
+        <div class="page-title">Student Journals</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- <button class="top-btn secondary">
+        <i data-lucide="download" style="width:14px;height:14px;"></i>
+        <span>Export</span>
+      </button> -->
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- Summary strip -->
+    <div class="summary-strip">
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--purple-pale);color:var(--purple);">
+          <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num">108</div>
+          <div class="summary-label">Total Students</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--green-pale);color:#16a34a;">
+          <i data-lucide="send" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num">89</div>
+          <div class="summary-label">Submitted This Week</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--orange-pale);color:#d97706;">
+          <i data-lucide="hourglass" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num">44</div>
+          <div class="summary-label">Pending Review</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="circle-x" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="summary-num">19</div>
+          <div class="summary-label">Not Submitted</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section tabs -->
+    <div class="section-tab-bar">
+      <button class="section-tab active" onclick="switchSection('7-matthew', this)" id="tab-7-matthew">
+        <span class="section-tab-dot" style="background:var(--blue-mid);"></span>
+        Grade 7 – St. Matthew
+        <span class="tab-count">38</span>
+      </button>
+      <button class="section-tab" onclick="switchSection('8-luke', this)" id="tab-8-luke">
+        <span class="section-tab-dot" style="background:var(--gold);"></span>
+        Grade 8 – St. Luke
+        <span class="tab-count">36</span>
+      </button>
+      <button class="section-tab" onclick="switchSection('9-peter', this)" id="tab-9-peter">
+        <span class="section-tab-dot" style="background:var(--green);"></span>
+        Grade 9 – St. Peter
+        <span class="tab-count">34</span>
+      </button>
+    </div>
+
+    <!-- Journal entries panel -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title" id="panel-title">Journal Entries — Grade 7, St. Matthew</div>
+          <div class="panel-sub" id="panel-sub">Week 3 · June 9–14, 2025 · Prompt: "Describe a challenge you faced this week in class and how you handled it."</div>
+        </div>
+        <div class="panel-head-right">
+          <select class="filter-select" id="week-filter" onchange="renderTable()">
+            <option value="3">Week 3 — June 9–14</option>
+            <option value="2">Week 2 — June 2–7</option>
+            <option value="1">Week 1 — May 26–31</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+          <input class="search-input" type="text" placeholder="Search student…" id="search-input" oninput="renderTable()"/>
+        </div>
+        <select class="filter-select" id="status-filter" onchange="renderTable()">
+          <option value="all">All Statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="not_submitted">Not Submitted</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="pending">Pending Review</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student</th>
+              <th>Journal Excerpt</th>
+              <th class="center">Submitted</th>
+              <th class="center">Score</th>
+              <th class="center">Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="journal-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);" id="table-footer">
+        Showing all students
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+
+/* ══════ DATA ══════ */
+const SECTIONS = {
+  '7-matthew': {
+    label: 'Grade 7 – St. Matthew',
+    prompt: '"Describe a challenge you faced this week in class and how you handled it."',
+    students: [
+      { id:1, name:'Alcantara, Juan B.',    av:'JA', avClass:'av-a', entry:`This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.`, submitted:true, score:40,  reviewed:true  },
+      { id:2, name:'Bautista, Maria C.',    av:'MB', avClass:'av-b', entry:`I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.`, submitted:true, score:45,  reviewed:true  },
+      { id:3, name:'Cruz, Ramon D.',        av:'RC', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
+      { id:4, name:'Dela Torre, Ana F.',    av:'DA', avClass:'av-d', entry:`The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item — two minutes max — and I managed to finish before the bell. I will keep practicing this.`, submitted:true, score:null, reviewed:false },
+      { id:5, name:'Estrada, Jose G.',      av:'EJ', avClass:'av-e', entry:``, submitted:false, score:null, reviewed:false },
+      { id:6, name:'Garcia, Luisa H.',      av:'GL', avClass:'av-f', entry:`I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and watched a short video about it. Now I think I understand when to flip the sign and when not to.`, submitted:true, score:50, reviewed:true  },
+      { id:7, name:'Hernandez, Carlo I.',   av:'HC', avClass:'av-a', entry:`My challenge this week was group work. My groupmates and I disagreed on how to present our solution on the board. We talked it over and decided to combine both approaches to show two different methods. Our teacher appreciated that we showed more than one way.`, submitted:true, score:45,  reviewed:false },
+      { id:8, name:'Ibarra, Rosa J.',       av:'IR', avClass:'av-b', entry:`I had difficulty remembering the formula for the slope of a line. I made a small flashcard and kept it in my notebook. When I looked at it before the quiz it helped me remember.`, submitted:true, score:50,  reviewed:false },
+    ]
+  },
+  '8-luke': {
+    label: 'Grade 8 – St. Luke',
+    prompt: '"What is something you learned this week that surprised you, and why did it surprise you?"',
+    students: [
+      { id:1, name:'Aquino, Ben F.',      av:'AB', avClass:'av-a', entry:`I was surprised to learn that the Pythagorean theorem works in real-world architecture. I never connected math to buildings before. It made me curious about what other formulas engineers use.`, submitted:true, score:8, reviewed:true },
+      { id:2, name:'Flores, Clara G.',    av:'FC', avClass:'av-b', entry:`I was surprised that irrational numbers go on forever without repeating. I thought all numbers had a pattern eventually.`, submitted:true, score:null, reviewed:false },
+      { id:3, name:'Gonzales, David H.', av:'GD', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
+      { id:4, name:'Lopez, Emma I.',      av:'LE', avClass:'av-d', entry:`The thing that surprised me most was how a negative exponent means a fraction. It seems counterintuitive but once I saw the pattern it made sense.`, submitted:true, score:9, reviewed:false },
+      { id:5, name:'Morales, Felix J.',   av:'MF', avClass:'av-e', entry:``, submitted:false, score:null, reviewed:false },
+    ]
+  },
+  '9-peter': {
+    label: 'Grade 9 – St. Peter',
+    prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?"',
+    students: [
+      { id:1, name:'Navarro, Gina K.',    av:'NG', avClass:'av-a', entry:`I helped my seatmate understand how to factor a trinomial. Explaining it to her actually made me realize I understood it better than I thought. Teaching someone else really reinforces learning.`, submitted:true, score:10, reviewed:true },
+      { id:2, name:'Ocampo, Hector L.',   av:'OH', avClass:'av-b', entry:`My classmate helped me when I was stuck on a problem involving the quadratic formula. He showed me how to identify a, b, and c carefully before substituting. I was rushing and that was my mistake.`, submitted:true, score:8, reviewed:false },
+      { id:3, name:'Pascual, Iris M.',    av:'PI', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
+      { id:4, name:'Quinto, Jose N.',     av:'QJ', avClass:'av-d', entry:`I helped a friend who was confused about graphing linear functions. We drew it step by step and she finally got it. It felt good to be useful.`, submitted:true, score:9, reviewed:false },
+    ]
+  }
+};
+
+let currentSection = '7-matthew';
+let activeStudentIds = [];
+let activeStudentIndex = 0;
+
+/* ══════ SECTION SWITCH ══════ */
+function switchSection(sectionKey, btn) {
+  currentSection = sectionKey;
+  document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const sec = SECTIONS[sectionKey];
+  document.getElementById('panel-title').textContent = `Journal Entries — ${sec.label}`;
+  document.getElementById('panel-sub').textContent = `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`;
+
+  document.getElementById('search-input').value = '';
+  document.getElementById('status-filter').value = 'all';
+  renderTable();
+}
+
+/* ══════ RENDER TABLE ══════ */
+function renderTable() {
+  const sec = SECTIONS[currentSection];
+  const query = document.getElementById('search-input').value.toLowerCase();
+  const statusFilter = document.getElementById('status-filter').value;
+
+  const filtered = sec.students.filter(s => {
+    if (query && !s.name.toLowerCase().includes(query)) return false;
+    if (statusFilter === 'submitted' && !s.submitted) return false;
+    if (statusFilter === 'not_submitted' && s.submitted) return false;
+    if (statusFilter === 'reviewed' && !s.reviewed) return false;
+    if (statusFilter === 'pending' && (s.reviewed || !s.submitted)) return false;
+    return true;
+  });
+
+  activeStudentIds = filtered.map(s => s.id);
+
+  const tbody = document.getElementById('journal-tbody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon"><i data-lucide="search" style="width:22px;height:22px;"></i></div><div class="empty-title">No entries found</div><div class="empty-sub">Try adjusting your search or filter.</div></div></td></tr>`;
+    lucide.createIcons();
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((s, i) => {
+    const excerpt = s.submitted && s.entry ? s.entry.slice(0, 90) + (s.entry.length > 90 ? '…' : '') : '—';
+
+    let scoreCellHtml;
+    if (!s.submitted) {
+      scoreCellHtml = `<span class="score-none">—</span>`;
+    } else if (s.score !== null) {
+      const cls = s.score >= 40 ? 'score-pass' : s.score >= 30 ? 'score-warn' : 'score-fail';
+      scoreCellHtml = `<span class="score-chip"><span class="score-val ${cls}">${s.score}</span><span class="score-max">/50</span></span>`;
+    } else {
+      scoreCellHtml = `<span class="score-none">Not scored</span>`;
+    }
+
+    let statusBadge;
+    if (!s.submitted) {
+      statusBadge = `<span class="badge badge-gray">Not submitted</span>`;
+    } else if (s.reviewed) {
+      statusBadge = `<span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Reviewed</span>`;
+    } else {
+      statusBadge = `<span class="badge badge-orange">Pending review</span>`;
+    }
+
+    return `
+      <tr class="${s.reviewed ? 'reviewed' : ''}" onclick="openEntry(${s.id})">
+        <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
+        <td>
+          <div class="student-cell">
+            <div class="student-av ${s.avClass}">${s.av}</div>
+            <div>
+              <div class="student-name">${s.name}</div>
+            </div>
+          </div>
+        </td>
+        <td><div class="entry-preview">${excerpt}</div></td>
+        <td class="center">
+          ${s.submitted
+            ? `<span class="badge badge-blue"><i data-lucide="check" style="width:10px;height:10px;"></i> Yes</span>`
+            : `<span class="badge badge-red">No</span>`}
+        </td>
+        <td class="center">${scoreCellHtml}</td>
+        <td class="center">${statusBadge}</td>
+        <td>
+          <button class="row-btn primary" onclick="event.stopPropagation();openEntry(${s.id})">
+            <i data-lucide="eye" style="width:11px;height:11px;"></i> Review
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  const total = sec.students.length;
+  const shown = filtered.length;
+  document.getElementById('table-footer').textContent =
+    shown === total ? `Showing all ${total} students` : `Showing ${shown} of ${total} students`;
+
+  lucide.createIcons();
+}
+
+/* ══════ OPEN ENTRY MODAL ══════ */
+function openEntry(studentId) {
+  const sec = SECTIONS[currentSection];
+  const s = sec.students.find(x => x.id === studentId);
+  if (!s) return;
+
+  activeStudentIndex = activeStudentIds.indexOf(studentId);
+  populateModal(s);
+  openModal('journalModal');
+}
+
+function populateModal(s) {
+  const sec = SECTIONS[currentSection];
+
+  document.getElementById('modal-avatar').textContent = s.av;
+  document.getElementById('modal-avatar').className = `modal-avatar ${s.avClass}`;
+  document.getElementById('modal-student-name').textContent = s.name;
+  document.getElementById('modal-meta').textContent = `${sec.label} · Week 3 · June 9–14, 2025`;
+  document.getElementById('modal-prompt').textContent = sec.prompt;
+
+  const entryEl = document.getElementById('modal-entry-body');
+  if (s.submitted && s.entry) {
+    entryEl.textContent = s.entry;
+    entryEl.classList.remove('no-entry');
+  } else {
+    entryEl.textContent = 'No journal entry submitted for this week.';
+    entryEl.classList.add('no-entry');
+  }
+
+  document.getElementById('modal-score-input').value = s.score !== null ? s.score : '';
+  document.getElementById('modal-score-input').disabled = !s.submitted;
+
+  const statusNote = document.getElementById('modal-status-note');
+  if (s.reviewed) {
+    statusNote.innerHTML = `<i data-lucide="check-circle" style="width:12px;height:12px;color:#16a34a;"></i> <span style="color:#16a34a;font-weight:600;">Reviewed</span>`;
+  } else if (!s.submitted) {
+    statusNote.innerHTML = `<i data-lucide="circle-x" style="width:12px;height:12px;"></i> No submission`;
+  } else {
+    statusNote.innerHTML = `<i data-lucide="clock" style="width:12px;height:12px;"></i> Not yet reviewed`;
+  }
+
+  const allIds = activeStudentIds;
+  const idx = activeStudentIndex;
+  document.getElementById('modal-nav-label').textContent = `${idx + 1} / ${allIds.length}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === allIds.length - 1;
+
+  lucide.createIcons();
+}
+
+/* ══════ MODAL NAVIGATION ══════ */
+function navigateEntry(dir) {
+  const newIdx = activeStudentIndex + dir;
+  if (newIdx < 0 || newIdx >= activeStudentIds.length) return;
+  activeStudentIndex = newIdx;
+  const sec = SECTIONS[currentSection];
+  const s = sec.students.find(x => x.id === activeStudentIds[activeStudentIndex]);
+  if (s) populateModal(s);
+}
+
+/* ══════ MARK REVIEWED ══════ */
+function markReviewed() {
+  const sec = SECTIONS[currentSection];
+  const studentId = activeStudentIds[activeStudentIndex];
+  const s = sec.students.find(x => x.id === studentId);
+  if (!s) return;
+
+  const scoreInput = document.getElementById('modal-score-input');
+  const scoreVal = parseFloat(scoreInput.value);
+
+  if (s.submitted && (isNaN(scoreVal) || scoreInput.value === '')) {
+    scoreInput.style.borderColor = 'var(--red)';
+    scoreInput.focus();
+    showToast('Please enter a score before marking as reviewed.', 'error');
+    return;
+  }
+
+  scoreInput.style.borderColor = '';
+
+  if (s.submitted && !isNaN(scoreVal)) {
+    s.score = Math.min(50, Math.max(0, scoreVal));
+  }
+  s.reviewed = true;
+
+  renderTable();
+  populateModal(s);
+  showToast(`${s.name} — marked as reviewed`, 'success');
+}
+
+/* ══════ MODAL HELPERS ══════ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// Navigation stub — in production, these would be real routes
+function navigate(page, section, tab) {
+  if (page === 'dashboard') {
+    window.location.href = './edugnay-teacher-dashboard.html';
+  } else if (page === 'journals') {
+    window.location.href = './edugnay-teacher-journals.html';
+  } else if (page === 'section') {
+    // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
+    window.location.href = './edugnay-teacher-sections.html';
+  } else if (page === 'reports') {
+    window.location.href = './edugnay-teacher-reports.html';
+  } else if (page === 'announcements') {
+    window.location.href = 'edugnay-teacher-announcements.html';
+  }
+}
+
+/* ══════ DRAWER ══════ */
+function toggleDrawer(open) {
+  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+  document.body.classList.toggle('drawer-open', isOpen);
+}
+
+function toggleGroup(id) {
+  document.getElementById(id).classList.toggle('open');
+  lucide.createIcons();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { toggleDrawer(false); closeModal('journalModal'); }
+  if (e.key === 'ArrowRight' && document.getElementById('journalModal').classList.contains('open')) navigateEntry(1);
+  if (e.key === 'ArrowLeft'  && document.getElementById('journalModal').classList.contains('open')) navigateEntry(-1);
+});
+
+/* ══════ TOAST ══════ */
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.2s ease;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* ══════ INIT ══════ */
+renderTable();
+</script>
+</body>
+</html>

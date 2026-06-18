@@ -68,6 +68,10 @@
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
+        <a class="nav-item" onclick="navigate('journals')">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Student Journals</span>
+        </a>
       </div>
 
       <div class="nav-section">
@@ -403,7 +407,11 @@
 
   // Navigation stub — in production, these would be real routes
   function navigate(page, section, tab) {
-    if (page === 'section') {
+    if (page === 'dashboard') {
+      window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'journals') {
+      window.location.href = './edugnay-teacher-journals.html';
+    } else if (page === 'section') {
       // window.location.href = 'edugnay-teacher-sections.html?section=' + section + (tab ? '&tab=' + tab : '');
       window.location.href = './edugnay-teacher-sections.html';
     } else if (page === 'reports') {
