@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdUgnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/student/grades.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* EJS NOTE: moves to assets/css/student/grades.css. Uses shared tokens only. */
+
+    /* ── Quarter tabs — same pill-tab pattern as journals section tabs ── */
+    .quarter-tab-bar {
+      display: flex; align-items: center; gap: 2px;
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 12px; padding: 5px; margin-bottom: 20px;
+    }
+    .quarter-tab {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 12px; border-radius: 9px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600;
+      color: var(--gray-500); cursor: pointer; border: none; background: transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .quarter-tab:hover:not(.locked) { background: var(--gray-100); color: var(--gray-700); }
+    .quarter-tab.active { background: var(--blue); color: var(--white); box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
+    .quarter-tab.locked { color: var(--gray-300); cursor: not-allowed; }
+    .quarter-tab.locked i { opacity: 0.6; }
+
+    /* ── Average banner — consistent navy/gold gradient family ── */
+    .avg-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      border-radius: 14px; padding: 20px 28px; margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(11,31,58,0.18);
+    }
+    .avg-banner-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+    .avg-banner-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 800; color: var(--white); line-height: 1; }
+    .avg-banner-icon {
+      width: 52px; height: 52px; border-radius: 13px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Subject grade cards ── */
+    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 2px 10px rgba(16,40,80,0.05); margin-bottom: 20px; }
+    .panel-head { padding: 16px 22px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .panel-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
+
+    .subject-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 22px; border-bottom: 1px solid var(--gray-100);
+    }
+    .subject-row:last-child { border-bottom: none; }
+    .subject-icon { width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .subject-info { flex: 1; min-width: 0; }
+    .subject-name { font-size: 13.5px; font-weight: 700; color: var(--gray-800); }
+    .subject-teacher { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+    .subject-remark { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; margin-top: 6px; padding: 2px 9px; border-radius: 999px; }
+    .remark-outstanding   { background: var(--green-pale);  color: #15803d; }
+    .remark-vsatisfactory { background: var(--blue-xpale);  color: var(--blue); }
+    .remark-satisfactory  { background: var(--gold-pale);   color: #92400e; }
+    .remark-fair          { background: var(--orange-pale); color: #92400e; }
+    .remark-risk          { background: var(--red-pale);    color: var(--red); }
+
+    .subject-grade-num { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 800; flex-shrink: 0; text-align: right; line-height: 1; }
+    .g-high { color: #15803d; }
+    .g-mid  { color: var(--blue); }
+    .g-low  { color: #92400e; }
+    .g-risk { color: var(--red); }
+
+    /* ── Locked quarter empty state ── */
+    .locked-state { padding: 56px 24px; text-align: center; }
+    .locked-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--gray-400); }
+    .locked-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
+    .locked-sub { font-size: 13px; color: var(--gray-400); line-height: 1.6; }
+
+    /* ── Footnote ── */
+    .grade-footnote {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 13px 16px; background: var(--blue-xpale);
+      border: 1px solid var(--blue-pale); border-radius: 10px;
+      font-size: 12px; color: var(--blue); line-height: 1.55;
+    }
+
+    @media (max-width: 980px) {
+      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
+      body { overflow-y: auto; }
+      .shell { display: block; }
+      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
+      .sidebar-overlay { display: block; }
+      .topbar { flex-wrap: wrap; padding: 16px 20px; }
+      .hamburger { display: grid; }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 20px; }
+      .quarter-tab span { display: none; }
+    }
+    @media (max-width: 520px) {
+      .avg-banner-num { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  EJS CONVERSION MAP — student-grades.html
+  ─────────────────────────────────────────
+  - quarters[]      → academic config (admin Academic Year & Grading Period)
+                       { id, label, locked }
+  - generalAverage   → computed SERVER-SIDE from subjects[].finalGrade — never in browser
+  - subjects[]       → per enrolled subject for the SELECTED quarter:
+                       { name, teacherName, finalGrade, remarkLabel, remarkClass, icon, iconBg, iconColor }
+                       finalGrade is the ONLY grade value ever sent — no Written Work /
+                       Performance Task / Exam breakdown reaches this route's response.
+  - remarkClass thresholds (mirror admin grading config):
+        >=90 outstanding · >=85 vsatisfactory · >=80 satisfactory · >=75 fair · <75 risk
+    Currently computed in renderQuarter() below — move server-side on conversion so
+    the client never derives pass/fail logic from raw scores.
+  - Locked quarter → render locked-state block instead of subject rows.
+
+  PARTIALS: same sidebar/topbar partials as dashboard (activeNav='grades').
+
+  ROUTING: switching quarters should become GET /student/grades?quarter=:id once
+  converted, rather than holding every quarter (including unreleased ones) in a
+  client-side object — Q3/Q4 here are placeholders precisely because real future
+  quarter data should never ship to the browser before release.
+-->
+
+<div class="shell">
+  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-student-dashboard.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="edugnay-student-grades.html" class="nav-item active">
+        <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">My Grades</span>
+      </a>
+      <a href="edugnay-student-materials.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Learning Materials</span>
+      </a>
+      <a href="edugnay-student-journal.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Journal Entries</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Communication</div>
+      <a href="edugnay-student-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">3</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Account</div>
+      <a href="edugnay-student-profile.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">My Profile</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile" onclick="location.href='student-profile.html'">
+        <div class="admin-avatar">JA</div>
+        <div class="admin-info">
+          <div class="admin-name">Juan Alcantara</div>
+          <div class="admin-role">Grade 7 – St. Matthew</div>
+        </div>
+        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">EdUgnay · Student</div>
+        <div class="page-title">My Grades</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <a href="edugnay-student-dashboard.html" class="top-btn secondary">
+        <i data-lucide="layout-dashboard" style="width:14px;height:14px;"></i> <span>Dashboard</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- quarters[]: loop -->
+    <div class="quarter-tab-bar">
+      <button class="quarter-tab" data-q="1">Quarter 1</button>
+      <button class="quarter-tab active" data-q="2">Quarter 2</button>
+      <button class="quarter-tab locked" data-q="3" disabled><i data-lucide="lock" style="width:11px;height:11px;"></i> <span>Quarter 3</span></button>
+      <button class="quarter-tab locked" data-q="4" disabled><i data-lucide="lock" style="width:11px;height:11px;"></i> <span>Quarter 4</span></button>
+    </div>
+    <!-- end quarters[] loop -->
+
+    <!-- generalAverage: hidden when locked quarter selected -->
+    <div class="avg-banner" id="avg-banner">
+      <div>
+        <div class="avg-banner-label" id="avg-label">Quarter 2 General Average</div>
+        <div class="avg-banner-num" id="avg-num">90.8</div>
+      </div>
+      <div class="avg-banner-icon">
+        <i data-lucide="award" style="width:24px;height:24px;color:var(--gold);"></i>
+      </div>
+    </div>
+
+    <div id="subject-panel-wrap">
+      <!-- JS renders subject panel or locked-state into here -->
+    </div>
+
+    <div class="grade-footnote" id="footnote">
+      <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;margin-top:1px;"></i>
+      <span>These are your final quarter grades only. For specific quiz or activity scores, please ask your subject teacher directly.</span>
+    </div>
+
+  </main>
+</div>
+
+<script>
+lucide.createIcons();
+
+/*
+  EJS NOTE: GRADES_BY_QUARTER is a client-side placeholder for what will become
+  server-rendered or fetched data. On conversion, this should NOT hold all four
+  quarters in memory at once (Q3/Q4 are locked/unreleased) — switching quarters
+  should hit GET /student/grades?quarter=:id instead.
+*/
+const GRADES_BY_QUARTER = {
+  1: {
+    locked: false,
+    average: 89.4,
+    subjects: [
+      { name:'Mathematics', teacher:'Ms. Maria Reyes', grade:88.0, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+      { name:'English', teacher:'Mr. Paolo Santos', grade:91.5, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+      { name:'Science', teacher:'Mrs. Liza Ramos', grade:87.0, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+      { name:'Filipino', teacher:'Mr. Andres Cruz', grade:90.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+      { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:89.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+      { name:'Values Education', teacher:'Ms. Maria Reyes', grade:92.0, icon:'heart-handshake', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+      { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:90.5, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+    ]
+  },
+  2: {
+    locked: false,
+    average: 90.8,
+    subjects: [
+      { name:'Mathematics', teacher:'Ms. Maria Reyes', grade:92.5, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+      { name:'English', teacher:'Mr. Paolo Santos', grade:90.0, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+      { name:'Science', teacher:'Mrs. Liza Ramos', grade:88.5, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+      { name:'Filipino', teacher:'Mr. Andres Cruz', grade:91.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+      { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:84.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+      { name:'Values Education', teacher:'Ms. Maria Reyes', grade:94.0, icon:'heart-handshake', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+      { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:91.0, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+    ]
+  },
+  3: { locked: true },
+  4: { locked: true },
+};
+
+let currentQuarter = 2;
+
+function remarkFor(grade) {
+  if (grade >= 90) return { label: 'Outstanding', cls: 'remark-outstanding', gcls: 'g-high' };
+  if (grade >= 85) return { label: 'Very Satisfactory', cls: 'remark-vsatisfactory', gcls: 'g-high' };
+  if (grade >= 80) return { label: 'Satisfactory', cls: 'remark-satisfactory', gcls: 'g-mid' };
+  if (grade >= 75) return { label: 'Fairly Satisfactory', cls: 'remark-fair', gcls: 'g-low' };
+  return { label: 'At Risk', cls: 'remark-risk', gcls: 'g-risk' };
+}
+
+function renderQuarter(q) {
+  currentQuarter = q;
+  document.querySelectorAll('.quarter-tab').forEach(t => t.classList.toggle('active', t.dataset.q === String(q)));
+
+  const data = GRADES_BY_QUARTER[q];
+  const avgBanner = document.getElementById('avg-banner');
+  const wrap = document.getElementById('subject-panel-wrap');
+  const footnote = document.getElementById('footnote');
+
+  if (data.locked) {
+    avgBanner.style.display = 'none';
+    footnote.style.display = 'none';
+    wrap.innerHTML = `
+      <div class="panel">
+        <div class="locked-state">
+          <div class="locked-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
+          <div class="locked-title">Not yet available</div>
+          <div class="locked-sub">Grades for this quarter haven't been released yet.<br/>Check back once the grading period starts.</div>
+        </div>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  avgBanner.style.display = 'flex';
+  footnote.style.display = 'flex';
+  document.getElementById('avg-label').textContent = `Quarter ${q} General Average`;
+  document.getElementById('avg-num').textContent = data.average.toFixed(1);
+
+  wrap.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Subject Grades</div></div>
+      ${data.subjects.map(s => {
+        const r = remarkFor(s.grade);
+        return `
+          <div class="subject-row">
+            <div class="subject-icon" style="background:${s.iconBg};">
+              <i data-lucide="${s.icon}" style="width:19px;height:19px;color:${s.iconColor};"></i>
+            </div>
+            <div class="subject-info">
+              <div class="subject-name">${s.name}</div>
+              <div class="subject-teacher">${s.teacher}</div>
+              <span class="subject-remark ${r.cls}">${r.label}</span>
+            </div>
+            <div class="subject-grade-num ${r.gcls}">${s.grade.toFixed(1)}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  lucide.createIcons();
+}
+
+document.querySelectorAll('.quarter-tab').forEach(tab => {
+  if (!tab.disabled) {
+    tab.addEventListener('click', () => renderQuarter(parseInt(tab.dataset.q)));
+  }
+});
+
+function toggleDrawer(open) {
+  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+  document.body.classList.toggle('drawer-open', isOpen);
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+    toggleDrawer(false);
+  });
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleDrawer(false); });
+
+renderQuarter(currentQuarter);
+</script>
+
+</body>
+</html>
