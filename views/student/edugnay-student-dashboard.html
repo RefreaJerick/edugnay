@@ -34,123 +34,123 @@
     .summary-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
 
     /* ── Greeting banner — navy/gold gradient, profile + date, no grade data ── */
-  .greeting-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-    background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
-    border: 1px solid rgba(212, 175, 55, 0.25);
-    border-left: 4px solid var(--gold);
-    border-radius: 14px;
-    padding: 18px 26px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
-    position: relative;
-    overflow: hidden;
-  }
-  .greeting-banner::before {
-    content: '';
-    position: absolute; top: -60px; right: -60px;
-    width: 220px; height: 220px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(212,175,55,0.14), transparent 70%);
-    pointer-events: none;
-  }
+    .greeting-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-left: 4px solid var(--gold);
+      border-radius: 14px;
+      padding: 18px 26px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    /* .greeting-banner::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,0.14), transparent 70%);
+      pointer-events: none;
+    } */
 
-  .greeting-banner-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    position: relative;
-    z-index: 1;
-  }
+    .greeting-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
 
-  .greeting-avatar {
-    width: 78px; height: 78px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem; font-weight: 800;
-    color: var(--navy);
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
-    border: 2px solid rgba(255,255,255,0.18);
-    overflow: hidden;
-  }
-  .greeting-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .greeting-avatar { display: none; }
 
-  .greeting-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(212, 175, 55, 0.85);
-    margin-bottom: 3px;
-  }
+    .greeting-text-block { display: flex; flex-direction: column; gap: 4px; }
 
-  .greeting-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.35rem;
-    font-weight: 800;
-    color: #fff;
-    line-height: 1.15;
-  }
+    .greeting-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(212, 175, 55, 0.85);
+      margin-bottom: 2px;
+    }
 
-  .greeting-section {
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.65);
-    margin-top: 3px;
-  }
+    .greeting-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+    }
 
-  .greeting-banner-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    position: relative;
-    z-index: 1;
-  }
+    .greeting-meta-row {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin-top: 6px;
+    }
 
-  .greeting-quarter-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(212, 175, 55, 0.12);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    border-radius: 999px;
-    padding: 6px 14px;
-  }
-  .greeting-quarter-badge {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: var(--gold);
-    background: rgba(212,175,55,0.18);
-    border-radius: 6px;
-    padding: 1px 7px;
-  }
-  .greeting-quarter-text {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.85);
-  }
+    .greeting-meta-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.72rem; font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 3px 9px;
+    }
 
-  .greeting-date-pill {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 999px;
-  }
-  .greeting-date-pill i { color: var(--gold); flex-shrink: 0; }
-    /* .greeting-time { font-size: 11px; color: rgba(255,255,255,0.5); } */
+    .greeting-meta-line { display: none; }
+
+    .greeting-banner-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .greeting-quarter-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(212, 175, 55, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 999px;
+      padding: 6px 14px;
+    }
+    .greeting-quarter-badge {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--gold);
+      background: rgba(212,175,55,0.18);
+      border-radius: 6px;
+      padding: 1px 7px;
+    }
+    .greeting-quarter-text {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .greeting-date-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+    }
+    .greeting-date-pill i { color: var(--gold); flex-shrink: 0; }
+      /* .greeting-time { font-size: 11px; color: rgba(255,255,255,0.5); } */
 
     /* ── Panel — identical to teacher/admin panel pattern ── */
     .panel {
@@ -242,14 +242,23 @@
       .main { padding: 20px; }
       .summary-strip { flex-wrap: wrap; }
       .summary-item { min-width: 45%; }
-      .greeting-banner { flex-direction: column; align-items: flex-start; }
-      .greeting-banner-right { align-items: flex-start; width: 100%; justify-content: space-between; }
+
+      .greeting-banner { padding: 18px 20px; gap: 12px; }
+      .greeting-banner-right { display: none; }
+      .greeting-name { font-size: 1.2rem; }
+      .greeting-meta-row { margin-top: 5px; }
+      .greeting-meta-chip { display: none; }
+      .greeting-meta-line {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 0.75rem; font-weight: 500;
+        color: rgba(255,255,255,0.45);
+      }
     }
+
     @media (max-width: 520px) {
       .summary-item { min-width: 100%; border-right: none; border-bottom: 1px solid var(--gray-100); }
       .summary-item:last-child { border-bottom: none; }
       .greeting-name { font-size: 1.1rem; }
-      .greeting-banner-right { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
   </style>
 </head>
@@ -387,16 +396,15 @@
     <!-- Greeting banner — identity + date only, NO grade data -->
     <div class="greeting-banner">
       <div class="greeting-banner-left">
-        <div class="greeting-avatar" id="greeting-avatar">
-          <!-- EJS: <% if (student.avatarUrl) { %><img src="<%= student.avatarUrl %>" alt=""/><% } else { %> -->
-          <img src="../../assets/images/dora-funny.jpg"/>
-          <!-- <% } else { %>JA<% } %> -->
-        </div>
-        <div>
+        <div class="greeting-text-block">
           <div class="greeting-label" id="greeting-time-label">Good morning</div>
-          <!-- studentName -->
-          <div class="greeting-name">Hi, Juan!</div>
-          <div class="greeting-section">Grade 7 – St. Matthew</div>
+          <div class="greeting-name">Juan Alcantara</div>
+            <div class="greeting-meta-row">
+              <span class="greeting-meta-line">
+                <i data-lucide="door-open" style="width:10px;height:10px;"></i>
+                Grade 7 – St. Matthew &nbsp;·&nbsp; Q2 S.Y. 2025–2026
+              </span>
+            </div>
         </div>
       </div>
       <div class="greeting-banner-right">
