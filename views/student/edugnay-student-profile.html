@@ -20,11 +20,6 @@
       margin-bottom: 24px; overflow: hidden;
       box-shadow: 0 6px 20px rgba(11,31,58,0.18);
     }
-    .profile-hero::before {
-      content: ''; position: absolute; top: -40px; right: -40px;
-      width: 180px; height: 180px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(201,168,76,0.18), transparent 70%);
-    }
     .profile-hero-content { position: relative; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
     .profile-avatar-outer {
       position: relative;
@@ -37,8 +32,8 @@
       height: 100%;
       border-radius: 50%;
       overflow: hidden;
-      box-shadow: 0 6px 16px rgba(201, 168, 76, 0.35);
-      border: 3px solid rgba(255, 255, 255, 0.15);
+      /* box-shadow: 0 6px 16px rgba(201, 168, 76, 0.35); */
+      /* border: 3px solid rgba(255, 255, 255, 0.15); */
       /* remove position: relative from here */
     }
     .profile-avatar-wrap img {
@@ -241,11 +236,12 @@
       .main { padding: 20px; }
       .info-grid { grid-template-columns: 1fr; }
       .form-grid-2 { grid-template-columns: 1fr; }
-      .profile-hero-content { flex-direction: column; align-items: flex-start; }
-      .profile-hero-stat { width: 100%; }
+      .profile-hero-content { flex-direction: column; align-items: center; }
+      .profile-hero-info { display: flex; flex-direction: column; align-items: center; }
+      .profile-hero-stat { width: 100%; text-align: center;}
     }
     @media (max-width: 520px) {
-      .profile-avatar-outer { width: 68px; height: 68px; }
+      /* .profile-avatar-outer { width: 68px; height: 68px; } */
       .profile-avatar { font-size: 24px; }
       .profile-name { font-size: 19px; }
     }
