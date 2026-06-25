@@ -37,7 +37,7 @@
       <!-- Bottom: headline and stats -->
       <div class="photo-bottom">
         <div class="system-badge">
-          <span>✦ &nbsp;EdUgnay Portal</span>
+          <span>✦ &nbsp;E-Ugnay Portal</span>
         </div>
 
         <h2 class="photo-heading">
@@ -47,7 +47,7 @@
         </h2>
 
         <p class="photo-sub">
-          An AI-powered monitoring system that connects teachers, students, and parents — built for St. Columban's College JHS.
+          An AI-powered monitoring system that connects teachers, students, and parents, built for St. Columban's College JHS.
         </p>
 
         <div class="stat-strip">
@@ -82,7 +82,7 @@
     </div>
 
     <div class="login-top">
-      <div class="login-eyebrow">EdUgnay Portal</div>
+      <div class="login-eyebrow">E-Ugnay Portal</div>
       <h1 class="login-title">Sign in to<br/>your account</h1>
       <p class="login-sub">Enter your school email to get started.</p>
     </div>
@@ -157,6 +157,8 @@
       window.location.href='./views/teacher/edugnay-teacher-dashboard.html';
     } else if (email === "stud") {
       window.location.href='./views/student/edugnay-student-dashboard.html';
+    } else if (email === "par") {
+      window.location.href='./views/parent/edugnay-parent-dashboard.html';
     }
   }
 
