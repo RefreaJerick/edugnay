@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EdUgnay</title>
+  <title>E-Ugnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -40,7 +42,7 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 16px;
-      background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%);
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
       border: 1px solid rgba(212, 175, 55, 0.25);
       border-left: 4px solid var(--gold);
       border-radius: 14px;
@@ -66,7 +68,14 @@
       z-index: 1;
     }
 
-    .greeting-avatar { display: none; }
+    .greeting-avatar {
+      width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 800;
+      color: var(--white); box-shadow: 0 4px 12px rgba(212,175,55,0.4);
+      border: 2px solid rgba(255,255,255,0.18); overflow: hidden;
+    }
 
     .greeting-text-block { display: flex; flex-direction: column; gap: 4px; }
 
@@ -244,7 +253,7 @@
       .summary-item { min-width: 45%; }
 
       .greeting-banner { padding: 18px 20px; gap: 12px; }
-      .greeting-banner-right { display: none; }
+      .greeting-quarter-pill { display: none; }
       .greeting-name { font-size: 1.2rem; }
       .greeting-meta-row { margin-top: 5px; }
       .greeting-meta-chip { display: none; }
@@ -310,7 +319,7 @@
         <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
       </div>
       <div class="brand-text">
-        <div class="brand-name">Ed<span>Ugnay</span></div>
+        <div class="brand-name">e<span>Ugnay</span></div>
         <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
       </div>
     </div>
@@ -373,7 +382,7 @@
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
       <div>
-        <div class="page-eyebrow">EdUgnay · Student</div>
+        <div class="page-eyebrow">E-Ugnay · Student</div>
         <div class="page-title">My Dashboard</div>
       </div>
     </div>
@@ -381,7 +390,6 @@
       <a href="edugnay-student-grades.html" class="top-btn secondary">
         <i data-lucide="graduation-cap" style="width:14px;height:14px;"></i> <span>My Grades</span>
       </a>
-      <!-- unreadAlerts > 0 -->
       <a href="edugnay-student-announcements.html" class="top-btn primary">
         <i data-lucide="bell" style="width:14px;height:14px;"></i> <span>Announcements</span>
       </a>
@@ -396,6 +404,7 @@
     <!-- Greeting banner — identity + date only, NO grade data -->
     <div class="greeting-banner">
       <div class="greeting-banner-left">
+        <div class="greeting-avatar">RA</div>
         <div class="greeting-text-block">
           <div class="greeting-label" id="greeting-time-label">Good morning</div>
           <div class="greeting-name">Juan Alcantara</div>

@@ -136,17 +136,20 @@ body.drawer-open .sidebar {
   color: var(--navy);
 }
 
-.brand-text {}
 .brand-name {
   font-family: 'Playfair Display', serif;
+  font-style: italic;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--white);
-  line-height: 1.3;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
 }
 .brand-name span {
+  font-family: 'Plus Jakarta Sans', serif;
+  font-style: normal;
   color: var(--gold);
-  margin-left: 1px;
+  margin-left: 2px;
 }
 .brand-sub {
   font-size: 9.5px;
