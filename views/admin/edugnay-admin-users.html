@@ -65,6 +65,48 @@
           </div>
         </div>
 
+        <!-- CONDITIONAL: LRN (Student only) -->
+        <div class="form-group" id="lrnGroup" style="display:none;">
+          <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner Reference Number)</span></label>
+          <input class="form-input" name="lrn" id="accountLRN" type="text" placeholder="e.g. 123456789012"/>
+        </div>
+
+        <!-- CONDITIONAL: Linked Students (Parent only) -->
+        <div class="form-group" id="linkedStudentsGroup" style="display:none;">
+          <label class="form-label">Linked Students</label>
+
+          <!-- Search input -->
+          <div style="position:relative;">
+            <input
+              class="form-input"
+              type="text"
+              id="studentSearchInput"
+              placeholder="Search student by name..."
+              autocomplete="off"
+              oninput="handleStudentSearch(this.value)"
+            />
+            <div id="studentDropdown" style="
+              display:none;
+              position:absolute;
+              top:calc(100% + 4px);
+              left:0;right:0;
+              background:#fff;
+              border:1px solid var(--gray-200);
+              border-radius:8px;
+              box-shadow:0 4px 12px rgba(0,0,0,0.08);
+              max-height:180px;
+              overflow-y:auto;
+              z-index:100;
+            "></div>
+          </div>
+
+          <!-- Selected student tags -->
+          <div id="linkedStudentTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+
+          <!-- Hidden inputs submitted with form -->
+          <div id="linkedStudentInputs"></div>
+        </div>
+
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label" id="accountPasswordLabel">Temporary Password</label>
           <input class="form-input" name="password" id="accountPassword" type="password" placeholder="Set a temporary password"/>
@@ -193,7 +235,7 @@
             <i data-lucide="info" style="width:14px;height:14px;"></i>
             <div>
               <span class="csv-hint-label">Expected columns</span>
-              <div class="csv-hint-cols">
+              <div class="csv-hint-cols" id="csvHintCols">
                 <span class="csv-col-tag">firstName</span>
                 <span class="csv-col-tag">lastName</span>
                 <span class="csv-col-tag">personalEmail</span>
@@ -1015,6 +1057,143 @@
       document.getElementById('importUsersPreviewWrap').style.display = '';
     };
     reader.readAsText(file);
+  }
+
+  /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
+
+  function updateAccountModalFields() {
+    const role = document.getElementById('accountRole').value;
+    document.getElementById('lrnGroup').style.display            = role === 'stud'    ? '' : 'none';
+    document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+
+    if (role !== 'stud')    document.getElementById('accountLRN').value = '';
+    if (role !== 'parents') clearLinkedStudents();
+  }
+
+  function selectAccountRole(el, value) {
+    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('accountRole').value = value;
+    updateAccountModalFields();
+  }
+
+  /* ── STUDENT LIVE SEARCH PICKER ── */
+
+  // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
+  const MOCK_STUDENTS = [
+    { id: 'STU-001', name: 'Juan Dela Cruz',  section: 'Grade 8 – St. Mark' },
+    { id: 'STU-002', name: 'Ana Santos',      section: 'Grade 10 – St. James' },
+    { id: 'STU-003', name: 'Ben Garcia',      section: 'Grade 9 – St. Peter' },
+    { id: 'STU-004', name: 'Carlo Mendoza',   section: 'Grade 7 – St. Matthew' },
+    { id: 'STU-005', name: 'Maria Flores',    section: 'Grade 8 – St. Luke' },
+    { id: 'STU-006', name: 'Jose Ramos',      section: 'Grade 7 – St. Mark' },
+  ];
+
+  let linkedStudents = []; // [{ id, name, section }]
+
+  function handleStudentSearch(query) {
+    const dropdown = document.getElementById('studentDropdown');
+    if (!query.trim()) { dropdown.style.display = 'none'; return; }
+
+    const results = MOCK_STUDENTS.filter(s =>
+      s.name.toLowerCase().includes(query.toLowerCase()) &&
+      !linkedStudents.find(l => l.id === s.id)
+    );
+
+    if (!results.length) {
+      dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
+      dropdown.style.display = '';
+      return;
+    }
+
+    dropdown.innerHTML = results.map(s => `
+      <div
+        onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}')"
+        style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
+        onmouseenter="this.style.background='var(--gray-50)'"
+        onmouseleave="this.style.background=''"
+      >
+        <div style="font-weight:500;color:var(--gray-800);">${s.name}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${s.section} · ${s.id}</div>
+      </div>
+    `).join('');
+
+    dropdown.style.display = '';
+  }
+
+  function addLinkedStudent(id, name, section) {
+    if (linkedStudents.find(s => s.id === id)) return;
+    linkedStudents.push({ id, name, section });
+    renderLinkedStudents();
+
+    document.getElementById('studentSearchInput').value = '';
+    document.getElementById('studentDropdown').style.display = 'none';
+  }
+
+  function removeLinkedStudent(id) {
+    linkedStudents = linkedStudents.filter(s => s.id !== id);
+    renderLinkedStudents();
+  }
+
+  function clearLinkedStudents() {
+    linkedStudents = [];
+    renderLinkedStudents();
+    const inp = document.getElementById('studentSearchInput');
+    if (inp) inp.value = '';
+    const dd = document.getElementById('studentDropdown');
+    if (dd) dd.style.display = 'none';
+  }
+
+  function renderLinkedStudents() {
+    const tags = document.getElementById('linkedStudentTags');
+    const inputs = document.getElementById('linkedStudentInputs');
+
+    tags.innerHTML = linkedStudents.map(s => `
+      <div style="
+        display:inline-flex;align-items:center;gap:6px;
+        background:var(--blue-xpale);color:var(--blue-mid);
+        border:1px solid var(--blue-mid);
+        border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
+      ">
+        ${s.name}
+        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.id}')">&times;</span>
+      </div>
+    `).join('');
+
+    inputs.innerHTML = linkedStudents.map(s =>
+      `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
+    ).join('');
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('linkedStudentsGroup');
+    if (wrap && !wrap.contains(e.target)) {
+      const dd = document.getElementById('studentDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+  });
+
+  /* ── CSV HINT COLUMNS BY ROLE ── */
+
+  const CSV_COLS = {
+    adm:     ['firstName', 'lastName', 'personalEmail'],
+    fac:     ['firstName', 'lastName', 'personalEmail'],
+    stud:    ['firstName', 'lastName', 'personalEmail', 'lrn'],
+    parents: ['firstName', 'lastName', 'personalEmail', 'studentIds'],
+  };
+
+  function selectImportRole(el, value) {
+    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('importUserRole').value = value;
+    updateCsvHint(value);
+  }
+
+  function updateCsvHint(role) {
+    const cols = CSV_COLS[role] || CSV_COLS['fac'];
+    document.getElementById('csvHintCols').innerHTML =
+      cols.map(c => `<span class="csv-col-tag">${c}</span>`).join('');
   }
 </script>
 
