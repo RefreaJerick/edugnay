@@ -333,7 +333,7 @@ body.drawer-open .sidebar {
   letter-spacing: -0.3px;
 }
 
-.topbar-right {
+.topbar-right, .parent-topbar-right, .student-topbar-right {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -342,6 +342,65 @@ body.drawer-open .sidebar {
 .topbar-right a {
   text-decoration: none;
 }
+
+
+
+/* ── Topbar Profile Dropdown ── */
+.topbar-profile { position: relative; display: none; }
+
+.profile-trigger {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: none; background: none; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+.profile-trigger:hover { box-shadow: 0 0 0 2px var(--gold-pale); }
+.profile-trigger.open { box-shadow: 0 0 0 2px var(--gold); }
+.profile-trigger:active { transform: scale(0.96); }
+
+.profile-trigger-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 800;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
+  box-shadow: 0 2px 6px rgba(212,175,55,0.35);
+}
+
+.profile-dropdown {
+  position: absolute; top: calc(100% + 12px); right: 0;
+  min-width: 200px; background: var(--white);
+  border: 1px solid var(--gray-200); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(16,40,80,0.16);
+  padding: 6px; z-index: 30;
+  opacity: 0; pointer-events: none;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: top right;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  overflow: hidden;
+}
+.profile-dropdown::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: linear-gradient(90deg, var(--gold), #b8922a);
+}
+.profile-dropdown.open {
+  opacity: 1; pointer-events: auto; transform: translateY(0) scale(1);
+}
+
+.profile-dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px; margin-top: 3px;
+  border: none; background: none; border-radius: 9px;
+  font-size: 13px; font-weight: 600; color: var(--gray-700);
+  text-decoration: none; cursor: pointer; text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+.profile-dropdown-item:first-child { margin-top: 0; }
+.profile-dropdown-item:hover { background: var(--blue-xpale); color: var(--blue-mid); }
+.profile-dropdown-item.danger:hover { background: var(--red-pale); color: var(--red); }
+
+.profile-dropdown-divider { height: 1px; background: var(--gray-100); margin: 4px 6px; }
 
 .hamburger {
   display: none;
@@ -1245,6 +1304,233 @@ html, body {
 
 
 
+
+/* ══════════════════════════════
+   LOGOUT CONFIRMATION MODAL
+══════════════════════════════ */
+
+.logout-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(11, 31, 58, 0.5);
+
+    opacity: 0;
+    visibility: hidden;
+
+    transition:
+        opacity .2s ease,
+        visibility .2s ease;
+}
+
+.logout-modal-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Modal */
+
+.logout-modal-backdrop .modal {
+    width: 100%;
+    max-width: 400px;
+
+    background: var(--white);
+    border-radius: 16px;
+
+    box-shadow: 0 24px 64px rgba(11,31,58,.25);
+
+    overflow: hidden;
+
+    transform: translateY(20px);
+    transition: transform .25s ease;
+}
+
+.logout-modal-backdrop.open .modal {
+    transform: translateY(0);
+}
+
+/* Header */
+
+.logout-modal-backdrop .modal-head {
+    padding: 24px 28px 20px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.logout-modal-backdrop .modal-title {
+    margin-bottom: 2px;
+
+    font-family: "Playfair Display", serif;
+    font-size: 20px;
+    font-weight: 800;
+
+    color: var(--gray-800);
+}
+
+.logout-modal-backdrop .modal-sub {
+    font-size: 13px;
+    color: var(--gray-400);
+}
+
+.logout-modal-backdrop .modal-close {
+    width: 32px;
+    height: 32px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 8px;
+
+    background: var(--gray-100);
+    color: var(--gray-500);
+
+    cursor: pointer;
+
+    transition: background .15s;
+}
+
+.logout-modal-backdrop .modal-close:hover {
+    background: var(--gray-200);
+}
+
+/* Body */
+
+.logout-modal-backdrop .modal-body {
+    padding: 24px 28px;
+}
+
+/* Context Block
+   Same layout as Deactivate Modal
+*/
+
+.logout-modal-backdrop .modal-context {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 12px 14px;
+    margin-bottom: 22px;
+
+    border: 1px solid;
+    border-radius: 10px;
+}
+
+/* Logout color variant */
+
+.logout-modal-backdrop .logout-context {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.logout-modal-backdrop .ctx-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #dc2626;
+}
+
+.logout-modal-backdrop .ctx-label {
+    font-size: 10px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .5px;
+
+    color: #dc2626;
+}
+
+.logout-modal-backdrop .ctx-val {
+    margin-top: 1px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    color: var(--gray-800);
+}
+
+/* Message */
+
+.logout-modal-backdrop .logout-message {
+    margin: 0;
+
+    font-size: 13px;
+    line-height: 1.6;
+
+    color: var(--gray-500);
+}
+
+/* Footer */
+
+.logout-modal-backdrop .modal-foot {
+    padding: 16px 28px 24px;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Buttons */
+
+.logout-modal-backdrop .btn {
+    padding: 10px 22px;
+
+    border: none;
+    border-radius: 9px;
+
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: all .15s ease;
+}
+
+.logout-modal-backdrop .btn-cancel {
+    background: var(--gray-100);
+    color: var(--gray-600);
+
+    border: 1.5px solid var(--gray-200);
+}
+
+.logout-modal-backdrop .btn-cancel:hover {
+    background: var(--gray-200);
+}
+
+.logout-modal-backdrop .btn-danger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    background: #dc2626;
+    color: #fff;
+
+    box-shadow: 0 2px 8px rgba(220,38,38,.25);
+}
+
+.logout-modal-backdrop .btn-danger:hover {
+    background: #b91c1c;
+}
+
 /* Responsive */
 
 @media (max-width: 860px) {
@@ -1272,6 +1558,7 @@ html, body {
   .sidebar-overlay { display: block; }
   .topbar { flex-wrap: wrap; padding: 16px 20px; }
   .hamburger { display: grid; }
+  .topbar-profile { display: block; }
 }
 
 @media (max-width: 580px) {

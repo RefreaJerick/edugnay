@@ -277,6 +277,10 @@
       .greeting-banner-right { flex-direction: column; align-items: flex-start; gap: 8px; }
       .day-pill { min-width: 46px; }
     }
+
+
+
+    
   </style>
 </head>
 <body>
@@ -366,13 +370,15 @@
     </div>
 
     <div class="sidebar-footer">
-      <div class="admin-profile" onclick="location.href='parent-profile.html'">
+      <div class="admin-profile">
         <div class="admin-avatar">RA</div>
         <div class="admin-info">
           <div class="admin-name">Rosario Alcantara</div>
           <div class="admin-role">Parent / Guardian</div>
         </div>
-        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+        <div class="logout-btn" onclick="openLogoutModal()" title="Sign out">
+          <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+        </div>
       </div>
     </div>
   </aside>
@@ -388,13 +394,24 @@
         <div class="page-title">Dashboard</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <a href="parent-reports.html" class="top-btn secondary">
-        <i data-lucide="file-text" style="width:14px;height:14px;"></i> <span>Reports</span>
-      </a>
-      <a href="parent-announcements.html" class="top-btn primary">
-        <i data-lucide="bell" style="width:14px;height:14px;"></i> <span>Announcements</span>
-      </a>
+    <div class="parent-topbar-right">
+      <div class="topbar-profile" id="topbarProfile">
+        <button type="button" class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+          <span class="profile-trigger-avatar">RA</span>
+        </button>
+
+        <div class="profile-dropdown" id="profileDropdown">
+          <a href="parent-profile.html" class="profile-dropdown-item">
+            <i data-lucide="user-round" style="width:15px;height:15px;"></i>
+            <span>My Profile</span>
+          </a>
+          <div class="profile-dropdown-divider"></div>
+          <button type="button" class="profile-dropdown-item danger" onclick="closeProfileMenu(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -603,6 +620,59 @@
     </div>
 
   </main>
+</div>
+
+<!-- ══════════════════════════════
+     LOGOUT CONFIRMATION MODAL
+══════════════════════════════ -->
+<div class="logout-modal-backdrop" id="logoutModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Sign Out</div>
+        <div class="modal-sub">
+          Are you sure you want to sign out?
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeLogoutModal()">
+        <i data-lucide="x" style="width:18px;height:18px;"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-context logout-context">
+        <div class="ctx-icon">
+          <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="ctx-label">
+            Signing out of
+          </div>
+          <div class="ctx-val">
+            EdUgnay · St. Columban's College
+          </div>
+        </div>
+      </div>
+      <p class="logout-message">
+        You'll be returned to the login page. Any unsaved changes will be lost.
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button
+        type="button"
+        class="btn btn-cancel"
+        onclick="closeLogoutModal()">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-danger"
+        onclick="window.location.href='../../index.html'">
+        <i data-lucide="log-out" style="width:13px;height:13px;"></i>
+        Sign Out
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -892,7 +962,44 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleDrawer(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); }
+});
+
+
+/* ── LOGOUT MODAL ── */
+function openLogoutModal() {
+  document.getElementById('logoutModal').classList.add('open');
+  lucide.createIcons();
+}
+function closeLogoutModal() {
+  document.getElementById('logoutModal').classList.remove('open');
+}
+// Close on backdrop click
+document.getElementById('logoutModal').addEventListener('click', function(e) {
+  if (e.target === this) closeLogoutModal();
+});
+// Close on Escape (add to existing keydown listener or paste standalone)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLogoutModal();
+});
+
+/* ── PROFILE DROPDOWN ── */
+function toggleProfileMenu(forceState) {
+  const trigger = document.getElementById('profileTrigger');
+  const dropdown = document.getElementById('profileDropdown');
+  const isOpen = forceState === undefined ? !dropdown.classList.contains('open') : forceState;
+  dropdown.classList.toggle('open', isOpen);
+  trigger.classList.toggle('open', isOpen);
+  trigger.setAttribute('aria-expanded', isOpen);
+}
+function closeProfileMenu() { toggleProfileMenu(false); }
+
+document.addEventListener('click', (e) => {
+  const profile = document.getElementById('topbarProfile');
+  if (profile && !profile.contains(e.target)) closeProfileMenu();
+});
+
 
 /* ── INIT ── */
 renderDayStrip();
