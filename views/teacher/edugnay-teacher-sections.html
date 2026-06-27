@@ -96,6 +96,67 @@
   </div>
 </div>
 
+<!-- ══════ ADD ASSIGNMENT MODAL ══════ -->
+<div class="modal-backdrop" id="addAssignmentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add Assignment</div>
+        <div class="modal-sub">Post a task for students. Completion is tracked separately from grading.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('addAssignmentModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Task Title</label>
+        <input class="form-input" type="text" id="assignTitleInput" placeholder="e.g. Reading Response"/>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <input class="form-input" type="text" style="color: var(--gray-400);" id="assignSubjectInput" value="Mathematics" disabled/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due Date</label>
+          <input class="form-input" type="date" id="assignDueInput"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('addAssignmentModal')">Cancel</button>
+      <button class="btn btn-save" onclick="addAssignment()">
+        <i data-lucide="plus" style="width:13px;height:13px;"></i> Add Assignment
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="completionModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="completionModalTitle">Mark Completion</div>
+        <div class="modal-sub">Toggle each student as Done or Pending.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('completionModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
+        <table>
+          <tbody id="completionTbody"><!-- JS generated --></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-save" onclick="closeModal('completionModal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════ PUBLISH CONFIRM MODAL ══════ -->
 <div class="modal-backdrop" id="publishModal">
   <div class="modal">
@@ -338,6 +399,10 @@
       <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance">
         <i data-lucide="user-check" style="width:14px;height:14px;"></i>
         Attendance
+      </button>
+      <button class="tab-btn" onclick="switchTab('assignments')" id="tab-assignments">
+        <i data-lucide="list-checks" style="width:14px;height:14px;"></i>
+        Assignments <span class="tab-count" id="assignmentCount">3</span>
       </button>
       <button class="tab-btn" onclick="switchTab('materials')" id="tab-materials">
         <i data-lucide="folder-open" style="width:14px;height:14px;"></i>
@@ -878,6 +943,24 @@
       </div>
     </div>
 
+    <!-- ══════ TAB: ASSIGNMENTS ══════ -->
+    <div class="tab-content" id="content-assignments">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Assignments — Mathematics</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · Track tasks and completion separately from grading</div>
+          </div>
+          <div class="panel-head-actions">
+            <button class="top-btn primary" onclick="openModal('addAssignmentModal')">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Assignment
+            </button>
+          </div>
+        </div>
+        <div style="padding:16px 24px;" id="assignmentList"><!-- JS generated --></div>
+      </div>
+    </div>
+
     <!-- ══════ TAB 4: LEARNING MATERIALS ══════ -->
     <div class="tab-content" id="content-materials">
       <div class="panel">
@@ -1229,6 +1312,102 @@
     closeModal('publishModal');
     alert('Grades published successfully. Students and parents can now view Q2 final grades.');
   }
+
+  /* ── ASSIGNMENTS ── */
+  const STUDENTS = [
+    { name: 'Juan Dela Cruz', av: 'av-a', init: 'JD' },
+    { name: 'Ana Santos',     av: 'av-b', init: 'AS' },
+    { name: 'Ben Garcia',     av: 'av-c', init: 'BG' },
+    { name: 'Maria Lopez',    av: 'av-d', init: 'ML' },
+    { name: 'Carlo Mendoza',  av: 'av-e', init: 'CM' },
+  ];
+
+  let ASSIGNMENTS = [
+    { id: 1, title: 'Seatwork 1 – Variables', subject: 'Mathematics', dueDate: '2025-06-09', done: new Set(['Juan Dela Cruz', 'Ana Santos', 'Maria Lopez', 'Carlo Mendoza']) },
+    { id: 2, title: 'Quiz 1 Review',          subject: 'Mathematics', dueDate: '2025-06-11', done: new Set(['Ana Santos']) },
+    { id: 3, title: 'Activity 1 – Problem Solving', subject: 'Mathematics', dueDate: '2025-06-13', done: new Set(['Juan Dela Cruz', 'Ana Santos', 'Maria Lopez']) },
+  ];
+  let nextAssignmentId = 4;
+
+  function renderAssignments() {
+    const list = document.getElementById('assignmentList');
+    document.getElementById('assignmentCount').textContent = ASSIGNMENTS.length;
+
+    list.innerHTML = ASSIGNMENTS.map(a => {
+      const pct = Math.round((a.done.size / STUDENTS.length) * 100);
+      const dueLabel = new Date(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `
+        <div class="assignment-card">
+          <div class="assignment-card-icon"><i data-lucide="list-checks" style="width:17px;height:17px;"></i></div>
+          <div class="assignment-card-body">
+            <div class="assignment-card-title">${a.title}</div>
+            <div class="assignment-card-meta">${a.subject} · Due ${dueLabel} · ${a.done.size}/${STUDENTS.length} completed</div>
+            <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
+          </div>
+          <div class="assignment-card-actions">
+            <button class="top-btn secondary" onclick="openCompletionModal(${a.id})">
+              <i data-lucide="check-square" style="width:13px;height:13px;"></i> Mark Completion
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+    lucide.createIcons();
+  }
+
+  function addAssignment() {
+    const title = document.getElementById('assignTitleInput').value.trim();
+    const subject = document.getElementById('assignSubjectInput').value.trim();
+    const due = document.getElementById('assignDueInput').value;
+    if (!title || !due) { alert('Please fill in task title and due date.'); return; }
+
+    ASSIGNMENTS.push({ id: nextAssignmentId++, title, subject: subject || 'Mathematics', dueDate: due, done: new Set() });
+    document.getElementById('assignTitleInput').value = '';
+    document.getElementById('assignDueInput').value = '';
+    closeModal('addAssignmentModal');
+    renderAssignments();
+  }
+
+  let activeAssignmentId = null;
+
+  function openCompletionModal(id) {
+    activeAssignmentId = id;
+    const a = ASSIGNMENTS.find(x => x.id === id);
+    document.getElementById('completionModalTitle').textContent = 'Mark Completion — ' + a.title;
+
+    const tbody = document.getElementById('completionTbody');
+    tbody.innerHTML = STUDENTS.map(s => {
+      const isDone = a.done.has(s.name);
+      return `
+        <tr>
+          <td><div class="student-cell"><div class="student-av ${s.av}" style="width:28px;height:28px;font-size:10px;">${s.init}</div><div class="student-name">${s.name}</div></div></td>
+          <td class="center" style="width:90px;">
+            <div class="comp-btn-group">
+              <button class="comp-btn done ${isDone ? 'selected' : ''}" onclick="setCompletion('${s.name}', true, this)" title="Done">
+                <i data-lucide="check" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="comp-btn pending ${!isDone ? 'selected' : ''}" onclick="setCompletion('${s.name}', false, this)" title="Pending">
+                <i data-lucide="clock" style="width:14px;height:14px;"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    openModal('completionModal');
+    lucide.createIcons();
+  }
+
+  function setCompletion(studentName, isDone, btn) {
+    const a = ASSIGNMENTS.find(x => x.id === activeAssignmentId);
+    if (isDone) a.done.add(studentName); else a.done.delete(studentName);
+
+    const group = btn.closest('.comp-btn-group');
+    group.querySelectorAll('.comp-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    renderAssignments();
+  }
+
+  renderAssignments();
 
   // Init attendance count
   updateAttCount();
