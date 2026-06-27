@@ -657,26 +657,27 @@ const CHILDREN_DATA = {
     },
     assignments: {
       mon: [
-        { subject: 'Mathematics', task: 'Seatwork 1 – Variables', completed: true },
-        { subject: 'English', task: 'Reading Response', completed: true },
+        { subject: 'Mathematics', task: 'Seatwork 1 – Variables', dueDate: '2025-06-09', completedAt: '2025-06-09' },
+        { subject: 'English', task: 'Reading Response', dueDate: '2025-06-09', completedAt: '2025-06-09' },
       ],
       tue: [
-        { subject: 'Science', task: 'Lab Worksheet', completed: true },
+        { subject: 'Science', task: 'Lab Worksheet', dueDate: '2025-06-10', completedAt: '2025-06-10' },
       ],
       wed: [
-        { subject: 'Mathematics', task: 'Quiz 1 Review', completed: false },
+        { subject: 'Mathematics', task: 'Quiz 1 Review', dueDate: '2025-06-11', completedAt: null },
       ],
       thu: [
-        { subject: 'English', task: 'Vocabulary Exercise', completed: true },
-        { subject: 'Science', task: 'Ecosystem Diagram', completed: false },
+        { subject: 'English', task: 'Vocabulary Exercise', dueDate: '2025-06-12', completedAt: '2025-06-12' },
+        { subject: 'Science', task: 'Ecosystem Diagram', dueDate: '2025-06-12', completedAt: null },
       ],
       fri: [
-        { subject: 'Mathematics', task: 'Activity 1 – Problem Solving', completed: true },
-        { subject: 'English', task: 'Essay Draft', completed: true },
-        { subject: 'Science', task: 'Quiz Review Notes', completed: true },
-        { subject: 'Filipino', task: 'Gawaing Pagsulat', completed: true },
-        { subject: 'Values Education', task: 'Journal Entry', completed: true },
-        { subject: 'MAPEH', task: 'Skills Checklist', completed: false },
+        { subject: 'Filipino', task: 'Pagsusulit sa Aralin 2', dueDate: '2025-06-13', completedAt: null },
+        { subject: 'Mathematics', task: 'Activity 1 – Problem Solving', dueDate: '2025-06-13', completedAt: '2025-06-13' },
+        { subject: 'English', task: 'Essay Draft', dueDate: '2025-06-13', completedAt: '2025-06-13' },
+        { subject: 'Science', task: 'Quiz Review Notes', dueDate: '2025-06-13', completedAt: '2025-06-13' },
+        { subject: 'Filipino', task: 'Gawaing Pagsulat', dueDate: '2025-06-13', completedAt: '2025-06-13' },
+        { subject: 'Values Education', task: 'Journal Entry', dueDate: '2025-06-13', completedAt: '2025-06-13' },
+        { subject: 'MAPEH', task: 'Skills Checklist', dueDate: '2025-06-20', completedAt: null },
       ],
     },
   },
@@ -691,11 +692,11 @@ const CHILDREN_DATA = {
       fri: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
     },
     assignments: {
-      mon: [{ subject: 'Mathematics', task: 'Addition Worksheet', completed: true }],
-      tue: [{ subject: 'English', task: 'Spelling Words', completed: true }],
-      wed: [{ subject: 'Science', task: 'Plant Drawing', completed: true }],
-      thu: [{ subject: 'Mathematics', task: 'Subtraction Drill', completed: false }],
-      fri: [{ subject: 'English', task: 'Reading Log', completed: false }],
+      mon: [{ subject: 'Mathematics', task: 'Addition Worksheet', dueDate: '2025-06-09', completedAt: '2025-06-09' }],
+      tue: [{ subject: 'English', task: 'Spelling Words', dueDate: '2025-06-10', completedAt: '2025-06-10' }],
+      wed: [{ subject: 'Science', task: 'Plant Drawing', dueDate: '2025-06-11', completedAt: '2025-06-11' }],
+      thu: [{ subject: 'Mathematics', task: 'Subtraction Drill', dueDate: '2025-06-12', completedAt: null }],
+      fri: [{ subject: 'English', task: 'Reading Log', dueDate: '2025-06-20', completedAt: null }],
     },
   },
 };
@@ -785,6 +786,21 @@ function renderAttendanceDetail() {
   lucide.createIcons();
 }
 
+/*
+  EJS NOTE: TODAY should be server-rendered (the actual school-day date),
+  never client Date(), since a student/parent's device clock shouldn't
+  determine whether a task reads as "not due yet" vs "awaiting update."
+*/
+const TODAY = new Date('2025-06-13');
+
+function resolveTaskStatus(task) {
+  if (task.completedAt) return 'completed';
+  const due = new Date(task.dueDate);
+  if (due > TODAY) return 'not-due';
+  if (due.getTime() === TODAY.getTime()) return 'due-today';
+  return 'awaiting';
+}
+
 function renderAssignmentsDetail() {
   const container = document.getElementById('assignments-detail');
   const data = CHILDREN_DATA[currentChild];
@@ -795,7 +811,17 @@ function renderAssignmentsDetail() {
     return;
   }
 
-  const completedCount = tasks.filter(t => t.completed).length;
+  const statuses = tasks.map(resolveTaskStatus);
+  const completedCount = statuses.filter(s => s === 'completed').length;
+  const dueTodayCount = statuses.filter(s => s === 'due-today').length;
+  const awaitingCount = statuses.filter(s => s === 'awaiting').length;
+
+  let bannerSub = 'Across all subjects for this day.';
+  if (awaitingCount > 0) {
+    bannerSub = `${awaitingCount} task${awaitingCount === 1 ? '' : 's'} past due date, awaiting teacher update.`;
+  } else if (dueTodayCount > 0) {
+    bannerSub = `${dueTodayCount} task${dueTodayCount === 1 ? '' : 's'} due today, not yet marked complete.`;
+  }
 
   container.innerHTML = `
     <div class="daily-status-banner present" style="background:var(--blue-xpale);">
@@ -804,23 +830,33 @@ function renderAssignmentsDetail() {
       </div>
       <div>
         <div class="daily-status-title">${completedCount} of ${tasks.length} tasks completed</div>
-        <div class="daily-status-sub">Across all subjects for this day.</div>
+        <div class="daily-status-sub">${bannerSub}</div>
       </div>
     </div>
     <div>
-      ${tasks.map(t => `
-        <div class="assignment-row">
-          <div class="assignment-icon" style="background:${t.completed ? 'var(--green-pale)' : 'var(--orange-pale)'};color:${t.completed ? '#16a34a' : '#d97706'};">
-            <i data-lucide="${t.completed ? 'check' : 'clock'}" style="width:15px;height:15px;"></i>
-          </div>
-          <div class="assignment-info">
-            <div class="assignment-subject">${t.subject}</div>
-            <div class="assignment-task">${t.task}</div>
-          </div>
-          ${t.completed
-            ? '<span class="badge badge-green">Done</span>'
-            : '<span class="badge badge-orange">Pending</span>'}
-        </div>`).join('')}
+      ${tasks.map((t, i) => {
+        const status = statuses[i];
+        const visual = {
+          completed:  { bg: 'var(--green-pale)',  color: '#16a34a',       icon: 'check',    badge: '<span class="badge badge-green">Done</span>' },
+          'not-due':  { bg: 'var(--gray-100)',    color: 'var(--gray-400)', icon: 'calendar', badge: '<span class="badge badge-gray">Not due yet</span>' },
+          'due-today':{ bg: 'var(--blue-xpale)',  color: 'var(--blue-mid)', icon: 'clock',    badge: '<span class="badge badge-blue">Due Today</span>' },
+          awaiting:   { bg: 'var(--orange-pale)', color: '#d97706',       icon: 'clock',    badge: '<span class="badge badge-orange">Awaiting Update</span>' },
+        }[status];
+
+        const dueLabel = new Date(t.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        return `
+          <div class="assignment-row">
+            <div class="assignment-icon" style="background:${visual.bg};color:${visual.color};">
+              <i data-lucide="${visual.icon}" style="width:15px;height:15px;"></i>
+            </div>
+            <div class="assignment-info">
+              <div class="assignment-subject">${t.subject}</div>
+              <div class="assignment-task">${t.task} · Due ${dueLabel}</div>
+            </div>
+            ${visual.badge}
+          </div>`;
+      }).join('')}
     </div>`;
   lucide.createIcons();
 }
