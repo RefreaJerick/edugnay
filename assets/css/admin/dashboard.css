@@ -697,6 +697,14 @@
   transform: translateY(20px);
   transition: transform 0.25s ease;
   overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.announcement-modal-backdrop .modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
 }
 .announcement-modal-backdrop.open .modal {
   transform: translateY(0);
@@ -707,6 +715,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .announcement-modal-backdrop .modal-title {
   font-family: 'Playfair Display', serif;
@@ -776,6 +785,8 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--gray-100);
 }
 .announcement-modal-backdrop .btn {
   padding: 10px 22px;
@@ -803,6 +814,40 @@
 .announcement-modal-backdrop .btn-save:hover {
   background: var(--blue-mid);
 }
+
+
+/* ── IMAGE UPLOAD ── */
+.optional-tag { font-weight: 500; color: var(--gray-400); text-transform: none; letter-spacing: 0; }
+
+.image-upload-area {
+  border: 1.5px dashed var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-50);
+  padding: 18px;
+  cursor: pointer;
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.image-upload-area:hover,
+.image-upload-area.dragover { border-color: var(--blue-mid); background: var(--blue-xpale); }
+
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--gray-400); text-align: center; pointer-events: none; }
+.upload-placeholder i { color: var(--gray-300); }
+.upload-text { font-size: 12px; font-weight: 600; color: var(--gray-500); }
+.upload-sub  { font-size: 10px; color: var(--gray-400); }
+
+.image-preview-wrap { position: relative; width: 100%; border-radius: 8px; overflow: hidden; }
+.image-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; display: block; }
+.remove-image-btn {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(11,31,58,0.6); color: white; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.remove-image-btn:hover { background: rgba(11,31,58,0.85); }
+
 
 /* Priority and Audience Options */
 .priority-opts {

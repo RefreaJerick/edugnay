@@ -208,6 +208,23 @@
             </label>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
+          <div class="image-upload-area" id="composeUploadArea" onclick="document.getElementById('composeImageInput').click()">
+            <input type="file" id="composeImageInput" name="image" accept="image/*" style="display:none;" onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')"/>
+            <div class="upload-placeholder" id="composePlaceholder">
+              <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
+              <span class="upload-text">Click or drag an image here</span>
+              <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
+            </div>
+            <div class="image-preview-wrap" id="composePreview" style="display:none;">
+              <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
+              <button type="button" class="remove-image-btn" onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
+                <i data-lucide="x" style="width:12px;height:12px;"></i>
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="modal-foot">
           <button type="button" class="btn btn-cancel" onclick="closeAnnouncementModal()">Cancel</button>
           <button type="submit" class="btn btn-save">Post Announcement</button>
@@ -695,6 +712,44 @@
     el.classList.add('selected');
     document.getElementById('roleValue').value = value;
   }
+
+  function handleImagePreview(input, previewWrapId, placeholderId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById(previewWrapId).querySelector('.image-preview').src = e.target.result;
+      document.getElementById(previewWrapId).style.display = 'block';
+      document.getElementById(placeholderId).style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage(event, inputId, previewWrapId, placeholderId) {
+    event.stopPropagation();
+    document.getElementById(inputId).value = '';
+    document.getElementById(previewWrapId).style.display = 'none';
+    document.getElementById(placeholderId).style.display = 'flex';
+  }
+
+  function setupDropzone(areaId, inputId, previewWrapId, placeholderId) {
+    const area = document.getElementById(areaId);
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
+      e.preventDefault();
+      area.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        document.getElementById(inputId).files = e.dataTransfer.files;
+        handleImagePreview(document.getElementById(inputId), previewWrapId, placeholderId);
+      }
+    });
+  }
+
+  setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
+  
 </script>
 
 </body>
