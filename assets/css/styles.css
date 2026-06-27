@@ -54,6 +54,11 @@ html, body {
   overflow: hidden;
 }
 
+button {
+  font-family: inherit;
+}
+
+
 /* ── LAYOUT ── */
 .shell {
   display: grid;
