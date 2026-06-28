@@ -349,9 +349,9 @@ const GRADES_BY_QUARTER = {
       { name:'English', teacher:'Mr. Paolo Santos', grade:90.0, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
       { name:'Science', teacher:'Mrs. Liza Ramos', grade:88.5, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
       { name:'Filipino', teacher:'Mr. Andres Cruz', grade:91.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
-      { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:84.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+      { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:84.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)', unreleased:true },
       { name:'Values Education', teacher:'Ms. Maria Reyes', grade:94.0, icon:'heart-handshake', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
-      { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:91.0, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+      { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:91.0, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a', unreleased:true },
     ]
   },
   3: { locked: true },
@@ -401,6 +401,24 @@ function renderQuarter(q) {
     <div class="panel">
       <div class="panel-head"><div class="panel-title">Subject Grades</div></div>
       ${data.subjects.map(s => {
+        if (s.unreleased) {
+          return `
+            <div class="subject-row subject-row--unreleased">
+              <div class="subject-icon" style="background:var(--gray-100);">
+                <i data-lucide="${s.icon}" style="width:19px;height:19px;color:var(--gray-300);"></i>
+              </div>
+              <div class="subject-info">
+                <div class="subject-name" style="color:var(--gray-400);">${s.name}</div>
+                <div class="subject-teacher">${s.teacher}</div>
+                <span class="subject-remark" style="background:var(--gray-100);color:var(--gray-400);">
+                  <i data-lucide="clock" style="width:10px;height:10px;"></i> Pending Release
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;color:var(--gray-300);">
+                <i data-lucide="minus" style="width:18px;height:18px;"></i>
+              </div>
+            </div>`;
+        }
         const r = remarkFor(s.grade);
         return `
           <div class="subject-row">
