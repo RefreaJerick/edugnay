@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/parent/grades.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* EJS NOTE: moves to assets/css/parent/grades.css. Uses shared tokens only. */
+
+    /* ── Child switcher — same pattern as parent-dashboard.html ── */
+    .child-switcher {
+      display: flex; gap: 10px; overflow-x: auto;
+      margin-bottom: 20px; padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .child-switcher::-webkit-scrollbar { display: none; }
+    .child-card {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+      background: var(--white); border: 1.5px solid var(--gray-200);
+      border-radius: 14px; padding: 10px 16px 10px 10px; cursor: pointer;
+      transition: all 0.15s; min-width: 200px;
+    }
+    .child-card:hover { border-color: var(--blue-pale); background: var(--blue-xpale); }
+    .child-card.active { border-color: var(--blue-mid); background: var(--blue-xpale); box-shadow: 0 2px 8px rgba(37,99,235,0.12); }
+    .child-avatar {
+      width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 800;
+      color: var(--white); background: linear-gradient(135deg, var(--blue-mid), var(--blue-light));
+    }
+    .child-card:nth-child(2) .child-avatar { background: linear-gradient(135deg, var(--purple), #9333ea); }
+    .child-info { min-width: 0; }
+    .child-name { font-size: 13px; font-weight: 700; color: var(--gray-800); white-space: nowrap; }
+    .child-section { font-size: 10.5px; color: var(--gray-400); margin-top: 1px; white-space: nowrap; }
+
+    /* ── Quarter tabs — same pill-tab pattern as student grades ── */
+    .quarter-tab-bar {
+      display: flex; align-items: center; gap: 2px;
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 12px; padding: 5px; margin-bottom: 20px;
+    }
+    .quarter-tab {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 12px; border-radius: 9px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600;
+      color: var(--gray-500); cursor: pointer; border: none; background: transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .quarter-tab:hover:not(.locked) { background: var(--gray-100); color: var(--gray-700); }
+    .quarter-tab.active { background: var(--blue); color: var(--white); box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
+    .quarter-tab.locked { color: var(--gray-300); cursor: not-allowed; }
+    .quarter-tab.locked i { opacity: 0.6; }
+
+    /* ── Average banner — same navy/gold gradient family ── */
+    .avg-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      border-radius: 14px; padding: 20px 28px; margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(11,31,58,0.18); flex-wrap: wrap; gap: 12px;
+    }
+    .avg-banner-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+    .avg-banner-sub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    .avg-banner-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 800; color: var(--white); line-height: 1; }
+    .avg-banner-icon {
+      width: 52px; height: 52px; border-radius: 13px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── Subject grade cards ── */
+    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 2px 10px rgba(16,40,80,0.05); margin-bottom: 20px; }
+    .panel-head { padding: 16px 22px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .panel-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
+
+    .subject-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 22px; border-bottom: 1px solid var(--gray-100);
+    }
+    .subject-row:last-child { border-bottom: none; }
+    .subject-icon { width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .subject-info { flex: 1; min-width: 0; }
+    .subject-name { font-size: 13.5px; font-weight: 700; color: var(--gray-800); }
+    .subject-teacher { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+    .subject-remark { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; margin-top: 6px; padding: 2px 9px; border-radius: 999px; }
+    .remark-outstanding   { background: var(--green-pale);  color: #15803d; }
+    .remark-vsatisfactory { background: var(--blue-xpale);  color: var(--blue); }
+    .remark-satisfactory  { background: var(--gold-pale);   color: #92400e; }
+    .remark-fair          { background: var(--orange-pale); color: #92400e; }
+    .remark-risk          { background: var(--red-pale);    color: var(--red); }
+
+    .subject-grade-num { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 800; flex-shrink: 0; text-align: right; line-height: 1; }
+    .g-high { color: #15803d; }
+    .g-mid  { color: var(--blue); }
+    .g-low  { color: #92400e; }
+    .g-risk { color: var(--red); }
+
+    /* ── Locked quarter empty state ── */
+    .locked-state { padding: 56px 24px; text-align: center; }
+    .locked-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--gray-400); }
+    .locked-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
+    .locked-sub { font-size: 13px; color: var(--gray-400); line-height: 1.6; }
+
+    /* ── Footnote ── */
+    .grade-footnote {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 13px 16px; background: var(--blue-xpale);
+      border: 1px solid var(--blue-pale); border-radius: 10px;
+      font-size: 12px; color: var(--blue); line-height: 1.55;
+    }
+
+    @media (max-width: 980px) {
+      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
+      body { overflow-y: auto; }
+      .shell { display: block; }
+      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
+      .sidebar-overlay { display: block; }
+      .topbar { flex-wrap: wrap; padding: 16px 20px; }
+      .hamburger { display: grid; }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 16px; }
+      .quarter-tab span { display: none; }
+      .child-card { min-width: 170px; }
+    }
+    @media (max-width: 520px) {
+      .avg-banner-num { font-size: 28px; }
+      .avg-banner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  EJS CONVERSION MAP — parent-grades.html
+  ─────────────────────────────────────────
+  - children[]        → parent's enrolled children, same source as parent-dashboard.html
+                         { id, firstName, lastName, gradeSection }
+  - activeChildId      → query param or session-stored selection, defaults to first child
+  - quarters[]         → academic config, scoped per child (a child in Grade 4 and a
+                         child in Grade 7 could theoretically be on different tracks,
+                         though typically the same school year applies to both)
+  - generalAverage     → computed SERVER-SIDE from subjects[].finalGrade for the
+                         SELECTED child — never in browser, never derived from raw scores
+  - subjects[]         → per enrolled subject for the selected child + selected quarter:
+                         { name, teacherName, finalGrade, remarkLabel, remarkClass, icon, iconBg, iconColor }
+                         finalGrade is the ONLY value ever sent — no component breakdown,
+                         identical boundary to the student-facing grades page.
+  - Locked quarter      → render locked-state block, same as student version.
+
+  PARTIALS: same sidebar/topbar pattern as parent-dashboard.html (activeNav='grades'),
+  including the profile-dropdown + logout-modal pattern shown on the student page.
+
+  ROUTING: GET /parent/grades?child=:id&quarter=:id once converted — do not hold
+  every child's every quarter (including locked ones) in a client object at once.
+-->
+
+<div class="shell">
+  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">e<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-parent-dashboard.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="edugnay-parent-grades.html" class="nav-item active">
+        <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Grades</span>
+      </a>
+      <a href="edugnay-parent-reports.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Narrative Reports</span>
+      </a>
+      <a href="edugnay-parent-attendance.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Attendance History</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Communication</div>
+      <a href="edugnay-parent-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Account</div>
+      <a href="edugnay-parent-profile.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">My Profile</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-profile">
+        <div class="admin-avatar">RA</div>
+        <div class="admin-info">
+          <div class="admin-name">Rosario Alcantara</div>
+          <div class="admin-role">Parent / Guardian</div>
+        </div>
+        <div class="logout-btn" onclick="openLogoutModal()" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">E-Ugnay · Parent</div>
+        <div class="page-title">Grades</div>
+      </div>
+    </div>
+    <div class="student-topbar-right">
+      <div class="topbar-profile" id="topbarProfile">
+        <button type="button" class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+          <span class="profile-trigger-avatar">RA</span>
+        </button>
+
+        <div class="profile-dropdown" id="profileDropdown">
+          <a href="edugnay-parent-profile.html" class="profile-dropdown-item">
+            <i data-lucide="user-round" style="width:15px;height:15px;"></i>
+            <span>My Profile</span>
+          </a>
+          <div class="profile-dropdown-divider"></div>
+          <button type="button" class="profile-dropdown-item danger" onclick="closeProfileMenu(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="accent-bar"></div>
+
+    <!-- children[]: loop -->
+    <div class="child-switcher" id="child-switcher">
+      <div class="child-card active" data-child="juan" onclick="switchChild('juan', this)">
+        <div class="child-avatar">JA</div>
+        <div class="child-info">
+          <div class="child-name">Juan Alcantara</div>
+          <div class="child-section">Grade 7 – St. Matthew</div>
+        </div>
+      </div>
+      <div class="child-card" data-child="maya" onclick="switchChild('maya', this)">
+        <div class="child-avatar">MA</div>
+        <div class="child-info">
+          <div class="child-name">Maya Alcantara</div>
+          <div class="child-section">Grade 4 – St. Clare</div>
+        </div>
+      </div>
+    </div>
+    <!-- end children[] loop -->
+
+    <!-- quarters[]: loop, scoped to selected child -->
+    <div class="quarter-tab-bar" id="quarter-tab-bar">
+      <button class="quarter-tab" data-q="1">Quarter 1</button>
+      <button class="quarter-tab active" data-q="2">Quarter 2</button>
+      <button class="quarter-tab locked" data-q="3" disabled><i data-lucide="lock" style="width:11px;height:11px;"></i> <span>Quarter 3</span></button>
+      <button class="quarter-tab locked" data-q="4" disabled><i data-lucide="lock" style="width:11px;height:11px;"></i> <span>Quarter 4</span></button>
+    </div>
+    <!-- end quarters[] loop -->
+
+    <!-- generalAverage: hidden when locked quarter selected -->
+    <div class="avg-banner" id="avg-banner">
+      <div>
+        <div class="avg-banner-label" id="avg-label">Quarter 2 General Average</div>
+        <div class="avg-banner-num" id="avg-num">90.8</div>
+        <div class="avg-banner-sub" id="avg-child-name">Juan Alcantara · Grade 7 – St. Matthew</div>
+      </div>
+      <div class="avg-banner-icon">
+        <i data-lucide="award" style="width:24px;height:24px;color:var(--gold);"></i>
+      </div>
+    </div>
+
+    <div id="subject-panel-wrap">
+      <!-- JS renders subject panel or locked-state into here -->
+    </div>
+
+    <div class="grade-footnote" id="footnote">
+      <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;margin-top:1px;"></i>
+      <span>These are final quarter grades only. For specific quiz or activity scores, please reach out to the subject teacher directly.</span>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════
+     LOGOUT CONFIRMATION MODAL
+══════════════════════════════ -->
+<div class="logout-modal-backdrop" id="logoutModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Sign Out</div>
+        <div class="modal-sub">
+          Are you sure you want to sign out?
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeLogoutModal()">
+        <i data-lucide="x" style="width:18px;height:18px;"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-context logout-context">
+        <div class="ctx-icon">
+          <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="ctx-label">
+            Signing out of
+          </div>
+          <div class="ctx-val">
+            EdUgnay · St. Columban's College
+          </div>
+        </div>
+      </div>
+      <p class="logout-message">
+        You'll be returned to the login page. Any unsaved changes will be lost.
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button
+        type="button"
+        class="btn btn-cancel"
+        onclick="closeLogoutModal()">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-danger"
+        onclick="window.location.href='../../index.html'">
+        <i data-lucide="log-out" style="width:13px;height:13px;"></i>
+        Sign Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+/*
+  EJS NOTE: GRADES_BY_CHILD is a client-side placeholder for what will become
+  server-rendered/fetched data, keyed by childId then quarter. On conversion,
+  switching child or quarter should hit GET /parent/grades?child=:id&quarter=:id
+  rather than holding every child's every quarter (including locked ones) in
+  memory at once.
+*/
+const GRADES_BY_CHILD = {
+  juan: {
+    name: 'Juan Alcantara',
+    section: 'Grade 7 – St. Matthew',
+    quarters: {
+      1: {
+        locked: false,
+        average: 89.4,
+        subjects: [
+          { name:'Mathematics', teacher:'Ms. Maria Reyes', grade:88.0, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+          { name:'English', teacher:'Mr. Paolo Santos', grade:91.5, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'Science', teacher:'Mrs. Liza Ramos', grade:87.0, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+          { name:'Filipino', teacher:'Mr. Andres Cruz', grade:90.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+          { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:89.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+          { name:'Values Education', teacher:'Ms. Maria Reyes', grade:92.0, icon:'heart-handshake', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:90.5, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+        ]
+      },
+      2: {
+        locked: false,
+        average: 90.8,
+        subjects: [
+          { name:'Mathematics', teacher:'Ms. Maria Reyes', grade:92.5, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+          { name:'English', teacher:'Mr. Paolo Santos', grade:90.0, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'Science', teacher:'Mrs. Liza Ramos', grade:88.5, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+          { name:'Filipino', teacher:'Mr. Andres Cruz', grade:91.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+          { name:'Araling Panlipunan', teacher:'Mrs. Carmen Reyes', grade:84.0, icon:'globe', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)', unreleased:true },
+          { name:'Values Education', teacher:'Ms. Maria Reyes', grade:94.0, icon:'heart-handshake', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'MAPEH', teacher:'Mr. Jun Bautista', grade:91.0, icon:'dumbbell', iconBg:'var(--green-pale)', iconColor:'#16a34a', unreleased:true },
+        ]
+      },
+      3: { locked: true },
+      4: { locked: true },
+    }
+  },
+  maya: {
+    name: 'Maya Alcantara',
+    section: 'Grade 4 – St. Clare',
+    quarters: {
+      1: {
+        locked: false,
+        average: 91.2,
+        subjects: [
+          { name:'Mathematics', teacher:'Mrs. Joy Fernandez', grade:90.0, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+          { name:'English', teacher:'Ms. Erika Domingo', grade:93.0, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'Science', teacher:'Mr. Vince Aquino', grade:89.5, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+          { name:'Filipino', teacher:'Mrs. Joy Fernandez', grade:92.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+        ]
+      },
+      2: {
+        locked: false,
+        average: 92.0,
+        subjects: [
+          { name:'Mathematics', teacher:'Mrs. Joy Fernandez', grade:91.0, icon:'sigma', iconBg:'var(--blue-xpale)', iconColor:'var(--blue-mid)' },
+          { name:'English', teacher:'Ms. Erika Domingo', grade:94.0, icon:'book-open', iconBg:'var(--purple-pale)', iconColor:'var(--purple)' },
+          { name:'Science', teacher:'Mr. Vince Aquino', grade:90.0, icon:'flask-conical', iconBg:'var(--green-pale)', iconColor:'#16a34a' },
+          { name:'Filipino', teacher:'Mrs. Joy Fernandez', grade:93.0, icon:'languages', iconBg:'var(--gold-pale)', iconColor:'#92400e' },
+        ]
+      },
+      3: { locked: true },
+      4: { locked: true },
+    }
+  },
+};
+
+let currentChild = 'juan';
+let currentQuarter = 2;
+
+function remarkFor(grade) {
+  if (grade >= 90) return { label: 'Outstanding', cls: 'remark-outstanding', gcls: 'g-high' };
+  if (grade >= 85) return { label: 'Very Satisfactory', cls: 'remark-vsatisfactory', gcls: 'g-high' };
+  if (grade >= 80) return { label: 'Satisfactory', cls: 'remark-satisfactory', gcls: 'g-mid' };
+  if (grade >= 75) return { label: 'Fairly Satisfactory', cls: 'remark-fair', gcls: 'g-low' };
+  return { label: 'At Risk', cls: 'remark-risk', gcls: 'g-risk' };
+}
+
+function switchChild(childKey, el) {
+  currentChild = childKey;
+  document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderQuarter(currentQuarter);
+}
+
+function renderQuarter(q) {
+  currentQuarter = q;
+  document.querySelectorAll('.quarter-tab').forEach(t => t.classList.toggle('active', t.dataset.q === String(q)));
+
+  const child = GRADES_BY_CHILD[currentChild];
+  const data = child.quarters[q];
+  const avgBanner = document.getElementById('avg-banner');
+  const wrap = document.getElementById('subject-panel-wrap');
+  const footnote = document.getElementById('footnote');
+
+  if (!data || data.locked) {
+    avgBanner.style.display = 'none';
+    footnote.style.display = 'none';
+    wrap.innerHTML = `
+      <div class="panel">
+        <div class="locked-state">
+          <div class="locked-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
+          <div class="locked-title">Not yet available</div>
+          <div class="locked-sub">Grades for this quarter haven't been released yet.<br/>Check back once the grading period starts.</div>
+        </div>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  avgBanner.style.display = 'flex';
+  footnote.style.display = 'flex';
+  document.getElementById('avg-label').textContent = `Quarter ${q} General Average`;
+  document.getElementById('avg-num').textContent = data.average.toFixed(1);
+  document.getElementById('avg-child-name').textContent = `${child.name} · ${child.section}`;
+
+  wrap.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Subject Grades</div></div>
+      ${data.subjects.map(s => {
+        if (s.unreleased) {
+          return `
+            <div class="subject-row subject-row--unreleased">
+              <div class="subject-icon" style="background:var(--gray-100);">
+                <i data-lucide="${s.icon}" style="width:19px;height:19px;color:var(--gray-300);"></i>
+              </div>
+              <div class="subject-info">
+                <div class="subject-name" style="color:var(--gray-400);">${s.name}</div>
+                <div class="subject-teacher">${s.teacher}</div>
+                <span class="subject-remark" style="background:var(--gray-100);color:var(--gray-400);">
+                  <i data-lucide="clock" style="width:10px;height:10px;"></i> Pending Release
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;color:var(--gray-300);">
+                <i data-lucide="minus" style="width:18px;height:18px;"></i>
+              </div>
+            </div>`;
+        }
+        const r = remarkFor(s.grade);
+        return `
+          <div class="subject-row">
+            <div class="subject-icon" style="background:${s.iconBg};">
+              <i data-lucide="${s.icon}" style="width:19px;height:19px;color:${s.iconColor};"></i>
+            </div>
+            <div class="subject-info">
+              <div class="subject-name">${s.name}</div>
+              <div class="subject-teacher">${s.teacher}</div>
+              <span class="subject-remark ${r.cls}">${r.label}</span>
+            </div>
+            <div class="subject-grade-num ${r.gcls}">${s.grade.toFixed(1)}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  lucide.createIcons();
+}
+
+document.querySelectorAll('.quarter-tab').forEach(tab => {
+  if (!tab.disabled) {
+    tab.addEventListener('click', () => renderQuarter(parseInt(tab.dataset.q)));
+  }
+});
+
+function toggleDrawer(open) {
+  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+  document.body.classList.toggle('drawer-open', isOpen);
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+    toggleDrawer(false);
+  });
+});
+
+renderQuarter(currentQuarter);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); }
+});
+
+/* ── LOGOUT MODAL ── */
+function openLogoutModal() {
+  document.getElementById('logoutModal').classList.add('open');
+  lucide.createIcons();
+}
+function closeLogoutModal() {
+  document.getElementById('logoutModal').classList.remove('open');
+}
+document.getElementById('logoutModal').addEventListener('click', function(e) {
+  if (e.target === this) closeLogoutModal();
+});
+
+/* ── PROFILE DROPDOWN ── */
+function toggleProfileMenu(forceState) {
+  const trigger = document.getElementById('profileTrigger');
+  const dropdown = document.getElementById('profileDropdown');
+  const isOpen = forceState === undefined ? !dropdown.classList.contains('open') : forceState;
+  dropdown.classList.toggle('open', isOpen);
+  trigger.classList.toggle('open', isOpen);
+  trigger.setAttribute('aria-expanded', isOpen);
+}
+function closeProfileMenu() { toggleProfileMenu(false); }
+
+document.addEventListener('click', (e) => {
+  const profile = document.getElementById('topbarProfile');
+  if (profile && !profile.contains(e.target)) closeProfileMenu();
+});
+</script>
+
+</body>
+</html>
