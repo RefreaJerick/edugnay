@@ -83,7 +83,7 @@
   color: #d97706;
 }
 .sc-num {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 32px;
   font-weight: 800;
   color: var(--gray-800);
@@ -195,7 +195,7 @@
   gap: 10px;
 }
 .panel-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 16px;
   font-weight: 800;
   color: var(--gray-800);
@@ -433,7 +433,7 @@ tbody td {
   margin-bottom: 14px;
 }
 .empty-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 18px;
   font-weight: 800;
   color: var(--gray-700);
@@ -483,7 +483,7 @@ tbody td {
   justify-content: space-between;
 }
 .modal-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-800);

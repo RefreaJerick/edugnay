@@ -123,7 +123,7 @@
   flex: 1;
 }
 .cph-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 16px;
   font-weight: 800;
   color: var(--gray-800);
@@ -362,7 +362,7 @@
   letter-spacing: 0.5px;
 }
 .weight-total-val {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Plus Jakarta Sans', serif;
   font-size: 20px;
   font-weight: 800;
 }
