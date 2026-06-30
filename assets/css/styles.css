@@ -370,7 +370,6 @@ body.drawer-open .sidebar {
   font-family: 'Plus Jakarta Sans', serif; font-size: 13px; font-weight: 800;
   color: var(--white);
   background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
-  box-shadow: 0 2px 6px rgba(212,175,55,0.35);
 }
 
 .profile-dropdown {
