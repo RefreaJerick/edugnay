@@ -215,11 +215,6 @@
         <div class="page-title">Subjects</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <!-- <button class="top-btn secondary"><i data-lucide="upload" style="width:16px;height:16px;"></i>Export</button> -->
-      <button class="top-btn primary" onclick="openModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Subject</button>
-      <!-- <div class="notif-btn"><i data-lucide="bell" style="width:16px;height:16px;"></i><div class="notif-dot"></div></div> -->
-    </div>
   </header>
 
   <!-- ══════ MAIN ══════ -->
@@ -289,9 +284,14 @@
           <div class="panel-sub" id="panelSub">Subjects shared across Grades 7 – 10 · S.Y. 2025–2026</div>
         </div>
         <div class="panel-head-right">
-          <div class="search-wrap">
-            <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
-            <input class="search-input" type="text" id="searchInput" placeholder="Search subjects..." oninput="filterSubjects()"/>
+          <div class="toolbar-filters">
+            <div class="search-wrap">
+              <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+              <input class="search-input" type="text" id="searchInput" placeholder="Search subjects..." oninput="filterSubjects()"/>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <button class="top-btn primary" onclick="openModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Subject</button>
           </div>
         </div>
       </div>

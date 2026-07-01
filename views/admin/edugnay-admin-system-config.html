@@ -72,11 +72,6 @@
         <div class="page-title">System Configuration</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <button class="top-btn secondary"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Reset Defaults</button>
-      <button class="top-btn primary" onclick="saveAll()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save All Changes</button>
-      <!-- <div class="notif-btn"><i data-lucide="bell" style="width:16px;height:16px;"></i><div class="notif-dot"></div></div> -->
-    </div>
   </header>
 
   <!-- ══════ MAIN ══════ -->
@@ -114,6 +109,12 @@
 
       <!-- ── RIGHT: Config panels ── -->
       <div class="config-sections">
+        <div class="config-toolbar">
+          <div class="toolbar-actions">
+            <button class="top-btn secondary"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Reset Defaults</button>
+            <button class="top-btn primary" onclick="saveAll()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save All Changes</button>
+          </div>
+        </div>
 
         <!-- 1. Academic Year & Grading Period -->
         <form id="academicConfigForm" method="post" action="/config/academic/update">

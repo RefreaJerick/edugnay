@@ -285,9 +285,6 @@
         <div class="page-title">Sections</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <button class="top-btn primary" onclick="openModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Section</button>
-    </div>
   </header>
 
   <!-- ══════ MAIN ══════ -->
@@ -331,20 +328,25 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <div class="search-wrap">
-        <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
-        <input class="search-input" type="text" id="searchInput" placeholder="Search sections..." oninput="filterSections()"/>
+      <div class="toolbar-filters">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+          <input class="search-input" type="text" id="searchInput" placeholder="Search sections..." oninput="filterSections()"/>
+        </div>
+        <select class="filter-select" id="gradeFilter" onchange="filterSections()">
+          <option value="all">All Grade Levels</option>
+          <option value="7">Grade 7</option>
+          <option value="8">Grade 8</option>
+          <option value="9">Grade 9</option>
+          <option value="10">Grade 10</option>
+        </select>
       </div>
-      <select class="filter-select" id="gradeFilter" onchange="filterSections()">
-        <option value="all">All Grade Levels</option>
-        <option value="7">Grade 7</option>
-        <option value="8">Grade 8</option>
-        <option value="9">Grade 9</option>
-        <option value="10">Grade 10</option>
-      </select>
-      <div class="view-toggle">
-        <button class="vt-btn active" id="cardViewBtn" onclick="setView('card')"><i data-lucide="grid" style="width:16px;height:16px;"></i></button>
-        <button class="vt-btn" id="tableViewBtn" onclick="setView('table')"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
+      <div class="toolbar-actions">
+        <div class="view-toggle">
+          <button class="vt-btn active" id="cardViewBtn" onclick="setView('card')"><i data-lucide="grid" style="width:16px;height:16px;"></i></button>
+          <button class="vt-btn" id="tableViewBtn" onclick="setView('table')"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
+        </div>
+        <button class="top-btn primary" onclick="openModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Section</button>
       </div>
     </div>
 

@@ -386,10 +386,6 @@
         <div class="page-title">User Accounts</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Users</button>
-      <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
-    </div>
   </header>
 
   <!-- ══════ MAIN ══════ -->
@@ -436,30 +432,36 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <div class="search-wrap">
-        <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
-        <input
-          class="search-input"
-          type="text"
-          id="searchInput"
-          placeholder="Search by name or email..."
-          oninput="filterTable()"
-        />
+      <div class="toolbar-filters">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+          <input
+            class="search-input"
+            type="text"
+            id="searchInput"
+            placeholder="Search by name or email..."
+            oninput="filterTable()"
+          />
+        </div>
+        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <select class="filter-select" id="sectionFilter" onchange="filterTable()">
+          <option value="all">All Sections</option>
+          <option>Grade 7 – St. Matthew</option>
+          <option>Grade 7 – St. Mark</option>
+          <option>Grade 8 – St. Luke</option>
+          <option>Grade 8 – St. John</option>
+          <option>Grade 9 – St. Peter</option>
+          <option>Grade 10 – St. James</option>
+        </select>
       </div>
-      <select class="filter-select" id="statusFilter" onchange="filterTable()">
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-      <select class="filter-select" id="sectionFilter" onchange="filterTable()">
-        <option value="all">All Sections</option>
-        <option>Grade 7 – St. Matthew</option>
-        <option>Grade 7 – St. Mark</option>
-        <option>Grade 8 – St. Luke</option>
-        <option>Grade 8 – St. John</option>
-        <option>Grade 9 – St. Peter</option>
-        <option>Grade 10 – St. James</option>
-      </select>
+      <div class="toolbar-actions">
+        <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Users</button>
+        <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
+      </div>
     </div>
 
     <!-- Users table -->

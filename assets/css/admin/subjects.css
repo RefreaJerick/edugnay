@@ -208,7 +208,19 @@
 .panel-head-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+.toolbar-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+}
+.toolbar-actions .top-btn {
+  margin-left: 0;
 }
 .search-wrap {
   position: relative;
