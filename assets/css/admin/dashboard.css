@@ -1058,7 +1058,6 @@
   gap: 12px;
   background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
   border: 1px solid rgba(212, 175, 55, 0.25);
-  border-left: 4px solid var(--gold);
   border-radius: 14px;
   padding: 16px 22px;
   margin-bottom: 24px;

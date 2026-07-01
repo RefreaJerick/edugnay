@@ -337,12 +337,7 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="top-btn secondary" onclick="switchTab('attendance')">
-        <i data-lucide="user-check" style="width:14px;height:14px;"></i> Take Attendance
-      </button>
-      <button class="top-btn primary" onclick="openModal('addCompModal')">
-        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Component
-      </button>
+
     </div>
   </header>
 
@@ -422,7 +417,7 @@
             <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
             <input class="search-input" type="text" placeholder="Search student..." oninput="filterStudents(this.value)"/>
           </div>
-          <select style="padding:9px 14px;background:var(--white);border:1.5px solid var(--gray-200);border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--gray-600);outline:none;">
+          <select class="filter-select">
             <option>All Students</option>
             <option>Active</option>
             <option>Flagged</option>
@@ -853,9 +848,9 @@
         <div class="panel-head">
           <div class="panel-title">Attendance History</div>
           <div class="panel-head-actions">
-            <button class="top-btn secondary">
+            <!-- <button class="top-btn secondary">
               <i data-lucide="download" style="width:14px;height:14px;"></i> Export
-            </button>
+            </button> -->
           </div>
         </div>
         <div class="att-legend">
