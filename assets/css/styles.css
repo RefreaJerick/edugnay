@@ -197,7 +197,7 @@ body.drawer-open .sidebar {
 
 .nav-item.active, .nav-group-toggle.active {
   background: rgba(29,92,180,0.35);
-  border-left: 3px solid var(--gold);
+  /* border-left: 3px solid var(--gold); */
   padding-left: 7px;
 }
 
@@ -650,15 +650,6 @@ body.drawer-open .sidebar {
   width: 100%;
 }
 
-/* Gold accent bar (matching login page left border) */
-.accent-bar {
-  height: 4px;
-  background: linear-gradient(to right, var(--gold), var(--blue-mid));
-  border-radius: 999px;
-  margin-bottom: 28px;
-  width: 80px;
-}
-
 /* ── GRADING PERIOD BANNER ── */
 .grading-banner {
   display: flex;
@@ -668,7 +659,6 @@ body.drawer-open .sidebar {
   gap: 12px;
   background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
   border: 1px solid rgba(212, 175, 55, 0.25);
-  border-left: 4px solid var(--gold);
   border-radius: 14px;
   padding: 16px 22px;
   margin-bottom: 24px;

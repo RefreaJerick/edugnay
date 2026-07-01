@@ -647,9 +647,6 @@
   .main {
     padding: 16px;
   }
-  .accent-bar {
-    height: 2px;
-  }
   .weight-row {
     flex-wrap: wrap;
   }
