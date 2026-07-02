@@ -93,10 +93,6 @@
           <div class="config-nav-icon"><i data-lucide="user-check" style="width:14px;height:14px;"></i></div>
           <span class="config-nav-label">Attendance</span>
         </a>
-        <a href="#journal" class="config-nav-item">
-          <div class="config-nav-icon"><i data-lucide="notebook-pen" style="width:14px;height:14px;"></i></div>
-          <span class="config-nav-label">Journal</span>
-        </a>
         <a href="#notifications" class="config-nav-item">
           <div class="config-nav-icon"><i data-lucide="bell" style="width:14px;height:14px;"></i></div>
           <span class="config-nav-label">Notifications</span>
@@ -343,87 +339,6 @@
           <div class="config-panel-foot">
             <button type="button" class="btn btn-cancel">Discard</button>
             <button type="submit" form="attendanceConfigForm" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
-          </div>
-        </div>
-        </form>
-
-        <!-- 4. Journal Settings -->
-        <form id="journalConfigForm" method="post" action="/config/journal/update">
-        <div class="config-panel" id="journal">
-          <div class="config-panel-head">
-            <div class="cph-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div>
-            <div class="cph-info">
-              <div class="cph-title">Journal Settings</div>
-              <div class="cph-sub">Configure the weekly journal submission schedule and AI analysis behavior.</div>
-            </div>
-          </div>
-          <div class="config-panel-body">
-            <div class="form-grid-2" style="margin-bottom:16px;">
-              <div class="form-group">
-                <label class="form-label">Submission Day</label>
-                <select class="form-select">
-                  <option>Monday</option>
-                  <option>Tuesday</option>
-                  <option>Wednesday</option>
-                  <option>Thursday</option>
-                  <option selected>Friday</option>
-                </select>
-                <span class="form-hint">Day the journal window opens and closes</span>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Submission Deadline</label>
-                <div class="time-input-wrap">
-                  <i data-lucide="clock" class="time-input-icon"></i>
-                  <input class="form-input time-input" type="time" value="23:59"/>
-                </div>
-                <span class="form-hint">Time the submission window closes</span>
-              </div>
-            </div>
-            <div class="form-grid-2" style="margin-bottom:16px;">
-              <div class="form-group">
-                <label class="form-label">Minimum Word Count</label>
-                <input class="form-input" type="number" value="50" min="10"/>
-                <span class="form-hint">Minimum words required per journal entry</span>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Maximum Word Count</label>
-                <input class="form-input" type="number" value="500" min="50"/>
-                <span class="form-hint">Maximum words allowed per entry</span>
-              </div>
-            </div>
-            <div class="divider"></div>
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <div class="toggle-label">Journal Window Currently Open</div>
-                <div class="toggle-desc">Manually open or close the journal submission window for this week.</div>
-              </div>
-              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-            </div>
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <div class="toggle-label">Auto-Open Window Every Submission Day</div>
-                <div class="toggle-desc">System automatically opens the journal window on the scheduled day.</div>
-              </div>
-              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-            </div>
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <div class="toggle-label">Allow Late Submissions</div>
-                <div class="toggle-desc">Students can still submit after the deadline. The entry will be marked as late.</div>
-              </div>
-              <div class="toggle" onclick="this.classList.toggle('on')"></div>
-            </div>
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <div class="toggle-label">AI Welfare Analysis</div>
-                <div class="toggle-desc">Automatically analyze journal entries using AI to generate a welfare summary.</div>
-              </div>
-              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-            </div>
-          </div>
-          <div class="config-panel-foot">
-            <button class="btn btn-cancel">Discard</button>
-            <button class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
           </div>
         </div>
         </form>

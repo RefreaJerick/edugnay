@@ -135,14 +135,14 @@ body.drawer-open .sidebar {
 }
 
 .brand-initials {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: var(--navy);
 }
 
 .brand-name {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-style: italic;
   font-size: 20px;
   font-weight: 800;
@@ -151,7 +151,7 @@ body.drawer-open .sidebar {
   letter-spacing: 0.02em;
 }
 .brand-name span {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-style: normal;
   color: var(--gold);
   margin-left: 2px;
@@ -331,7 +331,7 @@ body.drawer-open .sidebar {
 }
 
 .page-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-800);
@@ -367,7 +367,7 @@ body.drawer-open .sidebar {
 .profile-trigger-avatar {
   width: 38px; height: 38px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Plus Jakarta Sans', serif; font-size: 13px; font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800;
   color: var(--white);
   background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
 }
@@ -677,7 +677,7 @@ body.drawer-open .sidebar {
   border-radius: 12px;
   background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
   color: #fff;
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.3rem;
   font-weight: 800;
   display: flex;
@@ -1019,7 +1019,7 @@ html, body {
 }
 
 .photo-heading {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: clamp(32px, 3.5vw, 52px);
   font-weight: 800;
   color: var(--white);
@@ -1062,7 +1062,7 @@ html, body {
 .stat-block:last-child { border-right: none; }
 
 .stat-val {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 22px;
   font-weight: 700;
   color: var(--white);
@@ -1148,7 +1148,7 @@ html, body {
 }
 
 .login-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 32px;
   font-weight: 800;
   color: var(--gray-800);

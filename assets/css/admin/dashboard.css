@@ -89,7 +89,7 @@
   color: var(--gray-500);
 }
 .stat-card-num {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 34px;
   font-weight: 800;
   color: var(--gray-800);
@@ -131,7 +131,7 @@
   border-bottom: 1px solid var(--gray-100);
 }
 .panel-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 16px;
   font-weight: 800;
   color: var(--gray-800);
@@ -372,7 +372,7 @@
   justify-content: space-between;
 }
 .account-modal-backdrop .modal-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-800);
@@ -512,7 +512,7 @@
   justify-content: space-between;
 }
 .student-modal-backdrop .modal-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-800);
@@ -718,7 +718,7 @@
   flex-shrink: 0;
 }
 .announcement-modal-backdrop .modal-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-800);
@@ -1076,7 +1076,7 @@
   border-radius: 12px;
   background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
   color: #fff;
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1.3rem;
   font-weight: 800;
   display: flex;

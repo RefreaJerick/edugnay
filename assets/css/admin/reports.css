@@ -35,19 +35,19 @@
 .trend-up   { background: var(--green-pale); color: #16a34a; }
 .trend-down { background: var(--red-pale); color: var(--red); }
 .trend-neu  { background: var(--gray-100); color: var(--gray-500); }
-.sc-num { font-family: 'Plus Jakarta Sans', serif; font-size: 32px; font-weight: 800; color: var(--gray-800); line-height: 1; margin-bottom: 3px; }
+.sc-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 800; color: var(--gray-800); line-height: 1; margin-bottom: 3px; }
 .sc-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
 .sc-sub { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
 
 /* ── SECTION TITLE ── */
 .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.section-title h2 { font-family: 'Plus Jakarta Sans', serif; font-size: 17px; font-weight: 800; color: var(--gray-800); }
+.section-title h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; color: var(--gray-800); }
 .section-line { flex: 1; height: 1px; background: var(--gray-200); }
 
 /* ── PANEL ── */
 .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 4px 16px rgba(16,40,80,0.05); }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; gap: 10px; }
-.panel-title { font-family: 'Plus Jakarta Sans', serif; font-size: 15px; font-weight: 800; color: var(--gray-800); }
+.panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--gray-800); }
 .panel-action { font-size: 12px; font-weight: 600; color: var(--blue-mid); cursor: pointer; text-decoration: none; transition: color 0.15s; display: flex; align-items: center; gap: 4px; }
 .panel-action:hover { color: var(--blue-light); }
 
@@ -71,7 +71,7 @@
 .donut-bg { fill: none; stroke: var(--gray-100); stroke-width: 14; }
 .donut-seg { fill: none; stroke-width: 14; stroke-linecap: round; }
 .donut-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.donut-num { font-family: 'Plus Jakarta Sans', serif; font-size: 22px; font-weight: 800; color: var(--gray-800); line-height: 1; }
+.donut-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; color: var(--gray-800); line-height: 1; }
 .donut-sub { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
 .donut-legend { display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .legend-item { display: flex; align-items: center; gap: 8px; }

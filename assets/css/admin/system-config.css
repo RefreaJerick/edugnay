@@ -123,7 +123,7 @@
   flex: 1;
 }
 .cph-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 16px;
   font-weight: 800;
   color: var(--gray-800);
@@ -378,7 +378,7 @@
   letter-spacing: 0.5px;
 }
 .weight-total-val {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
 }

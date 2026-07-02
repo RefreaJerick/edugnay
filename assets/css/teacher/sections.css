@@ -19,14 +19,14 @@
       width: 52px; height: 52px; border-radius: 14px;
       background: linear-gradient(135deg, var(--navy), var(--blue));
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Plus Jakarta Sans', serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 17px; font-weight: 800; color: var(--gold);
       flex-shrink: 0;
     }
 
     .section-info {}
     .section-name {
-      font-family: 'Plus Jakarta Sans', serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 20px; font-weight: 800; color: var(--gray-800);
       letter-spacing: -0.3px; margin-bottom: 4px;
     }
@@ -115,7 +115,7 @@
     }
 
     .panel-title {
-      font-family: 'Plus Jakarta Sans', serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 16px; font-weight: 800; color: var(--gray-800);
     }
     .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
@@ -329,7 +329,7 @@
     }
     .computed-avg  { color: var(--blue-mid); }
     .computed-final {
-      font-family: 'Plus Jakarta Sans', serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 16px; font-weight: 800;
     }
     .grade-pass   { color: #16a34a; }
@@ -507,7 +507,7 @@
       border-bottom: 1px solid var(--gray-100);
       display: flex; align-items: flex-start; justify-content: space-between;
     }
-    .modal-title { font-family: 'Plus Jakarta Sans', serif; font-size: 19px; font-weight: 800; color: var(--gray-800); margin-bottom: 2px; }
+    .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 800; color: var(--gray-800); margin-bottom: 2px; }
     .modal-sub   { font-size: 13px; color: var(--gray-400); }
     .modal-close {
       width: 32px; height: 32px; border-radius: 8px;

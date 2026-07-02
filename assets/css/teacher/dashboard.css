@@ -29,7 +29,7 @@
 }
 
 .summary-num {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 26px; font-weight: 800;
   color: var(--gray-800); line-height: 1;
 }
@@ -65,7 +65,7 @@
 }
 
 .panel-title {
-  font-family: 'Plus Jakarta Sans', serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 16px; font-weight: 800; color: var(--gray-800);
 }
 

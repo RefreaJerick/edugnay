@@ -32,7 +32,7 @@
       box-shadow: 0 2px 10px rgba(16,40,80,0.05);
     }
     .summary-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .summary-num { font-family: 'Plus Jakarta Sans', serif; font-size: 26px; font-weight: 800; color: var(--gray-800); line-height: 1; }
+    .summary-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 800; color: var(--gray-800); line-height: 1; }
     .summary-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
 
     /* ── SECTION TABS ── */
@@ -69,9 +69,149 @@
       padding: 16px 24px; border-bottom: 1px solid var(--gray-100);
       flex-wrap: wrap; gap: 10px;
     }
-    .panel-title { font-family: 'Plus Jakarta Sans', serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
+    .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
     .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
     .panel-head-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ── SETTINGS TRIGGER ── */
+    .settings-trigger {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 14px; border-radius: 9px;
+      background: var(--navy); color: var(--white);
+      border: none; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 12.5px; font-weight: 700;
+      transition: background 0.15s;
+    }
+    .settings-trigger:hover { background: #16294a; }
+
+    /* ── SETTINGS DRAWER ── */
+    .settings-backdrop {
+      position: fixed; inset: 0; background: rgba(11,31,58,0.45);
+      z-index: 60; display: flex; justify-content: flex-end;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .settings-backdrop.open { opacity: 1; visibility: visible; }
+
+    .settings-drawer {
+      width: 100%; max-width: 420px; height: 100%;
+      background: var(--white);
+      display: flex; flex-direction: column;
+      box-shadow: -12px 0 40px rgba(11,31,58,0.18);
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    }
+    .settings-backdrop.open .settings-drawer { transform: translateX(0); }
+
+    .settings-drawer-head {
+      padding: 22px 26px; background: var(--navy);
+      border-left: 4px solid var(--gold);
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .settings-drawer-eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--gold);
+    }
+    .settings-drawer-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 17px; font-weight: 800; color: var(--white); margin-top: 4px;
+    }
+    .settings-drawer-head .modal-close { background: rgba(255,255,255,0.12); color: var(--white); }
+    .settings-drawer-head .modal-close:hover { background: rgba(255,255,255,0.2); }
+
+    .settings-drawer-body { flex: 1; overflow-y: auto; padding: 22px 26px; }
+    .settings-divider { height: 1px; background: var(--gray-100); margin: 22px 0; }
+
+    .settings-block-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10.5px; font-weight: 700; color: var(--gray-400);
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;
+    }
+    .settings-block-hint { font-size: 12px; color: var(--gray-400); margin-bottom: 10px; }
+
+    .settings-textarea {
+      width: 100%; padding: 12px 14px; resize: vertical; min-height: 72px;
+      background: var(--gray-50); border: 1.5px solid var(--gray-200);
+      border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; color: var(--gray-800); outline: none; line-height: 1.5;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .settings-textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); background: var(--white); }
+    .settings-char-count { text-align: right; font-size: 10.5px; color: var(--gray-300); margin-top: 4px; }
+
+    .settings-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .settings-field-label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-600); margin-bottom: 6px; }
+    .settings-select, .settings-input {
+      width: 100%; padding: 9px 12px;
+      background: var(--white); border: 1.5px solid var(--gray-200);
+      border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; color: var(--gray-800); outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+    .settings-select:focus, .settings-input:focus { border-color: var(--blue-mid); }
+    #settings-minwords,
+    #settings-maxwords {
+      appearance: textfield;
+      -moz-appearance: textfield;
+      -webkit-appearance: none;
+      margin: 0;
+      background-image: none;
+      padding-right: 12px;
+    }
+    #settings-minwords::-webkit-inner-spin-button,
+    #settings-maxwords::-webkit-inner-spin-button,
+    #settings-minwords::-webkit-outer-spin-button,
+    #settings-maxwords::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    #settings-deadline {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: none;
+      padding-right: 12px;
+      cursor: text;
+    }
+
+    .settings-toggle-row {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--gray-100);
+    }
+    .settings-toggle-row:last-child { border-bottom: none; }
+    .settings-toggle-label { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+    .settings-toggle-desc { font-size: 11.5px; color: var(--gray-400); margin-top: 2px; line-height: 1.4; }
+
+    .settings-drawer-foot {
+      padding: 16px 26px 22px; display: flex; justify-content: flex-end;
+      gap: 8px; border-top: 1px solid var(--gray-100); flex-shrink: 0;
+    }
+
+    .settings-toggle-row.locked { opacity: 0.85; }
+
+    .settings-lock-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.4px;
+      text-transform: uppercase; color: var(--gray-500);
+      background: var(--gray-100); padding: 2px 6px 2px 5px;
+      border-radius: 999px; margin-left: 8px; vertical-align: middle;
+    }
+
+    .toggle.locked {
+      cursor: not-allowed;
+      position: relative;
+    }
+    .toggle.locked::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+    }
 
     /* ── TOOLBAR ── */
     .toolbar {
@@ -158,7 +298,7 @@
     /* score chip */
     .score-chip {
       display: inline-flex; align-items: baseline; gap: 2px;
-      font-family: 'Plus Jakarta Sans', serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
     .score-val { font-size: 17px; font-weight: 800; }
     .score-max { font-size: 11px; font-weight: 600; color: var(--gray-400); }
@@ -200,7 +340,7 @@
     }
     .modal-head-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 0; }
     .modal-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0; }
-    .modal-title { font-family: 'Plus Jakarta Sans', serif; font-size: 18px; font-weight: 800; color: var(--gray-800); }
+    .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; color: var(--gray-800); }
     .modal-sub { font-size: 11.5px; color: var(--gray-400); margin-top: 3px; }
     .modal-close { width: 32px; height: 32px; border-radius: 8px; background: var(--gray-100); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--gray-500); transition: background 0.15s; flex-shrink: 0; }
     .modal-close:hover { background: var(--gray-200); }
@@ -234,13 +374,13 @@
     .score-num-input {
       width: 80px; padding: 9px 12px; text-align: center;
       background: var(--white); border: 1.5px solid var(--gray-200);
-      border-radius: 9px; font-family: 'Plus Jakarta Sans', serif;
+      border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 20px; font-weight: 800; color: var(--gray-800); outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .score-num-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); }
     .score-divider { font-size: 16px; color: var(--gray-300); font-weight: 600; }
-    .score-max-label { font-size: 20px; font-weight: 800; font-family: 'Plus Jakarta Sans', serif; color: var(--gray-300); }
+    .score-max-label { font-size: 20px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--gray-300); }
     .score-hint { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
 
     .modal-foot {
@@ -272,7 +412,7 @@
     /* empty state */
     .empty-state { padding: 48px 24px; text-align: center; }
     .empty-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--gray-400); }
-    .empty-title { font-family: 'Plus Jakarta Sans', serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
+    .empty-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
     .empty-sub { font-size: 13px; color: var(--gray-400); }
 
     /* toast */
@@ -301,6 +441,8 @@
       .summary-item { min-width: 100%; border-right: none; border-bottom: 1px solid var(--gray-100); }
       .summary-item:last-child { border-bottom: none; }
       .top-btn span { display: none; }
+      .settings-drawer { max-width: 100%; }
+      .settings-trigger span { display: none; }
     }
   </style>
 </head>
@@ -384,6 +526,120 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ══════ JOURNAL SETTINGS DRAWER ══════ -->
+<div class="settings-backdrop" id="settingsBackdrop" onclick="if(event.target===this) closeSettingsDrawer()">
+  <aside class="settings-drawer" id="settingsDrawer">
+    <div class="settings-drawer-head">
+      <div>
+        <div class="settings-drawer-eyebrow">Values Education · Journals</div>
+        <div class="settings-drawer-title">Journal Settings</div>
+      </div>
+      <button class="modal-close" onclick="closeSettingsDrawer()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+
+    <div class="settings-drawer-body">
+
+      <div class="settings-block">
+        <div class="settings-block-label">
+          <i data-lucide="message-square-text" style="width:12px;height:12px;"></i>
+          This Week's Prompt
+        </div>
+        <div class="settings-block-hint" id="settings-section-name">Grade 7 – St. Matthew</div>
+        <textarea class="settings-textarea" id="settings-prompt-input" rows="3" maxlength="220" oninput="updatePromptCounter()"></textarea>
+        <div class="settings-char-count"><span id="prompt-char-count">0</span>/220</div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">
+          <i data-lucide="calendar-clock" style="width:12px;height:12px;"></i>
+          Submission Schedule
+        </div>
+        <div class="settings-row-2">
+          <div class="settings-field">
+            <label class="settings-field-label">Submission Day</label>
+            <select class="settings-select" id="settings-day">
+              <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+              <option>Thursday</option><option selected>Friday</option>
+            </select>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label">Deadline</label>
+            <input class="settings-input" type="time" id="settings-deadline" value="23:59"/>
+          </div>
+        </div>
+        <div class="settings-row-2">
+          <div class="settings-field">
+            <label class="settings-field-label">Min. Words</label>
+            <input class="settings-input" type="number" id="settings-minwords" value="50" min="10"/>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label">Max. Words</label>
+            <input class="settings-input" type="number" id="settings-maxwords" value="500" min="50"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-block">
+        <div class="settings-block-label">
+          <i data-lucide="sliders-horizontal" style="width:12px;height:12px;"></i>
+          Submission Rules
+        </div>
+
+        <div class="settings-toggle-row">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">Window Open This Week</div>
+            <div class="settings-toggle-desc">Manually open or close submissions for the current week.</div>
+          </div>
+          <div class="toggle on" id="toggle-window-open" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="settings-toggle-row">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">Auto-Open Every Submission Day</div>
+            <div class="settings-toggle-desc">System opens the window automatically on the scheduled day.</div>
+          </div>
+          <div class="toggle on" id="toggle-auto-open" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="settings-toggle-row locked">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">
+              AI Welfare Analysis
+              <span class="settings-lock-badge">
+                <i data-lucide="lock" style="width:10px;height:10px;"></i> System
+              </span>
+            </div>
+            <div class="settings-toggle-desc">Always active. Journal entries are analyzed for welfare concerns and cannot be disabled at the section level.</div>
+          </div>
+          <div class="toggle on locked" id="toggle-ai-welfare" title="Locked by system policy"></div>
+        </div>
+
+        <div class="settings-toggle-row">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">Allow Late Submissions</div>
+            <div class="settings-toggle-desc">Students may still submit after the deadline, marked as late.</div>
+          </div>
+          <div class="toggle" id="toggle-allow-late" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-drawer-foot">
+      <button class="btn btn-cancel" onclick="closeSettingsDrawer()">Cancel</button>
+      <button class="btn btn-save" onclick="saveJournalSettings()">
+        <i data-lucide="save" style="width:13px;height:13px;"></i> Save Settings
+      </button>
+    </div>
+  </aside>
 </div>
 
 <div class="shell">
@@ -560,6 +816,11 @@
           <div class="panel-sub" id="panel-sub">Week 3 · June 9–14, 2025 · Prompt: "Describe a challenge you faced this week in class and how you handled it."</div>
         </div>
         <div class="panel-head-right">
+          <!-- EJS: render only if teacher.subjects.includes('Values Education') -->
+          <button class="settings-trigger" onclick="openSettingsDrawer()" title="Journal Settings">
+            <i data-lucide="settings-2" style="width:14px;height:14px;"></i>
+            <span>Journal Settings</span>
+          </button>
           <select class="filter-select" id="week-filter" onchange="renderTable()">
             <option value="3">Week 3 — June 9–14</option>
             <option value="2">Week 2 — June 2–7</option>
@@ -648,6 +909,68 @@ const SECTIONS = {
     ]
   }
 };
+
+const JOURNAL_SETTINGS = {
+  day: 'Friday',
+  deadline: '23:59',
+  minWords: 50,
+  maxWords: 500,
+  windowOpen: true,
+  autoOpen: true,
+  allowLate: false,
+};
+
+function openSettingsDrawer() {
+  const sec = SECTIONS[currentSection];
+  document.getElementById('settings-section-name').textContent = sec.label;
+  document.getElementById('settings-prompt-input').value = sec.prompt.replace(/^"|"$/g, '');
+  updatePromptCounter();
+
+  document.getElementById('settings-day').value = JOURNAL_SETTINGS.day;
+  document.getElementById('settings-deadline').value = JOURNAL_SETTINGS.deadline;
+  document.getElementById('settings-minwords').value = JOURNAL_SETTINGS.minWords;
+  document.getElementById('settings-maxwords').value = JOURNAL_SETTINGS.maxWords;
+
+  setToggle('toggle-window-open', JOURNAL_SETTINGS.windowOpen);
+  setToggle('toggle-auto-open', JOURNAL_SETTINGS.autoOpen);
+  setToggle('toggle-allow-late', JOURNAL_SETTINGS.allowLate);
+
+  document.getElementById('settingsBackdrop').classList.add('open');
+  lucide.createIcons();
+}
+
+function closeSettingsDrawer() {
+  document.getElementById('settingsBackdrop').classList.remove('open');
+}
+
+function setToggle(id, isOn) {
+  document.getElementById(id).classList.toggle('on', isOn);
+}
+
+function updatePromptCounter() {
+  document.getElementById('prompt-char-count').textContent =
+    document.getElementById('settings-prompt-input').value.length;
+}
+
+function saveJournalSettings() {
+  const sec = SECTIONS[currentSection];
+  const newPrompt = document.getElementById('settings-prompt-input').value.trim();
+  if (newPrompt) sec.prompt = `"${newPrompt}"`;
+
+  JOURNAL_SETTINGS.day        = document.getElementById('settings-day').value;
+  JOURNAL_SETTINGS.deadline   = document.getElementById('settings-deadline').value;
+  JOURNAL_SETTINGS.minWords   = parseInt(document.getElementById('settings-minwords').value) || 50;
+  JOURNAL_SETTINGS.maxWords   = parseInt(document.getElementById('settings-maxwords').value) || 500;
+  JOURNAL_SETTINGS.windowOpen = document.getElementById('toggle-window-open').classList.contains('on');
+  JOURNAL_SETTINGS.autoOpen   = document.getElementById('toggle-auto-open').classList.contains('on');
+  JOURNAL_SETTINGS.allowLate  = document.getElementById('toggle-allow-late').classList.contains('on');
+
+  document.getElementById('panel-sub').textContent =
+    `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`;
+
+  closeSettingsDrawer();
+  showToast('Journal settings updated', 'success');
+}
 
 let currentSection = '7-matthew';
 let activeStudentIds = [];
@@ -875,7 +1198,7 @@ function toggleGroup(id) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { toggleDrawer(false); closeModal('journalModal'); }
+  if (e.key === 'Escape') { toggleDrawer(false); closeModal('journalModal'); closeSettingsDrawer(); }
   if (e.key === 'ArrowRight' && document.getElementById('journalModal').classList.contains('open')) navigateEntry(1);
   if (e.key === 'ArrowLeft'  && document.getElementById('journalModal').classList.contains('open')) navigateEntry(-1);
 });
