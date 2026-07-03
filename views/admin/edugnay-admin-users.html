@@ -896,7 +896,7 @@
   function openDeleteModal(row) {
     const name = row.querySelector('.user-name').textContent.trim();
 
-    document.getElementById('deleteModalTitle').textContent = `Delete — ${name}`;
+    document.getElementById('deleteModalTitle').textContent = `Delete: ${name}`;
     document.getElementById('deleteModalName').textContent = name;
     document.getElementById('deleteModalNameInline').textContent = name;
     document.getElementById('deleteUserId').value = row.dataset.userId || '';

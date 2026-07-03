@@ -657,7 +657,7 @@
   function openModal(studentName) {
     const isQuickAssign = !!studentName;
 
-    document.getElementById('modalTitle').textContent = isQuickAssign ? `Assign — ${studentName}` : 'Assign Student';
+    document.getElementById('modalTitle').textContent = isQuickAssign ? `Assign: ${studentName}` : 'Assign Student';
     document.getElementById('ctxVal').textContent = 'Select a section below';
 
     const studentGroup = document.getElementById('modalStudent').closest('.form-group');
@@ -675,7 +675,7 @@
   }
 
   function openMoveModal(studentName, studentId, currentSection) {
-    document.getElementById('modalTitle').textContent = `Move — ${studentName}`;
+    document.getElementById('modalTitle').textContent = `Move: ${studentName}`;
     document.getElementById('moveCtxVal').textContent = `Currently in ${currentSection}`;
     document.getElementById('moveStudentId').value = studentId;
 
@@ -688,7 +688,7 @@
   }
 
   function removeStudent(studentName, section, studentId, rowElement) {
-    document.getElementById('confirmTitle').textContent = `Remove — ${studentName}`;
+    document.getElementById('confirmTitle').textContent = `Remove: ${studentName}`;
     document.getElementById('confirmStudentName').textContent = studentName;
     document.getElementById('confirmStudentNameInline').textContent = studentName;
     document.getElementById('confirmSectionName').textContent = section;

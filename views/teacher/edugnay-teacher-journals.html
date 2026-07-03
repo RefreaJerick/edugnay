@@ -188,6 +188,26 @@
     .settings-toggle-label { font-size: 13px; font-weight: 700; color: var(--gray-800); }
     .settings-toggle-desc { font-size: 11.5px; color: var(--gray-400); margin-top: 2px; line-height: 1.4; }
 
+    /* ── TOGGLE SWITCH (self-contained) ── */
+    .toggle {
+      width: 40px; height: 24px; border-radius: 999px;
+      background: var(--gray-200); position: relative;
+      cursor: pointer; flex-shrink: 0; transition: background 0.2s;
+    }
+    .toggle::before {
+      content: '';
+      position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--white);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform 0.2s;
+    }
+    .toggle.on { background: var(--blue-mid); }
+    .toggle.on::before { transform: translateX(16px); }
+
+    .toggle.locked { background: var(--gray-300); }
+    .toggle.locked.on { background: var(--gray-400); }
+
     .settings-drawer-foot {
       padding: 16px 26px 22px; display: flex; justify-content: flex-end;
       gap: 8px; border-top: 1px solid var(--gray-100); flex-shrink: 0;
@@ -595,40 +615,25 @@
 
         <div class="settings-toggle-row">
           <div class="settings-toggle-info">
-            <div class="settings-toggle-label">Window Open This Week</div>
-            <div class="settings-toggle-desc">Manually open or close submissions for the current week.</div>
+            <div class="settings-toggle-label">Accept Late Entries</div>
+            <div class="settings-toggle-desc">If a student submits after the deadline, still accept it but mark it as late.</div>
           </div>
-          <div class="toggle on" id="toggle-window-open" onclick="this.classList.toggle('on')"></div>
-        </div>
-
-        <div class="settings-toggle-row">
-          <div class="settings-toggle-info">
-            <div class="settings-toggle-label">Auto-Open Every Submission Day</div>
-            <div class="settings-toggle-desc">System opens the window automatically on the scheduled day.</div>
-          </div>
-          <div class="toggle on" id="toggle-auto-open" onclick="this.classList.toggle('on')"></div>
+          <div class="toggle" id="toggle-allow-late" onclick="this.classList.toggle('on')"></div>
         </div>
 
         <div class="settings-toggle-row locked">
           <div class="settings-toggle-info">
             <div class="settings-toggle-label">
-              AI Welfare Analysis
+              AI Welfare Check
               <span class="settings-lock-badge">
-                <i data-lucide="lock" style="width:10px;height:10px;"></i> System
+                <i data-lucide="lock" style="width:10px;height:10px;"></i> Always On
               </span>
             </div>
-            <div class="settings-toggle-desc">Always active. Journal entries are analyzed for welfare concerns and cannot be disabled at the section level.</div>
+            <div class="settings-toggle-desc">Every entry is automatically checked by AI for signs a student may need support. This can't be turned off.</div>
           </div>
-          <div class="toggle on locked" id="toggle-ai-welfare" title="Locked by system policy"></div>
+          <div class="toggle on locked" id="toggle-ai-welfare" title="Always on — school-wide safety feature"></div>
         </div>
 
-        <div class="settings-toggle-row">
-          <div class="settings-toggle-info">
-            <div class="settings-toggle-label">Allow Late Submissions</div>
-            <div class="settings-toggle-desc">Students may still submit after the deadline, marked as late.</div>
-          </div>
-          <div class="toggle" id="toggle-allow-late" onclick="this.classList.toggle('on')"></div>
-        </div>
       </div>
 
     </div>
@@ -812,7 +817,7 @@
     <div class="panel">
       <div class="panel-head">
         <div>
-          <div class="panel-title" id="panel-title">Journal Entries — Grade 7, St. Matthew</div>
+          <div class="panel-title" id="panel-title">Journal Entries: Grade 7 – St. Matthew</div>
           <div class="panel-sub" id="panel-sub">Week 3 · June 9–14, 2025 · Prompt: "Describe a challenge you faced this week in class and how you handled it."</div>
         </div>
         <div class="panel-head-right">
@@ -822,9 +827,9 @@
             <span>Journal Settings</span>
           </button>
           <select class="filter-select" id="week-filter" onchange="renderTable()">
-            <option value="3">Week 3 — June 9–14</option>
-            <option value="2">Week 2 — June 2–7</option>
-            <option value="1">Week 1 — May 26–31</option>
+            <option value="3">Week 3: June 9–14</option>
+            <option value="2">Week 2: June 2–7</option>
+            <option value="1">Week 1: May 26–31</option>
           </select>
         </div>
       </div>
@@ -840,6 +845,7 @@
           <option value="not_submitted">Not Submitted</option>
           <option value="reviewed">Reviewed</option>
           <option value="pending">Pending Review</option>
+          <option value="late">Late</option>
         </select>
       </div>
 
@@ -883,7 +889,7 @@ const SECTIONS = {
       { id:4, name:'Dela Torre, Ana F.',    av:'DA', avClass:'av-d', entry:`The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item — two minutes max — and I managed to finish before the bell. I will keep practicing this.`, submitted:true, score:null, reviewed:false },
       { id:5, name:'Estrada, Jose G.',      av:'EJ', avClass:'av-e', entry:``, submitted:false, score:null, reviewed:false },
       { id:6, name:'Garcia, Luisa H.',      av:'GL', avClass:'av-f', entry:`I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and watched a short video about it. Now I think I understand when to flip the sign and when not to.`, submitted:true, score:50, reviewed:true  },
-      { id:7, name:'Hernandez, Carlo I.',   av:'HC', avClass:'av-a', entry:`My challenge this week was group work. My groupmates and I disagreed on how to present our solution on the board. We talked it over and decided to combine both approaches to show two different methods. Our teacher appreciated that we showed more than one way.`, submitted:true, score:45,  reviewed:false },
+      { id:7, name:'Hernandez, Carlo I.',   av:'HC', avClass:'av-a', entry:`My challenge this week was group work. My groupmates and I disagreed on how to present our solution on the board. We talked it over and decided to combine both approaches to show two different methods. Our teacher appreciated that we showed more than one way.`, submitted:true, score:45, reviewed:false, late:true},
       { id:8, name:'Ibarra, Rosa J.',       av:'IR', avClass:'av-b', entry:`I had difficulty remembering the formula for the slope of a line. I made a small flashcard and kept it in my notebook. When I looked at it before the quiz it helped me remember.`, submitted:true, score:50,  reviewed:false },
     ]
   },
@@ -915,8 +921,6 @@ const JOURNAL_SETTINGS = {
   deadline: '23:59',
   minWords: 50,
   maxWords: 500,
-  windowOpen: true,
-  autoOpen: true,
   allowLate: false,
 };
 
@@ -931,8 +935,6 @@ function openSettingsDrawer() {
   document.getElementById('settings-minwords').value = JOURNAL_SETTINGS.minWords;
   document.getElementById('settings-maxwords').value = JOURNAL_SETTINGS.maxWords;
 
-  setToggle('toggle-window-open', JOURNAL_SETTINGS.windowOpen);
-  setToggle('toggle-auto-open', JOURNAL_SETTINGS.autoOpen);
   setToggle('toggle-allow-late', JOURNAL_SETTINGS.allowLate);
 
   document.getElementById('settingsBackdrop').classList.add('open');
@@ -961,8 +963,6 @@ function saveJournalSettings() {
   JOURNAL_SETTINGS.deadline   = document.getElementById('settings-deadline').value;
   JOURNAL_SETTINGS.minWords   = parseInt(document.getElementById('settings-minwords').value) || 50;
   JOURNAL_SETTINGS.maxWords   = parseInt(document.getElementById('settings-maxwords').value) || 500;
-  JOURNAL_SETTINGS.windowOpen = document.getElementById('toggle-window-open').classList.contains('on');
-  JOURNAL_SETTINGS.autoOpen   = document.getElementById('toggle-auto-open').classList.contains('on');
   JOURNAL_SETTINGS.allowLate  = document.getElementById('toggle-allow-late').classList.contains('on');
 
   document.getElementById('panel-sub').textContent =
@@ -983,7 +983,7 @@ function switchSection(sectionKey, btn) {
   btn.classList.add('active');
 
   const sec = SECTIONS[sectionKey];
-  document.getElementById('panel-title').textContent = `Journal Entries — ${sec.label}`;
+  document.getElementById('panel-title').textContent = `Journal Entries: ${sec.label}`;
   document.getElementById('panel-sub').textContent = `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`;
 
   document.getElementById('search-input').value = '';
@@ -1003,6 +1003,7 @@ function renderTable() {
     if (statusFilter === 'not_submitted' && s.submitted) return false;
     if (statusFilter === 'reviewed' && !s.reviewed) return false;
     if (statusFilter === 'pending' && (s.reviewed || !s.submitted)) return false;
+    if (statusFilter === 'late' && !s.late) return false;
     return true;
   });
 
@@ -1034,6 +1035,8 @@ function renderTable() {
       statusBadge = `<span class="badge badge-gray">Not submitted</span>`;
     } else if (s.reviewed) {
       statusBadge = `<span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Reviewed</span>`;
+    } else if (s.late) {
+      statusBadge = `<span class="badge badge-gold"><i data-lucide="clock-alert" style="width:10px;height:10px;"></i> Late</span>`;
     } else {
       statusBadge = `<span class="badge badge-orange">Pending review</span>`;
     }
@@ -1052,7 +1055,9 @@ function renderTable() {
         <td><div class="entry-preview">${excerpt}</div></td>
         <td class="center">
           ${s.submitted
-            ? `<span class="badge badge-blue"><i data-lucide="check" style="width:10px;height:10px;"></i> Yes</span>`
+            ? (s.late
+                ? `<span class="badge badge-gold"><i data-lucide="clock-alert" style="width:10px;height:10px;"></i> Late</span>`
+                : `<span class="badge badge-blue"><i data-lucide="check" style="width:10px;height:10px;"></i> Yes</span>`)
             : `<span class="badge badge-red">No</span>`}
         </td>
         <td class="center">${scoreCellHtml}</td>
@@ -1159,7 +1164,7 @@ function markReviewed() {
 
   renderTable();
   populateModal(s);
-  showToast(`${s.name} — marked as reviewed`, 'success');
+  showToast(`${s.name} · marked as reviewed`, 'success');
 }
 
 /* ══════ MODAL HELPERS ══════ */

@@ -850,7 +850,7 @@
     const key   = name.toLowerCase();
     const list  = sectionStudents[key] || [];
 
-    document.getElementById('studentsModalTitle').textContent = name + ' — Students';
+    document.getElementById('studentsModalTitle').textContent = name + ': Students';
     document.getElementById('studentsModalSub').textContent   = `Grade ${grade} · ${list.length} enrolled`;
 
     const tbody = document.getElementById('studentsTableBody');
