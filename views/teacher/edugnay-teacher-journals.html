@@ -834,6 +834,19 @@
         </div>
       </div>
 
+      <div class="panel-empty-noprompt" id="noPromptState" style="display:none;padding:64px 24px;text-align:center;">
+        <div class="empty-icon" style="margin:0 auto 18px;">
+          <i data-lucide="book-plus" style="width:26px;height:26px;"></i>
+        </div>
+        <div class="empty-title">No journal prompt set yet</div>
+        <div class="empty-sub" style="max-width:380px;margin:0 auto 22px;line-height:1.7;">
+          Students in this section can't submit a journal entry until a weekly prompt is published. Set one up to open submissions.
+        </div>
+        <button class="btn btn-save" style="margin:0 auto;" onclick="openSettingsDrawer()">
+          <i data-lucide="plus" style="width:13px;height:13px;"></i> Create this week's prompt
+        </button>
+      </div>
+
       <div class="toolbar">
         <div class="search-wrap">
           <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
@@ -881,6 +894,7 @@ lucide.createIcons();
 const SECTIONS = {
   '7-matthew': {
     label: 'Grade 7 – St. Matthew',
+    hasPrompt: true,
     prompt: '"Describe a challenge you faced this week in class and how you handled it."',
     students: [
       { id:1, name:'Alcantara, Juan B.',    av:'JA', avClass:'av-a', entry:`This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.`, submitted:true, score:40,  reviewed:true  },
@@ -895,24 +909,15 @@ const SECTIONS = {
   },
   '8-luke': {
     label: 'Grade 8 – St. Luke',
-    prompt: '"What is something you learned this week that surprised you, and why did it surprise you?"',
-    students: [
-      { id:1, name:'Aquino, Ben F.',      av:'AB', avClass:'av-a', entry:`I was surprised to learn that the Pythagorean theorem works in real-world architecture. I never connected math to buildings before. It made me curious about what other formulas engineers use.`, submitted:true, score:8, reviewed:true },
-      { id:2, name:'Flores, Clara G.',    av:'FC', avClass:'av-b', entry:`I was surprised that irrational numbers go on forever without repeating. I thought all numbers had a pattern eventually.`, submitted:true, score:null, reviewed:false },
-      { id:3, name:'Gonzales, David H.', av:'GD', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
-      { id:4, name:'Lopez, Emma I.',      av:'LE', avClass:'av-d', entry:`The thing that surprised me most was how a negative exponent means a fraction. It seems counterintuitive but once I saw the pattern it made sense.`, submitted:true, score:9, reviewed:false },
-      { id:5, name:'Morales, Felix J.',   av:'MF', avClass:'av-e', entry:``, submitted:false, score:null, reviewed:false },
-    ]
+    hasPrompt: false,
+    prompt: '',
+    students: []
   },
   '9-peter': {
     label: 'Grade 9 – St. Peter',
-    prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?"',
-    students: [
-      { id:1, name:'Navarro, Gina K.',    av:'NG', avClass:'av-a', entry:`I helped my seatmate understand how to factor a trinomial. Explaining it to her actually made me realize I understood it better than I thought. Teaching someone else really reinforces learning.`, submitted:true, score:10, reviewed:true },
-      { id:2, name:'Ocampo, Hector L.',   av:'OH', avClass:'av-b', entry:`My classmate helped me when I was stuck on a problem involving the quadratic formula. He showed me how to identify a, b, and c carefully before substituting. I was rushing and that was my mistake.`, submitted:true, score:8, reviewed:false },
-      { id:3, name:'Pascual, Iris M.',    av:'PI', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
-      { id:4, name:'Quinto, Jose N.',     av:'QJ', avClass:'av-d', entry:`I helped a friend who was confused about graphing linear functions. We drew it step by step and she finally got it. It felt good to be useful.`, submitted:true, score:9, reviewed:false },
-    ]
+    hasPrompt: false,
+    prompt: '',
+    students: []
   }
 };
 
@@ -984,7 +989,9 @@ function switchSection(sectionKey, btn) {
 
   const sec = SECTIONS[sectionKey];
   document.getElementById('panel-title').textContent = `Journal Entries: ${sec.label}`;
-  document.getElementById('panel-sub').textContent = `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`;
+  document.getElementById('panel-sub').textContent = sec.hasPrompt
+  ? `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`
+  : 'No prompt configured for this section yet';
 
   document.getElementById('search-input').value = '';
   document.getElementById('status-filter').value = 'all';
@@ -994,6 +1001,26 @@ function switchSection(sectionKey, btn) {
 /* ══════ RENDER TABLE ══════ */
 function renderTable() {
   const sec = SECTIONS[currentSection];
+  const noPromptEl = document.getElementById('noPromptState');
+  const toolbar = document.querySelector('.toolbar');
+  const tableWrap = document.querySelector('.table-wrap');
+  const tableFooter = document.getElementById('table-footer');
+
+  if (!sec.hasPrompt) {
+    noPromptEl.style.display = 'block';
+    toolbar.style.display = 'none';
+    tableWrap.style.display = 'none';
+    tableFooter.style.display = 'none';
+    lucide.createIcons();
+    return;
+  }
+
+  noPromptEl.style.display = 'none';
+  toolbar.style.display = 'flex';
+  tableWrap.style.display = 'block';
+  tableFooter.style.display = 'block';
+
+  // ...rest of existing renderTable body continues unchanged
   const query = document.getElementById('search-input').value.toLowerCase();
   const statusFilter = document.getElementById('status-filter').value;
 
