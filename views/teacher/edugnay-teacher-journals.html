@@ -1035,8 +1035,6 @@ function renderTable() {
       statusBadge = `<span class="badge badge-gray">Not submitted</span>`;
     } else if (s.reviewed) {
       statusBadge = `<span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Reviewed</span>`;
-    } else if (s.late) {
-      statusBadge = `<span class="badge badge-gold"><i data-lucide="clock-alert" style="width:10px;height:10px;"></i> Late</span>`;
     } else {
       statusBadge = `<span class="badge badge-orange">Pending review</span>`;
     }
