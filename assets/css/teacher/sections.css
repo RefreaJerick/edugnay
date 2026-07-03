@@ -347,6 +347,22 @@
     .publish-info-title  { font-size: 13px; font-weight: 700; color: var(--blue); }
     .publish-info-sub    { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
 
+
+    .score-input.readonly-score {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      border-color: var(--gray-200);
+      cursor: not-allowed;
+    }
+    .comp-head-locked {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 9px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+
     /* ═══════════════════════════════
        TAB 3: ATTENDANCE
     ═══════════════════════════════ */
