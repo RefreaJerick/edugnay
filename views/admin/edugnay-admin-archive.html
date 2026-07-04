@@ -26,7 +26,6 @@
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.20s; }
     .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; }
     .stat-card.blue::before   { background: var(--blue-mid); }
     .stat-card.gold::before   { background: var(--gold); }
     .stat-card.green::before  { background: var(--green); }
@@ -45,7 +44,7 @@
     .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 
     /* ── PANEL ── */
-    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 4px 16px rgba(16,40,80,0.05); animation: fadeUp 0.4s ease both; }
+    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; animation: fadeUp 0.4s ease both; }
     .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; gap: 10px; }
     .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
     .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }

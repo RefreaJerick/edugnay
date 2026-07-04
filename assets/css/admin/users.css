@@ -20,13 +20,6 @@
   overflow: hidden;
 }
 
-.rs-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 3px;
-}
-
 .rs-card.all::before    { background: linear-gradient(to right, var(--gold), var(--blue-mid)); }
 .rs-card.admin::before  { background: var(--navy); }
 .rs-card.fac::before    { background: var(--blue-mid); }
@@ -35,7 +28,7 @@
 
 .rs-card:hover, .rs-card.selected {
   border-color: var(--blue-mid);
-  box-shadow: 0 4px 16px rgba(29,92,180,0.12);
+  /* box-shadow: 0 4px 16px rgba(29,92,180,0.12); */
   transform: translateY(-2px);
 }
 
@@ -149,7 +142,7 @@
   border-radius: 14px;
   border: 1px solid var(--gray-200);
   overflow: hidden;
-  box-shadow: 0 14px 40px rgba(16,40,80,0.05);
+  /* box-shadow: 0 14px 40px rgba(16,40,80,0.05); */
   margin-bottom: 20px;
 }
 

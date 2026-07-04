@@ -316,7 +316,7 @@ body.drawer-open .sidebar {
   top: 0;
   z-index: 10;
   backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(16, 40, 80, 0.08);
+  /* box-shadow: 0 10px 30px rgba(16, 40, 80, 0.08); */
 }
 
 .topbar-left { flex: 1; }
@@ -662,7 +662,7 @@ body.drawer-open .sidebar {
   border-radius: 14px;
   padding: 16px 22px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
+  /* box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15); */
 }
 
 .grading-banner-left {

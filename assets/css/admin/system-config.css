@@ -15,7 +15,7 @@
   overflow: hidden;
   position: sticky;
   top: 84px;
-  box-shadow: 0 4px 16px rgba(16,40,80,0.05);
+  /* box-shadow: 0 4px 16px rgba(16,40,80,0.05); */
   animation: fadeUp 0.4s ease both;
 }
 .config-nav-title {
@@ -81,7 +81,7 @@
   border-radius: 14px;
   border: 1px solid var(--gray-200);
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(16,40,80,0.05);
+  /* box-shadow: 0 4px 16px rgba(16,40,80,0.05); */
   animation: fadeUp 0.4s ease both;
   scroll-margin-top: 84px;
 }

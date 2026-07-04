@@ -16,7 +16,12 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 2px 10px rgba(16,40,80,0.05);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.summary-item:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transform: none;
 }
 
 .summary-item:last-child { border-right: none; }
@@ -53,7 +58,7 @@
   border-radius: 14px;
   border: 1px solid var(--gray-200);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(16,40,80,0.05);
+  /* box-shadow: 0 2px 10px rgba(16,40,80,0.05); */
 }
 
 .panel-head {

@@ -16,15 +16,7 @@
 }
 .stat-card:hover {
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  transform: translateY(-2px);
-}
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
+  transform: none;
 }
 .stat-card.blue::before {
   background: var(--blue-mid);
@@ -121,7 +113,7 @@
   border-radius: 14px;
   border: 1px solid var(--gray-200);
   overflow: hidden;
-  box-shadow: 0 14px 40px rgba(16, 40, 80, 0.05);
+  /* box-shadow: 0 14px 40px rgba(16, 40, 80, 0.05); */
 }
 .panel-head {
   display: flex;
