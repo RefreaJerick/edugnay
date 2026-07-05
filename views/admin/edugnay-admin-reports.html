@@ -117,41 +117,110 @@
 
     <!-- Stat cards -->
     <div class="stat-grid">
-      <div class="stat-card blue">
-        <div class="sc-top">
-          <div class="sc-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-up">▲ 12%</span>
-        </div>
-        <div class="sc-num">284</div>
-        <div class="sc-label">Reports Generated</div>
-        <div class="sc-sub">AI narrative reports this quarter</div>
-      </div>
       <div class="stat-card green">
         <div class="sc-top">
           <div class="sc-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-up">▲ 8%</span>
+          <span class="sc-trend trend-up">▲ 3%</span>
         </div>
-        <div class="sc-num">261</div>
-        <div class="sc-label">Confirmed</div>
-        <div class="sc-sub">Teacher-approved and sent</div>
+        <div class="sc-num">90%</div>
+        <div class="sc-label">Passing Rate</div>
+        <div class="sc-sub">255 of 284 students · Q2</div>
       </div>
-      <div class="stat-card orange">
+      <div class="stat-card blue">
         <div class="sc-top">
-          <div class="sc-icon"><i data-lucide="clock" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-down">▼ Pending</span>
+          <div class="sc-icon"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
+          <span class="sc-trend trend-up">▲ 1%</span>
         </div>
-        <div class="sc-num">23</div>
-        <div class="sc-label">Pending Confirmation</div>
-        <div class="sc-sub">Awaiting teacher review</div>
+        <div class="sc-num">92%</div>
+        <div class="sc-label">Attendance Rate</div>
+        <div class="sc-sub">Across 8 sections · Q2</div>
       </div>
       <div class="stat-card red">
         <div class="sc-top">
           <div class="sc-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-down">▼ Flagged</span>
+          <span class="sc-trend trend-down">▼ Needs review</span>
         </div>
-        <div class="sc-num">18</div>
+        <div class="sc-num">4</div>
         <div class="sc-label">Flagged Students</div>
-        <div class="sc-sub">Need teacher attention</div>
+        <div class="sc-sub">Absences or grades below threshold</div>
+      </div>
+    </div>
+
+    <!-- Flagged Students -->
+    <div class="section-title">
+      <h2>Flagged Students</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
+      <div class="panel-head">
+        <div class="panel-title">Requires Attention</div>
+        <div class="panel-head-right" style="display:flex;gap:8px;">
+          <select class="filter-select" style="padding:7px 30px 7px 12px;font-size:12px;">
+            <option>All Reasons</option>
+            <option>Absences</option>
+            <option>Low Grades</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flag-grid">
+
+        <div class="flag-card">
+          <div class="flag-card-top">
+            <div class="flag-av" style="background:var(--red);">BG</div>
+            <div class="flag-info">
+              <div class="flag-name">Ben Garcia</div>
+              <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
+            </div>
+          </div>
+          <div class="flag-reason-row">
+            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
+            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 72</span>
+          </div>
+        </div>
+
+        <div class="flag-card">
+          <div class="flag-card-top">
+            <div class="flag-av" style="background:#7c3aed;">SC</div>
+            <div class="flag-info">
+              <div class="flag-name">Sofia Cruz</div>
+              <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
+            </div>
+          </div>
+          <div class="flag-reason-row">
+            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
+            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
+          </div>
+        </div>
+
+        <div class="flag-card">
+          <div class="flag-card-top">
+            <div class="flag-av" style="background:#be185d;">UR</div>
+            <div class="flag-info">
+              <div class="flag-name">Uma Reyes</div>
+              <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
+            </div>
+          </div>
+          <div class="flag-reason-row">
+            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6 absences</span>
+            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> English: 74</span>
+          </div>
+        </div>
+
+        <div class="flag-card">
+          <div class="flag-card-top">
+            <div class="flag-av" style="background:#0d9488;">NP</div>
+            <div class="flag-info">
+              <div class="flag-name">Noel Pascual</div>
+              <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
+            </div>
+          </div>
+          <div class="flag-reason-row">
+            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -169,47 +238,44 @@
           <div class="panel-title">Average Grade per Subject</div>
           <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
         </div>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="bar-label">Mathematics</span>
-            <div class="bar-track"><div class="bar-fill" style="width:82%;background:var(--blue-mid);"></div></div>
-            <span class="bar-val">82</span>
+        <div class="bar-chart grouped ranked">
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 7</div>
+            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">EsP</span><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green);"></div></div><span class="bar-val">93</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Filipino</span><div class="bar-track"><div class="bar-fill" style="width:89%;background:var(--blue-mid);"></div></div><span class="bar-val">89</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div></div><span class="bar-val">84</span></div>
+            <div class="bar-row tier-low"><span class="bar-rank">4</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:76%;background:var(--orange);"></div></div><span class="bar-val">76</span></div>
+            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:74%;background:var(--orange);"></div></div><span class="bar-val">74</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">English</span>
-            <div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--blue-mid);"></div></div>
-            <span class="bar-val">85</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 8</div>
+            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div><span class="bar-val">90</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">TLE</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div></div><span class="bar-val">87</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">Araling Panlipunan</span><div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--blue-mid);"></div></div><span class="bar-val">85</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:83%;background:var(--blue-mid);"></div></div><span class="bar-val">83</span></div>
+            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--orange);"></div></div><span class="bar-val">78</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">Filipino</span>
-            <div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--green);"></div></div>
-            <span class="bar-val">88</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 9</div>
+            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">Filipino</span><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--green);"></div></div><span class="bar-val">88</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">EsP</span><div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div></div><span class="bar-val">86</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div></div><span class="bar-val">84</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">TLE</span><div class="bar-track"><div class="bar-fill" style="width:82%;background:var(--blue-mid);"></div></div><span class="bar-val">82</span></div>
+            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--orange);"></div></div><span class="bar-val">80</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">Science</span>
-            <div class="bar-track"><div class="bar-fill" style="width:79%;background:var(--orange);"></div></div>
-            <span class="bar-val">79</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 10</div>
+            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span><div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div><span class="bar-val">91</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Araling Panlipunan</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div></div><span class="bar-val">87</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div></div><span class="bar-val">86</span></div>
+            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:81%;background:var(--blue-mid);"></div></div><span class="bar-val">81</span></div>
+            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:79%;background:var(--orange);"></div></div><span class="bar-val">79</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">Araling Panlipunan</span>
-            <div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div></div>
-            <span class="bar-val">86</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">EsP</span>
-            <div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div>
-            <span class="bar-val">91</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">TLE</span>
-            <div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div></div>
-            <span class="bar-val">87</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">MAPEH</span>
-            <div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div>
-            <span class="bar-val">90</span>
-          </div>
+
         </div>
       </div>
 
@@ -288,13 +354,13 @@
 
     </div>
 
-    <!-- Attendance + Welfare -->
+    <!-- Attendance -->
     <div class="section-title">
-      <h2>Attendance & Welfare</h2>
+      <h2>Attendance</h2>
       <div class="section-line"></div>
     </div>
 
-    <div class="three-col">
+    <div class="two-col">
 
       <!-- Attendance overview -->
       <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
@@ -302,51 +368,36 @@
           <div class="panel-title">Attendance Rate</div>
           <span style="font-size:11px;color:var(--gray-400);">Per Section · Q2</span>
         </div>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="bar-label">St. Matthew</span>
-            <div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--green);"></div></div>
-            <span class="bar-val">96%</span>
+        <div class="bar-chart grouped">
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 7</div>
+            <div class="bar-row"><span class="bar-label">St. Matthew</span><div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--green);"></div></div><span class="bar-val">96%</span></div>
+            <div class="bar-row"><span class="bar-label">St. Mark</span><div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div><span class="bar-val">91%</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">St. Mark</span>
-            <div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div>
-            <span class="bar-val">91%</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 8</div>
+            <div class="bar-row"><span class="bar-label">St. Luke</span><div class="bar-track"><div class="bar-fill" style="width:94%;background:var(--green);"></div></div><span class="bar-val">94%</span></div>
+            <div class="bar-row"><span class="bar-label">St. John</span><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--orange);"></div></div><span class="bar-val">88%</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">St. Luke</span>
-            <div class="bar-track"><div class="bar-fill" style="width:94%;background:var(--green);"></div></div>
-            <span class="bar-val">94%</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 9</div>
+            <div class="bar-row"><span class="bar-label">St. Peter</span><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green);"></div></div><span class="bar-val">93%</span></div>
+            <div class="bar-row"><span class="bar-label">St. Paul</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div><span class="bar-val">90%</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">St. John</span>
-            <div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--orange);"></div></div>
-            <span class="bar-val">88%</span>
+
+          <div class="bar-group">
+            <div class="bar-group-label">Grade 10</div>
+            <div class="bar-row"><span class="bar-label">St. James</span><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--green);"></div></div><span class="bar-val">95%</span></div>
+            <div class="bar-row"><span class="bar-label">St. Thomas</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--orange);"></div></div><span class="bar-val">87%</span></div>
           </div>
-          <div class="bar-row">
-            <span class="bar-label">St. Peter</span>
-            <div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green);"></div></div>
-            <span class="bar-val">93%</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">St. Paul</span>
-            <div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div>
-            <span class="bar-val">90%</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">St. James</span>
-            <div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--green);"></div></div>
-            <span class="bar-val">95%</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">St. Thomas</span>
-            <div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--orange);"></div></div>
-            <span class="bar-val">87%</span>
-          </div>
+
         </div>
       </div>
 
-      <!-- Attendance status donut -->
+      <!-- Attendance breakdown -->
       <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
         <div class="panel-head">
           <div class="panel-title">Attendance Breakdown</div>
@@ -366,21 +417,9 @@
             </div>
           </div>
           <div class="donut-legend">
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--green);"></div>
-              <span class="legend-label">Present</span>
-              <span class="legend-val">92%</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--orange);"></div>
-              <span class="legend-label">Late / Tardy</span>
-              <span class="legend-val">5%</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--red);"></div>
-              <span class="legend-label">Absent</span>
-              <span class="legend-val">3%</span>
-            </div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Present</span><span class="legend-val">92%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--orange);"></div><span class="legend-label">Late / Tardy</span><span class="legend-val">5%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Absent</span><span class="legend-val">3%</span></div>
           </div>
         </div>
         <div style="padding:0 24px 20px;">
@@ -398,244 +437,8 @@
         </div>
       </div>
 
-      <!-- Welfare / Journal overview -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.15s both;">
-        <div class="panel-head">
-          <div class="panel-title">Journal & Welfare</div>
-          <span style="font-size:11px;color:var(--gray-400);">This Week</span>
-        </div>
-        <div class="donut-wrap" style="padding-bottom:0;">
-          <div class="donut">
-            <svg viewBox="0 0 100 100" width="120" height="120">
-              <circle class="donut-bg" cx="50" cy="50" r="40"/>
-              <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#1d5cb4" stroke-dasharray="224 251.2" stroke-dashoffset="0"/>
-              <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#cbd5e1" stroke-dasharray="27.2 251.2" stroke-dashoffset="-224"/>
-            </svg>
-            <div class="donut-label">
-              <div class="donut-num">89%</div>
-              <div class="donut-sub">Submitted</div>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--blue-mid);"></div>
-              <span class="legend-label">Submitted</span>
-              <span class="legend-val">253</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--gray-300);"></div>
-              <span class="legend-label">Not Submitted</span>
-              <span class="legend-val">31</span>
-            </div>
-          </div>
-        </div>
-        <div class="welfare-items">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">AI Welfare Sentiment</div>
-          <div class="welfare-row">
-            <div class="welfare-icon" style="background:#dcfce7;color:#16a34a;"><i data-lucide="smile" style="width:14px;height:14px;"></i></div>
-            <span class="welfare-label">Positive</span>
-            <div class="welfare-bar-track"><div class="welfare-bar-fill" style="width:68%;background:var(--green);"></div></div>
-            <span class="welfare-count">172</span>
-          </div>
-          <div class="welfare-row">
-            <div class="welfare-icon" style="background:var(--gray-100);color:var(--gray-500);"><i data-lucide="meh" style="width:14px;height:14px;"></i></div>
-            <span class="welfare-label">Neutral</span>
-            <div class="welfare-bar-track"><div class="welfare-bar-fill" style="width:22%;background:var(--gray-300);"></div></div>
-            <span class="welfare-count">56</span>
-          </div>
-          <div class="welfare-row">
-            <div class="welfare-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="frown" style="width:14px;height:14px;"></i></div>
-            <span class="welfare-label">Concerning</span>
-            <div class="welfare-bar-track"><div class="welfare-bar-fill" style="width:10%;background:var(--orange);"></div></div>
-            <span class="welfare-count">25</span>
-          </div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Narrative Reports + Flagged -->
-    <div class="section-title">
-      <h2>Narrative Reports</h2>
-      <div class="section-line"></div>
-    </div>
-
-    <div class="two-col">
-
-      <!-- Recent narrative reports table -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
-        <div class="panel-head">
-          <div class="panel-title">Recent Narrative Reports</div>
-          <a href="#" class="panel-action">View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Section</th>
-                <th>Status</th>
-                <th>Generated</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="user-cell">
-                    <div class="user-av av-blue">JD</div>
-                    <div>
-                      <div class="user-name">Juan Dela Cruz</div>
-                      <div class="user-sub">Grade 8 · St. Mark</div>
-                    </div>
-                  </div>
-                </td>
-                <td>St. Mark</td>
-                <td><span class="badge badge-green">✓ Confirmed</span></td>
-                <td style="font-size:11px;color:var(--gray-400);">Today, 9:42 AM</td>
-                <td><button class="row-btn view">View</button></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="user-cell">
-                    <div class="user-av av-green">AS</div>
-                    <div>
-                      <div class="user-name">Ana Santos</div>
-                      <div class="user-sub">Grade 10 · St. James</div>
-                    </div>
-                  </div>
-                </td>
-                <td>St. James</td>
-                <td><span class="badge badge-orange">⏳ Pending</span></td>
-                <td style="font-size:11px;color:var(--gray-400);">Today, 8:30 AM</td>
-                <td><button class="row-btn view">View</button></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="user-cell">
-                    <div class="user-av av-orange">RL</div>
-                    <div>
-                      <div class="user-name">Rico Lim</div>
-                      <div class="user-sub">Grade 9 · St. Peter</div>
-                    </div>
-                  </div>
-                </td>
-                <td>St. Peter</td>
-                <td><span class="badge badge-green">✓ Confirmed</span></td>
-                <td style="font-size:11px;color:var(--gray-400);">Yesterday, 4:15 PM</td>
-                <td><button class="row-btn view">View</button></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="user-cell">
-                    <div class="user-av av-purple">MP</div>
-                    <div>
-                      <div class="user-name">Maria Pascual</div>
-                      <div class="user-sub">Grade 7 · St. Matthew</div>
-                    </div>
-                  </div>
-                </td>
-                <td>St. Matthew</td>
-                <td><span class="badge badge-orange">⏳ Pending</span></td>
-                <td style="font-size:11px;color:var(--gray-400);">Yesterday, 2:00 PM</td>
-                <td><button class="row-btn view">View</button></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="user-cell">
-                    <div class="user-av av-teal">BG</div>
-                    <div>
-                      <div class="user-name">Ben Garcia</div>
-                      <div class="user-sub">Grade 9 · St. Paul</div>
-                    </div>
-                  </div>
-                </td>
-                <td>St. Paul</td>
-                <td><span class="badge badge-red">⚠ Flagged</span></td>
-                <td style="font-size:11px;color:var(--gray-400);">May 24, 10:05 AM</td>
-                <td><button class="row-btn view">View</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination">
-          <div class="page-info">Showing <strong>1–5</strong> of <strong>284</strong> reports</div>
-          <div class="page-btns">
-            <button class="page-btn" disabled>‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <span style="display:flex;align-items:center;color:var(--gray-400);font-size:12px;padding:0 4px;">…</span>
-            <button class="page-btn">57</button>
-            <button class="page-btn">›</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Flagged students -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
-        <div class="panel-head">
-          <div class="panel-title">Flagged Students</div>
-          <a href="#" class="panel-action">View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
-        </div>
-        <div class="flagged-list">
-          <div class="flagged-item">
-            <div class="flag-av" style="background:var(--red);">BG</div>
-            <div class="flag-info">
-              <div class="flag-name">Ben Garcia</div>
-              <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
-            </div>
-            <div class="flag-reason">
-              <span class="flag-tag flag-absences">4 absences</span>
-              <span class="flag-tag flag-grades">Math: 72</span>
-            </div>
-          </div>
-          <div class="flagged-item">
-            <div class="flag-av" style="background:#d97706;">TM</div>
-            <div class="flag-info">
-              <div class="flag-name">Timmy Macapagal</div>
-              <div class="flag-detail">Grade 7 – St. Matthew · Ms. Reyes</div>
-            </div>
-            <div class="flag-reason">
-              <span class="flag-tag flag-welfare">Welfare concern</span>
-            </div>
-          </div>
-          <div class="flagged-item">
-            <div class="flag-av" style="background:#7c3aed;">SC</div>
-            <div class="flag-info">
-              <div class="flag-name">Sofia Cruz</div>
-              <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
-            </div>
-            <div class="flag-reason">
-              <span class="flag-tag flag-grades">Science: 70</span>
-              <span class="flag-tag flag-grades">Math: 73</span>
-            </div>
-          </div>
-          <div class="flagged-item">
-            <div class="flag-av" style="background:#be185d;">UR</div>
-            <div class="flag-info">
-              <div class="flag-name">Uma Reyes</div>
-              <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
-            </div>
-            <div class="flag-reason">
-              <span class="flag-tag flag-absences">3 absences</span>
-            </div>
-          </div>
-          <div class="flagged-item">
-            <div class="flag-av" style="background:#0d9488;">NP</div>
-            <div class="flag-info">
-              <div class="flag-name">Noel Pascual</div>
-              <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
-            </div>
-            <div class="flag-reason">
-              <span class="flag-tag flag-welfare">Welfare concern</span>
-              <span class="flag-tag flag-absences">3 absences</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
 
   </main>
 </div>
