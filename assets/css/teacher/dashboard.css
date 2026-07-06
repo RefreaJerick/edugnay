@@ -121,6 +121,153 @@ tbody td {
 .section-cell-name { font-size: 13px; font-weight: 700; color: var(--gray-800); }
 .section-cell-sub  { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
 
+/* My Sections — cards */
+.section-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 18px;
+}
+
+.section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  padding: 18px 20px;
+  cursor: pointer;
+  position: relative;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.section-card:hover {
+  box-shadow: 0 6px 20px rgba(16, 40, 80, 0.08);
+  border-color: var(--gray-300);
+  transform: translateY(-3px);
+}
+
+.section-card-top {
+  display: flex;
+  align-items: center;
+}
+
+.section-card-main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 24px;
+}
+
+.section-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.section-card-sub {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+
+.section-card-arrow {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-300);
+  transition: background 0.15s, color 0.15s;
+}
+
+.section-card:hover .section-card-arrow {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.section-card-divider {
+  height: 1px;
+  background: var(--gray-100);
+}
+
+.section-card-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-stat-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--gray-400);
+}
+
+.section-stat-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+@media (max-width: 1300px) {
+  .section-cards { grid-template-columns: 1fr; }
+}
+
+/* ── FLAGGED STUDENTS (card style, single column) ── */
+.flag-grid-single {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+.flag-card {
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.flag-card:hover {
+  border-color: var(--gray-300);
+  box-shadow: 0 3px 12px rgba(16,40,80,0.06);
+}
+.flag-card-top {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.flag-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.flag-info { flex: 1; min-width: 0; }
+.flag-name { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+.flag-detail { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+.flag-reason-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.flag-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+}
+.flag-absences { background: var(--red-pale); color: var(--red); }
+.flag-grades   { background: var(--orange-pale); color: #92400e; }
+
+
 .subject-tag {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11px; font-weight: 600;

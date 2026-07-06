@@ -145,7 +145,7 @@
           <i data-lucide="door-open" style="width:18px;height:18px;"></i>
         </div>
         <div>
-          <div class="summary-num">3</div>
+          <div class="summary-num">4</div>
           <div class="summary-label">Sections Handled</div>
         </div>
       </div>
@@ -178,102 +178,127 @@
       </div>
     </div>
 
-    <!-- Sections table -->
-    <div class="panel" style="margin-bottom:24px;">
-      <div class="panel-head">
-        <div class="panel-title">My Sections</div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Section</th>
-              <th>Subject</th>
-              <th>Students</th>
-              <th>Grades Encoded</th>
-              <th>Attendance Today</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr onclick="navigate('section','7-matthew')">
-              <td>
-                <div class="section-name-cell">
-                  <div class="section-stripe stripe-7"></div>
-                  <div>
-                    <div class="section-cell-name">Grade 7 – St. Matthew</div>
-                    <div class="section-cell-sub">Class Adviser · Math</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
-              <td>38</td>
-              <td>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:100%;"></div></div>
-                  <span class="progress-text">38/38</span>
-                </div>
-              </td>
-              <td><span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span></td>
-              <td><span class="badge badge-green">Complete</span></td>
-              <td><button class="row-btn primary" onclick="event.stopPropagation();navigate('section','7-matthew')"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> Open</button></td>
-            </tr>
-            <tr onclick="navigate('section','8-luke')">
-              <td>
-                <div class="section-name-cell">
-                  <div class="section-stripe stripe-8"></div>
-                  <div>
-                    <div class="section-cell-name">Grade 8 – St. Luke</div>
-                    <div class="section-cell-sub">Math</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
-              <td>36</td>
-              <td>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:72%;background:var(--orange);"></div></div>
-                  <span class="progress-text">26/36</span>
-                </div>
-              </td>
-              <td><span class="badge badge-orange">⚠ Pending</span></td>
-              <td><span class="badge badge-orange">Incomplete</span></td>
-              <td><button class="row-btn primary" onclick="event.stopPropagation();navigate('section','8-luke')"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> Open</button></td>
-            </tr>
-            <tr onclick="navigate('section','9-peter')">
-              <td>
-                <div class="section-name-cell">
-                  <div class="section-stripe stripe-9"></div>
-                  <div>
-                    <div class="section-cell-name">Grade 9 – St. Peter</div>
-                    <div class="section-cell-sub">Math</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="subject-tag"><i data-lucide="hash" style="width:11px;height:11px;"></i> Mathematics</span></td>
-              <td>37</td>
-              <td>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar"><div class="progress-fill" style="width:0%;"></div></div>
-                  <span class="progress-text">0/37</span>
-                </div>
-              </td>
-              <td><span class="badge badge-red">Not taken</span></td>
-              <td><span class="badge badge-red">Not started</span></td>
-              <td><button class="row-btn primary" onclick="event.stopPropagation();navigate('section','9-peter')"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> Open</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Two col: Tasks + Announcements -->
+    
+    <!-- My Sections (cards) + Pending Tasks -->
     <div class="two-col">
       <div class="panel">
         <div class="panel-head">
+          <div class="panel-title">My Sections</div>
+        </div>
+        <div class="section-cards">
+
+          <div class="section-card" onclick="navigate('section','7-matthew')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top">
+              <div class="section-card-main">
+                <div class="section-card-name">Grade 7 – St. Matthew</div>
+                <div class="section-card-sub">Class Adviser · Math</div>
+              </div>
+            </div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats">
+              <div class="section-stat">
+                <span class="section-stat-label">Students</span>
+                <span class="section-stat-value">38</span>
+              </div>
+              <div class="section-stat">
+                <span class="section-stat-label">Attendance</span>
+                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="navigate('section','8-luke')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top">
+              <div class="section-card-main">
+                <div class="section-card-name">Grade 8 – St. Luke</div>
+                <div class="section-card-sub">Math</div>
+              </div>
+            </div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats">
+              <div class="section-stat">
+                <span class="section-stat-label">Students</span>
+                <span class="section-stat-value">36</span>
+              </div>
+              <div class="section-stat">
+                <span class="section-stat-label">Attendance</span>
+                <span class="badge badge-orange">⚠ Pending</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="navigate('section','8-mark')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top">
+              <div class="section-card-main">
+                <div class="section-card-name">Grade 8 – St. Mark</div>
+                <div class="section-card-sub">Science</div>
+              </div>
+            </div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats">
+              <div class="section-stat">
+                <span class="section-stat-label">Students</span>
+                <span class="section-stat-value">35</span>
+              </div>
+              <div class="section-stat">
+                <span class="section-stat-label">Attendance</span>
+                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="navigate('section','9-peter')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top">
+              <div class="section-card-main">
+                <div class="section-card-name">Grade 9 – St. Peter</div>
+                <div class="section-card-sub">Math</div>
+              </div>
+            </div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats">
+              <div class="section-stat">
+                <span class="section-stat-label">Students</span>
+                <span class="section-stat-value">37</span>
+              </div>
+              <div class="section-stat">
+                <span class="section-stat-label">Attendance</span>
+                <span class="badge badge-red">Not taken</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card" onclick="navigate('section','9-john')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top">
+              <div class="section-card-main">
+                <div class="section-card-name">Grade 9 – St. John</div>
+                <div class="section-card-sub">Science</div>
+              </div>
+            </div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats">
+              <div class="section-stat">
+                <span class="section-stat-label">Students</span>
+                <span class="section-stat-value">34</span>
+              </div>
+              <div class="section-stat">
+                <span class="section-stat-label">Attendance</span>
+                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
           <div class="panel-title">Pending Tasks</div>
-          <span style="font-size:11px;color:var(--gray-400);">7 items need attention</span>
+          <span style="font-size:11px;color:var(--gray-400);">3 items need attention</span>
         </div>
         <div class="task-list">
           <div class="task-item" onclick="navigate('reports')">
@@ -306,28 +331,11 @@
             </div>
             <a class="task-action">Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
           </div>
-          <div class="task-item">
-            <div class="task-icon" style="background:#fdf4ff;color:#7c3aed;">
-              <i data-lucide="alert-circle" style="width:15px;height:15px;"></i>
-            </div>
-            <div class="task-body">
-              <div class="task-title">4 Students Flagged: Consecutive Absences</div>
-              <div class="task-sub">System detected students with 3+ consecutive absences. Parents notified.</div>
-            </div>
-            <a class="task-action">View <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-          </div>
-          <div class="task-item" onclick="navigate('section','9-peter','materials')">
-            <div class="task-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-              <i data-lucide="folder-open" style="width:15px;height:15px;"></i>
-            </div>
-            <div class="task-body">
-              <div class="task-title">No Learning Materials for Grade 9 This Week</div>
-              <div class="task-sub">Consider uploading materials for Grade 9 – St. Peter for the current week.</div>
-            </div>
-            <a class="task-action">Upload <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-          </div>
         </div>
       </div>
+    </div>
+
+    <div class="two-col">
 
       <!-- Announcements -->
       <div class="panel">
@@ -370,7 +378,72 @@
           </div>
         </div>
       </div>
+
+      <!-- Flagged Students -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Flagged Students</div>
+          <span style="font-size:11px;color:var(--gray-400);">4 need attention</span>
+        </div>
+        <div class="flag-grid-single">
+
+          <div class="flag-card">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:var(--red);">BG</div>
+              <div class="flag-info">
+                <div class="flag-name">Ben Garcia</div>
+                <div class="flag-detail">Grade 9 – St. Peter</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
+            </div>
+          </div>
+
+          <div class="flag-card">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#7c3aed;">SC</div>
+              <div class="flag-info">
+                <div class="flag-name">Sofia Cruz</div>
+                <div class="flag-detail">Grade 8 – St. Luke</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
+            </div>
+          </div>
+
+          <div class="flag-card">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#0d9488;">NP</div>
+              <div class="flag-info">
+                <div class="flag-name">Noel Pascual</div>
+                <div class="flag-detail">Grade 9 – St. John</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
+            </div>
+          </div>
+
+          <div class="flag-card">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#be185d;">UR</div>
+              <div class="flag-info">
+                <div class="flag-name">Uma Reyes</div>
+                <div class="flag-detail">Grade 7 – St. Matthew</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
+    
 
   </main>
 </div>
