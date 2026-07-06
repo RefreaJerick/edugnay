@@ -725,16 +725,7 @@
       </div>
     </div>
 
-    <div class="sidebar-footer">
-      <div class="admin-profile">
-        <div class="admin-avatar">MR</div>
-        <div class="admin-info">
-          <div class="admin-name">Ms. Maria Reyes</div>
-          <div class="admin-role">Faculty</div>
-        </div>
-        <div class="logout-btn" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
-      </div>
-    </div>
+
   </aside>
 
   <!-- ══════ TOPBAR ══════ -->
@@ -749,10 +740,33 @@
       </div>
     </div>
     <div class="topbar-right">
-      <!-- <button class="top-btn secondary">
-        <i data-lucide="download" style="width:14px;height:14px;"></i>
-        <span>Export</span>
-      </button> -->
+      <button class="tb-notif-btn" title="Notifications">
+        <i data-lucide="bell" style="width:18px;height:18px;"></i>
+        <span class="tb-notif-dot"></span>
+      </button>
+
+      <div class="tb-profile">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <div class="tb-avatar">MR</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-role">Faculty</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+
+        <div class="tb-dropdown" id="tbProfileDropdown">
+          <a class="tb-dropdown-item" href="#">
+            <i data-lucide="user" style="width:15px;height:15px;"></i>
+            My Profile
+          </a>
+          <div class="tb-dropdown-divider"></div>
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -1203,6 +1217,23 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 document.querySelectorAll('.modal-backdrop').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// profile dropdown
+function toggleProfileDropdown() {
+  const trigger = document.getElementById('tbProfileTrigger');
+  const dropdown = document.getElementById('tbProfileDropdown');
+  trigger.classList.toggle('open');
+  dropdown.classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+  const trigger = document.getElementById('tbProfileTrigger');
+  const dropdown = document.getElementById('tbProfileDropdown');
+  if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+    trigger.classList.remove('open');
+    dropdown.classList.remove('open');
+  }
 });
 
 // Navigation stub — in production, these would be real routes
