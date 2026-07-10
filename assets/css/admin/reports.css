@@ -12,29 +12,6 @@
 
 /* ── STAT CARDS ── */
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-.stat-card { background: var(--white); border-radius: 14px; padding: 20px 22px; border: 1px solid var(--gray-200); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; animation: fadeUp 0.4s ease both; }
-.stat-card:nth-child(1) { animation-delay: 0.05s; }
-.stat-card:nth-child(2) { animation-delay: 0.10s; }
-.stat-card:nth-child(3) { animation-delay: 0.15s; }
-.stat-card:nth-child(4) { animation-delay: 0.20s; }
-.stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: none; }
-.stat-card.blue::before   { background: var(--blue-mid); }
-.stat-card.green::before  { background: var(--green); }
-.stat-card.orange::before { background: var(--orange); }
-.stat-card.red::before    { background: var(--red); }
-.sc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.sc-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-.stat-card.blue   .sc-icon { background: var(--blue-xpale); color: var(--blue-mid); }
-.stat-card.green  .sc-icon { background: var(--green-pale); color: #16a34a; }
-.stat-card.orange .sc-icon { background: var(--orange-pale); color: #d97706; }
-.stat-card.red    .sc-icon { background: var(--red-pale); color: var(--red); }
-.sc-trend { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
-.trend-up   { background: var(--green-pale); color: #16a34a; }
-.trend-down { background: var(--red-pale); color: var(--red); }
-.trend-neu  { background: var(--gray-100); color: var(--gray-500); }
-.sc-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 800; color: var(--gray-800); line-height: 1; margin-bottom: 3px; }
-.sc-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
-.sc-sub { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
 
 /* ── SECTION TITLE ── */
 .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }

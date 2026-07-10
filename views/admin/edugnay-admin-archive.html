@@ -20,25 +20,6 @@
 
     /* ── STAT CARDS ── */
     .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
-    .stat-card { background: var(--white); border-radius: 14px; padding: 20px 22px; border: 1px solid var(--gray-200); position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; animation: fadeUp 0.4s ease both; }
-    .stat-card:nth-child(1) { animation-delay: 0.05s; }
-    .stat-card:nth-child(2) { animation-delay: 0.10s; }
-    .stat-card:nth-child(3) { animation-delay: 0.15s; }
-    .stat-card:nth-child(4) { animation-delay: 0.20s; }
-    .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .stat-card.blue::before   { background: var(--blue-mid); }
-    .stat-card.gold::before   { background: var(--gold); }
-    .stat-card.green::before  { background: var(--green); }
-    .stat-card.gray::before   { background: var(--gray-400); }
-    .sc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .sc-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-    .stat-card.blue  .sc-icon { background: var(--blue-xpale); color: var(--blue-mid); }
-    .stat-card.gold  .sc-icon { background: var(--gold-pale);  color: #92400e; }
-    .stat-card.green .sc-icon { background: var(--green-pale); color: #16a34a; }
-    .stat-card.gray  .sc-icon { background: var(--gray-100);   color: var(--gray-500); }
-    .sc-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 800; color: var(--gray-800); line-height: 1; margin-bottom: 3px; }
-    .sc-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
-    .sc-sub { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
 
     /* ── TWO COL ── */
     .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
@@ -405,28 +386,28 @@
     <!-- Stat cards -->
     <div class="stat-grid">
       <div class="stat-card blue">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div></div>
-        <div class="sc-num">3</div>
-        <div class="sc-label">Archived Years</div>
-        <div class="sc-sub">S.Y. 2022–2023 to 2024–2025</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">3</div>
+        <div class="stat-card-label">Archived Years</div>
+        <div class="stat-card-sub">S.Y. 2022–2023 to 2024–2025</div>
       </div>
       <div class="stat-card gold">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div></div>
-        <div class="sc-num">743</div>
-        <div class="sc-label">Archived Students</div>
-        <div class="sc-sub">Across all archived years</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">743</div>
+        <div class="stat-card-label">Archived Students</div>
+        <div class="stat-card-sub">Across all archived years</div>
       </div>
       <div class="stat-card green">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div></div>
-        <div class="sc-num">2,981</div>
-        <div class="sc-label">Archived Reports</div>
-        <div class="sc-sub">Narrative reports stored</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">2,981</div>
+        <div class="stat-card-label">Archived Reports</div>
+        <div class="stat-card-sub">Narrative reports stored</div>
       </div>
       <div class="stat-card gray">
-        <div class="sc-top"><div class="sc-icon"><i data-lucide="hard-drive" style="width:18px;height:18px;"></i></div></div>
-        <div class="sc-num">1.2<span style="font-size:16px;font-weight:600;">GB</span></div>
-        <div class="sc-label">Storage Used</div>
-        <div class="sc-sub">Total archived data size</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="hard-drive" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">1.2<span style="font-size:16px;font-weight:600;">GB</span></div>
+        <div class="stat-card-label">Storage Used</div>
+        <div class="stat-card-sub">Total archived data size</div>
       </div>
     </div>
 
