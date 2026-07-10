@@ -101,10 +101,82 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="tb-notif-btn" title="Notifications">
-        <i data-lucide="bell" style="width:18px;height:18px;"></i>
-        <span class="tb-notif-dot"></span>
-      </button>
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <span class="tb-notif-dot"></span>
+        </button>
+
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+          </div>
+
+          <div class="tb-notif-list">
+
+            <a class="tb-notif-item unread" onclick="navigate('reports')">
+              <div class="tb-notif-icon" style="background:var(--orange-pale);color:#d97706;">
+                <i data-lucide="file-text" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">5 reports awaiting confirmation</div>
+                <div class="tb-notif-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
+                <div class="tb-notif-time">1 hour ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item unread" onclick="navigate('section','8-luke','scores')">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
+                <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Grade encoding incomplete</div>
+                <div class="tb-notif-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
+                <div class="tb-notif-time">3 hours ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item unread" onclick="navigate('section','9-peter','attendance')">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
+                <i data-lucide="user-check" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Attendance not taken</div>
+                <div class="tb-notif-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
+                <div class="tb-notif-time">4 hours ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item" onclick="navigate('announcements')">
+              <div class="tb-notif-icon" style="background:var(--gold-pale);color:#92400e;">
+                <i data-lucide="megaphone" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">New announcement</div>
+                <div class="tb-notif-desc">Q2 grade encoding deadline: June 14.</div>
+                <div class="tb-notif-time">Today, 8:00 AM</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item" onclick="navigate('announcements')">
+              <div class="tb-notif-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+                <i data-lucide="calendar-clock" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Upcoming event</div>
+                <div class="tb-notif-desc">Foundation Day, June 20. Classes suspended.</div>
+                <div class="tb-notif-time">May 30, 10:00 AM</div>
+              </div>
+            </a>
+
+          </div>
+
+          <div class="tb-notif-panel-foot">
+            <a onclick="navigate('announcements')">View all announcements</a>
+          </div>
+        </div>
+      </div>
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
@@ -156,42 +228,46 @@
     </div>
 
     <!-- Summary strip -->
-    <div class="summary-strip">
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-          <i data-lucide="door-open" style="width:18px;height:18px;"></i>
+    <div class="summary-strip stat-grid">
+      <div class="stat-card blue">
+        <div class="stat-card-top">
+          <div class="stat-card-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+            <i data-lucide="door-open" style="width:18px;height:18px;"></i>
+          </div>
         </div>
-        <div>
-          <div class="summary-num">4</div>
-          <div class="summary-label">Sections Handled</div>
-        </div>
+        <div class="stat-card-num">4</div>
+        <div class="stat-card-label">Sections Handled</div>
+        <div class="stat-card-sub">Across active classes</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:#f0fdf4;color:#16a34a;">
-          <i data-lucide="users" style="width:18px;height:18px;"></i>
+      <div class="stat-card green">
+        <div class="stat-card-top">
+          <div class="stat-card-icon" style="background:#f0fdf4;color:#16a34a;">
+            <i data-lucide="users" style="width:18px;height:18px;"></i>
+          </div>
         </div>
-        <div>
-          <div class="summary-num">108</div>
-          <div class="summary-label">Total Students</div>
-        </div>
+        <div class="stat-card-num">108</div>
+        <div class="stat-card-label">Total Students</div>
+        <div class="stat-card-sub">Current enrollment</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--orange-pale);color:#d97706;">
-          <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+      <div class="stat-card gold">
+        <div class="stat-card-top">
+          <div class="stat-card-icon" style="background:var(--orange-pale);color:#d97706;">
+            <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+          </div>
         </div>
-        <div>
-          <div class="summary-num">5</div>
-          <div class="summary-label">Reports to Confirm</div>
-        </div>
+        <div class="stat-card-num">5</div>
+        <div class="stat-card-label">Reports to Confirm</div>
+        <div class="stat-card-sub">Pending teacher reviews</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--red-pale);color:var(--red);">
-          <i data-lucide="user-round-x" style="width:18px;height:18px;"></i>
+      <div class="stat-card orange">
+        <div class="stat-card-top">
+          <div class="stat-card-icon" style="background:var(--red-pale);color:var(--red);">
+            <i data-lucide="user-round-x" style="width:18px;height:18px;"></i>
+          </div>
         </div>
-        <div>
-          <div class="summary-num">4</div>
-          <div class="summary-label">Flagged Students</div>
-        </div>
+        <div class="stat-card-num">4</div>
+        <div class="stat-card-label">Flagged Students</div>
+        <div class="stat-card-sub">Needs follow-up</div>
       </div>
     </div>
 
@@ -482,6 +558,15 @@
     lucide.createIcons();
   }
 
+  function toggleNotifDropdown() {
+    document.getElementById('tbNotifPanel').classList.toggle('open');
+  }
+
+  function markAllNotifRead() {
+    document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
+    document.querySelector('.tb-notif-dot').style.display = 'none';
+  }
+
   function toggleProfileDropdown() {
     const trigger = document.getElementById('tbProfileTrigger');
     const dropdown = document.getElementById('tbProfileDropdown');
@@ -495,6 +580,12 @@
     if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
       trigger.classList.remove('open');
       dropdown.classList.remove('open');
+    }
+
+    const notifTrigger = document.getElementById('tbNotifTrigger');
+    const notifPanel = document.getElementById('tbNotifPanel');
+    if (notifTrigger && notifPanel && !notifTrigger.contains(e.target) && !notifPanel.contains(e.target)) {
+      notifPanel.classList.remove('open');
     }
   });
 
