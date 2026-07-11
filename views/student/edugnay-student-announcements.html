@@ -206,9 +206,9 @@
       font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
     }
     .aud-all     { background: var(--blue-xpale); color: var(--blue-mid); }
-    .aud-teacher { background: #f0fdf4;            color: #16a34a; }
-    .aud-student { background: var(--orange-pale); color: #d97706; }
-    .aud-parent  { background: #fdf4ff;            color: #7c3aed; }
+    .aud-teacher { background: var(--gold-pale);            color: var(--gold); }
+    .aud-student { background: var(--green-pale); color: var(--green); }
+    .aud-parent  { background: var(--purple-pale);            color: var(--purple); }
 
     .ann-footer {
       display: flex; align-items: center; justify-content: space-between;
@@ -533,17 +533,6 @@
         <span class="nav-label">My Profile</span>
       </a>
     </div>
-
-    <div class="sidebar-footer">
-      <div class="admin-profile">
-        <div class="admin-avatar">JA</div>
-        <div class="admin-info">
-          <div class="admin-name">Juan Alcantara</div>
-          <div class="admin-role">Grade 7 – St. Matthew</div>
-        </div>
-        <div class="logout-btn" onclick="openLogoutModal()" title="Sign out"><i data-lucide="log-out" style="width:15px;height:15px;"></i></div>
-      </div>
-    </div>
   </aside>
 
   <!-- ══════ TOPBAR ══════ -->
@@ -714,7 +703,7 @@
               </div>
               <div class="ann-footer-right">
                 <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
                 </button>
               </div>
             </div>
@@ -756,7 +745,7 @@
               <div class="ann-audience">
                 <span class="aud-label">To:</span>
                 <span class="aud-tag aud-student">
-                  <i data-lucide="book" style="width:10px;height:10px;"></i> Students
+                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
                 </span>
               </div>
             </div>
@@ -766,7 +755,7 @@
               </div>
               <div class="ann-footer-right">
                 <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
                 </button>
               </div>
             </div>
@@ -804,7 +793,7 @@
               <div class="ann-audience">
                 <span class="aud-label">To:</span>
                 <span class="aud-tag aud-student">
-                  <i data-lucide="book" style="width:10px;height:10px;"></i> Students
+                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
                 </span>
               </div>
             </div>
@@ -814,7 +803,7 @@
               </div>
               <div class="ann-footer-right">
                 <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
                 </button>
               </div>
             </div>
@@ -862,7 +851,7 @@
               </div>
               <div class="ann-footer-right">
                 <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
                 </button>
               </div>
             </div>
@@ -910,7 +899,7 @@
               </div>
               <div class="ann-footer-right">
                 <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="book-open" style="width:11px;height:11px;"></i> Read
+                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
                 </button>
               </div>
             </div>
@@ -961,47 +950,6 @@
                 <div class="deadline-date">Closes Friday</div>
               </div>
               <span class="deadline-badge badge badge-blue">Soon</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Notification settings -->
-        <div class="rail-card">
-          <div class="rail-head">
-            <div class="rail-title">Notification Settings</div>
-            <i data-lucide="settings-2" style="width:15px;height:15px;color:var(--gray-400);"></i>
-          </div>
-          <div class="rail-body">
-            <!-- EJS: user.notifPrefs would control checked state -->
-            <div class="notif-row">
-              <span class="notif-label">
-                <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i>
-                Urgent announcements
-              </span>
-              <label class="toggle">
-                <input type="checkbox" checked onchange="saveNotifPref(this, 'urgent')"/>
-                <div class="toggle-slider"></div>
-              </label>
-            </div>
-            <div class="notif-row">
-              <span class="notif-label">
-                <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i>
-                General announcements
-              </span>
-              <label class="toggle">
-                <input type="checkbox" checked onchange="saveNotifPref(this, 'normal')"/>
-                <div class="toggle-slider"></div>
-              </label>
-            </div>
-            <div class="notif-row">
-              <span class="notif-label">
-                <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i>
-                Events & reminders
-              </span>
-              <label class="toggle">
-                <input type="checkbox" checked onchange="saveNotifPref(this, 'event')"/>
-                <div class="toggle-slider"></div>
-              </label>
             </div>
           </div>
         </div>
@@ -1134,9 +1082,9 @@
 
     // Priority badge
     const badgeMap = {
-      high:   { cls: 'badge-red',    label: '⚠ Urgent' },
+      high:   { cls: 'badge-red',    label: 'Urgent' },
       normal: { cls: 'badge-blue',   label: 'Normal' },
-      event:  { cls: 'badge-gold',   label: '📅 Event' },
+      event:  { cls: 'badge-gold',   label: 'Event' },
       low:    { cls: 'badge-gray',   label: 'General' },
     };
     const b = badgeMap[priority] || badgeMap.normal;

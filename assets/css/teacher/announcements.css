@@ -197,7 +197,7 @@
   font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
 }
 .aud-all     { background: var(--blue-xpale); color: var(--blue-mid); }
-.aud-teacher { background: #f0fdf4;            color: #16a34a; }
+.aud-teacher { background: var(--gold-pale);            color: var(--gold); }
 .aud-student { background: var(--orange-pale); color: #d97706; }
 .aud-parent  { background: #fdf4ff;            color: #7c3aed; }
 

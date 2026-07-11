@@ -110,16 +110,20 @@ button {
   color: var(--blue-mid);
 }
 .stat-card.gold .stat-card-icon {
-  background: #fefce8;
-  color: #92400e;
+  background: var(--gold-pale);
+  color: var(--gold);
 }
 .stat-card.green .stat-card-icon {
   background: var(--green-pale);
-  color: #16a34a;
+  color: var(--green);
+}
+.stat-card.purple .stat-card-icon {
+  background: var(--purple-pale);
+  color: var(--purple);
 }
 .stat-card.orange .stat-card-icon {
   background: var(--orange-pale);
-  color: #d97706;
+  color: var(--orange);
 }
 .stat-card.red .stat-card-icon {
   background: var(--red-pale);

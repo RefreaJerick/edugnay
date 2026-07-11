@@ -878,27 +878,19 @@
   color: var(--blue-mid);
 }
 .aud-opt:nth-child(2).checked {
-  border-color: #16a34a;
-  background: #f0fdf4;
-  color: #16a34a;
-}
-.aud-opt:nth-child(2).checked .aud-opt-icon {
-  background: #dcfce7 !important;
-  color: #16a34a !important;
+  border-color: var(--gold);
+  background: var(--gold-pale);
+  color: var(--gold);
 }
 .aud-opt:nth-child(3).checked {
-  border-color: #d97706;
-  background: var(--orange-pale);
-  color: #92400e;
-}
-.aud-opt:nth-child(3).checked .aud-opt-icon {
-  background: #fed7aa !important;
-  color: #d97706 !important;
+  border-color: var(--green);
+  background: var(--green-pale);
+  color: var(--green);
 }
 .aud-opt:nth-child(4).checked {
-  border-color: #7c3aed;
-  background: #fdf4ff;
-  color: #7c3aed;
+  border-color: var(--purple);
+  background: var(--purple-pale);
+  color: var(--purple);
 }
 .aud-opt:nth-child(4).checked .aud-opt-icon {
   background: #f3e8ff !important;

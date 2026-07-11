@@ -42,10 +42,10 @@
 }
 
 .rs-card.all   .rs-icon { background: var(--gray-100); color: var(--gray-600); }
-.rs-card.admin .rs-icon { background: #e8edf5; color: var(--navy); }
-.rs-card.fac   .rs-icon { background: var(--blue-xpale); color: var(--blue-mid); }
-.rs-card.stud  .rs-icon { background: var(--green-pale); color: #16a34a; }
-.rs-card.par   .rs-icon { background: var(--orange-pale); color: #d97706; }
+.rs-card.admin .rs-icon { background: var(--blue-xpale); color: var(--blue-mid); }
+.rs-card.fac   .rs-icon { background: var(--gold-pale); color: var(--gold); }
+.rs-card.stud  .rs-icon { background: var(--green-pale); color: var(--green); }
+.rs-card.par   .rs-icon { background: var(--purple-pale); color: var(--purple); }
 
 .rs-num {
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -204,9 +204,11 @@ tbody td { padding: 14px 20px; font-size: 13px; color: var(--gray-700); vertical
 }
 
 .badge-navy   { background: #e8edf5; color: var(--navy); }
-.badge-blue   { background: var(--blue-xpale); color: var(--blue); }
-.badge-green  { background: var(--green-pale); color: #15803d; }
+.badge-blue   { background: var(--blue-xpale); color: var(--blue-mid); }
+.badge-green  { background: var(--green-pale); color: var(--green); }
 .badge-orange { background: var(--orange-pale); color: #92400e; }
+.badge-gold { background: var(--gold-pale); color: var(--gold); }
+.badge-purple { background: var(--purple-pale); color: var(--purple); }
 .badge-gray   { background: var(--gray-100); color: var(--gray-500); }
 .badge-red    { background: var(--red-pale); color: var(--red); }
 
