@@ -1,3 +1,11 @@
+/* STAT CARDS */
+.stat-grid { 
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 16px; 
+  margin-bottom: 24px;
+}
+
 /* ── TWO-COLUMN GRID ── */
 .two-col {
   display: grid;

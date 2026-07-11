@@ -70,12 +70,6 @@ button {
 }
 
 /* ── STAT CARDS ── */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
 .stat-card {
   background: var(--white);
   border-radius: 14px;
@@ -1037,14 +1031,6 @@ body.drawer-open .sidebar {
   transition: all 0.15s;
   cursor: pointer;
   position: relative;
-}
-
-.nav-child-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background 0.15s;
 }
 
 .nav-child:hover {

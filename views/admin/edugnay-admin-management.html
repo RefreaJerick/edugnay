@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/management.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTIONS TAB — MODALS
+══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="sectionAddModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add New Section</div>
+        <div class="modal-sub">Set up a new class section for JHS.</div>
+      </div>
+      <button class="modal-close" onclick="closeSectionAddModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="createSectionForm" method="post" action="/sections/create">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Grade Level</label>
+            <select class="form-select" name="gradeLevel">
+              <option value="">Select grade</option>
+              <option value="7">Grade 7</option>
+              <option value="8">Grade 8</option>
+              <option value="9">Grade 9</option>
+              <option value="10">Grade 10</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Section Name</label>
+            <input class="form-input" type="text" name="sectionName" placeholder="e.g. St. Matthew"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned Adviser</label>
+          <select class="form-select" name="adviserId">
+            <option value="">Select faculty</option>
+            <option value="mr1">Ms. Maria Reyes</option>
+            <option value="lv1">Ms. Lara Villanueva</option>
+            <option value="pt1">Mr. Paolo Tan</option>
+            <option value="cd1">Ms. Carla Dizon</option>
+            <option value="rs1">Mr. Rico Santos</option>
+          </select>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Max Capacity</label>
+            <input class="form-input" type="number" name="maxCapacity" placeholder="e.g. 40"/>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeSectionAddModal()">Cancel</button>
+      <button type="submit" form="createSectionForm" class="btn btn-save">Create Section</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="sectionEditModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Edit Section</div>
+        <div class="modal-sub">Update the details of this section.</div>
+      </div>
+      <button class="modal-close" onclick="closeSectionEditModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="editSectionForm" method="post">
+        <input type="hidden" name="_method" value="PUT"/>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Grade Level</label>
+            <select class="form-select" name="gradeLevel" id="editGradeLevel">
+              <option value="7">Grade 7</option>
+              <option value="8">Grade 8</option>
+              <option value="9">Grade 9</option>
+              <option value="10">Grade 10</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Section Name</label>
+            <input class="form-input" type="text" name="sectionName" id="editSectionName"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned Adviser</label>
+          <select class="form-select" name="adviserId" id="editAdviser">
+            <option value="">Select faculty</option>
+            <option value="mr1">Ms. Maria Reyes</option>
+            <option value="lv1">Ms. Lara Villanueva</option>
+            <option value="pt1">Mr. Paolo Tan</option>
+            <option value="cd1">Ms. Carla Dizon</option>
+            <option value="rs1">Mr. Rico Santos</option>
+          </select>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Max Capacity</label>
+            <input class="form-input" type="number" name="maxCapacity" id="editCapacity"/>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeSectionEditModal()">Cancel</button>
+      <button type="submit" form="editSectionForm" class="btn btn-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="sectionStudentsModalBackdrop">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="sectionStudentsModalTitle">Students</div>
+        <div class="modal-sub" id="sectionStudentsModalSub">Enrolled students in this section.</div>
+      </div>
+      <button class="modal-close" onclick="closeSectionStudentsModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Student Name</th><th>Email</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody id="sectionStudentsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeSectionStudentsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SUBJECTS TAB — MODAL
+══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="subjectModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="subjectModalTitle">Add New Subject</div>
+        <div class="modal-sub">Define a subject and assign it to grade levels.</div>
+      </div>
+      <button class="modal-close" onclick="closeSubjectModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="createSubjectForm" method="post" action="/subjects/create">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Subject Name</label>
+            <input class="form-input" type="text" name="subjectName" placeholder="e.g. Mathematics"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject Code</label>
+            <input class="form-input" type="text" name="subjectCode" placeholder="e.g. MATH"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description <span style="color:var(--gray-300);font-weight:400;">(optional)</span></label>
+          <textarea class="form-textarea" name="description" placeholder="Brief description of this subject..."></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Applies to Grade Level(s)</label>
+          <div class="grade-checks">
+            <label class="grade-check-item"><input type="checkbox" name="grades" value="7" checked/><span>Grade 7</span></label>
+            <label class="grade-check-item"><input type="checkbox" name="grades" value="8" checked/><span>Grade 8</span></label>
+            <label class="grade-check-item"><input type="checkbox" name="grades" value="9" checked/><span>Grade 9</span></label>
+            <label class="grade-check-item"><input type="checkbox" name="grades" value="10" checked/><span>Grade 10</span></label>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeSubjectModal()">Cancel</button>
+      <button type="submit" form="createSubjectForm" class="btn btn-save">Save Subject</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ASSIGN TEACHERS TAB — MODAL
+══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="teacherModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Assign Teacher</div>
+        <div class="modal-sub">Select a faculty member for this assignment.</div>
+      </div>
+      <button class="modal-close" onclick="closeTeacherModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="assignTeacherForm" method="post" action="/assignments/create">
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+          <div>
+            <div class="ctx-label">Assigning to</div>
+            <div class="ctx-val" id="teacherCtxVal">Grade 7 – St. Matthew · Mathematics</div>
+          </div>
+        </div>
+        <input type="hidden" name="assignmentContext" id="teacherAssignmentContext" value="Grade 7 – St. Matthew · Mathematics"/>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Faculty Member</label>
+          <select class="form-select" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
+            <option value="">— Select a teacher —</option>
+            <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes</option>
+            <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva</option>
+            <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan</option>
+            <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos</option>
+            <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon</option>
+            <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez</option>
+            <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia</option>
+          </select>
+          <div class="teacher-preview" id="teacherPreview">
+            <div class="tp-av" id="tpAv">MR</div>
+            <div>
+              <div class="tp-name" id="tpName">Ms. Maria Reyes</div>
+              <div class="tp-detail" id="tpDetail">m.reyes.fac@stcolumban.edu.ph</div>
+            </div>
+            <div class="tp-check"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" onclick="closeTeacherModal()">Cancel</button>
+          <button type="submit" class="btn btn-save">Save Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ASSIGN STUDENTS TAB — MODALS
+══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="studentAssignModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="studentModalTitle">Assign Student</div>
+        <div class="modal-sub">Place a student into a section.</div>
+      </div>
+      <button class="modal-close" onclick="closeStudentAssignModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="assignStudentForm" method="post" action="/assignments/students/create">
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+          <div>
+            <div class="ctx-label">Assigning to</div>
+            <div class="ctx-val" id="studentCtxVal">Select a section below</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Student</label>
+          <select class="form-select" id="studentSelect" name="studentId" onchange="previewStudent(this.value)">
+            <option value="">— Select a student —</option>
+            <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
+            <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
+            <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
+            <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
+            <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
+            <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
+            <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
+            <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+          </select>
+          <div class="student-preview" id="studentPreview">
+            <div class="sp-av" id="spAv">JD</div>
+            <div>
+              <div class="sp-name" id="spName">Juan Dela Cruz</div>
+              <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Assign to Section</label>
+          <select class="form-select" id="studentSectionSelect" name="sectionId">
+            <option value="">— Select a section —</option>
+            <optgroup label="Grade 7">
+              <option>Grade 7 – St. Matthew (38/40)</option>
+              <option>Grade 7 – St. Mark (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 8">
+              <option>Grade 8 – St. Luke (36/40)</option>
+              <option>Grade 8 – St. John (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 9">
+              <option>Grade 9 – St. Peter (37/40)</option>
+              <option>Grade 9 – St. Paul (37/40)</option>
+            </optgroup>
+            <optgroup label="Grade 10">
+              <option>Grade 10 – St. James (35/40)</option>
+              <option>Grade 10 – St. Thomas (33/40)</option>
+            </optgroup>
+          </select>
+        </div>
+      </form>
+
+      <form id="moveStudentForm" method="post" action="/assignments/students/move" style="display:none;">
+        <input type="hidden" name="_method" value="PUT">
+        <input type="hidden" name="studentId" id="moveStudentId">
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="move-right" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+          <div>
+            <div class="ctx-label">Moving</div>
+            <div class="ctx-val" id="moveCtxVal">Select a new section below</div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Move to Section</label>
+          <select class="form-select" name="sectionId">
+            <option value="">— Select a section —</option>
+            <optgroup label="Grade 7">
+              <option>Grade 7 – St. Matthew (38/40)</option>
+              <option>Grade 7 – St. Mark (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 8">
+              <option>Grade 8 – St. Luke (36/40)</option>
+              <option>Grade 8 – St. John (34/40)</option>
+            </optgroup>
+            <optgroup label="Grade 9">
+              <option>Grade 9 – St. Peter (37/40)</option>
+              <option>Grade 9 – St. Paul (37/40)</option>
+            </optgroup>
+            <optgroup label="Grade 10">
+              <option>Grade 10 – St. James (35/40)</option>
+              <option>Grade 10 – St. Thomas (33/40)</option>
+            </optgroup>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeStudentAssignModal()">Cancel</button>
+      <button type="submit" form="assignStudentForm" id="studentModalSubmitBtn" class="btn btn-save">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirmRemoveModalBackdrop">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="confirmRemoveTitle">Remove Student</div>
+        <div class="modal-sub">This action cannot be undone.</div>
+      </div>
+      <button class="modal-close" onclick="closeConfirmRemoveModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
+        <div class="ctx-icon"><i data-lucide="user-minus" style="width:18px;height:18px;color:#dc2626;"></i></div>
+        <div>
+          <div class="ctx-label" style="color:#dc2626;">Removing</div>
+          <div class="ctx-val" id="confirmStudentName">—</div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--gray-500);line-height:1.6;">
+        This will remove <strong id="confirmStudentNameInline">the student</strong> from <strong id="confirmSectionName">this section</strong>. They will appear as unassigned and will need to be re-enrolled.
+      </p>
+      <form id="removeStudentForm" method="post" action="/assignments/students/remove">
+        <input type="hidden" name="_method" value="DELETE">
+        <input type="hidden" name="studentId" id="removeStudentId">
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeConfirmRemoveModal()">Cancel</button>
+      <button type="submit" form="removeStudentForm" class="btn btn-save" style="background:#dc2626;box-shadow:none;">Yes, Remove</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="importStudentsModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Import and Auto-Sort Students</div>
+        <div class="modal-sub">Upload a CSV with student averages to auto-assign sections.</div>
+      </div>
+      <button class="modal-close" onclick="closeImportStudentsModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="importStudentsForm" method="post" action="/assignments/students/import" enctype="multipart/form-data">
+        <div class="form-group">
+          <label class="form-label">Grade Level</label>
+          <input type="hidden" id="importGrade" name="gradeLevel" value=""/>
+          <div class="role-opts" id="importGradeOpts">
+            <div class="role-opt" data-grade="7" onclick="selectImportGrade(this, '7')">
+              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 7</span>
+            </div>
+            <div class="role-opt" data-grade="8" onclick="selectImportGrade(this, '8')">
+              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 8</span>
+            </div>
+            <div class="role-opt" data-grade="9" onclick="selectImportGrade(this, '9')">
+              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Grade 9</span>
+            </div>
+            <div class="role-opt" data-grade="10" onclick="selectImportGrade(this, '10')">
+              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 10</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">CSV File</label>
+          <input type="file" name="csvFile" id="csvFileInput" accept=".csv" required
+                 style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
+                 onchange="previewCSV(this)"/>
+          <div class="file-upload-wrap">
+            <button type="button" class="file-upload-btn" onclick="document.getElementById('csvFileInput').click()">
+              <i data-lucide="upload" style="width:14px;height:14px;"></i>Choose File
+            </button>
+            <span class="file-upload-name" id="fileUploadName">No file selected</span>
+          </div>
+          <div class="csv-hint">
+            <i data-lucide="info" style="width:14px;height:14px;"></i>
+            <div>
+              <span class="csv-hint-label">Expected columns</span>
+              <div class="csv-hint-cols">
+                <span class="csv-col-tag">email</span>
+                <span class="csv-col-tag">firstName</span>
+                <span class="csv-col-tag">lastName</span>
+                <span class="csv-col-tag">average</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="csvPreviewWrap" style="display:none;margin-top:14px;">
+          <div class="form-label" style="margin-bottom:6px;">Preview</div>
+          <div style="max-height:220px;overflow:auto;border:1px solid var(--gray-200);border-radius:8px;">
+            <table style="width:100%;font-size:12px;">
+              <thead id="csvPreviewHead"></thead>
+              <tbody id="csvPreviewBody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:6px;" id="csvPreviewCount"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeImportStudentsModal()">Cancel</button>
+      <button type="submit" form="importStudentsForm" class="btn btn-save">Upload &amp; Auto-Sort</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE SHELL
+══════════════════════════════════════════════════════════ -->
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">e<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+
+      <a href="edugnay-admin-dashboard.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="edugnay-admin-users.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Manage Users</span>
+        <span class="nav-badge">3</span>
+      </a>
+
+      <!-- Collapsible group replaces the four separate Sections / Subjects /
+           Assign Teachers / Assign Students links now merged into this page -->
+      <div class="nav-group open" id="classMgmtGroup">
+        <div class="nav-group-toggle active" onclick="toggleNavGroup(this.parentElement)">
+          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
+          <span>Class Management</span>
+          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="nav-children">
+          <a class="nav-child active" data-tab="sections" onclick="goToMgmtTab('sections', this)">Sections</a>
+          <a class="nav-child" data-tab="subjects" onclick="goToMgmtTab('subjects', this)">Subjects</a>
+          <a class="nav-child" data-tab="teachers" onclick="goToMgmtTab('teachers', this)">Assign Teachers</a>
+          <a class="nav-child" data-tab="students" onclick="goToMgmtTab('students', this)">Assign Students</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+
+      <a href="edugnay-admin-reports.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">System Reports</span>
+      </a>
+
+      <a href="edugnay-admin-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+
+      <a href="edugnay-admin-system-config.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">System Config</span>
+      </a>
+
+      <a href="edugnay-admin-archive.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="archive" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Archive Data</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      <div>
+        <div class="page-eyebrow">E-Ugnay · Admin</div>
+        <div class="page-title" id="pageTitle">Class Management</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <span class="tb-notif-dot"></span>
+        </button>
+
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+          </div>
+          <div class="tb-notif-list">
+            <a class="tb-notif-item unread">
+              <div class="tb-notif-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="file-text" style="width:15px;height:15px;"></i></div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">5 reports awaiting confirmation</div>
+                <div class="tb-notif-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
+                <div class="tb-notif-time">1 hour ago</div>
+              </div>
+            </a>
+            <a class="tb-notif-item unread">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i></div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Grade encoding incomplete</div>
+                <div class="tb-notif-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
+                <div class="tb-notif-time">3 hours ago</div>
+              </div>
+            </a>
+            <a class="tb-notif-item unread">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="user-check" style="width:15px;height:15px;"></i></div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Attendance not taken</div>
+                <div class="tb-notif-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
+                <div class="tb-notif-time">4 hours ago</div>
+              </div>
+            </a>
+            <a class="tb-notif-item">
+              <div class="tb-notif-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="megaphone" style="width:15px;height:15px;"></i></div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">New announcement</div>
+                <div class="tb-notif-desc">Q2 grade encoding deadline: June 14.</div>
+                <div class="tb-notif-time">Today, 8:00 AM</div>
+              </div>
+            </a>
+            <a class="tb-notif-item">
+              <div class="tb-notif-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="calendar-clock" style="width:15px;height:15px;"></i></div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Upcoming event</div>
+                <div class="tb-notif-desc">Foundation Day, June 20. Classes suspended.</div>
+                <div class="tb-notif-time">May 30, 10:00 AM</div>
+              </div>
+            </a>
+          </div>
+          <div class="tb-notif-panel-foot"><a href="edugnay-admin-notifications.html">More notifications</a></div>
+        </div>
+      </div>
+
+      <div class="tb-profile">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <div class="tb-avatar">MR</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-role">Faculty</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+        <div class="tb-dropdown" id="tbProfileDropdown">
+          <a class="tb-dropdown-item" href="#"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a>
+          <div class="tb-dropdown-divider"></div>
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="page-header-row">
+      <div class="page-desc">Sections, subjects, and teacher/student assignments for S.Y. 2025–2026.</div>
+    </div>
+
+    <div class="mgmt-tabs" id="mgmtTabs">
+      <button class="mgmt-tab active" data-tab="sections" onclick="switchMgmtTab('sections', this)">
+        <i data-lucide="door-open" style="width:15px;height:15px;"></i>Sections
+      </button>
+      <button class="mgmt-tab" data-tab="subjects" onclick="switchMgmtTab('subjects', this)">
+        <i data-lucide="library" style="width:15px;height:15px;"></i>Subjects
+      </button>
+      <button class="mgmt-tab" data-tab="teachers" onclick="switchMgmtTab('teachers', this)">
+        <i data-lucide="clipboard-list" style="width:15px;height:15px;"></i>Assign Teachers
+        <span class="tab-pill">6 open</span>
+      </button>
+      <button class="mgmt-tab" data-tab="students" onclick="switchMgmtTab('students', this)">
+        <i data-lucide="user-plus" style="width:15px;height:15px;"></i>Assign Students
+        <span class="tab-pill">13 open</span>
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         PANEL: SECTIONS
+    ══════════════════════════════════════════════════ -->
+    <section class="mgmt-panel active" id="panel-sections">
+
+      <div class="stat-grid">
+        <div class="stat-card blue">
+          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div></div>
+          <div class="stat-card-num">8</div>
+          <div class="stat-card-label">Total Sections</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:18px;height:18px;"></i></div></div>
+          <div class="stat-card-num">284</div>
+          <div class="stat-card-label">Students</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div></div>
+          <div class="stat-card-num">7</div>
+          <div class="stat-card-label">With Adviser</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+            <input class="search-input" type="text" id="sectionSearchInput" placeholder="Search sections..." oninput="filterSections()"/>
+          </div>
+          <select class="filter-select" id="sectionGradeFilter" onchange="filterSections()">
+            <option value="all">All Grade Levels</option>
+            <option value="7">Grade 7</option>
+            <option value="8">Grade 8</option>
+            <option value="9">Grade 9</option>
+            <option value="10">Grade 10</option>
+          </select>
+        </div>
+        <div class="toolbar-actions">
+          <div class="view-toggle">
+            <button class="vt-btn active" id="cardViewBtn" onclick="setSectionView('card')"><i data-lucide="grid" style="width:16px;height:16px;"></i></button>
+            <button class="vt-btn" id="tableViewBtn" onclick="setSectionView('table')"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
+          </div>
+          <button class="top-btn primary" onclick="openSectionAddModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Section</button>
+        </div>
+      </div>
+
+      <div id="sectionCardView">
+
+        <div class="grade-group" data-grade="7">
+          <div class="grade-label"><span class="grade-text">Grade 7</span><div class="grade-line"></div><span class="grade-count">2 Sections · 72 Students</span></div>
+          <div class="sections-grid">
+            <div class="section-card" data-grade="7" data-name="st. matthew">
+              <div class="card-stripe stripe-7"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Matthew</div><span class="section-grade-badge gb-7">Grade 7</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">38</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">6</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">MR</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Ms. Maria Reyes</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+            <div class="section-card" data-grade="7" data-name="st. mark">
+              <div class="card-stripe stripe-7"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Mark</div><span class="section-grade-badge gb-7">Grade 7</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">34</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">6</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">CD</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Ms. Carla Dizon</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-group" data-grade="8">
+          <div class="grade-label"><span class="grade-text">Grade 8</span><div class="grade-line"></div><span class="grade-count">2 Sections · 70 Students</span></div>
+          <div class="sections-grid">
+            <div class="section-card" data-grade="8" data-name="st. luke">
+              <div class="card-stripe stripe-8"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Luke</div><span class="section-grade-badge gb-8">Grade 8</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">36</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">7</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">LV</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Ms. Lara Villanueva</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+            <div class="section-card" data-grade="8" data-name="st. john">
+              <div class="card-stripe stripe-8"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. John</div><span class="section-grade-badge gb-8">Grade 8</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">34</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">7</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="no-adviser"><div class="no-adviser-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div><div class="no-adviser-text">No adviser assigned yet</div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Assign Adviser</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-group" data-grade="9">
+          <div class="grade-label"><span class="grade-text">Grade 9</span><div class="grade-line"></div><span class="grade-count">2 Sections · 74 Students</span></div>
+          <div class="sections-grid">
+            <div class="section-card" data-grade="9" data-name="st. peter">
+              <div class="card-stripe stripe-9"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Peter</div><span class="section-grade-badge gb-9">Grade 9</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">37</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">8</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">RS</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Mr. Rico Santos</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+            <div class="section-card" data-grade="9" data-name="st. paul">
+              <div class="card-stripe stripe-9"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Paul</div><span class="section-grade-badge gb-9">Grade 9</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">37</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">8</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">JM</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Ms. Jana Mendez</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grade-group" data-grade="10">
+          <div class="grade-label"><span class="grade-text">Grade 10</span><div class="grade-line"></div><span class="grade-count">2 Sections · 68 Students</span></div>
+          <div class="sections-grid">
+            <div class="section-card" data-grade="10" data-name="st. james">
+              <div class="card-stripe stripe-10"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. James</div><span class="section-grade-badge gb-10">Grade 10</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">35</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">8</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">PT</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Mr. Paolo Tan</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+            <div class="section-card" data-grade="10" data-name="st. thomas">
+              <div class="card-stripe stripe-10"></div>
+              <div class="card-body">
+                <div class="card-head"><div class="section-name">St. Thomas</div><span class="section-grade-badge gb-10">Grade 10</span></div>
+                <div class="card-stats">
+                  <div class="cs-item"><div class="cs-num">33</div><div class="cs-label">Students</div></div>
+                  <div class="cs-item"><div class="cs-num">8</div><div class="cs-label">Subjects</div></div>
+                  <div class="cs-item"><div class="cs-num">40</div><div class="cs-label">Capacity</div></div>
+                </div>
+                <div class="card-adviser"><div class="adviser-av">AG</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">Ms. Ana Garcia</div></div></div>
+                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">Edit</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="sectionTableView" class="panel" style="display:none;">
+        <div class="panel-head"><div class="panel-title">All Sections</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Section</th><th>Grade Level</th><th>Adviser</th><th>Students</th><th>Subjects</th><th>Capacity</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><strong>St. Matthew</strong></td><td><span class="badge badge-blue">Grade 7</span></td><td>Ms. Maria Reyes</td><td>38</td><td>6</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. Mark</strong></td><td><span class="badge badge-blue">Grade 7</span></td><td>Ms. Carla Dizon</td><td>34</td><td>6</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. Luke</strong></td><td><span class="badge badge-gold">Grade 8</span></td><td>Ms. Lara Villanueva</td><td>36</td><td>7</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. John</strong></td><td><span class="badge badge-gold">Grade 8</span></td>
+                <td><span style="color:var(--red);font-weight:600;"><i data-lucide="alert-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Unassigned</span></td><td>34</td><td>7</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Assign</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. Peter</strong></td><td><span class="badge badge-green">Grade 9</span></td><td>Mr. Rico Santos</td><td>37</td><td>8</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. Paul</strong></td><td><span class="badge badge-green">Grade 9</span></td><td>Ms. Jana Mendez</td><td>37</td><td>8</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. James</strong></td><td><span class="badge badge-orange">Grade 10</span></td><td>Mr. Paolo Tan</td><td>35</td><td>8</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+              <tr><td><strong>St. Thomas</strong></td><td><span class="badge badge-orange">Grade 10</span></td><td>Ms. Ana Garcia</td><td>33</td><td>8</td><td>40</td>
+                <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">Edit</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         PANEL: SUBJECTS
+    ══════════════════════════════════════════════════ -->
+    <section class="mgmt-panel" id="panel-subjects">
+
+      <div class="stat-grid">
+        <div class="stat-card blue"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="library" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">8</div><div class="stat-card-label">Total Subjects</div><div class="stat-card-sub">Shared across all grade levels</div></div>
+        <div class="stat-card gold"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="layers" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">64</div><div class="stat-card-label">Subject Slots</div><div class="stat-card-sub">8 subjects × 8 sections</div></div>
+        <div class="stat-card green"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">58</div><div class="stat-card-label">Slots Assigned</div><div class="stat-card-sub">Teachers already linked</div></div>
+        <div class="stat-card orange"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">6</div><div class="stat-card-label">Slots Unassigned</div><div class="stat-card-sub">Still needs a teacher</div></div>
+      </div>
+
+      <div class="info-banner">
+        <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
+        <div>
+          <div class="info-title">How subjects work in EdUgnay</div>
+          <div class="info-text">Subjects defined here are applied to all sections of the selected grade levels. Once saved, they appear in the <strong>Assign Teachers</strong> tab where you can link a specific teacher to each subject per section.</div>
+        </div>
+      </div>
+
+      <div class="filter-tabs" id="subjectGradeTabs">
+        <div class="filter-tab active" data-grade="all" onclick="switchSubjectGradeTab('all', this)">All Grades <span class="tab-count">8</span></div>
+        <div class="filter-tab" data-grade="7" onclick="switchSubjectGradeTab('7', this)">Grade 7 <span class="tab-count">8</span></div>
+        <div class="filter-tab" data-grade="8" onclick="switchSubjectGradeTab('8', this)">Grade 8 <span class="tab-count">8</span></div>
+        <div class="filter-tab" data-grade="9" onclick="switchSubjectGradeTab('9', this)">Grade 9 <span class="tab-count">8</span></div>
+        <div class="filter-tab" data-grade="10" onclick="switchSubjectGradeTab('10', this)">Grade 10 <span class="tab-count">8</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title" id="subjectPanelTitle">All Subjects</div>
+            <div class="panel-sub" id="subjectPanelSub">Subjects shared across Grades 7 – 10 · S.Y. 2025–2026</div>
+          </div>
+          <div class="panel-head-right">
+            <div class="search-wrap">
+              <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+              <input class="search-input" type="text" id="subjectSearchInput" placeholder="Search subjects..." oninput="filterSubjects()"/>
+            </div>
+            <button class="top-btn primary" onclick="openSubjectModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Subject</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="subjectTable">
+            <thead><tr><th>Subject</th><th>Applies To</th><th>Teacher Coverage</th><th>Sections</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="subjectTableBody">
+
+              <tr data-grades="7,8,9,10" data-name="mathematics">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:var(--blue-xpale)"><i data-lucide="hash" style="width:18px;height:18px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code-text">MATH · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('Mathematics')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="english">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#f0fdf4"><i data-lucide="book" style="width:18px;height:18px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code-text">ENG · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('English')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="filipino">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#fef9c3"><i data-lucide="message-circle" style="width:18px;height:18px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code-text">FIL · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('Filipino')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="science">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#ecfdf5"><i data-lucide="flask-conical" style="width:18px;height:18px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code-text">SCI · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('Science')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="araling panlipunan">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#eff6ff"><i data-lucide="globe" style="width:18px;height:18px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code-text">AP · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('Araling Panlipunan')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="edukasyon sa pagpapakatao">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#f0fdf4"><i data-lucide="bird" style="width:18px;height:18px;color:#16a34a;"></i></div><div><div class="subj-name">ESP</div><div class="subj-code-text">EsP · Core Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-full" style="width:100%"></div></div><span class="coverage-text text-full">8/8</span></div></td>
+                <td>8 sections</td><td><span class="badge badge-green">✓ Full Coverage</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('EsP')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="tle">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:var(--orange-pale)"><i data-lucide="wrench" style="width:18px;height:18px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code-text">TLE · Applied Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-partial" style="width:75%"></div></div><span class="coverage-text text-partial">6/8</span></div></td>
+                <td>8 sections</td><td><span class="badge" style="background:var(--orange-pale);color:#92400e;">⚠ Partial</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('TLE')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+              <tr data-grades="7,8,9,10" data-name="mapeh">
+                <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:#fdf4ff"><i data-lucide="music" style="width:18px;height:18px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code-text">MAPEH · Applied Subject</div></div></div></td>
+                <td><div class="applies-wrap"><span class="grade-pill">Gr. 7</span><span class="grade-pill">Gr. 8</span><span class="grade-pill">Gr. 9</span><span class="grade-pill">Gr. 10</span></div></td>
+                <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill fill-partial" style="width:75%"></div></div><span class="coverage-text text-partial">6/8</span></div></td>
+                <td>8 sections</td><td><span class="badge" style="background:var(--orange-pale);color:#92400e;">⚠ Partial</span></td>
+                <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('MAPEH')">Edit</button><button class="row-btn remove">Remove</button></div></td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         PANEL: ASSIGN TEACHERS
+    ══════════════════════════════════════════════════ -->
+    <section class="mgmt-panel" id="panel-teachers">
+
+      <div class="stat-grid">
+        <div class="stat-card blue"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">64</div><div class="stat-card-label">Total Assignments</div><div class="stat-card-sub">Across all sections &amp; subjects</div></div>
+        <div class="stat-card green"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">58</div><div class="stat-card-label">Assigned</div><div class="stat-card-sub">Subject-section slots filled</div></div>
+        <div class="stat-card orange"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">6</div><div class="stat-card-label">Unassigned</div><div class="stat-card-sub">Still needs a teacher</div></div>
+        <div class="stat-card gold"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">7</div><div class="stat-card-label">Faculty Assigned</div><div class="stat-card-sub">Out of 24 total faculty</div></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+            <input class="search-input" type="text" id="teacherSearchInput" placeholder="Search section or teacher..." oninput="filterTeacherBlocks()"/>
+          </div>
+          <select class="filter-select" id="teacherGradeFilter" onchange="filterTeacherBlocks()">
+            <option value="all">All Grade Levels</option>
+            <option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option>
+          </select>
+          <select class="filter-select" id="teacherStatusFilter" onchange="filterTeacherBlocks()">
+            <option value="all">All Sections</option>
+            <option value="complete">Fully Assigned</option>
+            <option value="incomplete">Has Unassigned</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grade 7 – St. Matthew (fully assigned) -->
+      <div class="section-block" data-grade="7" data-name="st. matthew" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-7">Grade 7</span><div class="section-name">St. Matthew</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Ms. Reyes</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+
+      <!-- Grade 7 – St. Mark (partial) -->
+      <div class="section-block" data-grade="7" data-name="st. mark" data-status="incomplete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-7">Grade 7</span><div class="section-name">St. Mark</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Ms. Dizon</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-partial" style="width:75%"></div></div><span class="coverage-label label-partial">6/8 Assigned</span></div>
+            <span class="badge badge-orange"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Incomplete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 7</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 7</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 7 – St. Mark · TLE')">＋ Assign</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 7</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 7 – St. Mark · MAPEH')">＋ Assign</button></div></div>
+        </div>
+      </div>
+
+      <!-- Grade 8 – St. Luke (fully assigned, collapsed) -->
+      <div class="section-block collapsed" data-grade="8" data-name="st. luke" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-8">Grade 8</span><div class="section-name">St. Luke</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Ms. Villanueva</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+
+      <!-- Grade 8 – St. John (incomplete, collapsed) -->
+      <div class="section-block collapsed" data-grade="8" data-name="st. john" data-status="incomplete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-8">Grade 8</span><div class="section-name">St. John</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong style="color:var(--red)">None</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-partial" style="width:50%"></div></div><span class="coverage-label label-partial">4/8 Assigned</span></div>
+            <span class="badge badge-orange"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Incomplete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 8</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 8</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 8 – St. John · Araling Panlipunan')">＋ Assign</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 8</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 8 – St. John · EsP')">＋ Assign</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 8</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 8 – St. John · TLE')">＋ Assign</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 8</div></div></div><div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div><div class="row-actions"><button class="row-btn assign" onclick="openTeacherModal('Grade 8 – St. John · MAPEH')">＋ Assign</button></div></div>
+        </div>
+      </div>
+
+      <!-- Grade 9 – St. Peter (collapsed, complete) -->
+      <div class="section-block collapsed" data-grade="9" data-name="st. peter" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-9">Grade 9</span><div class="section-name">St. Peter</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Mr. Santos</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+
+      <!-- Grade 9 – St. Paul / Grade 10 – St. James / Grade 10 – St. Thomas (collapsed, complete) -->
+      <div class="section-block collapsed" data-grade="9" data-name="st. paul" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-9">Grade 9</span><div class="section-name">St. Paul</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Ms. Mendez</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 9</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+
+      <div class="section-block collapsed" data-grade="10" data-name="st. james" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-10">Grade 10</span><div class="section-name">St. James</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Mr. Tan</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+
+      <div class="section-block collapsed" data-grade="10" data-name="st. thomas" data-status="complete">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-10">Grade 10</span><div class="section-name">St. Thomas</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>8</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong>Ms. Garcia</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill fill-full" style="width:100%"></div></div><span class="coverage-label label-full">8/8 Assigned</span></div>
+            <span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="hash" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Mathematics</div><div class="subj-code">MATH 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="book" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">English</div><div class="subj-code">ENG 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-navy">LV</div><div><div class="teacher-name">Ms. Lara Villanueva</div><div class="teacher-email">l.villanueva.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="message-circle" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">Filipino</div><div class="subj-code">FIL 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">CD</div><div><div class="teacher-name">Ms. Carla Dizon</div><div class="teacher-email">c.dizon.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="flask-conical" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Science</div><div class="subj-code">SCI 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-orange">RS</div><div><div class="teacher-name">Mr. Rico Santos</div><div class="teacher-email">r.santos.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="globe" style="width:16px;height:16px;color:var(--blue-mid);"></i></div><div><div class="subj-name">Araling Panlipunan</div><div class="subj-code">AP 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-purple">PT</div><div><div class="teacher-name">Mr. Paolo Tan</div><div class="teacher-email">p.tan.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="bird" style="width:16px;height:16px;color:#16a34a;"></i></div><div><div class="subj-name">Edukasyon sa Pagpapakatao</div><div class="subj-code">EsP 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-teal">JM</div><div><div class="teacher-name">Ms. Jana Mendez</div><div class="teacher-email">j.mendez.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="wrench" style="width:16px;height:16px;color:#d97706;"></i></div><div><div class="subj-name">TLE</div><div class="subj-code">TLE 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-green">AG</div><div><div class="teacher-name">Ms. Ana Garcia</div><div class="teacher-email">a.garcia.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+          <div class="subject-row"><div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="music" style="width:16px;height:16px;color:#92400e;"></i></div><div><div class="subj-name">MAPEH</div><div class="subj-code">MAPEH 10</div></div></div><div class="teacher-assign"><div class="teacher-av av-blue">MR</div><div><div class="teacher-name">Ms. Maria Reyes</div><div class="teacher-email">m.reyes.fac@stcolumban.edu.ph</div></div></div><div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         PANEL: ASSIGN STUDENTS
+    ══════════════════════════════════════════════════ -->
+    <section class="mgmt-panel" id="panel-students">
+
+      <div class="stat-grid">
+        <div class="stat-card green"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">284</div><div class="stat-card-label">Total Students</div><div class="stat-card-sub">Registered in the system</div></div>
+        <div class="stat-card green"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">271</div><div class="stat-card-label">Assigned</div><div class="stat-card-sub">Placed in a section</div></div>
+        <div class="stat-card orange"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">13</div><div class="stat-card-label">Unassigned</div><div class="stat-card-sub">Still needs a section</div></div>
+        <div class="stat-card blue"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">8</div><div class="stat-card-label">Active Sections</div><div class="stat-card-sub">Across Grades 7 – 10</div></div>
+      </div>
+
+      <div class="unassigned-banner">
+        <div class="ub-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;color:#d97706;"></i></div>
+        <div class="ub-body">
+          <div class="ub-title">13 students are not yet assigned to any section</div>
+          <div class="ub-text">These students have accounts but are not enrolled in a section. Assign them before the grading period starts.</div>
+        </div>
+        <button class="ub-btn" onclick="switchStudentGradeTab('unassigned', null)">View Unassigned</button>
+      </div>
+
+      <div class="filter-tabs" id="studentGradeTabs">
+        <div class="filter-tab active" id="stu-tab-all" onclick="switchStudentGradeTab('all', this)">All Sections <span class="tab-count">284</span></div>
+        <div class="filter-tab" id="stu-tab-7" onclick="switchStudentGradeTab('7', this)">Grade 7 <span class="tab-count">72</span></div>
+        <div class="filter-tab" id="stu-tab-8" onclick="switchStudentGradeTab('8', this)">Grade 8 <span class="tab-count">70</span></div>
+        <div class="filter-tab" id="stu-tab-9" onclick="switchStudentGradeTab('9', this)">Grade 9 <span class="tab-count">74</span></div>
+        <div class="filter-tab" id="stu-tab-10" onclick="switchStudentGradeTab('10', this)">Grade 10 <span class="tab-count">68</span></div>
+        <div class="filter-tab" id="stu-tab-unassigned" onclick="switchStudentGradeTab('unassigned', this)" style="border-color:#fcd34d;color:#d97706;">Unassigned <span class="tab-count" style="background:var(--orange-pale);color:#92400e;">13</span></div>
+      </div>
+
+      <div class="two-panel">
+
+        <div class="panel">
+          <div class="enrolled-head">
+            <div>
+              <div class="enrolled-title" id="enrolledTitle">All Enrolled Students</div>
+              <div class="enrolled-meta" id="enrolledMeta">Showing 271 students across 8 sections</div>
+            </div>
+            <div class="toolbar-actions">
+              <button class="top-btn secondary" onclick="openImportStudentsModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Students</button>
+              <button class="top-btn primary" onclick="openStudentAssignModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Assign Student</button>
+            </div>
+          </div>
+          <div class="enrolled-search">
+            <span class="es-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+            <input class="es-input" type="text" id="studentSearchInput" placeholder="Search students by name or email..." oninput="filterStudentsList()"/>
+          </div>
+          <div class="table-wrap">
+            <table id="enrolledTable">
+              <thead><tr><th>Student</th><th>Section</th><th>Grade</th><th>Actions</th></tr></thead>
+              <tbody id="enrolledBody">
+                <tr data-grade="7" data-section="st. matthew" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">CM</div><div><div class="user-name">Carlo Mendoza</div><div class="user-email">c.mendoza.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Matthew</td><td><span class="badge badge-blue">Grade 7</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Carlo Mendoza', 'cm-001', 'St. Matthew')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Carlo Mendoza', 'St. Matthew', 'cm-001', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="7" data-section="st. matthew" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">LR</div><div><div class="user-name">Liza Reyes</div><div class="user-email">l.reyes.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Matthew</td><td><span class="badge badge-blue">Grade 7</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Liza Reyes', 'lr-002', 'St. Matthew')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Liza Reyes', 'St. Matthew', 'lr-002', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="7" data-section="st. mark" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">RC</div><div><div class="user-name">Rico Cruz</div><div class="user-email">r.cruz.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Mark</td><td><span class="badge badge-blue">Grade 7</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Rico Cruz', 'rc-003', 'St. Mark')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Rico Cruz', 'St. Mark', 'rc-003', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="8" data-section="st. luke" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">JD</div><div><div class="user-name">Juan Dela Cruz</div><div class="user-email">j.delacruz.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Luke</td><td><span class="badge badge-gold">Grade 8</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Juan Dela Cruz', 'jd-004', 'St. Luke')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Juan Dela Cruz', 'St. Luke', 'jd-004', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="8" data-section="st. john" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">ET</div><div><div class="user-name">Ella Tan</div><div class="user-email">e.tan.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. John</td><td><span class="badge badge-gold">Grade 8</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Ella Tan', 'et-005', 'St. John')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Ella Tan', 'St. John', 'et-005', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="9" data-section="st. peter" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">ML</div><div><div class="user-name">Maria Lopez</div><div class="user-email">m.lopez.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Peter</td><td><span class="badge badge-green">Grade 9</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Maria Lopez', 'ml-006', 'St. Peter')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Maria Lopez', 'St. Peter', 'ml-006', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="9" data-section="st. paul" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">BG</div><div><div class="user-name">Ben Garcia</div><div class="user-email">b.garcia.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. Paul</td><td><span class="badge badge-green">Grade 9</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Ben Garcia', 'bg-007', 'St. Paul')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Ben Garcia', 'St. Paul', 'bg-007', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="10" data-section="st. james" data-assigned="true">
+                  <td><div class="user-cell"><div class="user-av">AS</div><div><div class="user-name">Ana Santos</div><div class="user-email">a.santos.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td>St. James</td><td><span class="badge badge-orange">Grade 10</span></td>
+                  <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('Ana Santos', 'as-008', 'St. James')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('Ana Santos', 'St. James', 'as-008', this)">Remove</button></div></td>
+                </tr>
+                <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                  <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">KS</div><div><div class="user-name">Karl Santiago</div><div class="user-email">k.santiago.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                  <td><span class="badge badge-gray">—</span></td>
+                  <td><button class="row-btn assign" onclick="openStudentAssignModal('Karl Santiago')">＋ Assign</button></td>
+                </tr>
+                <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                  <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">PN</div><div><div class="user-name">Paula Nieves</div><div class="user-email">p.nieves.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                  <td><span class="badge badge-gray">—</span></td>
+                  <td><button class="row-btn assign" onclick="openStudentAssignModal('Paula Nieves')">＋ Assign</button></td>
+                </tr>
+                <tr data-grade="unassigned" data-section="none" data-assigned="false">
+                  <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">DO</div><div><div class="user-name">Dan Ocampo</div><div class="user-email">d.ocampo.stud@stcolumban.edu.ph</div></div></div></td>
+                  <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
+                  <td><span class="badge badge-gray">—</span></td>
+                  <td><button class="row-btn assign" onclick="openStudentAssignModal('Dan Ocampo')">＋ Assign</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Sections Overview</div><div class="panel-meta">Click a section to filter students</div></div></div>
+          <div class="sc-list">
+
+            <div class="sc-card" onclick="filterByStudentSection('st. matthew', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-7"></div><div class="sc-info"><div class="sc-section-name">St. Matthew</div><div class="sc-grade-text">Grade 7</div></div><div class="sc-count-wrap"><div class="sc-count-num">38</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-blue" style="width:95%"></div></div>
+              <div class="sc-cap-text">38 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. mark', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-7"></div><div class="sc-info"><div class="sc-section-name">St. Mark</div><div class="sc-grade-text">Grade 7</div></div><div class="sc-count-wrap"><div class="sc-count-num">34</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-blue" style="width:85%"></div></div>
+              <div class="sc-cap-text">34 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. luke', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-8"></div><div class="sc-info"><div class="sc-section-name">St. Luke</div><div class="sc-grade-text">Grade 8</div></div><div class="sc-count-wrap"><div class="sc-count-num">36</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-gold" style="width:90%"></div></div>
+              <div class="sc-cap-text">36 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. john', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-8"></div><div class="sc-info"><div class="sc-section-name">St. John</div><div class="sc-grade-text">Grade 8</div></div><div class="sc-count-wrap"><div class="sc-count-num">34</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-gold" style="width:85%"></div></div>
+              <div class="sc-cap-text">34 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. peter', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-9"></div><div class="sc-info"><div class="sc-section-name">St. Peter</div><div class="sc-grade-text">Grade 9</div></div><div class="sc-count-wrap"><div class="sc-count-num">37</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-green" style="width:92%"></div></div>
+              <div class="sc-cap-text">37 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. paul', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-9"></div><div class="sc-info"><div class="sc-section-name">St. Paul</div><div class="sc-grade-text">Grade 9</div></div><div class="sc-count-wrap"><div class="sc-count-num">37</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-green" style="width:92%"></div></div>
+              <div class="sc-cap-text">37 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. james', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-10"></div><div class="sc-info"><div class="sc-section-name">St. James</div><div class="sc-grade-text">Grade 10</div></div><div class="sc-count-wrap"><div class="sc-count-num">35</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-orange" style="width:87%"></div></div>
+              <div class="sc-cap-text">35 / 40 capacity</div>
+            </div>
+            <div class="sc-card" onclick="filterByStudentSection('st. thomas', this)">
+              <div class="sc-head"><div class="sc-stripe stripe-10"></div><div class="sc-info"><div class="sc-section-name">St. Thomas</div><div class="sc-grade-text">Grade 10</div></div><div class="sc-count-wrap"><div class="sc-count-num">33</div><div class="sc-count-label">Students</div></div></div>
+              <div class="sc-bar"><div class="sc-fill bar-orange" style="width:82%"></div></div>
+              <div class="sc-cap-text">33 / 40 capacity</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   SHARED — drawer, notif dropdown, profile dropdown, sidebar nav
+══════════════════════════════════════════════ */
+function toggleDrawer(open) {
+  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+  document.body.classList.toggle('drawer-open', isOpen);
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+    toggleDrawer(false);
+  });
+});
+
+function toggleNavGroup(group) {
+  group.classList.toggle('open');
+  group.querySelector('.nav-group-toggle').classList.toggle('active');
+}
+
+function toggleNotifDropdown() { document.getElementById('tbNotifPanel').classList.toggle('open'); }
+function markAllNotifRead() {
+  document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
+  document.querySelector('.tb-notif-dot').style.display = 'none';
+}
+function toggleProfileDropdown() {
+  document.getElementById('tbProfileTrigger').classList.toggle('open');
+  document.getElementById('tbProfileDropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+  const trigger = document.getElementById('tbProfileTrigger');
+  const dropdown = document.getElementById('tbProfileDropdown');
+  if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+    trigger.classList.remove('open');
+    dropdown.classList.remove('open');
+  }
+  const notifTrigger = document.getElementById('tbNotifTrigger');
+  const notifPanel = document.getElementById('tbNotifPanel');
+  if (notifTrigger && notifPanel && !notifTrigger.contains(e.target) && !notifPanel.contains(e.target)) {
+    notifPanel.classList.remove('open');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closeSectionAddModal(); closeSectionEditModal(); closeSectionStudentsModal();
+  closeSubjectModal(); closeTeacherModal();
+  closeStudentAssignModal(); closeConfirmRemoveModal(); closeImportStudentsModal();
+});
+
+/* ══════════════════════════════════════════════
+   TOP-LEVEL TAB SWITCHING
+══════════════════════════════════════════════ */
+const mgmtTitles = {
+  sections: 'Sections', subjects: 'Subjects', teachers: 'Assign Teachers', students: 'Assign Students'
+};
+
+function switchMgmtTab(tab, el) {
+  document.querySelectorAll('.mgmt-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+
+  document.querySelectorAll('.mgmt-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else document.querySelector('.mgmt-tab[data-tab="' + tab + '"]').classList.add('active');
+
+  document.querySelectorAll('.nav-child').forEach(c => c.classList.remove('active'));
+  const navChild = document.querySelector('.nav-child[data-tab="' + tab + '"]');
+  if (navChild) navChild.classList.add('active');
+
+  document.getElementById('pageTitle').textContent = 'Class Management · ' + mgmtTitles[tab];
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function goToMgmtTab(tab, el) {
+  switchMgmtTab(tab, document.querySelector('.mgmt-tab[data-tab="' + tab + '"]'));
+  document.querySelectorAll('.nav-child').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  toggleDrawer(false);
+}
+
+const tab = localStorage.getItem("managementTab");
+
+if (tab) {
+    const link = document.querySelector(`[data-tab="${tab}"]`);
+    goToMgmtTab(tab, link);
+    localStorage.removeItem("managementTab");
+}
+
+/* ══════════════════════════════════════════════
+   SECTIONS TAB
+══════════════════════════════════════════════ */
+function openSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.add('open'); }
+function closeSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.remove('open'); }
+document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
+
+const adviserMap = {
+  'ms. maria reyes':     'mr1',
+  'ms. lara villanueva': 'lv1',
+  'mr. paolo tan':       'pt1',
+  'ms. carla dizon':     'cd1',
+  'mr. rico santos':     'rs1',
+};
+
+function openSectionEditModal(card) {
+  const name     = card.querySelector('.section-name').textContent.trim();
+  const grade    = card.dataset.grade;
+  const adviser  = card.querySelector('.adviser-name')?.textContent.trim() || '';
+  const capacity = card.querySelector('.cs-item:nth-child(3) .cs-num').textContent.trim();
+
+  document.getElementById('editSectionName').value = name;
+  document.getElementById('editGradeLevel').value  = grade;
+  document.getElementById('editCapacity').value    = capacity;
+  document.getElementById('editAdviser').value = adviserMap[adviser.toLowerCase()] || '';
+  document.getElementById('editSectionForm').action = `/admin/sections/update/${card.dataset.id || name.toLowerCase().replace(/\s+/g, '-')}`;
+  document.getElementById('sectionEditModalBackdrop').classList.add('open');
+}
+function closeSectionEditModal() { document.getElementById('sectionEditModalBackdrop').classList.remove('open'); }
+document.getElementById('sectionEditModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionEditModal(); });
+
+const sectionStudents = {
+  'st. matthew': [
+    { name: 'Anna Cruz', email: 'anna.cruz@school.edu', status: 'Active' },
+    { name: 'Ben Reyes', email: 'ben.reyes@school.edu', status: 'Active' },
+    { name: 'Cara Lim',  email: 'cara.lim@school.edu',  status: 'Inactive' },
+  ],
+  'st. mark':   [{ name: 'Diego Santos', email: 'diego.santos@school.edu', status: 'Active' }, { name: 'Elena Flores', email: 'elena.flores@school.edu', status: 'Active' }],
+  'st. luke':   [{ name: 'Felix Tan',    email: 'felix.tan@school.edu',    status: 'Active' }],
+  'st. john':   [{ name: 'Gia Mendoza',  email: 'gia.mendoza@school.edu',  status: 'Active' }],
+  'st. peter':  [{ name: 'Hans Villanueva', email: 'hans.v@school.edu',    status: 'Active' }],
+  'st. paul':   [{ name: 'Iris Garcia',  email: 'iris.garcia@school.edu',  status: 'Active' }],
+  'st. james':  [{ name: 'Jake Dizon',   email: 'jake.dizon@school.edu',   status: 'Active' }],
+  'st. thomas': [{ name: 'Kyla Ramos',   email: 'kyla.ramos@school.edu',   status: 'Inactive' }],
+};
+
+function openSectionStudentsModal(card) {
+  const name  = card.querySelector('.section-name').textContent.trim();
+  const grade = card.dataset.grade;
+  const list  = sectionStudents[name.toLowerCase()] || [];
+
+  document.getElementById('sectionStudentsModalTitle').textContent = name + ': Students';
+  document.getElementById('sectionStudentsModalSub').textContent   = `Grade ${grade} · ${list.length} enrolled`;
+
+  const tbody = document.getElementById('sectionStudentsTableBody');
+  tbody.innerHTML = list.length
+    ? list.map((s, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${s.name}</strong></td>
+          <td>${s.email}</td>
+          <td><span class="badge ${s.status === 'Active' ? 'badge-green' : 'badge-orange'}">${s.status}</span></td>
+          <td><button class="row-btn remove" onclick="removeSectionStudent(this, '${s.name}')">Remove</button></td>
+        </tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px">No students enrolled yet.</td></tr>`;
+
+  document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
+}
+function closeSectionStudentsModal() { document.getElementById('sectionStudentsModalBackdrop').classList.remove('open'); }
+document.getElementById('sectionStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionStudentsModal(); });
+
+function removeSectionStudent(btn, name) {
+  if (!confirm(`Remove ${name} from this section?`)) return;
+  btn.closest('tr').remove();
+}
+
+document.querySelectorAll('#sectionCardView .section-card').forEach(card => {
+  card.querySelector('.card-btn.edit').addEventListener('click', () => openSectionEditModal(card));
+  card.querySelector('.card-btn.view').addEventListener('click', () => openSectionStudentsModal(card));
+});
+
+function setSectionView(view) {
+  const cardView  = document.getElementById('sectionCardView');
+  const tableView = document.getElementById('sectionTableView');
+  document.getElementById('cardViewBtn').classList.toggle('active', view === 'card');
+  document.getElementById('tableViewBtn').classList.toggle('active', view === 'table');
+  cardView.style.display  = view === 'card' ? '' : 'none';
+  tableView.style.display = view === 'table' ? '' : 'none';
+}
+
+function filterSections() {
+  const search = document.getElementById('sectionSearchInput').value.toLowerCase();
+  const grade  = document.getElementById('sectionGradeFilter').value;
+  document.querySelectorAll('#sectionCardView .grade-group').forEach(group => {
+    const matchGrade = grade === 'all' || group.dataset.grade === grade;
+    let anyVisible = false;
+    group.querySelectorAll('.section-card').forEach(card => {
+      const show = matchGrade && card.dataset.name.includes(search);
+      card.style.display = show ? '' : 'none';
+      if (show) anyVisible = true;
+    });
+    group.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+/* ══════════════════════════════════════════════
+   SUBJECTS TAB
+══════════════════════════════════════════════ */
+function openSubjectModal(subjectName) {
+  document.getElementById('subjectModalTitle').textContent = subjectName ? `Edit Subject: ${subjectName}` : 'Add New Subject';
+  document.getElementById('subjectModalBackdrop').classList.add('open');
+}
+function closeSubjectModal() { document.getElementById('subjectModalBackdrop').classList.remove('open'); }
+document.getElementById('subjectModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSubjectModal(); });
+
+let activeSubjectGrade = 'all';
+const subjectTabTitles = {
+  all: { title: 'All Subjects', sub: 'Subjects shared across Grades 7 – 10 · S.Y. 2025–2026' },
+  '7': { title: 'Grade 7 Subjects', sub: 'Subjects assigned to all Grade 7 sections · S.Y. 2025–2026' },
+  '8': { title: 'Grade 8 Subjects', sub: 'Subjects assigned to all Grade 8 sections · S.Y. 2025–2026' },
+  '9': { title: 'Grade 9 Subjects', sub: 'Subjects assigned to all Grade 9 sections · S.Y. 2025–2026' },
+  '10': { title: 'Grade 10 Subjects', sub: 'Subjects assigned to all Grade 10 sections · S.Y. 2025–2026' },
+};
+
+function switchSubjectGradeTab(grade, el) {
+  activeSubjectGrade = grade;
+  document.querySelectorAll('#subjectGradeTabs .filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('subjectPanelTitle').textContent = subjectTabTitles[grade].title;
+  document.getElementById('subjectPanelSub').textContent   = subjectTabTitles[grade].sub;
+  filterSubjects();
+}
+
+function filterSubjects() {
+  const search = document.getElementById('subjectSearchInput').value.toLowerCase();
+  document.querySelectorAll('#subjectTableBody tr').forEach(row => {
+    const matchSearch = row.dataset.name.includes(search);
+    const matchGrade  = activeSubjectGrade === 'all' || row.dataset.grades.includes(activeSubjectGrade);
+    row.style.display = (matchSearch && matchGrade) ? '' : 'none';
+  });
+}
+
+/* ══════════════════════════════════════════════
+   ASSIGN TEACHERS TAB
+══════════════════════════════════════════════ */
+function toggleTeacherSection(head) { head.closest('.section-block').classList.toggle('collapsed'); }
+
+function openTeacherModal(context) {
+  const ctx = context || 'Choose a teacher for assignment';
+  document.getElementById('teacherCtxVal').textContent = ctx;
+  document.getElementById('teacherAssignmentContext').value = ctx;
+  document.getElementById('teacherModalBackdrop').classList.add('open');
+  document.getElementById('teacherPreview').classList.remove('visible');
+  document.getElementById('teacherSelect').value = '';
+}
+function closeTeacherModal() { document.getElementById('teacherModalBackdrop').classList.remove('open'); }
+document.getElementById('teacherModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeTeacherModal(); });
+
+function previewTeacher(val) {
+  const preview = document.getElementById('teacherPreview');
+  if (!val) { preview.classList.remove('visible'); return; }
+  const [name, email, initials] = val.split('|');
+  document.getElementById('tpAv').textContent = initials;
+  document.getElementById('tpName').textContent = name;
+  document.getElementById('tpDetail').textContent = email;
+  preview.classList.add('visible');
+}
+
+document.querySelectorAll('#panel-teachers .row-actions .row-btn.change').forEach(btn => {
+  btn.type = 'button';
+  btn.addEventListener('click', function() {
+    const section = this.closest('.section-block');
+    const grade = section?.querySelector('.section-grade-pill')?.textContent.trim() || '';
+    const sectionName = section?.querySelector('.section-name')?.textContent.trim() || '';
+    const subjectName = this.closest('.subject-row')?.querySelector('.subj-name')?.textContent.trim() || '';
+    openTeacherModal(grade && sectionName && subjectName ? `${grade} – ${sectionName} · ${subjectName}` : undefined);
+  });
+});
+
+function filterTeacherBlocks() {
+  const search = document.getElementById('teacherSearchInput').value.toLowerCase();
+  const grade  = document.getElementById('teacherGradeFilter').value;
+  const status = document.getElementById('teacherStatusFilter').value;
+  document.querySelectorAll('#panel-teachers .section-block').forEach(block => {
+    const matchSearch = block.dataset.name.includes(search);
+    const matchGrade  = grade === 'all' || block.dataset.grade === grade;
+    const matchStatus = status === 'all' || block.dataset.status === status;
+    block.style.display = (matchSearch && matchGrade && matchStatus) ? '' : 'none';
+  });
+}
+
+/* ══════════════════════════════════════════════
+   ASSIGN STUDENTS TAB
+══════════════════════════════════════════════ */
+function openStudentAssignModal(studentName) {
+  const isQuickAssign = !!studentName;
+  document.getElementById('studentModalTitle').textContent = isQuickAssign ? `Assign: ${studentName}` : 'Assign Student';
+  document.getElementById('studentCtxVal').textContent = 'Select a section below';
+
+  document.getElementById('studentSelect').closest('.form-group').style.display = isQuickAssign ? 'none' : '';
+  document.getElementById('studentPreview').classList.remove('visible');
+  document.getElementById('studentSelect').value = '';
+
+  document.getElementById('assignStudentForm').style.display = '';
+  document.getElementById('moveStudentForm').style.display = 'none';
+  document.getElementById('studentModalSubmitBtn').setAttribute('form', 'assignStudentForm');
+  document.getElementById('studentModalSubmitBtn').textContent = 'Save Assignment';
+
+  document.getElementById('studentAssignModalBackdrop').classList.add('open');
+}
+function closeStudentAssignModal() { document.getElementById('studentAssignModalBackdrop').classList.remove('open'); }
+document.getElementById('studentAssignModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeStudentAssignModal(); });
+
+function openMoveStudentModal(studentName, studentId, currentSection) {
+  document.getElementById('studentModalTitle').textContent = `Move: ${studentName}`;
+  document.getElementById('moveCtxVal').textContent = `Currently in ${currentSection}`;
+  document.getElementById('moveStudentId').value = studentId;
+
+  document.getElementById('assignStudentForm').style.display = 'none';
+  document.getElementById('moveStudentForm').style.display = '';
+  document.getElementById('studentModalSubmitBtn').setAttribute('form', 'moveStudentForm');
+  document.getElementById('studentModalSubmitBtn').textContent = 'Save Move';
+
+  document.getElementById('studentAssignModalBackdrop').classList.add('open');
+}
+
+function removeStudentFromClass(studentName, section, studentId, rowElement) {
+  document.getElementById('confirmRemoveTitle').textContent = `Remove: ${studentName}`;
+  document.getElementById('confirmStudentName').textContent = studentName;
+  document.getElementById('confirmStudentNameInline').textContent = studentName;
+  document.getElementById('confirmSectionName').textContent = section;
+  document.getElementById('removeStudentId').value = studentId;
+  document.getElementById('removeStudentForm')._rowElement = rowElement;
+  document.getElementById('confirmRemoveModalBackdrop').classList.add('open');
+}
+function closeConfirmRemoveModal() { document.getElementById('confirmRemoveModalBackdrop').classList.remove('open'); }
+document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeConfirmRemoveModal(); });
+
+function previewStudent(val) {
+  const preview = document.getElementById('studentPreview');
+  if (!val) { preview.classList.remove('visible'); return; }
+  const [name, email, initials] = val.split('|');
+  document.getElementById('spAv').textContent = initials;
+  document.getElementById('spName').textContent = name;
+  document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
+  preview.classList.add('visible');
+}
+
+function openImportStudentsModal() {
+  document.getElementById('importStudentsForm').reset();
+  document.getElementById('csvPreviewWrap').style.display = 'none';
+  document.querySelectorAll('#importGradeOpts .role-opt').forEach(o => o.classList.remove('selected'));
+  document.getElementById('importGrade').value = '';
+  document.getElementById('fileUploadName').textContent = 'No file selected';
+  document.getElementById('fileUploadName').classList.remove('has-file');
+  document.getElementById('importStudentsModalBackdrop').classList.add('open');
+}
+function closeImportStudentsModal() { document.getElementById('importStudentsModalBackdrop').classList.remove('open'); }
+document.getElementById('importStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeImportStudentsModal(); });
+
+function selectImportGrade(el, value) {
+  document.querySelectorAll('#importGradeOpts .role-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('importGrade').value = value;
+}
+
+function previewCSV(input) {
+  const file = input.files[0];
+  const nameEl = document.getElementById('fileUploadName');
+  if (!file) { nameEl.textContent = 'No file selected'; nameEl.classList.remove('has-file'); return; }
+  nameEl.textContent = file.name;
+  nameEl.classList.add('has-file');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim().length);
+    if (!lines.length) return;
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1, 6).map(l => l.split(',').map(c => c.trim()));
+
+    document.getElementById('csvPreviewHead').innerHTML =
+      '<tr>' + headers.map(h => `<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--gray-200);">${h}</th>`).join('') + '</tr>';
+    document.getElementById('csvPreviewBody').innerHTML =
+      rows.map(r => '<tr>' + r.map(c => `<td style="padding:6px 8px;border-bottom:1px solid var(--gray-100);">${c}</td>`).join('') + '</tr>').join('');
+    document.getElementById('csvPreviewCount').textContent = `Showing ${rows.length} of ${lines.length - 1} rows`;
+    document.getElementById('csvPreviewWrap').style.display = '';
+  };
+  reader.readAsText(file);
+}
+
+let activeStudentGrade   = 'all';
+let activeStudentSection = null;
+
+const studentTabTitles = {
+  all: { title: 'All Enrolled Students', meta: 'Showing students across all sections' },
+  '7': { title: 'Grade 7 Students', meta: 'Showing students enrolled in Grade 7 sections' },
+  '8': { title: 'Grade 8 Students', meta: 'Showing students enrolled in Grade 8 sections' },
+  '9': { title: 'Grade 9 Students', meta: 'Showing students enrolled in Grade 9 sections' },
+  '10': { title: 'Grade 10 Students', meta: 'Showing students enrolled in Grade 10 sections' },
+  unassigned: { title: 'Unassigned Students', meta: '13 students not yet placed in any section' },
+};
+
+function switchStudentGradeTab(grade, el) {
+  activeStudentGrade   = grade;
+  activeStudentSection = null;
+
+  document.querySelectorAll('#studentGradeTabs .filter-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sc-card').forEach(c => c.classList.remove('selected'));
+
+  if (el) el.classList.add('active');
+  else document.getElementById('stu-tab-unassigned')?.classList.add('active');
+
+  const info = studentTabTitles[grade] || studentTabTitles.all;
+  document.getElementById('enrolledTitle').textContent = info.title;
+  document.getElementById('enrolledMeta').textContent  = info.meta;
+  applyStudentFilters();
+}
+
+function filterByStudentSection(section, card) {
+  activeStudentSection = activeStudentSection === section ? null : section;
+  document.querySelectorAll('.sc-card').forEach(c => c.classList.remove('selected'));
+  if (activeStudentSection) card.classList.add('selected');
+
+  document.getElementById('enrolledTitle').textContent = activeStudentSection
+    ? `Students in ${section.replace(/\b\w/g, l => l.toUpperCase())}`
+    : (studentTabTitles[activeStudentGrade]?.title || 'All Students');
+
+  applyStudentFilters();
+}
+
+function filterStudentsList() { applyStudentFilters(); }
+
+function applyStudentFilters() {
+  const search = document.getElementById('studentSearchInput').value.toLowerCase();
+  document.querySelectorAll('#enrolledBody tr').forEach(row => {
+    const name  = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
+    const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
+    const matchSearch  = name.includes(search) || email.includes(search);
+    const matchGrade   = activeStudentGrade === 'all' || row.dataset.grade === activeStudentGrade;
+    const matchSection = !activeStudentSection || row.dataset.section === activeStudentSection;
+    row.style.display = (matchSearch && matchGrade && matchSection) ? '' : 'none';
+  });
+}
+
+lucide.createIcons();
+</script>
+
+</body>
+</html>
