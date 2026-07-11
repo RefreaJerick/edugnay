@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Ugnay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/teacher/profile.css">
+  <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+      </div>
+      <div>
+        <div class="brand-name">e<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+
+        <a class="nav-item" onclick="navigate('dashboard')">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <div class="nav-group" id="sections-group">
+          <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+            <span>My Sections</span>
+            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" onclick="navigate('section', '7-matthew')">
+              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 7 – St. Matthew
+            </a>
+            <a class="nav-child" onclick="navigate('section', '8-luke')">
+              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 8 – St. Luke
+            </a>
+            <a class="nav-child" onclick="navigate('section', '9-peter')">
+              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              Grade 9 – St. Peter
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-section" id="reports-nav">
+        <div class="nav-section-label">Reports</div>
+        <a class="nav-item" onclick="navigate('reports')">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
+          <span class="nav-badge">5</span>
+        </a>
+        <a class="nav-item" onclick="navigate('journals')">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Student Journals</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a class="nav-item" onclick="navigate('announcements')">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">E-Ugnay · Teacher</div>
+        <div class="page-title">My Profile</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <span class="tb-notif-dot"></span>
+        </button>
+
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+          </div>
+
+          <div class="tb-notif-list">
+
+            <a class="tb-notif-item unread" onclick="navigate('reports')">
+              <div class="tb-notif-icon" style="background:var(--orange-pale);color:#d97706;">
+                <i data-lucide="file-text" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">5 reports awaiting confirmation</div>
+                <div class="tb-notif-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
+                <div class="tb-notif-time">1 hour ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item unread" onclick="navigate('section','8-luke','scores')">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
+                <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Grade encoding incomplete</div>
+                <div class="tb-notif-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
+                <div class="tb-notif-time">3 hours ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item unread" onclick="navigate('section','9-peter','attendance')">
+              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
+                <i data-lucide="user-check" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Attendance not taken</div>
+                <div class="tb-notif-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
+                <div class="tb-notif-time">4 hours ago</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item" onclick="navigate('announcements')">
+              <div class="tb-notif-icon" style="background:var(--gold-pale);color:#92400e;">
+                <i data-lucide="megaphone" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">New announcement</div>
+                <div class="tb-notif-desc">Q2 grade encoding deadline: June 14.</div>
+                <div class="tb-notif-time">Today, 8:00 AM</div>
+              </div>
+            </a>
+
+            <a class="tb-notif-item" onclick="navigate('announcements')">
+              <div class="tb-notif-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+                <i data-lucide="calendar-clock" style="width:15px;height:15px;"></i>
+              </div>
+              <div class="tb-notif-body">
+                <div class="tb-notif-title">Upcoming event</div>
+                <div class="tb-notif-desc">Foundation Day, June 20. Classes suspended.</div>
+                <div class="tb-notif-time">May 30, 10:00 AM</div>
+              </div>
+            </a>
+
+          </div>
+
+          <div class="tb-notif-panel-foot">
+            <a href="edugnay-teacher-notifications.html">More notifications</a>
+          </div>
+        </div>
+      </div>
+      <div class="tb-profile">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <div class="tb-avatar">MR</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-role">Faculty</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+
+        <div class="tb-dropdown" id="tbProfileDropdown">
+          <a class="tb-dropdown-item" href="edugnay-teacher-profile.html">
+            <i data-lucide="user" style="width:15px;height:15px;"></i>
+            My Profile
+          </a>
+          <div class="tb-dropdown-divider"></div>
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <!-- Profile header -->
+    <div class="profile-header-card">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar">
+          <span id="avatarInitials">MR</span>
+          <img id="avatarImage" src="" alt="" style="display:none;"/>
+        </div>
+        <button class="profile-avatar-edit" onclick="document.getElementById('avatarFileInput').click()" title="Change photo">
+          <i data-lucide="camera" style="width:14px;height:14px;"></i>
+        </button>
+        <input type="file" id="avatarFileInput" accept="image/png,image/jpeg" style="display:none;" onchange="handleAvatarUpload(event)"/>
+      </div>
+      <div class="profile-header-info">
+        <div class="profile-header-name">Ms. Maria Reyes</div>
+        <div class="profile-header-meta">
+          <span><i data-lucide="briefcase" style="width:13px;height:13px;"></i> Faculty</span>
+          <span><i data-lucide="star" style="width:13px;height:13px;"></i> Class Adviser, Grade 7 – St. Matthew</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+
+      <!-- Personal Information (editable) -->
+      <div class="panel">
+        <!-- Personal Information -->
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+            <div>
+              <div class="panel-title">Personal Information</div>
+              <div class="panel-sub">Keep your contact details up to date</div>
+            </div>
+          </div>
+        </div>
+        <div class="config-panel-body">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" type="text" value="Maria Reyes" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+            <span class="form-hint">Managed by admin</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">School Email</label>
+            <input class="form-input" type="email" value="m.reyes.fac@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+            <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Contact Number</label>
+            <input class="form-input" type="tel" id="contactNumberInput" value="0917 123 4567" placeholder="e.g. 0917 123 4567"/>
+            <span class="form-hint">Used by the admin office for urgent concerns</span>
+          </div>
+        </div>
+        <div class="config-panel-foot">
+          <button class="btn btn-cancel">Discard</button>
+          <button class="btn btn-save" onclick="saveProfile()"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Employment Details (read-only) -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+              <i data-lucide="briefcase" style="width:18px;height:18px;"></i>
+            </div>
+            <div>
+              <div class="panel-title">Employment Details</div>
+              <div class="panel-sub">Set by the school administrator</div>
+            </div>
+          </div>
+        </div>
+        <div class="config-panel-body">
+          <div class="profile-detail-row">
+            <span class="profile-detail-label">Employee No.</span>
+            <span class="profile-detail-value">FAC-2019-0042</span>
+          </div>
+          <div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;">
+            <span class="profile-detail-label">Sections Handled</span>
+            <div class="section-pill-col">
+              <span class="badge badge-blue">Gr. 7 – St. Matthew</span>
+              <span class="badge badge-blue">Gr. 8 – St. Luke</span>
+              <span class="badge badge-blue">Gr. 9 – St. Peter</span>
+              <span class="badge badge-blue">Gr. 10 – St. Andrew</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Security -->
+    <div class="panel">
+      <!-- Security -->
+      <div class="panel-head">
+        <div class="panel-head-title-group">
+          <div class="panel-title-icon"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+          <div>
+            <div class="panel-title">Security</div>
+            <div class="panel-sub">Manage your account password</div>
+          </div>
+        </div>
+      </div>
+      <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;color:var(--gray-600);">Password last changed on May 12, 2025</div>
+        <button class="top-btn secondary" onclick="openModal('changePasswordModal')">
+          <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-backdrop" id="changePasswordModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Change Password</div>
+        <div class="modal-sub">Choose a strong password you haven't used before.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('changePasswordModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Confirm New Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('changePasswordModal')">Cancel</button>
+      <button class="btn btn-save" onclick="closeModal('changePasswordModal')">
+        <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function toggleDrawer(open) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
+    sidebar.classList.toggle('open', isOpen);
+    overlay.classList.toggle('open', isOpen);
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  function toggleGroup(id) {
+    document.getElementById(id).classList.toggle('open');
+    lucide.createIcons();
+  }
+
+  function toggleProfileDropdown() {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    trigger.classList.toggle('open');
+    dropdown.classList.toggle('open');
+  }
+
+  document.addEventListener('click', (e) => {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+    }
+  });
+
+  function navigate(page, section, tab) {
+    if (page === 'dashboard') {
+      window.location.href = './edugnay-teacher-dashboard.html';
+    } else if (page === 'journals') {
+      window.location.href = './edugnay-teacher-journals.html';
+    } else if (page === 'section') {
+      window.location.href = './edugnay-teacher-sections.html';
+    } else if (page === 'reports') {
+      window.location.href = './edugnay-teacher-reports.html';
+    } else if (page === 'announcements') {
+      window.location.href = 'edugnay-teacher-announcements.html';
+    }
+  }
+
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { toggleDrawer(false); document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open')); }
+  });
+
+  /* ── AVATAR UPLOAD ── */
+  function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('avatarImage').src = e.target.result;
+      document.getElementById('avatarImage').style.display = 'block';
+      document.getElementById('avatarInitials').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveProfile() {
+    alert('Contact number updated.');
+  }
+</script>
+
+</body>
+</html>
