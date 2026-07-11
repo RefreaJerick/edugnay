@@ -42,29 +42,6 @@
         <textarea class="form-textarea" name="description" placeholder="Brief description of this subject..."></textarea>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Subject Icon</label>
-        <input type="hidden" name="selectedIcon" id="selectedIcon" value="hash"/>
-        <div class="icon-picker">
-          <div class="icon-opt selected" onclick="selectIcon(this)"><i data-lucide="hash" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="book" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="message-circle" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="flask-conical" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="globe" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="bird" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="wrench" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="music" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="laptop" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="activity" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="palette" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="square" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="brain" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="sprout" style="width:18px;height:18px;"></i></div>
-          <div class="icon-opt" onclick="selectIcon(this)"><i data-lucide="test-tube" style="width:18px;height:18px;"></i></div>
-        </div>
-      </div>
-
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label">Applies to Grade Level(s)</label>
         <div class="grade-checks">
@@ -703,15 +680,6 @@
   });
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function selectIcon(el) {
-    document.querySelectorAll('.icon-opt').forEach(i => i.classList.remove('selected'));
-    el.classList.add('selected');
-    const icon = el.querySelector('[data-lucide]');
-    if (icon) {
-      document.getElementById('selectedIcon').value = icon.getAttribute('data-lucide');
-    }
-  }
 
   let activeGrade = 'all';
 
