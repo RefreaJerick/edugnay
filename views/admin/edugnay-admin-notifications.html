@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Ugnay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    .notif-page-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .notif-filters { display: flex; gap: 6px; }
+    .notif-filter-btn {
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      color: var(--gray-600);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .notif-filter-btn.active {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--white);
+    }
+    .notif-mark-read-all {
+      border: none;
+      background: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-mid);
+      cursor: pointer;
+    }
+
+    .notif-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 20px 0 8px;
+    }
+    .notif-group-label:first-child { margin-top: 0; }
+
+    .notif-page-panel {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .notif-page-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--gray-100);
+      cursor: pointer;
+      position: relative;
+    }
+    .notif-page-item:last-child { border-bottom: none; }
+    .notif-page-item:hover { background: var(--gray-50); }
+
+    .notif-page-item.unread::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 20px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue-mid);
+    }
+    .notif-page-item.unread { padding-left: 26px; }
+
+    .notif-page-icon {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notif-page-body { min-width: 0; flex: 1; }
+    .notif-page-title { font-size: 13.5px; font-weight: 700; color: var(--gray-800); margin-bottom: 3px; }
+    .notif-page-desc { font-size: 12.5px; color: var(--gray-500); line-height: 1.5; margin-bottom: 5px; }
+    .notif-page-time { font-size: 11px; color: var(--gray-400); }
+
+    .notif-empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">e<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <!-- Main nav -->
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+
+      <a href="edugnay-admin-dashboard.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="edugnay-admin-users.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="users" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Manage Users</span>
+        <span class="nav-badge">3</span>
+      </a>
+
+      <a href="edugnay-admin-sections.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="door-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Sections</span>
+      </a>
+
+      <a href="edugnay-admin-subjects.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Subjects</span>
+      </a>
+
+      <a href="edugnay-admin-assign-teachers.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="clipboard-list" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Teachers</span>
+      </a>
+
+      <a href="edugnay-admin-assign-students.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="user-plus" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Assign Students</span>
+      </a>
+    </div>
+
+    <!-- Reports & Content -->
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+
+      <a href="edugnay-admin-reports.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Reports</span>
+      </a>
+
+      <a href="edugnay-admin-announcements.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <!-- Settings -->
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+
+      <a href="edugnay-admin-system-config.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="settings" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">System Config</span>
+      </a>
+
+      <a href="edugnay-admin-archive.html" class="nav-item">
+        <div class="nav-icon">
+          <i data-lucide="archive" style="width:16px;height:16px;"></i>
+        </div>
+        <span class="nav-label">Archive Data</span>
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+        <i data-lucide="menu" style="width:18px;height:18px;"></i>
+      </button>
+      <div>
+        <div class="page-eyebrow">E-Ugnay · Admin</div>
+        <div class="page-title">Notifications</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-profile">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <div class="tb-avatar">MR</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-role">Faculty</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+
+        <div class="tb-dropdown" id="tbProfileDropdown">
+          <a class="tb-dropdown-item" href="#">
+            <i data-lucide="user" style="width:15px;height:15px;"></i>
+            My Profile
+          </a>
+          <div class="tb-dropdown-divider"></div>
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <div class="notif-page-toolbar">
+      <div class="notif-filters">
+        <button class="notif-filter-btn active" onclick="filterNotifs('all', this)">All</button>
+        <button class="notif-filter-btn" onclick="filterNotifs('unread', this)">Unread</button>
+      </div>
+      <button class="notif-mark-read-all" onclick="markAllRead()">Mark all as read</button>
+    </div>
+
+    <div class="notif-group-label">Today</div>
+    <div class="notif-page-panel" id="notifGroupToday">
+
+      <div class="notif-page-item unread" onclick="navigate('reports')">
+        <div class="notif-page-icon" style="background:var(--orange-pale);color:#d97706;">
+          <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">5 reports awaiting confirmation</div>
+          <div class="notif-page-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
+          <div class="notif-page-time">1 hour ago</div>
+        </div>
+      </div>
+
+      <div class="notif-page-item unread" onclick="navigate('section','8-luke','scores')">
+        <div class="notif-page-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="clipboard-pen" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">Grade encoding incomplete</div>
+          <div class="notif-page-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
+          <div class="notif-page-time">3 hours ago</div>
+        </div>
+      </div>
+
+      <div class="notif-page-item unread" onclick="navigate('section','9-peter','attendance')">
+        <div class="notif-page-icon" style="background:var(--red-pale);color:var(--red);">
+          <i data-lucide="user-check" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">Attendance not taken</div>
+          <div class="notif-page-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
+          <div class="notif-page-time">4 hours ago</div>
+        </div>
+      </div>
+
+      <div class="notif-page-item" onclick="navigate('announcements')">
+        <div class="notif-page-icon" style="background:var(--gold-pale);color:#92400e;">
+          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">New announcement</div>
+          <div class="notif-page-desc">Q2 grade encoding deadline: June 14.</div>
+          <div class="notif-page-time">Today, 8:00 AM</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="notif-group-label">Earlier</div>
+    <div class="notif-page-panel" id="notifGroupEarlier">
+
+      <div class="notif-page-item" onclick="navigate('announcements')">
+        <div class="notif-page-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+          <i data-lucide="calendar-clock" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">Upcoming event</div>
+          <div class="notif-page-desc">Foundation Day, June 20. Classes suspended.</div>
+          <div class="notif-page-time">May 30, 10:00 AM</div>
+        </div>
+      </div>
+
+      <div class="notif-page-item" onclick="navigate('journals')">
+        <div class="notif-page-icon" style="background:var(--gray-100);color:var(--gray-500);">
+          <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="notif-page-body">
+          <div class="notif-page-title">Journal window reminder</div>
+          <div class="notif-page-desc">Weekly journal entries close Friday, 11:59 PM.</div>
+          <div class="notif-page-time">May 28, 3:00 PM</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function toggleDrawer(open) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
+    sidebar.classList.toggle('open', isOpen);
+    overlay.classList.toggle('open', isOpen);
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  function toggleGroup(id) {
+    document.getElementById(id).classList.toggle('open');
+    lucide.createIcons();
+  }
+
+  function toggleProfileDropdown() {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    trigger.classList.toggle('open');
+    dropdown.classList.toggle('open');
+  }
+
+  document.addEventListener('click', (e) => {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+    }
+  });
+
+  function filterNotifs(mode, btn) {
+    document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.notif-page-item').forEach(item => {
+      if (mode === 'unread') {
+        item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
+      } else {
+        item.style.display = 'flex';
+      }
+    });
+
+    ['notifGroupToday', 'notifGroupEarlier'].forEach(id => {
+      const group = document.getElementById(id);
+      const visibleItems = group.querySelectorAll('.notif-page-item[style*="flex"], .notif-page-item:not([style])');
+      const hasVisible = Array.from(group.querySelectorAll('.notif-page-item')).some(i => i.style.display !== 'none');
+      group.previousElementSibling.style.display = hasVisible ? 'block' : 'none';
+      group.style.display = hasVisible ? 'block' : 'none';
+    });
+  }
+
+  function markAllRead() {
+    document.querySelectorAll('.notif-page-item.unread').forEach(item => item.classList.remove('unread'));
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') toggleDrawer(false);
+  });
+</script>
+</body>
+</html>
