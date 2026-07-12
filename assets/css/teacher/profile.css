@@ -55,9 +55,15 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.profile-avatar-edit:hover { background: var(--blue-mid); }
 
-.profile-header-info { flex: 1; min-width: 0; }
+.profile-avatar-edit:hover {
+  background: var(--blue-mid);
+}
+
+.profile-header-info {
+  flex: 1;
+  min-width: 0;
+}
 
 .profile-header-name {
   font-size: 19px;
@@ -73,6 +79,7 @@
   font-size: 12.5px;
   color: var(--gray-500);
 }
+
 .profile-header-meta span {
   display: flex;
   align-items: center;
@@ -90,7 +97,10 @@
   border-bottom: 1px solid var(--gray-100);
   gap: 12px;
 }
-.profile-detail-row:last-child { border-bottom: none; }
+
+.profile-detail-row:last-child {
+  border-bottom: none;
+}
 
 .profile-detail-label {
   font-size: 12.5px;
@@ -152,11 +162,16 @@
     SHARED PANEL (local, matches
     section.css convention)
 ══════════════════════════════ */
-.panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.panel-sub {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
 
 .config-panel-body {
   padding: 20px 24px;
 }
+
 .config-panel-body .form-group:last-child {
   margin-bottom: 0;
 }
@@ -173,63 +188,134 @@
     BUTTONS (local, matches section.css)
 ══════════════════════════════ */
 .btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 10px 20px; border-radius: 9px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  border: none; font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   transition: all 0.15s;
 }
-.btn-cancel { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); }
-.btn-cancel:hover { background: var(--gray-200); }
-.btn-save { background: var(--blue); color: white; box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
-.btn-save:hover { background: var(--blue-mid); }
+
+.btn-cancel {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border: 1.5px solid var(--gray-200);
+}
+
+.btn-cancel:hover {
+  background: var(--gray-200);
+}
+
+.btn-save {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(26, 64, 128, 0.25);
+}
+
+.btn-save:hover {
+  background: var(--blue-mid);
+}
 
 /* ══════════════════════════════
     FORM HINT (local, matches section.css)
 ══════════════════════════════ */
-.form-hint { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+.form-hint {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 4px;
+}
 
 /* ══════════════════════════════
     MODAL (local, matches section.css)
 ══════════════════════════════ */
 .modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(11,31,58,0.5); z-index: 50;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s; padding: 20px;
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 58, 0.5);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  padding: 20px;
 }
-.modal-backdrop.open { opacity: 1; visibility: visible; }
+
+.modal-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
 
 .modal {
-  background: var(--white); border-radius: 16px;
-  width: 100%; max-width: 480px;
-  box-shadow: 0 24px 64px rgba(11,31,58,0.25);
-  transform: translateY(20px); transition: transform 0.25s ease;
+  background: var(--white);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 64px rgba(11, 31, 58, 0.25);
+  transform: translateY(20px);
+  transition: transform 0.25s ease;
   overflow: hidden;
 }
-.modal-backdrop.open .modal { transform: translateY(0); }
+
+.modal-backdrop.open .modal {
+  transform: translateY(0);
+}
 
 .modal-head {
   padding: 22px 28px 18px;
   border-bottom: 1px solid var(--gray-100);
-  display: flex; align-items: flex-start; justify-content: space-between;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
 }
-.modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 800; color: var(--gray-800); margin-bottom: 2px; }
-.modal-sub   { font-size: 13px; color: var(--gray-400); }
-.modal-close {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: var(--gray-100); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--gray-500); transition: background 0.15s; flex-shrink: 0;
-}
-.modal-close:hover { background: var(--gray-200); }
 
-.modal-body { padding: 22px 28px; }
+.modal-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin-bottom: 2px;
+}
+
+.modal-sub {
+  font-size: 13px;
+  color: var(--gray-400);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-500);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  background: var(--gray-200);
+}
+
+.modal-body {
+  padding: 22px 28px;
+}
 
 .modal-foot {
-  padding: 14px 28px 20px; display: flex;
-  justify-content: flex-end; gap: 10px;
+  padding: 14px 28px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* Responsive */
@@ -238,12 +324,15 @@
     flex-direction: column;
     text-align: center;
   }
+
   .profile-header-meta {
     justify-content: center;
   }
+
   .profile-detail-row {
     flex-wrap: wrap;
   }
+
   .profile-detail-value {
     text-align: left;
   }
