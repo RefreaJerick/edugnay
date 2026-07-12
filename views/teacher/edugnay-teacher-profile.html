@@ -4,12 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/profile.css">
-  <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -175,7 +175,7 @@
       </div>
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar">MR</div>
+          <div class="tb-avatar faculty">MR</div>
           <div class="tb-profile-info">
             <div class="tb-profile-name">Ms. Maria Reyes</div>
             <div class="tb-profile-role">Faculty</div>
@@ -222,7 +222,7 @@
       </div>
     </div>
 
-    <div class="two-col">
+    <div class="two-col" style="align-items:start;">
 
       <!-- Personal Information (editable) -->
       <div class="panel">
@@ -365,6 +365,16 @@
     document.getElementById(id).classList.toggle('open');
     lucide.createIcons();
   }
+
+  function toggleNotifDropdown() {
+    document.getElementById('tbNotifPanel').classList.toggle('open');
+  }
+
+  function markAllNotifRead() {
+    document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
+    document.querySelector('.tb-notif-dot').style.display = 'none';
+  }
+
 
   function toggleProfileDropdown() {
     const trigger = document.getElementById('tbProfileTrigger');

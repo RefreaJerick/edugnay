@@ -470,7 +470,7 @@
       <div class="tb-notif">
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          <span class="tb-notif-dot"></span>
+          
         </button>
 
         <div class="tb-notif-panel" id="tbNotifPanel">
@@ -480,62 +480,11 @@
           </div>
 
           <div class="tb-notif-list">
-
-            <a class="tb-notif-item unread" onclick="navigate('reports')">
-              <div class="tb-notif-icon" style="background:var(--orange-pale);color:#d97706;">
-                <i data-lucide="file-text" style="width:15px;height:15px;"></i>
-              </div>
-              <div class="tb-notif-body">
-                <div class="tb-notif-title">5 reports awaiting confirmation</div>
-                <div class="tb-notif-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
-                <div class="tb-notif-time">1 hour ago</div>
-              </div>
-            </a>
-
-            <a class="tb-notif-item unread" onclick="navigate('section','8-luke','scores')">
-              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
-                <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
-              </div>
-              <div class="tb-notif-body">
-                <div class="tb-notif-title">Grade encoding incomplete</div>
-                <div class="tb-notif-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
-                <div class="tb-notif-time">3 hours ago</div>
-              </div>
-            </a>
-
-            <a class="tb-notif-item unread" onclick="navigate('section','9-peter','attendance')">
-              <div class="tb-notif-icon" style="background:var(--red-pale);color:var(--red);">
-                <i data-lucide="user-check" style="width:15px;height:15px;"></i>
-              </div>
-              <div class="tb-notif-body">
-                <div class="tb-notif-title">Attendance not taken</div>
-                <div class="tb-notif-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
-                <div class="tb-notif-time">4 hours ago</div>
-              </div>
-            </a>
-
-            <a class="tb-notif-item" onclick="navigate('announcements')">
-              <div class="tb-notif-icon" style="background:var(--gold-pale);color:#92400e;">
-                <i data-lucide="megaphone" style="width:15px;height:15px;"></i>
-              </div>
-              <div class="tb-notif-body">
-                <div class="tb-notif-title">New announcement</div>
-                <div class="tb-notif-desc">Q2 grade encoding deadline: June 14.</div>
-                <div class="tb-notif-time">Today, 8:00 AM</div>
-              </div>
-            </a>
-
-            <a class="tb-notif-item" onclick="navigate('announcements')">
-              <div class="tb-notif-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-                <i data-lucide="calendar-clock" style="width:15px;height:15px;"></i>
-              </div>
-              <div class="tb-notif-body">
-                <div class="tb-notif-title">Upcoming event</div>
-                <div class="tb-notif-desc">Foundation Day, June 20. Classes suspended.</div>
-                <div class="tb-notif-time">May 30, 10:00 AM</div>
-              </div>
-            </a>
-
+            <div class="tb-notif-empty">
+              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+              <div class="tb-notif-empty-title">No notifications yet</div>
+              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            </div>
           </div>
 
           <div class="tb-notif-panel-foot">
@@ -546,16 +495,16 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar">MR</div>
+          <div class="tb-avatar admin">SA</div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
-            <div class="tb-profile-role">Faculty</div>
+            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
         </button>
 
         <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="#">
+          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
             <i data-lucide="user" style="width:15px;height:15px;"></i>
             My Profile
           </a>

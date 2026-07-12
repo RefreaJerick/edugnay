@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
@@ -97,10 +98,35 @@
     .notif-page-time { font-size: 11px; color: var(--gray-400); }
 
     .notif-empty {
-      padding: 60px 20px;
+      padding: 72px 24px;
       text-align: center;
+    }
+
+    .notif-empty-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 16px;
+      border-radius: 14px;
+      background: var(--gray-100);
       color: var(--gray-400);
-      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notif-empty-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+
+    .notif-empty-text {
+      font-size: 12.5px;
+      color: var(--gray-400);
+      line-height: 1.6;
+      max-width: 280px;
+      margin: 0 auto;
     }
   </style>
 </head>
@@ -218,16 +244,16 @@
     <div class="topbar-right">
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar">MR</div>
+          <div class="tb-avatar admin">SA</div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
-            <div class="tb-profile-role">Faculty</div>
+            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
         </button>
 
         <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="#">
+          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
             <i data-lucide="user" style="width:15px;height:15px;"></i>
             My Profile
           </a>
@@ -244,88 +270,12 @@
   <!-- ══════ MAIN ══════ -->
   <main class="main">
 
-    <div class="notif-page-toolbar">
-      <div class="notif-filters">
-        <button class="notif-filter-btn active" onclick="filterNotifs('all', this)">All</button>
-        <button class="notif-filter-btn" onclick="filterNotifs('unread', this)">Unread</button>
+    <div class="notif-page-panel">
+      <div class="notif-empty">
+        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:26px;height:26px;"></i></div>
+        <div class="notif-empty-title">No notifications yet</div>
+        <div class="notif-empty-text">You're all caught up.</div>
       </div>
-      <button class="notif-mark-read-all" onclick="markAllRead()">Mark all as read</button>
-    </div>
-
-    <div class="notif-group-label">Today</div>
-    <div class="notif-page-panel" id="notifGroupToday">
-
-      <div class="notif-page-item unread" onclick="navigate('reports')">
-        <div class="notif-page-icon" style="background:var(--orange-pale);color:#d97706;">
-          <i data-lucide="file-text" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">5 reports awaiting confirmation</div>
-          <div class="notif-page-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
-          <div class="notif-page-time">1 hour ago</div>
-        </div>
-      </div>
-
-      <div class="notif-page-item unread" onclick="navigate('section','8-luke','scores')">
-        <div class="notif-page-icon" style="background:var(--red-pale);color:var(--red);">
-          <i data-lucide="clipboard-pen" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">Grade encoding incomplete</div>
-          <div class="notif-page-desc">10 students in Gr. 8 – St. Luke still have no Q2 grades.</div>
-          <div class="notif-page-time">3 hours ago</div>
-        </div>
-      </div>
-
-      <div class="notif-page-item unread" onclick="navigate('section','9-peter','attendance')">
-        <div class="notif-page-icon" style="background:var(--red-pale);color:var(--red);">
-          <i data-lucide="user-check" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">Attendance not taken</div>
-          <div class="notif-page-desc">Today's attendance for Gr. 9 – St. Peter has not been logged.</div>
-          <div class="notif-page-time">4 hours ago</div>
-        </div>
-      </div>
-
-      <div class="notif-page-item" onclick="navigate('announcements')">
-        <div class="notif-page-icon" style="background:var(--gold-pale);color:#92400e;">
-          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">New announcement</div>
-          <div class="notif-page-desc">Q2 grade encoding deadline: June 14.</div>
-          <div class="notif-page-time">Today, 8:00 AM</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="notif-group-label">Earlier</div>
-    <div class="notif-page-panel" id="notifGroupEarlier">
-
-      <div class="notif-page-item" onclick="navigate('announcements')">
-        <div class="notif-page-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-          <i data-lucide="calendar-clock" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">Upcoming event</div>
-          <div class="notif-page-desc">Foundation Day, June 20. Classes suspended.</div>
-          <div class="notif-page-time">May 30, 10:00 AM</div>
-        </div>
-      </div>
-
-      <div class="notif-page-item" onclick="navigate('journals')">
-        <div class="notif-page-icon" style="background:var(--gray-100);color:var(--gray-500);">
-          <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
-        </div>
-        <div class="notif-page-body">
-          <div class="notif-page-title">Journal window reminder</div>
-          <div class="notif-page-desc">Weekly journal entries close Friday, 11:59 PM.</div>
-          <div class="notif-page-time">May 28, 3:00 PM</div>
-        </div>
-      </div>
-
     </div>
 
   </main>

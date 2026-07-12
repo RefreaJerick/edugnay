@@ -532,6 +532,39 @@ body.drawer-open .sidebar {
   cursor: pointer;
 }
 
+/* ══════════════════════════════
+    NOTIFICATION EMPTY STATE
+══════════════════════════════ */
+.tb-notif-empty {
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.tb-notif-empty-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
+  border-radius: 10px;
+  background: var(--gray-100);
+  color: var(--gray-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tb-notif-empty-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-700);
+  margin-bottom: 4px;
+}
+
+.tb-notif-empty-text {
+  font-size: 12px;
+  color: var(--gray-400);
+  line-height: 1.5;
+}
+
 
 /* ── Topbar Profile Dropdown ── */
 .topbar-profile { position: relative; display: none; }
@@ -1748,12 +1781,17 @@ html, body {
 .tb-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
   color: var(--white);
   font-size: 13px;
   font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+}
+.tb-avatar.admin {
+  background-color: var(--blue-mid);
+}
+.tb-avatar.faculty {
+  background-color: var(--gold);
 }
 
 .tb-profile-info { text-align: left; }

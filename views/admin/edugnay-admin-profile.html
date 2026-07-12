@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/profile.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-crest">
+        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+      </div>
+      <div>
+        <div class="brand-name">e<span>Ugnay</span></div>
+        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="edugnay-admin-users.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Manage Users</span>
+        <span class="nav-badge">3</span>
+      </a>
+      <div class="nav-group" id="classMgmtGroup">
+        <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
+          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
+          <span>Class Management</span>
+          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="nav-children">
+          <a class="nav-child" href="./edugnay-admin-management.html"
+            onclick="localStorage.setItem('managementTab','sections')">Sections</a>
+
+          <a class="nav-child" href="./edugnay-admin-management.html"
+            onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
+
+          <a class="nav-child" href="./edugnay-admin-management.html"
+            onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
+
+          <a class="nav-child" href="./edugnay-admin-management.html"
+            onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">System Reports</span>
+      </a>
+      <a href="edugnay-admin-announcements.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Announcements</span>
+        <span class="nav-badge gold">2</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Settings</div>
+      <a href="edugnay-admin-system-config.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">System Config</span>
+      </a>
+      <a href="edugnay-admin-archive.html" class="nav-item">
+        <div class="nav-icon"><i data-lucide="archive" style="width:16px;height:16px;"></i></div>
+        <span class="nav-label">Archive Data</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ══════ TOPBAR ══════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
+      <div>
+        <div class="page-eyebrow">E-Ugnay · Admin</div>
+        <div class="page-title">My Profile</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          
+        </button>
+
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+          </div>
+
+          <div class="tb-notif-list">
+            <div class="tb-notif-empty">
+              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+              <div class="tb-notif-empty-title">No notifications yet</div>
+              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            </div>
+          </div>
+
+          <div class="tb-notif-panel-foot">
+            <a href="edugnay-admin-notifications.html">More notifications</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="tb-profile">
+        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+          <div class="tb-avatar admin">SA</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-role">Admin</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+
+        <div class="tb-dropdown" id="tbProfileDropdown">
+          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
+            <i data-lucide="user" style="width:15px;height:15px;"></i>
+            My Profile
+          </a>
+          <div class="tb-dropdown-divider"></div>
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+            Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main">
+
+    <!-- Profile header -->
+    <div class="profile-header-card">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatar">
+          <span id="avatarInitials">SA</span>
+          <img id="avatarImage" src="" alt="" style="display:none;"/>
+        </div>
+        <button class="profile-avatar-edit" onclick="document.getElementById('avatarFileInput').click()" title="Change photo">
+          <i data-lucide="camera" style="width:14px;height:14px;"></i>
+        </button>
+        <input type="file" id="avatarFileInput" accept="image/png,image/jpeg" style="display:none;" onchange="handleAvatarUpload(event)"/>
+      </div>
+      <div class="profile-header-info">
+        <div class="profile-header-name">Sr. Admin</div>
+        <div class="profile-header-meta">
+          <span><i data-lucide="briefcase" style="width:13px;height:13px;"></i> System Administrator</span>
+          <span><i data-lucide="building-2" style="width:13px;height:13px;"></i> Registrar's Office</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col" style="align-items:start;">
+
+      <!-- Personal Information (editable) -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+            <div>
+              <div class="panel-title">Personal Information</div>
+              <div class="panel-sub">Keep your contact details up to date</div>
+            </div>
+          </div>
+        </div>
+        <div class="config-panel-body">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" type="text" value="Sr. Admin" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+            <span class="form-hint">Managed by the system owner</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">School Email</label>
+            <input class="form-input" type="email" value="admin@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+            <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Contact Number</label>
+            <input class="form-input" type="tel" id="contactNumberInput" value="0917 555 2210" placeholder="e.g. 0917 123 4567"/>
+            <span class="form-hint">Used for urgent system or account concerns</span>
+          </div>
+        </div>
+        <div class="config-panel-foot">
+          <button class="btn btn-cancel">Discard</button>
+          <button class="btn btn-save" onclick="saveProfile()"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Employment Details (read-only) -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+              <i data-lucide="briefcase" style="width:18px;height:18px;"></i>
+            </div>
+            <div>
+              <div class="panel-title">Employment Details</div>
+              <div class="panel-sub">Set by the system owner</div>
+            </div>
+          </div>
+        </div>
+        <div class="config-panel-body">
+          <div class="profile-detail-row">
+            <span class="profile-detail-label">Employee No.</span>
+            <span class="profile-detail-value">ADM-2016-0001</span>
+          </div>
+          <div class="profile-detail-row">
+            <span class="profile-detail-label">Office</span>
+            <span class="profile-detail-value">Registrar's Office</span>
+          </div>
+          <div class="profile-detail-row">
+            <span class="profile-detail-label">Position</span>
+            <span class="profile-detail-value">System Administrator</span>
+          </div>
+          <div class="profile-detail-row">
+            <span class="profile-detail-label">Access Level</span>
+            <span class="profile-detail-value">Full System Access</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Security -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-head-title-group">
+          <div class="panel-title-icon"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+          <div>
+            <div class="panel-title">Security</div>
+            <div class="panel-sub">Manage your account password</div>
+          </div>
+        </div>
+      </div>
+      <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;color:var(--gray-600);">Password last changed on April 2, 2025</div>
+        <button class="top-btn secondary" onclick="openModal()">
+          <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-backdrop" id="changePasswordModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Change Password</div>
+        <div class="modal-sub">Choose a strong password you haven't used before.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Confirm New Password</label>
+        <input class="form-input" type="password" placeholder="••••••••"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-save" onclick="closeModal()">
+        <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleDrawer(open) {
+    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
+    document.body.classList.toggle('drawer-open', isOpen);
+  }
+
+  function toggleNavGroup(group) {
+    group.classList.toggle('open');
+    // group.querySelector('.nav-group-toggle').classList.toggle('active');
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() { toggleDrawer(false); });
+  });
+
+  function toggleNotifDropdown() {
+    document.getElementById('tbNotifPanel').classList.toggle('open');
+  }
+
+  function markAllNotifRead() {
+    document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
+    document.querySelector('.tb-notif-dot').style.display = 'none';
+  }
+
+  function toggleProfileDropdown() {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    trigger.classList.toggle('open');
+    dropdown.classList.toggle('open');
+  }
+
+  document.addEventListener('click', (e) => {
+    const trigger = document.getElementById('tbProfileTrigger');
+    const dropdown = document.getElementById('tbProfileDropdown');
+    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+    }
+  });
+
+  function openModal() { document.getElementById('changePasswordModal').classList.add('open'); }
+  function closeModal() { document.getElementById('changePasswordModal').classList.remove('open'); }
+  document.getElementById('changePasswordModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('avatarImage').src = e.target.result;
+      document.getElementById('avatarImage').style.display = 'block';
+      document.getElementById('avatarInitials').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveProfile() {
+    alert('Contact number updated.');
+  }
+
+  lucide.createIcons();
+</script>
+
+</body>
+</html>
