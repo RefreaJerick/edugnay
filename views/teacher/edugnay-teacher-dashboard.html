@@ -476,11 +476,18 @@
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Flagged Students</div>
-          <span style="font-size:11px;color:var(--gray-400);">4 need attention</span>
+          <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
+            <option value="all">All My Sections</option>
+            <option value="7-matthew">Grade 7 – St. Matthew</option>
+            <option value="8-luke">Grade 8 – St. Luke</option>
+            <option value="8-mark">Grade 8 – St. Mark</option>
+            <option value="9-peter">Grade 9 – St. Peter</option>
+            <option value="9-john">Grade 9 – St. John</option>
+          </select>
         </div>
-        <div class="flag-grid-single">
+        <div class="flag-grid-single" id="flagGridSingle">
 
-          <div class="flag-card">
+          <div class="flag-card" data-section="9-peter">
             <div class="flag-card-top">
               <div class="flag-av" style="background:var(--red);">BG</div>
               <div class="flag-info">
@@ -493,7 +500,7 @@
             </div>
           </div>
 
-          <div class="flag-card">
+          <div class="flag-card" data-section="8-luke">
             <div class="flag-card-top">
               <div class="flag-av" style="background:#7c3aed;">SC</div>
               <div class="flag-info">
@@ -506,7 +513,7 @@
             </div>
           </div>
 
-          <div class="flag-card">
+          <div class="flag-card" data-section="9-john">
             <div class="flag-card-top">
               <div class="flag-av" style="background:#0d9488;">NP</div>
               <div class="flag-info">
@@ -519,7 +526,7 @@
             </div>
           </div>
 
-          <div class="flag-card">
+          <div class="flag-card" data-section="7-matthew">
             <div class="flag-card-top">
               <div class="flag-av" style="background:#be185d;">UR</div>
               <div class="flag-info">
@@ -543,6 +550,32 @@
 
 <script>
   lucide.createIcons();
+
+  function filterFlaggedStudents() {
+    const selected = document.getElementById('flagSectionFilter').value;
+    const cards = document.querySelectorAll('#flagGridSingle .flag-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const section = card.getAttribute('data-section');
+      const show = selected === 'all' || section === selected;
+      card.classList.toggle('flag-hidden', !show);
+      if (show) visibleCount++;
+    });
+
+    let emptyMsg = document.getElementById('flagEmptyMsg');
+    if (visibleCount === 0) {
+      if (!emptyMsg) {
+        emptyMsg = document.createElement('div');
+        emptyMsg.id = 'flagEmptyMsg';
+        emptyMsg.className = 'flag-empty-msg';
+        emptyMsg.textContent = 'No flagged students in this section.';
+        document.getElementById('flagGridSingle').appendChild(emptyMsg);
+      }
+    } else if (emptyMsg) {
+      emptyMsg.remove();
+    }
+  }
 
   function toggleDrawer(open) {
     const sidebar = document.getElementById('sidebar');

@@ -173,7 +173,7 @@
       <div class="stat-card green">
         <div class="stat-card-top">
           <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-up">▲ 3%</span>
+          <span class="stat-card-trend trend-up">▲ 3%</span>
         </div>
         <div class="stat-card-num">90%</div>
         <div class="stat-card-label">Passing Rate</div>
@@ -182,7 +182,7 @@
       <div class="stat-card blue">
         <div class="stat-card-top">
           <div class="stat-card-icon"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-up">▲ 1%</span>
+          <span class="stat-card-trend trend-up">▲ 1%</span>
         </div>
         <div class="stat-card-num">92%</div>
         <div class="stat-card-label">Attendance Rate</div>
@@ -191,89 +191,11 @@
       <div class="stat-card red">
         <div class="stat-card-top">
           <div class="stat-card-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
-          <span class="sc-trend trend-down">▼ Needs review</span>
+          <span class="stat-card-trend trend-down">▼ Needs review</span>
         </div>
         <div class="stat-card-num">4</div>
         <div class="stat-card-label">Flagged Students</div>
         <div class="stat-card-sub">Absences or grades below threshold</div>
-      </div>
-    </div>
-
-    <!-- Flagged Students -->
-    <div class="section-title">
-      <h2>Flagged Students</h2>
-      <div class="section-line"></div>
-    </div>
-
-    <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
-      <div class="panel-head">
-        <div class="panel-title">Requires Attention</div>
-        <div class="panel-head-right" style="display:flex;gap:8px;">
-          <select class="filter-select" style="padding:7px 30px 7px 12px;font-size:12px;">
-            <option>All Reasons</option>
-            <option>Absences</option>
-            <option>Low Grades</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="flag-grid">
-
-        <div class="flag-card">
-          <div class="flag-card-top">
-            <div class="flag-av" style="background:var(--red);">BG</div>
-            <div class="flag-info">
-              <div class="flag-name">Ben Garcia</div>
-              <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
-            </div>
-          </div>
-          <div class="flag-reason-row">
-            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
-            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 72</span>
-          </div>
-        </div>
-
-        <div class="flag-card">
-          <div class="flag-card-top">
-            <div class="flag-av" style="background:#7c3aed;">SC</div>
-            <div class="flag-info">
-              <div class="flag-name">Sofia Cruz</div>
-              <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
-            </div>
-          </div>
-          <div class="flag-reason-row">
-            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
-            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
-          </div>
-        </div>
-
-        <div class="flag-card">
-          <div class="flag-card-top">
-            <div class="flag-av" style="background:#be185d;">UR</div>
-            <div class="flag-info">
-              <div class="flag-name">Uma Reyes</div>
-              <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
-            </div>
-          </div>
-          <div class="flag-reason-row">
-            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6 absences</span>
-            <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> English: 74</span>
-          </div>
-        </div>
-
-        <div class="flag-card">
-          <div class="flag-card-top">
-            <div class="flag-av" style="background:#0d9488;">NP</div>
-            <div class="flag-info">
-              <div class="flag-name">Noel Pascual</div>
-              <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
-            </div>
-          </div>
-          <div class="flag-reason-row">
-            <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -492,6 +414,122 @@
 
     </div>
 
+    <!-- Flagged Students -->
+    <!-- EJS: flaggedStudents array grouped server-side or client-filtered from a single flat list.
+         Each card needs data-grade (7-10) and data-reason (space-separated: "absences", "grades", or both)
+         so the tabs + reason filter + search can all operate on the same DOM without a re-fetch. -->
+    <div class="section-title">
+      <h2>Flagged Students</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
+      <div class="panel-head">
+        <div class="panel-title">Requires Attention</div>
+        <span style="font-size:11px;color:var(--gray-400);" id="flaggedCount">4 students</span>
+      </div>
+
+      <!-- Grade level tabs -->
+      <div class="grade-tabs">
+        <div class="grade-tab active" onclick="switchFlagGrade('all', this)">
+          All Grades <span class="tab-count" id="tabCountAll">4</span>
+        </div>
+        <div class="grade-tab" onclick="switchFlagGrade('7', this)">
+          Grade 7 <span class="tab-count" id="tabCount7">0</span>
+        </div>
+        <div class="grade-tab" onclick="switchFlagGrade('8', this)">
+          Grade 8 <span class="tab-count" id="tabCount8">2</span>
+        </div>
+        <div class="grade-tab" onclick="switchFlagGrade('9', this)">
+          Grade 9 <span class="tab-count" id="tabCount9">1</span>
+        </div>
+        <div class="grade-tab" onclick="switchFlagGrade('10', this)">
+          Grade 10 <span class="tab-count" id="tabCount10">1</span>
+        </div>
+      </div>
+
+      <!-- Search + reason filter -->
+      <div class="flag-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+          <input class="search-input" type="text" id="flagSearchInput" placeholder="Search student name..." oninput="filterFlagged()"/>
+        </div>
+        <select class="filter-select" id="flagReasonFilter" style="padding:7px 30px 7px 12px;font-size:12px;" onchange="filterFlagged()">
+          <option value="all">All Reasons</option>
+          <option value="absences">Absences</option>
+          <option value="grades">Low Grades</option>
+        </select>
+      </div>
+
+      <!-- Scrollable card grid — caps height once the list grows -->
+      <div class="flag-grid-scroll">
+        <div class="flag-grid" id="flagGrid">
+
+          <div class="flag-card" data-grade="9" data-reason="absences grades" data-name="ben garcia">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:var(--red);">BG</div>
+              <div class="flag-info">
+                <div class="flag-name">Ben Garcia</div>
+                <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 72</span>
+            </div>
+          </div>
+
+          <div class="flag-card" data-grade="8" data-reason="grades" data-name="sofia cruz">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#7c3aed;">SC</div>
+              <div class="flag-info">
+                <div class="flag-name">Sofia Cruz</div>
+                <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
+            </div>
+          </div>
+
+          <div class="flag-card" data-grade="10" data-reason="absences grades" data-name="uma reyes">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#be185d;">UR</div>
+              <div class="flag-info">
+                <div class="flag-name">Uma Reyes</div>
+                <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6 absences</span>
+              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> English: 74</span>
+            </div>
+          </div>
+
+          <div class="flag-card" data-grade="8" data-reason="absences" data-name="noel pascual">
+            <div class="flag-card-top">
+              <div class="flag-av" style="background:#0d9488;">NP</div>
+              <div class="flag-info">
+                <div class="flag-name">Noel Pascual</div>
+                <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
+              </div>
+            </div>
+            <div class="flag-reason-row">
+              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Empty state, hidden by default, shown when a filter matches nothing -->
+        <div class="flag-empty" id="flagEmpty" style="display:none;">
+          <div class="flag-empty-icon"><i data-lucide="user-check" style="width:20px;height:20px;"></i></div>
+          <div class="flag-empty-title">No flagged students found</div>
+          <div class="flag-empty-text">Try a different grade level, reason, or search term.</div>
+        </div>
+      </div>
+    </div>
 
   </main>
 </div>
@@ -546,6 +584,39 @@
       notifPanel.classList.remove('open');
     }
   });
+
+  // ── FLAGGED STUDENTS: grade tabs + search + reason filter ──
+  // EJS/backend note: replace tabCount hardcoded numbers with server-computed
+  // counts per grade, e.g. tabCount7 = flaggedStudents.filter(s => s.grade === 7).length
+  let activeFlagGrade = 'all';
+
+  function switchFlagGrade(grade, el) {
+    activeFlagGrade = grade;
+    document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    filterFlagged();
+  }
+
+  function filterFlagged() {
+    const search = document.getElementById('flagSearchInput').value.toLowerCase();
+    const reason = document.getElementById('flagReasonFilter').value;
+    const cards = document.querySelectorAll('#flagGrid .flag-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const matchGrade  = activeFlagGrade === 'all' || card.dataset.grade === activeFlagGrade;
+      const matchReason = reason === 'all' || card.dataset.reason.includes(reason);
+      const matchSearch = card.dataset.name.includes(search);
+      const isVisible = matchGrade && matchReason && matchSearch;
+
+      card.style.display = isVisible ? '' : 'none';
+      if (isVisible) visibleCount++;
+    });
+
+    document.getElementById('flaggedCount').textContent = visibleCount + (visibleCount === 1 ? ' student' : ' students');
+    document.getElementById('flagEmpty').style.display = visibleCount === 0 ? 'block' : 'none';
+    document.getElementById('flagGrid').style.display = visibleCount === 0 ? 'none' : 'grid';
+  }
 
   lucide.createIcons();
 </script>
