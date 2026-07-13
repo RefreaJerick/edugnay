@@ -153,16 +153,52 @@
   <main class="main">
 
     <!-- Profile header -->
+    <!-- EJS: avatar background reads from user.avatarColor (defaults to 'navy' if unset) -->
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profileAvatar">
+        <div class="profile-avatar" id="profileAvatar" data-color="navy">
           <span id="avatarInitials">SA</span>
           <img id="avatarImage" src="" alt="" style="display:none;"/>
         </div>
-        <button class="profile-avatar-edit" onclick="document.getElementById('avatarFileInput').click()" title="Change photo">
-          <i data-lucide="camera" style="width:14px;height:14px;"></i>
+        <button class="profile-avatar-edit" id="avatarEditTrigger" onclick="toggleAvatarMenu()" title="Edit avatar">
+          <i data-lucide="pencil" style="width:14px;height:14px;"></i>
+        </button>
+        <!-- Remove button — only visible once a photo is actually set -->
+        <button class="profile-avatar-remove" id="avatarRemoveBtn" onclick="removeAvatarPhoto()" title="Remove photo" style="display:none;">
+          <i data-lucide="x" style="width:12px;height:12px;"></i>
         </button>
         <input type="file" id="avatarFileInput" accept="image/png,image/jpeg" style="display:none;" onchange="handleAvatarUpload(event)"/>
+
+        <!-- Avatar edit popover -->
+        <div class="avatar-menu" id="avatarMenu">
+          <button type="button" class="avatar-menu-item" onclick="document.getElementById('avatarFileInput').click(); closeAvatarMenu();">
+            <i data-lucide="upload" style="width:14px;height:14px;"></i>
+            Upload Photo
+          </button>
+          <button type="button" class="avatar-menu-item" onclick="openAvatarColorMenu()">
+            <i data-lucide="palette" style="width:14px;height:14px;"></i>
+            Change Avatar Color
+          </button>
+
+          <div class="avatar-menu-colors" id="avatarMenuColors">
+            <button type="button" class="avatar-menu-back" onclick="closeAvatarColorMenu()">
+              <i data-lucide="chevron-left" style="width:13px;height:13px;"></i> Back
+            </button>
+            <div class="avatar-color-swatches">
+              <!-- EJS: form action would POST to /admin/profile/avatar-color -->
+              <input type="hidden" name="avatarColor" id="avatarColorInput" value="navy"/>
+              <button type="button" class="avatar-swatch selected" data-color="navy" style="background:var(--navy);" onclick="selectAvatarColor(this,'navy')" title="Navy"></button>
+              <button type="button" class="avatar-swatch" data-color="blue-mid" style="background:var(--blue-mid);" onclick="selectAvatarColor(this,'blue-mid')" title="Blue"></button>
+              <button type="button" class="avatar-swatch" data-color="gold" style="background:var(--gold);" onclick="selectAvatarColor(this,'gold')" title="Gold"></button>
+              <button type="button" class="avatar-swatch" data-color="green" style="background:var(--green);" onclick="selectAvatarColor(this,'green')" title="Green"></button>
+              <button type="button" class="avatar-swatch" data-color="orange" style="background:var(--orange);" onclick="selectAvatarColor(this,'orange')" title="Orange"></button>
+              <button type="button" class="avatar-swatch" data-color="red" style="background:var(--red);" onclick="selectAvatarColor(this,'red')" title="Red"></button>
+              <button type="button" class="avatar-swatch" data-color="purple" style="background:var(--purple);" onclick="selectAvatarColor(this,'purple')" title="Purple"></button>
+              <button type="button" class="avatar-swatch" data-color="teal" style="background:var(--teal);" onclick="selectAvatarColor(this,'teal')" title="Teal"></button>
+              <button type="button" class="avatar-swatch" data-color="magenta" style="background:var(--magenta);" onclick="selectAvatarColor(this,'magenta')" title="Magenta"></button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="profile-header-info">
         <div class="profile-header-name">Sr. Admin</div>
@@ -356,12 +392,72 @@
       document.getElementById('avatarImage').src = e.target.result;
       document.getElementById('avatarImage').style.display = 'block';
       document.getElementById('avatarInitials').style.display = 'none';
+      document.getElementById('avatarRemoveBtn').style.display = 'flex';
     };
     reader.readAsDataURL(file);
   }
 
+  // Removes the uploaded photo and reverts to initials + chosen background color
+  // EJS/backend note: on confirm, also call something like
+  // fetch('/admin/profile/avatar', { method: 'DELETE' }) to clear user.avatarUrl server-side
+  function removeAvatarPhoto() {
+    const img = document.getElementById('avatarImage');
+    img.src = '';
+    img.style.display = 'none';
+    document.getElementById('avatarInitials').style.display = 'block';
+    document.getElementById('avatarFileInput').value = '';
+    document.getElementById('avatarRemoveBtn').style.display = 'none';
+  }
+
+  function toggleAvatarMenu() {
+    document.getElementById('avatarMenu').classList.toggle('open');
+  }
+
+  function closeAvatarMenu() {
+    const menu = document.getElementById('avatarMenu');
+    menu.classList.remove('open');
+    menu.classList.remove('show-colors'); // reset to main view on close
+  }
+
+  function openAvatarColorMenu() {
+    document.getElementById('avatarMenu').classList.add('show-colors');
+  }
+
+  function closeAvatarColorMenu() {
+    document.getElementById('avatarMenu').classList.remove('show-colors');
+  }
+
+  document.addEventListener('click', (e) => {
+    const trigger = document.getElementById('avatarEditTrigger');
+    const menu = document.getElementById('avatarMenu');
+    if (trigger && menu && !trigger.contains(e.target) && !menu.contains(e.target)) {
+      closeAvatarMenu();
+    }
+  });
+
+  // Avatar background color selection
+  // EJS/backend note: on submit, POST avatarColor (from #avatarColorInput)
+  // to something like /admin/profile/avatar-color, save to user.avatarColor,
+  // then server-render data-color="<%= user.avatarColor %>" on page load.
+  function selectAvatarColor(btn, colorName) {
+    document.querySelectorAll('.avatar-swatch').forEach(s => s.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('avatarColorInput').value = colorName;
+    document.getElementById('profileAvatar').dataset.color = colorName;
+    closeAvatarMenu();
+  }
+
   function saveProfile() {
-    alert('Contact number updated.');
+    // EJS/backend note: POST both fields together to /admin/profile, e.g.
+    // fetch('/admin/profile', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     contactNumber: document.getElementById('contactNumberInput').value,
+    //     avatarColor: document.getElementById('avatarColorInput').value
+    //   })
+    // });
+    alert('Profile updated.');
   }
 
   lucide.createIcons();

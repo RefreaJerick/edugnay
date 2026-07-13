@@ -39,8 +39,10 @@
   --purple:      #7c3aed;
   --purple-pale: #fdf4ff;
   --gold-pale:   #fef9ec;
-  --error:      #ef4444;
-  --success:    #22c55e;
+  --error:       #ef4444;
+  --teal:        #0d9488;
+  --magenta:     #be185d;
+  --success:     #22c55e;
   --sidebar-w:   240px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
 }
