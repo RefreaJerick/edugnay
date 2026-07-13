@@ -154,10 +154,6 @@
           <div class="config-nav-icon"><i data-lucide="bell" style="width:14px;height:14px;"></i></div>
           <span class="config-nav-label">Notifications</span>
         </a>
-        <a href="#archive" class="config-nav-item">
-          <div class="config-nav-icon"><i data-lucide="archive" style="width:14px;height:14px;"></i></div>
-          <span class="config-nav-label">Archive</span>
-        </a>
       </div>
 
       <!-- ── RIGHT: Config panels ── -->
@@ -496,51 +492,6 @@
           </div>
         </div>
 
-        <!-- 6. Archive Data -->
-        <div class="config-panel" id="archive">
-          <div class="config-panel-head">
-            <div class="cph-icon" style="background:var(--gray-100);color:var(--gray-500);"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
-            <div class="cph-info">
-              <div class="cph-title">Archive School Year Data</div>
-              <div class="cph-sub">Move completed school year records to archive. This action cannot be undone.</div>
-            </div>
-            <span class="badge badge-gray">Last: S.Y. 2024–2025</span>
-          </div>
-          <div class="config-panel-body">
-            <div class="warn-banner">
-              <div class="warn-icon"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i></div>
-              <div>
-                <div class="warn-title">This action is permanent</div>
-                <div class="warn-text">Archiving a school year moves all grades, attendance records, journal entries, and narrative reports to a read-only archive. Users will no longer be able to edit archived data. Make sure all grades are finalized and all reports are confirmed before archiving.</div>
-              </div>
-            </div>
-            <div class="form-grid-2" style="margin-bottom:16px;">
-              <div class="form-group">
-                <label class="form-label">School Year to Archive</label>
-                <select class="form-select">
-                  <option selected>S.Y. 2024–2025</option>
-                  <option>S.Y. 2023–2024</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Archive Status</label>
-                <input class="form-input" type="text" value="284 students · 8 sections · 4 quarters" readonly style="color:var(--gray-500);cursor:not-allowed;"/>
-              </div>
-            </div>
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <div class="toggle-label">I confirm all data for this school year is finalized</div>
-                <div class="toggle-desc">Enable this toggle to unlock the archive button.</div>
-              </div>
-              <div class="toggle" id="archiveConfirm" onclick="toggleArchiveConfirm()"></div>
-            </div>
-          </div>
-          <div class="config-panel-foot">
-            <button class="btn btn-cancel">Cancel</button>
-            <button class="btn btn-danger" id="archiveBtn" disabled onclick="archiveData()"><i data-lucide="archive" style="width:13px;height:13px;"></i> Archive S.Y. 2024–2025</button>
-          </div>
-        </div>
-
       </div>
     </div>
   </main>
@@ -636,18 +587,6 @@
     const totalEl = document.getElementById('totalVal');
     totalEl.textContent = total + '%';
     totalEl.className = 'weight-total-val ' + (total === 100 ? 'wt-ok' : 'wt-err');
-  }
-
-  // Archive confirm toggle
-  function toggleArchiveConfirm() {
-    const toggle = document.getElementById('archiveConfirm');
-    const btn    = document.getElementById('archiveBtn');
-    toggle.classList.toggle('on');
-    btn.disabled = !toggle.classList.contains('on');
-  }
-
-  function archiveData() {
-    alert('Archive process initiated. S.Y. 2024–2025 data is being moved to read-only archive.');
   }
 
   function saveAll() {

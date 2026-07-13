@@ -607,6 +607,31 @@
           </div>
         </div>
 
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--gray-100);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;">Grading Quarter</span>
+            <select class="form-select" id="quarterSelect" style="width:auto;min-width:157px;" onchange="switchQuarter(this.value)">
+              <option value="Q1">Quarter 1</option>
+              <option value="Q2" selected>Quarter 2 (Active)</option>
+              <option value="Q3">Quarter 3</option>
+              <option value="Q4">Quarter 4</option>
+            </select>
+          </div>
+          <span class="badge badge-gray" id="quarterLockBadge" style="display:none;">
+            <i data-lucide="lock" style="width:10px;height:10px;"></i> Locked
+          </span>
+        </div>
+
+        <div class="publish-banner" id="quarterLockBanner" style="display:none;background:var(--gray-100);">
+          <div class="publish-banner-left">
+            <i data-lucide="lock" style="width:20px;height:20px;color:var(--gray-500);flex-shrink:0;"></i>
+            <div>
+              <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Quarter is Locked</div>
+              <div class="publish-info-sub">This quarter is closed. Scores are read-only. Contact the admin to unlock it in System Config.</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Category filter tabs -->
         <div class="cat-tabs">
           <div class="cat-tab active" onclick="switchCatTab(this,'all')">
@@ -646,191 +671,11 @@
         <div class="table-wrap" style="max-height:520px;overflow-y:auto;">
           <table id="scoreTable">
             <thead>
-              <tr>
+              <tr id="scoreTheadRow">
                 <th class="sticky-col" style="min-width:180px;">#  Student</th>
-                <!-- Written Work -->
-                <th class="comp-head-cell center" data-cat="WW">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Quiz 1</div>
-                    <div class="comp-head-max">/ 50</div>
-                    <div class="comp-head-type type-ww">WW</div>
-                  </div>
-                </th>
-                <th class="comp-head-cell center" data-cat="WW">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Activity 1</div>
-                    <div class="comp-head-max">/ 30</div>
-                    <div class="comp-head-type type-ww">WW</div>
-                  </div>
-                </th>
-                <th class="comp-head-cell center" data-cat="WW">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Seatwork 1</div>
-                    <div class="comp-head-max">/ 20</div>
-                    <div class="comp-head-type type-ww">WW</div>
-                  </div>
-                </th>
-                <!-- Performance Task -->
-                <th class="comp-head-cell center" data-cat="PT">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Perf. Task 1</div>
-                    <div class="comp-head-max">/ 100</div>
-                    <div class="comp-head-type type-pt">PT</div>
-                  </div>
-                </th>
-                <th class="comp-head-cell center" data-cat="PT">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Project</div>
-                    <div class="comp-head-max">/ 100</div>
-                    <div class="comp-head-type type-pt">PT</div>
-                  </div>
-                </th>
-                <th class="comp-head-cell center" data-cat="PT">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Journal</div>
-                    <div class="comp-head-max">/ 50</div>
-                    <div class="comp-head-type type-pt">PT</div>
-                    <!-- <div class="comp-head-locked"><i data-lucide="lock" style="width:9px;height:9px;"></i> Auto · Journals</div> -->
-                  </div>
-                </th>
-                <!-- Quarterly Assessment -->
-                <th class="comp-head-cell center" data-cat="QA">
-                  <div class="comp-head-inner">
-                    <div class="comp-head-name">Qtrly Exam</div>
-                    <div class="comp-head-max">/ 100</div>
-                    <div class="comp-head-type type-qa">QA</div>
-                  </div>
-                </th>
-                <!-- Computed -->
-                <th class="center" style="min-width:80px;background:#f0f4ff;">WW Avg</th>
-                <th class="center" style="min-width:80px;background:#f0f4ff;">PT Avg</th>
-                <th class="center" style="min-width:80px;background:#f0f4ff;">QA</th>
-                <th class="center" style="min-width:100px;background:var(--navy);color:var(--gold);">Final Grade</th>
               </tr>
             </thead>
-            <tbody id="scoreTbody">
-              <!-- Row template: each student -->
-              <tr data-student="Juan Dela Cruz">
-                <td class="sticky-col">
-                  <div class="student-cell">
-                    <div class="student-av av-a" style="width:26px;height:26px;font-size:10px;">JD</div>
-                    <div>
-                      <div class="student-name" style="font-size:12px;">Juan Dela Cruz</div>
-                      <div class="student-num">#1</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="45" min="0" max="50" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="28" min="0" max="30" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="18" min="0" max="20" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="88" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="90" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT">
-                  <input class="score-input readonly-score" type="number" value="45" min="0" max="50" disabled title="Synced from Student Journals page"/>
-                </td>
-                <td class="center" data-cat="QA"><input class="score-input" type="number" value="82" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">91.0</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">89.0</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">82.0</td>
-                <td class="center computed-cell computed-final grade-pass" style="background:var(--blue-xpale);">88</td>
-              </tr>
-              <tr data-student="Ana Santos">
-                <td class="sticky-col">
-                  <div class="student-cell">
-                    <div class="student-av av-b" style="width:26px;height:26px;font-size:10px;">AS</div>
-                    <div>
-                      <div class="student-name" style="font-size:12px;">Ana Santos</div>
-                      <div class="student-num">#2</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="50" min="0" max="50" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="30" min="0" max="30" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="20" min="0" max="20" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="95" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="92" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT">
-                  <input class="score-input readonly-score" type="number" value="50" min="0" max="50" disabled title="Synced from Student Journals page"/>
-                </td>
-                <td class="center" data-cat="QA"><input class="score-input" type="number" value="90" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">100.0</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">93.5</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">90.0</td>
-                <td class="center computed-cell computed-final grade-pass" style="background:var(--blue-xpale);">95</td>
-              </tr>
-              <tr data-student="Ben Garcia">
-                <td class="sticky-col">
-                  <div class="student-cell">
-                    <div class="student-av av-c" style="width:26px;height:26px;font-size:10px;">BG</div>
-                    <div>
-                      <div class="student-name" style="font-size:12px;">Ben Garcia</div>
-                      <div class="student-num">#3</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="30" min="0" max="50" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="18" min="0" max="30" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="12" min="0" max="20" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="70" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="65" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT">
-                  <input class="score-input readonly-score" type="number" value="" placeholder="—" min="0" max="50" disabled title="Synced from Student Journals page"/>
-                </td>
-                <td class="center" data-cat="QA"><input class="score-input" type="number" value="68" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">65.0</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">67.5</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">68.0</td>
-                <td class="center computed-cell computed-final grade-fail" style="background:var(--blue-xpale);">67</td>
-              </tr>
-              <tr data-student="Maria Lopez">
-                <td class="sticky-col">
-                  <div class="student-cell">
-                    <div class="student-av av-d" style="width:26px;height:26px;font-size:10px;">ML</div>
-                    <div>
-                      <div class="student-name" style="font-size:12px;">Maria Lopez</div>
-                      <div class="student-num">#4</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="42" min="0" max="50" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="25" min="0" max="30" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="17" min="0" max="20" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="85" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="88" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT">
-                  <input class="score-input readonly-score" type="number" value="" placeholder="—" min="0" max="50" disabled title="Synced from Student Journals page"/>
-                </td>
-                <td class="center" data-cat="QA"><input class="score-input" type="number" value="80" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">86.7</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">86.5</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">80.0</td>
-                <td class="center computed-cell computed-final grade-pass" style="background:var(--blue-xpale);">85</td>
-              </tr>
-              <tr data-student="Carlo Mendoza">
-                <td class="sticky-col">
-                  <div class="student-cell">
-                    <div class="student-av av-e" style="width:26px;height:26px;font-size:10px;">CM</div>
-                    <div>
-                      <div class="student-name" style="font-size:12px;">Carlo Mendoza</div>
-                      <div class="student-num">#5</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="38" min="0" max="50" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="20" min="0" max="30" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="WW"><input class="score-input" type="number" value="14" min="0" max="20" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="78" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT"><input class="score-input" type="number" value="75" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center" data-cat="PT">
-                  <input class="score-input readonly-score" type="number" value="40" min="0" max="50" disabled title="Synced from Student Journals page"/>
-                </td>
-                <td class="center" data-cat="QA"><input class="score-input" type="number" value="72" min="0" max="100" oninput="computeRow(this)"/></td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">74.0</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">76.5</td>
-                <td class="center computed-cell computed-avg" style="background:#f8faff;">72.0</td>
-                <td class="center computed-cell computed-final grade-warn" style="background:var(--blue-xpale);">76</td>
-              </tr>
-            </tbody>
+            <tbody id="scoreTbody"></tbody>
           </table>
         </div>
         <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);display:flex;justify-content:space-between;align-items:center;">
@@ -845,7 +690,7 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <div class="panel-title">Attendance: Today</div>
+            <div class="panel-title" id="attPanelTitle">Attendance: Today</div>
             <div class="panel-sub">Grade 7 – St. Matthew · Log student attendance for the selected date</div>
           </div>
           <div class="panel-head-actions">
@@ -861,13 +706,23 @@
         <div class="att-toolbar">
           <div style="display:flex;align-items:center;gap:8px;">
             <i data-lucide="calendar" style="width:15px;height:15px;color:var(--gray-400);"></i>
-            <input class="date-input" type="date" id="attDate" value="2025-06-10"/>
+            <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
           </div>
           <div class="att-summary" style="padding:0;border:none;margin:0;">
             <div class="att-summary-item"><div class="att-dot present"></div><span style="color:#16a34a;">Present: <strong id="countP">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot absent"></div><span style="color:var(--red);">Absent: <strong id="countA">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot late"></div><span style="color:#d97706;">Late: <strong id="countL">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot excused"></div><span style="color:var(--blue-mid);">Excused: <strong id="countE">0</strong></span></div>
+          </div>
+        </div>
+
+        <div class="publish-banner" id="attLockBanner" style="display:none;background:var(--red-pale);">
+          <div class="publish-banner-left">
+            <i data-lucide="lock" style="width:20px;height:20px;color:var(--red);flex-shrink:0;"></i>
+            <div>
+              <div class="publish-info-title" style="color:var(--red);">Past Attendance Locked</div>
+              <div class="publish-info-sub">Editing is disabled for this date. Enable "Allow Teachers to Edit Past Attendance" in System Config to make changes.</div>
+            </div>
           </div>
         </div>
 
@@ -1319,6 +1174,30 @@
     });
   }
 
+  /* ── QUARTER LOCK ── */
+  // Mirrors System Config → Academic Year & Lock Previous Quarters. Wire to real config later.
+  const QUARTER_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const ACTIVE_QUARTER = 'Q2';
+  const LOCK_PREVIOUS_QUARTERS = true;
+
+  function switchQuarter(q) {
+    const isPrevious = QUARTER_ORDER.indexOf(q) < QUARTER_ORDER.indexOf(ACTIVE_QUARTER);
+    const locked = isPrevious && LOCK_PREVIOUS_QUARTERS;
+
+    renderScoreTable(q);
+
+    document.getElementById('quarterLockBanner').style.display = locked ? 'flex' : 'none';
+    document.getElementById('quarterLockBadge').style.display = locked ? 'inline-flex' : 'none';
+    document.getElementById('quarterLockTitle').textContent = 'Quarter ' + q.slice(1) + ' is Locked';
+
+    document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(inp => {
+      inp.disabled = locked;
+    });
+
+    const headActions = document.querySelector('#content-scores .panel-head-actions');
+    if (headActions) headActions.style.display = locked ? 'none' : 'flex';
+  }
+
   /* ── COMPONENT TYPE MODAL ── */
   const catMap = {
     WW: { label: 'Written Work (30%)',          cls: 'cat-ww', icon: 'pencil' },
@@ -1354,45 +1233,162 @@
   // Weights (match system config)
   const WEIGHTS = { WW: 0.30, PT: 0.50, QA: 0.20 };
 
-  // Column max scores (index based, matching table columns after sticky)
-  // WW: Quiz1/50, Activity1/30, Seatwork1/20
-  // PT: PT1/100, Project/100
-  // QA: QuarterlyExam/100
-  const COL_MAX = [50, 30, 20, 100, 100, 50, 100];
-  const COL_CAT = ['WW','WW','WW','PT','PT','PT','QA'];
+  // Stand-in for per-quarter components and scores, replace with real data once backend is wired
+  const QUARTER_DATA = {
+    Q1: {
+      components: [
+        { name: 'Quiz 1', max: 20, cat: 'WW' },
+        { name: 'Quiz 2', max: 20, cat: 'WW' },
+        { name: 'Written Report', max: 30, cat: 'WW' },
+        { name: 'Skills Demo', max: 100, cat: 'PT' },
+        { name: 'Journal', max: 50, cat: 'PT', readonly: true },
+        { name: 'Qtrly Exam', max: 100, cat: 'QA' },
+      ],
+      scores: {
+        'Juan Dela Cruz':  [18, 17, 26, 85, 42, 80],
+        'Ana Santos':      [20, 19, 29, 92, 48, 88],
+        'Ben Garcia':      [12, 14, 20, 68, null, 65],
+        'Maria Lopez':     [16, 18, 25, 80, null, 76],
+        'Carlo Mendoza':   [15, 13, 22, 74, 38, 70],
+      }
+    },
+    Q2: {
+      components: [
+        { name: 'Quiz 1', max: 50, cat: 'WW' },
+        { name: 'Activity 1', max: 30, cat: 'WW' },
+        { name: 'Seatwork 1', max: 20, cat: 'WW' },
+        { name: 'Perf. Task 1', max: 100, cat: 'PT' },
+        { name: 'Project', max: 100, cat: 'PT' },
+        { name: 'Journal', max: 50, cat: 'PT', readonly: true },
+        { name: 'Qtrly Exam', max: 100, cat: 'QA' },
+      ],
+      scores: {
+        'Juan Dela Cruz':  [45, 28, 18, 88, 90, 45, 82],
+        'Ana Santos':      [50, 30, 20, 95, 92, 50, 90],
+        'Ben Garcia':      [30, 18, 12, 70, 65, null, 68],
+        'Maria Lopez':     [42, 25, 17, 85, 88, null, 80],
+        'Carlo Mendoza':   [38, 20, 14, 78, 75, 40, 72],
+      }
+    },
+    Q3: { components: [], scores: {} },
+    Q4: { components: [], scores: {} },
+  };
+
+  const STUDENT_AVATARS = {
+    'Juan Dela Cruz': ['av-a', 'JD'],
+    'Ana Santos':     ['av-b', 'AS'],
+    'Ben Garcia':     ['av-c', 'BG'],
+    'Maria Lopez':    ['av-d', 'ML'],
+    'Carlo Mendoza':  ['av-e', 'CM'],
+  };
+
+  function renderScoreTable(quarter) {
+    const data = QUARTER_DATA[quarter];
+    const theadRow = document.getElementById('scoreTheadRow');
+    const tbody = document.getElementById('scoreTbody');
+
+    theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
+
+    if (!data || data.components.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px;">No score components have been added for this quarter yet.</td></tr>';
+      return;
+    }
+
+    const typeClass = { WW: 'type-ww', PT: 'type-pt', QA: 'type-qa' };
+
+    data.components.forEach(c => {
+      const th = document.createElement('th');
+      th.className = 'comp-head-cell center';
+      th.dataset.cat = c.cat;
+      th.innerHTML =
+        '<div class="comp-head-inner">' +
+          '<div class="comp-head-name">' + c.name + '</div>' +
+          '<div class="comp-head-max">/ ' + c.max + '</div>' +
+          '<div class="comp-head-type ' + typeClass[c.cat] + '">' + c.cat + '</div>' +
+        '</div>';
+      theadRow.appendChild(th);
+    });
+
+    ['WW Avg', 'PT Avg', 'QA'].forEach(label => {
+      const th = document.createElement('th');
+      th.className = 'center';
+      th.style.cssText = 'min-width:80px;background:#f0f4ff;';
+      th.textContent = label;
+      theadRow.appendChild(th);
+    });
+
+    const finalTh = document.createElement('th');
+    finalTh.className = 'center';
+    finalTh.style.cssText = 'min-width:100px;background:var(--navy);color:var(--gold);';
+    finalTh.textContent = 'Final Grade';
+    theadRow.appendChild(finalTh);
+
+    tbody.innerHTML = '';
+    Object.keys(data.scores).forEach((studentName, idx) => {
+      const avatar = STUDENT_AVATARS[studentName] || ['av-a', '??'];
+      const scores = data.scores[studentName];
+
+      let cellsHtml =
+        '<td class="sticky-col">' +
+          '<div class="student-cell">' +
+            '<div class="student-av ' + avatar[0] + '" style="width:26px;height:26px;font-size:10px;">' + avatar[1] + '</div>' +
+            '<div>' +
+              '<div class="student-name" style="font-size:12px;">' + studentName + '</div>' +
+              '<div class="student-num">#' + (idx + 1) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</td>';
+
+      data.components.forEach((c, i) => {
+        const val = scores[i];
+        const displayVal = val !== null ? val : '';
+        if (c.readonly) {
+          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input readonly-score" type="number" value="' + displayVal + '" placeholder="' + (val === null ? 'n/a' : '') + '" min="0" max="' + c.max + '" disabled title="Synced from Student Journals page"/></td>';
+        } else {
+          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" oninput="computeRow(this)"/></td>';
+        }
+      });
+
+      cellsHtml +=
+        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
+        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
+        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
+        '<td class="center computed-cell computed-final" style="background:var(--blue-xpale);">0</td>';
+
+      const tr = document.createElement('tr');
+      tr.dataset.student = studentName;
+      tr.innerHTML = cellsHtml;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
+  }
 
   function computeRow(input) {
     const row = input.closest('tr');
-    const inputs = row.querySelectorAll('.score-input');
-
-    // Validate max
     const max = parseFloat(input.max);
     const val = parseFloat(input.value);
     input.classList.toggle('over-max', !isNaN(val) && val > max);
 
-    // Group scores by category
-    const groups = { WW: { sum: 0, maxSum: 0, count: 0 }, PT: { sum: 0, maxSum: 0, count: 0 }, QA: { sum: 0, maxSum: 0, count: 0 } };
-    inputs.forEach((inp, i) => {
-      const cat   = COL_CAT[i];
-      const mxVal = COL_MAX[i];
-      const v     = parseFloat(inp.value);
+    const groups = { WW: { sum: 0, maxSum: 0 }, PT: { sum: 0, maxSum: 0 }, QA: { sum: 0, maxSum: 0 } };
+
+    row.querySelectorAll('td[data-cat] .score-input').forEach(inp => {
+      const cat = inp.closest('td').dataset.cat;
+      const mx = parseFloat(inp.max);
+      const v = parseFloat(inp.value);
       if (!isNaN(v)) {
-        groups[cat].sum    += v;
-        groups[cat].maxSum += mxVal;
-        groups[cat].count++;
+        groups[cat].sum += v;
+        groups[cat].maxSum += mx;
       }
     });
 
-    // Average as percentage per category
     const wwAvg = groups.WW.maxSum > 0 ? (groups.WW.sum / groups.WW.maxSum) * 100 : 0;
     const ptAvg = groups.PT.maxSum > 0 ? (groups.PT.sum / groups.PT.maxSum) * 100 : 0;
     const qaAvg = groups.QA.maxSum > 0 ? (groups.QA.sum / groups.QA.maxSum) * 100 : 0;
 
-    // Weighted final
     const final = (wwAvg * WEIGHTS.WW) + (ptAvg * WEIGHTS.PT) + (qaAvg * WEIGHTS.QA);
     const rounded = Math.round(final);
 
-    // Update computed cells
     const computed = row.querySelectorAll('.computed-cell');
     if (computed.length >= 4) {
       computed[0].textContent = wwAvg.toFixed(1);
@@ -1404,6 +1400,67 @@
   }
 
   /* ── ATTENDANCE ── */
+
+  // Mirrors System Config → Attendance settings. Wire to real config values later.
+  const APP_TODAY = '2025-06-10';
+  const ALLOW_EDIT_PAST_ATTENDANCE = true; // flip to test the lock
+
+  // Built from the Attendance History table below — stand-in until a real per-day store exists
+  const ATTENDANCE_RECORDS = {
+    '2025-06-02': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'P','Carlo Mendoza':'L' },
+    '2025-06-03': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'E','Carlo Mendoza':'P' },
+    '2025-06-04': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'P','Carlo Mendoza':'A' },
+    '2025-06-05': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'P','Maria Lopez':'P','Carlo Mendoza':'P' },
+    '2025-06-06': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'P','Carlo Mendoza':'P' },
+    '2025-06-09': { 'Juan Dela Cruz':'L','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'P','Carlo Mendoza':'P' },
+    '2025-06-10': { 'Juan Dela Cruz':'P','Ana Santos':'P','Ben Garcia':'A','Maria Lopez':'P','Carlo Mendoza':'L' },
+  };
+
+  function formatAttDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function loadAttendanceForDate(dateStr) {
+    if (dateStr > APP_TODAY) {
+      alert('You cannot select a future date.');
+      dateStr = APP_TODAY;
+      document.getElementById('attDate').value = APP_TODAY;
+    }
+
+    // rest of the function stays the same
+    const title = document.getElementById('attPanelTitle');
+    title.textContent = dateStr === APP_TODAY ? 'Attendance: Today' : 'Attendance: ' + formatAttDate(dateStr);
+
+    const isPast = dateStr < APP_TODAY;
+    const locked = isPast && !ALLOW_EDIT_PAST_ATTENDANCE;
+    document.getElementById('attLockBanner').style.display = locked ? 'flex' : 'none';
+
+    const record = ATTENDANCE_RECORDS[dateStr]; // undefined = no saved record for that day
+
+    document.querySelectorAll('#attTbody tr').forEach(row => {
+      const name = row.querySelector('.student-name').textContent;
+      const group = row.querySelector('.att-btn-group');
+      const remarksInput = row.querySelector('td:last-child input');
+      const status = record ? record[name] : 'P';
+
+      group.querySelectorAll('.att-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.disabled = locked;
+      });
+      const match = group.querySelector('.att-btn.' + status);
+      if (match) match.classList.add('selected');
+
+      remarksInput.value = (dateStr === APP_TODAY) ? remarksInput.defaultValue : '';
+      remarksInput.disabled = locked;
+    });
+
+    document.querySelector('#content-attendance .top-btn.secondary').disabled = locked; // All Present
+    document.querySelector('#content-attendance .top-btn.primary').disabled = locked;   // Save Attendance
+
+    updateAttCount();
+  }
+
   function setAtt(btn, status) {
     const group = btn.closest('.att-btn-group');
     group.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
@@ -1543,6 +1600,9 @@
     btn.classList.add('selected');
     renderAssignments();
   }
+
+
+  renderScoreTable(ACTIVE_QUARTER);
 
   renderAssignments();
 
