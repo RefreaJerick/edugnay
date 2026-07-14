@@ -70,7 +70,7 @@
     .ayc-body { border-top: 1px solid var(--gray-100); }
     .archive-year-card.collapsed .ayc-body { display: none; }
 
-    .ayc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--gray-100); }
+    .ayc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--gray-100); }
     .ayc-stat { background: var(--white); padding: 14px 16px; text-align: center; }
     .ayc-stat-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; color: var(--gray-800); line-height: 1; }
     .ayc-stat-label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
@@ -214,11 +214,11 @@
         <div style="color:var(--red);flex-shrink:0;margin-top:2px;"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:3px;">Are you absolutely sure?</div>
-          <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">You are about to archive <strong>S.Y. 2024–2025</strong>. All records will become read-only. Teachers will no longer be able to edit grades, attendance, or reports from this school year.</div>
+          <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">You are about to archive <strong id="confirmYearLabel">S.Y. 2025–2026</strong>. All records will become read-only. Teachers will no longer be able to edit grades or attendance from this school year.</div>
         </div>
       </div>
-      <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Type <strong style="color:var(--gray-800);">ARCHIVE 2024-2025</strong> to confirm:</div>
-      <input class="form-input" type="text" id="confirmInput" placeholder="ARCHIVE 2024-2025" oninput="checkConfirmInput()"/>
+      <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Type <strong style="color:var(--gray-800);" id="confirmRequiredText">ARCHIVE 2025-2026</strong> to confirm:</div>
+      <input class="form-input" type="text" id="confirmInput" placeholder="ARCHIVE 2025-2026" oninput="checkConfirmInput()"/>
     </div>
     <div class="modal-footer">
       <button class="btn btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
@@ -232,7 +232,7 @@
   <div class="modal view-modal">
     <div class="modal-head">
       <div>
-        <div class="modal-title">S.Y. 2024–2025: Archive</div>
+        <div class="modal-title" id="viewModalTitle">S.Y. 2024–2025: Archive</div>
         <div class="modal-sub">Read-only archived records</div>
       </div>
       <button class="modal-close" onclick="closeModal('viewModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
@@ -244,60 +244,23 @@
       </div>
 
       <div class="view-stats-grid">
-        <div class="view-stat">
-          <div class="view-stat-num">271</div>
-          <div class="view-stat-label">Students</div>
-        </div>
-        <div class="view-stat">
-          <div class="view-stat-num">22</div>
-          <div class="view-stat-label">Teachers</div>
-        </div>
-        <div class="view-stat">
-          <div class="view-stat-num">8</div>
-          <div class="view-stat-label">Sections</div>
-        </div>
-        <div class="view-stat">
-          <div class="view-stat-num">1,084</div>
-          <div class="view-stat-label">Reports</div>
-        </div>
-        <div class="view-stat">
-          <div class="view-stat-num">92%</div>
-          <div class="view-stat-label">Pass Rate</div>
-        </div>
-        <div class="view-stat">
-          <div class="view-stat-num">89%</div>
-          <div class="view-stat-label">Attendance</div>
-        </div>
+        <div class="view-stat"><div class="view-stat-num" id="viewStatStudents">271</div><div class="view-stat-label">Students</div></div>
+        <div class="view-stat"><div class="view-stat-num" id="viewStatTeachers">22</div><div class="view-stat-label">Teachers</div></div>
+        <div class="view-stat"><div class="view-stat-num" id="viewStatSections">8</div><div class="view-stat-label">Sections</div></div>
+        <div class="view-stat"><div class="view-stat-num" id="viewStatPassRate">92%</div><div class="view-stat-label">Pass Rate</div></div>
+        <div class="view-stat"><div class="view-stat-num" id="viewStatAttendance">89%</div><div class="view-stat-label">Attendance</div></div>
       </div>
 
       <div class="view-section-title">Sections</div>
       <table class="view-table">
-        <thead>
-          <tr><th>Section</th><th>Grade</th><th>Students</th><th>Pass Rate</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>St. Matthew</td><td>Grade 7</td><td>38</td><td style="color:#16a34a;font-weight:700;">94%</td></tr>
-          <tr><td>St. Mark</td><td>Grade 7</td><td>34</td><td style="color:#16a34a;font-weight:700;">91%</td></tr>
-          <tr><td>St. Luke</td><td>Grade 8</td><td>36</td><td style="color:#16a34a;font-weight:700;">89%</td></tr>
-          <tr><td>St. John</td><td>Grade 8</td><td>33</td><td style="color:#d97706;font-weight:700;">85%</td></tr>
-          <tr><td>St. Peter</td><td>Grade 9</td><td>35</td><td style="color:#16a34a;font-weight:700;">93%</td></tr>
-          <tr><td>St. Paul</td><td>Grade 9</td><td>35</td><td style="color:#16a34a;font-weight:700;">91%</td></tr>
-          <tr><td>St. James</td><td>Grade 10</td><td>32</td><td style="color:#16a34a;font-weight:700;">97%</td></tr>
-          <tr><td>St. Thomas</td><td>Grade 10</td><td>28</td><td style="color:#d97706;font-weight:700;">82%</td></tr>
-        </tbody>
+        <thead><tr><th>Section</th><th>Grade</th><th>Students</th><th>Pass Rate</th></tr></thead>
+        <tbody id="viewSectionsBody"></tbody>
       </table>
 
       <div class="view-section-title">Grading Quarters</div>
       <table class="view-table">
-        <thead>
-          <tr><th>Quarter</th><th>Period</th><th>Pass Rate</th><th>Reports</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Quarter 1</td><td>Jun – Aug 2024</td><td style="color:#16a34a;font-weight:700;">93%</td><td>271</td></tr>
-          <tr><td>Quarter 2</td><td>Sep – Nov 2024</td><td style="color:#16a34a;font-weight:700;">91%</td><td>271</td></tr>
-          <tr><td>Quarter 3</td><td>Jan – Mar 2025</td><td style="color:#16a34a;font-weight:700;">90%</td><td>271</td></tr>
-          <tr><td>Quarter 4</td><td>Apr – Jun 2025</td><td style="color:#d97706;font-weight:700;">88%</td><td>271</td></tr>
-        </tbody>
+        <thead><tr><th>Quarter</th><th>Period</th><th>Pass Rate</th></tr></thead>
+        <tbody id="viewQuartersBody"></tbody>
       </table>
     </div>
     <div class="modal-footer">
@@ -432,7 +395,7 @@
       <div class="warn-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
       <div>
         <div class="warn-title">Archived data is read-only</div>
-        <div class="warn-text">Once a school year is archived, all grades, attendance records, journal entries, and narrative reports from that year become permanently read-only. Archiving cannot be undone. Make sure all data for the school year is finalized and all reports are confirmed before proceeding.</div>
+        <div class="warn-text">Once a school year is archived, all grades, attendance records, and journal entries from that year become permanently read-only. Archiving cannot be undone. Make sure all data for the school year is finalized before proceeding.</div>
       </div>
     </div>
 
@@ -451,16 +414,16 @@
         <div class="stat-card-sub">Across all archived years</div>
       </div>
       <div class="stat-card green">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">2,981</div>
-        <div class="stat-card-label">Archived Reports</div>
-        <div class="stat-card-sub">Narrative reports stored</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">23</div>
+        <div class="stat-card-label">Archived Sections</div>
+        <div class="stat-card-sub">Across all archived years</div>
       </div>
       <div class="stat-card gray">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="hard-drive" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">1.2<span style="font-size:16px;font-weight:600;">GB</span></div>
-        <div class="stat-card-label">Storage Used</div>
-        <div class="stat-card-sub">Total archived data size</div>
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="trending-up" style="width:18px;height:18px;"></i></div></div>
+        <div class="stat-card-num">89%</div>
+        <div class="stat-card-label">Avg Pass Rate</div>
+        <div class="stat-card-sub">Across archived years</div>
       </div>
     </div>
 
@@ -480,8 +443,8 @@
         <div class="archive-list">
 
           <!-- S.Y. 2024-2025 -->
-          <div class="archive-year-card" id="card2024">
-            <div class="ayc-head" onclick="toggleCard('card2024')">
+          <div class="archive-year-card" data-year="2024-2025">
+            <div class="ayc-head" onclick="toggleCard(this)">
               <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
               <div class="ayc-info">
                 <div class="ayc-title">S.Y. 2024–2025</div>
@@ -498,46 +461,29 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">271</div><div class="ayc-stat-label">Students</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">8</div><div class="ayc-stat-label">Sections</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">22</div><div class="ayc-stat-label">Teachers</div></div>
-                <div class="ayc-stat"><div class="ayc-stat-num">1,084</div><div class="ayc-stat-label">Reports</div></div>
               </div>
               <div class="ayc-quarters">
                 <div class="ayc-quarters-title">Quarter Pass Rates</div>
                 <div class="quarter-rows">
-                  <div class="quarter-row">
-                    <span class="quarter-label">Quarter 1</span>
-                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:93%;"></div></div><span class="quarter-pass">93%</span></div>
-                    <span class="quarter-date">Jun – Aug 2024</span>
-                  </div>
-                  <div class="quarter-row">
-                    <span class="quarter-label">Quarter 2</span>
-                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:91%;"></div></div><span class="quarter-pass">91%</span></div>
-                    <span class="quarter-date">Sep – Nov 2024</span>
-                  </div>
-                  <div class="quarter-row">
-                    <span class="quarter-label">Quarter 3</span>
-                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:90%;"></div></div><span class="quarter-pass">90%</span></div>
-                    <span class="quarter-date">Jan – Mar 2025</span>
-                  </div>
-                  <div class="quarter-row">
-                    <span class="quarter-label">Quarter 4</span>
-                    <div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div>
-                    <span class="quarter-date">Apr – Jun 2025</span>
-                  </div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:93%;"></div></div><span class="quarter-pass">93%</span></div><span class="quarter-date">Jun – Aug 2024</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:91%;"></div></div><span class="quarter-pass">91%</span></div><span class="quarter-date">Sep – Nov 2024</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 3</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:90%;"></div></div><span class="quarter-pass">90%</span></div><span class="quarter-date">Jan – Mar 2025</span></div>
+                  <div class="quarter-row"><span class="quarter-label">Quarter 4</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div><span class="quarter-date">Apr – Jun 2025</span></div>
                 </div>
               </div>
               <div class="ayc-footer">
                 <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
                 <div class="ayc-footer-actions">
                   <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
-                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                  <button class="footer-btn view" onclick="openViewModal('2024-2025')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- S.Y. 2023-2024 -->
-          <div class="archive-year-card collapsed" id="card2023">
-            <div class="ayc-head" onclick="toggleCard('card2023')">
+          <div class="archive-year-card collapsed" data-year="2023-2024">
+            <div class="ayc-head" onclick="toggleCard(this)">
               <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
               <div class="ayc-info">
                 <div class="ayc-title">S.Y. 2023–2024</div>
@@ -553,7 +499,6 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">258</div><div class="ayc-stat-label">Students</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">8</div><div class="ayc-stat-label">Sections</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">20</div><div class="ayc-stat-label">Teachers</div></div>
-                <div class="ayc-stat"><div class="ayc-stat-num">1,032</div><div class="ayc-stat-label">Reports</div></div>
               </div>
               <div class="ayc-quarters">
                 <div class="ayc-quarters-title">Quarter Pass Rates</div>
@@ -568,15 +513,15 @@
                 <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
                 <div class="ayc-footer-actions">
                   <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
-                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                  <button class="footer-btn view" onclick="openViewModal('2023-2024')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- S.Y. 2022-2023 -->
-          <div class="archive-year-card collapsed" id="card2022">
-            <div class="ayc-head" onclick="toggleCard('card2022')">
+          <div class="archive-year-card collapsed" data-year="2022-2023">
+            <div class="ayc-head" onclick="toggleCard(this)">
               <div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
               <div class="ayc-info">
                 <div class="ayc-title">S.Y. 2022–2023</div>
@@ -593,7 +538,6 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">214</div><div class="ayc-stat-label">Students</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">7</div><div class="ayc-stat-label">Sections</div></div>
                 <div class="ayc-stat"><div class="ayc-stat-num">18</div><div class="ayc-stat-label">Teachers</div></div>
-                <div class="ayc-stat"><div class="ayc-stat-num">865</div><div class="ayc-stat-label">Reports</div></div>
               </div>
               <div class="ayc-quarters">
                 <div class="ayc-quarters-title">Quarter Pass Rates</div>
@@ -608,7 +552,7 @@
                 <div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div>
                 <div class="ayc-footer-actions">
                   <button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button>
-                  <button class="footer-btn view" onclick="openModal('viewModal')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
+                  <button class="footer-btn view" onclick="openViewModal('2022-2023')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button>
                 </div>
               </div>
             </div>
@@ -655,10 +599,6 @@
                   <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
                   <span class="check-text">All grades encoded</span>
                 </div>
-                <div class="check-item warn">
-                  <div class="check-icon-wrap"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i></div>
-                  <span class="check-text">23 reports pending confirmation</span>
-                </div>
                 <div class="check-item done">
                   <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
                   <span class="check-text">All parents notified</span>
@@ -670,18 +610,13 @@
               </div>
             </div>
 
-            <div style="background:var(--orange-pale);border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;">
-              <div style="color:var(--orange);flex-shrink:0;margin-top:1px;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i></div>
-              <div style="font-size:12px;color:#92400e;line-height:1.6;"><strong>23 narrative reports</strong> are still pending teacher confirmation. It is recommended to resolve these before archiving.</div>
-            </div>
-
             <!-- Confirm toggle -->
             <div class="confirm-toggle-row">
               <div class="toggle" id="archiveToggle" onclick="toggleArchive()"></div>
               <span class="confirm-text">I confirm all data for S.Y. 2025–2026 is finalized and ready to archive.</span>
             </div>
 
-            <button class="btn-archive-full disabled" id="archiveNowBtn" onclick="openModal('confirmModal')">
+            <button class="btn-archive-full disabled" id="archiveNowBtn" disabled onclick="openConfirmModal('2025-2026')">
               <i data-lucide="archive" style="width:14px;height:14px;"></i>
               Archive S.Y. 2025–2026
             </button>
@@ -696,41 +631,90 @@
 </div>
 
 <script>
+  const archiveData = {
+    '2024-2025': {
+      passRate: '92%', attendance: '89%', teachers: 22, sections: 8, students: 271,
+      quarters: [
+        { label: 'Quarter 1', period: 'Jun – Aug 2024', passRate: 93 },
+        { label: 'Quarter 2', period: 'Sep – Nov 2024', passRate: 91 },
+        { label: 'Quarter 3', period: 'Jan – Mar 2025', passRate: 90 },
+        { label: 'Quarter 4', period: 'Apr – Jun 2025', passRate: 88 },
+      ],
+      sectionsTable: [
+        { name: 'St. Matthew', grade: 'Grade 7', students: 38, passRate: 94 },
+        { name: 'St. Mark', grade: 'Grade 7', students: 34, passRate: 91 },
+        { name: 'St. Luke', grade: 'Grade 8', students: 36, passRate: 89 },
+        { name: 'St. John', grade: 'Grade 8', students: 33, passRate: 85 },
+        { name: 'St. Peter', grade: 'Grade 9', students: 35, passRate: 93 },
+        { name: 'St. Paul', grade: 'Grade 9', students: 35, passRate: 91 },
+        { name: 'St. James', grade: 'Grade 10', students: 32, passRate: 97 },
+        { name: 'St. Thomas', grade: 'Grade 10', students: 28, passRate: 82 },
+      ],
+    },
+    '2023-2024': {
+      passRate: '89%', attendance: '87%', teachers: 20, sections: 8, students: 258,
+      quarters: [
+        { label: 'Quarter 1', period: 'Jun – Aug 2023', passRate: 90 },
+        { label: 'Quarter 2', period: 'Sep – Nov 2023', passRate: 88 },
+        { label: 'Quarter 3', period: 'Jan – Mar 2024', passRate: 87 },
+        { label: 'Quarter 4', period: 'Apr – Jun 2024', passRate: 86 },
+      ],
+      sectionsTable: [
+        { name: 'St. Matthew', grade: 'Grade 7', students: 36, passRate: 91 },
+        { name: 'St. Mark', grade: 'Grade 7', students: 33, passRate: 88 },
+        { name: 'St. Luke', grade: 'Grade 8', students: 34, passRate: 86 },
+        { name: 'St. John', grade: 'Grade 8', students: 31, passRate: 84 },
+        { name: 'St. Peter', grade: 'Grade 9', students: 32, passRate: 90 },
+        { name: 'St. Paul', grade: 'Grade 9', students: 32, passRate: 89 },
+        { name: 'St. James', grade: 'Grade 10', students: 30, passRate: 93 },
+        { name: 'St. Thomas', grade: 'Grade 10', students: 30, passRate: 80 },
+      ],
+    },
+    '2022-2023': {
+      passRate: '86%', attendance: '85%', teachers: 18, sections: 7, students: 214,
+      quarters: [
+        { label: 'Quarter 1', period: 'Jun – Aug 2022', passRate: 88 },
+        { label: 'Quarter 2', period: 'Sep – Nov 2022', passRate: 85 },
+        { label: 'Quarter 3', period: 'Jan – Mar 2023', passRate: 87 },
+        { label: 'Quarter 4', period: 'Apr – Jun 2023', passRate: 84 },
+      ],
+      sectionsTable: [
+        { name: 'St. Matthew', grade: 'Grade 7', students: 32, passRate: 89 },
+        { name: 'St. Mark', grade: 'Grade 7', students: 30, passRate: 85 },
+        { name: 'St. Luke', grade: 'Grade 8', students: 31, passRate: 84 },
+        { name: 'St. John', grade: 'Grade 8', students: 29, passRate: 81 },
+        { name: 'St. Peter', grade: 'Grade 9', students: 30, passRate: 88 },
+        { name: 'St. Paul', grade: 'Grade 9', students: 30, passRate: 86 },
+        { name: 'St. James', grade: 'Grade 10', students: 32, passRate: 90 },
+      ],
+    },
+  };
+
+  let currentConfirmYear = '';
+
   function toggleDrawer(open) {
     const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
     document.body.classList.toggle('drawer-open', isOpen);
   }
 
-  function toggleNavGroup(group) {
-    group.classList.toggle('open');
-    // group.querySelector('.nav-group-toggle').classList.toggle('active');
-  }
+  function toggleNavGroup(group) { group.classList.toggle('open'); }
 
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function(e) {
-      // e.preventDefault();
+    item.addEventListener('click', function() {
       document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
       this.classList.add('active');
       toggleDrawer(false);
     });
   });
 
-  function toggleNotifDropdown() {
-    document.getElementById('tbNotifPanel').classList.toggle('open');
-  }
-
+  function toggleNotifDropdown() { document.getElementById('tbNotifPanel').classList.toggle('open'); }
   function markAllNotifRead() {
     document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
-    document.querySelector('.tb-notif-dot').style.display = 'none';
   }
-
   function toggleProfileDropdown() {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    trigger.classList.toggle('open');
-    dropdown.classList.toggle('open');
+    document.getElementById('tbProfileTrigger').classList.toggle('open');
+    document.getElementById('tbProfileDropdown').classList.toggle('open');
   }
-
   document.addEventListener('click', (e) => {
     const trigger = document.getElementById('tbProfileTrigger');
     const dropdown = document.getElementById('tbProfileDropdown');
@@ -738,7 +722,6 @@
       trigger.classList.remove('open');
       dropdown.classList.remove('open');
     }
-
     const notifTrigger = document.getElementById('tbNotifTrigger');
     const notifPanel = document.getElementById('tbNotifPanel');
     if (notifTrigger && notifPanel && !notifTrigger.contains(e.target) && !notifPanel.contains(e.target)) {
@@ -748,41 +731,78 @@
 
   function openModal(id) { document.getElementById(id).classList.add('open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
   document.querySelectorAll('.modal-backdrop').forEach(m => {
     m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
   });
-
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
   });
 
-  // Collapse/expand archive year cards
-  function toggleCard(id) {
-    document.getElementById(id).classList.toggle('collapsed');
+  // Collapse/expand — works off the clicked head, not a hardcoded id
+  function toggleCard(headEl) {
+    headEl.closest('.archive-year-card').classList.toggle('collapsed');
   }
 
-  // Archive confirm toggle
-  function toggleArchive() {
-    const toggle = document.getElementById('archiveToggle');
-    const btn    = document.getElementById('archiveNowBtn');
-    toggle.classList.toggle('on');
-    const isOn = toggle.classList.contains('on');
-    btn.className = 'btn-archive-full ' + (isOn ? 'enabled' : 'disabled');
-    if (!isOn) btn.setAttribute('onclick', '');
-    else btn.setAttribute('onclick', "openModal('confirmModal')");
+  // View modal — populated per year from archiveData
+  function openViewModal(year) {
+    const data = archiveData[year];
+    if (!data) return;
+
+    document.getElementById('viewModalTitle').textContent = `S.Y. ${year}: Archive`;
+    document.getElementById('viewStatStudents').textContent = data.students;
+    document.getElementById('viewStatTeachers').textContent = data.teachers;
+    document.getElementById('viewStatSections').textContent = data.sections;
+    document.getElementById('viewStatPassRate').textContent = data.passRate;
+    document.getElementById('viewStatAttendance').textContent = data.attendance;
+
+    document.getElementById('viewSectionsBody').innerHTML = data.sectionsTable.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.grade}</td>
+        <td>${s.students}</td>
+        <td style="color:${s.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${s.passRate}%</td>
+      </tr>`).join('');
+
+    document.getElementById('viewQuartersBody').innerHTML = data.quarters.map(q => `
+      <tr>
+        <td>${q.label}</td>
+        <td>${q.period}</td>
+        <td style="color:${q.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${q.passRate}%</td>
+      </tr>`).join('');
+
+    openModal('viewModal');
   }
 
-  // Confirm archive text input
+  // Confirm modal — target year set dynamically, not hardcoded
+  function openConfirmModal(year) {
+    currentConfirmYear = year;
+    document.getElementById('confirmYearLabel').textContent = `S.Y. ${year}`;
+    document.getElementById('confirmRequiredText').textContent = `ARCHIVE ${year}`;
+    document.getElementById('confirmInput').placeholder = `ARCHIVE ${year}`;
+    document.getElementById('confirmInput').value = '';
+    document.getElementById('confirmArchiveBtn').disabled = true;
+    openModal('confirmModal');
+  }
+
   function checkConfirmInput() {
     const val = document.getElementById('confirmInput').value;
-    const btn = document.getElementById('confirmArchiveBtn');
-    btn.disabled = val.trim() !== 'ARCHIVE 2024-2025';
+    document.getElementById('confirmArchiveBtn').disabled = val.trim() !== `ARCHIVE ${currentConfirmYear}`;
   }
 
   function finalizeArchive() {
     closeModal('confirmModal');
-    alert('S.Y. 2024–2025 has been archived successfully. All records are now read-only.');
+    alert(`S.Y. ${currentConfirmYear} has been archived successfully. All records are now read-only.`);
+  }
+
+  // Confirm-toggle checkbox on the right panel — uses the real disabled attribute now
+  function toggleArchive() {
+    const toggle = document.getElementById('archiveToggle');
+    const btn = document.getElementById('archiveNowBtn');
+    toggle.classList.toggle('on');
+    const isOn = toggle.classList.contains('on');
+    btn.classList.toggle('enabled', isOn);
+    btn.classList.toggle('disabled', !isOn);
+    btn.disabled = !isOn;
   }
 
   lucide.createIcons();
