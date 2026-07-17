@@ -604,45 +604,11 @@
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Recent Activity</div>
-          <a href="#" class="panel-action">View all →</a>
+          <a href="./edugnay-admin-activity.html" class="panel-action">View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
         </div>
-        <div class="activity-list">
-          <div class="activity-item">
-            <div class="act-dot green"></div>
-            <div class="act-body">
-              <div class="act-text"><strong>Ms. Maria Reyes</strong> confirmed a narrative report for Grade 7 – St. Matthew.</div>
-              <div class="act-time">Today, 9:42 AM</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="act-dot blue"></div>
-            <div class="act-body">
-              <div class="act-text"><strong>Admin</strong> assigned Mr. Paolo Tan to Grade 8 – Mathematics.</div>
-              <div class="act-time">Today, 8:15 AM</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="act-dot orange"></div>
-            <div class="act-body">
-              <div class="act-text"><strong>3 new parent accounts</strong> are pending approval.</div>
-              <div class="act-time">Yesterday, 4:30 PM</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="act-dot gold"></div>
-            <div class="act-body">
-              <div class="act-text"><strong>System Config</strong> updated: Q2 grading period activated.</div>
-              <div class="act-time">Yesterday, 2:00 PM</div>
-            </div>
-          </div>
-          <div class="activity-item">
-            <div class="act-dot red"></div>
-            <div class="act-body">
-              <div class="act-text"><strong>Ana Santos</strong> flagged by system: 4 consecutive absences.</div>
-              <div class="act-time">May 24, 10:05 AM</div>
-            </div>
-          </div>
-        </div>
+        
+        <div class="activity-list" id="activityList"></div>
+
       </div>
 
       <!-- Quick Actions -->
@@ -965,6 +931,94 @@
   }
 
   setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
+
+  /* ── RECENT ACTIVITY ──
+   Columns to match later in Postgres:
+   id | actor | action | icon | color | tag | created_at
+   (date_group and time-of-day are computed, not stored) */
+  const RECENT_ACTIVITY = [
+    {
+      id: 4,
+      actor: 'Admin',
+      action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."',
+      icon: 'megaphone',
+      color: 'purple',
+      tag: 'Announcement',
+      created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
+    },
+    {
+      id: 3,
+      actor: 'Admin',
+      action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.',
+      icon: 'user-check',
+      color: 'blue',
+      tag: 'Assignment',
+      created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
+    },
+    {
+      id: 2,
+      actor: 'System Config',
+      action: 'updated: Q2 grading period activated.',
+      icon: 'settings-2',
+      color: 'gold',
+      tag: 'Config',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
+    },
+    {
+      id: 1,
+      actor: 'Ana Santos',
+      action: 'flagged by system: 4 consecutive absences.',
+      icon: 'alert-triangle',
+      color: 'red',
+      tag: 'Alert',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+    }
+  ];
+
+  function formatDateGroup(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  }
+
+  function formatTime(dateStr) {
+    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function renderActivityList() {
+    const container = document.getElementById('activityList');
+    const sorted = [...RECENT_ACTIVITY].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    let html = '';
+    let lastGroup = null;
+
+    sorted.forEach(item => {
+      const group = formatDateGroup(item.created_at);
+      if (group !== lastGroup) {
+        html += `<div class="activity-group-label">${group}</div>`;
+        lastGroup = group;
+      }
+      html += `
+        <div class="activity-item">
+          <div class="act-icon ${item.color}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+          <div class="act-body">
+            <div class="act-text"><strong>${item.actor}</strong> ${item.action}</div>
+            <div class="act-time">${formatTime(item.created_at)}</div>
+          </div>
+          <span class="act-tag">${item.tag}</span>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  renderActivityList();
   
 </script>
 
