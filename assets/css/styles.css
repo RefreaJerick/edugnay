@@ -42,6 +42,11 @@
   --error:       #ef4444;
   --teal:        #0d9488;
   --magenta:     #be185d;
+  --green-dark:   #16a34a;
+  --green-darker: #15803d;
+  --orange-dark:  #d97706;
+  --gold-dark:    #92400e;
+  --red-dark:     #991b1b;
   --success:     #22c55e;
   --sidebar-w:   240px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
