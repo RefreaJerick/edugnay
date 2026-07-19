@@ -470,7 +470,7 @@
       <div class="tb-notif">
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          
+          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
         </button>
 
         <div class="tb-notif-panel" id="tbNotifPanel">
@@ -479,8 +479,8 @@
             <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
           </div>
 
-          <div class="tb-notif-list">
-            <div class="tb-notif-empty">
+          <div class="tb-notif-list" id="tbNotifList">
+            <div class="tb-notif-empty" id="tbNotifEmpty">
               <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
               <div class="tb-notif-empty-title">No notifications yet</div>
               <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
@@ -1019,6 +1019,47 @@
   }
 
   renderActivityList();
+
+  const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
+
+  function getReopenRequests() {
+    try { return JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function renderAdminReopenNotifs() {
+    const list = document.getElementById('tbNotifList');
+    const empty = document.getElementById('tbNotifEmpty');
+    const dot = document.getElementById('tbNotifDot');
+
+    const pending = getReopenRequests()
+      .filter(r => r.status === 'pending')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (dot) dot.style.display = pending.length ? '' : 'none';
+    if (!list) return;
+    if (!pending.length) { if (empty) empty.style.display = ''; return; }
+    if (empty) empty.style.display = 'none';
+
+    list.innerHTML = pending.map(r => `
+      <a class="tb-notif-item unread" href="edugnay-admin-system-config.html#reopen-requests">
+        <div class="tb-notif-icon gold">
+          <i data-lucide="unlock" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="tb-notif-body">
+          <div class="tb-notif-head">
+            <div class="tb-notif-title">Reopen requested: Q${r.quarter.slice(1)}</div>
+            <span class="tb-notif-tag">Grades</span>
+          </div>
+          <div class="tb-notif-desc">${r.teacher} — ${r.section} · ${r.subject}</div>
+          <div class="tb-notif-time">${new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+        </div>
+      </a>
+    `).join('');
+    lucide.createIcons();
+  }
+
+  renderAdminReopenNotifs();
   
 </script>
 

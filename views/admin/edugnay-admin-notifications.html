@@ -158,10 +158,12 @@
         <div class="notif-panel-title">All Notifications</div>
       </div>
 
-      <div class="notif-empty">
-        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:24px;height:24px;"></i></div>
-        <div class="notif-empty-title">No notifications yet</div>
-        <div class="notif-empty-text">You'll see announcements, alerts, and assignment updates here as they happen.</div>
+      <div id="notifFullList">
+        <div class="notif-empty" id="notifEmptyState">
+          <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:24px;height:24px;"></i></div>
+          <div class="notif-empty-title">No notifications yet</div>
+          <div class="notif-empty-text">You'll see announcements, alerts, and assignment updates here as they happen.</div>
+        </div>
       </div>
     </div>
 
@@ -203,6 +205,46 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') toggleDrawer(false);
   });
+
+  const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
+
+  function getReopenRequests() {
+    try { return JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function renderFullNotifList() {
+    const empty = document.getElementById('notifEmptyState');
+    const container = document.getElementById('notifFullList');
+
+    const pending = getReopenRequests()
+      .filter(r => r.status === 'pending')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (!pending.length) return;
+    empty.style.display = 'none';
+
+    const html = pending.map(r => `
+      <a class="tb-notif-item unread" href="edugnay-admin-system-config.html#reopen-requests" style="border-radius:10px;margin-bottom:8px;">
+        <div class="tb-notif-icon gold">
+          <i data-lucide="unlock" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="tb-notif-body">
+          <div class="tb-notif-head">
+            <div class="tb-notif-title">Reopen requested: Q${r.quarter.slice(1)}</div>
+            <span class="tb-notif-tag">Grades</span>
+          </div>
+          <div class="tb-notif-desc">${r.teacher} — ${r.section} · ${r.subject}</div>
+          <div class="tb-notif-time">${new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+        </div>
+      </a>
+    `).join('');
+
+    container.insertAdjacentHTML('beforeend', html);
+    lucide.createIcons();
+  }
+
+  renderFullNotifList();
 </script>
 
 </body>

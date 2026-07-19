@@ -240,6 +240,33 @@
   </div>
 </div>
 
+<!-- ══════ REQUEST QUARTER REOPEN MODAL ══════ -->
+<div class="modal-backdrop" id="reopenRequestModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Request Quarter Reopen</div>
+        <div class="modal-sub" id="reopenModalSub">Ask the admin to unlock this quarter for your section.</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('reopenRequestModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Reason for Reopen</label>
+        <textarea class="form-input" id="reopenReasonInput" rows="4" style="resize:vertical;font-family:'Plus Jakarta Sans',sans-serif;" placeholder="e.g. Need to correct Quiz 2 score for Ben Garcia — entered wrong value."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeModal('reopenRequestModal')">Cancel</button>
+      <button class="btn btn-save" onclick="submitReopenRequest()">
+        <i data-lucide="send" style="width:13px;height:13px;"></i> Send Request
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -349,7 +376,6 @@
               <div class="tb-notif-body">
                 <div class="tb-notif-head">
                   <div class="tb-notif-title">5 reports awaiting confirmation</div>
-                  <span class="tb-notif-tag">Report</span>
                 </div>
                 <div class="tb-notif-desc">Gr. 7 – St. Matthew narrative reports are ready for your review.</div>
                 <div class="tb-notif-time">1 hour ago</div>
@@ -633,9 +659,10 @@
             <i data-lucide="lock" style="width:20px;height:20px;color:var(--gray-500);flex-shrink:0;"></i>
             <div>
               <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Quarter is Locked</div>
-              <div class="publish-info-sub">This quarter is closed. Scores are read-only. Contact the admin to unlock it in System Config.</div>
+              <div class="publish-info-sub" id="quarterLockDesc">This quarter is closed. Scores are read-only. Contact the admin to unlock it in System Config.</div>
             </div>
           </div>
+          <div id="quarterLockAction"></div>
         </div>
 
         <!-- Category filter tabs -->
@@ -1185,16 +1212,105 @@
   const QUARTER_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
   const ACTIVE_QUARTER = 'Q2';
   const LOCK_PREVIOUS_QUARTERS = true;
+  const CURRENT_TEACHER = 'Ms. Maria Reyes';
+  const CURRENT_SECTION = 'Grade 7 – St. Matthew';
+  const CURRENT_SUBJECT = 'Values Education';
+  const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
+  let pendingReopenQuarter = null;
+
+  function getReopenRequests() {
+    try { return JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveReopenRequests(list) {
+    localStorage.setItem(REOPEN_STORE_KEY, JSON.stringify(list));
+  }
+
+  function findReopenRequest(quarter) {
+    return getReopenRequests()
+      .filter(r => r.section === CURRENT_SECTION && r.subject === CURRENT_SUBJECT && r.quarter === quarter)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+  }
+
+  function openReopenModal() {
+    document.getElementById('reopenModalSub').textContent =
+      'Ask the admin to unlock Quarter ' + pendingReopenQuarter.slice(1) + ' for ' + CURRENT_SECTION + ' · ' + CURRENT_SUBJECT + '.';
+    document.getElementById('reopenReasonInput').value = '';
+    openModal('reopenRequestModal');
+  }
+
+  function submitReopenRequest() {
+    const reason = document.getElementById('reopenReasonInput').value.trim();
+    if (!reason) { alert('Please describe why you need this quarter reopened.'); return; }
+
+    const requests = getReopenRequests();
+    requests.push({
+      id: 'RQ-' + Date.now(),
+      teacher: CURRENT_TEACHER,
+      section: CURRENT_SECTION,
+      subject: CURRENT_SUBJECT,
+      quarter: pendingReopenQuarter,
+      reason: reason,
+      status: 'pending',
+      adminNote: '',
+      createdAt: new Date().toISOString()
+    });
+    saveReopenRequests(requests);
+
+    closeModal('reopenRequestModal');
+    switchQuarter(pendingReopenQuarter);
+  }
+
+  function renderLockBannerState(q, locked, reopened) {
+    pendingReopenQuarter = q;
+    const req = findReopenRequest(q);
+    const titleEl  = document.getElementById('quarterLockTitle');
+    const descEl   = document.getElementById('quarterLockDesc');
+    const actionEl = document.getElementById('quarterLockAction');
+    const banner   = document.getElementById('quarterLockBanner');
+
+    if (reopened) {
+      banner.style.background = '#f0fdf4';
+      titleEl.style.color = '#16a34a';
+      titleEl.textContent = 'Quarter ' + q.slice(1) + ' Temporarily Reopened';
+      descEl.textContent = 'The admin approved your reopen request' + (req.adminNote ? ' — "' + req.adminNote + '"' : '') + '. Scores are editable again for this section.';
+      actionEl.innerHTML = '<span class="badge badge-green"><i data-lucide="unlock" style="width:10px;height:10px;"></i> Reopened</span>';
+    } else if (req && req.status === 'pending') {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = 'Reopen Requested — Awaiting Admin Response';
+      descEl.textContent = 'You asked to reopen Quarter ' + q.slice(1) + ' on ' +
+        new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '. You\'ll be notified once the admin responds.';
+      actionEl.innerHTML = '<span class="badge badge-gray"><i data-lucide="clock" style="width:10px;height:10px;"></i> Pending</span>';
+    } else if (req && req.status === 'denied') {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = 'Reopen Request Denied';
+      descEl.textContent = req.adminNote ? 'Admin note: "' + req.adminNote + '"' : 'This quarter is closed. Scores are read-only.';
+      actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
+    } else {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = 'Quarter ' + q.slice(1) + ' is Locked';
+      descEl.textContent = 'This quarter is closed. Scores are read-only. You can request the admin to reopen it.';
+      actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Reopen</button>';
+    }
+    lucide.createIcons();
+  }
 
   function switchQuarter(q) {
     const isPrevious = QUARTER_ORDER.indexOf(q) < QUARTER_ORDER.indexOf(ACTIVE_QUARTER);
-    const locked = isPrevious && LOCK_PREVIOUS_QUARTERS;
+    const req = findReopenRequest(q);
+    const reopened = !!(req && req.status === 'approved');
+    const locked = isPrevious && LOCK_PREVIOUS_QUARTERS && !reopened;
 
     renderScoreTable(q);
 
-    document.getElementById('quarterLockBanner').style.display = locked ? 'flex' : 'none';
+    const showBanner = locked || reopened;
+    document.getElementById('quarterLockBanner').style.display = showBanner ? 'flex' : 'none';
     document.getElementById('quarterLockBadge').style.display = locked ? 'inline-flex' : 'none';
-    document.getElementById('quarterLockTitle').textContent = 'Quarter ' + q.slice(1) + ' is Locked';
+    if (showBanner) renderLockBannerState(q, locked, reopened);
 
     document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(inp => {
       inp.disabled = locked;

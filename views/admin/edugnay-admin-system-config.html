@@ -83,7 +83,7 @@
       <div class="tb-notif">
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          
+          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
         </button>
 
         <div class="tb-notif-panel" id="tbNotifPanel">
@@ -141,6 +141,11 @@
         <a href="#academic" class="config-nav-item active">
           <div class="config-nav-icon"><i data-lucide="calendar" style="width:14px;height:14px;"></i></div>
           <span class="config-nav-label">Academic Year</span>
+        </a>
+        <a href="#reopen-requests" class="config-nav-item">
+          <div class="config-nav-icon"><i data-lucide="unlock" style="width:14px;height:14px;"></i></div>
+          <span class="config-nav-label">Reopen Requests</span>
+          <span class="badge badge-gray" id="reopenNavBadge" style="display:none;margin-left:auto;font-size:10px;">0</span>
         </a>
         <a href="#grading" class="config-nav-item">
           <div class="config-nav-icon"><i data-lucide="percent" style="width:14px;height:14px;"></i></div>
@@ -232,6 +237,23 @@
           </div>
         </div>
         </form>
+
+        <!-- 1.5 Quarter Reopen Requests -->
+        <div class="config-panel" id="reopen-requests">
+          <div class="config-panel-head">
+            <div class="cph-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="unlock" style="width:18px;height:18px;"></i></div>
+            <div class="cph-info">
+              <div class="cph-title">Quarter Reopen Requests</div>
+              <div class="cph-sub">Teachers can request a locked quarter be reopened for a specific section and subject.</div>
+            </div>
+            <span class="badge badge-gray" id="reopenPanelCount">0 pending</span>
+          </div>
+          <div class="config-panel-body" style="padding-top:0;">
+            <div id="reopenRequestList">
+              <div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px;">No pending reopen requests.</div>
+            </div>
+          </div>
+        </div>
 
         <!-- 2. Grading Components & Weights -->
         <form id="gradingConfigForm" method="post" action="/config/grading/update">
@@ -592,6 +614,85 @@
   function saveAll() {
     alert('All configuration changes saved successfully.');
   }
+
+  const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
+
+  function getReopenRequests() {
+    try { return JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveReopenRequests(list) {
+    localStorage.setItem(REOPEN_STORE_KEY, JSON.stringify(list));
+  }
+
+  function renderReopenRequests() {
+    const listEl   = document.getElementById('reopenRequestList');
+    const countEl  = document.getElementById('reopenPanelCount');
+    const navBadge = document.getElementById('reopenNavBadge');
+    const dot      = document.getElementById('tbNotifDot');
+
+    const pending = getReopenRequests()
+      .filter(r => r.status === 'pending')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    countEl.textContent = pending.length + ' pending';
+    countEl.className = 'badge ' + (pending.length ? 'badge-orange' : 'badge-gray');
+    if (navBadge) { navBadge.style.display = pending.length ? '' : 'none'; navBadge.textContent = pending.length; }
+    if (dot) dot.style.display = pending.length ? '' : 'none';
+
+    if (!pending.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px;">No pending reopen requests.</div>';
+      return;
+    }
+
+    listEl.innerHTML = pending.map(r => {
+      const dateLabel = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return `
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--gray-100);">
+          <div style="width:34px;height:34px;border-radius:8px;background:var(--gold-pale);color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i data-lucide="unlock" style="width:16px;height:16px;"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--gray-800);">Q${r.quarter.slice(1)} · ${r.section} · ${r.subject}</div>
+            <div style="font-size:12px;color:var(--gray-500);margin:2px 0 6px;">Requested by ${r.teacher} · ${dateLabel}</div>
+            <div style="font-size:12px;color:var(--gray-700);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:7px;padding:8px 10px;">${r.reason}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button class="top-btn secondary" style="color:var(--red);border-color:#fecaca;" onclick="denyReopenRequest('${r.id}')"><i data-lucide="x" style="width:13px;height:13px;"></i> Deny</button>
+            <button class="top-btn secondary" style="color:#16a34a;border-color:#bbf7d0;" onclick="approveReopenRequest('${r.id}')"><i data-lucide="check" style="width:13px;height:13px;"></i> Approve</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    lucide.createIcons();
+  }
+
+  function approveReopenRequest(id) {
+    const note = prompt('Optional note to the teacher (e.g. "Reopened until Friday only"):', '');
+    if (note === null) return;
+    const all = getReopenRequests();
+    const req = all.find(r => r.id === id);
+    if (!req) return;
+    req.status = 'approved';
+    req.adminNote = note;
+    saveReopenRequests(all);
+    renderReopenRequests();
+  }
+
+  function denyReopenRequest(id) {
+    const note = prompt('Optional reason for the teacher:', '');
+    if (note === null) return;
+    const all = getReopenRequests();
+    const req = all.find(r => r.id === id);
+    if (!req) return;
+    req.status = 'denied';
+    req.adminNote = note;
+    saveReopenRequests(all);
+    renderReopenRequests();
+  }
+
+  renderReopenRequests();
 
   lucide.createIcons();
 </script>
