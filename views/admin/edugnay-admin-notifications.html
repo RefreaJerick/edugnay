@@ -10,125 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
+  <link rel="stylesheet" href="../../assets/css/admin/notifications.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <style>
-    .notif-page-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-    .notif-filters { display: flex; gap: 6px; }
-    .notif-filter-btn {
-      border: 1px solid var(--gray-200);
-      background: var(--white);
-      color: var(--gray-600);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .notif-filter-btn.active {
-      background: var(--navy);
-      border-color: var(--navy);
-      color: var(--white);
-    }
-    .notif-mark-read-all {
-      border: none;
-      background: none;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--blue-mid);
-      cursor: pointer;
-    }
-
-    .notif-group-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--gray-400);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin: 20px 0 8px;
-    }
-    .notif-group-label:first-child { margin-top: 0; }
-
-    .notif-page-panel {
-      background: var(--white);
-      border: 1px solid var(--gray-200);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .notif-page-item {
-      display: flex;
-      gap: 14px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--gray-100);
-      cursor: pointer;
-      position: relative;
-    }
-    .notif-page-item:last-child { border-bottom: none; }
-    .notif-page-item:hover { background: var(--gray-50); }
-
-    .notif-page-item.unread::before {
-      content: "";
-      position: absolute;
-      left: 7px;
-      top: 20px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--blue-mid);
-    }
-    .notif-page-item.unread { padding-left: 26px; }
-
-    .notif-page-icon {
-      flex-shrink: 0;
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .notif-page-body { min-width: 0; flex: 1; }
-    .notif-page-title { font-size: 13.5px; font-weight: 700; color: var(--gray-800); margin-bottom: 3px; }
-    .notif-page-desc { font-size: 12.5px; color: var(--gray-500); line-height: 1.5; margin-bottom: 5px; }
-    .notif-page-time { font-size: 11px; color: var(--gray-400); }
-
-    .notif-empty {
-      padding: 72px 24px;
-      text-align: center;
-    }
-
-    .notif-empty-icon {
-      width: 52px;
-      height: 52px;
-      margin: 0 auto 16px;
-      border-radius: 14px;
-      background: var(--gray-100);
-      color: var(--gray-400);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .notif-empty-title {
-      font-size: 14.5px;
-      font-weight: 700;
-      color: var(--gray-700);
-      margin-bottom: 6px;
-    }
-
-    .notif-empty-text {
-      font-size: 12.5px;
-      color: var(--gray-400);
-      line-height: 1.6;
-      max-width: 280px;
-      margin: 0 auto;
-    }
-  </style>
 </head>
 <body>
 
@@ -270,11 +153,15 @@
   <!-- ══════ MAIN ══════ -->
   <main class="main">
 
-    <div class="notif-page-panel">
+    <div class="notif-panel">
+      <div class="notif-panel-head">
+        <div class="notif-panel-title">All Notifications</div>
+      </div>
+
       <div class="notif-empty">
-        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:26px;height:26px;"></i></div>
+        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:24px;height:24px;"></i></div>
         <div class="notif-empty-title">No notifications yet</div>
-        <div class="notif-empty-text">You're all caught up.</div>
+        <div class="notif-empty-text">You'll see announcements, alerts, and assignment updates here as they happen.</div>
       </div>
     </div>
 
@@ -295,7 +182,6 @@
 
   function toggleNavGroup(group) {
     group.classList.toggle('open');
-    // group.querySelector('.nav-group-toggle').classList.toggle('active');
   }
 
   function toggleProfileDropdown() {
@@ -314,34 +200,10 @@
     }
   });
 
-  function filterNotifs(mode, btn) {
-    document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    document.querySelectorAll('.notif-page-item').forEach(item => {
-      if (mode === 'unread') {
-        item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
-      } else {
-        item.style.display = 'flex';
-      }
-    });
-
-    ['notifGroupToday', 'notifGroupEarlier'].forEach(id => {
-      const group = document.getElementById(id);
-      const visibleItems = group.querySelectorAll('.notif-page-item[style*="flex"], .notif-page-item:not([style])');
-      const hasVisible = Array.from(group.querySelectorAll('.notif-page-item')).some(i => i.style.display !== 'none');
-      group.previousElementSibling.style.display = hasVisible ? 'block' : 'none';
-      group.style.display = hasVisible ? 'block' : 'none';
-    });
-  }
-
-  function markAllRead() {
-    document.querySelectorAll('.notif-page-item.unread').forEach(item => item.classList.remove('unread'));
-  }
-
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') toggleDrawer(false);
   });
 </script>
+
 </body>
 </html>

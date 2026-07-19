@@ -104,6 +104,31 @@
       </div>
     </div>
     <div class="topbar-right">
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          
+        </button>
+
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+          </div>
+
+          <div class="tb-notif-list">
+            <div class="tb-notif-empty">
+              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+              <div class="tb-notif-empty-title">No notifications yet</div>
+              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            </div>
+          </div>
+
+          <div class="tb-notif-panel-foot">
+            <a href="edugnay-admin-notifications.html">More notifications</a>
+          </div>
+        </div>
+      </div>
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
           <div class="tb-avatar admin">SA</div>
@@ -190,6 +215,16 @@
   function toggleNavGroup(group) {
     group.classList.toggle('open');
   }
+
+  function toggleNotifDropdown() {
+    document.getElementById('tbNotifPanel').classList.toggle('open');
+  }
+
+  function markAllNotifRead() {
+    document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
+    document.querySelector('.tb-notif-dot').style.display = 'none';
+  }
+
 
   function toggleProfileDropdown() {
     const trigger = document.getElementById('tbProfileTrigger');
