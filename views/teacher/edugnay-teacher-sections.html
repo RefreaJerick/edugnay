@@ -1213,6 +1213,7 @@
   const ACTIVE_QUARTER = 'Q2';
   const LOCK_PREVIOUS_QUARTERS = true;
   const CURRENT_TEACHER = 'Ms. Maria Reyes';
+  const CURRENT_TEACHER_ID = 'TCH-002'; // mock ID, replace with session user_id once backend is wired
   const CURRENT_SECTION = 'Grade 7 – St. Matthew';
   const CURRENT_SUBJECT = 'Values Education';
   const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
@@ -1229,7 +1230,7 @@
 
   function findReopenRequest(quarter) {
     return getReopenRequests()
-      .filter(r => r.section === CURRENT_SECTION && r.subject === CURRENT_SUBJECT && r.quarter === quarter)
+      .filter(r => r.teacherId === CURRENT_TEACHER_ID && r.section === CURRENT_SECTION && r.subject === CURRENT_SUBJECT && r.quarter === quarter)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
   }
 
@@ -1247,6 +1248,7 @@
     const requests = getReopenRequests();
     requests.push({
       id: 'RQ-' + Date.now(),
+      teacherId: CURRENT_TEACHER_ID,
       teacher: CURRENT_TEACHER,
       section: CURRENT_SECTION,
       subject: CURRENT_SUBJECT,
