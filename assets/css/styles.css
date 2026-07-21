@@ -878,97 +878,48 @@ body.drawer-open .sidebar {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
   border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 10px;
-  padding: 16px 22px;
+  padding: 22px 24px;
   margin-bottom: 24px;
-  /* box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15); */
 }
 
-.grading-banner-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.grading-period-badge {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
-  color: #fff;
+.grading-welcome-name {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
-  flex-shrink: 0;
+  color: #fff;
+  letter-spacing: -0.3px;
+  margin-bottom: 8px;
 }
 
-.grading-label {
-  font-size: 0.72rem;
-  font-weight: 600;
+.grading-welcome-date {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.grading-period-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 18px;
+}
+
+.grading-period-label {
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(212, 175, 55, 0.8);
-  margin-bottom: 3px;
+  color: rgba(212, 175, 55, 0.85);
+  margin-bottom: 4px;
 }
 
-.grading-value {
-  font-size: 1rem;
+.grading-period-value {
+  font-size: 0.88rem;
   font-weight: 700;
   color: #fff;
-}
-
-.grading-banner-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.grading-deadline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.grading-deadline strong {
-  color: #fff;
-  font-weight: 600;
-}
-
-.grading-deadline i {
-  color: var(--gold);
-  flex-shrink: 0;
-}
-
-.grading-status-pill {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(22, 163, 74, 0.15);
-  border: 1px solid rgba(22, 163, 74, 0.35);
-  color: #4ade80;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 5px 13px;
-  border-radius: 999px;
-}
-
-.grading-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 6px #4ade80;
-  animation: pulse-dot 1.8s ease-in-out infinite;
 }
 
 /* Sidebar subnav */
@@ -1895,6 +1846,16 @@ html, body {
   .topbar { flex-wrap: wrap; padding: 16px 20px; }
   .hamburger { display: grid; }
   .topbar-profile { display: block; }
+}
+
+@media (max-width: 710px) {
+  .grading-welcome {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .grading-period-card {
+    width: 100%;
+  }
 }
 
 @media (max-width: 580px) {

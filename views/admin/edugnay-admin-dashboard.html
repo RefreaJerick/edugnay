@@ -546,25 +546,17 @@
   ══════════════════════ -->
   <main class="main">
 
-    <!-- GRADING PERIOD BANNER -->
-    <div class="grading-banner">
-      <div class="grading-banner-left">
-        <div class="grading-period-badge">Q2</div>
-        <div class="grading-info">
-          <div class="grading-label">Active Grading Period</div>
-          <div class="grading-value">2nd Quarter · S.Y. 2024–2025</div>
-        </div>
-      </div>
-      <div class="grading-banner-right">
-        <div class="grading-deadline">
-          <i data-lucide="clock" style="width:14px;height:14px;"></i>
-          <span>Quarter ends: <strong>June 20, 2025</strong></span>
-        </div>
-        <div class="grading-status-pill">
-          <i data-lucide="circle-check" style="width:13px;height:13px;color:#4ade80;"></i> Q2 Ongoing
-        </div>
-      </div>
+  <!-- WELCOME BANNER -->
+  <div class="grading-banner">
+    <div class="grading-welcome">
+      <div class="grading-welcome-name">Welcome back, Juan!</div>
+      <div class="grading-welcome-date" id="currentDate"></div>
     </div>
+    <div class="grading-period-card">
+      <div class="grading-period-label">Grading Period</div>
+      <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+    </div>
+  </div>
 
     <!-- System announcement -->
     <!-- <div class="announce-banner">
@@ -679,6 +671,14 @@
 </div>
 
 <script>
+  document.getElementById('currentDate').textContent =
+  new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   function openAccountModal() {
     document.getElementById('accountModalBackdrop').classList.add('open');
   }
