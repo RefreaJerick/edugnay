@@ -198,7 +198,7 @@ function confirmLogout() {
   // TODO on backend conversion: replace with POST /auth/logout,
   // clear session cookie, then redirect
   localStorage.clear(); // wipes mock data (reopen requests, read-state, etc.)
-  window.location.href = '../../../index.html'; // adjust to your actual login page path
+  window.location.href = '/index.html'; // adjust to your actual login page path
 }
 
 document.getElementById('logoutModalBackdrop')?.addEventListener('click', function (e) {
