@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
   <link rel="stylesheet" href="../../assets/css/admin/notifications.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/admin/shell.js"></script>
 </head>
 <body>
 
@@ -153,17 +154,25 @@
   <!-- ══════ MAIN ══════ -->
   <main class="main">
 
+    <div class="notif-filterbar">
+      <div class="notif-filters" id="notifTypeFilters">
+        <button class="notif-filter-btn active" onclick="setNotifFilter('all', this)">All</button>
+        <button class="notif-filter-btn" onclick="setNotifFilter('unread', this)">Unread</button>
+      </div>
+      <button class="notif-mark-read-all" onclick="markAllRead()">Mark all as read</button>
+    </div>
+
     <div class="notif-panel">
       <div class="notif-panel-head">
         <div class="notif-panel-title">All Notifications</div>
       </div>
 
-      <div id="notifFullList">
-        <div class="notif-empty" id="notifEmptyState">
-          <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:24px;height:24px;"></i></div>
-          <div class="notif-empty-title">No notifications yet</div>
-          <div class="notif-empty-text">You'll see announcements, alerts, and assignment updates here as they happen.</div>
-        </div>
+      <div class="notif-list" id="notifList"></div>
+
+      <div class="notif-empty" id="notifEmptyState">
+        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+        <div class="notif-empty-title" id="notifEmptyTitle">No notifications yet</div>
+        <div class="notif-empty-text" id="notifEmptyText">You'll see reopen requests here as they happen.</div>
       </div>
     </div>
 
@@ -173,78 +182,111 @@
 <script>
   lucide.createIcons();
 
-  function toggleDrawer(open) {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
-    sidebar.classList.toggle('open', isOpen);
-    overlay.classList.toggle('open', isOpen);
-    document.body.classList.toggle('drawer-open', isOpen);
-  }
+  let activeNotifFilter = 'all';
 
-  function toggleNavGroup(group) {
-    group.classList.toggle('open');
-  }
-
-  function toggleProfileDropdown() {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    trigger.classList.toggle('open');
-    dropdown.classList.toggle('open');
-  }
-
-  document.addEventListener('click', (e) => {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
-      trigger.classList.remove('open');
-      dropdown.classList.remove('open');
-    }
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') toggleDrawer(false);
-  });
-
-  const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
-
-  function getReopenRequests() {
-    try { return JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || []; }
-    catch { return []; }
-  }
-
-  function renderFullNotifList() {
-    const empty = document.getElementById('notifEmptyState');
-    const container = document.getElementById('notifFullList');
-
-    const pending = getReopenRequests()
+  function getNotifItems() {
+    const readIds = getReadIds();
+    return getReopenRequests()
       .filter(r => r.status === 'pending')
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .map(r => ({
+        id: r.createdAt,
+        icon: 'unlock',
+        color: 'gold',
+        title: `Reopen requested: Q${r.quarter.slice(1)}`,
+        desc: `${r.teacher} — ${r.section} · ${r.subject}`,
+        read: readIds.includes(r.createdAt),
+        created_at: r.createdAt
+      }))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
 
-    if (!pending.length) return;
-    empty.style.display = 'none';
+  function formatDateGroup(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  }
 
-    const html = pending.map(r => `
-      <a class="tb-notif-item unread" href="edugnay-admin-system-config.html#reopen-requests" style="border-radius:10px;margin-bottom:8px;">
-        <div class="tb-notif-icon gold">
-          <i data-lucide="unlock" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="tb-notif-body">
-          <div class="tb-notif-head">
-            <div class="tb-notif-title">Reopen requested: Q${r.quarter.slice(1)}</div>
-            <span class="tb-notif-tag">Grades</span>
+  function formatTime(dateStr) {
+    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function setNotifFilter(mode, btn) {
+    document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeNotifFilter = mode;
+    renderNotifList();
+  }
+
+  function markAllRead() {
+    setReadIds(getNotifItems().map(n => n.id));
+    renderNotifList();
+  }
+
+  function markRead(id) {
+    const ids = getReadIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      setReadIds(ids);
+    }
+  }
+
+  function goToNotif() {
+    window.location.href = 'edugnay-admin-system-config.html#reopen-requests';
+  }
+
+  function renderNotifList() {
+    const container = document.getElementById('notifList');
+    const emptyState = document.getElementById('notifEmptyState');
+    const emptyTitle = document.getElementById('notifEmptyTitle');
+    const emptyText = document.getElementById('notifEmptyText');
+
+    const all = getNotifItems();
+    const filtered = activeNotifFilter === 'unread' ? all.filter(n => !n.read) : all;
+
+    if (!filtered.length) {
+      container.innerHTML = '';
+      emptyState.style.display = 'flex';
+      if (activeNotifFilter === 'unread' && all.length) {
+        emptyTitle.textContent = 'No unread notifications';
+        emptyText.textContent = "You're all caught up.";
+      } else {
+        emptyTitle.textContent = 'No notifications yet';
+        emptyText.textContent = "You'll see reopen requests here as they happen.";
+      }
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    let html = '';
+    let lastGroup = null;
+
+    filtered.forEach(n => {
+      const group = formatDateGroup(n.created_at);
+      if (group !== lastGroup) {
+        html += `<div class="notif-group-label">${group}</div>`;
+        lastGroup = group;
+      }
+      html += `
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead('${n.id}'); goToNotif();">
+          <div class="nt-icon ${n.color}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
+          <div class="nt-body">
+            <div class="nt-text"><strong>${n.title}</strong></div>
+            <div class="nt-desc">${n.desc}</div>
+            <div class="nt-time">${formatTime(n.created_at)}</div>
           </div>
-          <div class="tb-notif-desc">${r.teacher} — ${r.section} · ${r.subject}</div>
-          <div class="tb-notif-time">${new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
         </div>
-      </a>
-    `).join('');
+      `;
+    });
 
-    container.insertAdjacentHTML('beforeend', html);
+    container.innerHTML = html;
     lucide.createIcons();
   }
 
-  renderFullNotifList();
+  renderNotifList();
 </script>
 
 </body>

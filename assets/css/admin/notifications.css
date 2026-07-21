@@ -1,3 +1,43 @@
+/* ── FILTER BAR ── */
+.notif-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.notif-filters { display: flex; gap: 6px; }
+.notif-filter-btn {
+  border: 1.5px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-600);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.notif-filter-btn:hover { border-color: var(--blue-mid); color: var(--blue-mid); }
+.notif-filter-btn.active {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.notif-mark-read-all {
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-mid);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.notif-mark-read-all:hover { text-decoration: underline; }
+
 /* ── PANEL ── */
 .notif-panel {
   background: var(--white);
@@ -19,11 +59,8 @@
   color: var(--gray-800);
 }
 
-/* ── LIST (populated later via EJS loop; unused while empty) ── */
-.notif-list {
-  padding: 6px 0 10px;
-  position: relative;
-}
+/* ── LIST ── */
+.notif-list { padding: 6px 0 10px; position: relative; }
 .notif-list::before {
   content: '';
   position: absolute;
@@ -47,10 +84,11 @@
 }
 .notif-item {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 32px 1fr;
   align-items: start;
   gap: 12px;
   padding: 10px 24px;
+  cursor: pointer;
   transition: background 0.15s;
 }
 .notif-item:hover { background: var(--gray-50); }
@@ -73,55 +111,43 @@
 .nt-icon.green  { background: var(--green-pale);  color: var(--green); }
 .nt-icon.blue   { background: var(--blue-xpale);  color: var(--blue-mid); }
 .nt-icon.gold   { background: var(--gold-pale);   color: var(--gold); }
-.nt-icon.orange { background: #fff1e6;            color: var(--orange); }
-.nt-icon.red    { background: #fef2f2;            color: var(--red); }
+.nt-icon.orange { background: var(--orange-pale); color: #d97706; }
+.nt-icon.red    { background: var(--red-pale);    color: var(--red); }
 .nt-icon.purple { background: var(--purple-pale); color: var(--purple); }
+.nt-icon.gray   { background: var(--gray-100);    color: var(--gray-500); }
+
 .nt-body { flex: 1; min-width: 0; }
 .nt-text { font-size: 13px; color: var(--gray-700); line-height: 1.45; }
 .nt-text strong { color: var(--gray-800); font-weight: 700; }
-.nt-time { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
-.nt-tag {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
-  margin-top: 1px;
-  color: var(--gray-500);
-}
+.nt-desc { font-size: 12.5px; color: var(--gray-500); line-height: 1.5; margin-top: 2px; }
+.nt-time { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
 
 /* ── EMPTY STATE ── */
 .notif-empty {
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 80px 24px 84px;
+  padding: 64px 24px;
   text-align: center;
 }
 .notif-empty-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--gray-100);
+  color: var(--gray-400);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.notif-empty-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--gray-700);
-}
-.notif-empty-text {
-  font-size: 12.5px;
-  color: var(--gray-400);
-  line-height: 1.6;
-  max-width: 260px;
+.notif-empty-title { font-size: 13.5px; font-weight: 700; color: var(--gray-600); }
+.notif-empty-text { font-size: 12.5px; color: var(--gray-400); max-width: 240px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 760px) {
+  .notif-filterbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .notif-mark-read-all { align-self: flex-end; }
 }

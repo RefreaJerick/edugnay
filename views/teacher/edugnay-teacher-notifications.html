@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
   <link rel="stylesheet" href="../../assets/css/teacher/notifications.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/teacher/shell.js"></script>
 </head>
 <body>
 
@@ -143,8 +144,8 @@
 
       <div class="notif-empty" id="notifEmptyState">
         <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="notif-empty-title">No unread notifications</div>
-        <div class="notif-empty-text">You're all caught up.</div>
+        <div class="notif-empty-title" id="notifEmptyTitle">No notifications yet</div>
+        <div class="notif-empty-text" id="notifEmptyText">You'll see updates here as they happen.</div>
       </div>
     </div>
 
@@ -154,106 +155,12 @@
 <script>
   lucide.createIcons();
 
-  function toggleDrawer(open) {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
-    sidebar.classList.toggle('open', isOpen);
-    overlay.classList.toggle('open', isOpen);
-    document.body.classList.toggle('drawer-open', isOpen);
-  }
-
-  function toggleGroup(id) {
-    document.getElementById(id).classList.toggle('open');
-    lucide.createIcons();
-  }
-
-  function toggleProfileDropdown() {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    trigger.classList.toggle('open');
-    dropdown.classList.toggle('open');
-  }
-
-  document.addEventListener('click', (e) => {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
-      trigger.classList.remove('open');
-      dropdown.classList.remove('open');
-    }
-  });
-
-  function navigate(page, section, tab) {
-    if (page === 'dashboard') {
-      window.location.href = './edugnay-teacher-dashboard.html';
-    } else if (page === 'journals') {
-      window.location.href = './edugnay-teacher-journals.html';
-    } else if (page === 'section') {
-      window.location.href = './edugnay-teacher-sections.html';
-    } else if (page === 'reports') {
-      window.location.href = './edugnay-teacher-reports.html';
-    } else if (page === 'announcements') {
-      window.location.href = 'edugnay-teacher-announcements.html';
-    }
-  }
-
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') toggleDrawer(false);
   });
 </script>
 
 <script>
-  /* ── TEACHER NOTIFICATIONS ──
-     Columns to match later in Postgres:
-     id | icon | color | title | desc | tag | read | link_page | link_section | link_tab | created_at
-
-     TODO on backend conversion: replace NOTIFICATIONS with a fetch/EJS-rendered
-     dataset from GET /teacher/notifications, ordered by created_at desc. */
-  const NOTIFICATIONS = [
-    {
-      id: 5, icon: 'file-text', color: 'orange', tag: 'Report', read: false,
-      title: '5 reports awaiting confirmation',
-      desc: 'Gr. 7 – St. Matthew narrative reports are ready for your review.',
-      link: { page: 'reports' },
-      created_at: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
-    },
-    {
-      id: 4, icon: 'clipboard-pen', color: 'red', tag: 'Grades', read: false,
-      title: 'Grade encoding incomplete',
-      desc: '10 students in Gr. 8 – St. Luke still have no Q2 grades.',
-      link: { page: 'section', section: '8-luke', tab: 'scores' },
-      created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
-    },
-    {
-      id: 3, icon: 'user-check', color: 'red', tag: 'Attendance', read: false,
-      title: 'Attendance not taken',
-      desc: "Today's attendance for Gr. 9 – St. Peter has not been logged.",
-      link: { page: 'section', section: '9-peter', tab: 'attendance' },
-      created_at: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
-    },
-    {
-      id: 2, icon: 'megaphone', color: 'gold', tag: 'Announcement', read: true,
-      title: 'New announcement',
-      desc: 'Q2 grade encoding deadline: June 14.',
-      link: { page: 'announcements' },
-      created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
-    },
-    {
-      id: 1, icon: 'calendar-clock', color: 'blue', tag: 'Event', read: true,
-      title: 'Upcoming event',
-      desc: 'Foundation Day, June 20. Classes suspended.',
-      link: { page: 'announcements' },
-      created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-    },
-    {
-      id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true,
-      title: 'Journal window reminder',
-      desc: 'Weekly journal entries close Friday, 11:59 PM.',
-      link: { page: 'journals' },
-      created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
-    }
-  ];
 
   let activeNotifFilter = 'all';
 
@@ -280,6 +187,7 @@
 
   function markAllRead() {
     NOTIFICATIONS.forEach(n => n.read = true);
+    setReadIds(NOTIFICATIONS.map(n => n.id));
     renderNotifList();
   }
 
@@ -289,11 +197,14 @@
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
-  function goToNotif(link) {
+  function goToNotif(link, id) {
+    const ids = getReadIds();
+    if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
     navigate(link.page, link.section, link.tab);
   }
 
   function renderNotifList() {
+    applyReadState();
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();
@@ -301,6 +212,15 @@
     if (!filtered.length) {
       container.innerHTML = '';
       emptyState.style.display = 'flex';
+      const emptyTitle = document.getElementById('notifEmptyTitle');
+      const emptyText = document.getElementById('notifEmptyText');
+      if (activeNotifFilter === 'unread' && NOTIFICATIONS.length) {
+        emptyTitle.textContent = 'No unread notifications';
+        emptyText.textContent = "You're all caught up.";
+      } else {
+        emptyTitle.textContent = 'No notifications yet';
+        emptyText.textContent = "You'll see updates here as they happen.";
+      }
       return;
     }
     emptyState.style.display = 'none';
@@ -315,7 +235,7 @@
         lastGroup = group;
       }
       html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)})'>
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${n.id})'>
           <div class="nt-icon ${n.color}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
             <div class="nt-text"><strong>${n.title}</strong></div>

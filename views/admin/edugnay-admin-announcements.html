@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/announcements.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/admin/shell.js"></script>
 </head>
 <body>
 
@@ -181,6 +182,7 @@
       <div class="tb-notif">
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
           
         </button>
 
@@ -190,8 +192,8 @@
             <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
           </div>
 
-          <div class="tb-notif-list">
-            <div class="tb-notif-empty">
+          <div class="tb-notif-list" id="tbNotifList">
+            <div class="tb-notif-empty" id="tbNotifEmpty">
               <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
               <div class="tb-notif-empty-title">No notifications yet</div>
               <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
@@ -625,56 +627,6 @@
 </div>
 
 <script>
-  function toggleDrawer(open) {
-    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
-    document.body.classList.toggle('drawer-open', isOpen);
-  }
-
-  function toggleNavGroup(group) {
-    group.classList.toggle('open');
-    // group.querySelector('.nav-group-toggle').classList.toggle('active');
-  }
-
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function(e) {
-      // e.preventDefault();
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      this.classList.add('active');
-      toggleDrawer(false);
-    });
-  });
-
-  function toggleNotifDropdown() {
-    document.getElementById('tbNotifPanel').classList.toggle('open');
-  }
-
-  function markAllNotifRead() {
-    document.querySelectorAll('.tb-notif-item.unread').forEach(item => item.classList.remove('unread'));
-    document.querySelector('.tb-notif-dot').style.display = 'none';
-  }
-
-  function toggleProfileDropdown() {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    trigger.classList.toggle('open');
-    dropdown.classList.toggle('open');
-  }
-
-  document.addEventListener('click', (e) => {
-    const trigger = document.getElementById('tbProfileTrigger');
-    const dropdown = document.getElementById('tbProfileDropdown');
-    if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
-      trigger.classList.remove('open');
-      dropdown.classList.remove('open');
-    }
-
-    const notifTrigger = document.getElementById('tbNotifTrigger');
-    const notifPanel = document.getElementById('tbNotifPanel');
-    if (notifTrigger && notifPanel && !notifTrigger.contains(e.target) && !notifPanel.contains(e.target)) {
-      notifPanel.classList.remove('open');
-    }
-  });
-
   function openModal() { document.getElementById('editModal').classList.add('open'); }
   function closeModal() { document.getElementById('editModal').classList.remove('open'); }
   document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
