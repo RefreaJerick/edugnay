@@ -15,6 +15,27 @@
 </head>
 <body>
 
+<!-- LOGOUT CONFIRMATION MODAL -->
+<div class="logout-modal-backdrop" id="logoutModalBackdrop">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Sign Out</div>
+        <div class="modal-sub">Are you sure you want to sign out?</div>
+      </div>
+      <button class="modal-close" onclick="closeLogoutModal()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmLogout()">
+        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT MODAL -->
 <div class="modal-backdrop" id="editModal">
   <div class="modal">

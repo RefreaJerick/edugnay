@@ -159,3 +159,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderTopbarNotifs();
 });
+
+/* ── LOGOUT ── */
+function openLogoutModal() {
+  const trigger = document.getElementById('tbProfileTrigger');
+  const dropdown = document.getElementById('tbProfileDropdown');
+  if (trigger) trigger.classList.remove('open');
+  if (dropdown) dropdown.classList.remove('open');
+
+  document.getElementById('logoutModalBackdrop').classList.add('open');
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeLogoutModal() {
+  document.getElementById('logoutModalBackdrop').classList.remove('open');
+}
+
+function confirmLogout() {
+  // TODO on backend conversion: replace with POST /auth/logout,
+  // clear session cookie, then redirect
+  localStorage.clear(); // wipes mock data (reopen requests, read-state, etc.)
+  window.location.href = '../../../index.html'; // adjust to your actual login page path
+}
+
+document.getElementById('logoutModalBackdrop')?.addEventListener('click', function (e) {
+  if (e.target === this) closeLogoutModal();
+});
