@@ -179,7 +179,10 @@ function confirmLogout() {
   // TODO on backend conversion: replace with POST /auth/logout,
   // clear session cookie, then redirect
   localStorage.clear(); // wipes mock data (reopen requests, read-state, etc.)
-  window.location.href = '../../../index.html'; // adjust to your actual login page path
+  const isGitHubPages = location.hostname.endsWith("github.io");
+  const BASE = isGitHubPages ? "/edugnay" : "";
+
+  window.location.href = `${BASE}/index.html`;
 }
 
 document.getElementById('logoutModalBackdrop')?.addEventListener('click', function (e) {

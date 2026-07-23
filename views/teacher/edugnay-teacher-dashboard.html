@@ -1,555 +1,622 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
 </head>
+
 <body>
 
-<!-- LOGOUT CONFIRMATION MODAL -->
-<div class="logout-modal-backdrop" id="logoutModalBackdrop">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">Are you sure you want to sign out?</div>
-      </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmLogout()">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
-
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
-      </div>
-      <div>
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
-      </div>
-    </div>
-
-    <div class="nav-scroll">
-      <div class="nav-section">
-        <div class="nav-section-label">Main</div>
-
-        <a class="nav-item active" onclick="navigate('dashboard')">
-          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Dashboard</span>
-        </a>
-
-        <!-- My Sections (expandable) -->
-        <div class="nav-group" id="sections-group">
-          <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
-            <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
-            <span>My Sections</span>
-            <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
-          </div>
-          <div class="nav-children">
-            <a class="nav-child" onclick="navigate('section', '7-matthew')">
-              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
-              Grade 7 – St. Matthew
-            </a>
-            <a class="nav-child" onclick="navigate('section', '8-luke')">
-              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
-              Grade 8 – St. Luke
-            </a>
-            <a class="nav-child" onclick="navigate('section', '9-peter')">
-              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
-              Grade 9 – St. Peter
-            </a>
-          </div>
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
         </div>
-
-      </div>
-
-      <!-- Narrative Reports — only shown for journal handler -->
-      <div class="nav-section" id="reports-nav">
-        <div class="nav-section-label">Reports</div>
-        <a class="nav-item" onclick="navigate('reports')">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
-        </a>
-        <a class="nav-item" onclick="navigate('journals')">
-          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Student Journals</span>
-        </a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Communication</div>
-        <a class="nav-item" onclick="navigate('announcements')">
-          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
-        </a>
-      </div>
-    </div>
-
-
-  </aside>
-
-  <!-- ══════ TOPBAR ══════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
-        <i data-lucide="menu" style="width:18px;height:18px;"></i>
-      </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Teacher</div>
-        <div class="page-title">Dashboard</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
-          <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          <span class="tb-notif-dot"></span>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
         </button>
-
-        <div class="tb-notif-panel" id="tbNotifPanel">
-          <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
-          </div>
-
-          <div class="tb-notif-list" id="tbNotifList">
-            <div class="tb-notif-empty" id="tbNotifEmpty">
-              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-              <div class="tb-notif-empty-title">No notifications yet</div>
-              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
-            </div>
-          </div>
-
-          <div class="tb-notif-panel-foot">
-            <a href="edugnay-teacher-notifications.html">More notifications</a>
-          </div>
-        </div>
       </div>
-
-      <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar faculty">MR</div>
-          <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
-            <div class="tb-profile-role">Faculty</div>
-          </div>
-          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
         </button>
-
-        <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="edugnay-teacher-profile.html">
-            <i data-lucide="user" style="width:15px;height:15px;"></i>
-            My Profile
-          </a>
-          <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            Sign Out
-          </a>
-        </div>
       </div>
-    </div>
-  </header>
-
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
-
-  <!-- WELCOME BANNER -->
-  <div class="grading-banner">
-    <div class="grading-welcome">
-      <div class="grading-welcome-name">Welcome back, Maria!</div>
-      <div class="grading-welcome-date" id="currentDate"></div>
-    </div>
-    <div class="grading-period-card">
-      <div class="grading-period-label">Grading Period</div>
-      <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
     </div>
   </div>
 
-    <!-- Summary strip -->
-    <div class="summary-strip stat-grid">
-      <div class="stat-card blue">
-        <div class="stat-card-top">
-          <div class="stat-card-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-            <i data-lucide="door-open" style="width:18px;height:18px;"></i>
-          </div>
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
         </div>
-        <div class="stat-card-num">4</div>
-        <div class="stat-card-label">Sections Handled</div>
-        <div class="stat-card-sub">Across active classes</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-card-top">
-          <div class="stat-card-icon" style="background:#f0fdf4;color:#16a34a;">
-            <i data-lucide="users" style="width:18px;height:18px;"></i>
-          </div>
-        </div>
-        <div class="stat-card-num">108</div>
-        <div class="stat-card-label">Total Students</div>
-        <div class="stat-card-sub">Current enrollment</div>
-      </div>
-      <div class="stat-card gold">
-        <div class="stat-card-top">
-          <div class="stat-card-icon" style="background:var(--orange-pale);color:#d97706;">
-            <i data-lucide="file-text" style="width:18px;height:18px;"></i>
-          </div>
-        </div>
-        <div class="stat-card-num">5</div>
-        <div class="stat-card-label">Reports to Confirm</div>
-        <div class="stat-card-sub">Pending teacher reviews</div>
-      </div>
-      <div class="stat-card orange">
-        <div class="stat-card-top">
-          <div class="stat-card-icon" style="background:var(--red-pale);color:var(--red);">
-            <i data-lucide="user-round-x" style="width:18px;height:18px;"></i>
-          </div>
-        </div>
-        <div class="stat-card-num">4</div>
-        <div class="stat-card-label">Flagged Students</div>
-        <div class="stat-card-sub">Needs follow-up</div>
-      </div>
-    </div>
-
-    
-    <!-- My Sections (cards) + Pending Tasks -->
-    <div class="two-col">
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">My Sections</div>
-        </div>
-        <div class="section-cards">
-
-          <div class="section-card" onclick="navigate('section','7-matthew')">
-            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top">
-              <div class="section-card-main">
-                <div class="section-card-name">Grade 7 – St. Matthew</div>
-                <div class="section-card-sub">Class Adviser · Math</div>
-              </div>
-            </div>
-            <div class="section-card-divider"></div>
-            <div class="section-card-stats">
-              <div class="section-stat">
-                <span class="section-stat-label">Students</span>
-                <span class="section-stat-value">38</span>
-              </div>
-              <div class="section-stat">
-                <span class="section-stat-label">Attendance</span>
-                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section-card" onclick="navigate('section','8-luke')">
-            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top">
-              <div class="section-card-main">
-                <div class="section-card-name">Grade 8 – St. Luke</div>
-                <div class="section-card-sub">Math</div>
-              </div>
-            </div>
-            <div class="section-card-divider"></div>
-            <div class="section-card-stats">
-              <div class="section-stat">
-                <span class="section-stat-label">Students</span>
-                <span class="section-stat-value">36</span>
-              </div>
-              <div class="section-stat">
-                <span class="section-stat-label">Attendance</span>
-                <span class="badge badge-orange">⚠ Pending</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section-card" onclick="navigate('section','8-mark')">
-            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top">
-              <div class="section-card-main">
-                <div class="section-card-name">Grade 8 – St. Mark</div>
-                <div class="section-card-sub">Science</div>
-              </div>
-            </div>
-            <div class="section-card-divider"></div>
-            <div class="section-card-stats">
-              <div class="section-stat">
-                <span class="section-stat-label">Students</span>
-                <span class="section-stat-value">35</span>
-              </div>
-              <div class="section-stat">
-                <span class="section-stat-label">Attendance</span>
-                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section-card" onclick="navigate('section','9-peter')">
-            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top">
-              <div class="section-card-main">
-                <div class="section-card-name">Grade 9 – St. Peter</div>
-                <div class="section-card-sub">Math</div>
-              </div>
-            </div>
-            <div class="section-card-divider"></div>
-            <div class="section-card-stats">
-              <div class="section-stat">
-                <span class="section-stat-label">Students</span>
-                <span class="section-stat-value">37</span>
-              </div>
-              <div class="section-stat">
-                <span class="section-stat-label">Attendance</span>
-                <span class="badge badge-red">Not taken</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section-card" onclick="navigate('section','9-john')">
-            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top">
-              <div class="section-card-main">
-                <div class="section-card-name">Grade 9 – St. John</div>
-                <div class="section-card-sub">Science</div>
-              </div>
-            </div>
-            <div class="section-card-divider"></div>
-            <div class="section-card-stats">
-              <div class="section-stat">
-                <span class="section-stat-label">Students</span>
-                <span class="section-stat-value">34</span>
-              </div>
-              <div class="section-stat">
-                <span class="section-stat-label">Attendance</span>
-                <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i> Done</span>
-              </div>
-            </div>
-          </div>
-
+        <div>
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Pending Tasks</div>
-          <span style="font-size:11px;color:var(--gray-400);">3 items need attention</span>
-        </div>
-        <div class="task-list">
-          <div class="task-item" onclick="navigate('reports')">
-            <div class="task-icon" style="background:var(--orange-pale);color:#d97706;">
-              <i data-lucide="file-text" style="width:15px;height:15px;"></i>
-            </div>
-            <div class="task-body">
-              <div class="task-title">5 Narrative Reports Awaiting Confirmation</div>
-              <div class="task-sub">AI-generated reports for Gr. 7 – St. Matthew. Review and confirm before sending to parents.</div>
-            </div>
-            <a class="task-action">Review <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-          </div>
-          <div class="task-item" onclick="navigate('section','8-luke','scores')">
-            <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
-              <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
-            </div>
-            <div class="task-body">
-              <div class="task-title">Grade Encoding Incomplete: Grade 8 – St. Luke</div>
-              <div class="task-sub">10 students still have no Q2 grades · Deadline: June 14</div>
-            </div>
-            <a class="task-action">Encode <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-          </div>
-          <div class="task-item" onclick="navigate('section','9-peter','attendance')">
-            <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
-              <i data-lucide="user-check" style="width:15px;height:15px;"></i>
-            </div>
-            <div class="task-body">
-              <div class="task-title">Attendance Not Taken: Grade 9 – St. Peter</div>
-              <div class="task-sub">Today's attendance for Grade 9 – St. Peter has not been logged yet.</div>
-            </div>
-            <a class="task-action">Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-          </div>
-        </div>
-      </div>
-    </div>
+      <div class="nav-scroll">
+        <div class="nav-section">
+          <div class="nav-section-label">Main</div>
 
-    <div class="two-col">
+          <a class="nav-item active" onclick="navigate('dashboard')">
+            <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Dashboard</span>
+          </a>
 
-      <!-- Announcements -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Announcements</div>
-          <a class="panel-action" onclick="navigate('announcements')">
-            View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+          <!-- My Sections (expandable) -->
+          <div class="nav-group" id="sections-group">
+            <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+              <div class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></div>
+              <span>My Sections</span>
+              <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
+            </div>
+            <div class="nav-children">
+              <a class="nav-child" onclick="navigate('section', '7-matthew')">
+                <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 7 – St. Matthew
+              </a>
+              <a class="nav-child" onclick="navigate('section', '8-luke')">
+                <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 8 – St. Luke
+              </a>
+              <a class="nav-child" onclick="navigate('section', '9-peter')">
+                <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+                Grade 9 – St. Peter
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Narrative Reports — only shown for journal handler -->
+        <div class="nav-section" id="reports-nav">
+          <div class="nav-section-label">Reports</div>
+          <a class="nav-item" onclick="navigate('reports')">
+            <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Narrative Reports</span>
+            <span class="nav-badge">5</span>
+          </a>
+          <a class="nav-item" onclick="navigate('journals')">
+            <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Student Journals</span>
           </a>
         </div>
-        <div class="ann-list">
-          <div class="ann-item">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Q2 Grade Encoding Deadline: June 14</span>
-              <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
-            </div>
-            <div class="ann-item-body">All subject teachers must complete Q2 grade encoding no later than June 14, 2025.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM · <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-            </div>
-          </div>
-          <div class="ann-item">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Foundation Day: June 20, 2025</span>
-              <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
-            </div>
-            <div class="ann-item-body">Classes are suspended. All faculty are expected to attend the program.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM · <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-            </div>
-          </div>
-          <div class="ann-item">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Journal Window Open: Friday</span>
-              <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Normal</span>
-            </div>
-            <div class="ann-item-body">Remind students to submit weekly journal entries before 11:59 PM Friday.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM · <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-            </div>
-          </div>
+
+        <div class="nav-section">
+          <div class="nav-section-label">Communication</div>
+          <a class="nav-item" onclick="navigate('announcements')">
+            <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+            <span class="nav-label">Announcements</span>
+            <span class="nav-badge gold">2</span>
+          </a>
         </div>
       </div>
 
-      <!-- Flagged Students -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Flagged Students</div>
-          <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
-            <option value="all">All My Sections</option>
-            <option value="7-matthew">Grade 7 – St. Matthew</option>
-            <option value="8-luke">Grade 8 – St. Luke</option>
-            <option value="8-mark">Grade 8 – St. Mark</option>
-            <option value="9-peter">Grade 9 – St. Peter</option>
-            <option value="9-john">Grade 9 – St. John</option>
-          </select>
-        </div>
-        <div class="flag-grid-single" id="flagGridSingle">
 
-          <div class="flag-card" data-section="9-peter">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:var(--red);">BG</div>
-              <div class="flag-info">
-                <div class="flag-name">Ben Garcia</div>
-                <div class="flag-detail">Grade 9 – St. Peter</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
-            </div>
-          </div>
+    </aside>
 
-          <div class="flag-card" data-section="8-luke">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#7c3aed;">SC</div>
-              <div class="flag-info">
-                <div class="flag-name">Sofia Cruz</div>
-                <div class="flag-detail">Grade 8 – St. Luke</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
-            </div>
-          </div>
-
-          <div class="flag-card" data-section="9-john">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#0d9488;">NP</div>
-              <div class="flag-info">
-                <div class="flag-name">Noel Pascual</div>
-                <div class="flag-detail">Grade 9 – St. John</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
-            </div>
-          </div>
-
-          <div class="flag-card" data-section="7-matthew">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#be185d;">UR</div>
-              <div class="flag-info">
-                <div class="flag-name">Uma Reyes</div>
-                <div class="flag-detail">Grade 7 – St. Matthew</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
-            </div>
-          </div>
-
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Teacher</div>
+          <div class="page-title">Dashboard</div>
         </div>
       </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
+          </button>
 
-    </div>
-    
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <span class="tb-notif-panel-title">Notifications</span>
+              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            </div>
 
-  </main>
-</div>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
 
-<script>
-  lucide.createIcons();
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-teacher-notifications.html">More notifications</a>
+            </div>
+          </div>
+        </div>
 
-  document.getElementById('currentDate').textContent =
-  new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar faculty">MR</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Ms. Maria Reyes</div>
+              <div class="tb-profile-role">Faculty</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
 
-  function filterFlaggedStudents() {
-    const selected = document.getElementById('flagSectionFilter').value;
-    const cards = document.querySelectorAll('#flagGridSingle .flag-card');
-    let visibleCount = 0;
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-teacher-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
 
-    cards.forEach(card => {
-      const section = card.getAttribute('data-section');
-      const show = selected === 'all' || section === selected;
-      card.classList.toggle('flag-hidden', !show);
-      if (show) visibleCount++;
-    });
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
 
-    let emptyMsg = document.getElementById('flagEmptyMsg');
-    if (visibleCount === 0) {
-      if (!emptyMsg) {
-        emptyMsg = document.createElement('div');
-        emptyMsg.id = 'flagEmptyMsg';
-        emptyMsg.className = 'flag-empty-msg';
-        emptyMsg.textContent = 'No flagged students in this section.';
-        document.getElementById('flagGridSingle').appendChild(emptyMsg);
-      }
-    } else if (emptyMsg) {
-      emptyMsg.remove();
+      <div class="dashboard-grid">
+
+        <div class="dash-col-left">
+
+          <!-- WELCOME BANNER -->
+          <div class="grading-banner">
+            <div class="grading-welcome">
+              <div class="grading-welcome-name">Welcome back, Maria!</div>
+              <!-- <div class="grading-welcome-date" id="currentDate"></div> -->
+              <div class="grading-welcome-date">Here's what's happening across your classes</div>
+            </div>
+            <div class="grading-period-card">
+              <div class="grading-period-label">Grading Period</div>
+              <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+            </div>
+          </div>
+
+          <!-- My Sections -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">My Sections</div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:11px;color:var(--gray-400);">5 sections</span>
+                <a class="panel-action" onclick="navigate('section')">
+                  View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="section-filter-row" id="sectionFilterRow">
+              <button class="section-filter-btn active" data-grade="all" onclick="filterSections('all', this)">All</button>
+              <button class="section-filter-btn" data-grade="7" onclick="filterSections('7', this)">Grade 7</button>
+              <button class="section-filter-btn" data-grade="8" onclick="filterSections('8', this)">Grade 8</button>
+              <button class="section-filter-btn" data-grade="9" onclick="filterSections('9', this)">Grade 9</button>
+            </div>
+
+            <div class="section-cards" id="sectionCardsContainer">
+
+              <div class="section-card" data-grade="7" onclick="navigate('section','7-matthew')">
+                <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="section-card-top">
+                  <div class="section-card-main">
+                    <div class="section-card-name">Grade 7 – St. Matthew</div>
+                    <div class="section-card-sub">Class Adviser · Math</div>
+                  </div>
+                </div>
+                <div class="section-card-divider"></div>
+                <div class="section-card-stats">
+                  <div class="section-stat">
+                    <span class="section-stat-label">Students</span>
+                    <span class="section-stat-value">38</span>
+                  </div>
+                  <div class="section-stat">
+                    <span class="section-stat-label">Attendance</span>
+                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
+                      Done</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-card" data-grade="8" onclick="navigate('section','8-luke')">
+                <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="section-card-top">
+                  <div class="section-card-main">
+                    <div class="section-card-name">Grade 8 – St. Luke</div>
+                    <div class="section-card-sub">Math</div>
+                  </div>
+                </div>
+                <div class="section-card-divider"></div>
+                <div class="section-card-stats">
+                  <div class="section-stat">
+                    <span class="section-stat-label">Students</span>
+                    <span class="section-stat-value">36</span>
+                  </div>
+                  <div class="section-stat">
+                    <span class="section-stat-label">Attendance</span>
+                    <span class="badge badge-red"><i data-lucide="circle-x" style="width:10px;height:10px;"></i> Not
+                      taken</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-card" data-grade="8" onclick="navigate('section','8-mark')">
+                <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="section-card-top">
+                  <div class="section-card-main">
+                    <div class="section-card-name">Grade 8 – St. Mark</div>
+                    <div class="section-card-sub">Science</div>
+                  </div>
+                </div>
+                <div class="section-card-divider"></div>
+                <div class="section-card-stats">
+                  <div class="section-stat">
+                    <span class="section-stat-label">Students</span>
+                    <span class="section-stat-value">35</span>
+                  </div>
+                  <div class="section-stat">
+                    <span class="section-stat-label">Attendance</span>
+                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
+                      Done</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-card" data-grade="9" onclick="navigate('section','9-peter')">
+                <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="section-card-top">
+                  <div class="section-card-main">
+                    <div class="section-card-name">Grade 9 – St. Peter</div>
+                    <div class="section-card-sub">Math</div>
+                  </div>
+                </div>
+                <div class="section-card-divider"></div>
+                <div class="section-card-stats">
+                  <div class="section-stat">
+                    <span class="section-stat-label">Students</span>
+                    <span class="section-stat-value">37</span>
+                  </div>
+                  <div class="section-stat">
+                    <span class="section-stat-label">Attendance</span>
+                    <span class="badge badge-red"><i data-lucide="circle-x" style="width:10px;height:10px;"></i> Not
+                      taken</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-card" data-grade="9" onclick="navigate('section','9-john')">
+                <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="section-card-top">
+                  <div class="section-card-main">
+                    <div class="section-card-name">Grade 9 – St. John</div>
+                    <div class="section-card-sub">Science</div>
+                  </div>
+                </div>
+                <div class="section-card-divider"></div>
+                <div class="section-card-stats">
+                  <div class="section-stat">
+                    <span class="section-stat-label">Students</span>
+                    <span class="section-stat-value">34</span>
+                  </div>
+                  <div class="section-stat">
+                    <span class="section-stat-label">Attendance</span>
+                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
+                      Done</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Announcements -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Announcements</div>
+              <a class="panel-action" onclick="navigate('announcements')">
+                View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+              </a>
+            </div>
+            <div class="ann-list">
+              <div class="ann-item">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Q2 Grade Encoding Deadline: June 14</span>
+                  <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
+                </div>
+                <div class="ann-item-body">All subject teachers must complete Q2 grade encoding no later than June 14,
+                  2025.</div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM · <i data-lucide="user"
+                    style="width:11px;height:11px;"></i> Admin
+                </div>
+              </div>
+              <div class="ann-item">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Foundation Day: June 20, 2025</span>
+                  <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
+                </div>
+                <div class="ann-item-body">Classes are suspended. All faculty are expected to attend the program.</div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM · <i data-lucide="user"
+                    style="width:11px;height:11px;"></i> Admin
+                </div>
+              </div>
+              <div class="ann-item">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Journal Window Open: Friday</span>
+                  <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Normal</span>
+                </div>
+                <div class="ann-item-body">Remind students to submit weekly journal entries before 11:59 PM Friday.
+                </div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM · <i data-lucide="user"
+                    style="width:11px;height:11px;"></i> Admin
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="dash-col-right">
+
+          <!-- This Week (calendar strip) -->
+          <div class="panel" id="weekPanel">
+            <div class="panel-head">
+              <div class="panel-title">This Week</div>
+              <span id="weekRangeLabel" style="font-size:11px;color:var(--gray-400);"></span>
+            </div>
+            <div class="week-calendar-grid" id="weekCalendarGrid"></div>
+          </div>
+
+          <!-- Pending Tasks -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Pending Tasks</div>
+              <span style="font-size:11px;color:var(--gray-400);">3 items need attention</span>
+            </div>
+            <div class="task-list">
+              <div class="task-item" onclick="navigate('reports')">
+                <div class="task-icon" style="background:var(--orange-pale);color:#d97706;">
+                  <i data-lucide="file-text" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="task-body">
+                  <div class="task-title">5 Narrative Reports Awaiting Confirmation</div>
+                </div>
+                <a class="task-action">Review <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
+              </div>
+              <div class="task-item" onclick="navigate('section','8-luke','scores')">
+                <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
+                  <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="task-body">
+                  <div class="task-title">Grade Encoding Incomplete: Grade 8 – St. Luke</div>
+                </div>
+                <a class="task-action">Encode <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
+              </div>
+              <div class="task-item" onclick="navigate('section','9-peter','attendance')">
+                <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
+                  <i data-lucide="user-check" style="width:15px;height:15px;"></i>
+                </div>
+                <div class="task-body">
+                  <div class="task-title">Attendance Not Taken: Grade 9 – St. Peter</div>
+                </div>
+                <a class="task-action">Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flagged Students -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Flagged Students</div>
+              <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
+                <option value="all">All My Sections</option>
+                <option value="7-matthew">Grade 7 – St. Matthew</option>
+                <option value="8-luke">Grade 8 – St. Luke</option>
+                <option value="8-mark">Grade 8 – St. Mark</option>
+                <option value="9-peter">Grade 9 – St. Peter</option>
+                <option value="9-john">Grade 9 – St. John</option>
+              </select>
+            </div>
+            <div class="flag-grid-single" id="flagGridSingle">
+
+              <div class="flag-card" data-section="9-peter">
+                <div class="flag-card-top">
+                  <div class="flag-av" style="background:var(--red);">BG</div>
+                  <div class="flag-info">
+                    <div class="flag-name">Ben Garcia</div>
+                    <div class="flag-detail">Grade 9 – St. Peter</div>
+                  </div>
+                </div>
+                <div class="flag-reason-row">
+                  <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i>
+                    4 absences</span>
+                </div>
+              </div>
+
+              <div class="flag-card" data-section="8-luke">
+                <div class="flag-card-top">
+                  <div class="flag-av" style="background:#7c3aed;">SC</div>
+                  <div class="flag-info">
+                    <div class="flag-name">Sofia Cruz</div>
+                    <div class="flag-detail">Grade 8 – St. Luke</div>
+                  </div>
+                </div>
+                <div class="flag-reason-row">
+                  <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                    Math: 73</span>
+                </div>
+              </div>
+
+              <div class="flag-card" data-section="9-john">
+                <div class="flag-card-top">
+                  <div class="flag-av" style="background:#0d9488;">NP</div>
+                  <div class="flag-info">
+                    <div class="flag-name">Noel Pascual</div>
+                    <div class="flag-detail">Grade 9 – St. John</div>
+                  </div>
+                </div>
+                <div class="flag-reason-row">
+                  <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i>
+                    3 absences</span>
+                </div>
+              </div>
+
+              <div class="flag-card" data-section="7-matthew">
+                <div class="flag-card-top">
+                  <div class="flag-av" style="background:#be185d;">UR</div>
+                  <div class="flag-info">
+                    <div class="flag-name">Uma Reyes</div>
+                    <div class="flag-detail">Grade 7 – St. Matthew</div>
+                  </div>
+                </div>
+                <div class="flag-reason-row">
+                  <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                    Science: 70</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const MAX_SECTION_CARDS = 6;
+    let currentSectionFilter = 'all';
+
+    function filterSections(grade, btnEl) {
+      currentSectionFilter = grade;
+
+      document.querySelectorAll('#sectionFilterRow .section-filter-btn')
+        .forEach(btn => btn.classList.remove('active'));
+      btnEl.classList.add('active');
+
+      applySectionFilter();
     }
-  }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') toggleDrawer(false);
-  });
-</script>
+    function applySectionFilter() {
+      const cards = document.querySelectorAll('#sectionCardsContainer .section-card');
+      let shown = 0;
+
+      cards.forEach(card => {
+        const matches = currentSectionFilter === 'all' || card.getAttribute('data-grade') === currentSectionFilter;
+        const withinLimit = shown < MAX_SECTION_CARDS;
+        const visible = matches && withinLimit;
+        card.style.display = visible ? '' : 'none';
+        if (matches) shown++;
+      });
+    }
+
+    applySectionFilter();
+
+    function renderWeekCalendar() {
+      const grid = document.getElementById('weekCalendarGrid');
+      const rangeLabel = document.getElementById('weekRangeLabel');
+      if (!grid) return;
+
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7)); // back to Monday
+
+      const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      let html = '';
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const isToday = d.toDateString() === today.toDateString();
+        html += `
+        <div class="week-day${isToday ? ' is-today' : ''}">
+          <span class="week-day-label">${dayLabels[i]}</span>
+          <span class="week-day-num">${d.getDate()}</span>
+        </div>`;
+      }
+
+      grid.innerHTML = html;
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (rangeLabel) rangeLabel.textContent = `${fmt(monday)} – ${fmt(sunday)}`;
+    }
+    renderWeekCalendar();
+
+    document.getElementById('currentDate').textContent =
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+    function filterFlaggedStudents() {
+      const selected = document.getElementById('flagSectionFilter').value;
+      const cards = document.querySelectorAll('#flagGridSingle .flag-card');
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const section = card.getAttribute('data-section');
+        const show = selected === 'all' || section === selected;
+        card.classList.toggle('flag-hidden', !show);
+        if (show) visibleCount++;
+      });
+
+      let emptyMsg = document.getElementById('flagEmptyMsg');
+      if (visibleCount === 0) {
+        if (!emptyMsg) {
+          emptyMsg = document.createElement('div');
+          emptyMsg.id = 'flagEmptyMsg';
+          emptyMsg.className = 'flag-empty-msg';
+          emptyMsg.textContent = 'No flagged students in this section.';
+          document.getElementById('flagGridSingle').appendChild(emptyMsg);
+        }
+      } else if (emptyMsg) {
+        emptyMsg.remove();
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') toggleDrawer(false);
+    });
+  </script>
 </body>
+
 </html>
