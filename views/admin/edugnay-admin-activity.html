@@ -126,28 +126,28 @@
       </div>
     </div>
     <div class="topbar-right">
-      <div class="">
-        <button class="-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
           
         </button>
 
-        <div class="-panel" id="tbNotifPanel">
-          <div class="-panel-head">
-            <span class="-panel-title">Notifications</span>
-            <button class="-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <span class="tb-notif-panel-title">Notifications</span>
+            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
           </div>
 
-          <div class="-list" id="tbNotifList">
-            <div class="-empty" id="tbNotifEmpty">
-              <div class="-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-              <div class="-empty-title">No notifications yet</div>
-              <div class="-empty-text">You're all caught up. New alerts will show up here.</div>
+          <div class="tb-notif-list" id="tbNotifList">
+            <div class="tb-notif-empty" id="tbNotifEmpty">
+              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+              <div class="tb-notif-empty-title">No notifications yet</div>
+              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
             </div>
           </div>
 
-          <div class="-panel-foot">
+          <div class="tb-notif-panel-foot">
             <a href="edugnay-admin-notifications.html">More notifications</a>
           </div>
         </div>
