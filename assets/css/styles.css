@@ -1749,6 +1749,9 @@ html, body {
 .tb-avatar.faculty {
   background-color: var(--gold);
 }
+.tb-avatar.student {
+  background-color: var(--green);
+}
 
 .tb-profile-info { text-align: left; }
 
@@ -1813,6 +1816,7 @@ html, body {
 
 @media (max-width: 640px) {
   .tb-profile-info { display: none; }
+  .tb-chevron {display: none; }
   .tb-profile-trigger { padding: 6px; }
 }
 
@@ -1845,6 +1849,12 @@ html, body {
   .topbar { flex-wrap: wrap; padding: 16px 20px; }
   .hamburger { display: grid; }
   .topbar-profile { display: block; }
+}
+
+@media (max-width: 760px) {
+  .main {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 710px) {

@@ -189,17 +189,19 @@
           <div class="grading-banner">
             <div class="grading-welcome">
               <div class="grading-welcome-name">Welcome back, Maria!</div>
-              <!-- <div class="grading-welcome-date" id="currentDate"></div> -->
               <div class="grading-welcome-date">Here's what's happening across your classes</div>
             </div>
             <div class="grading-period-card">
-              <div class="grading-period-label">Grading Period</div>
-              <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i></div>
+              <div>
+                <div class="grading-period-label">Active grading period</div>
+                <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+              </div>
             </div>
           </div>
 
           <!-- My Sections -->
-          <div class="panel">
+          <div class="panel panel-sections">
             <div class="panel-head">
               <div class="panel-title">My Sections</div>
               <div style="display:flex;align-items:center;gap:12px;">
@@ -259,7 +261,7 @@
                   </div>
                   <div class="section-stat">
                     <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-red"><i data-lucide="circle-x" style="width:10px;height:10px;"></i> Not
+                    <span class="badge badge-orange"><i data-lucide="clock-3" style="width:10px;height:10px;"></i> Not
                       taken</span>
                   </div>
                 </div>
@@ -305,7 +307,7 @@
                   </div>
                   <div class="section-stat">
                     <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-red"><i data-lucide="circle-x" style="width:10px;height:10px;"></i> Not
+                    <span class="badge badge-orange"><i data-lucide="clock-3" style="width:10px;height:10px;"></i> Not
                       taken</span>
                   </div>
                 </div>
@@ -338,7 +340,7 @@
           </div>
 
           <!-- Announcements -->
-          <div class="panel">
+          <div class="panel panel-announcements">
             <div class="panel-head">
               <div class="panel-title">Announcements</div>
               <a class="panel-action" onclick="navigate('announcements')">
@@ -389,19 +391,25 @@
         <div class="dash-col-right">
 
           <!-- This Week (calendar strip) -->
-          <div class="panel" id="weekPanel">
+          <div class="panel panel-week" id="weekPanel">
             <div class="panel-head">
-              <div class="panel-title">This Week</div>
-              <span id="weekRangeLabel" style="font-size:11px;color:var(--gray-400);"></span>
+              <div class="week-title-wrap">
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i></div>
+                <div>
+                  <div class="panel-title">This Week</div>
+                  <div class="week-title-sub">Your teaching schedule</div>
+                </div>
+              </div>
+              <span id="weekRangeLabel" class="week-range-label"></span>
             </div>
             <div class="week-calendar-grid" id="weekCalendarGrid"></div>
           </div>
 
           <!-- Pending Tasks -->
-          <div class="panel">
+          <div class="panel panel-tasks">
             <div class="panel-head">
               <div class="panel-title">Pending Tasks</div>
-              <span style="font-size:11px;color:var(--gray-400);">3 items need attention</span>
+              <span class="panel-meta">3 items need attention</span>
             </div>
             <div class="task-list">
               <div class="task-item" onclick="navigate('reports')">
@@ -410,6 +418,7 @@
                 </div>
                 <div class="task-body">
                   <div class="task-title">5 Narrative Reports Awaiting Confirmation</div>
+                  <div class="task-sub">Generated reports ready for your review</div>
                 </div>
                 <a class="task-action">Review <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
               </div>
@@ -419,6 +428,7 @@
                 </div>
                 <div class="task-body">
                   <div class="task-title">Grade Encoding Incomplete: Grade 8 – St. Luke</div>
+                  <div class="task-sub">10 student scores still need to be entered</div>
                 </div>
                 <a class="task-action">Encode <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
               </div>
@@ -428,6 +438,7 @@
                 </div>
                 <div class="task-body">
                   <div class="task-title">Attendance Not Taken: Grade 9 – St. Peter</div>
+                  <div class="task-sub">Today's class record is still open</div>
                 </div>
                 <a class="task-action">Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
               </div>
@@ -435,7 +446,7 @@
           </div>
 
           <!-- Flagged Students -->
-          <div class="panel">
+          <div class="panel panel-flagged">
             <div class="panel-head">
               <div class="panel-title">Flagged Students</div>
               <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
@@ -449,7 +460,7 @@
             </div>
             <div class="flag-grid-single" id="flagGridSingle">
 
-              <div class="flag-card" data-section="9-peter">
+              <div class="flag-card flag-attendance" data-section="9-peter">
                 <div class="flag-card-top">
                   <div class="flag-av" style="background:var(--red);">BG</div>
                   <div class="flag-info">
@@ -463,7 +474,7 @@
                 </div>
               </div>
 
-              <div class="flag-card" data-section="8-luke">
+              <div class="flag-card flag-academic" data-section="8-luke">
                 <div class="flag-card-top">
                   <div class="flag-av" style="background:#7c3aed;">SC</div>
                   <div class="flag-info">
@@ -477,7 +488,7 @@
                 </div>
               </div>
 
-              <div class="flag-card" data-section="9-john">
+              <div class="flag-card flag-attendance" data-section="9-john">
                 <div class="flag-card-top">
                   <div class="flag-av" style="background:#0d9488;">NP</div>
                   <div class="flag-info">
@@ -491,7 +502,7 @@
                 </div>
               </div>
 
-              <div class="flag-card" data-section="7-matthew">
+              <div class="flag-card flag-academic" data-section="7-matthew">
                 <div class="flag-card-top">
                   <div class="flag-av" style="background:#be185d;">UR</div>
                   <div class="flag-info">
@@ -564,7 +575,7 @@
         d.setDate(monday.getDate() + i);
         const isToday = d.toDateString() === today.toDateString();
         html += `
-        <div class="week-day${isToday ? ' is-today' : ''}">
+        <div class="week-day${isToday ? ' is-today' : ''}${i > 4 ? ' is-weekend' : ''}"${isToday ? ' aria-current="date"' : ''}>
           <span class="week-day-label">${dayLabels[i]}</span>
           <span class="week-day-num">${d.getDate()}</span>
         </div>`;

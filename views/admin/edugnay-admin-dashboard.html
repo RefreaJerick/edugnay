@@ -1,181 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link  rel="stylesheet" href="../../assets/css/styles.css">
-  <link  rel="stylesheet" href="../../assets/css/admin/dashboard.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
+
 <body>
 
-<!-- LOGOUT CONFIRMATION MODAL -->
-<div class="logout-modal-backdrop" id="logoutModalBackdrop">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">Are you sure you want to sign out?</div>
-      </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmLogout()">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ASSIGN STUDENT MODAL -->
-<div class="student-modal-backdrop" id="studentModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="studentModalTitle">Assign Student</div>
-        <div class="modal-sub">Place a student into a section.</div>
-      </div>
-      <button class="modal-close" onclick="closeStudentModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <form id="assignStudentForm" method="post" action="/assignments/students/create">
-      <div class="modal-context">
-        <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
         <div>
-          <div class="ctx-label">Assigning to</div>
-          <div class="ctx-val" id="ctxVal">Select a section below</div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
         </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-
-      <div class="form-group">
-        <label class="form-label">Student</label>
-        <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
-          <option value="">— Select a student —</option>
-          <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
-          <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
-          <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
-          <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
-          <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
-          <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
-          <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
-          <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
-        </select>
-        <div class="student-preview" id="studentPreview">
-          <div class="sp-av" id="spAv">JD</div>
-          <div>
-            <div class="sp-name" id="spName">Juan Dela Cruz</div>
-            <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
-          </div>
-        </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
       </div>
-
-      <div class="form-group" style="margin-bottom:0">
-        <label class="form-label">Assign to Section</label>
-        <select class="form-select" id="modalSection" name="sectionId">
-          <option value="">— Select a section —</option>
-          <optgroup label="Grade 7">
-            <option>Grade 7 – St. Matthew (38/40)</option>
-            <option>Grade 7 – St. Mark (34/40)</option>
-          </optgroup>
-          <optgroup label="Grade 8">
-            <option>Grade 8 – St. Luke (36/40)</option>
-            <option>Grade 8 – St. John (34/40)</option>
-          </optgroup>
-          <optgroup label="Grade 9">
-            <option>Grade 9 – St. Peter (37/40)</option>
-            <option>Grade 9 – St. Paul (37/40)</option>
-          </optgroup>
-          <optgroup label="Grade 10">
-            <option>Grade 10 – St. James (35/40)</option>
-            <option>Grade 10 – St. Thomas (33/40)</option>
-          </optgroup>
-        </select>
-      </div>
-      </form>
-
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeStudentModal()">Cancel</button>
-      <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
     </div>
   </div>
-</div>
 
-<!-- ADD NEW ACCOUNT MODAL -->
-<div class="account-modal-backdrop" id="accountModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Add New Account</div>
-        <div class="modal-sub">Fill in the details to create a new user.</div>
+  <!-- ASSIGN STUDENT MODAL -->
+  <div class="student-modal-backdrop" id="studentModalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="studentModalTitle">Assign Student</div>
+          <div class="modal-sub">Place a student into a section.</div>
+        </div>
+        <button class="modal-close" onclick="closeStudentModal()">✕</button>
       </div>
-      <button class="modal-close" type="button" onclick="closeAccountModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      <div class="modal-body">
+        <form id="assignStudentForm" method="post" action="/assignments/students/create">
+          <div class="modal-context">
+            <div class="ctx-icon"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--blue-mid);"></i>
+            </div>
+            <div>
+              <div class="ctx-label">Assigning to</div>
+              <div class="ctx-val" id="ctxVal">Select a section below</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Student</label>
+            <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
+              <option value="">— Select a student —</option>
+              <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
+              <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
+              <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
+              <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
+              <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
+              <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
+              <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
+              <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+            </select>
+            <div class="student-preview" id="studentPreview">
+              <div class="sp-av" id="spAv">JD</div>
+              <div>
+                <div class="sp-name" id="spName">Juan Dela Cruz</div>
+                <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Assign to Section</label>
+            <select class="form-select" id="modalSection" name="sectionId">
+              <option value="">— Select a section —</option>
+              <optgroup label="Grade 7">
+                <option>Grade 7 – St. Matthew (38/40)</option>
+                <option>Grade 7 – St. Mark (34/40)</option>
+              </optgroup>
+              <optgroup label="Grade 8">
+                <option>Grade 8 – St. Luke (36/40)</option>
+                <option>Grade 8 – St. John (34/40)</option>
+              </optgroup>
+              <optgroup label="Grade 9">
+                <option>Grade 9 – St. Peter (37/40)</option>
+                <option>Grade 9 – St. Paul (37/40)</option>
+              </optgroup>
+              <optgroup label="Grade 10">
+                <option>Grade 10 – St. James (35/40)</option>
+                <option>Grade 10 – St. Thomas (33/40)</option>
+              </optgroup>
+            </select>
+          </div>
+        </form>
+
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeStudentModal()">Cancel</button>
+        <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
+      </div>
     </div>
-    <div class="modal-body">
-      <form id="createAccountForm" method="post" action="/users/create">
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">First Name</label>
-            <input class="form-input" name="firstName" type="text" placeholder="e.g. Maria" />
+  </div>
+
+  <!-- ADD NEW ACCOUNT MODAL -->
+  <div class="account-modal-backdrop" id="accountModalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add New Account</div>
+          <div class="modal-sub">Fill in the details to create a new user.</div>
+        </div>
+        <button class="modal-close" type="button" onclick="closeAccountModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="createAccountForm" method="post" action="/users/create">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">First Name</label>
+              <input class="form-input" name="firstName" type="text" placeholder="e.g. Maria" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name</label>
+              <input class="form-input" name="lastName" type="text" placeholder="e.g. Reyes" />
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Last Name</label>
-            <input class="form-input" name="lastName" type="text" placeholder="e.g. Reyes" />
+            <label class="form-label">School Email</label>
+            <input class="form-input" name="email" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph" />
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">School Email</label>
-          <input class="form-input" name="email" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Role</label>
-          <input type="hidden" id="accountRole" name="role" value=""/>
-          <div class="role-opts" id="accountRoleOpts">
-            <div class="role-opt" data-role="adm" onclick="selectAccountRole(this, 'adm')">
-              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
-            </div>
-            <div class="role-opt" data-role="fac" onclick="selectAccountRole(this, 'fac')">
-              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
-            </div>
-            <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
-              <div class="role-opt-icon" style="background:var(--green-pale);color:var(--green);"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Student</span>
-            </div>
-            <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
-              <div class="role-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <input type="hidden" id="accountRole" name="role" value="" />
+            <div class="role-opts" id="accountRoleOpts">
+              <div class="role-opt" data-role="adm" onclick="selectAccountRole(this, 'adm')">
+                <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i
+                    data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+              </div>
+              <div class="role-opt" data-role="fac" onclick="selectAccountRole(this, 'fac')">
+                <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i
+                    data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+              </div>
+              <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
+                <div class="role-opt-icon" style="background:var(--green-pale);color:var(--green);"><i
+                    data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Student</span>
+              </div>
+              <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
+                <div class="role-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i
+                    data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- CONDITIONAL: LRN (Student only) -->
-        <div class="form-group" id="lrnGroup" style="display:none;">
-          <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner Reference Number)</span></label>
-          <input class="form-input" name="lrn" id="accountLRN" type="text" placeholder="e.g. 123456789012"/>
-        </div>
+          <!-- CONDITIONAL: LRN (Student only) -->
+          <div class="form-group" id="lrnGroup" style="display:none;">
+            <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner
+                Reference Number)</span></label>
+            <input class="form-input" name="lrn" id="accountLRN" type="text" placeholder="e.g. 123456789012" />
+          </div>
 
-        <!-- CONDITIONAL: Linked Students (Parent only) -->
-        <div class="form-group" id="linkedStudentsGroup" style="display:none;">
-          <label class="form-label">Linked Students</label>
+          <!-- CONDITIONAL: Linked Students (Parent only) -->
+          <div class="form-group" id="linkedStudentsGroup" style="display:none;">
+            <label class="form-label">Linked Students</label>
 
-          <!-- Search input -->
-          <div style="position:relative;">
-            <input
-              class="form-input"
-              type="text"
-              id="studentSearchInput"
-              placeholder="Search student by name..."
-              autocomplete="off"
-              oninput="handleStudentSearch(this.value)"
-            />
-            <div id="studentDropdown" style="
+            <!-- Search input -->
+            <div style="position:relative;">
+              <input class="form-input" type="text" id="studentSearchInput" placeholder="Search student by name..."
+                autocomplete="off" oninput="handleStudentSearch(this.value)" />
+              <div id="studentDropdown" style="
               display:none;
               position:absolute;
               top:calc(100% + 4px);
@@ -188,118 +193,127 @@
               overflow-y:auto;
               z-index:100;
             "></div>
+            </div>
+
+            <!-- Selected student tags -->
+            <div id="linkedStudentTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+
+            <!-- Hidden inputs submitted with form -->
+            <div id="linkedStudentInputs"></div>
           </div>
-
-          <!-- Selected student tags -->
-          <div id="linkedStudentTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-
-          <!-- Hidden inputs submitted with form -->
-          <div id="linkedStudentInputs"></div>
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Temporary Password</label>
-          <input class="form-input" name="password" type="password" placeholder="Set a temporary password" />
-        </div>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
-          <button type="submit" class="btn btn-save">Create Account</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- POST ANNOUNCEMENT MODAL -->
-<div class="announcement-modal-backdrop" id="announcementModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Post Announcement</div>
-        <div class="modal-sub">Broadcast a message to the school community.</div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Temporary Password</label>
+            <input class="form-input" name="password" type="password" placeholder="Set a temporary password" />
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+            <button type="submit" class="btn btn-save">Create Account</button>
+          </div>
+        </form>
       </div>
-      <button class="modal-close" type="button" onclick="closeAnnouncementModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <form id="postAnnouncementForm" method="post" action="/announcements/create">
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Title</label>
-          <input class="form-input" type="text" name="title" placeholder="e.g. Q2 Grade Encoding Deadline" />
-        </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Content</label>
-          <textarea class="form-textarea" name="content" style="min-height:120px;" placeholder="Write your announcement here..."></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Priority</label>
-          <input type="hidden" id="modalPriorityValue" name="priority" value="normal"/>
-          <div class="priority-opts">
-            <div class="priority-opt p-high" onclick="selectModalPriority(this, 'high')">
-              <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i> Urgent
-            </div>
-            <div class="priority-opt p-normal selected" onclick="selectModalPriority(this, 'normal')">
-              <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i> Normal
-            </div>
-            <div class="priority-opt p-event" onclick="selectModalPriority(this, 'event')">
-              <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i> Event
-            </div>
-            <div class="priority-opt p-low" onclick="selectModalPriority(this, 'low')">
-              <i data-lucide="minus-circle" style="width:13px;height:13px;color:var(--gray-400);"></i> Low
-            </div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Send To</label>
-          <div class="audience-opts">
-            <label class="aud-opt checked">
-              <input type="checkbox" name="audience" value="all" checked/>
-              <div class="aud-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="users" style="width:13px;height:13px;"></i></div>
-              <span class="aud-opt-label">All Users</span>
-            </label>
-            <label class="aud-opt">
-              <input type="checkbox" name="audience" value="teachers"/>
-              <div class="aud-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:13px;height:13px;"></i></div>
-              <span class="aud-opt-label">Teachers Only</span>
-            </label>
-            <label class="aud-opt">
-              <input type="checkbox" name="audience" value="students"/>
-              <div class="aud-opt-icon" style="background:var(--green-pale);color:var(--green);"><i data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
-              <span class="aud-opt-label">Students Only</span>
-            </label>
-            <label class="aud-opt">
-              <input type="checkbox" name="audience" value="parents"/>
-              <div class="aud-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i data-lucide="heart-handshake" style="width:13px;height:13px;"></i></div>
-              <span class="aud-opt-label">Parents Only</span>
-            </label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
-          <div class="image-upload-area" id="composeUploadArea" onclick="document.getElementById('composeImageInput').click()">
-            <input type="file" id="composeImageInput" name="image" accept="image/*" style="display:none;" onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')"/>
-            <div class="upload-placeholder" id="composePlaceholder">
-              <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
-              <span class="upload-text">Click or drag an image here</span>
-              <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
-            </div>
-            <div class="image-preview-wrap" id="composePreview" style="display:none;">
-              <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
-              <button type="button" class="remove-image-btn" onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
-                <i data-lucide="x" style="width:12px;height:12px;"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeAnnouncementModal()">Cancel</button>
-          <button type="submit" class="btn btn-save">Post Announcement</button>
-        </div>
-      </form>
     </div>
   </div>
-</div>
 
-<!-- ASSIGN TEACHER MODAL -->
-<!-- <div class="modal-backdrop" id="assignTeacherModalBackdrop">
+  <!-- POST ANNOUNCEMENT MODAL -->
+  <div class="announcement-modal-backdrop" id="announcementModalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Post Announcement</div>
+          <div class="modal-sub">Broadcast a message to the school community.</div>
+        </div>
+        <button class="modal-close" type="button" onclick="closeAnnouncementModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="postAnnouncementForm" method="post" action="/announcements/create">
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Title</label>
+            <input class="form-input" type="text" name="title" placeholder="e.g. Q2 Grade Encoding Deadline" />
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Content</label>
+            <textarea class="form-textarea" name="content" style="min-height:120px;"
+              placeholder="Write your announcement here..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Priority</label>
+            <input type="hidden" id="modalPriorityValue" name="priority" value="normal" />
+            <div class="priority-opts">
+              <div class="priority-opt p-high" onclick="selectModalPriority(this, 'high')">
+                <i data-lucide="alert-triangle" style="width:13px;height:13px;color:var(--red);"></i> Urgent
+              </div>
+              <div class="priority-opt p-normal selected" onclick="selectModalPriority(this, 'normal')">
+                <i data-lucide="bell" style="width:13px;height:13px;color:var(--blue-mid);"></i> Normal
+              </div>
+              <div class="priority-opt p-event" onclick="selectModalPriority(this, 'event')">
+                <i data-lucide="calendar" style="width:13px;height:13px;color:var(--gold);"></i> Event
+              </div>
+              <div class="priority-opt p-low" onclick="selectModalPriority(this, 'low')">
+                <i data-lucide="minus-circle" style="width:13px;height:13px;color:var(--gray-400);"></i> Low
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Send To</label>
+            <div class="audience-opts">
+              <label class="aud-opt checked">
+                <input type="checkbox" name="audience" value="all" checked />
+                <div class="aud-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i
+                    data-lucide="users" style="width:13px;height:13px;"></i></div>
+                <span class="aud-opt-label">All Users</span>
+              </label>
+              <label class="aud-opt">
+                <input type="checkbox" name="audience" value="teachers" />
+                <div class="aud-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i
+                    data-lucide="book-open" style="width:13px;height:13px;"></i></div>
+                <span class="aud-opt-label">Teachers Only</span>
+              </label>
+              <label class="aud-opt">
+                <input type="checkbox" name="audience" value="students" />
+                <div class="aud-opt-icon" style="background:var(--green-pale);color:var(--green);"><i
+                    data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
+                <span class="aud-opt-label">Students Only</span>
+              </label>
+              <label class="aud-opt">
+                <input type="checkbox" name="audience" value="parents" />
+                <div class="aud-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i
+                    data-lucide="heart-handshake" style="width:13px;height:13px;"></i></div>
+                <span class="aud-opt-label">Parents Only</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
+            <div class="image-upload-area" id="composeUploadArea"
+              onclick="document.getElementById('composeImageInput').click()">
+              <input type="file" id="composeImageInput" name="image" accept="image/*" style="display:none;"
+                onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')" />
+              <div class="upload-placeholder" id="composePlaceholder">
+                <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
+                <span class="upload-text">Click or drag an image here</span>
+                <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
+              </div>
+              <div class="image-preview-wrap" id="composePreview" style="display:none;">
+                <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview" />
+                <button type="button" class="remove-image-btn"
+                  onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
+                  <i data-lucide="x" style="width:12px;height:12px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn btn-cancel" onclick="closeAnnouncementModal()">Cancel</button>
+            <button type="submit" class="btn btn-save">Post Announcement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASSIGN TEACHER MODAL -->
+  <!-- <div class="modal-backdrop" id="assignTeacherModalBackdrop">
   <div class="modal">
     <div class="modal-head">
       <div>
@@ -310,8 +324,8 @@
     </div>
     <div class="modal-body">
       <form id="assignTeacherForm" method="post" action="/assignments/create"> -->
-        <!-- STEP 1: Section & Subject Selection -->
-        <!-- <div id="step1">
+  <!-- STEP 1: Section & Subject Selection -->
+  <!-- <div id="step1">
           <div class="form-group">
             <label class="form-label">Section</label>
             <select class="form-select" id="sectionSelect" name="section" onchange="updateSubjects()">
@@ -334,8 +348,8 @@
           </div>
         </div> -->
 
-        <!-- STEP 2: Teacher Selection -->
-        <!-- <div id="step2" style="display: none;">
+  <!-- STEP 2: Teacher Selection -->
+  <!-- <div id="step2" style="display: none;">
           <div class="modal-context">
             <div class="ctx-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
             <div>
@@ -373,372 +387,403 @@
           <button type="submit" id="submitBtn" class="btn btn-save" style="display: none;">Assign Teacher</button>
         </div>
       </form> -->
-    <!-- </div>
+  <!-- </div>
   </div>
 </div> -->
 
-<div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="shell">
+    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
-  <!-- ══════════════════════
+    <!-- ══════════════════════
        SIDEBAR
   ══════════════════════ -->
-  <aside class="sidebar">
+    <aside class="sidebar">
 
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
-      </div>
-      <div class="brand-text">
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
-      </div>
-    </div>
-
-    <!-- Main nav -->
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-
-      <a href="" class="nav-item active">
-        <div class="nav-icon">
-          <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
         </div>
-        <span class="nav-label">Dashboard</span>
-      </a>
-
-      <a href="edugnay-admin-users.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="users" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Manage Users</span>
-        <span class="nav-badge">3</span>
-      </a>
-
-      <div class="nav-group" id="classMgmtGroup">
-        <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
-          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
-          <span>Class Management</span>
-          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="nav-children">
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','sections')">Sections</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
         </div>
       </div>
-    </div>
 
-    <!-- Reports & Content -->
-    <div class="nav-section">
-      <div class="nav-section-label">Reports</div>
+      <!-- Main nav -->
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
 
-      <a href="edugnay-admin-reports.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+        <a href="" class="nav-item active">
+          <div class="nav-icon">
+            <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a href="edugnay-admin-users.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="users" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Manage Users</span>
+          <span class="nav-badge">3</span>
+        </a>
+
+        <div class="nav-group" id="classMgmtGroup">
+          <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
+            <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
+            <span>Class Management</span>
+            <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','sections')">Sections</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+          </div>
         </div>
-        <span class="nav-label">System Reports</span>
-      </a>
+      </div>
 
-      <a href="edugnay-admin-announcements.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
-      </a>
-    </div>
+      <!-- Reports & Content -->
+      <div class="nav-section">
+        <div class="nav-section-label">Reports</div>
 
-    <!-- Settings -->
-    <div class="nav-section">
-      <div class="nav-section-label">Settings</div>
+        <a href="edugnay-admin-reports.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">System Reports</span>
+        </a>
 
-      <a href="edugnay-admin-system-config.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="settings" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">System Config</span>
-      </a>
+        <a href="edugnay-admin-announcements.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
 
-      <a href="edugnay-admin-archive.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="archive" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Archive Data</span>
-      </a>
-    </div>
+      <!-- Settings -->
+      <div class="nav-section">
+        <div class="nav-section-label">Settings</div>
 
-  </aside>
+        <a href="edugnay-admin-system-config.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="settings" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">System Config</span>
+        </a>
 
-  <!-- ══════════════════════
+        <a href="edugnay-admin-archive.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="archive" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Archive Data</span>
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- ══════════════════════
        TOPBAR
   ══════════════════════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Admin</div>
-        <div class="page-title">Dashboard</div>
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i
+            data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Admin</div>
+          <div class="page-title">Dashboard</div>
+        </div>
       </div>
-    </div>
-    <div class="topbar-right">
-      <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
-          <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-        </button>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
+            <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
+          </button>
 
-        <div class="tb-notif-panel" id="tbNotifPanel">
-          <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
-          </div>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <span class="tb-notif-panel-title">Notifications</span>
+              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            </div>
 
-          <div class="tb-notif-list" id="tbNotifList">
-            <div class="tb-notif-empty" id="tbNotifEmpty">
-              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-              <div class="tb-notif-empty-title">No notifications yet</div>
-              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-admin-notifications.html">More notifications</a>
             </div>
           </div>
+        </div>
 
-          <div class="tb-notif-panel-foot">
-            <a href="edugnay-admin-notifications.html">More notifications</a>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar admin">SA</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-role">Admin</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
           </div>
         </div>
       </div>
+    </header>
 
-      <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
-          <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
-            <div class="tb-profile-role">Admin</div>
-          </div>
-          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
-        </button>
-
-        <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
-            <i data-lucide="user" style="width:15px;height:15px;"></i>
-            My Profile
-          </a>
-          <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            Sign Out
-          </a>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- ══════════════════════
+    <!-- ══════════════════════
        MAIN
   ══════════════════════ -->
-  <main class="main">
 
-  <!-- WELCOME BANNER -->
-  <div class="grading-banner">
-    <div class="grading-welcome">
-      <div class="grading-welcome-name">Welcome back, Admin!</div>
-      <div class="grading-welcome-date" id="currentDate"></div>
-    </div>
-    <div class="grading-period-card">
-      <div class="grading-period-label">Grading Period</div>
-      <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
-    </div>
+    <main class="main">
+
+      <div class="dashboard-grid">
+
+        <div class="dash-col-left">
+
+          <!-- WELCOME BANNER -->
+          <div class="grading-banner">
+            <div class="grading-welcome">
+              <div class="grading-welcome-name">Welcome back, Admin!</div>
+              <div class="grading-welcome-date">Here's what's happening across the school today</div>
+            </div>
+            <div class="grading-period-card">
+              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i>
+              </div>
+              <div>
+                <div class="grading-period-label">Active grading period</div>
+                <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAT CARDS -->
+          <div class="stat-grid">
+
+            <div class="stat-card green">
+              <div class="stat-card-top">
+                <div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:20px;height:20px;"></i>
+                </div>
+                <span class="stat-card-trend trend-up">▲ 4%</span>
+              </div>
+              <div class="stat-card-num">284</div>
+              <div class="stat-card-label">Students</div>
+              <div class="stat-card-sub">Across 8 sections · JHS</div>
+            </div>
+
+            <div class="stat-card gold">
+              <div class="stat-card-top">
+                <div class="stat-card-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div>
+                <span class="stat-card-trend trend-neu">— 0%</span>
+              </div>
+              <div class="stat-card-num">24</div>
+              <div class="stat-card-label">Faculty</div>
+              <div class="stat-card-sub">Active teachers this quarter</div>
+            </div>
+
+            <div class="stat-card purple">
+              <div class="stat-card-top">
+                <div class="stat-card-icon"><i data-lucide="heart-handshake" style="width:20px;height:20px;"></i>
+                </div>
+                <span class="stat-card-trend trend-up">▲ 11%</span>
+              </div>
+              <div class="stat-card-num">261</div>
+              <div class="stat-card-label">Parents</div>
+              <div class="stat-card-sub">Linked to student accounts</div>
+            </div>
+
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="panel panel-activity">
+            <div class="panel-head">
+              <div class="panel-title">Recent Activity</div>
+              <a href="./edugnay-admin-activity.html" class="panel-action">View all <i data-lucide="arrow-right"
+                  style="width:12px;height:12px;"></i></a>
+            </div>
+            <div class="activity-list" id="activityList"></div>
+          </div>
+
+        </div>
+
+        <div class="dash-col-right">
+
+          <!-- This Week (calendar strip) -->
+          <div class="panel panel-week" id="weekPanel">
+            <div class="panel-head">
+              <div class="week-title-wrap">
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i>
+                </div>
+                <div>
+                  <div class="panel-title">This Week</div>
+                  <div class="week-title-sub">School-wide schedule</div>
+                </div>
+              </div>
+              <span id="weekRangeLabel" class="week-range-label"></span>
+            </div>
+            <div class="week-calendar-grid" id="weekCalendarGrid"></div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Quick Actions</div>
+            </div>
+            <div class="quick-actions">
+              <a href="#" class="qa-item" onclick="openAccountModal(); return false;">
+                <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
+                <div class="qa-text">
+                  <div class="qa-title">Add New Account</div>
+                  <div class="qa-desc">Create teacher, student or parent</div>
+                </div>
+                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+              </a>
+              <a href="#" class="qa-item" onclick="openStudentModal();">
+                <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
+                <div class="qa-text">
+                  <div class="qa-title">Enroll Student to Section</div>
+                  <div class="qa-desc">Place students in their sections</div>
+                </div>
+                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+              </a>
+              <a href="#" class="qa-item" onclick="openAnnouncementModal(); return false;">
+                <div class="qa-icon"><i data-lucide="megaphone" style="width:18px;height:18px;"></i></div>
+                <div class="qa-text">
+                  <div class="qa-title">Post Announcement</div>
+                  <div class="qa-desc">Broadcast to all user groups</div>
+                </div>
+                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
   </div>
 
-    <!-- System announcement -->
-    <!-- <div class="announce-banner">
-      <div class="announce-icon"><i data-lucide="megaphone" style="width:20px;height:20px;"></i></div>
-      <div class="announce-body">
-        <div class="announce-title">System Announcement</div>
-        <div class="announce-text">2nd Quarter grading period is now open. Ensure all teacher and section assignments are finalized before the encoding deadline.</div>
-      </div>
-      <div class="announce-dismiss" onclick="this.parentElement.style.display='none'"><i data-lucide="x" style="width:18px;height:18px;"></i></div>
-    </div> -->
+  <script>
+    function renderWeekCalendar() {
+      const grid = document.getElementById('weekCalendarGrid');
+      const rangeLabel = document.getElementById('weekRangeLabel');
+      if (!grid) return;
 
-    <!-- STAT CARDS -->
-    <div class="stat-grid">
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
 
-      <div class="stat-card green">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:20px;height:20px;"></i></div>
-          <span class="stat-card-trend trend-up">▲ 4%</span>
-        </div>
-        <div class="stat-card-num">284</div>
-        <div class="stat-card-label">Students</div>
-        <div class="stat-card-sub">Across 8 sections · JHS</div>
-      </div>
+      const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      let html = '';
 
-      <div class="stat-card gold">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div>
-          <span class="stat-card-trend trend-neu">— 0%</span>
-        </div>
-        <div class="stat-card-num">24</div>
-        <div class="stat-card-label">Faculty</div>
-        <div class="stat-card-sub">Active teachers this quarter</div>
-      </div>
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const isToday = d.toDateString() === today.toDateString();
+        html += `
+          <div class="week-day${isToday ? ' is-today' : ''}">
+            <span class="week-day-label">${dayLabels[i]}</span>
+            <span class="week-day-num">${d.getDate()}</span>
+          </div>`;
+      }
 
-      <div class="stat-card purple">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="heart-handshake" style="width:20px;height:20px;"></i></div>
-          <span class="stat-card-trend trend-up">▲ 11%</span>
-        </div>
-        <div class="stat-card-num">261</div>
-        <div class="stat-card-label">Parents</div>
-        <div class="stat-card-sub">Linked to student accounts</div>
-      </div>
+      grid.innerHTML = html;
 
-      <!-- <div class="stat-card orange">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="clock" style="width:20px;height:20px;"></i></div>
-          <span class="stat-card-trend trend-down">▼ Pending</span>
-        </div>
-        <div class="stat-card-num">3</div>
-        <div class="stat-card-label">Pending Accounts</div>
-        <div class="stat-card-sub">Awaiting admin approval</div>
-      </div> -->
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (rangeLabel) rangeLabel.textContent = `${fmt(monday)} – ${fmt(sunday)}`;
+    }
+    renderWeekCalendar();
 
-    </div>
-
-    <!-- TWO COLUMN: User table + Quick Actions -->
-    <div class="two-col">
-      <!-- Activity feed -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Recent Activity</div>
-          <a href="./edugnay-admin-activity.html" class="panel-action">View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
-        </div>
-        
-        <div class="activity-list" id="activityList"></div>
-
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Quick Actions</div>
-        </div>
-        <div class="quick-actions">
-          <a href="#" class="qa-item" onclick="openAccountModal(); return false;">
-            <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Add New Account</div>
-              <div class="qa-desc">Create teacher, student or parent</div>
-            </div>
-            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
-          </a>
-          <a href="#" class="qa-item" onclick="openStudentModal();">
-            <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Enroll Student to Section</div>
-              <div class="qa-desc">Place students in their sections</div>
-            </div>
-            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
-          </a>
-          <a href="#" class="qa-item" onclick="openAnnouncementModal(); return false;">
-            <div class="qa-icon"><i data-lucide="megaphone" style="width:18px;height:18px;"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Post Announcement</div>
-              <div class="qa-desc">Broadcast to all user groups</div>
-            </div>
-            <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
-          </a>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- BOTTOM ROW: Activity + System Config -->
-    <div class="bottom-row">
-
-    </div>
-
-  </main>
-
-</div>
-
-<script>
-  document.getElementById('currentDate').textContent =
-  new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-
-  function openAccountModal() {
-    document.getElementById('accountModalBackdrop').classList.add('open');
-  }
-
-  function closeAccountModal() {
-    document.getElementById('accountModalBackdrop').classList.remove('open');
-  }
-
-  document.getElementById('accountModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeAccountModal();
-  });
-
-  /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
-
-  function updateAccountModalFields() {
-    const role = document.getElementById('accountRole').value;
-    document.getElementById('lrnGroup').style.display            = role === 'stud'    ? '' : 'none';
-    document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
-
-    if (role !== 'stud')    document.getElementById('accountLRN').value = '';
-    if (role !== 'parents') clearLinkedStudents();
-  }
-
-  function selectAccountRole(el, value) {
-    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('accountRole').value = value;
-    updateAccountModalFields();
-  }
-
-  /* ── STUDENT LIVE SEARCH PICKER ── */
-
-  // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
-  const MOCK_STUDENTS = [
-    { id: 'STU-001', name: 'Juan Dela Cruz',  section: 'Grade 8 – St. Mark' },
-    { id: 'STU-002', name: 'Ana Santos',      section: 'Grade 10 – St. James' },
-    { id: 'STU-003', name: 'Ben Garcia',      section: 'Grade 9 – St. Peter' },
-    { id: 'STU-004', name: 'Carlo Mendoza',   section: 'Grade 7 – St. Matthew' },
-    { id: 'STU-005', name: 'Maria Flores',    section: 'Grade 8 – St. Luke' },
-    { id: 'STU-006', name: 'Jose Ramos',      section: 'Grade 7 – St. Mark' },
-  ];
-
-  let linkedStudents = []; // [{ id, name, section }]
-
-  function handleStudentSearch(query) {
-    const dropdown = document.getElementById('studentDropdown');
-    if (!query.trim()) { dropdown.style.display = 'none'; return; }
-
-    const results = MOCK_STUDENTS.filter(s =>
-      s.name.toLowerCase().includes(query.toLowerCase()) &&
-      !linkedStudents.find(l => l.id === s.id)
-    );
-
-    if (!results.length) {
-      dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
-      dropdown.style.display = '';
-      return;
+    function openAccountModal() {
+      document.getElementById('accountModalBackdrop').classList.add('open');
     }
 
-    dropdown.innerHTML = results.map(s => `
+    function closeAccountModal() {
+      document.getElementById('accountModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('accountModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeAccountModal();
+    });
+
+    /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
+
+    function updateAccountModalFields() {
+      const role = document.getElementById('accountRole').value;
+      document.getElementById('lrnGroup').style.display = role === 'stud' ? '' : 'none';
+      document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+
+      if (role !== 'stud') document.getElementById('accountLRN').value = '';
+      if (role !== 'parents') clearLinkedStudents();
+    }
+
+    function selectAccountRole(el, value) {
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('accountRole').value = value;
+      updateAccountModalFields();
+    }
+
+    /* ── STUDENT LIVE SEARCH PICKER ── */
+
+    // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
+    const MOCK_STUDENTS = [
+      { id: 'STU-001', name: 'Juan Dela Cruz', section: 'Grade 8 – St. Mark' },
+      { id: 'STU-002', name: 'Ana Santos', section: 'Grade 10 – St. James' },
+      { id: 'STU-003', name: 'Ben Garcia', section: 'Grade 9 – St. Peter' },
+      { id: 'STU-004', name: 'Carlo Mendoza', section: 'Grade 7 – St. Matthew' },
+      { id: 'STU-005', name: 'Maria Flores', section: 'Grade 8 – St. Luke' },
+      { id: 'STU-006', name: 'Jose Ramos', section: 'Grade 7 – St. Mark' },
+    ];
+
+    let linkedStudents = []; // [{ id, name, section }]
+
+    function handleStudentSearch(query) {
+      const dropdown = document.getElementById('studentDropdown');
+      if (!query.trim()) { dropdown.style.display = 'none'; return; }
+
+      const results = MOCK_STUDENTS.filter(s =>
+        s.name.toLowerCase().includes(query.toLowerCase()) &&
+        !linkedStudents.find(l => l.id === s.id)
+      );
+
+      if (!results.length) {
+        dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
+        dropdown.style.display = '';
+        return;
+      }
+
+      dropdown.innerHTML = results.map(s => `
       <div
         onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
@@ -750,37 +795,37 @@
       </div>
     `).join('');
 
-    dropdown.style.display = '';
-  }
+      dropdown.style.display = '';
+    }
 
-  function addLinkedStudent(id, name, section) {
-    if (linkedStudents.find(s => s.id === id)) return;
-    linkedStudents.push({ id, name, section });
-    renderLinkedStudents();
+    function addLinkedStudent(id, name, section) {
+      if (linkedStudents.find(s => s.id === id)) return;
+      linkedStudents.push({ id, name, section });
+      renderLinkedStudents();
 
-    document.getElementById('studentSearchInput').value = '';
-    document.getElementById('studentDropdown').style.display = 'none';
-  }
+      document.getElementById('studentSearchInput').value = '';
+      document.getElementById('studentDropdown').style.display = 'none';
+    }
 
-  function removeLinkedStudent(id) {
-    linkedStudents = linkedStudents.filter(s => s.id !== id);
-    renderLinkedStudents();
-  }
+    function removeLinkedStudent(id) {
+      linkedStudents = linkedStudents.filter(s => s.id !== id);
+      renderLinkedStudents();
+    }
 
-  function clearLinkedStudents() {
-    linkedStudents = [];
-    renderLinkedStudents();
-    const inp = document.getElementById('studentSearchInput');
-    if (inp) inp.value = '';
-    const dd = document.getElementById('studentDropdown');
-    if (dd) dd.style.display = 'none';
-  }
+    function clearLinkedStudents() {
+      linkedStudents = [];
+      renderLinkedStudents();
+      const inp = document.getElementById('studentSearchInput');
+      if (inp) inp.value = '';
+      const dd = document.getElementById('studentDropdown');
+      if (dd) dd.style.display = 'none';
+    }
 
-  function renderLinkedStudents() {
-    const tags = document.getElementById('linkedStudentTags');
-    const inputs = document.getElementById('linkedStudentInputs');
+    function renderLinkedStudents() {
+      const tags = document.getElementById('linkedStudentTags');
+      const inputs = document.getElementById('linkedStudentInputs');
 
-    tags.innerHTML = linkedStudents.map(s => `
+      tags.innerHTML = linkedStudents.map(s => `
       <div style="
         display:inline-flex;align-items:center;gap:6px;
         background:var(--blue-xpale);color:var(--blue-mid);
@@ -792,174 +837,174 @@
       </div>
     `).join('');
 
-    inputs.innerHTML = linkedStudents.map(s =>
-      `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
-    ).join('');
-  }
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function(e) {
-    const wrap = document.getElementById('linkedStudentsGroup');
-    if (wrap && !wrap.contains(e.target)) {
-      const dd = document.getElementById('studentDropdown');
-      if (dd) dd.style.display = 'none';
+      inputs.innerHTML = linkedStudents.map(s =>
+        `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
+      ).join('');
     }
-  });
 
-  function openStudentModal(studentName) {
-    const title = document.getElementById('studentModalTitle');
-    title.textContent = studentName ? `Assign: ${studentName}` : 'Assign Student';
-    document.getElementById('ctxVal').textContent = 'Select a section below';
-    document.getElementById('modalStudent').value = '';
-    document.getElementById('studentPreview').classList.remove('visible');
-    document.getElementById('studentModalBackdrop').classList.add('open');
-  }
-
-  function closeStudentModal() {
-    document.getElementById('studentModalBackdrop').classList.remove('open');
-  }
-
-  document.getElementById('studentModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeStudentModal();
-  });
-
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });
-
-  function previewStudent(val) {
-    const preview = document.getElementById('studentPreview');
-    if (!val) { preview.classList.remove('visible'); return; }
-    const [name, email, initials] = val.split('|');
-    document.getElementById('spAv').textContent     = initials;
-    document.getElementById('spName').textContent   = name;
-    document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
-    preview.classList.add('visible');
-  }
-
-  function openAnnouncementModal() {
-    document.getElementById('announcementModalBackdrop').classList.add('open');
-  }
-
-  function closeAnnouncementModal() {
-    document.getElementById('announcementModalBackdrop').classList.remove('open');
-  }
-
-  document.querySelector('.announcement-modal-backdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeAnnouncementModal();
-  });
-
-  function selectModalPriority(el, value) {
-    document.querySelectorAll('.announcement-modal-backdrop .priority-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('modalPriorityValue').value = value;
-  }
-
-  document.querySelectorAll('.announcement-modal-backdrop .aud-opt').forEach(opt => {
-    opt.addEventListener('click', function() {
-      const cb = this.querySelector('input[type="checkbox"]');
-      this.classList.toggle('checked', cb.checked);
-    });
-  });
-
-  function selectRole(el, value) {
-    document.querySelectorAll('.account-modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('roleValue').value = value;
-  }
-
-  function handleImagePreview(input, previewWrapId, placeholderId) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById(previewWrapId).querySelector('.image-preview').src = e.target.result;
-      document.getElementById(previewWrapId).style.display = 'block';
-      document.getElementById(placeholderId).style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function removeImage(event, inputId, previewWrapId, placeholderId) {
-    event.stopPropagation();
-    document.getElementById(inputId).value = '';
-    document.getElementById(previewWrapId).style.display = 'none';
-    document.getElementById(placeholderId).style.display = 'flex';
-  }
-
-  function setupDropzone(areaId, inputId, previewWrapId, placeholderId) {
-    const area = document.getElementById(areaId);
-    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
-    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
-    area.addEventListener('drop', e => {
-      e.preventDefault();
-      area.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        document.getElementById(inputId).files = e.dataTransfer.files;
-        handleImagePreview(document.getElementById(inputId), previewWrapId, placeholderId);
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+      const wrap = document.getElementById('linkedStudentsGroup');
+      if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('studentDropdown');
+        if (dd) dd.style.display = 'none';
       }
     });
-  }
 
-  setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
-
-  /* ── RECENT ACTIVITY ──
-   Columns to match later in Postgres:
-   id | actor | action | icon | color | tag | created_at
-   (date_group and time-of-day are computed, not stored) */
-  const RECENT_ACTIVITY = [
-    {
-      id: 4,
-      actor: 'Admin',
-      action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."',
-      icon: 'megaphone',
-      color: 'purple',
-      tag: 'Announcement',
-      created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
-    },
-    {
-      id: 3,
-      actor: 'Admin',
-      action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.',
-      icon: 'user-check',
-      color: 'blue',
-      tag: 'Assignment',
-      created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
-    },
-    {
-      id: 2,
-      actor: 'System Config',
-      action: 'updated: Q2 grading period activated.',
-      icon: 'settings-2',
-      color: 'gold',
-      tag: 'Config',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
-    },
-    {
-      id: 1,
-      actor: 'Ana Santos',
-      action: 'flagged by system: 4 consecutive absences.',
-      icon: 'alert-triangle',
-      color: 'red',
-      tag: 'Alert',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+    function openStudentModal(studentName) {
+      const title = document.getElementById('studentModalTitle');
+      title.textContent = studentName ? `Assign: ${studentName}` : 'Assign Student';
+      document.getElementById('ctxVal').textContent = 'Select a section below';
+      document.getElementById('modalStudent').value = '';
+      document.getElementById('studentPreview').classList.remove('visible');
+      document.getElementById('studentModalBackdrop').classList.add('open');
     }
-  ];
 
-  function renderActivityList() {
-    const container = document.getElementById('activityList');
-    const sorted = [...RECENT_ACTIVITY].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    function closeStudentModal() {
+      document.getElementById('studentModalBackdrop').classList.remove('open');
+    }
 
-    let html = '';
-    let lastGroup = null;
+    document.getElementById('studentModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeStudentModal();
+    });
 
-    sorted.forEach(item => {
-      const group = formatDateGroup(item.created_at);
-      if (group !== lastGroup) {
-        html += `<div class="activity-group-label">${group}</div>`;
-        lastGroup = group;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });
+
+    function previewStudent(val) {
+      const preview = document.getElementById('studentPreview');
+      if (!val) { preview.classList.remove('visible'); return; }
+      const [name, email, initials] = val.split('|');
+      document.getElementById('spAv').textContent = initials;
+      document.getElementById('spName').textContent = name;
+      document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
+      preview.classList.add('visible');
+    }
+
+    function openAnnouncementModal() {
+      document.getElementById('announcementModalBackdrop').classList.add('open');
+    }
+
+    function closeAnnouncementModal() {
+      document.getElementById('announcementModalBackdrop').classList.remove('open');
+    }
+
+    document.querySelector('.announcement-modal-backdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeAnnouncementModal();
+    });
+
+    function selectModalPriority(el, value) {
+      document.querySelectorAll('.announcement-modal-backdrop .priority-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('modalPriorityValue').value = value;
+    }
+
+    document.querySelectorAll('.announcement-modal-backdrop .aud-opt').forEach(opt => {
+      opt.addEventListener('click', function () {
+        const cb = this.querySelector('input[type="checkbox"]');
+        this.classList.toggle('checked', cb.checked);
+      });
+    });
+
+    function selectRole(el, value) {
+      document.querySelectorAll('.account-modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('roleValue').value = value;
+    }
+
+    function handleImagePreview(input, previewWrapId, placeholderId) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById(previewWrapId).querySelector('.image-preview').src = e.target.result;
+        document.getElementById(previewWrapId).style.display = 'block';
+        document.getElementById(placeholderId).style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage(event, inputId, previewWrapId, placeholderId) {
+      event.stopPropagation();
+      document.getElementById(inputId).value = '';
+      document.getElementById(previewWrapId).style.display = 'none';
+      document.getElementById(placeholderId).style.display = 'flex';
+    }
+
+    function setupDropzone(areaId, inputId, previewWrapId, placeholderId) {
+      const area = document.getElementById(areaId);
+      area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+      area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+      area.addEventListener('drop', e => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          document.getElementById(inputId).files = e.dataTransfer.files;
+          handleImagePreview(document.getElementById(inputId), previewWrapId, placeholderId);
+        }
+      });
+    }
+
+    setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
+
+    /* ── RECENT ACTIVITY ──
+     Columns to match later in Postgres:
+     id | actor | action | icon | color | tag | created_at
+     (date_group and time-of-day are computed, not stored) */
+    const RECENT_ACTIVITY = [
+      {
+        id: 4,
+        actor: 'Admin',
+        action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."',
+        icon: 'megaphone',
+        color: 'purple',
+        tag: 'Announcement',
+        created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
+      },
+      {
+        id: 3,
+        actor: 'Admin',
+        action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.',
+        icon: 'user-check',
+        color: 'blue',
+        tag: 'Assignment',
+        created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
+      },
+      {
+        id: 2,
+        actor: 'System Config',
+        action: 'updated: Q2 grading period activated.',
+        icon: 'settings-2',
+        color: 'gold',
+        tag: 'Config',
+        created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
+      },
+      {
+        id: 1,
+        actor: 'Ana Santos',
+        action: 'flagged by system: 4 consecutive absences.',
+        icon: 'alert-triangle',
+        color: 'red',
+        tag: 'Alert',
+        created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
       }
-      html += `
+    ];
+
+    function renderActivityList() {
+      const container = document.getElementById('activityList');
+      const sorted = [...RECENT_ACTIVITY].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      let html = '';
+      let lastGroup = null;
+
+      sorted.forEach(item => {
+        const group = formatDateGroup(item.created_at);
+        if (group !== lastGroup) {
+          html += `<div class="activity-group-label">${group}</div>`;
+          lastGroup = group;
+        }
+        html += `
         <div class="activity-item">
           <div class="act-icon ${item.color}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
           <div class="act-body">
@@ -969,14 +1014,15 @@
           <span class="act-tag">${item.tag}</span>
         </div>
       `;
-    });
+      });
 
-    container.innerHTML = html;
-    lucide.createIcons();
-  }
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
 
-  renderActivityList();  
-</script>
+    renderActivityList();  
+  </script>
 
 </body>
+
 </html>

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/profile.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/student/shell.js"></script>
   <style>
     /* EJS NOTE: moves to assets/css/student/profile.css. Shared tokens only. */
 
@@ -327,14 +328,6 @@
       </a>
     </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Account</div>
-      <a href="edugnay-student-profile.html" class="nav-item active">
-        <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">My Profile</span>
-      </a>
-    </div>
-
   </aside>
 
   <!-- ══════ TOPBAR ══════ -->
@@ -348,25 +341,56 @@
         <div class="page-title">My Profile</div>
       </div>
     </div>
-    <div class="student-topbar-right">
-      <div class="topbar-profile" id="topbarProfile">
-        <button type="button" class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
-          <span class="profile-trigger-avatar">RA</span>
-        </button>
-
-        <div class="profile-dropdown" id="profileDropdown">
-          <a href="edugnay-student-profile.html" class="profile-dropdown-item">
-            <i data-lucide="user-round" style="width:15px;height:15px;"></i>
-            <span>My Profile</span>
-          </a>
-          <div class="profile-dropdown-divider"></div>
-          <button type="button" class="profile-dropdown-item danger" onclick="closeProfileMenu(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            <span>Sign Out</span>
+    <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
           </button>
+
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <span class="tb-notif-panel-title">Notifications</span>
+              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            </div>
+
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-student-notifications.html">More notifications</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar student">JD</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-role">Student</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
         </div>
       </div>
-    </div>
   </header>
 
   <!-- ══════ MAIN ══════ -->
@@ -762,56 +786,6 @@ function showToast(msg, type) {
   setTimeout(() => t.remove(), 3000);
 }
 
-function toggleDrawer(open) {
-  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
-  document.body.classList.toggle('drawer-open', isOpen);
-}
-
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', function() {
-    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    this.classList.add('active');
-    toggleDrawer(false);
-  });
-});
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); }
-  });
-
-
-  /* ── LOGOUT MODAL ── */
-  function openLogoutModal() {
-    document.getElementById('logoutModal').classList.add('open');
-    lucide.createIcons();
-  }
-  function closeLogoutModal() {
-    document.getElementById('logoutModal').classList.remove('open');
-  }
-  // Close on backdrop click
-  document.getElementById('logoutModal').addEventListener('click', function(e) {
-    if (e.target === this) closeLogoutModal();
-  });
-  // Close on Escape (add to existing keydown listener or paste standalone)
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeLogoutModal();
-  });
-
-  /* ── PROFILE DROPDOWN ── */
-  function toggleProfileMenu(forceState) {
-    const trigger = document.getElementById('profileTrigger');
-    const dropdown = document.getElementById('profileDropdown');
-    const isOpen = forceState === undefined ? !dropdown.classList.contains('open') : forceState;
-    dropdown.classList.toggle('open', isOpen);
-    trigger.classList.toggle('open', isOpen);
-    trigger.setAttribute('aria-expanded', isOpen);
-  }
-  function closeProfileMenu() { toggleProfileMenu(false); }
-
-  document.addEventListener('click', (e) => {
-    const profile = document.getElementById('topbarProfile');
-    if (profile && !profile.contains(e.target)) closeProfileMenu();
-  });
 </script>
 
 </body>

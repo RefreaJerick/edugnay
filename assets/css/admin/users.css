@@ -864,9 +864,7 @@ tbody td {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .main {
-    padding: 20px;
-  }
+
 
   .toolbar {
     flex-direction: column;

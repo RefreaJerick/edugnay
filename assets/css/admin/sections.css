@@ -767,9 +767,7 @@ tbody td {
 }
 
 @media (max-width: 760px) {
-  .main {
-    padding: 20px;
-  }
+
 
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);

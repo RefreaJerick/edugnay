@@ -5,26 +5,57 @@
     PROFILE HEADER CARD
 ══════════════════════════════ */
 .profile-header-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  padding: 24px;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 16px;
+  padding: 26px;
   display: flex;
   align-items: center;
   gap: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 12px 26px rgba(11, 31, 58, 0.18);
 }
+
+/* .profile-header-card::before,
+.profile-header-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.profile-header-card::before {
+  width: 230px;
+  height: 230px;
+  top: -150px;
+  right: 16%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-header-card::after {
+  width: 180px;
+  height: 180px;
+  right: -68px;
+  bottom: -112px;
+  background: rgba(255, 255, 255, 0.06);
+} */
 
 .profile-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  z-index: 2;
 }
 
 .profile-avatar {
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background: var(--navy);
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(247, 217, 128, 0.22);
   color: var(--white);
   display: flex;
   align-items: center;
@@ -62,8 +93,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--navy);
-  border: 3px solid var(--white);
+  background: var(--blue);
+  border: 3px solid #123d78;
   color: var(--white);
   display: flex;
   align-items: center;
@@ -98,7 +129,7 @@
 .profile-header-name {
   font-size: 19px;
   font-weight: 800;
-  color: var(--gray-800);
+  color: var(--white);
   margin-bottom: 6px;
 }
 
@@ -107,7 +138,7 @@
   flex-wrap: wrap;
   gap: 14px;
   font-size: 12.5px;
-  color: var(--gray-500);
+  color: rgba(255, 255, 255, 0.72);
 }
 .profile-header-meta span {
   display: flex;
@@ -264,9 +295,10 @@
 ══════════════════════════════ */
 .panel {
   background: var(--white);
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--gray-200);
   overflow: hidden;
+  box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
 }
 
 .panel-head {
@@ -277,6 +309,7 @@
   border-bottom: 1px solid var(--gray-100);
   flex-wrap: wrap;
   gap: 10px;
+  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
 }
 
 .panel-title {

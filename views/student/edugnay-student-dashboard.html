@@ -1,17 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
-  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/student/shell.js"></script>
   <style>
+    /* ── Dashboard two-column independent-height layout (matches teacher/admin) ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .dash-col-left,
+    .dash-col-right {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .dash-col-left,
+      .dash-col-right {
+        display: contents;
+      }
+
+      .grading-banner {
+        order: -2;
+      }
+
+      #weekPanel {
+        order: -1;
+      }
+    }
+
+    /* ── Week calendar panel (matches teacher/admin dashboard) ── */
+    .panel-week .panel-head {
+      padding: 14px 18px;
+    }
+
+    .week-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .week-title-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      border-radius: 10px;
+      background: var(--blue);
+      color: var(--white);
+      box-shadow: 0 4px 10px rgba(29, 92, 180, 0.2);
+    }
+
+    .week-title-sub {
+      margin-top: 1px;
+      font-size: 10px;
+      color: var(--gray-400);
+    }
+
+    .week-range-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--blue-mid);
+      background: var(--white);
+      border: 1px solid var(--blue-pale);
+      border-radius: 999px;
+      padding: 5px 8px;
+    }
+
+    .week-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 7px;
+      padding: 16px;
+      background: linear-gradient(180deg, #fbfdff 0%, var(--white) 100%);
+    }
+
+    .week-day {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 4px;
+      border-radius: 11px;
+      border: 1px solid transparent;
+      background: var(--white);
+      box-shadow: inset 0 0 0 1px var(--gray-100);
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .week-day:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 12px rgba(16, 40, 80, 0.08);
+    }
+
+    .week-day.is-weekend:not(.is-today) {
+      background: var(--gray-50);
+    }
+
+    .week-day-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-400);
+    }
+
+    .week-day-num {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gray-700);
+    }
+
+    .week-day.is-today {
+      background: linear-gradient(145deg, var(--blue) 0%, var(--blue-mid) 100%);
+      border-color: var(--blue-mid);
+      box-shadow: 0 7px 16px rgba(29, 92, 180, 0.25);
+    }
+
+    .week-day.is-today .week-day-label,
+    .week-day.is-today .week-day-num {
+      color: var(--white);
+    }
+
     /*
       ════════════════════════════════════════════════════
       EJS CONVERSION NOTE
@@ -22,258 +155,393 @@
       no new color system introduced, consistent with admin + teacher portals.
     */
 
-    /* ── Summary strip — flat horizontal bar, same pattern as admin/teacher ── */
-    .summary-strip {
-      display: flex; align-items: stretch; gap: 0;
-      background: var(--white); border: 1px solid var(--gray-200);
-      border-radius: 14px; overflow: hidden; margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(16,40,80,0.05);
-    }
-    .summary-item { flex: 1; padding: 18px 22px; border-right: 1px solid var(--gray-100); display: flex; align-items: center; gap: 14px; }
-    .summary-item:last-child { border-right: none; }
-    .summary-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .summary-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 800; color: var(--gray-800); line-height: 1; }
-    .summary-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
-
-    /* ── Greeting banner — navy/gold gradient, profile + date, no grade data ── */
-    .greeting-banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
-      border: 1px solid rgba(212, 175, 55, 0.25);
-      border-left: 4px solid var(--gold);
-      border-radius: 14px;
-      padding: 18px 26px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 20px rgba(10, 25, 60, 0.15);
+    /* Welcome banner */
+    .grading-banner {
       position: relative;
       overflow: hidden;
+      min-height: 124px;
+      padding: 24px 26px;
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      border-radius: 16px;
+      background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
+      box-shadow: 0 12px 26px rgba(11, 31, 58, 0.18);
     }
-    /* .greeting-banner::before {
-      content: '';
-      position: absolute; top: -60px; right: -60px;
-      width: 220px; height: 220px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(212,175,55,0.14), transparent 70%);
-      pointer-events: none;
-    } */
 
-    .greeting-banner-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
+    .grading-welcome,
+    .grading-period-card {
       position: relative;
       z-index: 1;
     }
 
-    .greeting-avatar {
-      width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--gold) 0%, #b8922a 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.3rem; font-weight: 800;
-      color: var(--white);
-      border: 2px solid rgba(255,255,255,0.18); overflow: hidden;
-    }
-
-    .greeting-text-block { display: flex; flex-direction: column; gap: 4px; }
-
-    .greeting-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(212, 175, 55, 0.85);
-      margin-bottom: 2px;
-    }
-
-    .greeting-name {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 1.55rem;
-      font-weight: 800;
-      color: #fff;
+    .grading-welcome-name {
+      margin-bottom: 5px;
+      font-size: 25px;
       line-height: 1.1;
     }
 
-    .greeting-meta-row {
-      display: flex; align-items: center; gap: 8px;
-      flex-wrap: wrap; margin-top: 6px;
+    .grading-welcome-date {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
     }
 
-    .greeting-meta-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 0.72rem; font-weight: 600;
-      color: rgba(255,255,255,0.5);
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 6px;
-      padding: 3px 9px;
-    }
-
-    .greeting-meta-line { display: none; }
-
-    .greeting-banner-right {
+    .grading-period-card {
       display: flex;
       align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      position: relative;
-      z-index: 1;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.11);
+      backdrop-filter: blur(8px);
     }
 
-    .greeting-quarter-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(212, 175, 55, 0.12);
-      border: 1px solid rgba(212, 175, 55, 0.3);
-      border-radius: 999px;
-      padding: 6px 14px;
-    }
-    .greeting-quarter-badge {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--gold);
-      background: rgba(212,175,55,0.18);
-      border-radius: 6px;
-      padding: 1px 7px;
-    }
-    .greeting-quarter-text {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: rgba(255,255,255,0.85);
+    .grading-period-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      border-radius: 9px;
+      color: #f7d980;
+      background: rgba(212, 175, 55, 0.16);
     }
 
-    .greeting-date-pill {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: rgba(255, 255, 255, 0.85);
-      font-size: 0.78rem;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 999px;
+    .grading-period-label {
+      margin-bottom: 3px;
+      font-size: 0.68rem;
+      color: rgba(247, 217, 128, 0.9);
     }
-    .greeting-date-pill i { color: var(--gold); flex-shrink: 0; }
-      /* .greeting-time { font-size: 11px; color: rgba(255,255,255,0.5); } */
+
+    .grading-period-value {
+      font-size: 12px;
+    }
 
     /* ── Panel — identical to teacher/admin panel pattern ── */
     .panel {
-      background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200);
-      overflow: hidden; box-shadow: 0 2px 10px rgba(16,40,80,0.05); margin-bottom: 20px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
+      /* margin-bottom: 20px; */
     }
-    .panel-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 22px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; gap: 10px;
-    }
-    .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
-    .panel-action {
-      font-size: 12px; font-weight: 600; color: var(--blue-mid); text-decoration: none;
-      display: flex; align-items: center; gap: 4px; transition: color 0.15s;
-    }
-    .panel-action:hover { color: var(--blue-light); }
 
-    /* ── Two col layout (same breakpoint behavior as teacher dashboard) ── */
-    .two-col { display: grid; grid-template-columns: 1fr 360px; gap: 20px; margin-bottom: 24px; }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gray-800);
+    }
+
+    .panel-action {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-mid);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s;
+    }
+
+    .panel-action:hover {
+      color: var(--blue-light);
+    }
+
+    .panel-materials > div:not(.panel-head):not(.journal-card) {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
 
     /* ── Announcement list ── */
-    .ann-list { padding: 8px 0; }
-    .ann-item { padding: 14px 22px; border-bottom: 1px solid var(--gray-100); transition: background 0.15s; cursor: pointer; }
-    .ann-item:hover { background: var(--gray-50); }
-    .ann-item:last-child { border-bottom: none; }
-    .ann-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-    .ann-item-title { font-size: 13px; font-weight: 700; color: var(--gray-800); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ann-item-body { font-size: 12px; color: var(--gray-500); line-height: 1.5; margin-bottom: 6px; }
-    .ann-item-meta { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--gray-400); }
+    .ann-list {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
 
-    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
-    .badge-green  { background: var(--green-pale);  color: #15803d; }
-    .badge-orange { background: var(--orange-pale); color: #92400e; }
-    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
-    .badge-red    { background: var(--red-pale);    color: var(--red); }
-    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
-    .badge-purple { background: var(--purple-pale); color: var(--purple); }
-    .badge-gold   { background: var(--gold-pale);   color: #92400e; }
+    .ann-item {
+      padding: 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      background: linear-gradient(145deg, var(--white) 0%, #fbfcff 100%);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      cursor: pointer;
+    }
+
+    .ann-item:hover {
+      border-color: var(--blue-pale);
+      box-shadow: 0 7px 16px rgba(16, 40, 80, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .ann-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .ann-item-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-800);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ann-item-body {
+      font-size: 12px;
+      color: var(--gray-500);
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+
+    .ann-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .badge-green {
+      background: var(--green-pale);
+      color: #15803d;
+    }
+
+    .badge-blue {
+      background: var(--blue-xpale);
+      color: var(--blue);
+    }
+
+    .badge-red {
+      background: var(--red-pale);
+      color: var(--red);
+    }
+
+    .badge-gold {
+      background: var(--gold-pale);
+      color: #92400e;
+    }
 
     /* ── Journal prompt card — Values subject only ── */
+    .journal-feature {
+      border: 1px solid #ead8f9;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #faf5ff 0%, #ffffff 72%);
+      box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
+      overflow: hidden;
+    }
+
     .journal-card {
-      display: flex; gap: 14px; padding: 18px 22px;
-      background: var(--purple-pale); border-top: 1px solid #ead8f9;
+      display: flex;
+      gap: 14px;
+      padding: 20px;
     }
+
+    .panel-materials .journal-card {
+      display: none;
+    }
+
     .journal-icon-chip {
-      width: 38px; height: 38px; border-radius: 10px; background: var(--purple);
-      color: var(--white); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--purple);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
-    .journal-body { flex: 1; min-width: 0; }
-    .journal-eyebrow { font-size: 10.5px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; }
-    .journal-prompt { font-size: 13px; color: var(--gray-700); line-height: 1.55; font-style: italic; margin-bottom: 12px; }
-    .journal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+    .journal-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .journal-eyebrow {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--purple);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 3px;
+    }
+
+    .journal-prompt {
+      font-size: 13px;
+      color: var(--gray-700);
+      line-height: 1.55;
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+
+    .journal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     .journal-cta {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--purple); color: var(--white); font-size: 12px; font-weight: 700;
-      padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--purple);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
       transition: background 0.15s;
     }
-    .journal-cta:hover { background: #6d28d9; }
+
+    .journal-cta:hover {
+      background: #6d28d9;
+    }
 
     /* ── Materials list rows ── */
     .material-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 13px 22px; border-bottom: 1px solid var(--gray-100);
-      transition: background 0.15s; cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      background: linear-gradient(145deg, var(--white) 0%, #fbfcff 100%);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      cursor: pointer;
     }
-    .material-row:hover { background: var(--gray-50); }
-    .material-row:last-child { border-bottom: none; }
-    .material-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .material-info { flex: 1; min-width: 0; }
-    .material-title { font-size: 13px; font-weight: 700; color: var(--gray-800); }
-    .material-meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-    .material-chevron { color: var(--gray-300); flex-shrink: 0; }
+
+    .material-row:hover {
+      border-color: var(--blue-pale);
+      box-shadow: 0 7px 16px rgba(16, 40, 80, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .material-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .material-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .material-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-800);
+    }
+
+    .material-meta {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+
+    .material-chevron {
+      color: var(--gray-300);
+      flex-shrink: 0;
+    }
 
     /* ── Responsive ── */
-    @media (max-width: 1100px) {
-      .two-col { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 980px) {
-      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
-      body { overflow-y: auto; }
-      .shell { display: block; }
-      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
-      .sidebar-overlay { display: block; }
-      .topbar { flex-wrap: wrap; padding: 16px 20px; }
-      .hamburger { display: grid; }
-    }
-    @media (max-width: 760px) {
-      .main { padding: 20px; }
-      .summary-strip { flex-wrap: wrap; }
-      .summary-item { min-width: 45%; }
+    @media (max-width: 1100px) {}
 
-      .greeting-banner { padding: 18px 20px; gap: 12px; }
-      .greeting-quarter-pill { display: none; }
-      .greeting-name { font-size: 1.2rem; }
-      .greeting-meta-row { margin-top: 5px; }
-      .greeting-meta-chip { display: none; }
-      .greeting-meta-line {
-        display: inline-flex; align-items: center; gap: 6px;
-        font-size: 0.75rem; font-weight: 500;
-        color: rgba(255,255,255,0.45);
+    @media (max-width: 760px) {
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .panel-head {
+        padding: 14px 16px;
+      }
+
+      .material-row,
+      .ann-item {
+        padding: 12px;
+      }
+
+      .journal-card {
+        padding: 16px;
+      }
+
+      .journal-foot {
+        align-items: stretch;
+      }
+
+      .journal-cta {
+        justify-content: center;
       }
     }
 
     @media (max-width: 520px) {
-      .summary-item { min-width: 100%; border-right: none; border-bottom: 1px solid var(--gray-100); }
-      .summary-item:last-child { border-bottom: none; }
-      .greeting-name { font-size: 1.1rem; }
+      /* .grading-banner {
+        padding: 20px;
+      }
+
+      .grading-welcome-name {
+        font-size: 22px;
+      } */
+
+      .journal-card {
+        flex-direction: column;
+      }
+
+      .journal-foot {
+        flex-direction: column;
+      }
+
+      .journal-cta {
+        width: 100%;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<!--
+  <!--
   ════════════════════════════════════════════════════
   EJS CONVERSION MAP — student-dashboard.html
   ════════════════════════════════════════════════════
@@ -308,422 +576,407 @@
     so this is a mechanical find/replace later.
 -->
 
-<div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <!-- → partials/student-sidebar.ejs -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+    <!-- ══════ SIDEBAR ══════ -->
+    <!-- → partials/student-sidebar.ejs -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
       </div>
-      <div class="brand-text">
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-grades.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Grades</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
+        <a href="edugnay-student-journal.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
       </div>
-    </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-      <a href="edugnay-student-dashboard.html" class="nav-item active">
-        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Dashboard</span>
-      </a>
-      <a href="edugnay-student-grades.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">My Grades</span>
-      </a>
-      <a href="edugnay-student-materials.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Learning Materials</span>
-      </a>
-      <!-- Journal nav item: only rendered if student.hasValuesSubject -->
-      <a href="edugnay-student-journal.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Journal Entries</span>
-      </a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Communication</div>
-      <a href="edugnay-student-announcements.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">3</span>
-      </a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Account</div>
-      <a href="edugnay-student-profile.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">My Profile</span>
-      </a>
-    </div>
-
-  </aside>
-
-  <!-- ══════ TOPBAR ══════ -->
-  <!-- → partials/student-topbar.ejs -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
-        <i data-lucide="menu" style="width:18px;height:18px;"></i>
-      </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Student</div>
-        <div class="page-title">My Dashboard</div>
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">3</span>
+        </a>
       </div>
-    </div>
-    <div class="student-topbar-right">
-      <div class="topbar-profile" id="topbarProfile">
-        <button type="button" class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
-          <span class="profile-trigger-avatar">RA</span>
+
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <!-- → partials/student-topbar.ejs -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
         </button>
-
-        <div class="profile-dropdown" id="profileDropdown">
-          <a href="edugnay-student-profile.html" class="profile-dropdown-item">
-            <i data-lucide="user-round" style="width:15px;height:15px;"></i>
-            <span>My Profile</span>
-          </a>
-          <div class="profile-dropdown-divider"></div>
-          <button type="button" class="profile-dropdown-item danger" onclick="closeProfileMenu(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            <span>Sign Out</span>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Student</div>
+          <div class="page-title">My Dashboard</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
           </button>
-        </div>
-      </div>
-    </div>
-  </header>
 
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
-
-    <!-- Greeting banner — identity + date only, NO grade data -->
-    <div class="greeting-banner">
-      <div class="greeting-banner-left">
-        <div class="greeting-avatar">RA</div>
-        <div class="greeting-text-block">
-          <div class="greeting-label" id="greeting-time-label">Good morning</div>
-          <div class="greeting-name">Juan Alcantara</div>
-            <div class="greeting-meta-row">
-              <span class="greeting-meta-line">
-                <i data-lucide="door-open" style="width:10px;height:10px;"></i>
-                Grade 7 – St. Matthew &nbsp;·&nbsp; Q2 S.Y. 2025–2026
-              </span>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <span class="tb-notif-panel-title">Notifications</span>
+              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
             </div>
-        </div>
-      </div>
-      <div class="greeting-banner-right">
-        <!-- gradingPeriod: from admin academic config, read-only display -->
-        <span class="greeting-quarter-pill">
-          <span class="greeting-quarter-badge">Q2</span>
-          <span class="greeting-quarter-text">2nd Quarter · S.Y. 2025–2026</span>
-        </span>
-        <!-- currentDate: server-rendered, never client Date() once converted -->
-        <span class="greeting-date-pill" id="greeting-date-pill">
-          <i data-lucide="calendar" style="width:13px;height:13px;"></i>
-          <span id="greeting-date-text">Friday, June 13, 2025</span>
-        </span>
-      </div>
-    </div>
 
-    <!-- Summary strip -->
-    <!-- <div class="summary-strip">
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--green-pale);color:#16a34a;">
-          <i data-lucide="calendar-check" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <div class="summary-num">96%</div>
-          <div class="summary-label">Attendance Rate</div>
-        </div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-          <i data-lucide="folder-open" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <div class="summary-num">7</div>
-          <div class="summary-label">Learning Materials</div>
-        </div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--purple-pale);color:var(--purple);">
-          <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <div class="summary-num">3</div>
-          <div class="summary-label">Journal Entries</div>
-        </div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-icon" style="background:var(--gold-pale);color:#92400e;">
-          <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <div class="summary-num">3</div>
-          <div class="summary-label">Announcements</div>
-        </div>
-      </div>
-    </div> -->
-
-    <!-- Two col: Materials + Announcements -->
-    <div class="two-col">
-
-      <!-- Learning Materials -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Recent Learning Materials</div>
-          <a href="edugnay-student-materials.html" class="panel-action">
-            View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
-          </a>
-        </div>
-        <div>
-          <!-- materials[]: loop -->
-          <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
-            <div class="material-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-              <i data-lucide="presentation" style="width:18px;height:18px;"></i>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
             </div>
-            <div class="material-info">
-              <div class="material-title">Lesson 2 – Equations Slides</div>
-              <div class="material-meta">Mathematics · Posted June 12, 2025</div>
+
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-student-notifications.html">More notifications</a>
             </div>
-            <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar student">JD</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-role">Student</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
+
+      <div class="dashboard-grid">
+
+        <div class="dash-col-left">
+
+          <!-- WELCOME BANNER — identity + date only, NO grade data -->
+          <div class="grading-banner">
+            <div class="grading-welcome">
+              <div class="grading-welcome-name" id="greeting-time-label">Welcome back, Juan!</div>
+              <div class="grading-welcome-date">Grade 7 – St. Matthew</div>
+            </div>
+            <div class="grading-period-card">
+              <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i>
+              </div>
+              <div>
+                <div class="grading-period-label">Active grading period</div>
+                <div class="grading-period-value">2nd Quarter · S.Y. 2025–2026</div>
+              </div>
+            </div>
           </div>
 
-          <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
-            <div class="material-icon" style="background:var(--green-pale);color:#16a34a;">
-              <i data-lucide="video" style="width:18px;height:18px;"></i>
+          <!-- Weekly journal — Values Education only, separate from learning materials -->
+          <!-- if (student.hasValuesSubject) { -->
+          <section class="journal-feature" aria-labelledby="weeklyJournalTitle">
+            <div class="journal-card">
+              <div class="journal-icon-chip">
+                <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
+              </div>
+              <div class="journal-body">
+                <div class="journal-eyebrow" id="weeklyJournalTitle">Values Education · This Week's Journal</div>
+                <div class="journal-prompt">"Describe a moment this week when you helped a classmate or a classmate
+                  helped you. What did you learn from that experience?"</div>
+                <div class="journal-foot">
+                  <span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
+                    · due Friday</span>
+                  <a href="edugnay-student-journal.html" class="journal-cta">
+                    Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+                  </a>
+                </div>
+              </div>
             </div>
-            <div class="material-info">
-              <div class="material-title">Solving for X — Video Lesson</div>
-              <div class="material-meta">Mathematics · Posted June 10, 2025</div>
-            </div>
-            <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
-          </div>
+          </section>
+          <!-- } end conditional -->
 
-          <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
-            <div class="material-icon" style="background:var(--gold-pale);color:#92400e;">
-              <i data-lucide="file-check" style="width:18px;height:18px;"></i>
-            </div>
-            <div class="material-info">
-              <div class="material-title">Quiz 1 Answer Key</div>
-              <div class="material-meta">Mathematics · Posted June 9, 2025</div>
-            </div>
-            <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
-          </div>
-          <!-- end materials[] loop -->
-        </div>
-
-        <!-- Journal prompt — Values subject only, conditional render -->
-        <!-- if (student.hasValuesSubject) { -->
-        <div class="journal-card">
-          <div class="journal-icon-chip">
-            <i data-lucide="notebook-pen" style="width:17px;height:17px;"></i>
-          </div>
-          <div class="journal-body">
-            <div class="journal-eyebrow">Values Education · This Week's Journal</div>
-            <!-- journalPrompt: from active journal window config -->
-            <div class="journal-prompt">"Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?"</div>
-            <div class="journal-foot">
-              <span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> Window open · due Friday</span>
-              <a href="edugnay-student-journal.html" class="journal-cta">
-                Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+          <!-- Learning Materials -->
+          <div class="panel panel-materials">
+            <div class="panel-head">
+              <div class="panel-title">Recent Learning Materials</div>
+              <a href="edugnay-student-materials.html" class="panel-action">
+                View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
+            <div>
+              <!-- materials[]: loop -->
+              <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
+                <div class="material-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+                  <i data-lucide="presentation" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="material-info">
+                  <div class="material-title">Lesson 2 – Equations Slides</div>
+                  <div class="material-meta">Mathematics · Posted June 12, 2025</div>
+                </div>
+                <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
+              </div>
+
+              <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
+                <div class="material-icon" style="background:var(--green-pale);color:#16a34a;">
+                  <i data-lucide="video" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="material-info">
+                  <div class="material-title">Solving for X — Video Lesson</div>
+                  <div class="material-meta">Mathematics · Posted June 10, 2025</div>
+                </div>
+                <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
+              </div>
+
+              <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
+                <div class="material-icon" style="background:var(--gold-pale);color:#92400e;">
+                  <i data-lucide="file-check" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="material-info">
+                  <div class="material-title">Quiz 1 Answer Key</div>
+                  <div class="material-meta">Mathematics · Posted June 9, 2025</div>
+                </div>
+                <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
+              </div>
+              <!-- end materials[] loop -->
+            </div>
+
+            <!-- Journal prompt — Values subject only, conditional render -->
+            <!-- if (student.hasValuesSubject) { -->
+            <div class="journal-card">
+              <div class="journal-icon-chip">
+                <i data-lucide="notebook-pen" style="width:17px;height:17px;"></i>
+              </div>
+              <div class="journal-body">
+                <div class="journal-eyebrow">Values Education · This Week's Journal</div>
+                <!-- journalPrompt: from active journal window config -->
+                <div class="journal-prompt">"Describe a moment this week when you helped a classmate or a classmate
+                  helped you. What did you learn from that experience?"</div>
+                <div class="journal-foot">
+                  <span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
+                    · due Friday</span>
+                  <a href="edugnay-student-journal.html" class="journal-cta">
+                    Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <!-- } end conditional -->
           </div>
+
         </div>
-        <!-- } end conditional -->
+
+        <div class="dash-col-right">
+
+          <!-- This Week (calendar strip) -->
+          <div class="panel panel-week" id="weekPanel">
+            <div class="panel-head">
+              <div class="week-title-wrap">
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i></div>
+                <div>
+                  <div class="panel-title">This Week</div>
+                  <div class="week-title-sub">Your class schedule</div>
+                </div>
+              </div>
+              <span id="weekRangeLabel" class="week-range-label"></span>
+            </div>
+            <div class="week-calendar-grid" id="weekCalendarGrid"></div>
+          </div>
+
+          <!-- Announcements -->
+          <div class="panel panel-announcements">
+            <div class="panel-head">
+              <div class="panel-title">Announcements</div>
+              <a href="edugnay-student-announcements.html" class="panel-action">
+                View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+              </a>
+            </div>
+            <div class="ann-list">
+              <!-- announcements[]: loop -->
+              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Foundation Day — June 20</span>
+                  <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
+                </div>
+                <div class="ann-item-body">Classes are suspended. Students must wear their House color shirt.</div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
+                  <span>·</span>
+                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                </div>
+              </div>
+
+              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Intramurals Sign-up Open</span>
+                  <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
+                </div>
+                <div class="ann-item-body">Visit the Student Affairs table during recess to join a sports team.</div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
+                  <span>·</span>
+                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                </div>
+              </div>
+
+              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
+                <div class="ann-item-head">
+                  <span class="ann-item-title">Values Journal — Window Open</span>
+                  <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Reminder</span>
+                </div>
+                <div class="ann-item-body">Submit your weekly reflection before 11:59 PM Friday.</div>
+                <div class="ann-item-meta">
+                  <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
+                  <span>·</span>
+                  <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
+                </div>
+              </div>
+              <!-- end announcements[] loop -->
+            </div>
+          </div>
+
+        </div>
+
       </div>
 
-      <!-- Announcements -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Announcements</div>
-          <a href="edugnay-student-announcements.html" class="panel-action">
-            View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
-          </a>
-        </div>
-        <div class="ann-list">
-          <!-- announcements[]: loop -->
-          <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Foundation Day — June 20</span>
-              <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
-            </div>
-            <div class="ann-item-body">Classes are suspended. Students must wear their House color shirt.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
-              <span>·</span>
-              <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-            </div>
-          </div>
+    </main>
+  </div>
 
-          <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Intramurals Sign-up Open</span>
-              <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
-            </div>
-            <div class="ann-item-body">Visit the Student Affairs table during recess to join a sports team.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
-              <span>·</span>
-              <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-            </div>
-          </div>
-
-          <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-            <div class="ann-item-head">
-              <span class="ann-item-title">Values Journal — Window Open</span>
-              <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Reminder</span>
-            </div>
-            <div class="ann-item-body">Submit your weekly reflection before 11:59 PM Friday.</div>
-            <div class="ann-item-meta">
-              <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-              <span>·</span>
-              <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
-            </div>
-          </div>
-          <!-- end announcements[] loop -->
-        </div>
-      </div>
-
-    </div>
-
-  </main>
-</div>
-
-<!-- ══════════════════════════════
+  <!-- ══════════════════════════════
      LOGOUT CONFIRMATION MODAL
 ══════════════════════════════ -->
-<div class="logout-modal-backdrop" id="logoutModal">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">
-          Are you sure you want to sign out?
-        </div>
-      </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:18px;height:18px;"></i>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <div class="modal-context logout-context">
-        <div class="ctx-icon">
-          <i data-lucide="log-out" style="width:18px;height:18px;"></i>
-        </div>
+  <div class="logout-modal-backdrop" id="logoutModal">
+    <div class="modal">
+      <div class="modal-head">
         <div>
-          <div class="ctx-label">
-            Signing out of
-          </div>
-          <div class="ctx-val">
-            EdUgnay · St. Columban's College
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">
+            Are you sure you want to sign out?
           </div>
         </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
       </div>
-      <p class="logout-message">
-        You'll be returned to the login page. Any unsaved changes will be lost.
-      </p>
-    </div>
-    <div class="modal-foot">
-      <button
-        type="button"
-        class="btn btn-cancel"
-        onclick="closeLogoutModal()">
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="btn btn-danger"
-        onclick="window.location.href='../../index.html'">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i>
-        Sign Out
-      </button>
+
+      <div class="modal-body">
+        <div class="modal-context logout-context">
+          <div class="ctx-icon">
+            <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <div class="ctx-label">
+              Signing out of
+            </div>
+            <div class="ctx-val">
+              EdUgnay · St. Columban's College
+            </div>
+          </div>
+        </div>
+        <p class="logout-message">
+          You'll be returned to the login page. Any unsaved changes will be lost.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeLogoutModal()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-danger" onclick="window.location.href='../../index.html'">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i>
+          Sign Out
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  lucide.createIcons();
-
-  /*
-    EJS NOTE: this entire greeting block is a client-side placeholder.
-    On conversion, the server should render the correct time-of-day greeting,
-    the formatted current date, and the avatar (image or initials) directly —
-    no client Date() needed, since relying on the browser clock is both
-    spoofable and inconsistent with server-side school-day boundaries.
-  */
-  function renderGreeting() {
-    const now = new Date();
-    const hour = now.getHours();
-    const greetingLabel = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    document.getElementById('greeting-time-label').textContent = greetingLabel;
-
-    const dateText = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    document.getElementById('greeting-date-text').textContent = dateText;
-
-    // const timeText = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    // document.getElementById('greeting-clock').textContent = timeText;
-  }
-  renderGreeting();
-  setInterval(renderGreeting, 60000);
-
-  function toggleDrawer(open) {
-    const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
-    document.body.classList.toggle('drawer-open', isOpen);
-  }
-
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      this.classList.add('active');
-      toggleDrawer(false);
-    });
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); }
-  });
-
-
-  /* ── LOGOUT MODAL ── */
-  function openLogoutModal() {
-    document.getElementById('logoutModal').classList.add('open');
+  <script>
     lucide.createIcons();
-  }
-  function closeLogoutModal() {
-    document.getElementById('logoutModal').classList.remove('open');
-  }
-  // Close on backdrop click
-  document.getElementById('logoutModal').addEventListener('click', function(e) {
-    if (e.target === this) closeLogoutModal();
-  });
-  // Close on Escape (add to existing keydown listener or paste standalone)
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeLogoutModal();
-  });
 
-  /* ── PROFILE DROPDOWN ── */
-  function toggleProfileMenu(forceState) {
-    const trigger = document.getElementById('profileTrigger');
-    const dropdown = document.getElementById('profileDropdown');
-    const isOpen = forceState === undefined ? !dropdown.classList.contains('open') : forceState;
-    dropdown.classList.toggle('open', isOpen);
-    trigger.classList.toggle('open', isOpen);
-    trigger.setAttribute('aria-expanded', isOpen);
-  }
-  function closeProfileMenu() { toggleProfileMenu(false); }
+    /*
+      EJS NOTE: this entire greeting block is a client-side placeholder.
+      On conversion, the server should render the correct time-of-day greeting,
+      the formatted current date, and the avatar (image or initials) directly —
+      no client Date() needed, since relying on the browser clock is both
+      spoofable and inconsistent with server-side school-day boundaries.
+    */
 
-  document.addEventListener('click', (e) => {
-    const profile = document.getElementById('topbarProfile');
-    if (profile && !profile.contains(e.target)) closeProfileMenu();
-  });
-</script>
+    function renderWeekCalendar() {
+      const grid = document.getElementById('weekCalendarGrid');
+      const rangeLabel = document.getElementById('weekRangeLabel');
+      if (!grid) return;
+
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+
+      const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      let html = '';
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const isToday = d.toDateString() === today.toDateString();
+        html += `
+          <div class="week-day${isToday ? ' is-today' : ''}${i > 4 ? ' is-weekend' : ''}"${isToday ? ' aria-current="date"' : ''}>
+            <span class="week-day-label">${dayLabels[i]}</span>
+            <span class="week-day-num">${d.getDate()}</span>
+          </div>`;
+      }
+
+      grid.innerHTML = html;
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (rangeLabel) rangeLabel.textContent = `${fmt(monday)} – ${fmt(sunday)}`;
+    }
+    renderWeekCalendar();
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); }
+    });
+
+  </script>
 
 </body>
+
 </html>
