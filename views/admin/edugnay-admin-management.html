@@ -1639,6 +1639,84 @@ function previewCSV(input) {
   reader.readAsText(file);
 }
 
+/* ── IMPORT & AUTO-SORT SUBMIT (mirrors importUsersForm on the users page) ── */
+document.getElementById('importStudentsForm').addEventListener('submit', function (e) {
+  e.preventDefault(); // remove this line once a real backend handles the POST
+
+  const grade = document.getElementById('importGrade').value;
+  const fileInput = document.getElementById('csvFileInput');
+  const file = fileInput.files[0];
+
+  if (!grade) { alert('Please select a grade level.'); return; }
+  if (!file) { alert('Please choose a CSV file.'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function (ev) {
+    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim().length);
+    if (lines.length < 2) { alert('CSV appears to be empty.'); return; }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+
+    const records = rows.map(cols => {
+      const record = {};
+      headers.forEach((h, i) => record[h] = cols[i] || '');
+      return record;
+    });
+
+    // --- SYNC (current, GitHub Pages friendly) ---
+    // Highest averages get seated first, then distributed round-robin
+    // across this grade's sections so no single section overfills first.
+    records.sort((a, b) => (parseFloat(b.average) || 0) - (parseFloat(a.average) || 0));
+
+    const gradeSections = SECTIONS_DATA.filter(s => s.grade === grade);
+    if (!gradeSections.length) { alert('No sections found for this grade level.'); return; }
+
+    let sectionIdx = 0;
+    let placed = 0;
+
+    records.forEach(record => {
+      // skip sections that are already full
+      let attempts = 0;
+      while (gradeSections[sectionIdx].students >= gradeSections[sectionIdx].capacity && attempts < gradeSections.length) {
+        sectionIdx = (sectionIdx + 1) % gradeSections.length;
+        attempts++;
+      }
+      if (attempts >= gradeSections.length) return; // all sections full, student stays unplaced
+
+      const targetSection = gradeSections[sectionIdx];
+      const firstName = record.firstName || '';
+      const lastName = record.lastName || '';
+
+      STUDENTS_DATA.push({
+        id: 'stu-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+        name: `${firstName} ${lastName}`.trim(),
+        email: record.email || '',
+        section: targetSection.id,
+        grade,
+      });
+
+      targetSection.students++;
+      placed++;
+      sectionIdx = (sectionIdx + 1) % gradeSections.length;
+    });
+
+    closeImportStudentsModal();
+    renderSections();
+    renderStudentsTab();
+    alert(`${placed} of ${records.length} student(s) auto-sorted into Grade ${grade} sections.`);
+
+    // --- ASYNC (swap in later, once backend exists) ---
+    // async function submitImportStudentsForm(form) {
+    //   const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+    //   if (!res.ok) { alert('Could not import students.'); return; }
+    //   const created = await res.json(); // expect an array of placed students back
+    //   // merge `created` into STUDENTS_DATA and section counts the same way as the sync block above, then re-render
+    // }
+  };
+  reader.readAsText(file);
+});
+
 let activeStudentGrade   = 'all';
 let activeStudentSection = null;
 
