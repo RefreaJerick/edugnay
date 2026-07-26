@@ -175,7 +175,7 @@
     <!-- Profile header -->
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profileAvatar" data-color="navy">
+        <div class="profile-avatar" id="profileAvatar" data-color="gold">
           <span id="avatarInitials">MR</span>
           <img id="avatarImage" src="" alt="" style="display:none;"/>
         </div>
@@ -204,9 +204,9 @@
               <i data-lucide="chevron-left" style="width:13px;height:13px;"></i> Back
             </button>
             <div class="avatar-color-swatches">
-              <input type="hidden" name="avatarColor" id="avatarColorInput" value="navy"/>
+              <input type="hidden" name="avatarColor" id="avatarColorInput" value="navy" form="profileForm"/>
               <button type="button" class="avatar-swatch selected" data-color="navy" style="background:var(--navy);" onclick="selectAvatarColor(this,'navy')" title="Navy"></button>
-              <button type="button" class="avatar-swatch" data-color="blue-mid" style="background:var(--blue-mid);" onclick="selectAvatarColor(this,'blue-mid')" title="Blue"></button>
+              <button type="button" class="avatar-swatch" data-color="blue" style="background:var(--blue-mid);" onclick="selectAvatarColor(this,'blue')" title="Blue"></button>
               <button type="button" class="avatar-swatch" data-color="gold" style="background:var(--gold);" onclick="selectAvatarColor(this,'gold')" title="Gold"></button>
               <button type="button" class="avatar-swatch" data-color="green" style="background:var(--green);" onclick="selectAvatarColor(this,'green')" title="Green"></button>
               <button type="button" class="avatar-swatch" data-color="orange" style="background:var(--orange);" onclick="selectAvatarColor(this,'orange')" title="Orange"></button>
@@ -241,27 +241,29 @@
             </div>
           </div>
         </div>
-        <div class="config-panel-body">
-          <div class="form-group">
-            <label class="form-label">Full Name</label>
-            <input class="form-input" type="text" value="Maria Reyes" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-            <span class="form-hint">Managed by admin</span>
+        <form id="profileForm" action="/teacher/profile" method="POST" onsubmit="return submitProfile(event)">
+          <div class="config-panel-body">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input class="form-input" type="text" name="fullName" value="Maria Reyes" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <span class="form-hint">Managed by admin</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">School Email</label>
+              <input class="form-input" type="email" name="email" value="m.reyes.fac@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Contact Number</label>
+              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 123 4567" placeholder="e.g. 0917 123 4567"/>
+              <span class="form-hint">Used by the admin office for urgent concerns</span>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">School Email</label>
-            <input class="form-input" type="email" value="m.reyes.fac@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-            <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+          <div class="config-panel-foot">
+            <button type="button" class="btn btn-cancel" onclick="resetProfile()">Discard</button>
+            <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
           </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label">Contact Number</label>
-            <input class="form-input" type="tel" id="contactNumberInput" value="0917 123 4567" placeholder="e.g. 0917 123 4567"/>
-            <span class="form-hint">Used by the admin office for urgent concerns</span>
-          </div>
-        </div>
-        <div class="config-panel-foot">
-          <button class="btn btn-cancel">Discard</button>
-          <button class="btn btn-save" onclick="saveProfile()"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
-        </div>
+        </form>
       </div>
 
       <!-- Employment Details (read-only) -->
@@ -331,26 +333,28 @@
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
+    <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
-        <input class="form-input" type="password" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••"/>
       </div>
       <div class="form-group">
         <label class="form-label">New Password</label>
-        <input class="form-input" type="password" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8" placeholder="••••••••"/>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Confirm New Password</label>
-        <input class="form-input" type="password" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="confirmPassword" id="confirmPasswordInput" required placeholder="••••••••"/>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeModal('changePasswordModal')">Cancel</button>
-      <button class="btn btn-save" onclick="closeModal('changePasswordModal')">
+      <button type="button" class="btn btn-cancel" onclick="closeModal('changePasswordModal')">Cancel</button>
+      <button type="submit" class="btn btn-save">
         <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
       </button>
     </div>
+    </form>
   </div>
 </div>
 
@@ -358,7 +362,25 @@
   lucide.createIcons();
 
   function openModal(id)  { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.getElementById('passwordForm').reset();
+  }
+
+  function submitPasswordChange(event) {
+    event.preventDefault();
+    const newPass = document.getElementById('newPasswordInput').value;
+    const confirmPass = document.getElementById('confirmPasswordInput').value;
+    if (newPass !== confirmPass) {
+      alert('New password and confirmation do not match.');
+      return false;
+    }
+    const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
+    // fetch('/teacher/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    alert('Password updated.');
+    closeModal('changePasswordModal');
+    return false;
+  }
   document.querySelectorAll('.modal-backdrop').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
   });
@@ -427,8 +449,17 @@
     closeAvatarMenu();
   }
 
-  function saveProfile() {
+  function submitProfile(event) {
+    event.preventDefault();
+    const form = document.getElementById('profileForm');
+    const body = Object.fromEntries(new FormData(form).entries());
+    // fetch('/teacher/profile', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
     alert('Contact number updated.');
+    return false;
+  }
+
+  function resetProfile() {
+    document.getElementById('contactNumberInput').value = '0917 123 4567';
   }
 </script>
 

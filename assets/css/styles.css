@@ -78,28 +78,51 @@ button {
 
 /* ── STAT CARDS ── */
 .stat-card {
-  background: var(--white);
-  border-radius: 14px;
-  padding: 22px 24px;
+  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 2px 8px rgba(16, 40, 80, 0.03);
+  border-radius: 16px;
+  padding: 18px;
+  min-height: 178px;
   border: 1px solid var(--gray-200);
   position: relative;
   overflow: hidden;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.stat-card.green {
+  background: linear-gradient(145deg, #ffffff 0%, #f9fffb 100%);
+}
+
+.stat-card.gold {
+  background: linear-gradient(145deg, #ffffff 0%, #fffdf8 100%);
+}
+
+.stat-card.purple {
+  background: linear-gradient(145deg, #ffffff 0%, #fcfaff 100%);
+}
+.stat-card.orange {
+  background: linear-gradient(145deg, #ffffff 0%, #fffaf3 100%);
+}
+.stat-card.red {
+  background: linear-gradient(145deg, #ffffff 0%, #fffafa 100%);
+}
+.stat-card.gray {
+  background: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
 }
 .stat-card:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  transform: none;
+  border-color: var(--blue-pale);
+  box-shadow: 0 10px 24px rgba(16, 40, 80, 0.1);
+  transform: translateY(-3px);
 }
 .stat-card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 .stat-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,12 +160,14 @@ button {
 .stat-card-trend {
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 999px;
+  border: 1px solid transparent;
 }
 .trend-up {
   background: var(--green-pale);
   color: #16a34a;
+  border-color: #bbf7d0;
 }
 .trend-down {
   background: var(--red-pale);
@@ -151,26 +176,29 @@ button {
 .trend-neu {
   background: var(--gray-100);
   color: var(--gray-500);
+  border-color: var(--gray-200);
 }
 .stat-card-num {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--gray-800);
   line-height: 1;
   margin-bottom: 4px;
+  letter-spacing: -1px;
 }
 .stat-card-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--gray-500);
+  color: var(--gray-700);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .stat-card-sub {
   font-size: 11px;
   color: var(--gray-400);
-  margin-top: 6px;
+  margin-top: 5px;
+  line-height: 1.4;
 }
 
 /* ══════════════════════════════

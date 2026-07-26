@@ -92,7 +92,7 @@
      or via JS after a swatch is picked)
 ══════════════════════════════ */
 .profile-avatar[data-color="navy"]     { background: var(--navy); }
-.profile-avatar[data-color="blue-mid"] { background: var(--blue-mid); }
+.profile-avatar[data-color="blue"] { background: var(--blue-mid); }
 .profile-avatar[data-color="gold"]     { background: var(--gold); }
 .profile-avatar[data-color="green"]    { background: var(--green); }
 .profile-avatar[data-color="orange"]   { background: var(--orange); }

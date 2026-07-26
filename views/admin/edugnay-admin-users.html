@@ -1,113 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/users.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
+
 <body>
 
-<!-- LOGOUT CONFIRMATION MODAL -->
-<div class="logout-modal-backdrop" id="logoutModalBackdrop">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">Are you sure you want to sign out?</div>
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
+        </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmLogout()">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-      </button>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- ACCOUNT MODAL (Add / Edit) -->
-<div class="modal-backdrop" id="accountModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="accountModalTitle">Add New Account</div>
-        <div class="modal-sub" id="accountModalSub">Fill in the details to create a new user.</div>
+  <!-- ACCOUNT MODAL (Add / Edit) -->
+  <div class="modal-backdrop" id="accountModalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="accountModalTitle">Add New Account</div>
+          <div class="modal-sub" id="accountModalSub">Fill in the details to create a new user.</div>
+        </div>
+        <button class="modal-close" onclick="closeAccountModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
       </div>
-      <button class="modal-close" onclick="closeAccountModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <!-- EJS NOTE: action gets set dynamically by JS (create vs edit/:id).
+      <div class="modal-body">
+        <!-- EJS NOTE: action gets set dynamically by JS (create vs edit/:id).
            If you'd rather render server-side, you could template action="<%= mode === 'edit' ? `/users/${user._id}/edit` : '/users/create' %>" -->
-      <form id="accountForm" method="post" action="/users/create">
-        <input type="hidden" name="userId" id="accountUserId" value=""/>
+        <form id="accountForm" method="post" action="/users/create">
+          <input type="hidden" name="userId" id="accountUserId" value="" />
 
-        <div class="form-row-2">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">First Name</label>
+              <input class="form-input" name="firstName" id="accountFirstName" type="text" placeholder="e.g. Maria" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name</label>
+              <input class="form-input" name="lastName" id="accountLastName" type="text" placeholder="e.g. Reyes" />
+            </div>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">First Name</label>
-            <input class="form-input" name="firstName" id="accountFirstName" type="text" placeholder="e.g. Maria"/>
+            <label class="form-label">School Email</label>
+            <input class="form-input" name="email" id="accountEmail" type="email"
+              placeholder="e.g. m.reyes.fac@stcolumban.edu.ph" />
           </div>
+
           <div class="form-group">
-            <label class="form-label">Last Name</label>
-            <input class="form-input" name="lastName" id="accountLastName" type="text" placeholder="e.g. Reyes"/>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">School Email</label>
-          <input class="form-input" name="email" id="accountEmail" type="email" placeholder="e.g. m.reyes.fac@stcolumban.edu.ph"/>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Role</label>
-          <input type="hidden" id="accountRole" name="role" value=""/>
-          <div class="role-opts" id="accountRoleOpts">
-            <div class="role-opt" data-role="adm" onclick="selectAccountRole(this, 'adm')">
-              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
-            </div>
-            <div class="role-opt" data-role="fac" onclick="selectAccountRole(this, 'fac')">
-              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
-            </div>
-            <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
-              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
-            </div>
-            <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
-              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
+            <label class="form-label">Role</label>
+            <input type="hidden" id="accountRole" name="role" value="" />
+            <div class="role-opts" id="accountRoleOpts">
+              <div class="role-opt" data-role="adm" onclick="selectAccountRole(this, 'adm')">
+                <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i
+                    data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+              </div>
+              <div class="role-opt" data-role="fac" onclick="selectAccountRole(this, 'fac')">
+                <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i
+                    data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+              </div>
+              <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
+                <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open"
+                    style="width:14px;height:14px;"></i></div><span>Student</span>
+              </div>
+              <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
+                <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake"
+                    style="width:14px;height:14px;"></i></div><span>Parent</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- CONDITIONAL: LRN (Student only) -->
-        <div class="form-group" id="lrnGroup" style="display:none;">
-          <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner Reference Number)</span></label>
-          <input class="form-input" name="lrn" id="accountLRN" type="text" placeholder="e.g. 123456789012"/>
-        </div>
+          <!-- CONDITIONAL: LRN (Student only) -->
+          <div class="form-group" id="lrnGroup" style="display:none;">
+            <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner
+                Reference Number)</span></label>
+            <input class="form-input" name="lrn" id="accountLRN" type="text" placeholder="e.g. 123456789012" />
+          </div>
 
-        <!-- CONDITIONAL: Linked Students (Parent only) -->
-        <div class="form-group" id="linkedStudentsGroup" style="display:none;">
-          <label class="form-label">Linked Students</label>
+          <!-- CONDITIONAL: Linked Students (Parent only) -->
+          <div class="form-group" id="linkedStudentsGroup" style="display:none;">
+            <label class="form-label">Linked Students</label>
 
-          <!-- Search input -->
-          <div style="position:relative;">
-            <input
-              class="form-input"
-              type="text"
-              id="studentSearchInput"
-              placeholder="Search student by name..."
-              autocomplete="off"
-              oninput="handleStudentSearch(this.value)"
-            />
-            <div id="studentDropdown" style="
+            <!-- Search input -->
+            <div style="position:relative;">
+              <input class="form-input" type="text" id="studentSearchInput" placeholder="Search student by name..."
+                autocomplete="off" oninput="handleStudentSearch(this.value)" />
+              <div id="studentDropdown" style="
               display:none;
               position:absolute;
               top:calc(100% + 4px);
@@ -120,1036 +125,1078 @@
               overflow-y:auto;
               z-index:100;
             "></div>
+            </div>
+
+            <!-- Selected student tags -->
+            <div id="linkedStudentTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+
+            <!-- Hidden inputs submitted with form -->
+            <div id="linkedStudentInputs"></div>
           </div>
 
-          <!-- Selected student tags -->
-          <div id="linkedStudentTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" id="accountPasswordLabel">Temporary Password</label>
+            <input class="form-input" name="password" id="accountPassword" type="password"
+              placeholder="Set a temporary password" />
+          </div>
 
-          <!-- Hidden inputs submitted with form -->
-          <div id="linkedStudentInputs"></div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label" id="accountPasswordLabel">Temporary Password</label>
-          <input class="form-input" name="password" id="accountPassword" type="password" placeholder="Set a temporary password"/>
-        </div>
-
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
-          <button type="submit" class="btn btn-save" id="accountSaveBtn">Create Account</button>
-        </div>
-      </form>
+          <div class="modal-foot">
+            <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+            <button type="submit" class="btn btn-save" id="accountSaveBtn">Create Account</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- DEACTIVATE / REACTIVATE CONFIRM MODAL -->
-<div class="modal-backdrop" id="deactivateModalBackdrop">
-  <div class="modal" style="max-width:400px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="deactivateModalTitle">Confirm Action</div>
-        <div class="modal-sub" id="deactivateModalSub"></div>
-      </div>
-      <button class="modal-close" onclick="closeDeactivateModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-context" id="deactivateModalContext">
-        <div class="ctx-icon"><i data-lucide="user-x" id="deactivateCtxIcon" style="width:18px;height:18px;"></i></div>
+  <!-- DEACTIVATE / REACTIVATE CONFIRM MODAL -->
+  <div class="modal-backdrop" id="deactivateModalBackdrop">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-head">
         <div>
-          <div class="ctx-label" id="deactivateCtxLabel">Deactivating</div>
-          <div class="ctx-val" id="deactivateModalName">—</div>
+          <div class="modal-title" id="deactivateModalTitle">Confirm Action</div>
+          <div class="modal-sub" id="deactivateModalSub"></div>
         </div>
+        <button class="modal-close" onclick="closeDeactivateModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
       </div>
-      <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;" id="deactivateModalMsg"></p>
-      <form id="deactivateForm" method="post" action="/users/status">
-        <input type="hidden" name="userId" id="deactivateUserId"/>
-        <input type="hidden" name="action" id="deactivateAction"/>
-      </form>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeDeactivateModal()">Cancel</button>
-      <button type="submit" form="deactivateForm" class="btn btn-save" id="deactivateConfirmBtn">Confirm</button>
+      <div class="modal-body">
+        <div class="modal-context" id="deactivateModalContext">
+          <div class="ctx-icon"><i data-lucide="user-x" id="deactivateCtxIcon" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <div class="ctx-label" id="deactivateCtxLabel">Deactivating</div>
+            <div class="ctx-val" id="deactivateModalName">—</div>
+          </div>
+        </div>
+        <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;" id="deactivateModalMsg"></p>
+        <form id="deactivateForm" method="post" action="/users/status">
+          <input type="hidden" name="userId" id="deactivateUserId" />
+          <input type="hidden" name="action" id="deactivateAction" />
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeDeactivateModal()">Cancel</button>
+        <button type="submit" form="deactivateForm" class="btn btn-save" id="deactivateConfirmBtn">Confirm</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div class="modal-backdrop" id="deleteModalBackdrop">
-  <div class="modal" style="max-width:400px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="deleteModalTitle">Delete Account</div>
-        <div class="modal-sub">This action cannot be undone.</div>
-      </div>
-      <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
-        <div class="ctx-icon"><i data-lucide="user-x" style="width:18px;height:18px;color:#dc2626;"></i></div>
+  <!-- DELETE CONFIRM MODAL -->
+  <div class="modal-backdrop" id="deleteModalBackdrop">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-head">
         <div>
-          <div class="ctx-label" style="color:#dc2626;">Deleting</div>
-          <div class="ctx-val" id="deleteModalName">—</div>
+          <div class="modal-title" id="deleteModalTitle">Delete Account</div>
+          <div class="modal-sub">This action cannot be undone.</div>
         </div>
+        <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
       </div>
-      <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
-        This will permanently delete <strong id="deleteModalNameInline">this account</strong>. All associated data will be removed and this cannot be undone.
-      </p>
-      <form id="deleteForm" method="post" action="/users/delete">
-        <input type="hidden" name="userId" id="deleteUserId"/>
-      </form>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-      <button type="submit" form="deleteForm" class="btn btn-save" style="background:#dc2626;border-color:#dc2626;">Yes, Delete</button>
+      <div class="modal-body">
+        <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
+          <div class="ctx-icon"><i data-lucide="user-x" style="width:18px;height:18px;color:#dc2626;"></i></div>
+          <div>
+            <div class="ctx-label" style="color:#dc2626;">Deleting</div>
+            <div class="ctx-val" id="deleteModalName">—</div>
+          </div>
+        </div>
+        <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
+          This will permanently delete <strong id="deleteModalNameInline">this account</strong>. All associated data
+          will be removed and this cannot be undone.
+        </p>
+        <form id="deleteForm" method="post" action="/users/delete">
+          <input type="hidden" name="userId" id="deleteUserId" />
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+        <button type="submit" form="deleteForm" class="btn btn-save"
+          style="background:#dc2626;border-color:#dc2626;">Yes, Delete</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- IMPORT USERS MODAL -->
-<div class="modal-backdrop" id="importModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Import Users</div>
-        <div class="modal-sub">School email and login credentials will be auto-generated and sent to each person's personal email.</div>
-      </div>
-      <button class="modal-close" onclick="closeImportModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="modal-body">
-      <form id="importUsersForm" method="post" action="/users/import" enctype="multipart/form-data">
-
-        <div class="form-group">
-          <label class="form-label">Role</label>
-          <input type="hidden" id="importUserRole" name="role" value=""/>
-          <div class="role-opts" id="importRoleOpts">
-            <div class="role-opt" data-role="adm" onclick="selectImportRole(this, 'adm')">
-              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
-            </div>
-            <div class="role-opt" data-role="fac" onclick="selectImportRole(this, 'fac')">
-              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
-            </div>
-            <div class="role-opt" data-role="stud" onclick="selectImportRole(this, 'stud')">
-              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
-            </div>
-            <div class="role-opt" data-role="parents" onclick="selectImportRole(this, 'parents')">
-              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
-            </div>
-          </div>
+  <!-- IMPORT USERS MODAL -->
+  <div class="modal-backdrop" id="importModalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Import Users</div>
+          <div class="modal-sub">School email and login credentials will be auto-generated and sent to each person's
+            personal email.</div>
         </div>
+        <button class="modal-close" onclick="closeImportModal()"><i data-lucide="x"
+            style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="importUsersForm" method="post" action="/users/import" enctype="multipart/form-data">
 
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">CSV File</label>
-
-          <input type="file" name="csvFile" id="importUsersFileInput" accept=".csv" required
-                 style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
-                 onchange="previewImportCSV(this)"/>
-
-          <div class="file-upload-wrap">
-            <button type="button" class="file-upload-btn" onclick="document.getElementById('importUsersFileInput').click()">
-              <i data-lucide="upload" style="width:14px;height:14px;"></i>
-              Choose File
-            </button>
-            <span class="file-upload-name" id="importUsersFileName">No file selected</span>
-          </div>
-
-          <div class="csv-hint">
-            <i data-lucide="info" style="width:14px;height:14px;"></i>
-            <div>
-              <span class="csv-hint-label">Expected columns</span>
-              <div class="csv-hint-cols" id="csvHintCols">
-                <span class="csv-col-tag">firstName</span>
-                <span class="csv-col-tag">lastName</span>
-                <span class="csv-col-tag">personalEmail</span>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <input type="hidden" id="importUserRole" name="role" value="" />
+            <div class="role-opts" id="importRoleOpts">
+              <div class="role-opt" data-role="adm" onclick="selectImportRole(this, 'adm')">
+                <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i
+                    data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
+              </div>
+              <div class="role-opt" data-role="fac" onclick="selectImportRole(this, 'fac')">
+                <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i
+                    data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
+              </div>
+              <div class="role-opt" data-role="stud" onclick="selectImportRole(this, 'stud')">
+                <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open"
+                    style="width:14px;height:14px;"></i></div><span>Student</span>
+              </div>
+              <div class="role-opt" data-role="parents" onclick="selectImportRole(this, 'parents')">
+                <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake"
+                    style="width:14px;height:14px;"></i></div><span>Parent</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <div id="importUsersPreviewWrap" style="display:none;margin-top:14px;">
-          <div class="form-label" style="margin-bottom:6px;">Preview</div>
-          <div style="max-height:220px;overflow:auto;border:1px solid var(--gray-200);border-radius:8px;">
-            <table style="width:100%;font-size:12px;">
-              <thead id="importUsersPreviewHead"></thead>
-              <tbody id="importUsersPreviewBody"></tbody>
-            </table>
-          </div>
-          <div style="font-size:12px;color:var(--gray-mid);margin-top:6px;" id="importUsersPreviewCount"></div>
-        </div>
-      </form>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-cancel" onclick="closeImportModal()">Cancel</button>
-      <button type="submit" form="importUsersForm" class="btn btn-save">Upload & Create Accounts</button>
-    </div>
-  </div>
-</div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">CSV File</label>
 
-<div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+            <input type="file" name="csvFile" id="importUsersFileInput" accept=".csv" required
+              style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
+              onchange="previewImportCSV(this)" />
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
-      </div>
-      <div>
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
-      </div>
-    </div>
+            <div class="file-upload-wrap">
+              <button type="button" class="file-upload-btn"
+                onclick="document.getElementById('importUsersFileInput').click()">
+                <i data-lucide="upload" style="width:14px;height:14px;"></i>
+                Choose File
+              </button>
+              <span class="file-upload-name" id="importUsersFileName">No file selected</span>
+            </div>
 
-        <!-- Main nav -->
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-
-      <a href="edugnay-admin-dashboard.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Dashboard</span>
-      </a>
-
-      <a href="edugnay-admin-users.html" class="nav-item active">
-        <div class="nav-icon">
-          <i data-lucide="users" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Manage Users</span>
-        <span class="nav-badge">3</span>
-      </a>
-
-      <div class="nav-group" id="classMgmtGroup">
-        <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
-          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
-          <span>Class Management</span>
-          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="nav-children">
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','sections')">Sections</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Reports & Content -->
-    <div class="nav-section">
-      <div class="nav-section-label">Reports</div>
-
-      <a href="edugnay-admin-reports.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">System Reports</span>
-      </a>
-
-      <a href="edugnay-admin-announcements.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
-      </a>
-    </div>
-
-    <!-- Settings -->
-    <div class="nav-section">
-      <div class="nav-section-label">Settings</div>
-
-      <a href="edugnay-admin-system-config.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="settings" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">System Config</span>
-      </a>
-
-      <a href="edugnay-admin-archive.html" class="nav-item">
-        <div class="nav-icon">
-          <i data-lucide="archive" style="width:16px;height:16px;"></i>
-        </div>
-        <span class="nav-label">Archive Data</span>
-      </a>
-    </div>
-
-  </aside>
-
-  <!-- ══════ TOPBAR ══════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Admin</div>
-        <div class="page-title">User Accounts</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
-          <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-          
-        </button>
-
-        <div class="tb-notif-panel" id="tbNotifPanel">
-          <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
-          </div>
-
-          <div class="tb-notif-list" id="tbNotifList">
-            <div class="tb-notif-empty" id="tbNotifEmpty">
-              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-              <div class="tb-notif-empty-title">No notifications yet</div>
-              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            <div class="csv-hint">
+              <i data-lucide="info" style="width:14px;height:14px;"></i>
+              <div>
+                <span class="csv-hint-label">Expected columns</span>
+                <div class="csv-hint-cols" id="csvHintCols">
+                  <span class="csv-col-tag">firstName</span>
+                  <span class="csv-col-tag">lastName</span>
+                  <span class="csv-col-tag">personalEmail</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="tb-notif-panel-foot">
-            <a href="edugnay-admin-notifications.html">More notifications</a>
+          <div id="importUsersPreviewWrap" style="display:none;margin-top:14px;">
+            <div class="form-label" style="margin-bottom:6px;">Preview</div>
+            <div style="max-height:220px;overflow:auto;border:1px solid var(--gray-200);border-radius:8px;">
+              <table style="width:100%;font-size:12px;">
+                <thead id="importUsersPreviewHead"></thead>
+                <tbody id="importUsersPreviewBody"></tbody>
+              </table>
+            </div>
+            <div style="font-size:12px;color:var(--gray-mid);margin-top:6px;" id="importUsersPreviewCount"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeImportModal()">Cancel</button>
+        <button type="submit" form="importUsersForm" class="btn btn-save">Upload & Create Accounts</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div>
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <!-- Main nav -->
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+
+        <a href="edugnay-admin-dashboard.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a href="edugnay-admin-users.html" class="nav-item active">
+          <div class="nav-icon">
+            <i data-lucide="users" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Manage Users</span>
+          <span class="nav-badge">3</span>
+        </a>
+
+        <div class="nav-group" id="classMgmtGroup">
+          <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
+            <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
+            <span>Class Management</span>
+            <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','sections')">Sections</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
           </div>
         </div>
       </div>
 
-      <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
-          <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
-            <div class="tb-profile-role">Admin</div>
+      <!-- Reports & Content -->
+      <div class="nav-section">
+        <div class="nav-section-label">Reports</div>
+
+        <a href="edugnay-admin-reports.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
           </div>
-          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
-        </button>
+          <span class="nav-label">System Reports</span>
+        </a>
 
-        <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
-            <i data-lucide="user" style="width:15px;height:15px;"></i>
-            My Profile
-          </a>
-          <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            Sign Out
-          </a>
+        <a href="edugnay-admin-announcements.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
+
+      <!-- Settings -->
+      <div class="nav-section">
+        <div class="nav-section-label">Settings</div>
+
+        <a href="edugnay-admin-system-config.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="settings" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">System Config</span>
+        </a>
+
+        <a href="edugnay-admin-archive.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="archive" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">Archive Data</span>
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu"
+            style="width:18px;height:18px;"></i></button>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Admin</div>
+          <div class="page-title">User Accounts</div>
         </div>
       </div>
-    </div>
-  </header>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
 
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
+          </button>
 
-    <!-- Role summary cards -->
-    <div class="role-summary">
-      <div class="rs-card all selected" onclick="filterRole('all', this)">
-        <div class="rs-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
-        <div class="rs-info">
-          <div class="rs-num">572</div>
-          <div class="rs-label">All Users</div>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <span class="tb-notif-panel-title">Notifications</span>
+              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            </div>
+
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-admin-notifications.html">More notifications</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar admin">SA</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-role">Admin</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
         </div>
       </div>
-      <div class="rs-card admin" onclick="filterRole('admin', this)">
-        <div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div>
-        <div class="rs-info">
-          <div class="rs-num">2</div>
-          <div class="rs-label">Admins</div>
+    </header>
+
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
+
+      <!-- Role summary cards -->
+      <div class="role-summary">
+        <div class="rs-card all selected" onclick="filterRole('all', this)">
+          <div class="rs-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
+          <div class="rs-info">
+            <div class="rs-num">0</div>
+            <div class="rs-label">All Users</div>
+          </div>
+        </div>
+        <div class="rs-card admin" onclick="filterRole('admin', this)">
+          <div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div>
+          <div class="rs-info">
+            <div class="rs-num">0</div>
+            <div class="rs-label">Admins</div>
+          </div>
+        </div>
+        <div class="rs-card fac" onclick="filterRole('fac', this)">
+          <div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
+          <div class="rs-info">
+            <div class="rs-num">0</div>
+            <div class="rs-label">Faculty</div>
+          </div>
+        </div>
+        <div class="rs-card stud" onclick="filterRole('stud', this)">
+          <div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
+          <div class="rs-info">
+            <div class="rs-num">0</div>
+            <div class="rs-label">Students</div>
+          </div>
+        </div>
+        <div class="rs-card par" onclick="filterRole('par', this)">
+          <div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div>
+          <div class="rs-info">
+            <div class="rs-num">0</div>
+            <div class="rs-label">Parents</div>
+          </div>
         </div>
       </div>
-      <div class="rs-card fac" onclick="filterRole('fac', this)">
-        <div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
-        <div class="rs-info">
-          <div class="rs-num">24</div>
-          <div class="rs-label">Faculty</div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
+            <input class="search-input" type="text" id="searchInput" placeholder="Search by name or email..."
+              oninput="filterTable()" />
+          </div>
+          <select class="filter-select" id="statusFilter" onchange="filterTable()">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <select class="filter-select" id="sectionFilter" onchange="filterTable()">
+            <option value="all">All Sections</option>
+            <option>Grade 7 – St. Matthew</option>
+            <option>Grade 7 – St. Mark</option>
+            <option>Grade 8 – St. Luke</option>
+            <option>Grade 8 – St. John</option>
+            <option>Grade 9 – St. Peter</option>
+            <option>Grade 10 – St. James</option>
+          </select>
+        </div>
+        <div class="toolbar-actions">
+          <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up"
+              style="width:16px;height:16px;"></i>Import Users</button>
+          <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus"
+              style="width:16px;height:16px;"></i>Add Account</button>
         </div>
       </div>
-      <div class="rs-card stud" onclick="filterRole('stud', this)">
-        <div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
-        <div class="rs-info">
-          <div class="rs-num">284</div>
-          <div class="rs-label">Students</div>
+
+      <!-- Users table -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">All User Accounts</div>
+          <div class="panel-meta">Showing <strong id="rowCount">10</strong> of <strong>572</strong> users</div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="userTable">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Section / Link</th>
+                <th>Status</th>
+                <th class="sortable" id="sortDateAdded">Date Added ↕</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- rendered by renderUsers() -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <div class="page-info">Showing <strong>1–10</strong> of <strong>572</strong> users</div>
+          <div class="page-btns">
+            <button class="page-btn" disabled>‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <span style="display:flex;align-items:center;color:var(--gray-400);font-size:12px;padding:0 4px;">…</span>
+            <button class="page-btn">58</button>
+            <button class="page-btn">›</button>
+          </div>
         </div>
       </div>
-      <div class="rs-card par" onclick="filterRole('par', this)">
-        <div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div>
-        <div class="rs-info">
-          <div class="rs-num">261</div>
-          <div class="rs-label">Parents</div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <div class="toolbar-filters">
-        <div class="search-wrap">
-          <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
-          <input
-            class="search-input"
-            type="text"
-            id="searchInput"
-            placeholder="Search by name or email..."
-            oninput="filterTable()"
-          />
-        </div>
-        <select class="filter-select" id="statusFilter" onchange="filterTable()">
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <select class="filter-select" id="sectionFilter" onchange="filterTable()">
-          <option value="all">All Sections</option>
-          <option>Grade 7 – St. Matthew</option>
-          <option>Grade 7 – St. Mark</option>
-          <option>Grade 8 – St. Luke</option>
-          <option>Grade 8 – St. John</option>
-          <option>Grade 9 – St. Peter</option>
-          <option>Grade 10 – St. James</option>
-        </select>
-      </div>
-      <div class="toolbar-actions">
-        <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Users</button>
-        <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Add Account</button>
-      </div>
-    </div>
+    </main>
+  </div>
 
-    <!-- Users table -->
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">All User Accounts</div>
-        <div class="panel-meta">Showing <strong id="rowCount">10</strong> of <strong>572</strong> users</div>
-      </div>
-
-      <div class="table-wrap">
-        <table id="userTable">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Section / Link</th>
-              <th>Status</th>
-              <th class="sortable" id="sortDateAdded">Date Added ↕</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-            <!-- ------------------------------------------------ -->
-            <tr data-role="admin" data-user-id="1" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-navy">SA</div>
-                  <div>
-                    <div class="user-name">Sr. Admin</div>
-                    <div class="user-email">admin.adm@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-blue"><i data-lucide="shield" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Admin</span></td>
-              <td>—</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jan 6, 2025</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="fac" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-blue">MR</div>
-                  <div>
-                    <div class="user-name">Ms. Maria Reyes</div>
-                    <div class="user-email">m.reyes.fac@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gold"><i data-lucide="book-open" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Faculty</span></td>
-              <td>Grade 7 – St. Matthew</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jun 3, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="fac" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-navy">PT</div>
-                  <div>
-                    <div class="user-name">Mr. Paolo Tan</div>
-                    <div class="user-email">p.tan.fac@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gold"><i data-lucide="book-open" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Faculty</span></td>
-              <td>Unassigned</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">May 20, 2025</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="stud" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-green">JD</div>
-                  <div>
-                    <div class="user-name">Juan Dela Cruz</div>
-                    <div class="user-email">j.delacruz.stud@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gray"><i data-lucide="graduation-cap" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Student</span></td>
-              <td>Grade 8 – St. Mark</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jun 3, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="stud" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-green">AS</div>
-                  <div>
-                    <div class="user-name">Ana Santos</div>
-                    <div class="user-email">a.santos.stud@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gray"><i data-lucide="graduation-cap" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Student</span></td>
-              <td>Grade 10 – St. James</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">May 26, 2025</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="stud" data-status="inactive">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-red">BG</div>
-                  <div>
-                    <div class="user-name">Ben Garcia</div>
-                    <div class="user-email">b.garcia.stud@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gray"><i data-lucide="graduation-cap" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Student</span></td>
-              <td>Grade 9 – St. Peter</td>
-              <td><span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span></td>
-              <td class="date-cell">Jun 3, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn reactivate">Reactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                </div>
-              </td>
-            </tr>
-            <tr data-role="par" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-orange">RL</div>
-                  <div>
-                    <div class="user-name">Rosa Lim</div>
-                    <div class="user-email">r.lim.parents@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-purple"><i data-lucide="heart-handshake" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Parent</span></td>
-              <td>Linked: J. Lim (Gr. 9)</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jun 5, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="par" data-status="inactive">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-orange">EC</div>
-                  <div>
-                    <div class="user-name">Elena Cruz</div>
-                    <div class="user-email">e.cruz.parents@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-purple"><i data-lucide="heart-handshake" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Parent</span></td>
-              <td>Linked: M. Cruz (Gr. 7)</td>
-              <td><span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span></td>
-              <td class="date-cell">May 24, 2025</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn reactivate">Reactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="fac" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-blue">LV</div>
-                  <div>
-                    <div class="user-name">Ms. Lara Villanueva</div>
-                    <div class="user-email">l.villanueva.fac@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gold"><i data-lucide="book-open" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Faculty</span></td>
-              <td>Grade 9 – St. Peter</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jun 3, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-            <tr data-role="stud" data-status="active">
-              <td>
-                <div class="user-cell">
-                  <div class="user-av av-green">CM</div>
-                  <div>
-                    <div class="user-name">Carlo Mendoza</div>
-                    <div class="user-email">c.mendoza.stud@stcolumban.edu.ph</div>
-                  </div>
-                </div>
-              </td>
-              <td><span class="badge badge-gray"><i data-lucide="graduation-cap" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Student</span></td>
-              <td>Grade 7 – St. Matthew</td>
-              <td><span class="badge badge-green">● Active</span></td>
-              <td class="date-cell">Jun 3, 2024</td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-btn edit">Edit</button>
-                  <button class="row-btn deactivate">Deactivate</button>
-                  <button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-                  <!-- <span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span> -->
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div class="pagination">
-        <div class="page-info">Showing <strong>1–10</strong> of <strong>572</strong> users</div>
-        <div class="page-btns">
-          <button class="page-btn" disabled>‹</button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">2</button>
-          <button class="page-btn">3</button>
-          <span style="display:flex;align-items:center;color:var(--gray-400);font-size:12px;padding:0 4px;">…</span>
-          <button class="page-btn">58</button>
-          <button class="page-btn">›</button>
-        </div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<script>
-  lucide.createIcons();
-</script>
-<script>
-  /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
-
-  function openAddModal() {
-    const form = document.getElementById('accountForm');
-    form.reset();
-
-    document.getElementById('accountModalTitle').textContent = 'Add New Account';
-    document.getElementById('accountModalSub').textContent = 'Fill in the details to create a new user.';
-    document.getElementById('accountUserId').value = '';
-    form.action = '/users/create';
-
-    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    document.getElementById('accountRole').value = '';
-
-    document.getElementById('accountPasswordLabel').textContent = 'Temporary Password';
-    document.getElementById('accountPassword').placeholder = 'Set a temporary password';
-    document.getElementById('accountSaveBtn').textContent = 'Create Account';
-
-    document.getElementById('accountModalBackdrop').classList.add('open');
-  }
-
-  function openEditModal(row) {
-    const form = document.getElementById('accountForm');
-    form.reset();
-
-    const fullName = row.querySelector('.user-name').textContent.trim();
-    const nameParts = fullName.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/i, '').trim().split(' ');
-
-    document.getElementById('accountModalTitle').textContent = 'Edit Account';
-    document.getElementById('accountModalSub').textContent = "Update the user's details.";
-
-    document.getElementById('accountFirstName').value = nameParts[0] || '';
-    document.getElementById('accountLastName').value  = nameParts.slice(1).join(' ') || '';
-    document.getElementById('accountEmail').value     = row.querySelector('.user-email').textContent.trim();
-
-    const userId = row.dataset.userId || '';
-    document.getElementById('accountUserId').value = userId;
-
-    // EJS NOTE: when wired up, route is POST /users/:id/edit (or PATCH via method-override)
-    form.action = `/users/${userId}/edit`;
-
-    // Normalize table's data-role values to the role-opt values
-    const roleMap = { admin: 'adm', adm: 'adm', fac: 'fac', stud: 'stud', par: 'parents', parents: 'parents' };
-    const role = roleMap[row.dataset.role] || '';
-    document.getElementById('accountRole').value = role;
-
-    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    const selectedOpt = document.querySelector(`#accountRoleOpts .role-opt[data-role="${role}"]`);
-    if (selectedOpt) selectedOpt.classList.add('selected');
-
-    document.getElementById('accountPasswordLabel').innerHTML =
-      'Reset Password <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(leave blank to keep current)</span>';
-    document.getElementById('accountPassword').placeholder = 'New temporary password';
-    document.getElementById('accountSaveBtn').textContent = 'Save Changes';
-
-    document.getElementById('accountModalBackdrop').classList.add('open');
+  <script>
     lucide.createIcons();
-  }
+  </script>
+  <script>
+    /* ══════════════ USER DATA + RENDER ══════════════ */
 
-  function closeAccountModal() {
-    document.getElementById('accountModalBackdrop').classList.remove('open');
-  }
+    let nextUserId = 11; // next id to assign — bump this once real ids come from a database
 
-  document.getElementById('accountModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeAccountModal();
-  });
+    const PAGE_SIZE = 10;
+    let currentPage = 1;
 
-  // function selectAccountRole(el, value) {
-  //   document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-  //   el.classList.add('selected');
-  //   document.getElementById('accountRole').value = value;
-  // }
-
-  /* ── DEACTIVATE MODAL ── */
-  function openDeactivateModal(row) {
-    const name     = row.querySelector('.user-name').textContent.trim();
-    const isActive = row.dataset.status === 'active';
-    const action   = isActive ? 'deactivate' : 'reactivate';
-
-    document.getElementById('deactivateUserId').value = row.dataset.userId || '';
-    document.getElementById('deactivateAction').value = action;
-    document.getElementById('deactivateModalTitle').textContent = isActive ? 'Deactivate Account' : 'Reactivate Account';
-    document.getElementById('deactivateModalSub').textContent   = isActive ? 'This user will lose access.' : 'This user will regain access.';
-    document.getElementById('deactivateModalName').textContent  = name;
-    document.getElementById('deactivateCtxLabel').textContent   = isActive ? 'Deactivating' : 'Reactivating';
-    document.getElementById('deactivateModalMsg').innerHTML     = isActive
-      ? `This will deactivate <strong>${name}</strong>'s account. They will no longer be able to log in until reactivated.`
-      : `This will reactivate <strong>${name}</strong>'s account. They will regain full access to the system.`;
-
-    // context block colors
-    const ctx   = document.getElementById('deactivateModalContext');
-    const icon  = document.getElementById('deactivateCtxIcon');
-    const label = document.getElementById('deactivateCtxLabel');
-    const btn   = document.getElementById('deactivateConfirmBtn');
-
-    if (isActive) {
-      ctx.style.background   = '#fef2f2';
-      ctx.style.borderColor  = '#fecaca';
-      icon.style.color       = '#dc2626';
-      icon.setAttribute('data-lucide', 'user-x');
-      label.style.color      = '#dc2626';
-      btn.style.background   = '#dc2626';
-      btn.style.borderColor  = '#dc2626';
-      btn.textContent        = 'Yes, Deactivate';
-    } else {
-      ctx.style.background   = '#f0fdf4';
-      ctx.style.borderColor  = '#86efac';
-      icon.style.color       = '#16a34a';
-      icon.setAttribute('data-lucide', 'user-check');
-      label.style.color      = '#16a34a';
-      btn.style.background   = '#16a34a';
-      btn.style.borderColor  = '#16a34a';
-      btn.textContent        = 'Yes, Reactivate';
-    }
-
-    document.getElementById('deactivateForm').action = `/users/${row.dataset.userId || 'unknown'}/status`;
-
-    document.getElementById('deactivateModalBackdrop').classList.add('open');
-    lucide.createIcons();
-  }
-
-  function closeDeactivateModal() {
-    document.getElementById('deactivateModalBackdrop').classList.remove('open');
-  }
-
-  document.getElementById('deactivateModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeDeactivateModal();
-  });
-
-  document.querySelectorAll('.row-btn.deactivate').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openDeactivateModal(this.closest('tr'));
-    });
-  });
-
-  document.querySelectorAll('.row-btn.reactivate').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openDeactivateModal(this.closest('tr'));
-    });
-  });
-
-  /* ── DELETE MODAL ── */
-  function openDeleteModal(row) {
-    const name = row.querySelector('.user-name').textContent.trim();
-
-    document.getElementById('deleteModalTitle').textContent = `Delete: ${name}`;
-    document.getElementById('deleteModalName').textContent = name;
-    document.getElementById('deleteModalNameInline').textContent = name;
-    document.getElementById('deleteUserId').value = row.dataset.userId || '';
-    document.getElementById('deleteForm').action = `/users/${row.dataset.userId || 'unknown'}/delete`;
-
-    document.getElementById('deleteModalBackdrop').classList.add('open');
-    lucide.createIcons();
-  }
-
-  function closeDeleteModal() {
-    document.getElementById('deleteModalBackdrop').classList.remove('open');
-  }
-
-  document.getElementById('deleteModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeDeleteModal();
-  });
-
-  document.querySelectorAll('.row-btn.delete').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openDeleteModal(this.closest('tr'));
-    });
-  });
-
-  /* ── SORT BY DATE ADDED ── */
-  let dateSortOrder = 'desc';
-
-  document.getElementById('sortDateAdded').addEventListener('click', function() {
-    const tbody = document.getElementById('tableBody');
-    const rows  = Array.from(tbody.querySelectorAll('tr'));
-
-    dateSortOrder = dateSortOrder === 'desc' ? 'asc' : 'desc';
-    this.textContent = `Date Added ${dateSortOrder === 'asc' ? '↑' : '↓'}`;
-
-    rows.sort((a, b) => {
-      const aDate = new Date(a.querySelector('.date-cell').textContent.trim());
-      const bDate = new Date(b.querySelector('.date-cell').textContent.trim());
-      return dateSortOrder === 'asc' ? aDate - bDate : bDate - aDate;
-    });
-
-    rows.forEach(r => tbody.appendChild(r));
-  });
-
-  /* ── WIRE ROW BUTTONS ── */
-  document.querySelectorAll('.row-btn.edit').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openEditModal(this.closest('tr'));
-    });
-  });
-
-  /* ── ROLE FILTER CARDS ── */
-  let activeRole = 'all';
-  
-  function filterRole(role, card) {
-    activeRole = role;
-    document.querySelectorAll('.rs-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    filterTable();
-  }
-
-  /* ── TABLE FILTER ── */
-  function filterTable() {
-    const search  = document.getElementById('searchInput').value.toLowerCase();
-    const status  = document.getElementById('statusFilter').value;
-    const section = document.getElementById('sectionFilter').value;
-    const rows    = document.querySelectorAll('#tableBody tr');
-    let visible   = 0;
-
-    rows.forEach(row => {
-      const name        = row.querySelector('.user-name').textContent.toLowerCase();
-      const email       = row.querySelector('.user-email').textContent.toLowerCase();
-      const role        = row.dataset.role;
-      const sts         = row.dataset.status;
-      const sectionCell = row.children[2].textContent.trim();
-
-      const matchSearch  = name.includes(search) || email.includes(search);
-      const matchRole    = activeRole === 'all' || role === activeRole;
-      const matchStatus  = status === 'all' || sts === status;
-      const matchSection = section === 'all' || sectionCell === section;
-
-      const show = matchSearch && matchRole && matchStatus && matchSection;
-      row.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-
-    document.getElementById('rowCount').textContent = visible;
-  }
-
-  /* ── ESCAPE KEY ── */
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      closeAccountModal();
-      closeDeactivateModal();
-      closeDeleteModal();
-    }
-  });
-
-  function selectRole(el, value) {
-    document.querySelectorAll('.modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('roleValue').value = value;
-  }
-
-  /* ── IMPORT USERS MODAL ── */
-  function openImportModal() {
-    document.getElementById('importUsersForm').reset();
-    document.getElementById('importUsersPreviewWrap').style.display = 'none';
-
-    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    document.getElementById('importUserRole').value = '';
-
-    document.getElementById('importUsersFileName').textContent = 'No file selected';
-    document.getElementById('importUsersFileName').classList.remove('has-file');
-
-    document.getElementById('importModalBackdrop').classList.add('open');
-  }
-
-  function closeImportModal() {
-    document.getElementById('importModalBackdrop').classList.remove('open');
-  }
-
-  document.getElementById('importModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeImportModal();
-  });
-
-  function selectImportRole(el, value) {
-    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('importUserRole').value = value;
-  }
-
-  function previewImportCSV(input) {
-    const file = input.files[0];
-
-    const nameEl = document.getElementById('importUsersFileName');
-    if (!file) {
-      nameEl.textContent = 'No file selected';
-      nameEl.classList.remove('has-file');
-      return;
-    }
-    nameEl.textContent = file.name;
-    nameEl.classList.add('has-file');
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const lines = e.target.result.split(/\r?\n/).filter(l => l.trim().length);
-      if (!lines.length) return;
-
-      const headers = lines[0].split(',').map(h => h.trim());
-      const rows = lines.slice(1, 6).map(l => l.split(',').map(c => c.trim()));
-
-      document.getElementById('importUsersPreviewHead').innerHTML =
-        '<tr>' + headers.map(h => `<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--gray-200);">${h}</th>`).join('') + '</tr>';
-
-      document.getElementById('importUsersPreviewBody').innerHTML =
-        rows.map(r => '<tr>' + r.map(c => `<td style="padding:6px 8px;border-bottom:1px solid var(--gray-100);">${c}</td>`).join('') + '</tr>').join('');
-
-      document.getElementById('importUsersPreviewCount').textContent = `Showing ${rows.length} of ${lines.length - 1} rows`;
-      document.getElementById('importUsersPreviewWrap').style.display = '';
+    const ROLE_META = {
+      admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
+      fac: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open', avatarClass: 'av-blue' },
+      stud: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap', avatarClass: 'av-green' },
+      par: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake', avatarClass: 'av-orange' },
     };
-    reader.readAsText(file);
-  }
 
-  /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
+    // role-opt modal values ('adm'/'fac'/'stud'/'parents') <-> table dataset values ('admin'/'fac'/'stud'/'par')
+    const ROLE_OPT_TO_TABLE = { adm: 'admin', fac: 'fac', stud: 'stud', parents: 'par' };
+    const TABLE_TO_ROLE_OPT = { admin: 'adm', fac: 'fac', stud: 'stud', par: 'parents' };
 
-  function updateAccountModalFields() {
-    const role = document.getElementById('accountRole').value;
-    document.getElementById('lrnGroup').style.display            = role === 'stud'    ? '' : 'none';
-    document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+    // Seed data — mirrors the original 10 hardcoded rows. Replace with a real fetch('/api/users') once backend exists.
+    let USERS = [
+      { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
+      { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 7 – St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+      { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
+      { id: '4', firstName: 'Juan', lastName: 'Dela Cruz', displayName: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 8 – St. Mark', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+      { id: '5', firstName: 'Ana', lastName: 'Santos', displayName: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 10 – St. James', status: 'active', dateAdded: 'May 26, 2025', lrn: '', linkedStudents: [] },
+      { id: '6', firstName: 'Ben', lastName: 'Garcia', displayName: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 9 – St. Peter', status: 'inactive', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+      { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
+      { id: '8', firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'inactive', dateAdded: 'May 24, 2025', lrn: '', linkedStudents: [{ id: 'STU-M-CRUZ', name: 'M. Cruz', section: 'Gr. 7' }] },
+      { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 9 – St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+      { id: '10', firstName: 'Carlo', lastName: 'Mendoza', displayName: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 7 – St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+    ];
 
-    if (role !== 'stud')    document.getElementById('accountLRN').value = '';
-    if (role !== 'parents') clearLinkedStudents();
-  }
-
-  function selectAccountRole(el, value) {
-    document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('accountRole').value = value;
-    updateAccountModalFields();
-  }
-
-  /* ── STUDENT LIVE SEARCH PICKER ── */
-
-  // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
-  const MOCK_STUDENTS = [
-    { id: 'STU-001', name: 'Juan Dela Cruz',  section: 'Grade 8 – St. Mark' },
-    { id: 'STU-002', name: 'Ana Santos',      section: 'Grade 10 – St. James' },
-    { id: 'STU-003', name: 'Ben Garcia',      section: 'Grade 9 – St. Peter' },
-    { id: 'STU-004', name: 'Carlo Mendoza',   section: 'Grade 7 – St. Matthew' },
-    { id: 'STU-005', name: 'Maria Flores',    section: 'Grade 8 – St. Luke' },
-    { id: 'STU-006', name: 'Jose Ramos',      section: 'Grade 7 – St. Mark' },
-  ];
-
-  let linkedStudents = []; // [{ id, name, section }]
-
-  function handleStudentSearch(query) {
-    const dropdown = document.getElementById('studentDropdown');
-    if (!query.trim()) { dropdown.style.display = 'none'; return; }
-
-    const results = MOCK_STUDENTS.filter(s =>
-      s.name.toLowerCase().includes(query.toLowerCase()) &&
-      !linkedStudents.find(l => l.id === s.id)
-    );
-
-    if (!results.length) {
-      dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
-      dropdown.style.display = '';
-      return;
+    function getSectionDisplay(user) {
+      if (user.role === 'par') {
+        if (!user.linkedStudents.length) return 'No linked students';
+        return 'Linked: ' + user.linkedStudents.map(s => s.name + (s.section ? ' (' + s.section + ')' : '')).join(', ');
+      }
+      if (user.role === 'admin') return '—';
+      return user.section || 'Unassigned';
     }
 
-    dropdown.innerHTML = results.map(s => `
+    function getFilteredUsers() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const section = document.getElementById('sectionFilter').value;
+
+      return USERS.filter(u => {
+        const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase();
+        const email = u.email.toLowerCase();
+        const sectionDisplay = getSectionDisplay(u);
+
+        const matchSearch = displayName.includes(search) || email.includes(search);
+        const matchRole = activeRole === 'all' || u.role === activeRole;
+        const matchStatus = status === 'all' || u.status === status;
+        const matchSection = section === 'all' || sectionDisplay === section;
+
+        return matchSearch && matchRole && matchStatus && matchSection;
+      });
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('tableBody');
+      const filtered = getFilteredUsers();
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const pageUsers = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+
+      tbody.innerHTML = pageUsers.map(u => {
+        const meta = ROLE_META[u.role];
+        const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ');
+        const initials = ((u.firstName || '?').charAt(0) + (u.lastName || '?').charAt(0)).toUpperCase();
+        const statusBadge = u.status === 'active'
+          ? '<span class="badge badge-green">● Active</span>'
+          : '<span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span>';
+
+        let actionButtons = '<button class="row-btn edit">Edit</button>';
+        if (u.role !== 'admin') {
+          actionButtons += u.status === 'active'
+            ? '<button class="row-btn deactivate">Deactivate</button>'
+            : '<button class="row-btn reactivate">Reactivate</button>';
+          actionButtons += '<button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>';
+        }
+
+        return `
+      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}">
+        <td>
+          <div class="user-cell">
+            <div class="user-av ${meta.avatarClass}">${initials}</div>
+            <div>
+              <div class="user-name">${displayName}</div>
+              <div class="user-email">${u.email}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
+        <td>${getSectionDisplay(u)}</td>
+        <td>${statusBadge}</td>
+        <td class="date-cell">${u.dateAdded}</td>
+        <td><div class="row-actions">${actionButtons}</div></td>
+      </tr>`;
+      }).join('');
+
+      lucide.createIcons();
+      wireRowButtons();
+      updateRoleSummary();
+      renderPagination(filtered.length, totalPages);
+      document.getElementById('rowCount').textContent = pageUsers.length;
+    }
+
+    function renderPagination(totalCount, totalPages) {
+      const startIdx = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+      const endIdx = Math.min(currentPage * PAGE_SIZE, totalCount);
+
+      document.querySelector('.page-info').innerHTML =
+        `Showing <strong>${startIdx}–${endIdx}</strong> of <strong>${totalCount}</strong> users`;
+
+      const btnsWrap = document.querySelector('.page-btns');
+      let html = `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">‹</button>`;
+
+      // simple window: show first, last, current, and neighbors — collapse the rest with "…"
+      const pages = [];
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) pages.push(p);
+      }
+
+      let lastShown = 0;
+      pages.forEach(p => {
+        if (lastShown && p - lastShown > 1) {
+          html += `<span style="display:flex;align-items:center;color:var(--gray-400);font-size:12px;padding:0 4px;">…</span>`;
+        }
+        html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+        lastShown = p;
+      });
+
+      html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">›</button>`;
+
+      btnsWrap.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderUsers();
+    }
+
+    function wireRowButtons() {
+      document.querySelectorAll('.row-btn.edit').forEach(btn => {
+        btn.addEventListener('click', function () { openEditModal(this.closest('tr')); });
+      });
+      document.querySelectorAll('.row-btn.deactivate, .row-btn.reactivate').forEach(btn => {
+        btn.addEventListener('click', function () { openDeactivateModal(this.closest('tr')); });
+      });
+      document.querySelectorAll('.row-btn.delete').forEach(btn => {
+        btn.addEventListener('click', function () { openDeleteModal(this.closest('tr')); });
+      });
+    }
+
+    function updateRoleSummary() {
+      const counts = { all: USERS.length, admin: 0, fac: 0, stud: 0, par: 0 };
+      USERS.forEach(u => counts[u.role] !== undefined && counts[u.role]++);
+      document.querySelector('.rs-card.all .rs-num').textContent = counts.all;
+      document.querySelector('.rs-card.admin .rs-num').textContent = counts.admin;
+      document.querySelector('.rs-card.fac .rs-num').textContent = counts.fac;
+      document.querySelector('.rs-card.stud .rs-num').textContent = counts.stud;
+      document.querySelector('.rs-card.par .rs-num').textContent = counts.par;
+    }
+
+    /* ══════════════ FORM SUBMIT INTERCEPTORS (sync for now) ══════════════ */
+
+    document.getElementById('accountForm').addEventListener('submit', function (e) {
+      e.preventDefault(); // remove this line once a real backend handles the POST
+
+      const firstName = document.getElementById('accountFirstName').value.trim();
+      const lastName = document.getElementById('accountLastName').value.trim();
+      const email = document.getElementById('accountEmail').value.trim();
+      const roleOptValue = document.getElementById('accountRole').value;
+      const role = ROLE_OPT_TO_TABLE[roleOptValue];
+      const lrn = document.getElementById('accountLRN').value.trim();
+      const userId = document.getElementById('accountUserId').value;
+
+      if (!firstName || !lastName || !email || !role) {
+        alert('Please fill in all required fields, including a role.');
+        return;
+      }
+
+      // --- SYNC (current, GitHub Pages friendly) ---
+      if (userId) {
+        const user = USERS.find(u => u.id === userId);
+        if (user) {
+          user.firstName = firstName;
+          user.lastName = lastName;
+          user.displayName = `${firstName} ${lastName}`;
+          user.email = email;
+          user.role = role;
+          user.lrn = role === 'stud' ? lrn : '';
+          user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
+        }
+      } else {
+        USERS.push({
+          id: String(nextUserId++),
+          firstName, lastName,
+          displayName: `${firstName} ${lastName}`,
+          email, role,
+          section: (role === 'stud' || role === 'fac') ? 'Unassigned' : '',
+          status: 'active',
+          dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          lrn: role === 'stud' ? lrn : '',
+          linkedStudents: role === 'par' ? [...linkedStudents] : [],
+        });
+      }
+
+      closeAccountModal();
+      renderUsers();
+
+      // --- ASYNC (swap in later, once backend exists) ---
+      // async function submitAccountForm(form) {
+      //   const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+      //   if (!res.ok) { alert('Could not save account.'); return; }
+      //   const saved = await res.json(); // expect a user object back
+      //   // merge `saved` into USERS the same way as the sync block above, then renderUsers()
+      // }
+    });
+
+    document.getElementById('deactivateForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const userId = document.getElementById('deactivateUserId').value;
+      const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
+      const user = USERS.find(u => u.id === userId);
+      if (user) user.status = action === 'deactivate' ? 'inactive' : 'active';
+
+      closeDeactivateModal();
+      renderUsers();
+
+      // --- ASYNC (later) ---
+      // await fetch(this.action, { method: 'POST', body: new FormData(this) });
+    });
+
+    document.getElementById('deleteForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const userId = document.getElementById('deleteUserId').value;
+      USERS = USERS.filter(u => u.id !== userId);
+
+      closeDeleteModal();
+      renderUsers();
+
+      // --- ASYNC (later) ---
+      // await fetch(this.action, { method: 'POST', body: new FormData(this) });
+    });
+
+    document.getElementById('importUsersForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const role = document.getElementById('importUserRole').value;
+      const fileInput = document.getElementById('importUsersFileInput');
+      const file = fileInput.files[0];
+
+      if (!role) { alert('Please select a role.'); return; }
+      if (!file) { alert('Please choose a CSV file.'); return; }
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim().length);
+        if (lines.length < 2) { alert('CSV appears to be empty.'); return; }
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+
+        rows.forEach(cols => {
+          const record = {};
+          headers.forEach((h, i) => record[h] = cols[i] || '');
+
+          USERS.push({
+            id: String(nextUserId++),
+            firstName: record.firstName || '',
+            lastName: record.lastName || '',
+            displayName: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
+            email: record.personalEmail || record.email || '',
+            role: ROLE_OPT_TO_TABLE[role] || role,
+            section: 'Unassigned',
+            status: 'active',
+            dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            lrn: record.lrn || '',
+            linkedStudents: [],
+          });
+        });
+
+        closeImportModal();
+        renderUsers();
+        alert(`${rows.length} account(s) added.`);
+      };
+      reader.readAsText(file);
+
+      // --- ASYNC (later) ---
+      // const res = await fetch(this.action, { method: 'POST', body: new FormData(this) });
+      // if (res.ok) { const created = await res.json(); /* merge into USERS */ renderUsers(); }
+    });
+
+
+    /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
+
+    function openAddModal() {
+      const form = document.getElementById('accountForm');
+      form.reset();
+
+      document.getElementById('accountModalTitle').textContent = 'Add New Account';
+      document.getElementById('accountModalSub').textContent = 'Fill in the details to create a new user.';
+      document.getElementById('accountUserId').value = '';
+      form.action = '/users/create';
+
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      document.getElementById('accountRole').value = '';
+      clearLinkedStudents();
+      updateAccountModalFields();
+
+      document.getElementById('accountPasswordLabel').textContent = 'Temporary Password';
+      document.getElementById('accountPassword').placeholder = 'Set a temporary password';
+      document.getElementById('accountSaveBtn').textContent = 'Create Account';
+
+      document.getElementById('accountModalBackdrop').classList.add('open');
+    }
+
+    function openEditModal(row) {
+      const userId = row.dataset.userId;
+      const user = USERS.find(u => u.id === userId);
+      if (!user) return;
+
+      const form = document.getElementById('accountForm');
+      form.reset();
+
+      document.getElementById('accountModalTitle').textContent = 'Edit Account';
+      document.getElementById('accountModalSub').textContent = "Update the user's details.";
+
+      document.getElementById('accountFirstName').value = user.firstName;
+      document.getElementById('accountLastName').value = user.lastName;
+      document.getElementById('accountEmail').value = user.email;
+      document.getElementById('accountUserId').value = user.id;
+
+      // EJS NOTE: when wired up, route is POST /users/:id/edit (or PATCH via method-override)
+      form.action = `/users/${user.id}/edit`;
+
+      const roleOptValue = TABLE_TO_ROLE_OPT[user.role] || '';
+      document.getElementById('accountRole').value = roleOptValue;
+
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      const selectedOpt = document.querySelector(`#accountRoleOpts .role-opt[data-role="${roleOptValue}"]`);
+      if (selectedOpt) selectedOpt.classList.add('selected');
+
+      document.getElementById('accountLRN').value = user.lrn || '';
+      linkedStudents = user.linkedStudents ? [...user.linkedStudents] : [];
+      renderLinkedStudents();
+      updateAccountModalFields();
+
+      document.getElementById('accountPasswordLabel').innerHTML =
+        'Reset Password <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(leave blank to keep current)</span>';
+      document.getElementById('accountPassword').placeholder = 'New temporary password';
+      document.getElementById('accountSaveBtn').textContent = 'Save Changes';
+
+      document.getElementById('accountModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeAccountModal() {
+      document.getElementById('accountModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('accountModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeAccountModal();
+    });
+
+    // function selectAccountRole(el, value) {
+    //   document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+    //   el.classList.add('selected');
+    //   document.getElementById('accountRole').value = value;
+    // }
+
+    /* ── DEACTIVATE MODAL ── */
+    function openDeactivateModal(row) {
+      const name = row.querySelector('.user-name').textContent.trim();
+      const isActive = row.dataset.status === 'active';
+      const action = isActive ? 'deactivate' : 'reactivate';
+
+      document.getElementById('deactivateUserId').value = row.dataset.userId || '';
+      document.getElementById('deactivateAction').value = action;
+      document.getElementById('deactivateModalTitle').textContent = isActive ? 'Deactivate Account' : 'Reactivate Account';
+      document.getElementById('deactivateModalSub').textContent = isActive ? 'This user will lose access.' : 'This user will regain access.';
+      document.getElementById('deactivateModalName').textContent = name;
+      document.getElementById('deactivateCtxLabel').textContent = isActive ? 'Deactivating' : 'Reactivating';
+      document.getElementById('deactivateModalMsg').innerHTML = isActive
+        ? `This will deactivate <strong>${name}</strong>'s account. They will no longer be able to log in until reactivated.`
+        : `This will reactivate <strong>${name}</strong>'s account. They will regain full access to the system.`;
+
+      // context block colors
+      const ctx = document.getElementById('deactivateModalContext');
+      const icon = document.getElementById('deactivateCtxIcon');
+      const label = document.getElementById('deactivateCtxLabel');
+      const btn = document.getElementById('deactivateConfirmBtn');
+
+      if (isActive) {
+        ctx.style.background = '#fef2f2';
+        ctx.style.borderColor = '#fecaca';
+        icon.style.color = '#dc2626';
+        icon.setAttribute('data-lucide', 'user-x');
+        label.style.color = '#dc2626';
+        btn.style.background = '#dc2626';
+        btn.style.borderColor = '#dc2626';
+        btn.textContent = 'Yes, Deactivate';
+      } else {
+        ctx.style.background = '#f0fdf4';
+        ctx.style.borderColor = '#86efac';
+        icon.style.color = '#16a34a';
+        icon.setAttribute('data-lucide', 'user-check');
+        label.style.color = '#16a34a';
+        btn.style.background = '#16a34a';
+        btn.style.borderColor = '#16a34a';
+        btn.textContent = 'Yes, Reactivate';
+      }
+
+      document.getElementById('deactivateForm').action = `/users/${row.dataset.userId || 'unknown'}/status`;
+
+      document.getElementById('deactivateModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeDeactivateModal() {
+      document.getElementById('deactivateModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('deactivateModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeDeactivateModal();
+    });
+
+    /* ── DELETE MODAL ── */
+    function openDeleteModal(row) {
+      const name = row.querySelector('.user-name').textContent.trim();
+
+      document.getElementById('deleteModalTitle').textContent = `Delete: ${name}`;
+      document.getElementById('deleteModalName').textContent = name;
+      document.getElementById('deleteModalNameInline').textContent = name;
+      document.getElementById('deleteUserId').value = row.dataset.userId || '';
+      document.getElementById('deleteForm').action = `/users/${row.dataset.userId || 'unknown'}/delete`;
+
+      document.getElementById('deleteModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('deleteModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('deleteModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    /* ── SORT BY DATE ADDED ── */
+    let dateSortOrder = 'desc';
+
+    document.getElementById('sortDateAdded').addEventListener('click', function () {
+      dateSortOrder = dateSortOrder === 'desc' ? 'asc' : 'desc';
+      this.textContent = `Date Added ${dateSortOrder === 'asc' ? '↑' : '↓'}`;
+
+      USERS.sort((a, b) => {
+        const aDate = new Date(a.dateAdded);
+        const bDate = new Date(b.dateAdded);
+        return dateSortOrder === 'asc' ? aDate - bDate : bDate - aDate;
+      });
+
+      currentPage = 1;
+      renderUsers();
+    });
+
+    /* ── ROLE FILTER CARDS ── */
+    let activeRole = 'all';
+
+    function filterRole(role, card) {
+      activeRole = role;
+      document.querySelectorAll('.rs-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      currentPage = 1;
+      renderUsers();
+    }
+
+    /* ── TABLE FILTER ── */
+    function filterTable() {
+      currentPage = 1;
+      renderUsers();
+    }
+
+    /* ── ESCAPE KEY ── */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeAccountModal();
+        closeDeactivateModal();
+        closeDeleteModal();
+      }
+    });
+
+    function selectRole(el, value) {
+      document.querySelectorAll('.modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('roleValue').value = value;
+    }
+
+    /* ── IMPORT USERS MODAL ── */
+    function openImportModal() {
+      document.getElementById('importUsersForm').reset();
+      document.getElementById('importUsersPreviewWrap').style.display = 'none';
+
+      document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      document.getElementById('importUserRole').value = '';
+
+      document.getElementById('importUsersFileName').textContent = 'No file selected';
+      document.getElementById('importUsersFileName').classList.remove('has-file');
+
+      document.getElementById('importModalBackdrop').classList.add('open');
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModalBackdrop').classList.remove('open');
+    }
+
+    document.getElementById('importModalBackdrop').addEventListener('click', function (e) {
+      if (e.target === this) closeImportModal();
+    });
+
+    function selectImportRole(el, value) {
+      document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('importUserRole').value = value;
+    }
+
+    function previewImportCSV(input) {
+      const file = input.files[0];
+
+      const nameEl = document.getElementById('importUsersFileName');
+      if (!file) {
+        nameEl.textContent = 'No file selected';
+        nameEl.classList.remove('has-file');
+        return;
+      }
+      nameEl.textContent = file.name;
+      nameEl.classList.add('has-file');
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const lines = e.target.result.split(/\r?\n/).filter(l => l.trim().length);
+        if (!lines.length) return;
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = lines.slice(1, 6).map(l => l.split(',').map(c => c.trim()));
+
+        document.getElementById('importUsersPreviewHead').innerHTML =
+          '<tr>' + headers.map(h => `<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--gray-200);">${h}</th>`).join('') + '</tr>';
+
+        document.getElementById('importUsersPreviewBody').innerHTML =
+          rows.map(r => '<tr>' + r.map(c => `<td style="padding:6px 8px;border-bottom:1px solid var(--gray-100);">${c}</td>`).join('') + '</tr>').join('');
+
+        document.getElementById('importUsersPreviewCount').textContent = `Showing ${rows.length} of ${lines.length - 1} rows`;
+        document.getElementById('importUsersPreviewWrap').style.display = '';
+      };
+      reader.readAsText(file);
+    }
+
+    /* ── ROLE-CONDITIONAL FIELDS IN ADD/EDIT MODAL ── */
+
+    function updateAccountModalFields() {
+      const role = document.getElementById('accountRole').value;
+      document.getElementById('lrnGroup').style.display = role === 'stud' ? '' : 'none';
+      document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+
+      if (role !== 'stud') document.getElementById('accountLRN').value = '';
+      if (role !== 'parents') clearLinkedStudents();
+    }
+
+    function selectAccountRole(el, value) {
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('accountRole').value = value;
+      updateAccountModalFields();
+    }
+
+    /* ── STUDENT LIVE SEARCH PICKER ── */
+
+    // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
+    const MOCK_STUDENTS = [
+      { id: 'STU-001', name: 'Juan Dela Cruz', section: 'Grade 8 – St. Mark' },
+      { id: 'STU-002', name: 'Ana Santos', section: 'Grade 10 – St. James' },
+      { id: 'STU-003', name: 'Ben Garcia', section: 'Grade 9 – St. Peter' },
+      { id: 'STU-004', name: 'Carlo Mendoza', section: 'Grade 7 – St. Matthew' },
+      { id: 'STU-005', name: 'Maria Flores', section: 'Grade 8 – St. Luke' },
+      { id: 'STU-006', name: 'Jose Ramos', section: 'Grade 7 – St. Mark' },
+    ];
+
+    let linkedStudents = []; // [{ id, name, section }]
+
+    function handleStudentSearch(query) {
+      const dropdown = document.getElementById('studentDropdown');
+      if (!query.trim()) { dropdown.style.display = 'none'; return; }
+
+      const results = MOCK_STUDENTS.filter(s =>
+        s.name.toLowerCase().includes(query.toLowerCase()) &&
+        !linkedStudents.find(l => l.id === s.id)
+      );
+
+      if (!results.length) {
+        dropdown.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:var(--gray-400);">No students found</div>`;
+        dropdown.style.display = '';
+        return;
+      }
+
+      dropdown.innerHTML = results.map(s => `
       <div
         onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
@@ -1161,37 +1208,37 @@
       </div>
     `).join('');
 
-    dropdown.style.display = '';
-  }
+      dropdown.style.display = '';
+    }
 
-  function addLinkedStudent(id, name, section) {
-    if (linkedStudents.find(s => s.id === id)) return;
-    linkedStudents.push({ id, name, section });
-    renderLinkedStudents();
+    function addLinkedStudent(id, name, section) {
+      if (linkedStudents.find(s => s.id === id)) return;
+      linkedStudents.push({ id, name, section });
+      renderLinkedStudents();
 
-    document.getElementById('studentSearchInput').value = '';
-    document.getElementById('studentDropdown').style.display = 'none';
-  }
+      document.getElementById('studentSearchInput').value = '';
+      document.getElementById('studentDropdown').style.display = 'none';
+    }
 
-  function removeLinkedStudent(id) {
-    linkedStudents = linkedStudents.filter(s => s.id !== id);
-    renderLinkedStudents();
-  }
+    function removeLinkedStudent(id) {
+      linkedStudents = linkedStudents.filter(s => s.id !== id);
+      renderLinkedStudents();
+    }
 
-  function clearLinkedStudents() {
-    linkedStudents = [];
-    renderLinkedStudents();
-    const inp = document.getElementById('studentSearchInput');
-    if (inp) inp.value = '';
-    const dd = document.getElementById('studentDropdown');
-    if (dd) dd.style.display = 'none';
-  }
+    function clearLinkedStudents() {
+      linkedStudents = [];
+      renderLinkedStudents();
+      const inp = document.getElementById('studentSearchInput');
+      if (inp) inp.value = '';
+      const dd = document.getElementById('studentDropdown');
+      if (dd) dd.style.display = 'none';
+    }
 
-  function renderLinkedStudents() {
-    const tags = document.getElementById('linkedStudentTags');
-    const inputs = document.getElementById('linkedStudentInputs');
+    function renderLinkedStudents() {
+      const tags = document.getElementById('linkedStudentTags');
+      const inputs = document.getElementById('linkedStudentInputs');
 
-    tags.innerHTML = linkedStudents.map(s => `
+      tags.innerHTML = linkedStudents.map(s => `
       <div style="
         display:inline-flex;align-items:center;gap:6px;
         background:var(--blue-xpale);color:var(--blue-mid);
@@ -1203,42 +1250,46 @@
       </div>
     `).join('');
 
-    inputs.innerHTML = linkedStudents.map(s =>
-      `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
-    ).join('');
-  }
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function(e) {
-    const wrap = document.getElementById('linkedStudentsGroup');
-    if (wrap && !wrap.contains(e.target)) {
-      const dd = document.getElementById('studentDropdown');
-      if (dd) dd.style.display = 'none';
+      inputs.innerHTML = linkedStudents.map(s =>
+        `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
+      ).join('');
     }
-  });
 
-  /* ── CSV HINT COLUMNS BY ROLE ── */
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+      const wrap = document.getElementById('linkedStudentsGroup');
+      if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('studentDropdown');
+        if (dd) dd.style.display = 'none';
+      }
+    });
 
-  const CSV_COLS = {
-    adm:     ['firstName', 'lastName', 'personalEmail'],
-    fac:     ['firstName', 'lastName', 'personalEmail'],
-    stud:    ['firstName', 'lastName', 'personalEmail', 'lrn'],
-    parents: ['firstName', 'lastName', 'personalEmail', 'studentIds'],
-  };
+    /* ── CSV HINT COLUMNS BY ROLE ── */
 
-  function selectImportRole(el, value) {
-    document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    document.getElementById('importUserRole').value = value;
-    updateCsvHint(value);
-  }
+    const CSV_COLS = {
+      adm: ['firstName', 'lastName', 'personalEmail'],
+      fac: ['firstName', 'lastName', 'personalEmail'],
+      stud: ['firstName', 'lastName', 'personalEmail', 'lrn'],
+      parents: ['firstName', 'lastName', 'personalEmail', 'studentIds'],
+    };
 
-  function updateCsvHint(role) {
-    const cols = CSV_COLS[role] || CSV_COLS['fac'];
-    document.getElementById('csvHintCols').innerHTML =
-      cols.map(c => `<span class="csv-col-tag">${c}</span>`).join('');
-  }
-</script>
+    function selectImportRole(el, value) {
+      document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('importUserRole').value = value;
+      updateCsvHint(value);
+    }
+
+    function updateCsvHint(role) {
+      const cols = CSV_COLS[role] || CSV_COLS['fac'];
+      document.getElementById('csvHintCols').innerHTML =
+        cols.map(c => `<span class="csv-col-tag">${c}</span>`).join('');
+    }
+
+
+    renderUsers();
+  </script>
 
 </body>
+
 </html>

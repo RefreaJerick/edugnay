@@ -199,76 +199,12 @@
   padding: 4px 8px;
 }
 
-/* STAT CARDS */
-.stat-grid { 
-  display: grid; 
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 16px; 
-  /* margin-bottom: 24px; */
-}
-
 /* ── PANEL ── */
 /* Summary cards — aligned with the teacher dashboard's layered card treatment. */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-}
-
-.stat-card {
-  min-height: 178px;
-  padding: 18px;
-  border-color: var(--gray-200);
-  border-radius: 16px;
-  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
-  box-shadow: 0 2px 8px rgba(16, 40, 80, 0.03);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.stat-card.green {
-  background: linear-gradient(145deg, #ffffff 0%, #f9fffb 100%);
-}
-
-.stat-card.gold {
-  background: linear-gradient(145deg, #ffffff 0%, #fffdf8 100%);
-}
-
-.stat-card.purple {
-  background: linear-gradient(145deg, #ffffff 0%, #fcfaff 100%);
-}
-
-.stat-card:hover {
-  border-color: var(--blue-pale);
-  box-shadow: 0 10px 24px rgba(16, 40, 80, 0.1);
-  transform: translateY(-3px);
-}
-
-.stat-card-top { margin-bottom: 18px; }
-
-.stat-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-}
-
-.stat-card-trend {
-  padding: 4px 8px;
-  border: 1px solid transparent;
-}
-
-.trend-up { border-color: #bbf7d0; }
-.trend-neu { border-color: var(--gray-200); }
-
-.stat-card-num {
-  font-size: 32px;
-  letter-spacing: -1px;
-}
-
-.stat-card-label { color: var(--gray-700); }
-
-.stat-card-sub {
-  margin-top: 5px;
-  line-height: 1.4;
 }
 
 .panel {
