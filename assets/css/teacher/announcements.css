@@ -814,11 +814,7 @@
   }
 
   .ann-summary-strip {
-    flex-wrap: wrap;
-  }
-
-  .ann-summary-item {
-    min-width: 140px;
+    display: none;
   }
 }
 

@@ -333,58 +333,26 @@
   </main>
 </div>
 
-<!-- ══════════════════════════════
-     LOGOUT CONFIRMATION MODAL
-══════════════════════════════ -->
-<div class="logout-modal-backdrop" id="logoutModal">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">
-          Are you sure you want to sign out?
-        </div>
-      </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:18px;height:18px;"></i>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <div class="modal-context logout-context">
-        <div class="ctx-icon">
-          <i data-lucide="log-out" style="width:18px;height:18px;"></i>
-        </div>
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
         <div>
-          <div class="ctx-label">
-            Signing out of
-          </div>
-          <div class="ctx-val">
-            EdUgnay · St. Columban's College
-          </div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
         </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-      <p class="logout-message">
-        You'll be returned to the login page. Any unsaved changes will be lost.
-      </p>
-    </div>
-    <div class="modal-foot">
-      <button
-        type="button"
-        class="btn btn-cancel"
-        onclick="closeLogoutModal()">
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="btn btn-danger"
-        onclick="window.location.href='../../index.html'">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i>
-        Sign Out
-      </button>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
 <script>
 lucide.createIcons();

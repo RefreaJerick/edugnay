@@ -161,6 +161,5 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 760px) {
-  .notif-filterbar { flex-direction: column; align-items: stretch; gap: 10px; }
-  .notif-mark-read-all { align-self: flex-end; }
+
 }

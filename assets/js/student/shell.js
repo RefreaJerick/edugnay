@@ -181,25 +181,25 @@ function openLogoutModal() {
   if (trigger) trigger.classList.remove('open');
   if (dropdown) dropdown.classList.remove('open');
 
-  document.getElementById('logoutModal').classList.add('open');
+  document.getElementById('logoutModalBackdrop').classList.add('open');
   if (window.lucide) lucide.createIcons();
 }
 
 function closeLogoutModal() {
-  document.getElementById('logoutModal').classList.remove('open');
+  document.getElementById('logoutModalBackdrop').classList.remove('open');
 }
 
 function confirmLogout() {
   // TODO on backend conversion: replace with POST /auth/logout,
   // clear session cookie, then redirect
-  localStorage.clear(); // wipes mock data (read-state, etc.)
+  localStorage.clear(); // wipes mock data (reopen requests, read-state, etc.)
   const isGitHubPages = location.hostname.endsWith("github.io");
   const BASE = isGitHubPages ? "/edugnay" : "";
 
   window.location.href = `${BASE}/index.html`;
 }
 
-document.getElementById('logoutModal')?.addEventListener('click', function (e) {
+document.getElementById('logoutModalBackdrop')?.addEventListener('click', function (e) {
   if (e.target === this) closeLogoutModal();
 });
 
