@@ -223,7 +223,7 @@ function navigate(page) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); }
+  if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeEntryModal(); }
 });
 
 /* ── INIT ── */

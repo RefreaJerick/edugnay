@@ -17,8 +17,8 @@
 
     /* ── Prompt card — navy with gold accent, matches teacher journal modal prompt-card ── */
     .prompt-card {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
-      border-radius: 14px; padding: 20px 22px; margin-bottom: 20px;
+      background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
+      border-radius: 16px; padding: 20px 22px; margin-bottom: 20px;
       box-shadow: 0 6px 20px rgba(11,31,58,0.18);
       position: relative; overflow: hidden;
     }
@@ -133,6 +133,76 @@
     .badge-green  { background: var(--green-pale);  color: #15803d; }
     .badge-orange { background: var(--orange-pale); color: #92400e; }
     .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
+
+    /* ── Past Entry View Modal ── */
+.entry-modal-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(11, 31, 58, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.entry-modal-backdrop.open { display: flex; }
+
+.entry-modal {
+  background: var(--white);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(11,31,58,0.28);
+  animation: entryModalIn 0.18s ease;
+}
+@keyframes entryModalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.entry-modal-head {
+  position: relative;
+  padding: 22px 24px 18px;
+  background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
+  color: var(--white);
+}
+.entry-modal-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+  color: var(--white); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.entry-modal-close:hover { background: rgba(255,255,255,0.22); }
+
+.entry-modal-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+.entry-modal-week { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; margin-top: 3px; padding-right: 40px; }
+.entry-modal-date { font-size: 11.5px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+
+.entry-modal-body { padding: 22px 24px 24px; }
+.entry-modal-prompt {
+  font-size: 12.5px; color: var(--gray-500); font-style: italic; line-height: 1.55;
+  border-left: 3px solid var(--blue-pale); padding-left: 12px; margin-bottom: 16px;
+}
+.entry-modal-text {
+  font-size: 13.5px; color: var(--gray-700); line-height: 1.75;
+  background: var(--gray-50); border: 1px solid var(--gray-100);
+  border-radius: 12px; padding: 16px 18px; white-space: pre-wrap;
+}
+.entry-modal-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 18px; flex-wrap: wrap;
+}
+.entry-modal-meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gray-400); }
+.entry-modal-meta strong { color: var(--gray-700); }
+
+@media (max-width: 520px) {
+  .entry-modal { max-height: 82vh; }
+  .entry-modal-head { padding: 18px 20px 16px; }
+  .entry-modal-body { padding: 18px 20px 20px; }
+  .entry-modal-foot { flex-direction: column; align-items: flex-start; }
+}
 
     @media (max-width: 980px) {
       .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
@@ -354,6 +424,31 @@
     </div>
   </div>
 
+  <!-- PAST ENTRY VIEW MODAL -->
+<div class="entry-modal-backdrop" id="entryModalBackdrop" onclick="if(event.target===this) closeEntryModal()">
+  <div class="entry-modal">
+    <div class="entry-modal-head">
+      <button class="entry-modal-close" onclick="closeEntryModal()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+      <div class="entry-modal-eyebrow">Values Education · Weekly Journal</div>
+      <div class="entry-modal-week" id="entryModalWeek">—</div>
+      <div class="entry-modal-date" id="entryModalDate">—</div>
+    </div>
+    <div class="entry-modal-body">
+      <div class="entry-modal-prompt" id="entryModalPrompt">—</div>
+      <div class="entry-modal-text" id="entryModalText">—</div>
+      <div class="entry-modal-foot">
+        <div class="entry-modal-meta">
+          <i data-lucide="calendar-check" style="width:13px;height:13px;"></i>
+          Submitted <strong id="entryModalSubmitted">—</strong>
+        </div>
+        <span id="entryModalScore"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 lucide.createIcons();
 
@@ -373,9 +468,39 @@ const JOURNAL_WINDOW = {
 // null = student has not submitted yet this week
 const CURRENT_ENTRY = null;
 
+/*
+  EJS/BACKEND NOTE:
+  - PAST_ENTRIES → student's journal_entries rows (all WEEKS before current),
+    fetched server-side: GET /student/journal/entries?exclude=current
+    Each row needs: id, week_label, date_range, prompt_snapshot (store the
+    prompt text AT SUBMISSION TIME, not a live join to journal_windows —
+    prompts change weekly and past entries must show what was actually asked),
+    entry_text, submitted_at, score (nullable until teacher reviews).
+  - Render PAST_ENTRIES server-side via EJS loop (same as materials[]/
+    announcements[] elsewhere in this app) instead of a client array.
+  - openEntryModal(id) can stay client-side: embed all entries' full text
+    in the initial render and look up by id in JS — fine since entry count
+    per student is small (one per week). Matches how the rest of this page
+    already works.
+*/
+
 const PAST_ENTRIES = [
-  { week:'Week 2', dateRange:'June 2–7, 2025', excerpt:'I found the quiz on linear inequalities confusing because of the direction of the inequality...', score:50, reviewed:true },
-  { week:'Week 1', dateRange:'May 26–31, 2025', excerpt:'This week I had a hard time understanding how to solve equations with variables on both sides...', score:45, reviewed:true },
+  {
+    id: 2, week: 'Week 2', dateRange: 'June 2–7, 2025',
+    prompt: '"Talk about a challenge you faced this week and how you tried to overcome it."',
+    excerpt: 'I found the quiz on linear inequalities confusing because of the direction of the inequality...',
+    text: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
+    submittedAt: 'June 6, 2025 · 9:42 PM',
+    score: 50, reviewed: true
+  },
+  {
+    id: 1, week: 'Week 1', dateRange: 'May 26–31, 2025',
+    prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you."',
+    excerpt: 'This week I had a hard time understanding how to solve equations with variables on both sides...',
+    text: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
+    submittedAt: 'May 30, 2025 · 7:15 PM',
+    score: 45, reviewed: true
+  },
 ];
 
 function wordCount(text) {
@@ -493,7 +618,7 @@ function renderHistory() {
       ? `<span class="badge badge-green"><i data-lucide="star" style="width:9px;height:9px;"></i> ${e.score}/50</span>`
       : `<span class="badge badge-orange">Pending</span>`;
     return `
-      <div class="history-row" onclick="alert('View entry detail — read only')">
+      <div class="history-row" onclick="openEntryModal(${e.id})">
         <div class="history-icon"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
         <div class="history-info">
           <div class="history-week">${e.week} · ${e.dateRange}</div>
@@ -511,6 +636,28 @@ function showToast(msg, type) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
+}
+
+function openEntryModal(id) {
+  const e = PAST_ENTRIES.find(entry => entry.id === id);
+  if (!e) return;
+  document.getElementById('entryModalWeek').textContent = `${e.week} · ${e.dateRange}`;
+  document.getElementById('entryModalDate').textContent = e.dateRange;
+  document.getElementById('entryModalPrompt').textContent = e.prompt;
+  document.getElementById('entryModalText').textContent = e.text;
+  document.getElementById('entryModalSubmitted').textContent = e.submittedAt;
+
+  const scoreEl = document.getElementById('entryModalScore');
+  scoreEl.innerHTML = e.score !== null
+    ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${e.score} <span class="score-max">/ 50</span></span>`
+    : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
+
+  document.getElementById('entryModalBackdrop').classList.add('open');
+  lucide.createIcons();
+}
+
+function closeEntryModal() {
+  document.getElementById('entryModalBackdrop').classList.remove('open');
 }
 
 renderCurrentWeekPanel();
