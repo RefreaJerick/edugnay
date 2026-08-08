@@ -244,18 +244,24 @@
     }
 
     .panel-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 12px;
       font-weight: 600;
       color: var(--blue-mid);
+      cursor: pointer;
       text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 4px;
       transition: color 0.15s;
+      padding: 6px 9px;
+      border: 1px solid var(--blue-pale);
+      border-radius: 8px;
+      background: var(--blue-xpale);
     }
 
     .panel-action:hover {
       color: var(--blue-light);
+      background: var(--blue-pale);
     }
 
     .panel-materials > div:not(.panel-head):not(.journal-card) {
