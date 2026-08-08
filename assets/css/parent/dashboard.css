@@ -980,3 +980,30 @@
     align-items: flex-start;
   }
 }
+
+/* On phones, keep the week panel focused on today. */
+@media (max-width: 1180px) {
+  .week-calendar-grid {
+    grid-template-columns: minmax(120px, 180px);
+    justify-content: center;
+    padding: 14px;
+  }
+
+  .week-day:not(.is-today) {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .panel-week .panel-head { justify-content: center; padding: 13px 16px; }
+  .panel-week .week-title-wrap { display: none; }
+  .panel-week .week-range-label { border: 0; background: transparent; padding: 0; font-size: 0; color: var(--gray-600); }
+  .panel-week .week-range-label::before { content: 'Today · '; font-size: 12px; font-weight: 700; color: var(--gray-400); }
+  .panel-week .week-range-label::after { content: attr(data-current-date); font-size: 12px; font-weight: 800; color: var(--gray-700); }
+}
+
+@media (max-width: 1180px) {
+  .panel-week .week-range-label { display: none; }
+  .panel-week .week-calendar-grid { display: none; }
+  .panel-week .panel-head::after { content: 'Today: ' attr(data-current-date); font-size: 12px; font-weight: 800; color: var(--gray-700); }
+}

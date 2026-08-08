@@ -219,6 +219,87 @@
     @media (max-width: 520px) {
       .submitted-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
+
+    /* Journal page refinements */
+    .prompt-card {
+      padding: 22px 24px; border-radius: 18px;
+      box-shadow: 0 10px 26px rgba(11,31,58,.16);
+    }
+    .prompt-card-top { margin-bottom: 14px; }
+    .prompt-text { max-width: 760px; font-size: 14px; line-height: 1.65; }
+    #current-week-panel, .journal-history-panel {
+      border-radius: 16px; box-shadow: 0 8px 24px rgba(16,40,80,.07);
+    }
+    #current-week-panel .panel-head, .journal-history-panel .panel-head { padding: 19px 22px; }
+    .composer-body, .submitted-block { padding: 20px 22px 22px; }
+    .composer-textarea { min-height: 178px; background: #fbfdff; }
+    .composer-textarea:focus { background: var(--white); }
+    .history-list-wrap { padding: 14px; display: grid; gap: 10px; }
+    .journal-history-panel .history-row {
+      padding: 13px; border: 1px solid var(--gray-200); border-radius: 12px;
+      background: linear-gradient(135deg, var(--white), #fbfdff);
+      transition: border-color .18s, box-shadow .18s, transform .18s;
+    }
+    .journal-history-panel .history-row:hover {
+      background: var(--white); border-color: var(--blue-pale);
+      box-shadow: 0 6px 16px rgba(26,64,128,.08); transform: translateY(-1px);
+    }
+    .journal-history-panel .history-row:last-child { border-bottom: 1px solid var(--gray-200); }
+    .history-icon { width: 40px; height: 40px; border-radius: 11px; }
+    .history-week { line-height: 1.35; }
+    .submitted-entry { background: #fbfdff; }
+
+    .entry-modal-backdrop { padding: 16px; background: rgba(11,31,58,.62); }
+    .entry-modal {
+      max-width: 600px; border: 1px solid rgba(255,255,255,.28);
+      border-radius: 20px; box-shadow: 0 26px 70px rgba(11,31,58,.32);
+    }
+    .entry-modal-head { padding: 24px 26px 20px; }
+    .entry-modal-eyebrow { letter-spacing: .9px; }
+    .entry-modal-week { font-size: 18px; line-height: 1.3; }
+    .entry-modal-body { padding: 22px 26px 25px; }
+    .entry-modal-prompt {
+      margin-bottom: 18px; padding: 12px 14px;
+      background: var(--blue-xpale); border: 1px solid var(--blue-pale);
+      border-left: 0; border-radius: 10px; color: var(--blue);
+    }
+    .entry-modal-text {
+      padding: 18px 19px; background: #fbfdff; border-color: var(--gray-200);
+      font-size: 13.5px; line-height: 1.8;
+    }
+    .entry-modal-foot {
+      padding-top: 16px; border-top: 1px solid var(--gray-100);
+    }
+    .entry-modal-close { top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 10px; }
+
+    @media (max-width: 760px) {
+      .main { padding: 16px; }
+      .prompt-card { padding: 18px; margin-bottom: 14px; }
+      .prompt-card-top { align-items: flex-start; }
+      .prompt-period { font-size: 14px; }
+      .prompt-text { font-size: 13px; }
+      #current-week-panel .panel-head, .journal-history-panel .panel-head { padding: 16px; }
+      .composer-body, .submitted-block { padding: 16px; }
+      .composer-textarea { min-height: 160px; }
+      .history-list-wrap { padding: 12px; gap: 8px; }
+      .journal-history-panel .history-row { align-items: flex-start; gap: 10px; padding: 12px; }
+      .history-score { margin-left: auto; }
+      .entry-modal-backdrop { padding: 12px; }
+      .entry-modal { max-height: 88vh; border-radius: 17px; }
+      .entry-modal-head { padding: 20px 20px 17px; }
+      .entry-modal-body { padding: 18px 20px 20px; }
+      .entry-modal-text { padding: 15px 16px; font-size: 13px; }
+    }
+
+    @media (max-width: 460px) {
+      .prompt-status-pill { width: 100%; justify-content: center; }
+      .prompt-deadline { align-items: flex-start; }
+      .composer-foot { align-items: stretch; }
+      .word-count { width: 100%; }
+      .btn-submit { width: 100%; justify-content: center; }
+      .history-score { display: none; }
+      .history-excerpt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    }
   </style>
 </head>
 <body>
@@ -369,7 +450,7 @@
       <div class="prompt-card-top">
         <div>
           <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
-          <div class="prompt-period">Week 3 · June 9–14, 2025</div>
+          <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
         </div>
         <span class="prompt-status-pill" id="window-status-pill">
           <i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
@@ -388,14 +469,14 @@
     </div>
 
     <!-- Past entries -->
-    <div class="panel">
+    <div class="panel journal-history-panel">
       <div class="panel-head">
         <div>
           <div class="panel-title">Past Entries</div>
           <div class="panel-sub">Your journal history this quarter</div>
         </div>
       </div>
-      <div id="history-list">
+      <div id="history-list" class="history-list-wrap">
         <!-- JS renders pastEntries[] here -->
       </div>
     </div>
@@ -432,16 +513,16 @@
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
       <div class="entry-modal-eyebrow">Values Education · Weekly Journal</div>
-      <div class="entry-modal-week" id="entryModalWeek">—</div>
-      <div class="entry-modal-date" id="entryModalDate">—</div>
+      <div class="entry-modal-week" id="entryModalWeek">Not available</div>
+      <div class="entry-modal-date" id="entryModalDate">Not available</div>
     </div>
     <div class="entry-modal-body">
-      <div class="entry-modal-prompt" id="entryModalPrompt">—</div>
-      <div class="entry-modal-text" id="entryModalText">—</div>
+      <div class="entry-modal-prompt" id="entryModalPrompt">Not available</div>
+      <div class="entry-modal-text" id="entryModalText">Not available</div>
       <div class="entry-modal-foot">
         <div class="entry-modal-meta">
           <i data-lucide="calendar-check" style="width:13px;height:13px;"></i>
-          Submitted <strong id="entryModalSubmitted">—</strong>
+          Submitted <strong id="entryModalSubmitted">Not available</strong>
         </div>
         <span id="entryModalScore"></span>
       </div>
@@ -486,7 +567,7 @@ const CURRENT_ENTRY = null;
 
 const PAST_ENTRIES = [
   {
-    id: 2, week: 'Week 2', dateRange: 'June 2–7, 2025',
+    id: 2, week: 'Week 2', dateRange: 'June 2 to 7, 2025',
     prompt: '"Talk about a challenge you faced this week and how you tried to overcome it."',
     excerpt: 'I found the quiz on linear inequalities confusing because of the direction of the inequality...',
     text: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
@@ -494,7 +575,7 @@ const PAST_ENTRIES = [
     score: 50, reviewed: true
   },
   {
-    id: 1, week: 'Week 1', dateRange: 'May 26–31, 2025',
+    id: 1, week: 'Week 1', dateRange: 'May 26 to 31, 2025',
     prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you."',
     excerpt: 'This week I had a hard time understanding how to solve equations with variables on both sides...',
     text: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
@@ -557,7 +638,7 @@ function renderCurrentWeekPanel() {
     <div class="panel-head">
       <div>
         <div class="panel-title">Write Your Entry</div>
-        <div class="panel-sub">${JOURNAL_WINDOW.minWords}–${JOURNAL_WINDOW.maxWords} words</div>
+      <div class="panel-sub">${JOURNAL_WINDOW.minWords} to ${JOURNAL_WINDOW.maxWords} words</div>
       </div>
     </div>
     <div class="composer-body">
@@ -570,7 +651,7 @@ function renderCurrentWeekPanel() {
       </div>
       <div class="composer-hint">
         <i data-lucide="info" style="width:13px;height:13px;flex-shrink:0;margin-top:1px;"></i>
-        <span>Once submitted, you cannot edit this entry. Take your time and write honestly — there's no wrong answer.</span>
+        <span>Once submitted, you cannot edit this entry. Take your time and write honestly. There is no wrong answer.</span>
       </div>
     </div>`;
   lucide.createIcons();

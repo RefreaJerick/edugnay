@@ -665,7 +665,11 @@
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      if (rangeLabel) rangeLabel.textContent = `${fmt(monday)} – ${fmt(sunday)}`;
+      if (rangeLabel) {
+        rangeLabel.textContent = `${fmt(monday)} – ${fmt(sunday)}`;
+        rangeLabel.dataset.currentDate = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        rangeLabel.parentElement.dataset.currentDate = rangeLabel.dataset.currentDate;
+      }
     }
 
     /* ── INIT — runs once on page load, selects Juan and renders everything ── */
