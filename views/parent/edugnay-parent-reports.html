@@ -37,9 +37,9 @@
       width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 800;
-      color: var(--white); background: linear-gradient(135deg, var(--blue-mid), var(--blue-light));
+      color: var(--white); background: var(--blue-mid);
     }
-    .child-card:nth-child(2) .child-avatar { background: linear-gradient(135deg, var(--purple), #9333ea); }
+    .child-card:nth-child(2) .child-avatar { background: var(--purple); }
     .child-info { min-width: 0; }
     .child-name { font-size: 13px; font-weight: 700; color: var(--gray-800); white-space: nowrap; }
     .child-section { font-size: 10.5px; color: var(--gray-400); margin-top: 1px; white-space: nowrap; }
@@ -52,7 +52,7 @@
     /* ── Hero strip: latest report, large and central — the centerpiece treatment ── */
     .latest-report-hero {
       position: relative; overflow: hidden;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      background: var(--navy);
       border-radius: 18px; padding: 26px 28px; margin-bottom: 24px;
       box-shadow: 0 10px 28px rgba(11,31,58,0.22);
     }
@@ -100,7 +100,7 @@
     }
 
     /* ── No report yet state ── */
-    .latest-report-hero.is-empty { background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-800) 100%); }
+    .latest-report-hero.is-empty { background: var(--gray-700); }
     .latest-report-hero.is-empty::before, .latest-report-hero.is-empty::after { display: none; }
 
     /* ── Filter row ── */
@@ -133,7 +133,7 @@
     .report-timeline { position: relative; padding-left: 28px; }
     .report-timeline::before {
       content: ''; position: absolute; left: 9px; top: 6px; bottom: 6px;
-      width: 2px; background: linear-gradient(to bottom, var(--blue-pale), var(--gray-200));
+      width: 2px; background: var(--gray-200);
       border-radius: 2px;
     }
 
@@ -222,7 +222,7 @@
     .modal-backdrop.open .report-modal { transform: translateY(0); }
 
     .rm-head {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+      background: var(--navy);
       padding: 22px 26px; position: relative; flex-shrink: 0;
     }
     .rm-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -265,17 +265,7 @@
     .btn-close-modal:hover { background: var(--blue-mid); }
 
     /* ── Responsive ── */
-    @media (max-width: 980px) {
-      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
-      body { overflow-y: auto; }
-      .shell { display: block; }
-      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
-      .sidebar-overlay { display: block; }
-      .topbar { flex-wrap: wrap; padding: 16px 20px; }
-      .hamburger { display: grid; }
-    }
     @media (max-width: 760px) {
-      .main { padding: 16px; }
       .child-card { min-width: 170px; }
       .latest-report-hero { padding: 20px; }
       .lr-week { font-size: 1.05rem; }
@@ -288,6 +278,67 @@
       .rc-foot { flex-direction: column; align-items: flex-start; gap: 8px; }
       .rm-foot { flex-direction: column; align-items: stretch; }
       .btn-close-modal { width: 100%; text-align: center; }
+    }
+
+    /* Reports page refinements */
+    .child-switcher { gap: 12px; margin-bottom: 18px; }
+    .child-card {
+      min-width: 214px; padding: 10px 14px 10px 10px; border-radius: 13px;
+      box-shadow: 0 2px 8px rgba(16,40,80,.04);
+    }
+    .child-card.active { box-shadow: 0 5px 14px rgba(26,64,128,.1); }
+    .child-avatar, .child-card:nth-child(2) .child-avatar { background: var(--blue-mid); }
+    .child-card:nth-child(2) .child-avatar { background: var(--purple); }
+    .latest-report-hero {
+      background: var(--navy); border-radius: 16px; padding: 25px 27px;
+      box-shadow: 0 8px 22px rgba(11,31,58,.16);
+    }
+    .latest-report-hero.is-empty { background: var(--gray-700); }
+    .lr-icon { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); }
+    .filter-row {
+      padding: 12px; margin-bottom: 16px; border: 1px solid var(--gray-200);
+      border-radius: 13px; background: var(--white); box-shadow: 0 2px 9px rgba(16,40,80,.04);
+    }
+    .report-timeline { padding-left: 25px; }
+    .report-timeline::before { left: 8px; width: 1px; background: var(--gray-300); }
+    .timeline-dot { left: -25px; width: 17px; height: 17px; border-width: 2px; }
+    .report-card {
+      border-radius: 13px; box-shadow: 0 3px 12px rgba(16,40,80,.05);
+    }
+    .report-card.at-risk, .report-card:not(.at-risk) { border-left: 1px solid var(--gray-200); }
+    .report-card.at-risk { border-color: #fecaca; }
+    .report-card:not(.at-risk) { border-color: var(--gray-200); }
+    .rc-head { padding: 16px 18px 0; }
+    .rc-excerpt { padding: 11px 18px 16px; }
+    .rc-foot { background: #fbfdff; }
+    .rm-head { background: var(--navy); padding: 22px 24px; }
+    .report-modal { border-radius: 17px; box-shadow: 0 22px 58px rgba(11,31,58,.26); }
+    .modal-backdrop { padding: 16px; background: rgba(11,31,58,.62); }
+    .report-modal { border: 1px solid rgba(255,255,255,.24); border-radius: 20px; }
+    .rm-head { padding: 24px 26px 20px; }
+    .rm-title { font-size: 18px; line-height: 1.35; }
+    .rm-close { width: 32px; height: 32px; border-radius: 10px; }
+    .rm-body { padding: 22px 26px 24px; background: var(--white); }
+    .rm-risk-banner { border-radius: 11px; padding: 13px 14px; }
+    .rm-text {
+      padding: 17px 18px; background: #fbfdff; border: 1px solid var(--gray-200);
+      border-radius: 12px; line-height: 1.85;
+    }
+    .rm-foot { padding: 16px 26px; background: #fbfdff; }
+    .btn-close-modal { min-height: 38px; border-radius: 10px; }
+
+    @media (max-width: 760px) {
+      .child-card { min-width: 188px; }
+      .filter-row { padding: 10px; }
+      .filter-row .search-wrap { min-width: 100%; flex-basis: 100%; }
+      .filter-row .filter-select { width: 100%; }
+      .latest-report-hero { padding: 20px; }
+      .report-timeline { padding-left: 21px; }
+      .timeline-dot { left: -21px; }
+      .modal-backdrop { padding: 12px; }
+      .report-modal { max-height: 88vh; border-radius: 17px; }
+      .rm-head, .rm-body, .rm-foot { padding-left: 18px; padding-right: 18px; }
+      .rm-text { padding: 15px 16px; font-size: 13px; }
     }
   </style>
 </head>
@@ -422,7 +473,7 @@
         <div class="child-avatar">JA</div>
         <div class="child-info">
           <div class="child-name">Juan Alcantara</div>
-          <div class="child-section">Grade 7 – St. Matthew</div>
+          <div class="child-section">Grade 7, St. Matthew</div>
         </div>
         <span class="child-report-badge">3</span>
       </div>
@@ -430,7 +481,7 @@
         <div class="child-avatar">MA</div>
         <div class="child-info">
           <div class="child-name">Maya Alcantara</div>
-          <div class="child-section">Grade 4 – St. Clare</div>
+          <div class="child-section">Grade 4, St. Clare</div>
         </div>
         <span class="child-report-badge">2</span>
       </div>
@@ -469,8 +520,8 @@
       <div class="rm-head-row">
         <div>
           <div class="rm-eyebrow">Weekly Narrative Report</div>
-          <div class="rm-title" id="rm-week">Week of June 9–14, 2025</div>
-          <div class="rm-sub" id="rm-child">Juan Alcantara · Grade 7 – St. Matthew</div>
+          <div class="rm-title" id="rm-week">Week of June 9 to 14, 2025</div>
+          <div class="rm-sub" id="rm-child">Juan Alcantara · Grade 7, St. Matthew</div>
         </div>
         <button class="rm-close" onclick="closeReportModal()">
           <i data-lucide="x" style="width:14px;height:14px;"></i>
@@ -544,20 +595,20 @@ lucide.createIcons();
 const REPORTS_BY_CHILD = {
   juan: {
     name: 'Juan Alcantara',
-    section: 'Grade 7 – St. Matthew',
+    section: 'Grade 7, St. Matthew',
     reports: [
       {
-        id: 1, weekLabel: 'Week of June 9–14, 2025', dateRange: 'Jun 9 – Jun 14', atRisk: false,
+        id: 1, weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', atRisk: false,
         teacherName: 'Ms. Maria Reyes', confirmedAt: 'June 14, 8:02 AM',
-        text: `Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week — keep up the encouragement at home!`
+        text: `Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!`
       },
       {
-        id: 2, weekLabel: 'Week of June 2–7, 2025', dateRange: 'Jun 2 – Jun 7', atRisk: true,
+        id: 2, weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', atRisk: true,
         teacherName: 'Ms. Maria Reyes', confirmedAt: 'June 7, 7:45 AM',
         text: `Juan is flagged as at-risk this week. He was absent on Tuesday and Thursday and completed only 2 of 4 assignments. We recommend a check-in at home regarding his recent attendance and a brief conversation about any challenges he may be facing.`
       },
       {
-        id: 3, weekLabel: 'Week of May 26–31, 2025', dateRange: 'May 26 – May 31', atRisk: false,
+        id: 3, weekLabel: 'Week of May 26 to 31, 2025', dateRange: 'May 26 to May 31', atRisk: false,
         teacherName: 'Ms. Maria Reyes', confirmedAt: 'May 31, 8:10 AM',
         text: `Juan had a solid week overall. He attended every class day and completed 3 of his 4 assignments, with one activity still pending. His journal reflection was thoughtful and showed good self-awareness about managing his time.`
       },
@@ -565,17 +616,17 @@ const REPORTS_BY_CHILD = {
   },
   maya: {
     name: 'Maya Alcantara',
-    section: 'Grade 4 – St. Clare',
+    section: 'Grade 4, St. Clare',
     reports: [
       {
-        id: 4, weekLabel: 'Week of June 9–14, 2025', dateRange: 'Jun 9 – Jun 14', atRisk: false,
+        id: 4, weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', atRisk: false,
         teacherName: 'Mrs. Joy Fernandez', confirmedAt: 'June 14, 9:15 AM',
-        text: `Maya had a wonderful week. She participated actively in class discussions and completed all her assignments ahead of schedule. Her teacher noted she helped a classmate with a Math problem during group work — a lovely display of kindness.`
+        text: `Maya had a wonderful week. She participated actively in class discussions and completed all her assignments ahead of schedule. Her teacher noted she helped a classmate with a Math problem during group work. It was a lovely display of kindness.`
       },
       {
-        id: 5, weekLabel: 'Week of June 2–7, 2025', dateRange: 'Jun 2 – Jun 7', atRisk: false,
+        id: 5, weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', atRisk: false,
         teacherName: 'Mrs. Joy Fernandez', confirmedAt: 'June 7, 8:30 AM',
-        text: `Maya continues to do well this week. She was present every day and submitted all her work on time. No concerns at this time — she remains one of the more engaged students in class.`
+        text: `Maya continues to do well this week. She was present every day and submitted all her work on time. No concerns at this time. She remains one of the more engaged students in class.`
       },
     ]
   },
