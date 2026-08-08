@@ -1,466 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
-  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/student/announcements.css"/>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/student/announcements.css" />
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
-  <style>
-    /* ═══════════════════════════════════════
-    STUDENT ANNOUNCEMENTS — page-specific
-    (mirrors teacher/announcements.css exactly)
-═══════════════════════════════════════ */
-
-/* ── FILTER BAR ── */
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-  padding: 12px;
-  background-color: var(--white);
-  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
-  border: 1px solid var(--gray-200);
-  border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(16, 40, 80, 0.04);
-  flex-wrap: wrap;
-}
-
-.search-wrap {
-  position: relative;
-  flex: 1;
-  min-width: 200px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--gray-400);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 12px 10px 36px;
-  background: var(--white);
-  border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
-  color: var(--gray-800);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.search-input::placeholder {
-  color: var(--gray-300);
-}
-
-.search-input:focus {
-  border-color: var(--blue-mid);
-  box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
-}
-
-.filter-select {
-  padding: 10px 36px 10px 14px;
-  background: var(--white);
-  border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
-  color: var(--gray-600);
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-color: var(--white);
-}
-
-.filter-select:focus {
-  border-color: var(--blue-mid);
-}
-
-    /* ── SUMMARY STRIP ── */
-.ann-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-  animation: fadeUp 0.35s ease both;
-}
-
-.ann-summary-item {
-  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
-  border: 1px solid var(--gray-200);
-  border-radius: 14px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-}
-
-.ann-summary-item:hover {
-  border-color: var(--blue-pale);
-  box-shadow: 0 9px 20px rgba(16, 40, 80, 0.1);
-  transform: translateY(-2px);
-}
-
-.ann-sum-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ann-sum-num {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--gray-800);
-  line-height: 1;
-}
-
-.ann-sum-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--gray-400);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-}
-
-    /* ── LAYOUT ── */
-    .ann-layout {
-      display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 20px;
-      align-items: start;
-    }
-
-    /* ── ANNOUNCEMENT CARDS ── */
-    .ann-list { display: flex; flex-direction: column; gap: 14px; }
-
-    .ann-card {
-      background: var(--white);
-      border: 1px solid var(--gray-200);
-      border-radius: 14px; overflow: hidden;
-      transition: box-shadow 0.2s, transform 0.15s;
-      animation: fadeUp 0.4s ease both;
-      cursor: pointer;
-    }
-    .ann-card:hover { box-shadow: 0 6px 24px rgba(16,40,80,0.1); transform: translateY(-2px); }
-
-    .ann-card.priority-high   { border-left: 4px solid var(--red); }
-    .ann-card.priority-normal { border-left: 4px solid var(--blue-mid); }
-    .ann-card.priority-low    { border-left: 4px solid var(--gray-300); }
-    .ann-card.priority-event  { border-left: 4px solid var(--gold); }
-
-    .ann-card:nth-child(1) { animation-delay: 0.05s; }
-    .ann-card:nth-child(2) { animation-delay: 0.10s; }
-    .ann-card:nth-child(3) { animation-delay: 0.15s; }
-    .ann-card:nth-child(4) { animation-delay: 0.20s; }
-    .ann-card:nth-child(5) { animation-delay: 0.25s; }
-
-    .pinned-strip {
-      background: var(--gold-pale); border-bottom: 1px solid #fde68a;
-      padding: 6px 20px; display: flex; align-items: center;
-      gap: 6px; font-size: 11px; font-weight: 700; color: #92400e;
-    }
-
-    .ann-body { padding: 18px 20px; }
-
-    .ann-head {
-      display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 12px; margin-bottom: 10px;
-    }
-    .ann-head-left { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
-
-    .ann-type-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; margin-top: 1px;
-    }
-    .icon-high   { background: var(--red-pale);   color: var(--red); }
-    .icon-normal { background: var(--blue-xpale);  color: var(--blue-mid); }
-    .icon-low    { background: var(--gray-100);    color: var(--gray-500); }
-    .icon-event  { background: var(--gold-pale);   color: #92400e; }
-
-    .ann-title-wrap {}
-    .ann-title {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 15px; font-weight: 800; color: var(--gray-800);
-      line-height: 1.3; margin-bottom: 4px;
-    }
-    .ann-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .ann-meta-item {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 11px; color: var(--gray-400);
-    }
-
-    .ann-badges {
-      display: flex; align-items: center; gap: 6px;
-      flex-wrap: wrap; flex-shrink: 0;
-    }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 700;
-      padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-    }
-    .badge-red    { background: var(--red-pale);    color: var(--red); }
-    .badge-blue   { background: var(--blue-xpale);  color: var(--blue); }
-    .badge-green  { background: var(--green-pale);  color: #15803d; }
-    .badge-orange { background: var(--orange-pale); color: #92400e; }
-    .badge-gold   { background: var(--gold-pale);   color: #92400e; }
-    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
-
-    .ann-content {
-      font-size: 13px; color: var(--gray-600);
-      line-height: 1.7; margin-bottom: 12px;
-    }
-
-    .ann-image-wrap {
-      border-radius: 10px; overflow: hidden;
-      margin-bottom: 12px; border: 1px solid var(--gray-100);
-    }
-    .ann-image {
-      width: 100%; aspect-ratio: 2.4 / 1;
-      object-fit: cover; display: block;
-    }
-
-    .ann-audience {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    }
-    .aud-label {
-      font-size: 10px; font-weight: 700; color: var(--gray-400);
-      text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .aud-tag {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
-    }
-    .aud-all     { background: var(--blue-xpale); color: var(--blue-mid); }
-    .aud-teacher { background: var(--gold-pale);            color: var(--gold); }
-    .aud-student { background: var(--green-pale); color: var(--green); }
-    .aud-parent  { background: var(--purple-pale);            color: var(--purple); }
-
-    .ann-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 20px; border-top: 1px solid var(--gray-100);
-      background: var(--gray-50);
-    }
-    .ann-footer-left {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 11px; color: var(--gray-400);
-    }
-    .ann-footer-right { display: flex; align-items: center; gap: 6px; }
-
-    .footer-btn {
-      display: flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 7px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      border: 1.5px solid transparent; transition: all 0.15s;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .footer-btn.read   { background: var(--blue-xpale); color: var(--blue-mid); border-color: var(--blue-pale); }
-    .footer-btn.read:hover { background: var(--blue-pale); }
-
-    /* ── EMPTY STATE ── */
-    .ann-empty {
-      padding: 48px 24px; text-align: center;
-      color: var(--gray-400);
-      display: none;
-    }
-    .ann-empty.visible { display: block; }
-    .ann-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
-    .ann-empty-title { font-size: 14px; font-weight: 700; color: var(--gray-600); margin-bottom: 4px; }
-    .ann-empty-sub   { font-size: 12px; color: var(--gray-400); }
-
-    /* ── RIGHT RAIL: INFO PANEL ── */
-    .info-rail {
-      display: flex; flex-direction: column; gap: 16px;
-      position: sticky; top: 84px;
-    }
-
-    .rail-card {
-      background: var(--white); border-radius: 14px;
-      border: 1px solid var(--gray-200); overflow: hidden;
-      box-shadow: 0 2px 10px rgba(16,40,80,0.05);
-      animation: fadeUp 0.4s ease 0.1s both;
-    }
-
-    .rail-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
-    }
-    .rail-title {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 14px; font-weight: 800; color: var(--gray-800);
-    }
-    .rail-body { padding: 16px 20px; }
-
-    .deadline-item {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 10px 0; border-bottom: 1px solid var(--gray-100);
-    }
-    .deadline-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .deadline-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      flex-shrink: 0; margin-top: 5px;
-    }
-    .deadline-info {}
-    .deadline-title { font-size: 12px; font-weight: 700; color: var(--gray-800); margin-bottom: 2px; }
-    .deadline-date  { font-size: 11px; color: var(--gray-400); }
-    .deadline-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-
-    .notif-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 0; border-bottom: 1px solid var(--gray-100);
-      font-size: 12px; color: var(--gray-700);
-    }
-    .notif-row:last-child { border-bottom: none; }
-    .notif-label { display: flex; align-items: center; gap: 7px; font-weight: 600; }
-
-    .toggle {
-      position: relative; width: 34px; height: 18px;
-      flex-shrink: 0;
-    }
-    .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
-      position: absolute; inset: 0; border-radius: 999px;
-      background: var(--gray-200); cursor: pointer;
-      transition: background 0.2s;
-    }
-    .toggle-slider::before {
-      content: ''; position: absolute;
-      width: 13px; height: 13px; border-radius: 50%;
-      background: white; left: 3px; top: 50%;
-      transform: translateY(-50%);
-      transition: transform 0.2s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    }
-    .toggle input:checked + .toggle-slider { background: var(--blue-mid); }
-    .toggle input:checked + .toggle-slider::before { transform: translateY(-50%) translateX(16px); }
-
-    .unread-indicator {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--red); display: inline-block;
-      box-shadow: 0 0 5px rgba(239,68,68,0.5);
-      flex-shrink: 0;
-    }
-
-    /* ── DETAIL MODAL ── */
-    .modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(11,31,58,0.5); z-index: 50;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; visibility: hidden;
-      transition: opacity 0.2s, visibility 0.2s; padding: 20px;
-    }
-    .modal-backdrop.open { opacity: 1; visibility: visible; }
-
-    .modal {
-      background: var(--white); border-radius: 16px;
-      width: 100%; max-width: 600px;
-      box-shadow: 0 24px 64px rgba(11,31,58,0.25);
-      transform: translateY(20px); transition: transform 0.25s ease;
-      overflow: hidden; max-height: 90vh;
-      display: flex; flex-direction: column;
-    }
-    .modal-backdrop.open .modal { transform: translateY(0); }
-
-    .modal-head {
-      padding: 22px 28px 18px;
-      border-bottom: 1px solid var(--gray-100);
-      display: flex; align-items: flex-start; justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .modal-title {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 20px; font-weight: 800; color: var(--gray-800); margin-bottom: 2px;
-    }
-    .modal-sub { font-size: 13px; color: var(--gray-400); }
-    .modal-close {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: var(--gray-100); border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--gray-500); transition: background 0.15s; flex-shrink: 0;
-    }
-    .modal-close:hover { background: var(--gray-200); }
-    .modal-body { padding: 24px 28px; overflow-y: auto; flex: 1; }
-    .modal-foot {
-      padding: 14px 28px 20px; border-top: 1px solid var(--gray-100);
-      display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;
-    }
-    .btn-close-modal {
-      background: var(--gray-100); color: var(--gray-600);
-      border: 1.5px solid var(--gray-200);
-      padding: 10px 22px; border-radius: 9px;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .btn-close-modal:hover { background: var(--gray-200); }
-
-    .modal-ann-image-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 18px; }
-    .modal-ann-image { width: 100%; max-height: 220px; object-fit: cover; display: block; }
-
-    .modal-ann-content {
-      font-size: 14px; color: var(--gray-700); line-height: 1.8;
-      margin-bottom: 18px;
-    }
-
-    .modal-meta-row {
-      display: flex; align-items: center; gap: 8px;
-      flex-wrap: wrap; margin-bottom: 10px;
-    }
-    .modal-meta-label {
-      font-size: 10px; font-weight: 700; color: var(--gray-400);
-      text-transform: uppercase; letter-spacing: 0.5px; min-width: 60px;
-    }
-
-    /* ── ANIMATIONS ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 1100px) {
-      .ann-layout { grid-template-columns: 1fr; }
-      .info-rail { position: static; }
-      .ann-summary-strip { display: none; }
-      .ann-summary-item { min-width: 140px; }
-    }
-
-    @media (max-width: 760px) {
-      .filter-bar { flex-direction: column; align-items: stretch; }
-      .filter-select { width: 100%; }
-      .ann-head { flex-direction: column; gap: 8px; }
-      .ann-badges { flex-direction: row; }
-    }
-  </style>
 </head>
+
 <body>
 
-<!--
+  <!--
   EJS CONVERSION MAP — student-announcements.html
   ─────────────────────────────────────────
   This page mirrors edugnay-teacher-announcements.html structurally: same modal-based
@@ -489,110 +48,110 @@
   views given the structure is otherwise identical — only audience scoping differs.
 -->
 
-<!-- ══════ ANNOUNCEMENT DETAIL MODAL ══════ -->
-<div class="modal-backdrop" id="annDetailModal">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <!-- EJS: <%= announcement.title %> -->
-        <div class="modal-title" id="modalAnnTitle">Announcement Title</div>
-        <div class="modal-sub" id="modalAnnMeta">Posted by Admin · Today, 8:00 AM</div>
+  <!-- ══════ ANNOUNCEMENT DETAIL MODAL ══════ -->
+  <div class="modal-backdrop" id="annDetailModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <!-- EJS: <%= announcement.title %> -->
+          <div class="modal-title" id="modalAnnTitle">Announcement Title</div>
+          <div class="modal-sub" id="modalAnnMeta">Posted by Admin · Today, 8:00 AM</div>
+        </div>
+        <button class="modal-close" onclick="closeAnnModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-      <button class="modal-close" onclick="closeAnnModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-body">
+      <div class="modal-body">
 
-      <!-- EJS: <% if (announcement.imageUrl) { %> -->
-      <div class="modal-ann-image-wrap" id="modalImageWrap" style="display:none;">
-        <img class="modal-ann-image" id="modalAnnImage" src="" alt="Announcement image"/>
-      </div>
-      <!-- EJS: <% } %> -->
+        <!-- EJS: <% if (announcement.imageUrl) { %> -->
+        <div class="modal-ann-image-wrap" id="modalImageWrap" style="display:none;">
+          <img class="modal-ann-image" id="modalAnnImage" src="" alt="Announcement image" />
+        </div>
+        <!-- EJS: <% } %> -->
 
-      <div class="modal-meta-row">
-        <span class="modal-meta-label">Priority</span>
-        <span class="badge" id="modalPriorityBadge"></span>
-      </div>
-      <div class="modal-meta-row">
-        <span class="modal-meta-label">Audience</span>
-        <span class="aud-tag" id="modalAudienceTag"></span>
-      </div>
-      <div class="modal-meta-row" style="margin-bottom:18px;">
-        <span class="modal-meta-label">Posted</span>
-        <span style="font-size:12px;color:var(--gray-500);" id="modalPostedAt">—</span>
-      </div>
+        <div class="modal-meta-row">
+          <span class="modal-meta-label">Priority</span>
+          <span class="badge" id="modalPriorityBadge"></span>
+        </div>
+        <div class="modal-meta-row">
+          <span class="modal-meta-label">Audience</span>
+          <span class="aud-tag" id="modalAudienceTag"></span>
+        </div>
+        <div class="modal-meta-row" style="margin-bottom:18px;">
+          <span class="modal-meta-label">Posted</span>
+          <span style="font-size:12px;color:var(--gray-500);" id="modalPostedAt">—</span>
+        </div>
 
-      <!-- EJS: <%- announcement.content %> -->
-      <div class="modal-ann-content" id="modalAnnContent"></div>
+        <!-- EJS: <%- announcement.content %> -->
+        <div class="modal-ann-content" id="modalAnnContent"></div>
 
-    </div>
-    <div class="modal-foot">
-      <button class="btn-close-modal" onclick="closeAnnModal()">Close</button>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-close-modal" onclick="closeAnnModal()">Close</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="shell">
+    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div>
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
       </div>
-      <div>
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-grades.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Grades</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
+        <a href="edugnay-student-journal.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
       </div>
-    </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-      <a href="edugnay-student-dashboard.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Dashboard</span>
-      </a>
-      <a href="edugnay-student-grades.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">My Grades</span>
-      </a>
-      <a href="edugnay-student-materials.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Learning Materials</span>
-      </a>
-      <!-- Journal nav item: only rendered if student.hasValuesSubject -->
-      <a href="edugnay-student-journal.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Journal Entries</span>
-      </a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Communication</div>
-      <a href="edugnay-student-announcements.html" class="nav-item active">
-        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">3</span>
-      </a>
-    </div>
-
-
-  </aside>
-
-  <!-- ══════ TOPBAR ══════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
-        <i data-lucide="menu" style="width:18px;height:18px;"></i>
-      </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Student</div>
-        <div class="page-title">Announcements</div>
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">3</span>
+        </a>
       </div>
-    </div>
-    <div class="topbar-right">
+
+
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Student</div>
+          <div class="page-title">Announcements</div>
+        </div>
+      </div>
+      <div class="topbar-right">
         <div class="tb-notif">
           <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
@@ -642,410 +201,427 @@
           </div>
         </div>
       </div>
-  </header>
+    </header>
 
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
 
-    <!-- Summary strip -->
-    <!-- EJS: counts would come from server: totalCount, unreadCount, urgentCount, eventCount -->
-    <div class="ann-summary-strip">
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-          <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.length %> -->
-          <div class="ann-sum-num">5</div>
-          <div class="ann-sum-label">Total</div>
-        </div>
-      </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--red-pale);color:var(--red);">
-          <i data-lucide="bell-ring" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => !a.readBy.includes(currentUser._id)).length %> -->
-          <div class="ann-sum-num" id="unreadCount">2</div>
-          <div class="ann-sum-label">Unread</div>
-        </div>
-      </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--orange-pale);color:#d97706;">
-          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => a.priority === 'high').length %> -->
-          <div class="ann-sum-num">1</div>
-          <div class="ann-sum-label">Urgent</div>
-        </div>
-      </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--gold-pale);color:#92400e;">
-          <i data-lucide="calendar" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => a.priority === 'event').length %> -->
-          <div class="ann-sum-num">1</div>
-          <div class="ann-sum-label">Events</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filter bar -->
-    <div class="filter-bar">
-      <div class="search-wrap">
-        <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-        <input class="search-input" type="text" id="searchInput" placeholder="Search announcements…" oninput="filterCards()"/>
-      </div>
-      <select class="filter-select" id="priorityFilter" onchange="filterCards()">
-        <option value="all">All Priorities</option>
-        <option value="high">Urgent</option>
-        <option value="normal">Normal</option>
-        <option value="event">Events</option>
-        <option value="low">Low Priority</option>
-      </select>
-      <select class="filter-select" id="statusFilter" onchange="filterCards()">
-        <option value="all">All</option>
-        <option value="unread">Unread Only</option>
-        <option value="read">Read</option>
-      </select>
-    </div>
-
-    <!-- Main two-col layout -->
-    <div class="ann-layout">
-
-      <!-- LEFT: Announcement cards -->
-      <div>
-        <!-- EJS: <% announcements.forEach(function(ann) { %> -->
-        <div class="ann-list" id="annList">
-
-          <!-- ─── CARD 1: Pinned + Urgent ─── -->
-          <!-- EJS: data-id="<%= ann._id %>" data-priority="<%= ann.priority %>" data-read="<%= ann.readBy.includes(currentUser._id) ? 'true' : 'false' %>" -->
-          <div class="ann-card priority-high" data-priority="high" data-read="false"
-               onclick="openAnnModal(this)">
-            <div class="pinned-strip">
-              <i data-lucide="pin" style="width:12px;height:12px;"></i>
-              Pinned Announcement
-            </div>
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-high">
-                    <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
-                  </div>
-                  <div class="ann-title-wrap">
-                    <!-- EJS: <%= ann.title %> -->
-                    <div class="ann-title">Foundation Day — June 20, 2025</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item">
-                        <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
-                      </span>
-                      <span class="ann-meta-item">
-                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-red">
-                    <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Urgent
-                  </span>
-                  <span class="badge badge-orange" id="unread-badge-0">
-                    <span class="unread-indicator"></span> Unread
-                  </span>
-                </div>
-              </div>
-              <!-- EJS: <%= ann.content %> -->
-              <div class="ann-content" data-full="Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Late arrivals will not be allowed to join the procession.">
-                Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM…
-              </div>
-              <!-- EJS: <% if (ann.imageUrl) { %> -->
-              <div class="ann-image-wrap">
-                <img class="ann-image" src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png" alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'"/>
-              </div>
-              <!-- EJS: <% } %> -->
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <!-- EJS: audience tag rendered per ann.audience -->
-                <span class="aud-tag aud-all">
-                  <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                </span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left">
-                <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-              </div>
-              <div class="ann-footer-right">
-                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                </button>
-              </div>
-            </div>
+      <!-- Summary strip -->
+      <!-- EJS: counts would come from server: totalCount, unreadCount, urgentCount, eventCount -->
+      <div class="ann-summary-strip">
+        <div class="ann-summary-item">
+          <div class="ann-sum-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
+            <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
           </div>
+          <div>
+            <!-- EJS: <%= announcements.length %> -->
+            <div class="ann-sum-num">5</div>
+            <div class="ann-sum-label">Total</div>
+          </div>
+        </div>
+        <div class="ann-summary-item">
+          <div class="ann-sum-icon" style="background:var(--red-pale);color:var(--red);">
+            <i data-lucide="bell-ring" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <!-- EJS: <%= announcements.filter(a => !a.readBy.includes(currentUser._id)).length %> -->
+            <div class="ann-sum-num" id="unreadCount">2</div>
+            <div class="ann-sum-label">Unread</div>
+          </div>
+        </div>
+        <div class="ann-summary-item">
+          <div class="ann-sum-icon" style="background:var(--orange-pale);color:#d97706;">
+            <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <!-- EJS: <%= announcements.filter(a => a.priority === 'high').length %> -->
+            <div class="ann-sum-num">1</div>
+            <div class="ann-sum-label">Urgent</div>
+          </div>
+        </div>
+        <div class="ann-summary-item">
+          <div class="ann-sum-icon" style="background:var(--gold-pale);color:#92400e;">
+            <i data-lucide="calendar" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <!-- EJS: <%= announcements.filter(a => a.priority === 'event').length %> -->
+            <div class="ann-sum-num">1</div>
+            <div class="ann-sum-label">Events</div>
+          </div>
+        </div>
+      </div>
 
-          <!-- ─── CARD 2: Event ─── -->
-          <div class="ann-card priority-event" data-priority="event" data-read="false"
-               onclick="openAnnModal(this)">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-event">
-                    <i data-lucide="calendar" style="width:16px;height:16px;"></i>
-                  </div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Intramurals Sign-up Open</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item">
-                        <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
-                      </span>
-                      <span class="ann-meta-item">
-                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                      </span>
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+          <input class="search-input" type="text" id="searchInput" placeholder="Search announcements…"
+            oninput="filterCards()" />
+        </div>
+        <select class="filter-select" id="priorityFilter" onchange="filterCards()">
+          <option value="all">All Priorities</option>
+          <option value="high">Urgent</option>
+          <option value="normal">Normal</option>
+          <option value="event">Events</option>
+          <option value="low">Low Priority</option>
+        </select>
+        <select class="filter-select" id="statusFilter" onchange="filterCards()">
+          <option value="all">All</option>
+          <option value="unread">Unread Only</option>
+          <option value="read">Read</option>
+        </select>
+      </div>
+
+      <!-- Main two-col layout -->
+      <div class="ann-layout">
+
+        <!-- LEFT: Announcement cards -->
+        <div>
+          <!-- EJS: <% announcements.forEach(function(ann) { %> -->
+          <div class="ann-list" id="annList">
+
+            <!-- ─── CARD 1: Pinned + Urgent ─── -->
+            <!-- EJS: data-id="<%= ann._id %>" data-priority="<%= ann.priority %>" data-read="<%= ann.readBy.includes(currentUser._id) ? 'true' : 'false' %>" -->
+            <div class="ann-card priority-high" data-priority="high" data-read="false" onclick="openAnnModal(this)">
+              <div class="pinned-strip">
+                <i data-lucide="pin" style="width:12px;height:12px;"></i>
+                Pinned Announcement
+              </div>
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-high">
+                      <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <!-- EJS: <%= ann.title %> -->
+                      <div class="ann-title">Foundation Day — June 20, 2025</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div class="ann-badges">
+                    <span class="badge badge-red">
+                      <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Urgent
+                    </span>
+                    <span class="badge badge-orange" id="unread-badge-0">
+                      <span class="unread-indicator"></span> Unread
+                    </span>
+                  </div>
                 </div>
-                <div class="ann-badges">
-                  <span class="badge badge-gold">
-                    <i data-lucide="calendar" style="width:10px;height:10px;"></i> Event
-                  </span>
-                  <span class="badge badge-orange" id="unread-badge-1">
-                    <span class="unread-indicator"></span> Unread
+                <!-- EJS: <%= ann.content %> -->
+                <div class="ann-content"
+                  data-full="Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Late arrivals will not be allowed to join the procession.">
+                  Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color
+                  shirt and report to the covered court by 7:30 AM…
+                </div>
+                <!-- EJS: <% if (ann.imageUrl) { %> -->
+                <div class="ann-image-wrap">
+                  <img class="ann-image"
+                    src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png"
+                    alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'" />
+                </div>
+                <!-- EJS: <% } %> -->
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <!-- EJS: audience tag rendered per ann.audience -->
+                  <span class="aud-tag aud-all">
+                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
                   </span>
                 </div>
               </div>
-              <div class="ann-content" data-full="Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>. Teams will be announced the following Monday.">
-                Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>…
-              </div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-student">
-                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
-                </span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left">
-                <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-              </div>
-              <div class="ann-footer-right">
-                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                </button>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- ─── CARD 3: Normal (students only) ─── -->
-          <div class="ann-card priority-normal" data-priority="normal" data-read="true"
-               onclick="openAnnModal(this)">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-normal">
-                    <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
-                  </div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Weekly Journal is Now Open for Submission</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item">
-                        <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-                      </span>
-                      <span class="ann-meta-item">
-                        <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
-                      </span>
+            <!-- ─── CARD 2: Event ─── -->
+            <div class="ann-card priority-event" data-priority="event" data-read="false" onclick="openAnnModal(this)">
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-event">
+                      <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <div class="ann-title">Intramurals Sign-up Open</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-blue">Normal</span>
-                  <span class="badge badge-green">Read</span>
-                </div>
-              </div>
-              <div class="ann-content" data-full="This week's journal submission is now open for Values Education. Please write about your week honestly — your experiences, feelings, and anything you'd like to share. Submissions close <strong>Friday at 11:59 PM</strong>.">
-                This week's journal submission is now open for Values Education. Please write about your week honestly — your experiences, feelings…
-              </div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-student">
-                  <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
-                </span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left">
-                <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Ms. Reyes
-              </div>
-              <div class="ann-footer-right">
-                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ─── CARD 4: Normal (All users) ─── -->
-          <div class="ann-card priority-normal" data-priority="normal" data-read="true"
-               onclick="openAnnModal(this)">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-normal">
-                    <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+                  <div class="ann-badges">
+                    <span class="badge badge-gold">
+                      <i data-lucide="calendar" style="width:10px;height:10px;"></i> Event
+                    </span>
+                    <span class="badge badge-orange" id="unread-badge-1">
+                      <span class="unread-indicator"></span> Unread
+                    </span>
                   </div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Q2 Quarterly Exam Schedule Released</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item">
-                        <i data-lucide="clock" style="width:11px;height:11px;"></i> 4 days ago
-                      </span>
-                      <span class="ann-meta-item">
-                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                      </span>
+                </div>
+                <div class="ann-content"
+                  data-full="Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>. Teams will be announced the following Monday.">
+                  Visit the Student Affairs table during recess this week to join a sports team for the upcoming
+                  intramurals. Sign-ups close <strong>Friday</strong>…
+                </div>
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <span class="aud-tag aud-student">
+                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
+                  </span>
+                </div>
+              </div>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── CARD 3: Normal (students only) ─── -->
+            <div class="ann-card priority-normal" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-normal">
+                      <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <div class="ann-title">Weekly Journal is Now Open for Submission</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-blue">Normal</span>
-                  <span class="badge badge-green">Read</span>
-                </div>
-              </div>
-              <div class="ann-content" data-full="The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam dates and rooms. Bring your own writing materials and arrive 15 minutes before each exam.">
-                The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam dates and rooms…
-              </div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-all">
-                  <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                </span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left">
-                <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-              </div>
-              <div class="ann-footer-right">
-                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ─── CARD 5: Low / General ─── -->
-          <div class="ann-card priority-low" data-priority="low" data-read="true"
-               onclick="openAnnModal(this)">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-low">
-                    <i data-lucide="info" style="width:16px;height:16px;"></i>
+                  <div class="ann-badges">
+                    <span class="badge badge-blue">Normal</span>
+                    <span class="badge badge-green">Read</span>
                   </div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item">
-                        <i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM
-                      </span>
-                      <span class="ann-meta-item">
-                        <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                      </span>
+                </div>
+                <div class="ann-content"
+                  data-full="This week's journal submission is now open for Values Education. Please write about your week honestly — your experiences, feelings, and anything you'd like to share. Submissions close <strong>Friday at 11:59 PM</strong>.">
+                  This week's journal submission is now open for Values Education. Please write about your week honestly
+                  — your experiences, feelings…
+                </div>
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <span class="aud-tag aud-student">
+                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
+                  </span>
+                </div>
+              </div>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Ms. Reyes
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── CARD 4: Normal (All users) ─── -->
+            <div class="ann-card priority-normal" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-normal">
+                      <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <div class="ann-title">Q2 Quarterly Exam Schedule Released</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 4 days ago
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div class="ann-badges">
+                    <span class="badge badge-blue">Normal</span>
+                    <span class="badge badge-green">Read</span>
+                  </div>
                 </div>
-                <div class="ann-badges">
-                  <span class="badge badge-gray">General</span>
-                  <span class="badge badge-green">Read</span>
+                <div class="ann-content"
+                  data-full="The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam dates and rooms. Bring your own writing materials and arrive 15 minutes before each exam.">
+                  The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam
+                  dates and rooms…
+                </div>
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <span class="aud-tag aud-all">
+                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
+                  </span>
                 </div>
               </div>
-              <div class="ann-content" data-full="As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal entries, and clearance forms. Coordinate with your subject teachers if you have incomplete requirements.">
-                As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal entries, and clearance forms…
-              </div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-all">
-                  <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                </span>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
               </div>
             </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left">
-                <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-              </div>
-              <div class="ann-footer-right">
-                <button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                  <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                </button>
-              </div>
-            </div>
-          </div>
 
+            <!-- ─── CARD 5: Low / General ─── -->
+            <div class="ann-card priority-low" data-priority="low" data-read="true" onclick="openAnnModal(this)">
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-low">
+                      <i data-lucide="info" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="ann-badges">
+                    <span class="badge badge-gray">General</span>
+                    <span class="badge badge-green">Read</span>
+                  </div>
+                </div>
+                <div class="ann-content"
+                  data-full="As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal entries, and clearance forms. Coordinate with your subject teachers if you have incomplete requirements.">
+                  As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal
+                  entries, and clearance forms…
+                </div>
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <span class="aud-tag aud-all">
+                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
+                  </span>
+                </div>
+              </div>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <!-- EJS: <% }); %> -->
+
+          <!-- Empty state -->
+          <div class="ann-empty" id="annEmpty">
+            <div class="ann-empty-icon"><i data-lucide="inbox" style="width:36px;height:36px;"></i></div>
+            <div class="ann-empty-title">No announcements found</div>
+            <div class="ann-empty-sub">Try adjusting your filters or search query.</div>
+          </div>
         </div>
-        <!-- EJS: <% }); %> -->
 
-        <!-- Empty state -->
-        <div class="ann-empty" id="annEmpty">
-          <div class="ann-empty-icon"><i data-lucide="inbox" style="width:36px;height:36px;"></i></div>
-          <div class="ann-empty-title">No announcements found</div>
-          <div class="ann-empty-sub">Try adjusting your filters or search query.</div>
+        <!-- RIGHT: Info rail -->
+        <div class="info-rail">
+
+          <!-- Deadlines & Events -->
+          <div class="rail-card">
+            <div class="rail-head">
+              <div class="rail-title">Upcoming Deadlines</div>
+              <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
+            </div>
+            <div class="rail-body">
+              <!-- EJS: deadlines rendered from backend, scoped to this student -->
+              <div class="deadline-item">
+                <div class="deadline-dot" style="background:var(--purple);box-shadow:0 0 5px rgba(124,58,237,0.4);">
+                </div>
+                <div class="deadline-info" style="flex:1;">
+                  <div class="deadline-title">Values Journal Entry</div>
+                  <div class="deadline-date">Friday · 11:59 PM</div>
+                </div>
+                <span class="deadline-badge badge badge-purple">Soon</span>
+              </div>
+              <div class="deadline-item">
+                <div class="deadline-dot" style="background:var(--gold);"></div>
+                <div class="deadline-info" style="flex:1;">
+                  <div class="deadline-title">Foundation Day</div>
+                  <div class="deadline-date">June 20, 2025</div>
+                </div>
+                <span class="deadline-badge badge badge-gold">Event</span>
+              </div>
+              <div class="deadline-item">
+                <div class="deadline-dot" style="background:var(--blue-mid);"></div>
+                <div class="deadline-info" style="flex:1;">
+                  <div class="deadline-title">Intramurals Sign-up</div>
+                  <div class="deadline-date">Closes Friday</div>
+                </div>
+                <span class="deadline-badge badge badge-blue">Soon</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Posted by info -->
+          <div class="rail-card">
+            <div class="rail-head">
+              <div class="rail-title">About Announcements</div>
+            </div>
+            <div class="rail-body" style="font-size:12px;color:var(--gray-500);line-height:1.7;">
+              Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong> or
+              your <strong style="color:var(--gray-700);">subject teachers</strong>. As a student, you receive
+              announcements directed at <strong style="color:var(--gray-700);">students</strong> and <strong
+                style="color:var(--gray-700);">all users</strong>.<br /><br />
+              If you have questions about an announcement, please ask your adviser or subject teacher.
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- RIGHT: Info rail -->
-      <div class="info-rail">
-
-        <!-- Deadlines & Events -->
-        <div class="rail-card">
-          <div class="rail-head">
-            <div class="rail-title">Upcoming Deadlines</div>
-            <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
-          </div>
-          <div class="rail-body">
-            <!-- EJS: deadlines rendered from backend, scoped to this student -->
-            <div class="deadline-item">
-              <div class="deadline-dot" style="background:var(--purple);box-shadow:0 0 5px rgba(124,58,237,0.4);"></div>
-              <div class="deadline-info" style="flex:1;">
-                <div class="deadline-title">Values Journal Entry</div>
-                <div class="deadline-date">Friday · 11:59 PM</div>
-              </div>
-              <span class="deadline-badge badge badge-purple">Soon</span>
-            </div>
-            <div class="deadline-item">
-              <div class="deadline-dot" style="background:var(--gold);"></div>
-              <div class="deadline-info" style="flex:1;">
-                <div class="deadline-title">Foundation Day</div>
-                <div class="deadline-date">June 20, 2025</div>
-              </div>
-              <span class="deadline-badge badge badge-gold">Event</span>
-            </div>
-            <div class="deadline-item">
-              <div class="deadline-dot" style="background:var(--blue-mid);"></div>
-              <div class="deadline-info" style="flex:1;">
-                <div class="deadline-title">Intramurals Sign-up</div>
-                <div class="deadline-date">Closes Friday</div>
-              </div>
-              <span class="deadline-badge badge badge-blue">Soon</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Posted by info -->
-        <div class="rail-card">
-          <div class="rail-head">
-            <div class="rail-title">About Announcements</div>
-          </div>
-          <div class="rail-body" style="font-size:12px;color:var(--gray-500);line-height:1.7;">
-            Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong> or your <strong style="color:var(--gray-700);">subject teachers</strong>. As a student, you receive announcements directed at <strong style="color:var(--gray-700);">students</strong> and <strong style="color:var(--gray-700);">all users</strong>.<br/><br/>
-            If you have questions about an announcement, please ask your adviser or subject teacher.
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-  </main>
-</div>
+    </main>
+  </div>
 
   <!-- LOGOUT CONFIRMATION MODAL -->
   <div class="logout-modal-backdrop" id="logoutModalBackdrop">
@@ -1068,128 +644,129 @@
     </div>
   </div>
 
-<script>
-  lucide.createIcons();
+  <script>
+    lucide.createIcons();
 
-  /* ── FILTER ── */
-  function filterCards() {
-    const query    = document.getElementById('searchInput').value.toLowerCase();
-    const priority = document.getElementById('priorityFilter').value;
-    const status   = document.getElementById('statusFilter').value;
-    const cards    = document.querySelectorAll('#annList .ann-card');
-    let visible    = 0;
+    /* ── FILTER ── */
+    function filterCards() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const priority = document.getElementById('priorityFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      const cards = document.querySelectorAll('#annList .ann-card');
+      let visible = 0;
 
-    cards.forEach(card => {
-      const title   = card.querySelector('.ann-title')?.textContent.toLowerCase() || '';
-      const content = card.querySelector('.ann-content')?.textContent.toLowerCase() || '';
-      const pri     = card.dataset.priority;
-      const read    = card.dataset.read;
+      cards.forEach(card => {
+        const title = card.querySelector('.ann-title')?.textContent.toLowerCase() || '';
+        const content = card.querySelector('.ann-content')?.textContent.toLowerCase() || '';
+        const pri = card.dataset.priority;
+        const read = card.dataset.read;
 
-      const matchSearch   = title.includes(query) || content.includes(query);
-      const matchPriority = priority === 'all' || pri === priority;
-      const matchStatus   = status === 'all'
-        || (status === 'unread' && read === 'false')
-        || (status === 'read'   && read === 'true');
+        const matchSearch = title.includes(query) || content.includes(query);
+        const matchPriority = priority === 'all' || pri === priority;
+        const matchStatus = status === 'all'
+          || (status === 'unread' && read === 'false')
+          || (status === 'read' && read === 'true');
 
-      const show = matchSearch && matchPriority && matchStatus;
-      card.style.display = show ? '' : 'none';
-      if (show) visible++;
+        const show = matchSearch && matchPriority && matchStatus;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+
+      const empty = document.getElementById('annEmpty');
+      empty.classList.toggle('visible', visible === 0);
+    }
+
+    /* ── MODAL: open ── */
+    function openAnnModal(card) {
+      const title = card.querySelector('.ann-title')?.textContent.trim() || '';
+      const content = card.querySelector('.ann-content')?.dataset.full
+        || card.querySelector('.ann-content')?.innerHTML || '';
+      const timeEl = card.querySelector('.ann-meta-item');
+      const postedAt = timeEl ? timeEl.textContent.trim() : '—';
+      const priority = card.dataset.priority;
+      const imgEl = card.querySelector('.ann-image');
+      const audTag = card.querySelector('.aud-tag');
+
+      // Title & meta
+      document.getElementById('modalAnnTitle').textContent = title;
+      document.getElementById('modalPostedAt').textContent = 'Posted · ' + postedAt;
+      document.getElementById('modalAnnContent').innerHTML = content;
+
+      // Priority badge
+      const badgeMap = {
+        high: { cls: 'badge-red', label: 'Urgent' },
+        normal: { cls: 'badge-blue', label: 'Normal' },
+        event: { cls: 'badge-gold', label: 'Event' },
+        low: { cls: 'badge-gray', label: 'General' },
+      };
+      const b = badgeMap[priority] || badgeMap.normal;
+      const badge = document.getElementById('modalPriorityBadge');
+      badge.className = 'badge ' + b.cls;
+      badge.textContent = b.label;
+
+      // Audience
+      const modalAud = document.getElementById('modalAudienceTag');
+      if (audTag) {
+        modalAud.className = audTag.className;
+        modalAud.innerHTML = audTag.innerHTML;
+      }
+
+      // Image
+      const imgWrap = document.getElementById('modalImageWrap');
+      if (imgEl && imgEl.src && !imgEl.src.endsWith('undefined')) {
+        document.getElementById('modalAnnImage').src = imgEl.src;
+        imgWrap.style.display = 'block';
+      } else {
+        imgWrap.style.display = 'none';
+      }
+
+      document.getElementById('annDetailModal').classList.add('open');
+
+      // Mark as read
+      markAsRead(card);
+    }
+
+    function closeAnnModal() {
+      document.getElementById('annDetailModal').classList.remove('open');
+    }
+
+    document.getElementById('annDetailModal').addEventListener('click', function (e) {
+      if (e.target === this) closeAnnModal();
     });
 
-    const empty = document.getElementById('annEmpty');
-    empty.classList.toggle('visible', visible === 0);
-  }
+    /* ── MARK AS READ ── */
+    function markAsRead(card) {
+      if (card.dataset.read === 'true') return;
+      card.dataset.read = 'true';
 
-  /* ── MODAL: open ── */
-  function openAnnModal(card) {
-    const title   = card.querySelector('.ann-title')?.textContent.trim() || '';
-    const content = card.querySelector('.ann-content')?.dataset.full
-                 || card.querySelector('.ann-content')?.innerHTML || '';
-    const timeEl  = card.querySelector('.ann-meta-item');
-    const postedAt= timeEl ? timeEl.textContent.trim() : '—';
-    const priority= card.dataset.priority;
-    const imgEl   = card.querySelector('.ann-image');
-    const audTag  = card.querySelector('.aud-tag');
-
-    // Title & meta
-    document.getElementById('modalAnnTitle').textContent = title;
-    document.getElementById('modalPostedAt').textContent = 'Posted · ' + postedAt;
-    document.getElementById('modalAnnContent').innerHTML = content;
-
-    // Priority badge
-    const badgeMap = {
-      high:   { cls: 'badge-red',    label: 'Urgent' },
-      normal: { cls: 'badge-blue',   label: 'Normal' },
-      event:  { cls: 'badge-gold',   label: 'Event' },
-      low:    { cls: 'badge-gray',   label: 'General' },
-    };
-    const b = badgeMap[priority] || badgeMap.normal;
-    const badge = document.getElementById('modalPriorityBadge');
-    badge.className = 'badge ' + b.cls;
-    badge.textContent = b.label;
-
-    // Audience
-    const modalAud = document.getElementById('modalAudienceTag');
-    if (audTag) {
-      modalAud.className = audTag.className;
-      modalAud.innerHTML = audTag.innerHTML;
-    }
-
-    // Image
-    const imgWrap = document.getElementById('modalImageWrap');
-    if (imgEl && imgEl.src && !imgEl.src.endsWith('undefined')) {
-      document.getElementById('modalAnnImage').src = imgEl.src;
-      imgWrap.style.display = 'block';
-    } else {
-      imgWrap.style.display = 'none';
-    }
-
-    document.getElementById('annDetailModal').classList.add('open');
-
-    // Mark as read
-    markAsRead(card);
-  }
-
-  function closeAnnModal() {
-    document.getElementById('annDetailModal').classList.remove('open');
-  }
-
-  document.getElementById('annDetailModal').addEventListener('click', function(e) {
-    if (e.target === this) closeAnnModal();
-  });
-
-  /* ── MARK AS READ ── */
-  function markAsRead(card) {
-    if (card.dataset.read === 'true') return;
-    card.dataset.read = 'true';
-
-    // Swap unread badge to read badge
-    const unreadBadge = card.querySelector('.badge-orange');
-    if (unreadBadge) {
-      unreadBadge.className = 'badge badge-green';
-      unreadBadge.innerHTML = 'Read';
-    }
-
-    // Decrement unread counters (summary strip + sidebar nav badge)
-    const countEl = document.getElementById('unreadCount');
-    const current = parseInt(countEl.textContent, 10);
-    const next = current > 0 ? current - 1 : 0;
-    countEl.textContent = next;
-
-    const sidebarBadge = document.getElementById('sidebarUnreadBadge');
-    if (sidebarBadge) {
-      if (next > 0) {
-        sidebarBadge.textContent = next;
-      } else {
-        sidebarBadge.style.display = 'none';
+      // Swap unread badge to read badge
+      const unreadBadge = card.querySelector('.badge-orange');
+      if (unreadBadge) {
+        unreadBadge.className = 'badge badge-green';
+        unreadBadge.innerHTML = 'Read';
       }
+
+      // Decrement unread counters (summary strip + sidebar nav badge)
+      const countEl = document.getElementById('unreadCount');
+      const current = parseInt(countEl.textContent, 10);
+      const next = current > 0 ? current - 1 : 0;
+      countEl.textContent = next;
+
+      const sidebarBadge = document.getElementById('sidebarUnreadBadge');
+      if (sidebarBadge) {
+        if (next > 0) {
+          sidebarBadge.textContent = next;
+        } else {
+          sidebarBadge.style.display = 'none';
+        }
+      }
+
+      // EJS/backend: POST /student/announcements/:id/read (mark as read for current student)
+      // fetch(`/student/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
     }
 
-    // EJS/backend: POST /student/announcements/:id/read (mark as read for current student)
-    // fetch(`/student/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
-  }
-
-</script>
+  </script>
 
 </body>
+
 </html>

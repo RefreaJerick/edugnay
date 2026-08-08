@@ -1,310 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
-  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"/>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/journal.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <style>
-    /* EJS NOTE: moves to assets/css/student/journal.css. Shared tokens only. */
 
-    /* ── Prompt card — navy with gold accent, matches teacher journal modal prompt-card ── */
-    .prompt-card {
-      background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
-      border-radius: 16px; padding: 20px 22px; margin-bottom: 20px;
-      box-shadow: 0 6px 20px rgba(11,31,58,0.18);
-      position: relative; overflow: hidden;
-    }
-    .prompt-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-    .prompt-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.55); }
-    .prompt-period { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--white); margin-top: 2px; }
-    .prompt-status-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; color: var(--white);
-    }
-    .prompt-text {
-      font-size: 14px; color: var(--white); line-height: 1.6; font-style: italic;
-      border-left: 3px solid var(--gold); padding-left: 14px;
-    }
-    .prompt-deadline { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: rgba(255,255,255,0.6); margin-top: 14px; }
-    .prompt-deadline strong { color: var(--white); }
-
-    /* ── Panel ── */
-    .panel { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); overflow: hidden; box-shadow: 0 2px 10px rgba(16,40,80,0.05); margin-bottom: 20px; }
-    .panel-head { padding: 16px 22px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
-    .panel-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-
-    /* ── Composer ── */
-    .composer-body { padding: 20px 22px; }
-    .composer-textarea {
-      width: 100%; min-height: 160px; resize: vertical;
-      border: 1.5px solid var(--gray-200); border-radius: 11px;
-      padding: 14px 16px; font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13.5px; color: var(--gray-800); line-height: 1.65;
-      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .composer-textarea::placeholder { color: var(--gray-300); }
-    .composer-textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(29,92,180,0.1); }
-    .composer-textarea:disabled { background: var(--gray-50); color: var(--gray-500); cursor: not-allowed; }
-
-    .composer-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; flex-wrap: wrap; }
-    .word-count { font-size: 11.5px; color: var(--gray-400); }
-    .word-count.under { color: var(--orange); font-weight: 600; }
-    .word-count.ok { color: #16a34a; font-weight: 600; }
-
-    .btn-submit {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 10px 20px; border-radius: 10px; border: none;
-      background: var(--blue); color: var(--white);
-      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; box-shadow: 0 2px 8px rgba(26,64,128,0.25);
-    }
-    .btn-submit:hover { background: var(--blue-mid); }
-    .btn-submit:disabled { background: var(--gray-300); cursor: not-allowed; box-shadow: none; }
-
-    .composer-hint {
-      display: flex; align-items: flex-start; gap: 8px;
-      margin-top: 14px; padding: 11px 14px;
-      background: var(--blue-xpale); border: 1px solid var(--blue-pale);
-      border-radius: 10px; font-size: 11.5px; color: var(--blue); line-height: 1.5;
-    }
-
-    /* ── Submitted/locked state ── */
-    .submitted-block { padding: 20px 22px; }
-    .submitted-banner {
-      display: flex; align-items: flex-start; gap: 12px;
-      background: var(--green-pale); border: 1px solid #bbf7d0;
-      border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
-    }
-    .submitted-icon { width: 32px; height: 32px; border-radius: 9px; background: #16a34a; color: var(--white); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .submitted-title { font-size: 13px; font-weight: 700; color: #15803d; }
-    .submitted-sub { font-size: 11.5px; color: #166534; margin-top: 2px; }
-    .submitted-entry {
-      font-size: 13.5px; color: var(--gray-700); line-height: 1.7;
-      background: var(--gray-50); border-radius: 11px; padding: 16px 18px;
-      border: 1px solid var(--gray-100); white-space: pre-wrap;
-    }
-    .submitted-meta { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
-    .meta-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-500); }
-    .meta-chip strong { color: var(--gray-800); }
-
-    .score-pending-chip {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--orange-pale); color: #92400e;
-      font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
-    }
-    .score-given-chip {
-      display: inline-flex; align-items: baseline; gap: 3px;
-      background: var(--green-pale); color: #15803d;
-      font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
-    }
-    .score-given-chip .score-max { font-weight: 600; opacity: 0.7; }
-
-    /* ── Window closed state ── */
-    .closed-state { padding: 50px 24px; text-align: center; }
-    .closed-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--gray-400); }
-    .closed-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-700); margin-bottom: 4px; }
-    .closed-sub { font-size: 13px; color: var(--gray-400); line-height: 1.6; }
-
-    /* ── Past entries list ── */
-    .history-row {
-      display: flex; align-items: center; gap: 13px;
-      padding: 13px 22px; border-bottom: 1px solid var(--gray-100);
-      transition: background 0.15s; cursor: pointer;
-    }
-    .history-row:hover { background: var(--gray-50); }
-    .history-row:last-child { border-bottom: none; }
-    .history-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--purple-pale); color: var(--purple); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .history-info { flex: 1; min-width: 0; }
-    .history-week { font-size: 13px; font-weight: 700; color: var(--gray-800); }
-    .history-excerpt { font-size: 11.5px; color: var(--gray-400); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .history-score { flex-shrink: 0; text-align: right; }
-
-    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-    .badge-green  { background: var(--green-pale);  color: #15803d; }
-    .badge-orange { background: var(--orange-pale); color: #92400e; }
-    .badge-gray   { background: var(--gray-100);    color: var(--gray-500); }
-
-    /* ── Past Entry View Modal ── */
-.entry-modal-backdrop {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(11, 31, 58, 0.55);
-  backdrop-filter: blur(2px);
-  z-index: 200;
-  align-items: center; justify-content: center;
-  padding: 20px;
-}
-.entry-modal-backdrop.open { display: flex; }
-
-.entry-modal {
-  background: var(--white);
-  border-radius: 18px;
-  width: 100%;
-  max-width: 560px;
-  max-height: 88vh;
-  overflow-y: auto;
-  box-shadow: 0 24px 60px rgba(11,31,58,0.28);
-  animation: entryModalIn 0.18s ease;
-}
-@keyframes entryModalIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.entry-modal-head {
-  position: relative;
-  padding: 22px 24px 18px;
-  background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
-  color: var(--white);
-}
-.entry-modal-close {
-  position: absolute; top: 14px; right: 14px;
-  width: 30px; height: 30px; border-radius: 9px;
-  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
-  color: var(--white); display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.15s;
-}
-.entry-modal-close:hover { background: rgba(255,255,255,0.22); }
-
-.entry-modal-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.55); }
-.entry-modal-week { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; margin-top: 3px; padding-right: 40px; }
-.entry-modal-date { font-size: 11.5px; color: rgba(255,255,255,0.65); margin-top: 3px; }
-
-.entry-modal-body { padding: 22px 24px 24px; }
-.entry-modal-prompt {
-  font-size: 12.5px; color: var(--gray-500); font-style: italic; line-height: 1.55;
-  border-left: 3px solid var(--blue-pale); padding-left: 12px; margin-bottom: 16px;
-}
-.entry-modal-text {
-  font-size: 13.5px; color: var(--gray-700); line-height: 1.75;
-  background: var(--gray-50); border: 1px solid var(--gray-100);
-  border-radius: 12px; padding: 16px 18px; white-space: pre-wrap;
-}
-.entry-modal-foot {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 18px; flex-wrap: wrap;
-}
-.entry-modal-meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gray-400); }
-.entry-modal-meta strong { color: var(--gray-700); }
-
-@media (max-width: 520px) {
-  .entry-modal { max-height: 82vh; }
-  .entry-modal-head { padding: 18px 20px 16px; }
-  .entry-modal-body { padding: 18px 20px 20px; }
-  .entry-modal-foot { flex-direction: column; align-items: flex-start; }
-}
-
-    @media (max-width: 980px) {
-      .main { height: auto; min-height: calc(100vh - 64px); overflow-y: visible; }
-      body { overflow-y: auto; }
-      .shell { display: block; }
-      .sidebar { position: fixed; top: 0; left: 0; width: min(280px, 80vw); height: 100vh; transform: translateX(-100%); z-index: 20; border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18); }
-      .sidebar-overlay { display: block; }
-      .topbar { flex-wrap: wrap; padding: 16px 20px; }
-      .hamburger { display: grid; }
-    }
-    @media (max-width: 760px) {
-      .main { padding: 20px; }
-    }
-    @media (max-width: 520px) {
-      .submitted-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
-    }
-
-    /* Journal page refinements */
-    .prompt-card {
-      padding: 22px 24px; border-radius: 18px;
-      box-shadow: 0 10px 26px rgba(11,31,58,.16);
-    }
-    .prompt-card-top { margin-bottom: 14px; }
-    .prompt-text { max-width: 760px; font-size: 14px; line-height: 1.65; }
-    #current-week-panel, .journal-history-panel {
-      border-radius: 16px; box-shadow: 0 8px 24px rgba(16,40,80,.07);
-    }
-    #current-week-panel .panel-head, .journal-history-panel .panel-head { padding: 19px 22px; }
-    .composer-body, .submitted-block { padding: 20px 22px 22px; }
-    .composer-textarea { min-height: 178px; background: #fbfdff; }
-    .composer-textarea:focus { background: var(--white); }
-    .history-list-wrap { padding: 14px; display: grid; gap: 10px; }
-    .journal-history-panel .history-row {
-      padding: 13px; border: 1px solid var(--gray-200); border-radius: 12px;
-      background: linear-gradient(135deg, var(--white), #fbfdff);
-      transition: border-color .18s, box-shadow .18s, transform .18s;
-    }
-    .journal-history-panel .history-row:hover {
-      background: var(--white); border-color: var(--blue-pale);
-      box-shadow: 0 6px 16px rgba(26,64,128,.08); transform: translateY(-1px);
-    }
-    .journal-history-panel .history-row:last-child { border-bottom: 1px solid var(--gray-200); }
-    .history-icon { width: 40px; height: 40px; border-radius: 11px; }
-    .history-week { line-height: 1.35; }
-    .submitted-entry { background: #fbfdff; }
-
-    .entry-modal-backdrop { padding: 16px; background: rgba(11,31,58,.62); }
-    .entry-modal {
-      max-width: 600px; border: 1px solid rgba(255,255,255,.28);
-      border-radius: 20px; box-shadow: 0 26px 70px rgba(11,31,58,.32);
-    }
-    .entry-modal-head { padding: 24px 26px 20px; }
-    .entry-modal-eyebrow { letter-spacing: .9px; }
-    .entry-modal-week { font-size: 18px; line-height: 1.3; }
-    .entry-modal-body { padding: 22px 26px 25px; }
-    .entry-modal-prompt {
-      margin-bottom: 18px; padding: 12px 14px;
-      background: var(--blue-xpale); border: 1px solid var(--blue-pale);
-      border-left: 0; border-radius: 10px; color: var(--blue);
-    }
-    .entry-modal-text {
-      padding: 18px 19px; background: #fbfdff; border-color: var(--gray-200);
-      font-size: 13.5px; line-height: 1.8;
-    }
-    .entry-modal-foot {
-      padding-top: 16px; border-top: 1px solid var(--gray-100);
-    }
-    .entry-modal-close { top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 10px; }
-
-    @media (max-width: 760px) {
-      .main { padding: 16px; }
-      .prompt-card { padding: 18px; margin-bottom: 14px; }
-      .prompt-card-top { align-items: flex-start; }
-      .prompt-period { font-size: 14px; }
-      .prompt-text { font-size: 13px; }
-      #current-week-panel .panel-head, .journal-history-panel .panel-head { padding: 16px; }
-      .composer-body, .submitted-block { padding: 16px; }
-      .composer-textarea { min-height: 160px; }
-      .history-list-wrap { padding: 12px; gap: 8px; }
-      .journal-history-panel .history-row { align-items: flex-start; gap: 10px; padding: 12px; }
-      .history-score { margin-left: auto; }
-      .entry-modal-backdrop { padding: 12px; }
-      .entry-modal { max-height: 88vh; border-radius: 17px; }
-      .entry-modal-head { padding: 20px 20px 17px; }
-      .entry-modal-body { padding: 18px 20px 20px; }
-      .entry-modal-text { padding: 15px 16px; font-size: 13px; }
-    }
-
-    @media (max-width: 460px) {
-      .prompt-status-pill { width: 100%; justify-content: center; }
-      .prompt-deadline { align-items: flex-start; }
-      .composer-foot { align-items: stretch; }
-      .word-count { width: 100%; }
-      .btn-submit { width: 100%; justify-content: center; }
-      .history-score { display: none; }
-      .history-excerpt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    }
   </style>
 </head>
+
 <body>
 
-<!--
+  <!--
   EJS CONVERSION MAP — student-journal.html
   ─────────────────────────────────────────
   CONDITIONAL: this entire page should 404 / redirect server-side if
@@ -330,67 +48,67 @@
   PARTIALS: same sidebar/topbar partials as other student pages (activeNav='journal').
 -->
 
-<div class="shell">
-  <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
       </div>
-      <div class="brand-text">
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-grades.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Grades</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
+        <a href="edugnay-student-journal.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
       </div>
-    </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-      <a href="edugnay-student-dashboard.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Dashboard</span>
-      </a>
-      <a href="edugnay-student-grades.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">My Grades</span>
-      </a>
-      <a href="edugnay-student-materials.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Learning Materials</span>
-      </a>
-      <!-- Journal nav item: only rendered if student.hasValuesSubject -->
-      <a href="edugnay-student-journal.html" class="nav-item active">
-        <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Journal Entries</span>
-      </a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Communication</div>
-      <a href="edugnay-student-announcements.html" class="nav-item">
-        <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
-        <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">3</span>
-      </a>
-    </div>
-
-
-
-  </aside>
-
-  <!-- ══════ TOPBAR ══════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)">
-        <i data-lucide="menu" style="width:18px;height:18px;"></i>
-      </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Student</div>
-        <div class="page-title">My Journal</div>
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">3</span>
+        </a>
       </div>
-    </div>
-    <div class="topbar-right">
+
+
+
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+        <div>
+          <div class="page-eyebrow">E-Ugnay · Student</div>
+          <div class="page-title">My Journal</div>
+        </div>
+      </div>
+      <div class="topbar-right">
         <div class="tb-notif">
           <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
@@ -440,49 +158,50 @@
           </div>
         </div>
       </div>
-  </header>
+    </header>
 
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
 
-    <!-- journalWindow: prompt card -->
-    <div class="prompt-card">
-      <div class="prompt-card-top">
-        <div>
-          <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
-          <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
+      <!-- journalWindow: prompt card -->
+      <div class="prompt-card">
+        <div class="prompt-card-top">
+          <div>
+            <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
+            <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
+          </div>
+          <span class="prompt-status-pill" id="window-status-pill">
+            <i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
+          </span>
         </div>
-        <span class="prompt-status-pill" id="window-status-pill">
-          <i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
-        </span>
-      </div>
-      <p class="prompt-text">"Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?"</p>
-      <div class="prompt-deadline">
-        <i data-lucide="clock" style="width:13px;height:13px;"></i>
-        <span>Submit before <strong>Friday, 11:59 PM</strong></span>
-      </div>
-    </div>
-
-    <!-- This week's panel: composer OR submitted state, rendered by JS based on currentEntry -->
-    <div class="panel" id="current-week-panel">
-      <!-- JS fills this in -->
-    </div>
-
-    <!-- Past entries -->
-    <div class="panel journal-history-panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Past Entries</div>
-          <div class="panel-sub">Your journal history this quarter</div>
+        <p class="prompt-text">"Describe a moment this week when you helped a classmate or a classmate helped you. What
+          did you learn from that experience?"</p>
+        <div class="prompt-deadline">
+          <i data-lucide="clock" style="width:13px;height:13px;"></i>
+          <span>Submit before <strong>Friday, 11:59 PM</strong></span>
         </div>
       </div>
-      <div id="history-list" class="history-list-wrap">
-        <!-- JS renders pastEntries[] here -->
-      </div>
-    </div>
 
-  </main>
-</div>
+      <!-- This week's panel: composer OR submitted state, rendered by JS based on currentEntry -->
+      <div class="panel" id="current-week-panel">
+        <!-- JS fills this in -->
+      </div>
+
+      <!-- Past entries -->
+      <div class="panel journal-history-panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Past Entries</div>
+            <div class="panel-sub">Your journal history this quarter</div>
+          </div>
+        </div>
+        <div id="history-list" class="history-list-wrap">
+          <!-- JS renders pastEntries[] here -->
+        </div>
+      </div>
+
+    </main>
+  </div>
 
   <!-- LOGOUT CONFIRMATION MODAL -->
   <div class="logout-modal-backdrop" id="logoutModalBackdrop">
@@ -506,98 +225,98 @@
   </div>
 
   <!-- PAST ENTRY VIEW MODAL -->
-<div class="entry-modal-backdrop" id="entryModalBackdrop" onclick="if(event.target===this) closeEntryModal()">
-  <div class="entry-modal">
-    <div class="entry-modal-head">
-      <button class="entry-modal-close" onclick="closeEntryModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-      <div class="entry-modal-eyebrow">Values Education · Weekly Journal</div>
-      <div class="entry-modal-week" id="entryModalWeek">Not available</div>
-      <div class="entry-modal-date" id="entryModalDate">Not available</div>
-    </div>
-    <div class="entry-modal-body">
-      <div class="entry-modal-prompt" id="entryModalPrompt">Not available</div>
-      <div class="entry-modal-text" id="entryModalText">Not available</div>
-      <div class="entry-modal-foot">
-        <div class="entry-modal-meta">
-          <i data-lucide="calendar-check" style="width:13px;height:13px;"></i>
-          Submitted <strong id="entryModalSubmitted">Not available</strong>
+  <div class="entry-modal-backdrop" id="entryModalBackdrop" onclick="if(event.target===this) closeEntryModal()">
+    <div class="entry-modal">
+      <div class="entry-modal-head">
+        <button class="entry-modal-close" onclick="closeEntryModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+        <div class="entry-modal-eyebrow">Values Education · Weekly Journal</div>
+        <div class="entry-modal-week" id="entryModalWeek">Not available</div>
+        <div class="entry-modal-date" id="entryModalDate">Not available</div>
+      </div>
+      <div class="entry-modal-body">
+        <div class="entry-modal-prompt" id="entryModalPrompt">Not available</div>
+        <div class="entry-modal-text" id="entryModalText">Not available</div>
+        <div class="entry-modal-foot">
+          <div class="entry-modal-meta">
+            <i data-lucide="calendar-check" style="width:13px;height:13px;"></i>
+            Submitted <strong id="entryModalSubmitted">Not available</strong>
+          </div>
+          <span id="entryModalScore"></span>
         </div>
-        <span id="entryModalScore"></span>
       </div>
     </div>
   </div>
-</div>
 
-<script>
-lucide.createIcons();
+  <script>
+    lucide.createIcons();
 
-/*
-  EJS NOTE: these two objects are client-side placeholders. On conversion:
-  - JOURNAL_WINDOW + CURRENT_ENTRY come from the page's initial server render
-    (no client fetch needed for the current week — render directly via EJS).
-  - PAST_ENTRIES likewise renders server-side as a simple loop; the only
-    remaining client-side JS should be the word-count helper on the composer.
-*/
-const JOURNAL_WINDOW = {
-  isOpen: true,
-  minWords: 50,
-  maxWords: 500,
-};
+    /*
+      EJS NOTE: these two objects are client-side placeholders. On conversion:
+      - JOURNAL_WINDOW + CURRENT_ENTRY come from the page's initial server render
+        (no client fetch needed for the current week — render directly via EJS).
+      - PAST_ENTRIES likewise renders server-side as a simple loop; the only
+        remaining client-side JS should be the word-count helper on the composer.
+    */
+    const JOURNAL_WINDOW = {
+      isOpen: true,
+      minWords: 50,
+      maxWords: 500,
+    };
 
-// null = student has not submitted yet this week
-const CURRENT_ENTRY = null;
+    // null = student has not submitted yet this week
+    const CURRENT_ENTRY = null;
 
-/*
-  EJS/BACKEND NOTE:
-  - PAST_ENTRIES → student's journal_entries rows (all WEEKS before current),
-    fetched server-side: GET /student/journal/entries?exclude=current
-    Each row needs: id, week_label, date_range, prompt_snapshot (store the
-    prompt text AT SUBMISSION TIME, not a live join to journal_windows —
-    prompts change weekly and past entries must show what was actually asked),
-    entry_text, submitted_at, score (nullable until teacher reviews).
-  - Render PAST_ENTRIES server-side via EJS loop (same as materials[]/
-    announcements[] elsewhere in this app) instead of a client array.
-  - openEntryModal(id) can stay client-side: embed all entries' full text
-    in the initial render and look up by id in JS — fine since entry count
-    per student is small (one per week). Matches how the rest of this page
-    already works.
-*/
+    /*
+      EJS/BACKEND NOTE:
+      - PAST_ENTRIES → student's journal_entries rows (all WEEKS before current),
+        fetched server-side: GET /student/journal/entries?exclude=current
+        Each row needs: id, week_label, date_range, prompt_snapshot (store the
+        prompt text AT SUBMISSION TIME, not a live join to journal_windows —
+        prompts change weekly and past entries must show what was actually asked),
+        entry_text, submitted_at, score (nullable until teacher reviews).
+      - Render PAST_ENTRIES server-side via EJS loop (same as materials[]/
+        announcements[] elsewhere in this app) instead of a client array.
+      - openEntryModal(id) can stay client-side: embed all entries' full text
+        in the initial render and look up by id in JS — fine since entry count
+        per student is small (one per week). Matches how the rest of this page
+        already works.
+    */
 
-const PAST_ENTRIES = [
-  {
-    id: 2, week: 'Week 2', dateRange: 'June 2 to 7, 2025',
-    prompt: '"Talk about a challenge you faced this week and how you tried to overcome it."',
-    excerpt: 'I found the quiz on linear inequalities confusing because of the direction of the inequality...',
-    text: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
-    submittedAt: 'June 6, 2025 · 9:42 PM',
-    score: 50, reviewed: true
-  },
-  {
-    id: 1, week: 'Week 1', dateRange: 'May 26 to 31, 2025',
-    prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you."',
-    excerpt: 'This week I had a hard time understanding how to solve equations with variables on both sides...',
-    text: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
-    submittedAt: 'May 30, 2025 · 7:15 PM',
-    score: 45, reviewed: true
-  },
-];
+    const PAST_ENTRIES = [
+      {
+        id: 2, week: 'Week 2', dateRange: 'June 2 to 7, 2025',
+        prompt: '"Talk about a challenge you faced this week and how you tried to overcome it."',
+        excerpt: 'I found the quiz on linear inequalities confusing because of the direction of the inequality...',
+        text: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
+        submittedAt: 'June 6, 2025 · 9:42 PM',
+        score: 50, reviewed: true
+      },
+      {
+        id: 1, week: 'Week 1', dateRange: 'May 26 to 31, 2025',
+        prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you."',
+        excerpt: 'This week I had a hard time understanding how to solve equations with variables on both sides...',
+        text: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
+        submittedAt: 'May 30, 2025 · 7:15 PM',
+        score: 45, reviewed: true
+      },
+    ];
 
-function wordCount(text) {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}
+    function wordCount(text) {
+      return text.trim().split(/\s+/).filter(Boolean).length;
+    }
 
-function renderCurrentWeekPanel() {
-  const panel = document.getElementById('current-week-panel');
+    function renderCurrentWeekPanel() {
+      const panel = document.getElementById('current-week-panel');
 
-  if (CURRENT_ENTRY) {
-    // Already submitted — read-only, locked
-    const scoreBlock = CURRENT_ENTRY.score !== null
-      ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${CURRENT_ENTRY.score} <span class="score-max">/ 50</span></span>`
-      : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
+      if (CURRENT_ENTRY) {
+        // Already submitted — read-only, locked
+        const scoreBlock = CURRENT_ENTRY.score !== null
+          ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${CURRENT_ENTRY.score} <span class="score-max">/ 50</span></span>`
+          : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
 
-    panel.innerHTML = `
+        panel.innerHTML = `
       <div class="panel-head">
         <div>
           <div class="panel-title">This Week's Entry</div>
@@ -617,24 +336,24 @@ function renderCurrentWeekPanel() {
           ${scoreBlock}
         </div>
       </div>`;
-    lucide.createIcons();
-    return;
-  }
+        lucide.createIcons();
+        return;
+      }
 
-  if (!JOURNAL_WINDOW.isOpen) {
-    document.getElementById('window-status-pill').innerHTML = `<i data-lucide="lock" style="width:11px;height:11px;"></i> Window closed`;
-    panel.innerHTML = `
+      if (!JOURNAL_WINDOW.isOpen) {
+        document.getElementById('window-status-pill').innerHTML = `<i data-lucide="lock" style="width:11px;height:11px;"></i> Window closed`;
+        panel.innerHTML = `
       <div class="closed-state">
         <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
         <div class="closed-title">Submission window closed</div>
         <div class="closed-sub">This week's journal entry is no longer accepting submissions.<br/>A new prompt opens next week.</div>
       </div>`;
-    lucide.createIcons();
-    return;
-  }
+        lucide.createIcons();
+        return;
+      }
 
-  // Open composer
-  panel.innerHTML = `
+      // Open composer
+      panel.innerHTML = `
     <div class="panel-head">
       <div>
         <div class="panel-title">Write Your Entry</div>
@@ -654,51 +373,51 @@ function renderCurrentWeekPanel() {
         <span>Once submitted, you cannot edit this entry. Take your time and write honestly. There is no wrong answer.</span>
       </div>
     </div>`;
-  lucide.createIcons();
-}
+      lucide.createIcons();
+    }
 
-function updateWordCount() {
-  const textarea = document.getElementById('entry-textarea');
-  const label = document.getElementById('word-count-label');
-  const submitBtn = document.getElementById('submit-btn');
-  const count = wordCount(textarea.value);
+    function updateWordCount() {
+      const textarea = document.getElementById('entry-textarea');
+      const label = document.getElementById('word-count-label');
+      const submitBtn = document.getElementById('submit-btn');
+      const count = wordCount(textarea.value);
 
-  label.textContent = `${count} words`;
-  label.className = 'word-count';
-  if (count > 0 && count < JOURNAL_WINDOW.minWords) {
-    label.classList.add('under');
-    label.textContent = `${count} words · need ${JOURNAL_WINDOW.minWords - count} more`;
-  } else if (count >= JOURNAL_WINDOW.minWords) {
-    label.classList.add('ok');
-  }
+      label.textContent = `${count} words`;
+      label.className = 'word-count';
+      if (count > 0 && count < JOURNAL_WINDOW.minWords) {
+        label.classList.add('under');
+        label.textContent = `${count} words · need ${JOURNAL_WINDOW.minWords - count} more`;
+      } else if (count >= JOURNAL_WINDOW.minWords) {
+        label.classList.add('ok');
+      }
 
-  submitBtn.disabled = count < JOURNAL_WINDOW.minWords || count > JOURNAL_WINDOW.maxWords;
-}
+      submitBtn.disabled = count < JOURNAL_WINDOW.minWords || count > JOURNAL_WINDOW.maxWords;
+    }
 
-function submitEntry() {
-  // EJS NOTE: replace with POST /student/journal/submit { text }
-  const textarea = document.getElementById('entry-textarea');
-  console.log('Submitting entry:', textarea.value);
-  showToast('Journal entry submitted!', 'success');
-  setTimeout(() => location.reload(), 900);
-}
+    function submitEntry() {
+      // EJS NOTE: replace with POST /student/journal/submit { text }
+      const textarea = document.getElementById('entry-textarea');
+      console.log('Submitting entry:', textarea.value);
+      showToast('Journal entry submitted!', 'success');
+      setTimeout(() => location.reload(), 900);
+    }
 
-function renderHistory() {
-  const list = document.getElementById('history-list');
+    function renderHistory() {
+      const list = document.getElementById('history-list');
 
-  if (PAST_ENTRIES.length === 0) {
-    list.innerHTML = `
+      if (PAST_ENTRIES.length === 0) {
+        list.innerHTML = `
       <div style="padding:40px 24px;text-align:center;color:var(--gray-400);font-size:13px;">
         No past entries yet.
       </div>`;
-    return;
-  }
+        return;
+      }
 
-  list.innerHTML = PAST_ENTRIES.map(e => {
-    const scoreBadge = e.score !== null
-      ? `<span class="badge badge-green"><i data-lucide="star" style="width:9px;height:9px;"></i> ${e.score}/50</span>`
-      : `<span class="badge badge-orange">Pending</span>`;
-    return `
+      list.innerHTML = PAST_ENTRIES.map(e => {
+        const scoreBadge = e.score !== null
+          ? `<span class="badge badge-green"><i data-lucide="star" style="width:9px;height:9px;"></i> ${e.score}/50</span>`
+          : `<span class="badge badge-orange">Pending</span>`;
+        return `
       <div class="history-row" onclick="openEntryModal(${e.id})">
         <div class="history-icon"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
         <div class="history-info">
@@ -707,44 +426,45 @@ function renderHistory() {
         </div>
         <div class="history-score">${scoreBadge}</div>
       </div>`;
-  }).join('');
-  lucide.createIcons();
-}
+      }).join('');
+      lucide.createIcons();
+    }
 
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
+    function showToast(msg, type) {
+      const t = document.createElement('div');
+      t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
 
-function openEntryModal(id) {
-  const e = PAST_ENTRIES.find(entry => entry.id === id);
-  if (!e) return;
-  document.getElementById('entryModalWeek').textContent = `${e.week} · ${e.dateRange}`;
-  document.getElementById('entryModalDate').textContent = e.dateRange;
-  document.getElementById('entryModalPrompt').textContent = e.prompt;
-  document.getElementById('entryModalText').textContent = e.text;
-  document.getElementById('entryModalSubmitted').textContent = e.submittedAt;
+    function openEntryModal(id) {
+      const e = PAST_ENTRIES.find(entry => entry.id === id);
+      if (!e) return;
+      document.getElementById('entryModalWeek').textContent = `${e.week} · ${e.dateRange}`;
+      document.getElementById('entryModalDate').textContent = e.dateRange;
+      document.getElementById('entryModalPrompt').textContent = e.prompt;
+      document.getElementById('entryModalText').textContent = e.text;
+      document.getElementById('entryModalSubmitted').textContent = e.submittedAt;
 
-  const scoreEl = document.getElementById('entryModalScore');
-  scoreEl.innerHTML = e.score !== null
-    ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${e.score} <span class="score-max">/ 50</span></span>`
-    : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
+      const scoreEl = document.getElementById('entryModalScore');
+      scoreEl.innerHTML = e.score !== null
+        ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${e.score} <span class="score-max">/ 50</span></span>`
+        : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
 
-  document.getElementById('entryModalBackdrop').classList.add('open');
-  lucide.createIcons();
-}
+      document.getElementById('entryModalBackdrop').classList.add('open');
+      lucide.createIcons();
+    }
 
-function closeEntryModal() {
-  document.getElementById('entryModalBackdrop').classList.remove('open');
-}
+    function closeEntryModal() {
+      document.getElementById('entryModalBackdrop').classList.remove('open');
+    }
 
-renderCurrentWeekPanel();
-renderHistory();
+    renderCurrentWeekPanel();
+    renderHistory();
 
-</script>
+  </script>
 
 </body>
+
 </html>

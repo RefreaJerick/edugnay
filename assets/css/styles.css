@@ -1154,8 +1154,7 @@ html, body {
 }
 
 .school-crest {
-  width: 48px; height: 48px;
-  background: var(--gold);
+  width: 56px; height: 56px;
   border-radius: 50%;
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;

@@ -10,6 +10,74 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    /* Login page refinements */
+    html, body { background: #eaf0f7; }
+    .page {
+      grid-template-columns: minmax(0, 1fr) minmax(420px, 500px);
+      gap: 28px; padding: 28px; background: #eaf0f7;
+    }
+    .photo-panel {
+      min-height: calc(100vh - 56px); border-radius: 24px;
+      box-shadow: 0 18px 42px rgba(11,31,58,.18);
+    }
+    .photo-panel::before {
+      background:
+        linear-gradient(90deg, rgba(11,31,58,.64), rgba(11,31,58,.18)),
+        linear-gradient(0deg, rgba(11,31,58,.88), transparent 64%);
+    }
+    .photo-panel .photo-content { padding: 42px 48px; }
+    .photo-bottom {
+      max-width: 680px; padding: 24px 26px 22px; border-radius: 20px;
+      background: transparent; border: 0; box-shadow: none; backdrop-filter: none;
+    }
+    .photo-heading { max-width: 620px; font-size: clamp(34px, 4vw, 56px); letter-spacing: -1px; margin-bottom: 14px; }
+    .photo-sub { max-width: 500px; margin-bottom: 26px; color: rgba(255,255,255,.72); }
+    .stat-strip { border-radius: 14px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
+    .stat-block { min-width: 112px; padding: 13px 19px; }
+    .login-panel {
+      margin: 0; border-radius: 24px; padding: 56px 52px;
+      background: var(--white); box-shadow: 0 18px 42px rgba(16,40,80,.12);
+      align-self: stretch;
+    }
+    .login-panel::before { display: none; }
+    .login-top { margin-bottom: 30px; }
+    .login-eyebrow { color: var(--blue); letter-spacing: 1.5px; }
+    .login-title { font-size: clamp(30px, 3vw, 38px); letter-spacing: -.8px; }
+    .login-sub { color: var(--gray-500); line-height: 1.6; }
+    .form-group { margin-bottom: 20px; }
+    .form-input { min-height: 50px; border-radius: 11px; background: #fbfdff; }
+    .form-input:hover { border-color: var(--gray-400); }
+    .form-bottom { margin-top: 4px; margin-bottom: 26px; }
+    .btn-login { min-height: 51px; border-radius: 11px; }
+    .login-footer { margin-top: 30px; padding-top: 22px; }
+    .login-footer p { color: var(--gray-500); }
+
+    @media (max-width: 1100px) and (min-width: 861px) {
+      .page { grid-template-columns: minmax(0, 1fr) 440px; gap: 20px; padding: 20px; }
+      .photo-panel { min-height: calc(100vh - 40px); }
+      .photo-panel .photo-content { padding: 34px; }
+      .photo-bottom { padding: 20px; }
+      .login-panel { padding: 44px 36px; }
+    }
+    @media (max-width: 860px) {
+      .page { display: block; min-height: 100vh; padding: 16px; }
+      .photo-panel { display: none; }
+      .login-panel {
+        min-height: calc(100vh - 32px); padding: 38px clamp(20px, 7vw, 48px);
+        border-radius: 20px; justify-content: center;
+      }
+    }
+    @media (max-width: 460px) {
+      .page { padding: 10px; }
+      .login-panel { min-height: calc(100vh - 20px); padding: 28px 20px; border-radius: 17px; }
+      .login-top { margin-bottom: 26px; }
+      .login-title { font-size: 29px; }
+      .form-input { min-height: 48px; font-size: 13px; }
+      .form-bottom { align-items: flex-start; gap: 12px; flex-direction: column; }
+      .login-footer { margin-top: 24px; padding-top: 18px; }
+    }
+  </style>
 </head>
 <body>
 
@@ -26,7 +94,7 @@
       <!-- Top: school branding -->
       <div class="school-mark">
         <div class="school-crest">
-          <img src="./assets/images/st-columban-logo.jpg" alt="St. Columban's College logo" />
+          <img src="./assets/images/st-columban-logo.png" alt="St. Columban's College logo" />
         </div>
         <div class="school-info">
           <div class="school-name">St. Columban's College</div>
@@ -36,10 +104,6 @@
 
       <!-- Bottom: headline and stats -->
       <div class="photo-bottom">
-        <div class="system-badge">
-          <span>✦ &nbsp;E-Ugnay Portal</span>
-        </div>
-
         <h2 class="photo-heading">
           Where every student<br/>
           <em>is seen, heard,</em><br/>
