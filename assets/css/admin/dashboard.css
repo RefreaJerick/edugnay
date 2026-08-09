@@ -1208,22 +1208,23 @@
 .admin-topbar-context {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   min-width: 0;
-  padding: 7px 11px;
-  border: 1px solid var(--gray-200);
-  border-radius: 11px;
-  background: var(--gray-50);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .admin-topbar-context-icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--blue-pale);
-  border-radius: 8px;
-  background: var(--blue-xpale);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--blue-mid);
 }
 .admin-topbar-context-copy {
@@ -1243,20 +1244,20 @@
 .admin-topbar-context-copy strong {
   overflow: hidden;
   color: var(--gray-700);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.2;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  text-overflow: clip;
   white-space: nowrap;
 }
 @media (max-width: 760px) {
-  .admin-topbar-context { padding: 6px 8px; }
-  .admin-topbar-context-icon { width: 27px; height: 27px; }
+  .admin-topbar-context { gap: 6px; }
+  .admin-topbar-context-icon { width: 18px; height: 18px; }
   .admin-topbar-context-copy span { display: none; }
   .admin-topbar-context-copy strong {
-    max-width: none;
+    max-width: 100%;
     overflow: visible;
-    font-size: 9.5px;
+    font-size: 11px;
     line-height: 1.25;
     text-overflow: clip;
     white-space: normal;
