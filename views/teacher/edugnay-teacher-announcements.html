@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/teacher/announcements.css"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
@@ -159,13 +160,18 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
+      <div class="topbar-context" aria-label="Current academic period">
+        <div class="topbar-context-icon" aria-hidden="true">
+          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="topbar-context-copy">
+          <span>Active term</span>
+          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+        </div>
+      </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Teacher</div>
-        <div class="page-title">Announcements</div>
-      </div>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
@@ -176,8 +182,19 @@
 
         <div class="tb-notif-panel" id="tbNotifPanel">
           <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            <div class="tb-notif-heading">
+              <span class="tb-notif-heading-icon" aria-hidden="true">
+                <i data-lucide="bell" style="width:16px;height:16px;"></i>
+              </span>
+              <span class="tb-notif-heading-copy">
+                <span class="tb-notif-panel-title">Notifications</span>
+                <span class="tb-notif-unread-count" aria-live="polite"></span>
+              </span>
+            </div>
+            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+              <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+              <span>Mark all read</span>
+            </button>
           </div>
 
           <div class="tb-notif-list" id="tbNotifList">
@@ -189,7 +206,7 @@
           </div>
 
           <div class="tb-notif-panel-foot">
-            <a href="edugnay-teacher-notifications.html">More notifications</a>
+            <a href="edugnay-teacher-notifications.html">View all notifications</a>
           </div>
         </div>
       </div>
@@ -221,51 +238,13 @@
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
-
-    <!-- Summary strip -->
-    <!-- EJS: counts would come from server: totalCount, unreadCount, urgentCount, eventCount -->
-    <div class="ann-summary-strip">
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-          <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.length %> -->
-          <div class="ann-sum-num">6</div>
-          <div class="ann-sum-label">Total</div>
-        </div>
+    <section class="page-overview" aria-labelledby="page-overview-title">
+      <div class="page-overview-copy">
+        <div class="page-overview-kicker">Overview</div>
+        <h1 class="page-overview-title" id="page-overview-title">Announcements</h1>
+        <p class="page-overview-description">Stay up to date with the latest school updates.</p>
       </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--red-pale);color:var(--red);">
-          <i data-lucide="bell-ring" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => !a.readBy.includes(currentUser._id)).length %> -->
-          <div class="ann-sum-num" id="unreadCount">2</div>
-          <div class="ann-sum-label">Unread</div>
-        </div>
-      </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--orange-pale);color:#d97706;">
-          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => a.priority === 'high').length %> -->
-          <div class="ann-sum-num">1</div>
-          <div class="ann-sum-label">Urgent</div>
-        </div>
-      </div>
-      <div class="ann-summary-item">
-        <div class="ann-sum-icon" style="background:var(--gold-pale);color:#92400e;">
-          <i data-lucide="calendar" style="width:18px;height:18px;"></i>
-        </div>
-        <div>
-          <!-- EJS: <%= announcements.filter(a => a.priority === 'event').length %> -->
-          <div class="ann-sum-num">1</div>
-          <div class="ann-sum-label">Events</div>
-        </div>
-      </div>
-    </div>
+    </section>
 
     <!-- Filter bar -->
     <div class="filter-bar">
@@ -770,10 +749,11 @@
       unreadBadge.innerHTML = 'Read';
     }
 
-    // Decrement unread counter
+    // Decrement the sidebar unread badge
     const countEl = document.getElementById('unreadCount');
-    const current = parseInt(countEl.textContent, 10);
-    if (current > 0) countEl.textContent = current - 1;
+    const sidebarBadge = document.getElementById('sidebarUnreadBadge');
+    const current = parseInt((countEl || sidebarBadge)?.textContent || '0', 10);
+    if (countEl && current > 0) countEl.textContent = current - 1;
 
     // EJS/backend: POST /announcements/:id/read (mark as read for current user)
     // fetch(`/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});

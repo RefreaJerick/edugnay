@@ -1031,3 +1031,94 @@
     justify-content: space-between;
   }
 }
+
+/* Compose panel refinement */
+.compose-panel {
+  border-radius: 16px;
+  border-color: rgba(178, 194, 214, .78);
+  box-shadow: 0 8px 22px rgba(16, 40, 80, .06);
+}
+.compose-panel .panel-head {
+  align-items: center;
+  gap: 12px;
+  padding: 17px 18px;
+  background: var(--gray-50);
+  border-bottom-color: var(--gray-200);
+}
+.compose-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.compose-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--blue-pale);
+  border-radius: 10px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.compose-kicker {
+  margin-bottom: 2px;
+  color: var(--blue-mid);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.compose-panel .panel-title { font-size: 16px; letter-spacing: -.2px; }
+.compose-sub {
+  margin-top: 3px;
+  color: var(--gray-500);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.compose-body {
+  padding: 18px;
+  background: var(--white);
+}
+.compose-body .form-group { margin-bottom: 16px; }
+.compose-body .form-label { color: var(--gray-600); font-size: 9.5px; letter-spacing: .7px; }
+.compose-body .form-input,
+.compose-body .form-select,
+.compose-body .form-textarea {
+  min-height: 42px;
+  border-radius: 10px;
+  background: var(--gray-50);
+}
+.compose-body .form-textarea { min-height: 112px; }
+.compose-body .form-input:focus,
+.compose-body .form-select:focus,
+.compose-body .form-textarea:focus { background: var(--white); }
+.priority-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.priority-opt {
+  justify-content: center;
+  min-height: 38px;
+  padding: 7px 5px;
+  border-radius: 9px;
+  font-size: 10.5px;
+}
+.audience-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.aud-opt { min-height: 42px; padding: 8px 9px; border-radius: 10px; }
+.aud-opt-label { font-size: 10.5px; }
+.image-upload-area {
+  min-height: 104px;
+  padding: 16px;
+  border-radius: 11px;
+  background: var(--gray-50);
+}
+.compose-footer {
+  margin: 4px -18px -18px;
+  padding: 14px 18px 18px;
+  justify-content: stretch;
+  background: var(--white);
+  border-top-color: var(--gray-200);
+}
+.compose-footer .btn { flex: 1; justify-content: center; min-height: 40px; border-radius: 10px; }
+@media (max-width: 560px) {
+  .compose-panel .panel-head { align-items: flex-start; flex-direction: column; }
+}

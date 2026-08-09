@@ -13,11 +13,14 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/materials.css">
+  <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
+  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <style>
 
   </style>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
 <body>
@@ -96,13 +99,18 @@
     <!-- ══════ TOPBAR ══════ -->
     <header class="topbar">
       <div class="topbar-left">
+        <div class="topbar-context" aria-label="Current academic period">
+          <div class="topbar-context-icon" aria-hidden="true">
+            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="topbar-context-copy">
+            <span>Active term</span>
+            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          </div>
+        </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
           <i data-lucide="menu" style="width:18px;height:18px;"></i>
         </button>
-        <div>
-          <div class="page-eyebrow">E-Ugnay · Student</div>
-          <div class="page-title">Learning Materials</div>
-        </div>
       </div>
       <div class="topbar-right">
         <div class="tb-notif">
@@ -113,8 +121,19 @@
 
           <div class="tb-notif-panel" id="tbNotifPanel">
             <div class="tb-notif-panel-head">
-              <span class="tb-notif-panel-title">Notifications</span>
-              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true">
+                  <i data-lucide="bell" style="width:16px;height:16px;"></i>
+                </span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
             </div>
 
             <div class="tb-notif-list" id="tbNotifList">
@@ -126,7 +145,7 @@
             </div>
 
             <div class="tb-notif-panel-foot">
-              <a href="edugnay-student-notifications.html">More notifications</a>
+              <a href="edugnay-student-notifications.html">View all notifications</a>
             </div>
           </div>
         </div>
@@ -158,31 +177,33 @@
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Overview</div>
+          <h1 class="page-overview-title" id="page-overview-title">Learning Materials</h1>
+          <p class="page-overview-description">Find the lessons and resources for your classes.</p>
+        </div>
+      </section>
 
       <!-- subjects[]: loop -->
       <div class="subject-tab-bar" id="subject-tabs">
         <button class="subject-tab active" data-subject="math">
-          <span class="subject-tab-dot" style="background:var(--blue-mid);"></span>
           Mathematics
           <span class="tab-count">7</span>
         </button>
         <button class="subject-tab" data-subject="english">
-          <span class="subject-tab-dot" style="background:var(--purple);"></span>
           English
           <span class="tab-count">4</span>
         </button>
         <button class="subject-tab" data-subject="science">
-          <span class="subject-tab-dot" style="background:#16a34a;"></span>
           Science
           <span class="tab-count">5</span>
         </button>
         <button class="subject-tab" data-subject="filipino">
-          <span class="subject-tab-dot" style="background:var(--gold);"></span>
           Filipino
           <span class="tab-count">3</span>
         </button>
         <button class="subject-tab" data-subject="values">
-          <span class="subject-tab-dot" style="background:var(--purple);"></span>
           Values Ed
           <span class="tab-count">2</span>
         </button>

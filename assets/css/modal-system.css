@@ -1,0 +1,290 @@
+/* Shared modal and modal-form language for every portal role. */
+.modal-backdrop,
+.logout-modal-backdrop,
+.student-modal-backdrop,
+.account-modal-backdrop,
+.announcement-modal-backdrop,
+.entry-modal-backdrop {
+  background: rgba(15, 32, 58, .34) !important;
+  backdrop-filter: blur(4px);
+  padding: 16px !important;
+}
+
+.modal-backdrop .modal,
+.logout-modal-backdrop .modal,
+.student-modal-backdrop .modal,
+.account-modal-backdrop .modal,
+.announcement-modal-backdrop .modal,
+.entry-modal-backdrop .modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+  border: 1px solid rgba(178, 194, 214, .78) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 64px rgba(15, 32, 58, .2) !important;
+  overflow: hidden;
+}
+
+.modal-backdrop .modal-head,
+.logout-modal-backdrop .modal-head,
+.student-modal-backdrop .modal-head,
+.account-modal-backdrop .modal-head,
+.announcement-modal-backdrop .modal-head,
+.entry-modal-backdrop .modal-head {
+  padding: 20px 22px !important;
+  align-items: center;
+  gap: 14px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200) !important;
+}
+
+.modal-backdrop .modal-title,
+.logout-modal-backdrop .modal-title,
+.student-modal-backdrop .modal-title,
+.account-modal-backdrop .modal-title,
+.announcement-modal-backdrop .modal-title,
+.entry-modal-backdrop .modal-title {
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  letter-spacing: -.25px;
+}
+
+.modal-backdrop .modal-sub,
+.logout-modal-backdrop .modal-sub,
+.student-modal-backdrop .modal-sub,
+.account-modal-backdrop .modal-sub,
+.announcement-modal-backdrop .modal-sub,
+.entry-modal-backdrop .modal-sub {
+  margin-top: 4px;
+  color: var(--gray-500);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.modal-backdrop .modal-close,
+.logout-modal-backdrop .modal-close,
+.student-modal-backdrop .modal-close,
+.account-modal-backdrop .modal-close,
+.announcement-modal-backdrop .modal-close,
+.entry-modal-backdrop .modal-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--gray-500);
+}
+
+.modal-backdrop .modal-close:hover,
+.logout-modal-backdrop .modal-close:hover,
+.student-modal-backdrop .modal-close:hover,
+.account-modal-backdrop .modal-close:hover,
+.announcement-modal-backdrop .modal-close:hover,
+.entry-modal-backdrop .modal-close:hover {
+  background: var(--gray-200);
+}
+
+.modal-backdrop .modal-body,
+.logout-modal-backdrop .modal-body,
+.student-modal-backdrop .modal-body,
+.account-modal-backdrop .modal-body,
+.announcement-modal-backdrop .modal-body,
+.entry-modal-backdrop .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 22px !important;
+  overflow-y: auto;
+}
+
+.modal-backdrop .form-group,
+.logout-modal-backdrop .form-group,
+.student-modal-backdrop .form-group,
+.account-modal-backdrop .form-group,
+.announcement-modal-backdrop .form-group,
+.entry-modal-backdrop .form-group {
+  margin-bottom: 15px;
+}
+
+.modal-backdrop .form-label,
+.logout-modal-backdrop .form-label,
+.student-modal-backdrop .form-label,
+.account-modal-backdrop .form-label,
+.announcement-modal-backdrop .form-label,
+.entry-modal-backdrop .form-label {
+  margin-bottom: 6px;
+  color: var(--gray-600);
+  font-size: 10px;
+  letter-spacing: .75px;
+}
+
+.modal-backdrop .form-input,
+.modal-backdrop .form-select,
+.modal-backdrop .form-textarea,
+.logout-modal-backdrop .form-input,
+.student-modal-backdrop .form-input,
+.student-modal-backdrop .form-select,
+.account-modal-backdrop .form-input,
+.account-modal-backdrop .form-select,
+.announcement-modal-backdrop .form-input,
+.announcement-modal-backdrop .form-select,
+.announcement-modal-backdrop .form-textarea,
+.entry-modal-backdrop .form-input,
+.entry-modal-backdrop .form-select,
+.entry-modal-backdrop .form-textarea {
+  min-height: 42px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.modal-backdrop .form-input:focus,
+.modal-backdrop .form-select:focus,
+.modal-backdrop .form-textarea:focus,
+.student-modal-backdrop .form-input:focus,
+.student-modal-backdrop .form-select:focus,
+.account-modal-backdrop .form-input:focus,
+.account-modal-backdrop .form-select:focus,
+.announcement-modal-backdrop .form-input:focus,
+.announcement-modal-backdrop .form-select:focus,
+.announcement-modal-backdrop .form-textarea:focus,
+.entry-modal-backdrop .form-input:focus,
+.entry-modal-backdrop .form-select:focus,
+.entry-modal-backdrop .form-textarea:focus {
+  background: var(--white);
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+}
+
+.modal-backdrop .modal-foot,
+.modal-backdrop .modal-footer,
+.logout-modal-backdrop .modal-foot,
+.student-modal-backdrop .modal-foot,
+.account-modal-backdrop .modal-foot,
+.announcement-modal-backdrop .modal-foot,
+.announcement-modal-backdrop .modal-footer,
+.entry-modal-backdrop .modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 14px 22px 20px !important;
+  border-top: 1px solid var(--gray-200);
+  background: var(--white);
+}
+
+.modal-backdrop .btn,
+.logout-modal-backdrop .btn,
+.student-modal-backdrop .btn,
+.account-modal-backdrop .btn,
+.announcement-modal-backdrop .btn,
+.entry-modal-backdrop .btn {
+  min-height: 40px;
+  border-radius: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+@media (max-width: 560px) {
+  .modal-backdrop,
+  .logout-modal-backdrop,
+  .student-modal-backdrop,
+  .account-modal-backdrop,
+  .announcement-modal-backdrop,
+  .entry-modal-backdrop { padding: 10px !important; }
+
+  .modal-backdrop .modal-head,
+  .logout-modal-backdrop .modal-head,
+  .student-modal-backdrop .modal-head,
+  .account-modal-backdrop .modal-head,
+  .announcement-modal-backdrop .modal-head,
+  .entry-modal-backdrop .modal-head { padding: 17px 16px !important; }
+
+  .modal-backdrop .modal-body,
+  .logout-modal-backdrop .modal-body,
+  .student-modal-backdrop .modal-body,
+  .account-modal-backdrop .modal-body,
+  .announcement-modal-backdrop .modal-body,
+  .entry-modal-backdrop .modal-body { padding: 17px 16px !important; }
+
+  .modal-backdrop .modal-foot,
+  .modal-backdrop .modal-footer,
+  .logout-modal-backdrop .modal-foot,
+  .student-modal-backdrop .modal-foot,
+  .account-modal-backdrop .modal-foot,
+  .announcement-modal-backdrop .modal-foot,
+  .announcement-modal-backdrop .modal-footer,
+  .entry-modal-backdrop .modal-foot { padding: 12px 16px 16px !important; }
+
+  .modal-backdrop .modal-foot .btn,
+  .modal-backdrop .modal-footer .btn,
+  .logout-modal-backdrop .modal-foot .btn,
+  .student-modal-backdrop .modal-foot .btn,
+  .account-modal-backdrop .modal-foot .btn,
+  .announcement-modal-backdrop .modal-foot .btn,
+  .announcement-modal-backdrop .modal-footer .btn,
+  .entry-modal-backdrop .modal-foot .btn { flex: 1; justify-content: center; }
+}
+
+/* Standalone page forms use the same control language as modal forms. */
+.main .form-group { margin-bottom: 16px; }
+.main .form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--gray-600);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .75px;
+  text-transform: uppercase;
+}
+.main .form-input,
+.main .form-select,
+.main .form-textarea {
+  min-height: 42px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.main .form-input:focus,
+.main .form-select:focus,
+.main .form-textarea:focus {
+  background: var(--white);
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+}
+
+/* Shared tab active state, matching Admin Class Management. */
+.mgmt-tab.active,
+.filter-tab.active,
+.tab-btn.active,
+.cat-tab.active,
+.att-hist-tab.active,
+.profile-tab.active,
+.notif-filter-btn.active,
+.atf-chip.active,
+.grade-tab.active,
+.subject-tab.active,
+.quarter-tab.active,
+.section-tab.active,
+.mini-tab.active,
+.section-filter-btn.active,
+.vt-btn.active {
+  background: var(--blue-xpale) !important;
+  background-image: none !important;
+  border-color: var(--blue-pale) !important;
+  color: var(--blue-mid) !important;
+  box-shadow: none !important;
+}
+
+.mgmt-tab.active .tab-pill,
+.filter-tab.active .tab-count,
+.tab-btn.active .tab-count,
+.cat-tab.active .cat-weight,
+.grade-tab.active .tab-count,
+.subject-tab.active .tab-count {
+  background: var(--blue-pale) !important;
+  color: var(--blue-mid) !important;
+}

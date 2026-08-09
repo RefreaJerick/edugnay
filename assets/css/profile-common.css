@@ -1,0 +1,61 @@
+/* Shared profile layout for all portal roles. */
+.profile-header-card {
+  background: var(--navy);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px;
+  padding: 28px;
+  min-height: 150px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 24px rgba(11,31,58,.16);
+}
+.profile-avatar { width: 88px; height: 88px; border: 3px solid rgba(255,255,255,.22); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.profile-avatar-edit { border-color: var(--navy); }
+.profile-header-name { font-size: 22px; letter-spacing: -.35px; }
+.profile-header-meta { gap: 9px 18px; font-size: 12px; }
+.profile-header-meta span:not(.profile-email-meta) { display: none; }
+
+.profile-tab-bar { display: flex; gap: 5px; padding: 6px; margin-bottom: 18px; border: 1px solid var(--gray-200); border-radius: 14px; background: var(--white); overflow-x: auto; scrollbar-width: none; }
+.profile-tab-bar::-webkit-scrollbar { display: none; }
+.profile-tab { min-height: 40px; padding: 10px 16px; border-radius: 10px; }
+.profile-tab.active { box-shadow: 0 4px 10px rgba(26,64,128,.18); }
+
+.two-col { grid-template-columns: minmax(0,1.12fr) minmax(280px,.88fr); gap: 18px; }
+.panel { border: 1px solid var(--gray-200); border-radius: 17px; background: var(--white); box-shadow: 0 8px 22px rgba(16,40,80,.07); }
+.panel-head { padding: 20px 22px; }
+.panel-head-title-group { gap: 13px; }
+.panel-title-icon { width: 38px; height: 38px; border-radius: 11px; background: var(--blue); color: var(--white); box-shadow: 0 4px 10px rgba(26,64,128,.18); }
+.config-panel-body { padding: 18px; display: grid; gap: 11px; }
+.config-panel-body .form-group { margin-bottom: 0; padding: 13px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: #fbfdff; }
+.config-panel-body .form-label { margin-bottom: 7px; }
+.config-panel-body .form-input { background: var(--white); }
+.config-panel-foot { padding: 15px 18px 18px; background: var(--gray-50); border-top: 1px solid var(--gray-200); }
+.profile-detail-row { min-height: 48px; padding: 13px 0; }
+.form-input { min-height: 46px; border-radius: 10px; background: #fbfdff; }
+.form-input:focus { background: var(--white); }
+.profile-pane.active { animation: profilePaneIn .2s ease both; }
+@keyframes profilePaneIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 980px) {
+  .profile-header-card { flex-direction: column; align-items: center; text-align: center; }
+  .profile-header-info { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  .profile-header-meta { width: 100%; justify-content: center; align-items: center; }
+  .profile-header-meta span { justify-content: center; }
+}
+@media (max-width: 760px) {
+  .profile-header-card { padding: 20px; gap: 14px; border-radius: 16px; }
+  .profile-avatar { width: 72px; height: 72px; font-size: 22px; }
+  .profile-avatar-edit { width: 26px; height: 26px; }
+  .profile-header-name { font-size: 19px; }
+  .profile-header-meta { gap: 6px; }
+  .profile-header-meta span { font-size: 10.5px; }
+  .two-col { grid-template-columns: 1fr; gap: 14px; }
+  .panel-head, .config-panel-body { padding-left: 16px; padding-right: 16px; }
+  .config-panel-foot { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 480px) {
+  .profile-header-card { align-items: center; padding: 16px; }
+  .profile-header-info { align-items: center; }
+  .profile-header-name { font-size: 17px; }
+  .profile-header-meta { flex-direction: column; align-items: center; }
+  .profile-header-meta span { padding: 4px 7px; }
+}

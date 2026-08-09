@@ -87,6 +87,10 @@ function renderTopbarNotifs() {
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
+  const teacherDashboardPanel = document.querySelector('.teacher-notif-panel');
+  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+  const unreadLabel = document.querySelector('.teacher-notif-unread-count');
+  if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   const top5 = [...NOTIFICATIONS]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -111,11 +115,9 @@ function renderTopbarNotifs() {
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>
       <div class="tb-notif-body">
-        <div class="tb-notif-head">
-          <div class="tb-notif-title">${n.title}</div>
-        </div>
+        <div class="tb-notif-title">${n.title}</div>
         <div class="tb-notif-desc">${n.desc}</div>
-        <div class="tb-notif-time">${formatRelativeTime(n.created_at)}</div>
+        ${teacherDashboardPanel ? `<div class="teacher-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>` : `<div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>`}
       </div>
     </a>
   `).join('');

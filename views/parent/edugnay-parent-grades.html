@@ -123,6 +123,10 @@
       .avg-banner-num { font-size: 28px; }
     }
   </style>
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
+  <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
+  <script src="../../assets/js/scroll-fades.js" defer></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
@@ -207,13 +211,18 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
+      <div class="topbar-context" aria-label="Current academic period">
+        <div class="topbar-context-icon" aria-hidden="true">
+          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="topbar-context-copy">
+          <span>Active term</span>
+          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+        </div>
+      </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Parent</div>
-        <div class="page-title">Grades</div>
-      </div>
     </div>
     <div class="student-topbar-right">
       <div class="topbar-profile" id="topbarProfile">
@@ -238,6 +247,13 @@
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
+    <section class="page-overview" aria-labelledby="page-overview-title">
+      <div class="page-overview-copy">
+        <div class="page-overview-kicker">Overview</div>
+        <h1 class="page-overview-title" id="page-overview-title">Grades</h1>
+        <p class="page-overview-description">Review academic performance and progress.</p>
+      </div>
+    </section>
 
     <!-- children[]: loop -->
     <div class="child-switcher" id="child-switcher">

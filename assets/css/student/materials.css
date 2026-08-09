@@ -43,17 +43,6 @@
   box-shadow: 0 2px 8px rgba(26, 64, 128, 0.25);
 }
 
-.subject-tab-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0
-}
-
-.subject-tab:not(.active) .subject-tab-dot {
-  opacity: 0.4;
-}
-
 .tab-count {
   font-size: 10px;
   font-weight: 800;
@@ -128,6 +117,11 @@
   outline: none;
   transition: border-color 0.2s;
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .filter-select:focus {

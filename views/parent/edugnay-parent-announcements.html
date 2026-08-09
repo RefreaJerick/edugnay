@@ -11,42 +11,40 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/student/announcements.css" />
+  <link rel="stylesheet" href="../../assets/css/parent/announcements.css" />
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="../../assets/js/student/shell.js"></script>
+  <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
 <body>
 
   <!--
-  EJS CONVERSION MAP — student-announcements.html
+  EJS CONVERSION MAP — parent-announcements.html
   ─────────────────────────────────────────
-  This page mirrors edugnay-teacher-announcements.html structurally: same modal-based
-  detail/read pattern, same card classes, same filter bar. Differences from the
-  teacher version:
-    - data-id, data-priority, data-read should come from the SAME announcements table,
-      filtered server-side to audience IN ('all', 'students') for this student's
-      grade level/section, status != 'draft'. Drafts must never reach this query.
-    - Footer shows NO "Seen by N" admin-style aggregate the teacher version also
-      doesn't show this to non-admins, so no change needed there — confirmed consistent.
-    - No notification-preference rail differences — same toggle pattern reused as-is.
-    - "About Announcements" rail copy changes audience wording (teachers → students)
-      and contact framing, but keeps the same card.
+  Mirrors edugnay-student-announcements.html and edugnay-teacher-announcements.html
+  structurally: same modal-based detail/read pattern, same card classes, same filter bar.
+  Differences from the student version:
+    - data-id, data-priority, data-read come from the SAME announcements table,
+      filtered server-side to audience IN ('all', 'parents'), status != 'draft'.
+      Drafts must never reach this query.
+    - No per-child scoping needed for announcements themselves — school-wide/parent-wide
+      content only. Child-specific alerts (grades, attendance) live in notifications,
+      not this feed.
+    - No notification-preference rail — reused "About Announcements" copy instead,
+      audience wording adjusted for parents.
 
   SERVER DATA:
     - announcements[]  → { _id, title, content (full HTML), excerpt, priority, audience,
-                          imageUrl, postedBy, postedAt, isPinned, readBy: [studentIds] }
+                          imageUrl, postedBy, postedAt, isPinned, readBy: [parentIds] }
     - currentUser._id   → used to compute data-read = announcements.readBy.includes(currentUser._id)
     - unreadCount, urgentCount, eventCount → computed server-side from the filtered set
 
-  MARK AS READ: fires on modal open (openAnnModal → markAsRead), same as teacher version.
-  Replace the commented fetch() with a real call: POST /student/announcements/:id/read.
+  MARK AS READ: fires on modal open (openAnnModal → markAsRead).
+  Replace the commented fetch() with a real call: POST /parent/announcements/:id/read.
 
-  PARTIALS: sidebar/topbar shared with other student pages (activeNav='announcements').
-  The ann-card / modal markup could be a SHARED partial across teacher and student
-  views given the structure is otherwise identical — only audience scoping differs.
+  PARTIALS: sidebar/topbar shared with other parent pages (activeNav='announcements').
 -->
 
   <!-- ══════ ANNOUNCEMENT DETAIL MODAL ══════ -->
@@ -110,34 +108,40 @@
 
       <div class="nav-section">
         <div class="nav-section-label">Main</div>
-        <a href="edugnay-student-dashboard.html" class="nav-item">
+        <a href="edugnay-parent-dashboard.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Dashboard</span>
         </a>
-        <a href="edugnay-student-grades.html" class="nav-item">
+        <a href="edugnay-parent-grades.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">My Grades</span>
+          <span class="nav-label">Grades</span>
         </a>
-        <a href="edugnay-student-materials.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Learning Materials</span>
+        <a href="edugnay-parent-reports.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
         </a>
-        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
-        <a href="edugnay-student-journal.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Journal Entries</span>
+        <a href="edugnay-parent-attendance.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Attendance History</span>
         </a>
       </div>
 
       <div class="nav-section">
         <div class="nav-section-label">Communication</div>
-        <a href="edugnay-student-announcements.html" class="nav-item active">
+        <a href="parent-announcements.html" class="nav-item active">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">3</span>
+          <span class="nav-badge gold">2</span>
         </a>
       </div>
 
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="parent-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
 
     </aside>
 
@@ -190,23 +194,23 @@
             </div>
 
             <div class="tb-notif-panel-foot">
-              <a href="edugnay-student-notifications.html">View all notifications</a>
+              <a href="parent-notifications.html">View all notifications</a>
             </div>
           </div>
         </div>
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar student">JD</div>
+            <div class="tb-avatar parent">RA</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Juan Dela Cruz</div>
-              <div class="tb-profile-role">Student</div>
+              <div class="tb-profile-name">Rosario Alcantara</div>
+              <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
           </button>
 
           <div class="tb-dropdown" id="tbProfileDropdown">
-            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+            <a class="tb-dropdown-item" href="parent-profile.html">
               <i data-lucide="user" style="width:15px;height:15px;"></i>
               My Profile
             </a>
@@ -296,17 +300,10 @@
                 </div>
                 <!-- EJS: <%= ann.content %> -->
                 <div class="ann-content"
-                  data-full="Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Late arrivals will not be allowed to join the procession.">
-                  Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color
+                  data-full="Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Parents are welcome to attend the closing program at 4:00 PM.">
+                  Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color
                   shirt and report to the covered court by 7:30 AM…
                 </div>
-                <!-- EJS: <% if (ann.imageUrl) { %> -->
-                <div class="ann-image-wrap">
-                  <img class="ann-image"
-                    src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png"
-                    alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'" />
-                </div>
-                <!-- EJS: <% } %> -->
                 <div class="ann-audience">
                   <span class="aud-label">To:</span>
                   <!-- EJS: audience tag rendered per ann.audience -->
@@ -328,8 +325,60 @@
               </div>
             </div>
 
-            <!-- ─── CARD 2: Event ─── -->
-            <div class="ann-card priority-event" data-priority="event" data-read="false" onclick="openAnnModal(this)">
+            <!-- ─── CARD 2: Normal (Parents only) ─── -->
+            <div class="ann-card priority-normal" data-priority="normal" data-read="false" onclick="openAnnModal(this)">
+              <div class="ann-body">
+                <div class="ann-head">
+                  <div class="ann-head-left">
+                    <div class="ann-type-icon icon-normal">
+                      <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+                    </div>
+                    <div class="ann-title-wrap">
+                      <div class="ann-title">Q2 Narrative Reports Now Available</div>
+                      <div class="ann-meta">
+                        <span class="ann-meta-item">
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 9:00 AM
+                        </span>
+                        <span class="ann-meta-item">
+                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="ann-badges">
+                    <span class="badge badge-blue">Normal</span>
+                    <span class="badge badge-orange" id="unread-badge-1">
+                      <span class="unread-indicator"></span> Unread
+                    </span>
+                  </div>
+                </div>
+                <div class="ann-content"
+                  data-full="Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent dashboard. Visit the Narrative Reports tab to view your child's teacher-written weekly summaries.">
+                  Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent
+                  dashboard. Visit the Narrative Reports tab…
+                </div>
+                <div class="ann-audience">
+                  <span class="aud-label">To:</span>
+                  <span class="aud-tag aud-parent">
+                    <i data-lucide="users" style="width:10px;height:10px;"></i> Parents
+                  </span>
+                </div>
+              </div>
+              <div class="ann-footer">
+                <div class="ann-footer-left">
+                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
+                </div>
+                <div class="ann-footer-right">
+                  <button class="footer-btn read"
+                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
+                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── CARD 3: Event ─── -->
+            <div class="ann-card priority-event" data-priority="event" data-read="true" onclick="openAnnModal(this)">
               <div class="ann-body">
                 <div class="ann-head">
                   <div class="ann-head-left">
@@ -337,10 +386,10 @@
                       <i data-lucide="calendar" style="width:16px;height:16px;"></i>
                     </div>
                     <div class="ann-title-wrap">
-                      <div class="ann-title">Intramurals Sign-up Open</div>
+                      <div class="ann-title">Parent-Teacher Conference Schedule</div>
                       <div class="ann-meta">
                         <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
+                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
                         </span>
                         <span class="ann-meta-item">
                           <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
@@ -352,20 +401,18 @@
                     <span class="badge badge-gold">
                       <i data-lucide="calendar" style="width:10px;height:10px;"></i> Event
                     </span>
-                    <span class="badge badge-orange" id="unread-badge-1">
-                      <span class="unread-indicator"></span> Unread
-                    </span>
+                    <span class="badge badge-green">Read</span>
                   </div>
                 </div>
                 <div class="ann-content"
-                  data-full="Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>. Teams will be announced the following Monday.">
-                  Visit the Student Affairs table during recess this week to join a sports team for the upcoming
-                  intramurals. Sign-ups close <strong>Friday</strong>…
+                  data-full="Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child's adviser for a specific time slot. Attendance is strongly encouraged.">
+                  Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to
+                  4:00 PM. Please coordinate with your child's adviser…
                 </div>
                 <div class="ann-audience">
                   <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-student">
-                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
+                  <span class="aud-tag aud-parent">
+                    <i data-lucide="users" style="width:10px;height:10px;"></i> Parents
                   </span>
                 </div>
               </div>
@@ -382,107 +429,7 @@
               </div>
             </div>
 
-            <!-- ─── CARD 3: Normal (students only) ─── -->
-            <div class="ann-card priority-normal" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-normal">
-                      <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Weekly Journal is Now Open for Submission</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="ann-badges">
-                    <span class="badge badge-blue">Normal</span>
-                    <span class="badge badge-green">Read</span>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="This week's journal submission is now open for Values Education. Please write about your week honestly — your experiences, feelings, and anything you'd like to share. Submissions close <strong>Friday at 11:59 PM</strong>.">
-                  This week's journal submission is now open for Values Education. Please write about your week honestly
-                  — your experiences, feelings…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-student">
-                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Ms. Reyes
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 4: Normal (All users) ─── -->
-            <div class="ann-card priority-normal" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-normal">
-                      <i data-lucide="file-text" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Q2 Quarterly Exam Schedule Released</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 4 days ago
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="ann-badges">
-                    <span class="badge badge-blue">Normal</span>
-                    <span class="badge badge-green">Read</span>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam dates and rooms. Bring your own writing materials and arrive 15 minutes before each exam.">
-                  The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam
-                  dates and rooms…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 5: Low / General ─── -->
+            <!-- ─── CARD 4: Low / General ─── -->
             <div class="ann-card priority-low" data-priority="low" data-read="true" onclick="openAnnModal(this)">
               <div class="ann-body">
                 <div class="ann-head">
@@ -508,9 +455,9 @@
                   </div>
                 </div>
                 <div class="ann-content"
-                  data-full="As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal entries, and clearance forms. Coordinate with your subject teachers if you have incomplete requirements.">
-                  As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal
-                  entries, and clearance forms…
+                  data-full="As Q2 draws to a close, please make sure your child's outstanding requirements are submitted. Coordinate with subject teachers or the adviser regarding any incomplete requirements before grades are finalized.">
+                  As Q2 draws to a close, please make sure your child's outstanding requirements are submitted.
+                  Coordinate with subject teachers…
                 </div>
                 <div class="ann-audience">
                   <span class="aud-label">To:</span>
@@ -553,15 +500,14 @@
               <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
             </div>
             <div class="rail-body">
-              <!-- EJS: deadlines rendered from backend, scoped to this student -->
+              <!-- EJS: deadlines rendered from backend, scoped to this parent's children -->
               <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--purple);box-shadow:0 0 5px rgba(124,58,237,0.4);">
-                </div>
+                <div class="deadline-dot" style="background:var(--blue-mid);"></div>
                 <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Values Journal Entry</div>
-                  <div class="deadline-date">Friday · 11:59 PM</div>
+                  <div class="deadline-title">Parent-Teacher Conference</div>
+                  <div class="deadline-date">June 27, 2025</div>
                 </div>
-                <span class="deadline-badge badge badge-purple">Soon</span>
+                <span class="deadline-badge badge badge-blue">Soon</span>
               </div>
               <div class="deadline-item">
                 <div class="deadline-dot" style="background:var(--gold);"></div>
@@ -572,12 +518,12 @@
                 <span class="deadline-badge badge badge-gold">Event</span>
               </div>
               <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--blue-mid);"></div>
+                <div class="deadline-dot" style="background:var(--red);box-shadow:0 0 5px rgba(239,68,68,0.4);"></div>
                 <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Intramurals Sign-up</div>
-                  <div class="deadline-date">Closes Friday</div>
+                  <div class="deadline-title">Q2 Requirements Deadline</div>
+                  <div class="deadline-date">Before grades finalize</div>
                 </div>
-                <span class="deadline-badge badge badge-blue">Soon</span>
+                <span class="deadline-badge badge badge-red">Urgent</span>
               </div>
             </div>
           </div>
@@ -588,11 +534,11 @@
               <div class="rail-title">About Announcements</div>
             </div>
             <div class="rail-body" style="font-size:12px;color:var(--gray-500);line-height:1.7;">
-              Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong> or
-              your <strong style="color:var(--gray-700);">subject teachers</strong>. As a student, you receive
-              announcements directed at <strong style="color:var(--gray-700);">students</strong> and <strong
-                style="color:var(--gray-700);">all users</strong>.<br /><br />
-              If you have questions about an announcement, please ask your adviser or subject teacher.
+              Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong>.
+              As a parent, you receive announcements directed at <strong style="color:var(--gray-700);">parents</strong>
+              and <strong style="color:var(--gray-700);">all users</strong>.<br /><br />
+              If you have questions about an announcement, please reach out to the school office or your child's
+              adviser.
             </div>
           </div>
 
@@ -740,8 +686,8 @@
         }
       }
 
-      // EJS/backend: POST /student/announcements/:id/read (mark as read for current student)
-      // fetch(`/student/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
+      // EJS/backend: POST /parent/announcements/:id/read (mark as read for current parent)
+      // fetch(`/parent/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
     }
 
   </script>

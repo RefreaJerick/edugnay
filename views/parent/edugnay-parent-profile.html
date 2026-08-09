@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/parent/profile.css">
+  <link rel="stylesheet" href="../../assets/css/profile-common.css">
+  <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
+  <script src="../../assets/js/scroll-fades.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/parent/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+</head>
+
+<body>
+
+  <!--
+  EJS CONVERSION MAP — parent-profile.html
+  ─────────────────────────────────────────
+  - parent              → session record:
+                         { firstName, lastName, email, phone, address, avatarUrl }
+  - children[]           → linked student records (read-only here):
+                         { firstName, lastName, gradeSection, adviserName,
+                           relationship: 'Mother'|'Father'|'Guardian', isPrimary }
+                         NEVER editable by the parent — linking/unlinking a child
+                         to a parent account must go through the registrar/admin
+                         portal, not here.
+  - Personal info form   → ONLY editable fields are phone and address — email is
+                         fixed (registrar-controlled, tied to the parent's
+                         school-account login), same tier as name.
+
+  FORM SUBMIT: POST /parent/profile/update — validate server-side regardless of
+  client-side input types. Avatar upload goes through the same handler pattern as
+  student/teacher portals — inline base64 preview client-side, real upload
+  endpoint server-side with file-type/size validation.
+
+  TABS: profile-tab switching is pure UI state over already-rendered content — no
+  need for client fetches per tab unless data is large enough to warrant lazy
+  loading.
+
+  PARTIALS: same sidebar/topbar as other parent pages (activeNav='profile').
+-->
+
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-parent-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-parent-grades.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Grades</span>
+        </a>
+        <a href="edugnay-parent-reports.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Narrative Reports</span>
+        </a>
+        <a href="edugnay-parent-attendance.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Attendance History</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="parent-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">2</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="parent-profile.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Current academic period">
+          <div class="topbar-context-icon" aria-hidden="true">
+            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="topbar-context-copy">
+            <span>Active term</span>
+            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          </div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
+          </button>
+
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true">
+                  <i data-lucide="bell" style="width:16px;height:16px;"></i>
+                </span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
+            </div>
+
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+
+            <div class="tb-notif-panel-foot">
+              <a href="parent-notifications.html">View all notifications</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar parent">RA</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Rosario Alcantara</div>
+              <div class="tb-profile-role">Parent</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="parent-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Overview</div>
+          <h1 class="page-overview-title" id="page-overview-title">My Profile</h1>
+          <p class="page-overview-description">Manage your account information and preferences.</p>
+        </div>
+      </section>
+
+      <!-- Profile header — same shell as student/teacher profile pages -->
+      <div class="profile-header-card">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profileAvatar" data-color="blue">
+            <span id="avatarInitials">RA</span>
+            <img id="avatarImage" src="" alt="" style="display:none;" />
+          </div>
+          <button class="profile-avatar-edit" id="avatarEditTrigger" onclick="toggleAvatarMenu()" title="Edit avatar">
+            <i data-lucide="pencil" style="width:14px;height:14px;"></i>
+          </button>
+          <button class="profile-avatar-remove" id="avatarRemoveBtn" onclick="removeAvatarPhoto()" title="Remove photo"
+            style="display:none;">
+            <i data-lucide="x" style="width:12px;height:12px;"></i>
+          </button>
+          <input type="file" id="avatarFileInput" accept="image/png,image/jpeg" style="display:none;"
+            onchange="handleAvatarUpload(event)" />
+
+          <!-- Avatar edit popover -->
+          <div class="avatar-menu" id="avatarMenu">
+            <button type="button" class="avatar-menu-item"
+              onclick="document.getElementById('avatarFileInput').click(); closeAvatarMenu();">
+              <i data-lucide="upload" style="width:14px;height:14px;"></i>
+              Upload Photo
+            </button>
+            <button type="button" class="avatar-menu-item" onclick="openAvatarColorMenu()">
+              <i data-lucide="palette" style="width:14px;height:14px;"></i>
+              Change Avatar Color
+            </button>
+
+            <div class="avatar-menu-colors" id="avatarMenuColors">
+              <button type="button" class="avatar-menu-back" onclick="closeAvatarColorMenu()">
+                <i data-lucide="chevron-left" style="width:13px;height:13px;"></i> Back
+              </button>
+              <div class="avatar-color-swatches">
+                <input type="hidden" name="avatarColor" id="avatarColorInput" value="blue" />
+                <button type="button" class="avatar-swatch" data-color="navy" style="background:var(--navy);"
+                  onclick="selectAvatarColor(this,'navy')" title="Navy"></button>
+                <button type="button" class="avatar-swatch selected" data-color="blue"
+                  style="background:var(--blue-mid);" onclick="selectAvatarColor(this,'blue')" title="Blue"></button>
+                <button type="button" class="avatar-swatch" data-color="gold" style="background:var(--gold);"
+                  onclick="selectAvatarColor(this,'gold')" title="Gold"></button>
+                <button type="button" class="avatar-swatch" data-color="green" style="background:var(--green);"
+                  onclick="selectAvatarColor(this,'green')" title="Green"></button>
+                <button type="button" class="avatar-swatch" data-color="orange" style="background:var(--orange);"
+                  onclick="selectAvatarColor(this,'orange')" title="Orange"></button>
+                <button type="button" class="avatar-swatch" data-color="red" style="background:var(--red);"
+                  onclick="selectAvatarColor(this,'red')" title="Red"></button>
+                <button type="button" class="avatar-swatch" data-color="purple" style="background:var(--purple);"
+                  onclick="selectAvatarColor(this,'purple')" title="Purple"></button>
+                <button type="button" class="avatar-swatch" data-color="teal" style="background:var(--teal);"
+                  onclick="selectAvatarColor(this,'teal')" title="Teal"></button>
+                <button type="button" class="avatar-swatch" data-color="magenta" style="background:var(--magenta);"
+                  onclick="selectAvatarColor(this,'magenta')" title="Magenta"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-header-info">
+          <div class="profile-header-name">Rosario Alcantara</div>
+          <div class="profile-header-meta">
+            <span><i data-lucide="users" style="width:13px;height:13px;"></i> Parent · 2 linked children</span>
+            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> rosario.alcantara@gmail.com</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="profile-tab-bar">
+        <button class="profile-tab active" onclick="switchTab('children', this)">
+          <i data-lucide="users" style="width:13px;height:13px;"></i> My Children
+        </button>
+        <button class="profile-tab" onclick="switchTab('personal', this)">
+          <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
+        </button>
+        <button class="profile-tab" onclick="switchTab('security', this)">
+          <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
+        </button>
+      </div>
+
+      <!-- ── MY CHILDREN TAB ── -->
+      <div class="profile-pane active" id="pane-children">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
+              <div>
+                <div class="panel-title">Linked Children</div>
+                <div class="panel-sub">Managed by the school registrar — for corrections or to link another child,
+                  contact the admin office</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <!-- children[]: loop -->
+            <div class="child-record-card">
+              <div class="child-record-avatar">JA</div>
+              <div class="child-record-info">
+                <div class="child-record-name">Juan Alcantara</div>
+                <div class="child-record-section">Grade 7 – St. Matthew · Adviser: Ms. Maria Reyes</div>
+                <div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN
+                  100-201-0001</div>
+              </div>
+              <span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i>
+                Mother</span>
+            </div>
+            <div class="child-record-card">
+              <div class="child-record-avatar">MA</div>
+              <div class="child-record-info">
+                <div class="child-record-name">Maya Alcantara</div>
+                <div class="child-record-section">Grade 4 – St. Clare · Adviser: Mrs. Liza Ramos</div>
+                <div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN
+                  100-201-0114</div>
+              </div>
+              <span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i>
+                Mother</span>
+            </div>
+            <!-- end children[] loop -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PERSONAL INFO TAB ── -->
+      <div class="profile-pane" id="pane-personal">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+              <div>
+                <div class="panel-title">Personal Information</div>
+                <div class="panel-sub">Keep your contact details up to date</div>
+              </div>
+            </div>
+          </div>
+          <form id="profileForm" action="/parent/profile/update" method="POST" onsubmit="return submitProfile(event)">
+            <div class="config-panel-body">
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">First Name</label>
+                  <input class="form-input" type="text" name="firstName" value="Rosario" disabled
+                    style="color:var(--gray-400);cursor:not-allowed;" />
+                  <span class="form-hint">Managed by the admin</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Last Name</label>
+                  <input class="form-input" type="text" name="lastName" value="Alcantara" disabled
+                    style="color:var(--gray-400);cursor:not-allowed;" />
+                  <span class="form-hint">Managed by the admin</span>
+                </div>
+              </div>
+
+              <div class="form-divider"></div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">Account Email</label>
+                  <input class="form-input" type="email" name="email" id="profile-email"
+                    value="rosario.alcantara@gmail.com" disabled style="color:var(--gray-400);cursor:not-allowed;" />
+                  <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mobile Number</label>
+                  <input class="form-input" type="tel" name="phone" id="profile-phone" value="0918 234 5678"
+                    placeholder="09XX XXX XXXX" />
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Home Address</label>
+                <input class="form-input" type="text" name="address" id="profile-address"
+                  value="123 Sampaguita St., Brgy. San Isidro, Quezon City" placeholder="Street, Barangay, City" />
+              </div>
+            </div>
+            <div class="config-panel-foot">
+              <button type="button" class="btn btn-cancel" onclick="resetForm()">Discard</button>
+              <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save
+                Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── ACCOUNT & SECURITY TAB ── -->
+      <div class="profile-pane" id="pane-security">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+              <div>
+                <div class="panel-title">Security</div>
+                <div class="panel-sub">Manage your account password</div>
+              </div>
+            </div>
+          </div>
+          <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;color:var(--gray-600);">Password last changed 3 months ago</div>
+            <button class="top-btn secondary" onclick="openPasswordModal()">
+              <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- CHANGE PASSWORD MODAL -->
+  <div class="modal-backdrop" id="changePasswordModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Change Password</div>
+          <div class="modal-sub">Choose a strong password you haven't used before.</div>
+        </div>
+        <button class="modal-close" onclick="closePasswordModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <form id="passwordForm" onsubmit="return submitPasswordChange(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8"
+              placeholder="••••••••" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Confirm New Password</label>
+            <input class="form-input" type="password" name="confirmPassword" id="confirmPasswordInput" required
+              placeholder="••••••••" />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-cancel" onclick="closePasswordModal()">Cancel</button>
+          <button type="submit" class="btn btn-save">
+            <i data-lucide="check" style="width:13px;height:13px;"></i> Update Password
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
+        </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    /* ── AVATAR UPLOAD ── */
+    function handleAvatarUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById('avatarImage').src = e.target.result;
+        document.getElementById('avatarImage').style.display = 'block';
+        document.getElementById('avatarInitials').style.display = 'none';
+        document.getElementById('avatarRemoveBtn').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeAvatarPhoto() {
+      const img = document.getElementById('avatarImage');
+      img.src = '';
+      img.style.display = 'none';
+      document.getElementById('avatarInitials').style.display = 'block';
+      document.getElementById('avatarFileInput').value = '';
+      document.getElementById('avatarRemoveBtn').style.display = 'none';
+    }
+
+    function openPasswordModal() {
+      document.getElementById('changePasswordModal').classList.add('open');
+    }
+    function closePasswordModal() {
+      document.getElementById('changePasswordModal').classList.remove('open');
+      document.getElementById('passwordForm').reset();
+    }
+    function submitPasswordChange(event) {
+      event.preventDefault();
+      const newPass = document.getElementById('newPasswordInput').value;
+      const confirmPass = document.getElementById('confirmPasswordInput').value;
+      if (newPass !== confirmPass) {
+        alert('New password and confirmation do not match.');
+        return false;
+      }
+      const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
+      // fetch('/parent/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      alert('Password updated.');
+      closePasswordModal();
+      return false;
+    }
+
+    /* ── AVATAR EDIT POPOVER ── */
+    function toggleAvatarMenu() {
+      document.getElementById('avatarMenu').classList.toggle('open');
+    }
+    function closeAvatarMenu() {
+      const menu = document.getElementById('avatarMenu');
+      menu.classList.remove('open');
+      menu.classList.remove('show-colors');
+    }
+    function openAvatarColorMenu() {
+      document.getElementById('avatarMenu').classList.add('show-colors');
+    }
+    function closeAvatarColorMenu() {
+      document.getElementById('avatarMenu').classList.remove('show-colors');
+    }
+    document.addEventListener('click', (e) => {
+      const trigger = document.getElementById('avatarEditTrigger');
+      const menu = document.getElementById('avatarMenu');
+      if (trigger && menu && !trigger.contains(e.target) && !menu.contains(e.target)) {
+        closeAvatarMenu();
+      }
+    });
+
+    document.getElementById('changePasswordModal').addEventListener('click', function (e) {
+      if (e.target === this) closePasswordModal();
+    });
+    function selectAvatarColor(btn, colorName) {
+      document.querySelectorAll('.avatar-swatch').forEach(s => s.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('avatarColorInput').value = colorName;
+      document.getElementById('profileAvatar').dataset.color = colorName;
+      closeAvatarMenu();
+    }
+
+    function switchTab(tabKey, btn) {
+      document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.profile-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-' + tabKey).classList.add('active');
+    }
+
+    function submitProfile(event) {
+      event.preventDefault();
+      const form = document.getElementById('profileForm');
+      const body = Object.fromEntries(new FormData(form).entries());
+      // fetch('/parent/profile/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      alert('Contact info updated.');
+      return false;
+    }
+
+    function resetForm() {
+      document.getElementById('profile-phone').value = '0918 234 5678';
+      document.getElementById('profile-address').value = '123 Sampaguita St., Brgy. San Isidro, Quezon City';
+    }
+  </script>
+
+</body>
+
+</html>

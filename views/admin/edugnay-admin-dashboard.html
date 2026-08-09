@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
 <body>
@@ -117,13 +118,19 @@
 
   <!-- ADD NEW ACCOUNT MODAL -->
   <div class="account-modal-backdrop" id="accountModalBackdrop">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
       <div class="modal-head">
-        <div>
-          <div class="modal-title">Add New Account</div>
-          <div class="modal-sub">Fill in the details to create a new user.</div>
+        <div class="account-modal-heading">
+          <div class="account-modal-icon" aria-hidden="true">
+            <i data-lucide="user-plus" style="width:19px;height:19px;"></i>
+          </div>
+          <div>
+            <div class="account-modal-kicker">Account management</div>
+            <div class="modal-title" id="accountModalTitle">Add New Account</div>
+            <div class="modal-sub">Create a secure portal account for a member of your school community.</div>
+          </div>
         </div>
-        <button class="modal-close" type="button" onclick="closeAccountModal()"><i data-lucide="x"
+        <button class="modal-close" type="button" aria-label="Close add account dialog" onclick="closeAccountModal()"><i data-lucide="x"
             style="width:18px;height:18px;"></i></button>
       </div>
       <div class="modal-body">
@@ -498,9 +505,14 @@
       <div class="topbar-left">
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i
             data-lucide="menu" style="width:18px;height:18px;"></i></button>
-        <div>
-          <div class="page-eyebrow">E-Ugnay · Admin</div>
-          <div class="page-title">Dashboard</div>
+        <div class="admin-topbar-context" aria-label="Current academic period">
+          <div class="admin-topbar-context-icon" aria-hidden="true">
+            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="admin-topbar-context-copy">
+            <span>Active term</span>
+            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          </div>
         </div>
       </div>
       <div class="topbar-right">
@@ -513,8 +525,19 @@
 
           <div class="tb-notif-panel" id="tbNotifPanel">
             <div class="tb-notif-panel-head">
-              <span class="tb-notif-panel-title">Notifications</span>
-              <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true">
+                  <i data-lucide="bell" style="width:16px;height:16px;"></i>
+                </span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
             </div>
 
             <div class="tb-notif-list" id="tbNotifList">
@@ -526,7 +549,7 @@
             </div>
 
             <div class="tb-notif-panel-foot">
-              <a href="edugnay-admin-notifications.html">More notifications</a>
+              <a href="edugnay-admin-notifications.html">View all notifications</a>
             </div>
           </div>
         </div>

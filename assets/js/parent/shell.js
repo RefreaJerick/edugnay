@@ -91,6 +91,9 @@ function renderTopbarNotifs() {
   const top5 = [...NOTIFICATIONS]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5);
+  const unreadLabel = document.querySelector('.tb-notif-unread-count');
+  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+  if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   if (!top5.length) {
     container.innerHTML = `
@@ -115,7 +118,7 @@ function renderTopbarNotifs() {
           <div class="tb-notif-title">${n.title}</div>
         </div>
         <div class="tb-notif-desc">${n.desc}</div>
-        <div class="tb-notif-time">${formatRelativeTime(n.created_at)}</div>
+        <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>
       </div>
     </a>
   `).join('');

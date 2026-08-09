@@ -58,8 +58,6 @@
     }
     .section-tab:hover { background: var(--gray-100); color: var(--gray-700); }
     .section-tab.active { background: linear-gradient(135deg, var(--blue), var(--blue-mid)); color: var(--white); box-shadow: 0 2px 8px rgba(26,64,128,0.25); }
-    .section-tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .section-tab:not(.active) .section-tab-dot { opacity: 0.4; }
     .tab-count { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.25); }
     .section-tab:not(.active) .tab-count { background: var(--gray-100); color: var(--gray-500); }
 
@@ -471,8 +469,124 @@
       .settings-drawer { max-width: 100%; }
       .settings-trigger span { display: none; }
     }
+
+    /* Journal settings drawer refinement */
+    .settings-backdrop {
+      background: rgba(15, 32, 58, .34);
+      backdrop-filter: blur(4px);
+    }
+    .settings-drawer {
+      max-width: 468px;
+      overflow: hidden;
+      border-radius: 18px 0 0 18px;
+      box-shadow: -18px 0 44px rgba(15, 32, 58, .18);
+    }
+    .settings-drawer-head {
+      align-items: center;
+      gap: 14px;
+      padding: 20px 22px;
+      background: var(--white);
+      border-left: 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .settings-drawer-head-copy {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+    .settings-drawer-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--blue-pale);
+      border-radius: 11px;
+      background: var(--blue-xpale);
+      color: var(--blue-mid);
+    }
+    .settings-drawer-eyebrow {
+      color: var(--blue-mid);
+      font-size: 9.5px;
+      letter-spacing: 1.1px;
+    }
+    .settings-drawer-title {
+      margin-top: 3px;
+      color: var(--gray-800);
+      font-size: 18px;
+      letter-spacing: -.25px;
+    }
+    .settings-drawer-sub {
+      margin-top: 4px;
+      color: var(--gray-500);
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .settings-drawer-head .modal-close {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      background: var(--gray-100);
+      color: var(--gray-500);
+    }
+    .settings-drawer-head .modal-close:hover { background: var(--gray-200); }
+    .settings-drawer-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px 20px 22px;
+      background: var(--gray-50);
+    }
+    .settings-block {
+      padding: 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      background: var(--white);
+      box-shadow: 0 3px 12px rgba(16, 40, 80, .04);
+    }
+    .settings-divider { display: none; }
+    .settings-block-label {
+      margin-bottom: 9px;
+      color: var(--blue-mid);
+      font-size: 10px;
+      letter-spacing: .85px;
+    }
+    .settings-block-hint {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 11px;
+      padding: 5px 8px;
+      border-radius: 8px;
+      background: var(--blue-xpale);
+      color: var(--gray-600);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .settings-textarea { background: var(--gray-50); border-radius: 11px; }
+    .settings-select, .settings-input { border-radius: 10px; background-color: var(--gray-50); }
+    .settings-select:focus, .settings-input:focus { background-color: var(--white); box-shadow: 0 0 0 3px rgba(29, 92, 180, .1); }
+    .settings-toggle-row { padding: 13px 0; }
+    .settings-toggle-label { font-size: 12.5px; }
+    .settings-toggle-desc { max-width: 310px; }
+    .settings-drawer-foot {
+      padding: 14px 20px 18px;
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+    }
+    .settings-drawer-foot .btn { min-height: 38px; border-radius: 10px; }
+    @media (max-width: 520px) {
+      .settings-drawer { border-radius: 0; }
+      .settings-drawer-head { padding: 17px 16px; }
+      .settings-drawer-body { padding: 14px 14px 18px; }
+      .settings-block { padding: 14px; }
+      .settings-row-2 { grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
+      .settings-drawer-foot { padding: 12px 14px 16px; }
+      .settings-drawer-foot .btn { flex: 1; justify-content: center; }
+    }
   </style>
   <script src="../../assets/js/teacher/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
@@ -579,13 +693,19 @@
 
 <!-- ══════ JOURNAL SETTINGS DRAWER ══════ -->
 <div class="settings-backdrop" id="settingsBackdrop" onclick="if(event.target===this) closeSettingsDrawer()">
-  <aside class="settings-drawer" id="settingsDrawer">
+  <aside class="settings-drawer" id="settingsDrawer" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="settings-drawer-head">
-      <div>
-        <div class="settings-drawer-eyebrow">Values Education · Journals</div>
-        <div class="settings-drawer-title">Journal Settings</div>
+      <div class="settings-drawer-head-copy">
+        <div class="settings-drawer-icon" aria-hidden="true">
+          <i data-lucide="sliders-horizontal" style="width:18px;height:18px;"></i>
+        </div>
+        <div>
+          <div class="settings-drawer-eyebrow">Journal setup</div>
+          <div class="settings-drawer-title" id="settings-title">Journal Settings</div>
+          <div class="settings-drawer-sub">Configure the prompt, schedule, and submission rules.</div>
+        </div>
       </div>
-      <button class="modal-close" onclick="closeSettingsDrawer()">
+      <button class="modal-close" aria-label="Close journal settings" onclick="closeSettingsDrawer()">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
@@ -755,13 +875,18 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
+      <div class="topbar-context" aria-label="Current academic period">
+        <div class="topbar-context-icon" aria-hidden="true">
+          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="topbar-context-copy">
+          <span>Active term</span>
+          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+        </div>
+      </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Teacher</div>
-        <div class="page-title">Student Journals</div>
-      </div>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
@@ -772,8 +897,19 @@
 
         <div class="tb-notif-panel" id="tbNotifPanel">
           <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            <div class="tb-notif-heading">
+              <span class="tb-notif-heading-icon" aria-hidden="true">
+                <i data-lucide="bell" style="width:16px;height:16px;"></i>
+              </span>
+              <span class="tb-notif-heading-copy">
+                <span class="tb-notif-panel-title">Notifications</span>
+                <span class="tb-notif-unread-count" aria-live="polite"></span>
+              </span>
+            </div>
+            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+              <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+              <span>Mark all read</span>
+            </button>
           </div>
 
           <div class="tb-notif-list" id="tbNotifList">
@@ -785,7 +921,7 @@
           </div>
 
           <div class="tb-notif-panel-foot">
-            <a href="edugnay-teacher-notifications.html">More notifications</a>
+            <a href="edugnay-teacher-notifications.html">View all notifications</a>
           </div>
         </div>
       </div>
@@ -817,6 +953,13 @@
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
+    <section class="page-overview" aria-labelledby="page-overview-title">
+      <div class="page-overview-copy">
+        <div class="page-overview-kicker">Overview</div>
+        <h1 class="page-overview-title" id="page-overview-title">Student Journals</h1>
+        <p class="page-overview-description">Review student reflections and submissions.</p>
+      </div>
+    </section>
 
     <!-- Summary strip -->
     <div class="summary-strip">
@@ -861,17 +1004,14 @@
     <!-- Section tabs -->
     <div class="section-tab-bar">
       <button class="section-tab active" onclick="switchSection('7-matthew', this)" id="tab-7-matthew">
-        <span class="section-tab-dot" style="background:var(--blue-mid);"></span>
         Grade 7 – St. Matthew
         <span class="tab-count">38</span>
       </button>
       <button class="section-tab" onclick="switchSection('8-luke', this)" id="tab-8-luke">
-        <span class="section-tab-dot" style="background:var(--gold);"></span>
         Grade 8 – St. Luke
         <span class="tab-count">36</span>
       </button>
       <button class="section-tab" onclick="switchSection('9-peter', this)" id="tab-9-peter">
-        <span class="section-tab-dot" style="background:var(--green);"></span>
         Grade 9 – St. Peter
         <span class="tab-count">34</span>
       </button>

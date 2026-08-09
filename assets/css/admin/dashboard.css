@@ -1090,6 +1090,230 @@
   flex-shrink: 0;
 }
 
+/* Add account modal refinement */
+.account-modal-backdrop {
+  background: rgba(15, 32, 58, .34);
+  backdrop-filter: blur(4px);
+}
+.account-modal-backdrop .modal {
+  max-width: 560px;
+  border: 1px solid rgba(178, 194, 214, .78);
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(15, 32, 58, .2);
+  transform: translateY(14px) scale(.98);
+}
+.account-modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+.account-modal-backdrop .modal-head {
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+.account-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+.account-modal-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--blue-pale);
+  border-radius: 11px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.account-modal-kicker {
+  margin-bottom: 3px;
+  color: var(--blue-mid);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.account-modal-backdrop .modal-title {
+  margin-bottom: 0;
+  font-size: 18px;
+  letter-spacing: -.25px;
+}
+.account-modal-backdrop .modal-sub {
+  max-width: 390px;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.account-modal-backdrop .modal-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+}
+.account-modal-backdrop .modal-body { padding: 20px 22px 4px; }
+.account-modal-backdrop .form-row-2 { gap: 12px; }
+.account-modal-backdrop .form-group { margin-bottom: 15px; }
+.account-modal-backdrop .form-label {
+  margin-bottom: 6px;
+  color: var(--gray-600);
+  font-size: 10px;
+  letter-spacing: .75px;
+}
+.account-modal-backdrop .form-input,
+.account-modal-backdrop .form-select {
+  min-height: 42px;
+  background: var(--gray-50);
+  border-radius: 10px;
+}
+.account-modal-backdrop .form-input:focus,
+.account-modal-backdrop .form-select:focus { background: var(--white); }
+.account-modal-backdrop .role-opts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.account-modal-backdrop .role-opt {
+  min-height: 68px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 6px;
+  border-radius: 11px;
+  font-size: 11px;
+}
+.account-modal-backdrop .role-opt-icon { width: 28px; height: 28px; border-radius: 8px; }
+.account-modal-backdrop .modal-foot {
+  padding: 14px 22px 20px;
+  margin-top: 2px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--white);
+}
+.account-modal-backdrop .btn {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 10px 17px;
+}
+@media (max-width: 560px) {
+  .account-modal-backdrop { padding: 12px; }
+  .account-modal-backdrop .modal-head { padding: 17px 16px; }
+  .account-modal-backdrop .modal-body { padding: 17px 16px 2px; }
+  .account-modal-backdrop .modal-foot { padding: 12px 16px 16px; }
+  .account-modal-backdrop .form-row-2 { grid-template-columns: 1fr; gap: 0; }
+  .account-modal-backdrop .role-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-modal-backdrop .modal-foot .btn { flex: 1; justify-content: center; }
+}
+
+/* Admin topbar academic context */
+.admin-topbar-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 7px 11px;
+  border: 1px solid var(--gray-200);
+  border-radius: 11px;
+  background: var(--gray-50);
+}
+.admin-topbar-context-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--blue-pale);
+  border-radius: 8px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.admin-topbar-context-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.admin-topbar-context-copy span {
+  color: var(--gray-400);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.admin-topbar-context-copy strong {
+  overflow: hidden;
+  color: var(--gray-700);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .admin-topbar-context { padding: 6px 8px; }
+  .admin-topbar-context-icon { width: 27px; height: 27px; }
+  .admin-topbar-context-copy span { display: none; }
+  .admin-topbar-context-copy strong {
+    max-width: none;
+    overflow: visible;
+    font-size: 9.5px;
+    line-height: 1.25;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* Keep dashboard activity rows consistent with the full Activity Log page. */
+.panel-activity .activity-list {
+  display: block;
+  position: relative;
+  padding: 6px 0 10px;
+}
+.panel-activity .activity-list::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 38px;
+  width: 2px;
+  background: var(--gray-200);
+  z-index: 0;
+}
+.panel-activity .activity-group-label {
+  position: relative;
+  z-index: 2;
+  padding: 14px 20px 8px;
+  background: var(--white);
+}
+.panel-activity .activity-item {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  transition: background .15s, box-shadow .15s;
+}
+.panel-activity .activity-item:hover {
+  border-color: transparent;
+  background: var(--gray-50);
+  box-shadow: none;
+  transform: none;
+}
+.panel-activity .act-icon {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+.panel-activity .act-tag {
+  padding: 4px 10px;
+}
+
 .audience-opts {
   display: flex;
   flex-direction: column;

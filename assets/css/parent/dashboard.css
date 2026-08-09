@@ -8,6 +8,9 @@
   grid-template-columns: 1fr 440px;
   gap: 20px;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dash-col-left,
@@ -16,6 +19,7 @@
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 1180px) {
@@ -150,21 +154,6 @@
   box-shadow: 0 7px 16px rgba(37, 99, 235, 0.14);
 }
 
-.child-card.active::after {
-  content: '✓';
-  position: absolute;
-  top: 10px;
-  right: 11px;
-  width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--blue-mid);
-  color: var(--white);
-  font-size: 11px;
-  font-weight: 800;
-}
 
 .child-avatar {
   width: 42px;

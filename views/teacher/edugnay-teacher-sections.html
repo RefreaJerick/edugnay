@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/teacher/sections.css"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
@@ -368,13 +369,18 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
+      <div class="topbar-context" aria-label="Current academic period">
+        <div class="topbar-context-icon" aria-hidden="true">
+          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="topbar-context-copy">
+          <span>Active term</span>
+          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+        </div>
+      </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Teacher</div>
-        <div class="page-title">My Sections</div>
-      </div>
     </div>
     <div class="topbar-right">
       <div class="tb-notif">
@@ -385,8 +391,19 @@
 
         <div class="tb-notif-panel" id="tbNotifPanel">
           <div class="tb-notif-panel-head">
-            <span class="tb-notif-panel-title">Notifications</span>
-            <button class="tb-notif-mark-read" onclick="markAllNotifRead()">Mark all read</button>
+            <div class="tb-notif-heading">
+              <span class="tb-notif-heading-icon" aria-hidden="true">
+                <i data-lucide="bell" style="width:16px;height:16px;"></i>
+              </span>
+              <span class="tb-notif-heading-copy">
+                <span class="tb-notif-panel-title">Notifications</span>
+                <span class="tb-notif-unread-count" aria-live="polite"></span>
+              </span>
+            </div>
+            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+              <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+              <span>Mark all read</span>
+            </button>
           </div>
 
           <div class="tb-notif-list" id="tbNotifList">
@@ -398,7 +415,7 @@
           </div>
 
           <div class="tb-notif-panel-foot">
-            <a href="edugnay-teacher-notifications.html">More notifications</a>
+            <a href="edugnay-teacher-notifications.html">View all notifications</a>
           </div>
         </div>
       </div>
@@ -430,6 +447,13 @@
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
+    <section class="page-overview" aria-labelledby="page-overview-title">
+      <div class="page-overview-copy">
+        <div class="page-overview-kicker">Overview</div>
+        <h1 class="page-overview-title" id="page-overview-title">My Sections</h1>
+        <p class="page-overview-description">Review the sections and students assigned to you.</p>
+      </div>
+    </section>
 
     <!-- Section header -->
     <div class="section-header">

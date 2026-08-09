@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/notifications.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
@@ -138,13 +139,18 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
+      <div class="topbar-context" aria-label="Current academic period">
+        <div class="topbar-context-icon" aria-hidden="true">
+          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+        </div>
+        <div class="topbar-context-copy">
+          <span>Active term</span>
+          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+        </div>
+      </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
         <i data-lucide="menu" style="width:18px;height:18px;"></i>
       </button>
-      <div>
-        <div class="page-eyebrow">E-Ugnay · Admin</div>
-        <div class="page-title">Notifications</div>
-      </div>
     </div>
     <div class="topbar-right">
       <div class="tb-profile">
@@ -174,6 +180,13 @@
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
+    <section class="page-overview" aria-labelledby="page-overview-title">
+      <div class="page-overview-copy">
+        <div class="page-overview-kicker">Overview</div>
+        <h1 class="page-overview-title" id="page-overview-title">Notifications</h1>
+        <p class="page-overview-description">Review updates and alerts from your portal.</p>
+      </div>
+    </section>
 
     <div class="notif-filterbar">
       <div class="notif-filters" id="notifTypeFilters">
