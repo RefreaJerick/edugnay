@@ -48,6 +48,18 @@
   --gold-dark:    #92400e;
   --red-dark:     #991b1b;
   --success:     #22c55e;
+  /* Shared semantic surfaces and accents */
+  --surface-blue:         #f5f9ff;
+  --surface-blue-soft:    #f8fbff;
+  --surface-muted:        #fbfcfe;
+  --surface-risk:         #fff7f7;
+  --green-border:         #bbf7d0;
+  --purple-border:        #ddd6fe;
+  --purple-border-strong: #c4b5fd;
+  --orange-border:        #fde68a;
+  --gold-border:          #e8c96d;
+  --red-border:           #f5c2c2;
+  --overlay-modal:        rgba(11, 31, 58, .48);
   --sidebar-w:   240px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
 }
@@ -681,6 +693,15 @@ body.drawer-open .sidebar {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+.topbar-left::before {
+  content: '';
+  display: none;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  order: 0;
+  background: url('../images/edUgnay-logo-circle.png') center / contain no-repeat;
 }
 
 .topbar-left .page-eyebrow,
@@ -1883,6 +1904,7 @@ html, body {
   .sidebar-overlay { display: block; }
   .topbar { flex-wrap: wrap; padding: 16px 20px; width: 100vw; max-width: 100vw; }
   .hamburger { display: grid; }
+  .topbar-left::before { display: block; }
   .topbar-profile { display: block; }
 }
 
