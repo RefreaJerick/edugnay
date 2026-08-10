@@ -608,19 +608,12 @@
   }
 
   .panel-week .panel-head::after {
-    content: 'TODAY: ' attr(data-current-date);
-    display: inline-flex;
-    align-items: center;
-    min-height: 30px;
-    padding: 0 11px;
-    border: 1px solid var(--blue-pale);
-    border-radius: 8px;
-    background: var(--blue-xpale);
-    color: var(--blue-mid);
+    content: attr(data-current-date);
+    display: block;
+    color: var(--blue-mid) !important;
     font-size: 11px;
     font-weight: 750;
     letter-spacing: .1px;
     text-transform: uppercase;
-    color: var(--gray-700);
   }
 }
