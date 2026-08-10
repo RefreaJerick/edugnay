@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
   <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
   <script src="../../assets/js/scroll-fades.js" defer></script>
@@ -113,21 +114,42 @@
       </button>
     </div>
     <div class="student-topbar-right">
-      <div class="topbar-profile" id="topbarProfile">
-        <button type="button" class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
-          <span class="profile-trigger-avatar">RA</span>
+      <div class="tb-notif">
+        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <span class="tb-notif-dot"></span>
         </button>
-
-        <div class="profile-dropdown" id="profileDropdown">
-          <a href="edugnay-parent-profile.html" class="profile-dropdown-item">
-            <i data-lucide="user-round" style="width:15px;height:15px;"></i>
-            <span>My Profile</span>
-          </a>
-          <div class="profile-dropdown-divider"></div>
-          <button type="button" class="profile-dropdown-item danger" onclick="closeProfileMenu(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            <span>Sign Out</span>
-          </button>
+        <div class="tb-notif-panel" id="tbNotifPanel">
+          <div class="tb-notif-panel-head">
+            <div class="tb-notif-heading">
+              <span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+              <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span>
+            </div>
+            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
+          </div>
+          <div class="tb-notif-list" id="tbNotifList">
+            <div class="tb-notif-empty" id="tbNotifEmpty">
+              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+              <div class="tb-notif-empty-title">No notifications yet</div>
+              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+            </div>
+          </div>
+          <div class="tb-notif-panel-foot"><a href="edugnay-parent-notifications.html">View all notifications</a></div>
+        </div>
+      </div>
+      <div class="tb-profile" id="topbarProfile">
+        <button class="tb-profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true" aria-expanded="false">
+          <div class="tb-avatar parent">RA</div>
+          <div class="tb-profile-info">
+            <div class="tb-profile-name">Rosario Alcantara</div>
+            <div class="tb-profile-role">Parent</div>
+          </div>
+          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+        </button>
+        <div class="tb-dropdown" id="profileDropdown">
+          <a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a>
+          <div class="tb-dropdown-divider"></div>
+          <button class="tb-dropdown-item danger" type="button" onclick="closeProfileMenu(); openLogoutModal();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</button>
         </div>
       </div>
     </div>
@@ -196,7 +218,7 @@
 </div>
 
   <!-- LOGOUT CONFIRMATION MODAL -->
-  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+  <div class="logout-modal-backdrop" id="logoutModal">
     <div class="modal" style="max-width:380px;">
       <div class="modal-head">
         <div>
