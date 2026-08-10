@@ -8,13 +8,6 @@
 /* ── NOTIFICATIONS DATA ── */
 const NOTIFICATIONS = [
   {
-    id: 5, icon: 'graduation-cap', color: 'green', tag: 'Grades', read: false,
-    title: 'Q2 grades released',
-    desc: 'Your Mathematics grade for Q2 has been released.',
-    link: { page: 'grades' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
-  },
-  {
     id: 4, icon: 'folder-open', color: 'blue', tag: 'Materials', read: false,
     title: 'New learning material posted',
     desc: '"Solving for X — Video Lesson" was added to Mathematics.',
@@ -210,8 +203,6 @@ document.getElementById('logoutModalBackdrop')?.addEventListener('click', functi
 function navigate(page) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-student-dashboard.html';
-  } else if (page === 'grades') {
-    window.location.href = './edugnay-student-grades.html';
   } else if (page === 'materials') {
     window.location.href = './edugnay-student-materials.html';
   } else if (page === 'journal') {

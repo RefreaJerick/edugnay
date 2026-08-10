@@ -18,7 +18,7 @@
   <style>
     /*
       EJS NOTE: moves wholesale to assets/css/parent/attendance.css. Uses shared
-      tokens only — consistent with parent-dashboard.html, parent-grades.html,
+      tokens only — consistent with parent-dashboard.html,
       and parent-reports.html already converted.
     */
 
@@ -1210,7 +1210,6 @@
     }
 
     /* Attendance summary cards */
-    .summary-item-rate,
     .summary-item-present,
     .summary-item-late,
     .summary-item-absent {
@@ -1220,11 +1219,6 @@
       justify-content: space-between;
       gap: 10px;
       padding: 14px 16px;
-    }
-
-    .summary-item-rate {
-      border-color: var(--blue-pale);
-      background: #f8fbff;
     }
 
     .summary-item-present {
@@ -1240,10 +1234,6 @@
     .summary-item-absent {
       border-color: #f4caca;
       background: #fff8f8;
-    }
-
-    .summary-item-rate:hover {
-      border-color: #b8d4f7;
     }
 
     .summary-item-present:hover {
@@ -1266,7 +1256,6 @@
       gap: 10px;
     }
 
-    .summary-item-rate .summary-icon,
     .summary-item-present .summary-icon,
     .summary-item-late .summary-icon,
     .summary-item-absent .summary-icon {
@@ -1281,11 +1270,6 @@
       font-weight: 800;
       letter-spacing: .2px;
       white-space: nowrap;
-    }
-
-    .summary-item-rate .summary-card-badge {
-      border: 1px solid var(--blue-pale);
-      color: var(--blue-mid);
     }
 
     .summary-item-present .summary-card-badge {
@@ -1309,12 +1293,6 @@
       gap: 7px;
     }
 
-    .summary-item-rate .summary-num {
-      color: var(--navy);
-      font-size: 28px;
-      letter-spacing: -.8px;
-    }
-
     .summary-item-present .summary-num {
       color: #166534;
       font-size: 28px;
@@ -1333,7 +1311,6 @@
       letter-spacing: -.8px;
     }
 
-    .summary-item-rate .summary-label,
     .summary-item-present .summary-label,
     .summary-item-late .summary-label,
     .summary-item-absent .summary-label {
@@ -1366,14 +1343,12 @@
 
     @media (max-width: 480px) {
 
-      .summary-item-rate,
       .summary-item-present,
       .summary-item-late,
       .summary-item-absent {
         padding: 12px;
       }
 
-      .summary-item-rate .summary-num,
       .summary-item-present .summary-num,
       .summary-item-late .summary-num,
       .summary-item-absent .summary-num {
@@ -1388,13 +1363,19 @@
     /* Attendance cards use the shared admin dashboard stat pattern */
     .attendance-stat-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
       margin-bottom: 20px;
     }
 
     .attendance-stat-grid .stat-card {
       min-width: 0;
+    }
+
+    .attendance-stat-grid .stat-card.orange .stat-card-trend.trend-neu {
+      background: var(--orange-pale);
+      color: var(--orange-dark);
+      border-color: var(--orange-border);
     }
 
     @media (max-width: 1100px) {
@@ -1419,10 +1400,7 @@
       }
 
       .attendance-stat-grid .stat-card-trend {
-        max-width: 90px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        display: none;
       }
     }
   </style>
@@ -1491,10 +1469,6 @@
         <a href="edugnay-parent-dashboard.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Dashboard</span>
-        </a>
-        <a href="edugnay-parent-grades.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">Grades</span>
         </a>
         <a href="edugnay-parent-reports.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
@@ -1866,19 +1840,8 @@
       const present = dayEntries.filter(d => d.status === 'present').length;
       const absent = dayEntries.filter(d => d.status === 'absent').length;
       const late = dayEntries.filter(d => d.status === 'late').length;
-      const total = dayEntries.length;
-      const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
 
       document.getElementById('summary-strip').innerHTML = `
-    <div class="stat-card blue">
-      <div class="stat-card-top">
-        <div class="stat-card-icon"><i data-lucide="calendar-check" style="width:18px;height:18px;"></i></div>
-        <span class="stat-card-trend trend-neu">Current month</span>
-      </div>
-      <div class="stat-card-num">${rate}%</div>
-      <div class="stat-card-label">Attendance rate</div>
-      <div class="stat-card-sub">${total} school days tracked</div>
-    </div>
     <div class="stat-card green">
       <div class="stat-card-top">
         <div class="stat-card-icon"><i data-lucide="check" style="width:18px;height:18px;"></i></div>

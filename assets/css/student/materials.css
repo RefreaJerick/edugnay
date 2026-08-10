@@ -1,7 +1,8 @@
 /* EJS NOTE: moves to assets/css/student/materials.css. Uses shared tokens only —
-       no new color system, consistent with dashboard/grades pages already converted. */
+       no new color system, consistent with the dashboard styling already converted. */
 
 /* ── Subject tabs — same pill-tab pattern as journals/grades pages ── */
+/* Shared subject tab pattern */
 .subject-tab-bar {
   display: flex;
   align-items: center;

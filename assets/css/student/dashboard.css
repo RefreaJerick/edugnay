@@ -560,7 +560,15 @@
 @media (max-width: 1180px) {
   .panel-week .panel-head {
     justify-content: center;
-    padding: 13px 16px;
+    min-height: 52px;
+    gap: 10px;
+    padding: 11px 16px;
+    background: var(--surface-blue-soft);
+    border-bottom: 1px solid var(--blue-pale);
+  }
+
+  .panel-week .panel-head::before {
+    display: none;
   }
 
   .panel-week .week-title-wrap {
@@ -600,9 +608,19 @@
   }
 
   .panel-week .panel-head::after {
-    content: 'Today: ' attr(data-current-date);
-    font-size: 12px;
-    font-weight: 800;
+    content: 'TODAY: ' attr(data-current-date);
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 11px;
+    border: 1px solid var(--blue-pale);
+    border-radius: 8px;
+    background: var(--blue-xpale);
+    color: var(--blue-mid);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .1px;
+    text-transform: uppercase;
     color: var(--gray-700);
   }
 }

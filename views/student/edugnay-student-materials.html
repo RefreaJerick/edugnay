@@ -38,7 +38,7 @@
   - File download/view → route through GET /student/materials/:id/download (or signed URL),
                        never expose raw storage paths client-side.
 
-  PARTIALS: same sidebar/topbar partials as dashboard + grades (activeNav='materials').
+  PARTIALS: same sidebar/topbar partials as dashboard (activeNav='materials').
 
   CLIENT-SIDE BEHAVIOR THAT STAYS:
     - Subject tab switching, search filter, and type filter are pure UI/display logic
@@ -68,10 +68,6 @@
         <a href="edugnay-student-dashboard.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Dashboard</span>
-        </a>
-        <a href="edugnay-student-grades.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
-          <span class="nav-label">My Grades</span>
         </a>
         <a href="edugnay-student-materials.html" class="nav-item active">
           <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>

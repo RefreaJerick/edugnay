@@ -22,13 +22,6 @@ const NOTIFICATIONS = [
     created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
   {
-    id: 3, icon: 'graduation-cap', color: 'green', tag: 'Grades', read: false,
-    title: 'Q2 grades released',
-    desc: 'Juan\'s Mathematics grade for Q2 has been released.',
-    link: { page: 'grades' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
-  },
-  {
     id: 2, icon: 'megaphone', color: 'gold', tag: 'Announcement', read: true,
     title: 'New announcement',
     desc: 'Foundation Day — June 20. Classes suspended.',
@@ -210,8 +203,6 @@ document.getElementById('logoutModalBackdrop')?.addEventListener('click', functi
 function navigate(page) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-parent-dashboard.html';
-  } else if (page === 'grades') {
-    window.location.href = './edugnay-parent-grades.html';
   } else if (page === 'reports') {
     window.location.href = './edugnay-parent-reports.html';
   } else if (page === 'attendance') {
