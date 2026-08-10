@@ -1181,41 +1181,49 @@
       rendered server-side inside the strip below
     -->
     <div class="summary-strip">
-      <div class="summary-item">
-        <div class="summary-icon icon-purple">
+      <div class="stat-card purple">
+        <div class="stat-card-top">
+          <div class="stat-card-icon">
           <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+          </div>
+          <span class="stat-card-trend trend-neu">This week</span>
         </div>
-        <div>
-          <div class="summary-num" id="stat-total">38</div>
-          <div class="summary-label">Reports This Week</div>
-        </div>
+        <div class="stat-card-num" id="stat-total">38</div>
+        <div class="stat-card-label">Reports this week</div>
+        <div class="stat-card-sub">New reports received</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon icon-orange">
+      <div class="stat-card orange">
+        <div class="stat-card-top">
+          <div class="stat-card-icon">
           <i data-lucide="hourglass" style="width:18px;height:18px;"></i>
+          </div>
+          <span class="stat-card-trend trend-neu">Needs review</span>
         </div>
-        <div>
-          <div class="summary-num" id="stat-pending">5</div>
-          <div class="summary-label">Awaiting Confirmation</div>
-        </div>
+        <div class="stat-card-num" id="stat-pending">5</div>
+        <div class="stat-card-label">Awaiting confirmation</div>
+        <div class="stat-card-sub">Needs your review</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon icon-green">
+      <div class="stat-card green">
+        <div class="stat-card-top">
+          <div class="stat-card-icon">
           <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+          </div>
+          <span class="stat-card-trend trend-up">Complete</span>
         </div>
-        <div>
-          <div class="summary-num" id="stat-confirmed">33</div>
-          <div class="summary-label">Confirmed & Sent</div>
-        </div>
+        <div class="stat-card-num" id="stat-confirmed">33</div>
+        <div class="stat-card-label">Confirmed and sent</div>
+        <div class="stat-card-sub">Already shared with families</div>
       </div>
-      <div class="summary-item">
-        <div class="summary-icon icon-red"> 
+      <div class="stat-card red">
+        <div class="stat-card-top">
+          <div class="stat-card-icon">
           <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+          </div>
+          <span class="stat-card-trend trend-down">Follow up</span>
         </div>
-        <div>
-          <div class="summary-num" id="stat-atrisk">3</div>
-          <div class="summary-label">At-Risk Students</div>
-        </div>
+        <div class="stat-card-num" id="stat-atrisk">3</div>
+        <div class="stat-card-label">At-risk students</div>
+        <div class="stat-card-sub">May need follow-up</div>
       </div>
     </div>
 

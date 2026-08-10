@@ -1,629 +1,872 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Ugnay</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
+
 <body>
 
-<!-- LOGOUT CONFIRMATION MODAL -->
-<div class="logout-modal-backdrop" id="logoutModalBackdrop">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">Are you sure you want to sign out?</div>
+  <!-- LOGOUT CONFIRMATION MODAL -->
+  <div class="logout-modal-backdrop" id="logoutModalBackdrop">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Sign Out</div>
+          <div class="modal-sub">Are you sure you want to sign out?</div>
+        </div>
+        <button class="modal-close" onclick="closeLogoutModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmLogout()">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-      </button>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmLogout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="shell">
-  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="shell">
+    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-crest">
-        <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'"/>
-      </div>
-      <div>
-        <div class="brand-name">e<span>Ugnay</span></div>
-        <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
-      </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Main</div>
-      <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
-      <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span><span class="nav-badge">3</span></a>
-      
-      <div class="nav-group" id="classMgmtGroup">
-        <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
-          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
-          <span>Class Management</span>
-          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
         </div>
-        <div class="nav-children">
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','sections')">Sections</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+        <div>
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
         </div>
       </div>
-    </div>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Reports</div>
-      <a href="edugnay-admin-reports.html" class="nav-item active"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
-      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
-    </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-admin-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-admin-users.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">Manage Users</span><span class="nav-badge">3</span>
+        </a>
 
-    <div class="nav-section">
-      <div class="nav-section-label">Settings</div>
-      <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div><span class="nav-label">System Config</span></a>
-      <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive" style="width:16px;height:16px;"></i></div><span class="nav-label">Archive Data</span></a>
-    </div>
+        <div class="nav-group" id="classMgmtGroup">
+          <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
+            <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
+            <span>Class Management</span>
+            <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="nav-children">
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','sections')">Sections</a>
 
-  <div class="nav-section">
-    <div class="nav-section-label">Account</div>
-    <a href="edugnay-admin-profile.html" class="nav-item">
-      <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
-      <span class="nav-label">My Profile</span>
-    </a>
-  </div>
-  </aside>
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
 
-  <!-- ══════ TOPBAR ══════ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-context" aria-label="Current academic period">
-        <div class="topbar-context-icon" aria-hidden="true">
-          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="topbar-context-copy">
-          <span>Active term</span>
-          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
+
+            <a class="nav-child" href="./edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+          </div>
         </div>
       </div>
-      <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-    </div>
-    <div class="topbar-right">
-      <div class="tb-notif">
-        <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
-          <i data-lucide="bell" style="width:20px;height:20px;"></i>
-          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-          
-        </button>
 
-        <div class="tb-notif-panel" id="tbNotifPanel">
-          <div class="tb-notif-panel-head">
-            <div class="tb-notif-heading">
-              <span class="tb-notif-heading-icon" aria-hidden="true">
-                <i data-lucide="bell" style="width:16px;height:16px;"></i>
-              </span>
-              <span class="tb-notif-heading-copy">
-                <span class="tb-notif-panel-title">Notifications</span>
-                <span class="tb-notif-unread-count" aria-live="polite"></span>
-              </span>
+      <div class="nav-section">
+        <div class="nav-section-label">Reports</div>
+        <a href="edugnay-admin-reports.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">System Reports</span>
+        </a>
+        <a href="edugnay-admin-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">Announcements</span><span class="nav-badge gold">2</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Settings</div>
+        <a href="edugnay-admin-system-config.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">System Config</span>
+        </a>
+        <a href="edugnay-admin-archive.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="archive" style="width:16px;height:16px;"></i></div><span
+            class="nav-label">Archive Data</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-admin-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- ══════ TOPBAR ══════ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Current academic period">
+          <div class="topbar-context-icon" aria-hidden="true">
+            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
+          </div>
+          <div class="topbar-context-copy">
+            <span>Active term</span>
+            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          </div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu"
+            style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
+
+          </button>
+
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true">
+                  <i data-lucide="bell" style="width:16px;height:16px;"></i>
+                </span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
             </div>
-            <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
-              <i data-lucide="check-check" style="width:14px;height:14px;"></i>
-              <span>Mark all read</span>
-            </button>
-          </div>
 
-          <div class="tb-notif-list" id="tbNotifList">
-            <div class="tb-notif-empty" id="tbNotifEmpty">
-              <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-              <div class="tb-notif-empty-title">No notifications yet</div>
-              <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
-            </div>
-          </div>
-
-          <div class="tb-notif-panel-foot">
-            <a href="edugnay-admin-notifications.html">View all notifications</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="tb-profile">
-        <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
-          <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
-            <div class="tb-profile-role">Admin</div>
-          </div>
-          <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
-        </button>
-
-        <div class="tb-dropdown" id="tbProfileDropdown">
-          <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
-            <i data-lucide="user" style="width:15px;height:15px;"></i>
-            My Profile
-          </a>
-          <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
-            <i data-lucide="log-out" style="width:15px;height:15px;"></i>
-            Sign Out
-          </a>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- ══════ MAIN ══════ -->
-  <main class="main">
-    <section class="page-overview" aria-labelledby="page-overview-title">
-      <div class="page-overview-copy">
-        <div class="page-overview-kicker">Overview</div>
-        <h1 class="page-overview-title" id="page-overview-title">System Reports</h1>
-        <p class="page-overview-description">Review reports and activity across the school portal.</p>
-      </div>
-    </section>
-
-    <!-- Filter bar -->
-    <div class="filter-bar">
-      <span class="filter-label">Filter:</span>
-      <select class="filter-select">
-        <option>S.Y. 2025–2026</option>
-        <option>S.Y. 2024–2025</option>
-      </select>
-      <select class="filter-select">
-        <option>Quarter 2</option>
-        <option>Quarter 1</option>
-        <option>Quarter 3</option>
-        <option>Quarter 4</option>
-      </select>
-      <div class="filter-divider"></div>
-      <select class="filter-select">
-        <option>All Grade Levels</option>
-        <option>Grade 7</option>
-        <option>Grade 8</option>
-        <option>Grade 9</option>
-        <option>Grade 10</option>
-      </select>
-      <select class="filter-select">
-        <option>All Sections</option>
-        <option>St. Matthew</option>
-        <option>St. Mark</option>
-        <option>St. Luke</option>
-        <option>St. John</option>
-        <option>St. Peter</option>
-        <option>St. Paul</option>
-        <option>St. James</option>
-        <option>St. Thomas</option>
-      </select>
-    </div>
-
-    <!-- Stat cards -->
-    <div class="stat-grid">
-      <div class="stat-card green">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          <span class="stat-card-trend trend-up">▲ 3%</span>
-        </div>
-        <div class="stat-card-num">90%</div>
-        <div class="stat-card-label">Passing Rate</div>
-        <div class="stat-card-sub">255 of 284 students · Q2</div>
-      </div>
-      <div class="stat-card blue">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
-          <span class="stat-card-trend trend-up">▲ 1%</span>
-        </div>
-        <div class="stat-card-num">92%</div>
-        <div class="stat-card-label">Attendance Rate</div>
-        <div class="stat-card-sub">Across 8 sections · Q2</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-card-top">
-          <div class="stat-card-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
-          <span class="stat-card-trend trend-down">▼ Needs review</span>
-        </div>
-        <div class="stat-card-num">4</div>
-        <div class="stat-card-label">Flagged Students</div>
-        <div class="stat-card-sub">Absences or grades below threshold</div>
-      </div>
-    </div>
-
-    <!-- Academic Performance + Attendance -->
-    <div class="section-title">
-      <h2>Academic Performance</h2>
-      <div class="section-line"></div>
-    </div>
-
-    <div class="two-col">
-
-      <!-- Average grades per subject -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
-        <div class="panel-head">
-          <div class="panel-title">Average Grade per Subject</div>
-          <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
-        </div>
-        <div class="bar-chart grouped ranked">
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 7</div>
-            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">EsP</span><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green);"></div></div><span class="bar-val">93</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Filipino</span><div class="bar-track"><div class="bar-fill" style="width:89%;background:var(--blue-mid);"></div></div><span class="bar-val">89</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div></div><span class="bar-val">84</span></div>
-            <div class="bar-row tier-low"><span class="bar-rank">4</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:76%;background:var(--orange);"></div></div><span class="bar-val">76</span></div>
-            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:74%;background:var(--orange);"></div></div><span class="bar-val">74</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 8</div>
-            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div><span class="bar-val">90</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">TLE</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div></div><span class="bar-val">87</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">Araling Panlipunan</span><div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--blue-mid);"></div></div><span class="bar-val">85</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:83%;background:var(--blue-mid);"></div></div><span class="bar-val">83</span></div>
-            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--orange);"></div></div><span class="bar-val">78</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 9</div>
-            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">Filipino</span><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--green);"></div></div><span class="bar-val">88</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">EsP</span><div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div></div><span class="bar-val">86</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div></div><span class="bar-val">84</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">TLE</span><div class="bar-track"><div class="bar-fill" style="width:82%;background:var(--blue-mid);"></div></div><span class="bar-val">82</span></div>
-            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--orange);"></div></div><span class="bar-val">80</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 10</div>
-            <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span><div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div><span class="bar-val">91</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Araling Panlipunan</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div></div><span class="bar-val">87</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span><div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div></div><span class="bar-val">86</span></div>
-            <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Science</span><div class="bar-track"><div class="bar-fill" style="width:81%;background:var(--blue-mid);"></div></div><span class="bar-val">81</span></div>
-            <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span><div class="bar-track"><div class="bar-fill" style="width:79%;background:var(--orange);"></div></div><span class="bar-val">79</span></div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Pass / Fail donut -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
-        <div class="panel-head">
-          <div class="panel-title">Pass / Fail Rate</div>
-          <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
-        </div>
-        <div class="donut-wrap">
-          <div class="donut">
-            <svg viewBox="0 0 100 100" width="120" height="120">
-              <circle class="donut-bg" cx="50" cy="50" r="40"/>
-              <!-- Passing: 255/284 = 89.8% → stroke-dasharray = 89.8% of circumference (251.2) = 225.6 -->
-              <circle class="donut-seg" cx="50" cy="50" r="40"
-                stroke="#22c55e"
-                stroke-dasharray="225.6 251.2"
-                stroke-dashoffset="0"/>
-              <!-- Failing: 29/284 = 10.2% → 25.6 -->
-              <circle class="donut-seg" cx="50" cy="50" r="40"
-                stroke="#ef4444"
-                stroke-dasharray="25.6 251.2"
-                stroke-dashoffset="-225.6"/>
-            </svg>
-            <div class="donut-label">
-              <div class="donut-num">90%</div>
-              <div class="donut-sub">Passing</div>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--green);"></div>
-              <span class="legend-label">Passing (≥75)</span>
-              <span class="legend-val">255</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--red);"></div>
-              <span class="legend-label">Failing (&lt;75)</span>
-              <span class="legend-val">29</span>
-            </div>
-            <div style="border-top:1px solid var(--gray-100);padding-top:10px;margin-top:2px;">
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--blue-mid);"></div>
-                <span class="legend-label">Total Students</span>
-                <span class="legend-val">284</span>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Grade distribution -->
-        <div style="padding:0 24px 20px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Grade Distribution</div>
-          <div class="bar-row">
-            <span class="bar-label" style="width:80px;">90 – 100</span>
-            <div class="bar-track"><div class="bar-fill" style="width:28%;background:#16a34a;"></div></div>
-            <span class="bar-val">79</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label" style="width:80px;">80 – 89</span>
-            <div class="bar-track"><div class="bar-fill" style="width:42%;background:var(--blue-mid);"></div></div>
-            <span class="bar-val">120</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label" style="width:80px;">75 – 79</span>
-            <div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--orange);"></div></div>
-            <span class="bar-val">56</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label" style="width:80px;">Below 75</span>
-            <div class="bar-track"><div class="bar-fill" style="width:10%;background:var(--red);"></div></div>
-            <span class="bar-val">29</span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Attendance -->
-    <div class="section-title">
-      <h2>Attendance</h2>
-      <div class="section-line"></div>
-    </div>
-
-    <div class="two-col">
-
-      <!-- Attendance overview -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
-        <div class="panel-head">
-          <div class="panel-title">Attendance Rate</div>
-          <span style="font-size:11px;color:var(--gray-400);">Per Section · Q2</span>
-        </div>
-        <div class="bar-chart grouped">
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 7</div>
-            <div class="bar-row"><span class="bar-label">St. Matthew</span><div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--green);"></div></div><span class="bar-val">96%</span></div>
-            <div class="bar-row"><span class="bar-label">St. Mark</span><div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div><span class="bar-val">91%</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 8</div>
-            <div class="bar-row"><span class="bar-label">St. Luke</span><div class="bar-track"><div class="bar-fill" style="width:94%;background:var(--green);"></div></div><span class="bar-val">94%</span></div>
-            <div class="bar-row"><span class="bar-label">St. John</span><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--orange);"></div></div><span class="bar-val">88%</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 9</div>
-            <div class="bar-row"><span class="bar-label">St. Peter</span><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green);"></div></div><span class="bar-val">93%</span></div>
-            <div class="bar-row"><span class="bar-label">St. Paul</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green);"></div></div><span class="bar-val">90%</span></div>
-          </div>
-
-          <div class="bar-group">
-            <div class="bar-group-label">Grade 10</div>
-            <div class="bar-row"><span class="bar-label">St. James</span><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--green);"></div></div><span class="bar-val">95%</span></div>
-            <div class="bar-row"><span class="bar-label">St. Thomas</span><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--orange);"></div></div><span class="bar-val">87%</span></div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Attendance breakdown -->
-      <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
-        <div class="panel-head">
-          <div class="panel-title">Attendance Breakdown</div>
-          <span style="font-size:11px;color:var(--gray-400);">All Sections · Q2</span>
-        </div>
-        <div class="donut-wrap">
-          <div class="donut">
-            <svg viewBox="0 0 100 100" width="120" height="120">
-              <circle class="donut-bg" cx="50" cy="50" r="40"/>
-              <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#22c55e" stroke-dasharray="215 251.2" stroke-dashoffset="0"/>
-              <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#f59e0b" stroke-dasharray="20 251.2" stroke-dashoffset="-215"/>
-              <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#ef4444" stroke-dasharray="16.2 251.2" stroke-dashoffset="-235"/>
-            </svg>
-            <div class="donut-label">
-              <div class="donut-num">92%</div>
-              <div class="donut-sub">Present</div>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Present</span><span class="legend-val">92%</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--orange);"></div><span class="legend-label">Late / Tardy</span><span class="legend-val">5%</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Absent</span><span class="legend-val">3%</span></div>
-          </div>
-        </div>
-        <div style="padding:0 24px 20px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Absence Triggers Fired</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--red-pale);border-radius:8px;">
-              <span style="font-size:12px;font-weight:600;color:var(--red);">3+ Consecutive Absences</span>
-              <span style="font-size:13px;font-weight:800;color:var(--red);">12</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--orange-pale);border-radius:8px;">
-              <span style="font-size:12px;font-weight:600;color:#d97706;">Parent Notified</span>
-              <span style="font-size:13px;font-weight:800;color:#d97706;">12</span>
+            <div class="tb-notif-panel-foot">
+              <a href="edugnay-admin-notifications.html">View all notifications</a>
             </div>
           </div>
         </div>
-      </div>
 
-    </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar admin">SA</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-role">Admin</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
 
-    <!-- Flagged Students -->
-    <!-- EJS: flaggedStudents array grouped server-side or client-filtered from a single flat list.
-         Each card needs data-grade (7-10) and data-reason (space-separated: "absences", "grades", or both)
-         so the tabs + reason filter + search can all operate on the same DOM without a re-fetch. -->
-    <div class="section-title">
-      <h2>Flagged Students</h2>
-      <div class="section-line"></div>
-    </div>
-
-    <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
-      <div class="panel-head">
-        <div class="panel-title">Requires Attention</div>
-        <span style="font-size:11px;color:var(--gray-400);" id="flaggedCount">4 students</span>
-      </div>
-
-      <!-- Grade level tabs -->
-      <div class="grade-tabs">
-        <div class="grade-tab active" onclick="switchFlagGrade('all', this)">
-          All Grades <span class="tab-count" id="tabCountAll">4</span>
-        </div>
-        <div class="grade-tab" onclick="switchFlagGrade('7', this)">
-          Grade 7 <span class="tab-count" id="tabCount7">0</span>
-        </div>
-        <div class="grade-tab" onclick="switchFlagGrade('8', this)">
-          Grade 8 <span class="tab-count" id="tabCount8">2</span>
-        </div>
-        <div class="grade-tab" onclick="switchFlagGrade('9', this)">
-          Grade 9 <span class="tab-count" id="tabCount9">1</span>
-        </div>
-        <div class="grade-tab" onclick="switchFlagGrade('10', this)">
-          Grade 10 <span class="tab-count" id="tabCount10">1</span>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-admin-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i>
+              My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+              Sign Out
+            </a>
+          </div>
         </div>
       </div>
+    </header>
 
-      <!-- Search + reason filter -->
-      <div class="flag-toolbar">
-        <div class="search-wrap">
-          <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-          <input class="search-input" type="text" id="flagSearchInput" placeholder="Search student name..." oninput="filterFlagged()"/>
+    <!-- ══════ MAIN ══════ -->
+    <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Overview</div>
+          <h1 class="page-overview-title" id="page-overview-title">System Reports</h1>
+          <p class="page-overview-description">Review reports and activity across the school portal.</p>
         </div>
-        <select class="filter-select" id="flagReasonFilter" style="padding:7px 30px 7px 12px;font-size:12px;" onchange="filterFlagged()">
-          <option value="all">All Reasons</option>
-          <option value="absences">Absences</option>
-          <option value="grades">Low Grades</option>
+      </section>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <span class="filter-label">Filter:</span>
+        <select class="filter-select">
+          <option>S.Y. 2025–2026</option>
+          <option>S.Y. 2024–2025</option>
+        </select>
+        <select class="filter-select">
+          <option>Quarter 2</option>
+          <option>Quarter 1</option>
+          <option>Quarter 3</option>
+          <option>Quarter 4</option>
+        </select>
+        <div class="filter-divider"></div>
+        <select class="filter-select">
+          <option>All Grade Levels</option>
+          <option>Grade 7</option>
+          <option>Grade 8</option>
+          <option>Grade 9</option>
+          <option>Grade 10</option>
+        </select>
+        <select class="filter-select">
+          <option>All Sections</option>
+          <option>St. Matthew</option>
+          <option>St. Mark</option>
+          <option>St. Luke</option>
+          <option>St. John</option>
+          <option>St. Peter</option>
+          <option>St. Paul</option>
+          <option>St. James</option>
+          <option>St. Thomas</option>
         </select>
       </div>
 
-      <!-- Scrollable card grid — caps height once the list grows -->
-      <div class="flag-grid-scroll">
-        <div class="flag-grid" id="flagGrid">
-
-          <div class="flag-card" data-grade="9" data-reason="absences grades" data-name="ben garcia">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:var(--red);">BG</div>
-              <div class="flag-info">
-                <div class="flag-name">Ben Garcia</div>
-                <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4 absences</span>
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 72</span>
-            </div>
+      <!-- Stat cards: rendered from REPORTS_DATA.summary -->
+      <div class="stat-grid" id="report-stat-grid">
+        <div class="stat-card green">
+          <div class="stat-card-top">
+            <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
+            <span class="stat-card-trend trend-up">▲ 3%</span>
           </div>
-
-          <div class="flag-card" data-grade="8" data-reason="grades" data-name="sofia cruz">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#7c3aed;">SC</div>
-              <div class="flag-info">
-                <div class="flag-name">Sofia Cruz</div>
-                <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Science: 70</span>
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> Math: 73</span>
-            </div>
-          </div>
-
-          <div class="flag-card" data-grade="10" data-reason="absences grades" data-name="uma reyes">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#be185d;">UR</div>
-              <div class="flag-info">
-                <div class="flag-name">Uma Reyes</div>
-                <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6 absences</span>
-              <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i> English: 74</span>
-            </div>
-          </div>
-
-          <div class="flag-card" data-grade="8" data-reason="absences" data-name="noel pascual">
-            <div class="flag-card-top">
-              <div class="flag-av" style="background:#0d9488;">NP</div>
-              <div class="flag-info">
-                <div class="flag-name">Noel Pascual</div>
-                <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
-              </div>
-            </div>
-            <div class="flag-reason-row">
-              <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3 absences</span>
-            </div>
-          </div>
-
+          <div class="stat-card-num">90%</div>
+          <div class="stat-card-label">Passing Rate</div>
+          <div class="stat-card-sub">255 of 284 students · Q2</div>
         </div>
-
-        <!-- Empty state, hidden by default, shown when a filter matches nothing -->
-        <div class="flag-empty" id="flagEmpty" style="display:none;">
-          <div class="flag-empty-icon"><i data-lucide="user-check" style="width:20px;height:20px;"></i></div>
-          <div class="flag-empty-title">No flagged students found</div>
-          <div class="flag-empty-text">Try a different grade level, reason, or search term.</div>
+        <div class="stat-card blue">
+          <div class="stat-card-top">
+            <div class="stat-card-icon"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
+            <span class="stat-card-trend trend-up">▲ 1%</span>
+          </div>
+          <div class="stat-card-num">92%</div>
+          <div class="stat-card-label">Attendance Rate</div>
+          <div class="stat-card-sub">Across 8 sections · Q2</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-card-top">
+            <div class="stat-card-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
+            <span class="stat-card-trend trend-down">▼ Needs review</span>
+          </div>
+          <div class="stat-card-num">4</div>
+          <div class="stat-card-label">Flagged Students</div>
+          <div class="stat-card-sub">Absences or grades below threshold</div>
         </div>
       </div>
-    </div>
 
-  </main>
-</div>
+      <!-- Academic Performance + Attendance -->
+      <div class="section-title">
+        <h2>Academic Performance</h2>
+        <div class="section-line"></div>
+      </div>
 
-<script>
-  // ── FLAGGED STUDENTS: grade tabs + search + reason filter ──
-  // EJS/backend note: replace tabCount hardcoded numbers with server-computed
-  // counts per grade, e.g. tabCount7 = flaggedStudents.filter(s => s.grade === 7).length
-  let activeFlagGrade = 'all';
+      <div class="two-col">
 
-  function switchFlagGrade(grade, el) {
-    activeFlagGrade = grade;
-    document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
+        <!-- Average grades per subject -->
+        <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
+          <div class="panel-head">
+            <div class="panel-title">Average Grade per Subject</div>
+            <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
+          </div>
+          <div class="bar-chart grouped ranked" id="subject-performance-chart">
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 7</div>
+              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">EsP</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:93%;background:var(--green);"></div>
+                </div><span class="bar-val">93</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Filipino</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:89%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">89</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">84</span>
+              </div>
+              <div class="bar-row tier-low"><span class="bar-rank">4</span><span class="bar-label">Science</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:76%;background:var(--orange);"></div>
+                </div><span class="bar-val">76</span>
+              </div>
+              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:74%;background:var(--orange);"></div>
+                </div><span class="bar-val">74</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 8</div>
+              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:90%;background:var(--green);"></div>
+                </div><span class="bar-val">90</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">TLE</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">87</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">Araling
+                  Panlipunan</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:85%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">85</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Mathematics</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:83%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">83</span>
+              </div>
+              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Science</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:78%;background:var(--orange);"></div>
+                </div><span class="bar-val">78</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 9</div>
+              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">Filipino</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:88%;background:var(--green);"></div>
+                </div><span class="bar-val">88</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">EsP</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">86</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">84</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">TLE</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:82%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">82</span>
+              </div>
+              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:80%;background:var(--orange);"></div>
+                </div><span class="bar-val">80</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 10</div>
+              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:91%;background:var(--green);"></div>
+                </div><span class="bar-val">91</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Araling
+                  Panlipunan</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">87</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">86</span>
+              </div>
+              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Science</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:81%;background:var(--blue-mid);"></div>
+                </div><span class="bar-val">81</span>
+              </div>
+              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:79%;background:var(--orange);"></div>
+                </div><span class="bar-val">79</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Pass / Fail donut -->
+        <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
+          <div class="panel-head">
+            <div class="panel-title">Pass / Fail Rate</div>
+            <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
+          </div>
+          <div class="donut-wrap" id="grade-outcome-donut">
+            <div class="donut">
+              <svg viewBox="0 0 100 100" width="120" height="120">
+                <circle class="donut-bg" cx="50" cy="50" r="40" />
+                <!-- Passing: 255/284 = 89.8% → stroke-dasharray = 89.8% of circumference (251.2) = 225.6 -->
+                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#22c55e" stroke-dasharray="225.6 251.2"
+                  stroke-dashoffset="0" />
+                <!-- Failing: 29/284 = 10.2% → 25.6 -->
+                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#ef4444" stroke-dasharray="25.6 251.2"
+                  stroke-dashoffset="-225.6" />
+              </svg>
+              <div class="donut-label">
+                <div class="donut-num">90%</div>
+                <div class="donut-sub">Passing</div>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--green);"></div>
+                <span class="legend-label">Passing (≥75)</span>
+                <span class="legend-val">255</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--red);"></div>
+                <span class="legend-label">Failing (&lt;75)</span>
+                <span class="legend-val">29</span>
+              </div>
+              <div style="border-top:1px solid var(--gray-100);padding-top:10px;margin-top:2px;">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:var(--blue-mid);"></div>
+                  <span class="legend-label">Total Students</span>
+                  <span class="legend-val">284</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade distribution -->
+          <div class="grade-distribution" id="grade-distribution">
+            <div
+              style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">
+              Grade Distribution</div>
+            <div class="bar-row">
+              <span class="bar-label" style="width:80px;">90 – 100</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:28%;background:#16a34a;"></div>
+              </div>
+              <span class="bar-val">79</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label" style="width:80px;">80 – 89</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:42%;background:var(--blue-mid);"></div>
+              </div>
+              <span class="bar-val">120</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label" style="width:80px;">75 – 79</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:20%;background:var(--orange);"></div>
+              </div>
+              <span class="bar-val">56</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label" style="width:80px;">Below 75</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:10%;background:var(--red);"></div>
+              </div>
+              <span class="bar-val">29</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Attendance -->
+      <div class="section-title">
+        <h2>Attendance</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="two-col">
+
+        <!-- Attendance overview -->
+        <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
+          <div class="panel-head">
+            <div class="panel-title">Attendance Rate</div>
+            <span style="font-size:11px;color:var(--gray-400);">Per Section · Q2</span>
+          </div>
+          <div class="bar-chart grouped" id="attendance-rate-chart">
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 7</div>
+              <div class="bar-row"><span class="bar-label">St. Matthew</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:96%;background:var(--green);"></div>
+                </div><span class="bar-val">96%</span>
+              </div>
+              <div class="bar-row"><span class="bar-label">St. Mark</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:91%;background:var(--green);"></div>
+                </div><span class="bar-val">91%</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 8</div>
+              <div class="bar-row"><span class="bar-label">St. Luke</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:94%;background:var(--green);"></div>
+                </div><span class="bar-val">94%</span>
+              </div>
+              <div class="bar-row"><span class="bar-label">St. John</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:88%;background:var(--orange);"></div>
+                </div><span class="bar-val">88%</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 9</div>
+              <div class="bar-row"><span class="bar-label">St. Peter</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:93%;background:var(--green);"></div>
+                </div><span class="bar-val">93%</span>
+              </div>
+              <div class="bar-row"><span class="bar-label">St. Paul</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:90%;background:var(--green);"></div>
+                </div><span class="bar-val">90%</span>
+              </div>
+            </div>
+
+            <div class="bar-group">
+              <div class="bar-group-label">Grade 10</div>
+              <div class="bar-row"><span class="bar-label">St. James</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:95%;background:var(--green);"></div>
+                </div><span class="bar-val">95%</span>
+              </div>
+              <div class="bar-row"><span class="bar-label">St. Thomas</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:87%;background:var(--orange);"></div>
+                </div><span class="bar-val">87%</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Attendance breakdown -->
+        <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
+          <div class="panel-head">
+            <div class="panel-title">Attendance Breakdown</div>
+            <span style="font-size:11px;color:var(--gray-400);">All Sections · Q2</span>
+          </div>
+          <div class="donut-wrap" id="attendance-breakdown-donut">
+            <div class="donut">
+              <svg viewBox="0 0 100 100" width="120" height="120">
+                <circle class="donut-bg" cx="50" cy="50" r="40" />
+                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#22c55e" stroke-dasharray="215 251.2"
+                  stroke-dashoffset="0" />
+                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#f59e0b" stroke-dasharray="20 251.2"
+                  stroke-dashoffset="-215" />
+                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#ef4444" stroke-dasharray="16.2 251.2"
+                  stroke-dashoffset="-235" />
+              </svg>
+              <div class="donut-label">
+                <div class="donut-num">92%</div>
+                <div class="donut-sub">Present</div>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--green);"></div><span
+                  class="legend-label">Present</span><span class="legend-val">92%</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--orange);"></div><span class="legend-label">Late /
+                  Tardy</span><span class="legend-val">5%</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background:var(--red);"></div><span
+                  class="legend-label">Absent</span><span class="legend-val">3%</span>
+              </div>
+            </div>
+          </div>
+          <div class="absence-triggers" id="absence-triggers">
+            <div
+              style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">
+              Absence Triggers Fired</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div
+                style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;font-weight:600;color:var(--red);">3+ Consecutive Absences</span>
+                <span style="font-size:13px;font-weight:800;color:var(--red);">12</span>
+              </div>
+              <div
+                style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--orange-pale);border-radius:8px;">
+                <span style="font-size:12px;font-weight:600;color:#d97706;">Parent Notified</span>
+                <span style="font-size:13px;font-weight:800;color:#d97706;">12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Flagged Students -->
+      <!-- EJS: flaggedStudents array grouped server-side or client-filtered from a single flat list.
+         Each card needs data-grade (7-10) and data-reason (space-separated: "absences", "grades", or both)
+         so the tabs + reason filter + search can all operate on the same DOM without a re-fetch. -->
+      <div class="section-title">
+        <h2>Flagged Students</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
+        <div class="panel-head">
+          <div class="panel-title">Requires Attention</div>
+          <span style="font-size:11px;color:var(--gray-400);" id="flaggedCount">4 students</span>
+        </div>
+
+        <!-- Grade level tabs -->
+        <div class="grade-tabs">
+          <div class="grade-tab active" onclick="switchFlagGrade('all', this)">
+            All Grades <span class="tab-count" id="tabCountAll">4</span>
+          </div>
+          <div class="grade-tab" onclick="switchFlagGrade('7', this)">
+            Grade 7 <span class="tab-count" id="tabCount7">0</span>
+          </div>
+          <div class="grade-tab" onclick="switchFlagGrade('8', this)">
+            Grade 8 <span class="tab-count" id="tabCount8">2</span>
+          </div>
+          <div class="grade-tab" onclick="switchFlagGrade('9', this)">
+            Grade 9 <span class="tab-count" id="tabCount9">1</span>
+          </div>
+          <div class="grade-tab" onclick="switchFlagGrade('10', this)">
+            Grade 10 <span class="tab-count" id="tabCount10">1</span>
+          </div>
+        </div>
+
+        <!-- Search + reason filter -->
+        <div class="flag-toolbar">
+          <div class="search-wrap">
+            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+            <input class="search-input" type="text" id="flagSearchInput" placeholder="Search student name..."
+              oninput="filterFlagged()" />
+          </div>
+          <select class="filter-select" id="flagReasonFilter" style="padding:7px 30px 7px 12px;font-size:12px;"
+            onchange="filterFlagged()">
+            <option value="all">All Reasons</option>
+            <option value="absences">Absences</option>
+            <option value="grades">Low Grades</option>
+          </select>
+        </div>
+
+        <!-- Scrollable card grid — caps height once the list grows -->
+        <div class="flag-grid-scroll">
+          <div class="flag-grid" id="flagGrid" data-render-source="REPORTS_DATA.flaggedStudents">
+
+            <div class="flag-card" data-grade="9" data-reason="absences grades" data-name="ben garcia">
+              <div class="flag-card-top">
+                <div class="flag-av" style="background:var(--red);">BG</div>
+                <div class="flag-info">
+                  <div class="flag-name">Ben Garcia</div>
+                  <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
+                </div>
+              </div>
+              <div class="flag-reason-row">
+                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4
+                  absences</span>
+                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                  Math: 72</span>
+              </div>
+            </div>
+
+            <div class="flag-card" data-grade="8" data-reason="grades" data-name="sofia cruz">
+              <div class="flag-card-top">
+                <div class="flag-av" style="background:#7c3aed;">SC</div>
+                <div class="flag-info">
+                  <div class="flag-name">Sofia Cruz</div>
+                  <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
+                </div>
+              </div>
+              <div class="flag-reason-row">
+                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                  Science: 70</span>
+                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                  Math: 73</span>
+              </div>
+            </div>
+
+            <div class="flag-card" data-grade="10" data-reason="absences grades" data-name="uma reyes">
+              <div class="flag-card-top">
+                <div class="flag-av" style="background:#be185d;">UR</div>
+                <div class="flag-info">
+                  <div class="flag-name">Uma Reyes</div>
+                  <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
+                </div>
+              </div>
+              <div class="flag-reason-row">
+                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6
+                  absences</span>
+                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
+                  English: 74</span>
+              </div>
+            </div>
+
+            <div class="flag-card" data-grade="8" data-reason="absences" data-name="noel pascual">
+              <div class="flag-card-top">
+                <div class="flag-av" style="background:#0d9488;">NP</div>
+                <div class="flag-info">
+                  <div class="flag-name">Noel Pascual</div>
+                  <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
+                </div>
+              </div>
+              <div class="flag-reason-row">
+                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3
+                  absences</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Empty state, hidden by default, shown when a filter matches nothing -->
+          <div class="flag-empty" id="flagEmpty" style="display:none;">
+            <div class="flag-empty-icon"><i data-lucide="user-check" style="width:20px;height:20px;"></i></div>
+            <div class="flag-empty-title">No flagged students found</div>
+            <div class="flag-empty-text">Try a different grade level, reason, or search term.</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    /*
+      Reports data contract.
+      Replace REPORTS_DATA with EJS-provided JSON or a fetch response when the
+      page is connected to the backend. The render functions below can remain
+      unchanged because they only depend on this shape.
+    */
+    const REPORTS_DATA = {
+      summary: [
+        { tone: 'green', icon: 'check-circle', badge: 'On track', trend: 'trend-up', value: '90%', label: 'Passing rate', sub: '255 of 284 students · Q2' },
+        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: '92%', label: 'Attendance rate', sub: 'Across 8 sections · Q2' },
+        { tone: 'red', icon: 'alert-triangle', badge: 'Needs review', trend: 'trend-down', value: '4', label: 'Flagged students', sub: 'Absences or grades below threshold' }
+      ],
+      subjectPerformance: [
+        { grade: 'Grade 7', rows: [{ subject: 'EsP', score: 93, tone: 'high' }, { subject: 'Filipino', score: 89, tone: 'mid' }, { subject: 'English', score: 84, tone: 'mid' }, { subject: 'Science', score: 76, tone: 'low' }, { subject: 'Mathematics', score: 74, tone: 'low' }] },
+        { grade: 'Grade 8', rows: [{ subject: 'MAPEH', score: 90, tone: 'high' }, { subject: 'TLE', score: 87, tone: 'mid' }, { subject: 'Araling Panlipunan', score: 85, tone: 'mid' }, { subject: 'Mathematics', score: 83, tone: 'mid' }, { subject: 'Science', score: 78, tone: 'low' }] },
+        { grade: 'Grade 9', rows: [{ subject: 'Filipino', score: 88, tone: 'high' }, { subject: 'EsP', score: 86, tone: 'mid' }, { subject: 'English', score: 84, tone: 'mid' }, { subject: 'TLE', score: 82, tone: 'mid' }, { subject: 'Mathematics', score: 80, tone: 'low' }] },
+        { grade: 'Grade 10', rows: [{ subject: 'MAPEH', score: 91, tone: 'high' }, { subject: 'Araling Panlipunan', score: 87, tone: 'mid' }, { subject: 'English', score: 86, tone: 'mid' }, { subject: 'Science', score: 81, tone: 'mid' }, { subject: 'Mathematics', score: 79, tone: 'low' }] }
+      ],
+      gradeOutcome: { passing: 255, failing: 29, total: 284, distribution: [{ label: '90 to 100', value: 79, percent: 28, color: '#16a34a' }, { label: '80 to 89', value: 120, percent: 42, color: 'var(--blue-mid)' }, { label: '75 to 79', value: 56, percent: 20, color: 'var(--orange)' }, { label: 'Below 75', value: 29, percent: 10, color: 'var(--red)' }] },
+      attendanceByGrade: [
+        { grade: 'Grade 7', rows: [{ section: 'St. Matthew', rate: 96 }, { section: 'St. Mark', rate: 91 }] },
+        { grade: 'Grade 8', rows: [{ section: 'St. Luke', rate: 94 }, { section: 'St. John', rate: 88 }] },
+        { grade: 'Grade 9', rows: [{ section: 'St. Peter', rate: 93 }, { section: 'St. Paul', rate: 90 }] },
+        { grade: 'Grade 10', rows: [{ section: 'St. James', rate: 95 }, { section: 'St. Thomas', rate: 87 }] }
+      ],
+      attendanceBreakdown: [{ label: 'Present', value: 92, color: 'var(--green)' }, { label: 'Late / Tardy', value: 5, color: 'var(--orange)' }, { label: 'Absent', value: 3, color: 'var(--red)' }],
+      absenceTriggers: [{ label: '3+ Consecutive Absences', value: 12, tone: 'red' }, { label: 'Parent Notified', value: 12, tone: 'orange' }],
+      flaggedStudents: [
+        { name: 'Ben Garcia', initials: 'BG', color: 'var(--red)', grade: '9', detail: 'Grade 9 · St. Paul · Mr. Santos', reasons: [{ type: 'absences', icon: 'calendar-x', label: '4 absences' }, { type: 'grades', icon: 'trending-down', label: 'Math: 72' }] },
+        { name: 'Sofia Cruz', initials: 'SC', color: '#7c3aed', grade: '8', detail: 'Grade 8 · St. Luke · Ms. Villanueva', reasons: [{ type: 'grades', icon: 'trending-down', label: 'Science: 70' }, { type: 'grades', icon: 'trending-down', label: 'Math: 73' }] },
+        { name: 'Uma Reyes', initials: 'UR', color: '#be185d', grade: '10', detail: 'Grade 10 · St. Thomas · Ms. Garcia', reasons: [{ type: 'absences', icon: 'calendar-x', label: '6 absences' }, { type: 'grades', icon: 'trending-down', label: 'English: 74' }] },
+        { name: 'Noel Pascual', initials: 'NP', color: '#0d9488', grade: '8', detail: 'Grade 8 · St. John · Unassigned', reasons: [{ type: 'absences', icon: 'calendar-x', label: '3 absences' }] }
+      ]
+    };
+
+    // Replace REPORTS_DATA with EJS JSON or pass the same shape to renderReportPanels(payload).
+    const REPORTS_TONE_COLORS = { high: 'var(--green)', mid: 'var(--blue-mid)', low: 'var(--orange)' };
+    const escapeReportHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+
+    function renderReportSummary(data = REPORTS_DATA) {
+      document.getElementById('report-stat-grid').innerHTML = data.summary.map(card => `
+      <div class="stat-card ${escapeReportHtml(card.tone)}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${escapeReportHtml(card.icon)}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${escapeReportHtml(card.trend)}">${escapeReportHtml(card.badge)}</span></div><div class="stat-card-num">${escapeReportHtml(card.value)}</div><div class="stat-card-label">${escapeReportHtml(card.label)}</div><div class="stat-card-sub">${escapeReportHtml(card.sub)}</div></div>`).join('');
+    }
+
+  function renderSubjectPerformance(data = REPORTS_DATA) {
+    document.getElementById('subject-performance-chart').innerHTML = data.subjectPerformance.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map((row, index) => `<div class="bar-row tier-${escapeReportHtml(row.tone)}"><span class="bar-rank">${index + 1}</span><span class="bar-label">${escapeReportHtml(row.subject)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.score)}%;background:${REPORTS_TONE_COLORS[row.tone] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.score)}</span></div>`).join('')}</div>`).join('');
+  }
+
+  function renderGradeOutcome(data = REPORTS_DATA) {
+    const outcome = data.gradeOutcome;
+    const circumference = 251.2;
+    const passRate = Math.round((outcome.passing / outcome.total) * 100);
+    const passStroke = (outcome.passing / outcome.total * circumference).toFixed(1);
+    const failStroke = (outcome.failing / outcome.total * circumference).toFixed(1);
+    document.getElementById('grade-outcome-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126" aria-label="${passRate}% passing"><circle class="donut-bg" cx="50" cy="50" r="40"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--green)" stroke-dasharray="${passStroke} ${circumference}"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--red)" stroke-dasharray="${failStroke} ${circumference}" stroke-dashoffset="-${passStroke}"/></svg><div class="donut-label"><div class="donut-num">${passRate}%</div><div class="donut-sub">Passing</div></div></div><div class="donut-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Passing (75 and above)</span><span class="legend-val">${outcome.passing}</span></div><div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Failing (below 75)</span><span class="legend-val">${outcome.failing}</span></div><div class="legend-total"><div class="legend-item"><div class="legend-dot" style="background:var(--blue-mid);"></div><span class="legend-label">Total students</span><span class="legend-val">${outcome.total}</span></div></div></div>`;
+    document.getElementById('grade-distribution').innerHTML = `<div class="distribution-title">Grade distribution</div>${outcome.distribution.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.percent)}%;background:${row.color};"></div></div><span class="bar-val">${Number(row.value)}</span></div>`).join('')}`;
+  }
+
+  function renderAttendance(data = REPORTS_DATA) {
+    document.getElementById('attendance-rate-chart').innerHTML = data.attendanceByGrade.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.section)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.rate)}%;background:${row.rate >= 90 ? 'var(--green)' : 'var(--orange)'};"></div></div><span class="bar-val">${Number(row.rate)}%</span></div>`).join('')}</div>`).join('');
+    const circumference = 251.2; let offset = 0;
+    const segments = data.attendanceBreakdown.map(row => { const length = Number(row.value) / 100 * circumference; const html = `<circle class="donut-seg" cx="50" cy="50" r="40" stroke="${row.color}" stroke-dasharray="${length.toFixed(1)} ${circumference}" stroke-dashoffset="-${offset.toFixed(1)}"/>`; offset += length; return html; }).join('');
+    document.getElementById('attendance-breakdown-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${data.attendanceBreakdown[0].value}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${data.attendanceBreakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${row.color};"></div><span class="legend-label">${escapeReportHtml(row.label)}</span><span class="legend-val">${Number(row.value)}%</span></div>`).join('')}</div>`;
+    document.getElementById('absence-triggers').innerHTML = `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${data.absenceTriggers.map(row => `<div class="trigger-row ${escapeReportHtml(row.tone)}"><span>${escapeReportHtml(row.label)}</span><strong>${Number(row.value)}</strong></div>`).join('')}</div>`;
+  }
+
+  function renderFlaggedStudents(data = REPORTS_DATA) {
+    document.getElementById('flagGrid').innerHTML = data.flaggedStudents.map(student => `<div class="flag-card" data-grade="${escapeReportHtml(student.grade)}" data-reason="${student.reasons.map(reason => escapeReportHtml(reason.type)).join(' ')}" data-name="${escapeReportHtml(student.name.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${escapeReportHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${escapeReportHtml(student.name)}</div><div class="flag-detail">${escapeReportHtml(student.detail)}</div></div></div><div class="flag-reason-row">${student.reasons.map(reason => `<span class="flag-tag flag-${escapeReportHtml(reason.type)}"><i data-lucide="${escapeReportHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${escapeReportHtml(reason.label)}</span>`).join('')}</div></div>`).join('');
+  }
+
+    function renderReportPanels(data = REPORTS_DATA) { renderReportSummary(data); renderSubjectPerformance(data); renderGradeOutcome(data); renderAttendance(data); renderFlaggedStudents(data); }
+
+    // ── FLAGGED STUDENTS: grade tabs + search + reason filter ──
+    // EJS/backend note: replace tabCount hardcoded numbers with server-computed
+    // counts per grade, e.g. tabCount7 = flaggedStudents.filter(s => s.grade === 7).length
+    let activeFlagGrade = 'all';
+
+    function switchFlagGrade(grade, el) {
+      activeFlagGrade = grade;
+      document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      filterFlagged();
+    }
+
+    function filterFlagged() {
+      const search = document.getElementById('flagSearchInput').value.toLowerCase();
+      const reason = document.getElementById('flagReasonFilter').value;
+      const cards = document.querySelectorAll('#flagGrid .flag-card');
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const matchGrade = activeFlagGrade === 'all' || card.dataset.grade === activeFlagGrade;
+        const matchReason = reason === 'all' || card.dataset.reason.includes(reason);
+        const matchSearch = card.dataset.name.includes(search);
+        const isVisible = matchGrade && matchReason && matchSearch;
+
+        card.style.display = isVisible ? '' : 'none';
+        if (isVisible) visibleCount++;
+      });
+
+      document.getElementById('flaggedCount').textContent = visibleCount + (visibleCount === 1 ? ' student' : ' students');
+      document.getElementById('flagEmpty').style.display = visibleCount === 0 ? 'block' : 'none';
+      document.getElementById('flagGrid').style.display = visibleCount === 0 ? 'none' : 'grid';
+    }
+
+    renderReportPanels();
     filterFlagged();
-  }
-
-  function filterFlagged() {
-    const search = document.getElementById('flagSearchInput').value.toLowerCase();
-    const reason = document.getElementById('flagReasonFilter').value;
-    const cards = document.querySelectorAll('#flagGrid .flag-card');
-    let visibleCount = 0;
-
-    cards.forEach(card => {
-      const matchGrade  = activeFlagGrade === 'all' || card.dataset.grade === activeFlagGrade;
-      const matchReason = reason === 'all' || card.dataset.reason.includes(reason);
-      const matchSearch = card.dataset.name.includes(search);
-      const isVisible = matchGrade && matchReason && matchSearch;
-
-      card.style.display = isVisible ? '' : 'none';
-      if (isVisible) visibleCount++;
-    });
-
-    document.getElementById('flaggedCount').textContent = visibleCount + (visibleCount === 1 ? ' student' : ' students');
-    document.getElementById('flagEmpty').style.display = visibleCount === 0 ? 'block' : 'none';
-    document.getElementById('flagGrid').style.display = visibleCount === 0 ? 'none' : 'grid';
-  }
-
-  lucide.createIcons();
-</script>
+    lucide.createIcons();
+  </script>
 
 </body>
+
 </html>

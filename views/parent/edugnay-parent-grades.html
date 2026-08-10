@@ -357,9 +357,6 @@ function renderQuarter(q) {
         if (s.unreleased) {
           return `
             <div class="subject-row subject-row--unreleased">
-              <div class="subject-icon" style="background:var(--gray-100);">
-                <i data-lucide="${s.icon}" style="width:19px;height:19px;color:var(--gray-300);"></i>
-              </div>
               <div class="subject-info">
                 <div class="subject-name" style="color:var(--gray-400);">${s.name}</div>
                 <div class="subject-teacher">${s.teacher}</div>
@@ -375,9 +372,6 @@ function renderQuarter(q) {
         const r = remarkFor(s.grade);
         return `
           <div class="subject-row">
-            <div class="subject-icon" style="background:${s.iconBg};">
-              <i data-lucide="${s.icon}" style="width:19px;height:19px;color:${s.iconColor};"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">${s.name}</div>
               <div class="subject-teacher">${s.teacher}</div>

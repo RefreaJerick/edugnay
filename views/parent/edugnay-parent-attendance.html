@@ -291,6 +291,187 @@
       .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .summary-item { padding: 14px; }
     }
+
+    /* Refined calendar panel */
+    .attendance-calendar-panel {
+      border-radius: 18px;
+      border-color: var(--gray-200);
+      box-shadow: 0 8px 24px rgba(16,40,80,.07);
+    }
+    .attendance-calendar-panel .panel-head {
+      padding: 18px 22px 16px;
+      background: var(--white);
+      border-bottom-color: var(--gray-200);
+    }
+    .attendance-calendar-panel .panel-title { font-size: 16px; letter-spacing: -.15px; }
+    .attendance-calendar-panel .panel-sub { margin-top: 4px; font-size: 11px; }
+    .attendance-calendar-panel .cal-nav {
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--gray-200);
+      border-radius: 11px;
+      background: var(--gray-50);
+    }
+    .attendance-calendar-panel .cal-nav-btn {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+    }
+    .attendance-calendar-panel .cal-nav-btn:hover:not(:disabled) {
+      background: var(--white);
+      color: var(--blue-mid);
+    }
+    .attendance-calendar-panel .cal-month-label { min-width: 112px; font-size: 12.5px; }
+    .attendance-calendar-panel .calendar-wrap {
+      padding: 18px 22px 20px;
+      background: var(--gray-50);
+    }
+    .attendance-calendar-panel .cal-weekday-row {
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 0 2px 10px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .attendance-calendar-panel .cal-weekday {
+      color: var(--gray-500);
+      font-size: 9px;
+      letter-spacing: .7px;
+    }
+    .attendance-calendar-panel .cal-grid { gap: 8px; }
+    .attendance-calendar-panel .cal-day {
+      min-height: 58px;
+      aspect-ratio: auto;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 10px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      background: var(--white);
+    }
+    .attendance-calendar-panel .cal-day:hover:not(.empty):not(.future):not(.weekend):not(.today) {
+      border-color: var(--blue-pale);
+      transform: translateY(-1px);
+    }
+    .attendance-calendar-panel .cal-day.present:hover { background: #f7fcf8; }
+    .attendance-calendar-panel .cal-day.absent:hover { background: #fff8f8; }
+    .attendance-calendar-panel .cal-day.late:hover { background: #fffaf1; }
+    .attendance-calendar-panel .cal-day.today:hover {
+      border-color: var(--navy);
+      background: var(--navy);
+      transform: none;
+    }
+    .attendance-calendar-panel .cal-day-num { font-size: 12px; }
+    .attendance-calendar-panel .cal-day-dot { margin-top: auto; }
+    .attendance-calendar-panel .cal-day.empty,
+    .attendance-calendar-panel .cal-day.future {
+      border-color: transparent;
+      background: transparent;
+    }
+    .attendance-calendar-panel .cal-day.present { border-color: #c8ead2; background: #f7fcf8; }
+    .attendance-calendar-panel .cal-day.absent { border-color: #f4caca; background: #fff8f8; }
+    .attendance-calendar-panel .cal-day.late { border-color: #f5dfaa; background: #fffaf1; }
+    .attendance-calendar-panel .cal-day.weekend { border-color: transparent; background: #edf1f5; }
+    .attendance-calendar-panel .cal-day.today {
+      border: 2px solid var(--navy);
+      background: var(--navy);
+      box-shadow: 0 4px 10px rgba(11,31,58,.16);
+    }
+    .attendance-calendar-panel .cal-legend {
+      gap: 16px;
+      padding: 14px 22px 17px;
+      background: var(--white);
+    }
+    .attendance-calendar-panel .legend-item { font-size: 10.5px; }
+    @media (max-width: 760px) {
+      .attendance-calendar-panel .panel-head { padding: 16px; }
+      .attendance-calendar-panel .calendar-wrap { padding: 14px; }
+      .attendance-calendar-panel .cal-grid,
+      .attendance-calendar-panel .cal-weekday-row { gap: 5px; }
+      .attendance-calendar-panel .cal-day { min-height: 49px; padding: 8px; border-radius: 9px; }
+      .attendance-calendar-panel .cal-legend { padding: 12px 14px 14px; }
+    }
+
+    /* Attendance summary cards */
+    .summary-item-rate,
+    .summary-item-present,
+    .summary-item-late,
+    .summary-item-absent {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .summary-item-rate { border-color: var(--blue-pale); background: #f8fbff; }
+    .summary-item-present { border-color: #c8ead2; background: #f8fcf9; }
+    .summary-item-late { border-color: #f5dfaa; background: #fffaf1; }
+    .summary-item-absent { border-color: #f4caca; background: #fff8f8; }
+    .summary-item-rate:hover { border-color: #b8d4f7; }
+    .summary-item-present:hover { border-color: #9bd6aa; }
+    .summary-item-late:hover { border-color: #e8c86f; }
+    .summary-item-absent:hover { border-color: #eca2a2; }
+    .summary-card-top,
+    .summary-card-value { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .summary-item-rate .summary-icon,
+    .summary-item-present .summary-icon,
+    .summary-item-late .summary-icon,
+    .summary-item-absent .summary-icon { width: 36px; height: 36px; }
+    .summary-card-badge {
+      padding: 4px 7px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .2px;
+      white-space: nowrap;
+    }
+    .summary-item-rate .summary-card-badge { border: 1px solid var(--blue-pale); color: var(--blue-mid); }
+    .summary-item-present .summary-card-badge { border: 1px solid #c8ead2; color: #15803d; }
+    .summary-item-late .summary-card-badge { border: 1px solid #f5dfaa; color: #a16207; }
+    .summary-item-absent .summary-card-badge { border: 1px solid #f4caca; color: #b91c1c; }
+    .summary-card-value { align-items: baseline; justify-content: flex-start; gap: 7px; }
+    .summary-item-rate .summary-num { color: var(--navy); font-size: 28px; letter-spacing: -.8px; }
+    .summary-item-present .summary-num { color: #166534; font-size: 28px; letter-spacing: -.8px; }
+    .summary-item-late .summary-num { color: #a16207; font-size: 28px; letter-spacing: -.8px; }
+    .summary-item-absent .summary-num { color: #b91c1c; font-size: 28px; letter-spacing: -.8px; }
+    .summary-item-rate .summary-label,
+    .summary-item-present .summary-label,
+    .summary-item-late .summary-label,
+    .summary-item-absent .summary-label { margin: 0; color: var(--gray-500); font-size: 10px; letter-spacing: .25px; text-transform: none; }
+    .summary-card-caption { color: var(--gray-400); font-size: 9.5px; line-height: 1.25; }
+    .summary-rate-track { height: 5px; overflow: hidden; border-radius: 999px; background: #dbeafe; }
+    .summary-rate-track span { display: block; height: 100%; border-radius: inherit; background: var(--blue-mid); }
+    @media (max-width: 480px) {
+      .summary-item-rate,
+      .summary-item-present,
+      .summary-item-late,
+      .summary-item-absent { padding: 12px; }
+      .summary-item-rate .summary-num,
+      .summary-item-present .summary-num,
+      .summary-item-late .summary-num,
+      .summary-item-absent .summary-num { font-size: 24px; }
+      .summary-card-badge { font-size: 8px; }
+    }
+
+    /* Attendance cards use the shared admin dashboard stat pattern */
+    .attendance-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .attendance-stat-grid .stat-card { min-width: 0; }
+    @media (max-width: 1100px) {
+      .attendance-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .attendance-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .attendance-stat-grid .stat-card { min-height: 138px; padding: 13px; }
+      .attendance-stat-grid .stat-card-top { margin-bottom: 12px; }
+      .attendance-stat-grid .stat-card-trend { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
   </style>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
   <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
@@ -500,7 +681,7 @@
     <!-- end children[] loop -->
 
     <!-- Stat strip — recomputed per month, per child -->
-    <div class="summary-strip" id="summary-strip">
+    <div class="stat-grid attendance-stat-grid" id="summary-strip">
       <!-- JS generated -->
     </div>
 
@@ -508,7 +689,7 @@
     <div class="att-layout">
 
       <!-- LEFT: Calendar -->
-      <div class="panel">
+      <div class="panel attendance-calendar-panel">
         <div class="panel-head">
           <div>
             <div class="panel-title">Monthly Calendar</div>
@@ -747,21 +928,41 @@ function renderSummaryStrip() {
   const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
 
   document.getElementById('summary-strip').innerHTML = `
-    <div class="summary-item">
-      <div class="summary-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="calendar-check" style="width:17px;height:17px;"></i></div>
-      <div><div class="summary-num">${rate}%</div><div class="summary-label">Attend. Rate</div></div>
+    <div class="stat-card blue">
+      <div class="stat-card-top">
+        <div class="stat-card-icon"><i data-lucide="calendar-check" style="width:18px;height:18px;"></i></div>
+        <span class="stat-card-trend trend-neu">Current month</span>
+      </div>
+      <div class="stat-card-num">${rate}%</div>
+      <div class="stat-card-label">Attendance rate</div>
+      <div class="stat-card-sub">${total} school days tracked</div>
     </div>
-    <div class="summary-item">
-      <div class="summary-icon" style="background:var(--green-pale);color:#16a34a;"><i data-lucide="check" style="width:17px;height:17px;"></i></div>
-      <div><div class="summary-num">${present}</div><div class="summary-label">Days Present</div></div>
+    <div class="stat-card green">
+      <div class="stat-card-top">
+        <div class="stat-card-icon"><i data-lucide="check" style="width:18px;height:18px;"></i></div>
+        <span class="stat-card-trend trend-up">In school</span>
+      </div>
+      <div class="stat-card-num">${present}</div>
+      <div class="stat-card-label">Days present</div>
+      <div class="stat-card-sub">School days attended</div>
     </div>
-    <div class="summary-item">
-      <div class="summary-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="clock" style="width:17px;height:17px;"></i></div>
-      <div><div class="summary-num">${late}</div><div class="summary-label">Days Late</div></div>
+    <div class="stat-card orange">
+      <div class="stat-card-top">
+        <div class="stat-card-icon"><i data-lucide="clock" style="width:18px;height:18px;"></i></div>
+        <span class="stat-card-trend trend-neu">Needs attention</span>
+      </div>
+      <div class="stat-card-num">${late}</div>
+      <div class="stat-card-label">Days late</div>
+      <div class="stat-card-sub">Arrivals after start time</div>
     </div>
-    <div class="summary-item">
-      <div class="summary-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="circle-x" style="width:17px;height:17px;"></i></div>
-      <div><div class="summary-num">${absent}</div><div class="summary-label">Days Absent</div></div>
+    <div class="stat-card red">
+      <div class="stat-card-top">
+        <div class="stat-card-icon"><i data-lucide="circle-x" style="width:18px;height:18px;"></i></div>
+        <span class="stat-card-trend trend-down">Review days</span>
+      </div>
+      <div class="stat-card-num">${absent}</div>
+      <div class="stat-card-label">Days absent</div>
+      <div class="stat-card-sub">No attendance recorded</div>
     </div>`;
   lucide.createIcons();
 }
