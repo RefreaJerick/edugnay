@@ -929,17 +929,16 @@ tbody td {
   box-shadow: 0 9px 20px rgba(16,40,80,.09);
   transform: translateY(-2px);
 }
-.rs-card.selected {
-  border-color: var(--blue-mid);
-  background: var(--blue-xpale);
-  box-shadow: 0 6px 16px rgba(29,92,180,.12);
-}
 .rs-card.all { border-color: var(--blue-pale); background: #f8fbff; }
 .rs-card.admin { border-color: #cbd5e1; background: #fbfcfe; }
 .rs-card.fac { border-color: #f5dfaa; background: #fffaf1; }
 .rs-card.stud { border-color: #c8ead2; background: #f8fcf9; }
 .rs-card.par { border-color: #e9d5ff; background: #fcfaff; }
-.rs-card.selected.all { border-color: var(--blue-mid); background: var(--blue-xpale); }
+.rs-card.selected {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  box-shadow: 0 6px 16px rgba(29,92,180,.12);
+}
 .rs-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 .rs-icon { width: 38px; height: 38px; border-radius: 10px; }
 .rs-badge {
@@ -972,4 +971,112 @@ tbody td {
   .rs-card { min-height: 138px; padding: 13px; }
   .rs-card-top { margin-bottom: 12px; }
   .rs-num { font-size: 26px; }
+}
+
+/* Account rows */
+#userTable tbody tr {
+  background: var(--white);
+  border-bottom-color: var(--gray-200);
+  transition: background .18s ease, box-shadow .18s ease;
+}
+
+#userTable tbody tr:hover {
+  background: #f8fbff;
+  box-shadow: inset 3px 0 0 var(--blue-mid);
+}
+
+#userTable tbody td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+#userTable tbody td:first-child {
+  padding-left: 24px;
+}
+
+#userTable .user-cell {
+  min-width: 240px;
+  gap: 12px;
+}
+
+#userTable .user-av {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--white);
+  box-shadow: 0 3px 10px rgba(16, 40, 80, .12);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+#userTable tbody tr:hover .user-av {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(16, 40, 80, .16);
+}
+
+#userTable .user-name {
+  font-size: 13.5px;
+  letter-spacing: -.1px;
+}
+
+#userTable .user-email {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#userTable .account-role-cell,
+#userTable .account-status-cell,
+#userTable .account-date-cell {
+  white-space: nowrap;
+}
+
+#userTable .account-scope {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#userTable .account-date-cell {
+  color: var(--gray-500);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+#userTable .account-actions-cell {
+  min-width: 190px;
+}
+
+#userTable .account-actions-cell .row-actions {
+  justify-content: flex-end;
+  opacity: .82;
+  transition: opacity .18s ease;
+}
+
+#userTable tbody tr:hover .account-actions-cell .row-actions {
+  opacity: 1;
+}
+
+#userTable .badge {
+  min-height: 27px;
+  padding: 4px 10px;
+}
+
+@media (max-width: 760px) {
+  #userTable tbody td:first-child {
+    padding-left: 16px;
+  }
+
+  #userTable .user-cell {
+    min-width: 210px;
+  }
+
+  #userTable .account-scope {
+    max-width: 180px;
+  }
 }

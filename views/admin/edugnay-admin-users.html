@@ -688,7 +688,7 @@
 
         return `
       <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}">
-        <td>
+        <td class="account-user-cell">
           <div class="user-cell">
             <div class="user-av ${meta.avatarClass}">${initials}</div>
             <div>
@@ -697,11 +697,11 @@
             </div>
           </div>
         </td>
-        <td><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
-        <td>${getSectionDisplay(u)}</td>
-        <td>${statusBadge}</td>
-        <td class="date-cell">${u.dateAdded}</td>
-        <td><div class="row-actions">${actionButtons}</div></td>
+        <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
+        <td class="account-scope-cell"><span class="account-scope">${getSectionDisplay(u)}</span></td>
+        <td class="account-status-cell">${statusBadge}</td>
+        <td class="date-cell account-date-cell">${u.dateAdded}</td>
+        <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
       </tr>`;
       }).join('');
 

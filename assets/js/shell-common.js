@@ -85,6 +85,50 @@ function applyPageTitleToTopbar() {
   });
 }
 
+/* Initialize the shared right-edge fade for every horizontally scrollable tab bar. */
+window.initScrollFades = function initScrollFades() {
+  const selector = [
+    '.child-switcher',
+    '.subject-tab-bar',
+    '.profile-tab-bar',
+    '.mgmt-tabs',
+    '.filter-tabs',
+    '.tab-bar',
+    '.cat-tabs',
+    '.att-history-tabs',
+    '.grade-tabs',
+    '.mini-tab-bar',
+    '.section-tab-bar'
+  ].join(', ');
+
+  document.querySelectorAll(selector).forEach(element => {
+    if (element.dataset.scrollFadeReady === 'true') return;
+    element.dataset.scrollFadeReady = 'true';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'scroll-fade-wrap';
+    if (!element.classList.contains('child-switcher')) {
+      wrapper.classList.add('tabs-fade', 'light-tabs-fade');
+    }
+
+    element.parentNode.insertBefore(wrapper, element);
+    wrapper.appendChild(element);
+
+    const updateFade = () => {
+      const hasMore = element.scrollWidth - element.clientWidth - element.scrollLeft > 4;
+      wrapper.classList.toggle('has-more-right', hasMore);
+    };
+
+    updateFade();
+    element.addEventListener('scroll', updateFade, { passive: true });
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(updateFade).observe(element);
+    } else {
+      window.addEventListener('resize', updateFade);
+    }
+  });
+};
+
 document.addEventListener('click', event => {
   const { trigger, dropdown } = getProfileControls();
   if (trigger && dropdown && !trigger.contains(event.target) && !dropdown.contains(event.target)) {
@@ -98,4 +142,7 @@ document.addEventListener('click', event => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', applyPageTitleToTopbar);
+document.addEventListener('DOMContentLoaded', () => {
+  applyPageTitleToTopbar();
+  window.initScrollFades();
+});

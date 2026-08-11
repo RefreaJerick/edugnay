@@ -271,3 +271,106 @@
   background: var(--blue-pale) !important;
   color: var(--blue-mid) !important;
 }
+
+/* Shared tab-bar surface and interaction treatment. */
+.mgmt-tabs,
+.filter-tabs,
+.tab-bar,
+.cat-tabs,
+.att-history-tabs,
+.profile-tab-bar,
+.grade-tabs,
+.subject-tab-bar,
+.mini-tab-bar,
+.section-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mgmt-tabs::-webkit-scrollbar,
+.filter-tabs::-webkit-scrollbar,
+.tab-bar::-webkit-scrollbar,
+.cat-tabs::-webkit-scrollbar,
+.att-history-tabs::-webkit-scrollbar,
+.profile-tab-bar::-webkit-scrollbar,
+.grade-tabs::-webkit-scrollbar,
+.subject-tab-bar::-webkit-scrollbar,
+.mini-tab-bar::-webkit-scrollbar,
+.section-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.mgmt-tabs,
+.filter-tabs,
+.tab-bar,
+.cat-tabs,
+.att-history-tabs,
+.profile-tab-bar,
+.grade-tabs,
+.subject-tab-bar,
+.mini-tab-bar,
+.section-tab-bar {
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 3px 14px rgba(16, 40, 80, 0.045);
+}
+
+.mgmt-tab,
+.filter-tab,
+.tab-btn,
+.cat-tab,
+.att-hist-tab,
+.profile-tab,
+.grade-tab,
+.subject-tab,
+.mini-tab,
+.section-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gray-500);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.mgmt-tab:not(.active):hover,
+.filter-tab:not(.active):hover,
+.tab-btn:not(.active):hover,
+.cat-tab:not(.active):hover,
+.att-hist-tab:not(.active):hover,
+.profile-tab:not(.active):hover,
+.grade-tab:not(.active):hover,
+.subject-tab:not(.active):hover,
+.mini-tab:not(.active):hover,
+.section-tab:not(.active):hover {
+  background: var(--gray-50) !important;
+  border-color: var(--gray-200) !important;
+  color: var(--gray-700) !important;
+}
+
+.mgmt-tab.active,
+.filter-tab.active,
+.tab-btn.active,
+.cat-tab.active,
+.att-hist-tab.active,
+.profile-tab.active,
+.grade-tab.active,
+.subject-tab.active,
+.mini-tab.active,
+.section-tab.active {
+  box-shadow: 0 2px 6px rgba(29, 92, 180, 0.08) !important;
+}
+
+.mini-tab {
+  flex: 1 0 auto;
+}

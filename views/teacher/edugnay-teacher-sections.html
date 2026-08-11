@@ -590,7 +590,7 @@
       <!-- Published banner (shows when grades are published) -->
       <div class="publish-banner">
         <div class="publish-banner-left">
-          <i data-lucide="check-circle" style="width:20px;height:20px;color:var(--blue-mid);flex-shrink:0;"></i>
+          <div class="publish-banner-icon"><i data-lucide="check-circle" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
           <div>
             <div class="publish-info-title">Grades Published: Q2</div>
             <div class="publish-info-sub">Published on June 10, 2025 · Visible to students and parents · You can still edit and re-publish</div>
@@ -634,7 +634,7 @@
 
         <div class="publish-banner" id="quarterLockBanner" style="display:none;background:var(--gray-100);">
           <div class="publish-banner-left">
-            <i data-lucide="lock" style="width:20px;height:20px;color:var(--gray-500);flex-shrink:0;"></i>
+            <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;color:var(--gray-500);"></i></div>
             <div>
               <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Quarter is Locked</div>
               <div class="publish-info-sub" id="quarterLockDesc">This quarter is closed. Scores are read-only. Contact the admin to unlock it in System Config.</div>
@@ -719,7 +719,7 @@
             <i data-lucide="calendar" style="width:15px;height:15px;color:var(--gray-400);"></i>
             <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
           </div>
-          <div class="att-summary" style="padding:0;border:none;margin:0;">
+          <div class="att-summary">
             <div class="att-summary-item"><div class="att-dot present"></div><span style="color:#16a34a;">Present: <strong id="countP">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot absent"></div><span style="color:var(--red);">Absent: <strong id="countA">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot late"></div><span style="color:#d97706;">Late: <strong id="countL">0</strong></span></div>
@@ -729,7 +729,7 @@
 
         <div class="publish-banner" id="attLockBanner" style="display:none;background:var(--red-pale);">
           <div class="publish-banner-left">
-            <i data-lucide="lock" style="width:20px;height:20px;color:var(--red);flex-shrink:0;"></i>
+            <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;color:var(--red);"></i></div>
             <div>
               <div class="publish-info-title" style="color:var(--red);">Past Attendance Locked</div>
               <div class="publish-info-sub">Editing is disabled for this date. Enable "Allow Teachers to Edit Past Attendance" in System Config to make changes.</div>
@@ -928,7 +928,7 @@
             </button>
           </div>
         </div>
-        <div style="padding:16px 24px;" id="assignmentList"><!-- JS generated --></div>
+        <div id="assignmentList"><!-- JS generated --></div>
       </div>
     </div>
 

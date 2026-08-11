@@ -752,33 +752,54 @@ thead tr:hover .comp-delete-btn {
 /* Publish banner */
 .publish-banner {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
-  border-radius: 10px;
-  padding: 14px 20px;
+  border-radius: 13px;
+  padding: 14px 16px;
   margin: 0 24px 20px;
   flex-wrap: wrap;
   gap: 12px;
+  box-shadow: 0 3px 12px rgba(16, 40, 80, 0.05);
 }
 
 .publish-banner-left {
   display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.publish-banner-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  flex: 0 0 34px;
+  border-radius: 10px;
+  background: var(--white);
+  box-shadow: 0 2px 7px rgba(16, 40, 80, 0.08);
 }
 
 .publish-info-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--blue);
+  line-height: 1.25;
 }
 
 .publish-info-sub {
   font-size: 11px;
   color: var(--gray-500);
-  margin-top: 2px;
+  line-height: 1.55;
+  margin-top: 3px;
+}
+
+.publish-banner > .top-btn,
+.publish-banner > #quarterLockAction {
+  align-self: center;
 }
 
 
@@ -1566,5 +1587,284 @@ thead tr:hover .comp-delete-btn {
 
   .section-header-right {
     width: 100%;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Section workspace refresh
+   Align the tab contents with the Admin Class Management surfaces.
+   ------------------------------------------------------------------------- */
+.tab-content > .panel,
+.tab-content .panel {
+  border-radius: 16px;
+  border-color: var(--gray-200);
+  box-shadow: 0 4px 16px rgba(16, 40, 80, 0.055);
+}
+
+.panel-head {
+  padding: 17px 20px;
+  background: var(--white);
+}
+
+.panel-title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.panel-sub {
+  line-height: 1.45;
+}
+
+.panel-head-actions {
+  gap: 7px;
+}
+
+.search-toolbar,
+.score-toolbar,
+.att-toolbar {
+  padding: 11px 20px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.search-toolbar .search-input,
+.score-toolbar .search-input,
+.date-input,
+.filter-select {
+  min-height: 38px;
+  background: var(--white);
+  border-radius: 10px;
+}
+
+.search-toolbar .search-input:focus,
+.score-toolbar .search-input:focus,
+.date-input:focus,
+.filter-select:focus {
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
+}
+
+thead th {
+  padding: 11px 20px;
+  background: var(--gray-50);
+  color: var(--gray-500);
+}
+
+tbody tr {
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: var(--blue-xpale);
+}
+
+tbody td {
+  padding: 13px 20px;
+}
+
+tbody tr:hover td.sticky-col {
+  background: var(--blue-xpale);
+}
+
+.student-cell {
+  gap: 11px;
+}
+
+.student-av {
+  box-shadow: 0 0 0 3px var(--blue-xpale);
+}
+
+.row-btn {
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border-color: var(--gray-200);
+  background: var(--white);
+}
+
+.row-btn.edit:hover,
+.row-btn.danger:hover {
+  transform: none;
+}
+
+.att-summary {
+  padding: 10px 20px;
+  background: var(--white);
+}
+
+.att-summary-item {
+  padding: 6px 9px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+}
+
+.att-history-tabs {
+  padding: 11px 20px;
+}
+
+.att-legend {
+  padding: 10px 20px;
+  background: var(--gray-50);
+}
+
+.att-btn {
+  min-height: 31px;
+  border-radius: 8px;
+}
+
+.att-record-cell {
+  border: 1px solid transparent;
+}
+
+.upload-zone {
+  margin: 18px 20px;
+  padding: 28px 22px;
+  border-radius: 13px;
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  box-shadow: 0 4px 12px rgba(29, 92, 180, 0.07);
+}
+
+.upload-icon {
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  border-radius: 11px;
+  background: var(--white);
+  color: var(--blue-mid);
+  box-shadow: 0 2px 7px rgba(16, 40, 80, 0.07);
+}
+
+.materials-list {
+  padding: 8px 10px 12px;
+  background: var(--gray-50);
+}
+
+.material-item {
+  margin: 6px 0;
+  padding: 13px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.material-item:hover {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  box-shadow: 0 3px 10px rgba(16, 40, 80, 0.06);
+}
+
+.material-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.material-actions {
+  gap: 7px;
+}
+
+.assignment-card {
+  margin-bottom: 9px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(16, 40, 80, 0.035);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.assignment-card:hover {
+  border-color: var(--blue-pale);
+  box-shadow: 0 5px 14px rgba(16, 40, 80, 0.075);
+  transform: translateY(-1px);
+}
+
+#assignmentList {
+  padding: 10px 14px 14px !important;
+  background: var(--gray-50);
+}
+
+.assignment-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.assignment-progress-track {
+  height: 6px;
+  background: var(--gray-100);
+}
+
+.comp-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+@media (max-width: 760px) {
+  .panel-head,
+  .search-toolbar,
+  .score-toolbar,
+  .att-toolbar,
+  .att-history-tabs,
+  .att-legend {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .panel-head-actions,
+  .score-toolbar-right,
+  .assignment-card-actions,
+  .material-actions {
+    width: 100%;
+  }
+
+  .panel-head-actions .top-btn,
+  .score-toolbar-right .top-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .search-toolbar {
+    align-items: stretch;
+  }
+
+  .search-toolbar .search-wrap,
+  .search-toolbar .filter-select {
+    width: 100%;
+  }
+
+  .publish-banner {
+    margin-inline: 15px;
+  }
+
+  .material-item,
+  .assignment-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .material-info,
+  .assignment-card-body {
+    min-width: calc(100% - 50px);
+  }
+
+  .material-actions,
+  .assignment-card-actions {
+    justify-content: flex-end;
+  }
+
+  .upload-zone {
+    margin-inline: 15px;
   }
 }

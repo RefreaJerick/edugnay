@@ -931,7 +931,7 @@
       </div>
 
       <div class="unassigned-banner">
-        <div class="ub-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;color:#d97706;"></i></div>
+        <div class="ub-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
         <div class="ub-body">
           <div class="ub-title">13 students are not yet assigned to any section</div>
           <div class="ub-text">These students have accounts but are not enrolled in a section. Assign them before the grading period starts.</div>
@@ -1269,7 +1269,7 @@ function renderSubjects() {
     const full = s.assigned === s.total;
     return `
     <tr data-grades="${s.grades.join(',')}" data-name="${s.name.toLowerCase()}" data-id="${s.id}">
-      <td><div class="subj-cell"><div class="subj-icon-wrap" style="background:${s.iconBg}"><i data-lucide="${s.icon}" style="width:18px;height:18px;color:${s.iconColor};"></i></div><div><div class="subj-name">${s.name}</div><div class="subj-code-text">${s.code} · ${s.type}</div></div></div></td>
+      <td><div class="subj-cell"><div><div class="subj-name">${s.name}</div><div class="subj-code-text">${s.code} · ${s.type}</div></div></div></td>
       <td><div class="applies-wrap">${s.grades.map(g => `<span class="grade-pill">Gr. ${g}</span>`).join('')}</div></td>
       <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-text ${full ? 'text-full' : 'text-partial'}">${s.assigned}/${s.total}</span></div></td>
       <td>${s.total} sections</td>
@@ -1295,7 +1295,7 @@ function renderTeacherAssignments() {
 
     const rows = sec.subjects.map(su => `
       <div class="subject-row">
-        <div class="subj-name-wrap"><div class="subj-icon"><i data-lucide="${su.icon}" style="width:16px;height:16px;color:${su.iconColor};"></i></div><div><div class="subj-name">${su.name}</div><div class="subj-code">${su.code}</div></div></div>
+        <div class="subj-name-wrap"><div><div class="subj-name">${su.name}</div><div class="subj-code">${su.code}</div></div></div>
         ${su.teacher ? `
           <div class="teacher-assign"><div class="teacher-av ${su.avClass}">${su.initials}</div><div><div class="teacher-name">${su.teacher}</div><div class="teacher-email">${su.email}</div></div></div>
           <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>

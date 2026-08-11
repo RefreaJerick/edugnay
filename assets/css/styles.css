@@ -2177,3 +2177,34 @@ html, body {
     font-size: 14px !important;
   }
 }
+
+/* Shared right-edge fade for horizontally scrollable tabs and switchers. */
+.scroll-fade-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.scroll-fade-wrap::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 0 auto;
+  width: 44px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  background: linear-gradient(90deg, rgba(241, 245, 249, 0), rgba(241, 245, 249, 0.92));
+}
+
+.scroll-fade-wrap.light-tabs-fade::after,
+.scroll-fade-wrap.tabs-fade::after {
+  inset: 1px 0 1px auto;
+  border-radius: 0 13px 13px 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.94));
+}
+
+.scroll-fade-wrap.has-more-right::after {
+  opacity: 1;
+}
