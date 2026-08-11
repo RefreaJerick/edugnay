@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/parent/reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <style>
     /*
@@ -1024,7 +1025,7 @@
     - latestReport          → reports[0], or null if none confirmed yet for current week
         (renders the is-empty hero state — no content, no hint a pending one exists)
 
-  PARTIALS: same sidebar/topbar/profile-dropdown/logout-modal as parent-dashboard.html
+  PARTIALS: same sidebar/topbar/profile dropdown as parent-dashboard.html
   and the reports page (activeNav='reports').
 
   ROUTING: GET /parent/reports?child=:id once converted — paginate or lazy-load
@@ -1139,7 +1140,7 @@
             <a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user"
                 style="width:15px;height:15px;"></i>My Profile</a>
             <div class="tb-dropdown-divider"></div>
-            <button class="tb-dropdown-item danger" type="button" onclick="closeProfileMenu(); openLogoutModal();"><i
+            <button class="tb-dropdown-item danger" type="button" onclick="closeProfileMenu(); confirmLogout();"><i
                 data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</button>
           </div>
         </div>
@@ -1238,26 +1239,6 @@
     </div>
   </div>
 
-  <!-- LOGOUT CONFIRMATION MODAL -->
-  <div class="logout-modal-backdrop" id="logoutModal">
-    <div class="modal" style="max-width:380px;">
-      <div class="modal-head">
-        <div>
-          <div class="modal-title">Sign Out</div>
-          <div class="modal-sub">Are you sure you want to sign out?</div>
-        </div>
-        <button class="modal-close" onclick="closeLogoutModal()">
-          <i data-lucide="x" style="width:14px;height:14px;"></i>
-        </button>
-      </div>
-      <div class="modal-foot">
-        <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-        <button class="btn btn-danger" onclick="confirmLogout()">
-          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-        </button>
-      </div>
-    </div>
-  </div>
 
   <script>
     lucide.createIcons();
@@ -1463,11 +1444,6 @@
       if (e.target === this) closeReportModal();
     });
 
-    function toggleDrawer(open) {
-      const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
-      document.body.classList.toggle('drawer-open', isOpen);
-    }
-
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', function () {
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -1477,35 +1453,7 @@
     });
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { toggleDrawer(false); closeLogoutModal(); closeProfileMenu(); closeReportModal(); }
-    });
-
-    /* ── LOGOUT MODAL ── */
-    function openLogoutModal() {
-      document.getElementById('logoutModal').classList.add('open');
-      lucide.createIcons();
-    }
-    function closeLogoutModal() {
-      document.getElementById('logoutModal').classList.remove('open');
-    }
-    document.getElementById('logoutModal').addEventListener('click', function (e) {
-      if (e.target === this) closeLogoutModal();
-    });
-
-    /* ── PROFILE DROPDOWN ── */
-    function toggleProfileMenu(forceState) {
-      const trigger = document.getElementById('profileTrigger');
-      const dropdown = document.getElementById('profileDropdown');
-      const isOpen = forceState === undefined ? !dropdown.classList.contains('open') : forceState;
-      dropdown.classList.toggle('open', isOpen);
-      trigger.classList.toggle('open', isOpen);
-      trigger.setAttribute('aria-expanded', isOpen);
-    }
-    function closeProfileMenu() { toggleProfileMenu(false); }
-
-    document.addEventListener('click', (e) => {
-      const profile = document.getElementById('topbarProfile');
-      if (profile && !profile.contains(e.target)) closeProfileMenu();
+      if (e.key === 'Escape') { toggleDrawer(false); closeProfileMenu(); closeReportModal(); }
     });
 
     /* ── INIT ── */

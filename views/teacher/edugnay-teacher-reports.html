@@ -12,31 +12,12 @@
   <link rel="stylesheet" href="../../assets/css/adviser/narrative-reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+  <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body>
 
-<!-- LOGOUT CONFIRMATION MODAL -->
-<div class="logout-modal-backdrop" id="logoutModalBackdrop">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">Sign Out</div>
-        <div class="modal-sub">Are you sure you want to sign out?</div>
-      </div>
-      <button class="modal-close" onclick="closeLogoutModal()">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmLogout()">
-        <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
-      </button>
-    </div>
-  </div>
-</div>
 
 <div class="shell">
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
@@ -191,7 +172,7 @@
             My Profile
           </a>
           <div class="tb-dropdown-divider"></div>
-          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); openLogoutModal();">
+          <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
             <i data-lucide="log-out" style="width:15px;height:15px;"></i>
             Sign Out
           </a>

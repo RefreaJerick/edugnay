@@ -106,46 +106,6 @@ function goToTopbarNotif(link, id) {
   window.location.href = link;
 }
 
-function toggleNotifDropdown() {
-  document.getElementById('tbNotifPanel').classList.toggle('open');
-}
-
-function markAllNotifRead() {
-  const allIds = getAdminNotifItems().map(n => n.id);
-  setReadIds(allIds);
-  renderTopbarNotifs();
-}
-
-/* ── PROFILE DROPDOWN ── */
-function toggleProfileDropdown() {
-  const trigger = document.getElementById('tbProfileTrigger');
-  const dropdown = document.getElementById('tbProfileDropdown');
-  trigger.classList.toggle('open');
-  dropdown.classList.toggle('open');
-}
-
-/* ── OUTSIDE-CLICK CLOSE (profile + notif) ── */
-document.addEventListener('click', (e) => {
-  const trigger = document.getElementById('tbProfileTrigger');
-  const dropdown = document.getElementById('tbProfileDropdown');
-  if (trigger && dropdown && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
-    trigger.classList.remove('open');
-    dropdown.classList.remove('open');
-  }
-
-  const notifTrigger = document.getElementById('tbNotifTrigger');
-  const notifPanel = document.getElementById('tbNotifPanel');
-  if (notifTrigger && notifPanel && !notifTrigger.contains(e.target) && !notifPanel.contains(e.target)) {
-    notifPanel.classList.remove('open');
-  }
-});
-
-/* ── SIDEBAR DRAWER (mobile) ── */
-function toggleDrawer(open) {
-  const isOpen = open === undefined ? !document.body.classList.contains('drawer-open') : open;
-  document.body.classList.toggle('drawer-open', isOpen);
-}
-
 function toggleNavGroup(group) {
   group.classList.toggle('open');
 }
@@ -161,33 +121,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   renderTopbarNotifs();
-});
-
-/* ── LOGOUT ── */
-function openLogoutModal() {
-  const trigger = document.getElementById('tbProfileTrigger');
-  const dropdown = document.getElementById('tbProfileDropdown');
-  if (trigger) trigger.classList.remove('open');
-  if (dropdown) dropdown.classList.remove('open');
-
-  document.getElementById('logoutModalBackdrop').classList.add('open');
-  if (window.lucide) lucide.createIcons();
-}
-
-function closeLogoutModal() {
-  document.getElementById('logoutModalBackdrop').classList.remove('open');
-}
-
-function confirmLogout() {
-  // TODO on backend conversion: replace with POST /auth/logout,
-  // clear session cookie, then redirect
-  localStorage.clear(); // wipes mock data (reopen requests, read-state, etc.)
-  const isGitHubPages = location.hostname.endsWith("github.io");
-  const BASE = isGitHubPages ? "/edugnay" : "";
-
-  window.location.href = `${BASE}/index.html`;
-}
-
-document.getElementById('logoutModalBackdrop')?.addEventListener('click', function (e) {
-  if (e.target === this) closeLogoutModal();
 });
