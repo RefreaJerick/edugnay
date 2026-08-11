@@ -1802,6 +1802,12 @@
     let currentMonthKey = '2025-06';
     let selectedDate = null;
 
+    function renderChildSwitcher() {
+      const switcher = document.getElementById('child-switcher');
+      if (!switcher) return;
+      switcher.innerHTML = Object.entries(ATTENDANCE_BY_CHILD).map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${child.name.split(' ').map(part => part[0]).slice(0, 2).join('')}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div></div>`).join('');
+    }
+
     function switchChild(childKey, el) {
       currentChild = childKey;
       document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
@@ -2075,6 +2081,7 @@
     });
 
     /* ── INIT ── */
+    renderChildSwitcher();
     renderAll();
   </script>
 

@@ -613,7 +613,7 @@
           </div>
 
           <!-- STAT CARDS -->
-          <div class="stat-grid">
+          <div class="stat-grid" id="admin-summary-cards">
 
             <div class="stat-card green">
               <div class="stat-card-top">
@@ -684,7 +684,7 @@
             <div class="panel-head">
               <div class="panel-title">Quick Actions</div>
             </div>
-            <div class="quick-actions">
+            <div class="quick-actions" id="admin-quick-actions">
               <a href="#" class="qa-item" onclick="openAccountModal(); return false;">
                 <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
                 <div class="qa-text">
@@ -721,6 +721,35 @@
   </div>
 
   <script>
+    // Page data boundary: replace these arrays with admin dashboard endpoints later.
+    const ADMIN_SUMMARY_CARDS = [
+      { tone: 'green', icon: 'graduation-cap', trend: '▲ 4%', trendClass: 'trend-up', value: '284', label: 'Students', sub: 'Across 8 sections · JHS' },
+      { tone: 'gold', icon: 'book-open', trend: '0%', trendClass: 'trend-neu', value: '24', label: 'Faculty', sub: 'Active teachers this quarter' },
+      { tone: 'purple', icon: 'heart-handshake', trend: '▲ 11%', trendClass: 'trend-up', value: '261', label: 'Parents', sub: 'Linked to student accounts' }
+    ];
+
+    const ADMIN_QUICK_ACTIONS = [
+      { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', action: "openAccountModal(); return false;" },
+      { icon: 'user-plus', title: 'Enroll Student to Section', desc: 'Place students in their sections', action: "openStudentModal();" },
+      { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
+    ];
+
+    function renderAdminDashboardData() {
+      const cards = document.getElementById('admin-summary-cards');
+      if (cards) {
+        cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => `
+          <div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+      }
+      const actions = document.getElementById('admin-quick-actions');
+      if (actions) {
+        actions.innerHTML = ADMIN_QUICK_ACTIONS.map(action => `
+          <a href="#" class="qa-item" onclick="${action.action}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('');
+      }
+      lucide.createIcons();
+    }
+
+    renderAdminDashboardData();
+
     function renderWeekCalendar() {
       const grid = document.getElementById('weekCalendarGrid');
       const rangeLabel = document.getElementById('weekRangeLabel');

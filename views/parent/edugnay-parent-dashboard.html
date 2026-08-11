@@ -329,7 +329,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list">
+            <div class="ann-list" id="parent-dashboard-announcements">
               <!-- announcements[]: loop, filtered to audience IN ('all','parents') -->
               <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
                 <div class="ann-item-head">
@@ -391,6 +391,26 @@
   <script>
     lucide.createIcons();
 
+    // Page data boundary: replace this array with the parent announcements endpoint later.
+    const DASHBOARD_ANNOUNCEMENTS = [
+      { title: 'Q2 Narrative Reports Now Available', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports are now viewable in your EdUgnay parent dashboard.', time: 'Today, 9:00 AM', author: 'Admin' },
+      { title: 'Foundation Day - June 20', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Yesterday, 10:00 AM', author: 'Admin' }
+    ];
+
+    function renderDashboardAnnouncements() {
+      const list = document.getElementById('parent-dashboard-announcements');
+      if (!list) return;
+      list.innerHTML = DASHBOARD_ANNOUNCEMENTS.map(item => `
+        <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
+          <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+          <div class="ann-item-body">${item.body}</div>
+          <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+
+    renderDashboardAnnouncements();
+
     const DAYS = [
       { key: 'mon', label: 'Mon', date: 9 },
       { key: 'tue', label: 'Tue', date: 10 },
@@ -402,6 +422,10 @@
     const CHILDREN_DATA = {
       juan: {
         name: 'Juan Alcantara',
+        report: {
+          text: 'Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!',
+          sentBy: 'Ms. Maria Reyes · June 14, 8:02 AM'
+        },
         section: 'Grade 7 – St. Matthew',
         attendance: {
           mon: {
@@ -469,6 +493,10 @@
       },
       maya: {
         name: 'Maya Alcantara',
+        report: {
+          text: 'Maya had a positive week in class and participated well in her learning activities. Continue encouraging her to complete each task and share what she learned at home.',
+          sentBy: 'Ms. Maria Reyes · June 14, 8:05 AM'
+        },
         section: 'Grade 4 – St. Clare',
         attendance: {
           mon: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
@@ -490,10 +518,21 @@
     let currentChild = 'juan';
     let currentDay = 'fri';
 
+    function renderChildSwitcher() {
+      const switcher = document.getElementById('child-switcher');
+      if (!switcher) return;
+      switcher.innerHTML = Object.entries(CHILDREN_DATA).map(([key, data]) => {
+        const initials = data.name.split(' ').map(part => part[0]).slice(0, 2).join('');
+        return `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${initials}</div><div class="child-info"><div class="child-name">${data.name}</div><div class="child-section">${data.section}</div></div>${key === 'maya' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
+      }).join('');
+    }
+
     function updateChildContext() {
       const data = CHILDREN_DATA[currentChild];
       document.getElementById('banner-child-context').textContent = `Viewing: ${data.name} · ${data.section}`;
       document.querySelector('.report-hero-sub').textContent = `Week of June 9–14, 2025 · ${data.name}`;
+      document.getElementById('report-hero-text').textContent = data.report.text;
+      document.querySelector('.report-hero-meta').textContent = `Sent by ${data.report.sentBy}`;
     }
 
     function switchChild(childKey, el) {
@@ -689,6 +728,7 @@
     }
 
     /* ── INIT — runs once on page load, selects Juan and renders everything ── */
+    renderChildSwitcher();
     updateChildContext();
     renderDayStrip();
     renderAttendanceDetail();

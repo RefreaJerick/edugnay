@@ -555,7 +555,7 @@
               <div class="rail-title">Upcoming Deadlines</div>
               <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
             </div>
-            <div class="rail-body">
+            <div class="rail-body" id="student-deadlines">
               <!-- EJS: deadlines rendered from backend, scoped to this student -->
               <div class="deadline-item">
                 <div class="deadline-dot" style="background:var(--purple);box-shadow:0 0 5px rgba(124,58,237,0.4);">
@@ -630,6 +630,42 @@
     lucide.createIcons();
 
     /* ── FILTER ── */
+    // Page data boundary: replace this array with the announcements endpoint later.
+    const ANNOUNCEMENTS = [
+      { id: 1, priority: 'high', read: false, title: 'Foundation Day - June 20, 2025', time: 'Today, 8:00 AM', author: 'Admin', icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users', pinned: true },
+      { id: 2, priority: 'event', read: false, title: 'Intramurals Sign-up Open', time: 'Yesterday, 1:30 PM', author: 'Admin', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', tagClass: 'badge-gold', body: 'Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' },
+      { id: 3, priority: 'normal', read: true, title: 'Weekly Journal is Now Open for Submission', time: '2 days ago', author: 'Ms. Reyes', icon: 'notebook-pen', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'This week\'s journal submission is now open for Values Education. Please write about your week honestly. Submissions close <strong>Friday at 11:59 PM</strong>.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' },
+      { id: 4, priority: 'normal', read: true, title: 'Library Resources Updated', time: '3 days ago', author: 'Library', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'New reference materials are now available in the student library corner.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' },
+      { id: 5, priority: 'low', read: true, title: 'Student Council Meeting', time: 'June 5, 2025', author: 'Student Affairs', icon: 'users', iconClass: 'icon-low', tag: 'General', tagClass: 'badge-gray', body: 'Student Council representatives should check the posted schedule for the next meeting.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' }
+    ];
+
+    function renderStudentAnnouncements() {
+      const list = document.getElementById('annList');
+      if (!list) return;
+      list.innerHTML = ANNOUNCEMENTS.map((ann, index) => `
+        <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-read="${ann.read}" onclick="openAnnModal(this)">
+          ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
+          <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div><div class="ann-badges"><span class="badge ${ann.tagClass}">${ann.tag}</span>${ann.read ? '<span class="badge badge-green">Read</span>' : `<span class="badge badge-orange" id="unread-badge-${index}"><span class="unread-indicator"></span> Unread</span>`}</div></div><div class="ann-content" data-full="${ann.body}">${ann.body}</div><div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div><div class="ann-footer"><div class="ann-footer-left"><i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by ${ann.author}</div><div class="ann-footer-right"><button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))"><i data-lucide="eye" style="width:11px;height:11px;"></i> Read</button></div></div>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+
+    renderStudentAnnouncements();
+
+    const UPCOMING_DEADLINES = [
+      { title: 'Values Journal Entry', date: 'Friday · 11:59 PM', tag: 'Soon', tagClass: 'badge-purple', color: 'var(--purple)', shadow: 'box-shadow:0 0 5px rgba(124,58,237,0.4);' },
+      { title: 'Foundation Day', date: 'June 20, 2025', tag: 'Event', tagClass: 'badge-gold', color: 'var(--gold)' },
+      { title: 'Intramurals Sign-up', date: 'Closes Friday', tag: 'Soon', tagClass: 'badge-blue', color: 'var(--blue-mid)' }
+    ];
+
+    function renderStudentDeadlines() {
+      const rail = document.getElementById('student-deadlines');
+      if (!rail) return;
+      rail.innerHTML = UPCOMING_DEADLINES.map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('');
+    }
+
+    renderStudentDeadlines();
+
     function filterCards() {
       const query = document.getElementById('searchInput').value.toLowerCase();
       const priority = document.getElementById('priorityFilter').value;

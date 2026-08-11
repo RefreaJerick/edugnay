@@ -987,7 +987,7 @@
     </section>
 
     <!-- Summary strip -->
-    <div class="summary-strip">
+    <div class="summary-strip" id="journal-summary-strip">
       <div class="stat-card purple">
         <div class="stat-card-top">
           <div class="stat-card-icon">
@@ -1035,7 +1035,7 @@
     </div>
 
     <!-- Section tabs -->
-    <div class="section-tab-bar">
+    <div class="section-tab-bar" id="journal-section-tabs">
       <button class="section-tab active" onclick="switchSection('7-matthew', this)" id="tab-7-matthew">
         Grade 7 – St. Matthew
         <span class="tab-count">38</span>
@@ -1217,6 +1217,31 @@ function saveJournalSettings() {
 let currentSection = '7-matthew';
 let activeStudentIds = [];
 let activeStudentIndex = 0;
+
+const JOURNAL_SUMMARY_CARDS = [
+  { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', value: '108', label: 'Total students', sub: 'Students in your sections' },
+  { tone: 'green', icon: 'send', trend: 'On track', trendClass: 'trend-up', value: '89', label: 'Submitted this week', sub: 'Entries received so far' },
+  { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', value: '44', label: 'Pending review', sub: 'Entries waiting for feedback' },
+  { tone: 'red', icon: 'circle-x', trend: 'Needs follow up', trendClass: 'trend-down', value: '19', label: 'Not submitted', sub: 'Students to remind' }
+];
+
+const SECTION_TABS = [
+  { key: '7-matthew', label: 'Grade 7 – St. Matthew', count: 38 },
+  { key: '8-luke', label: 'Grade 8 – St. Luke', count: 36 },
+  { key: '9-peter', label: 'Grade 9 – St. Peter', count: 34 }
+];
+
+function renderJournalSummary() {
+  const strip = document.getElementById('journal-summary-strip');
+  if (!strip) return;
+  strip.innerHTML = JOURNAL_SUMMARY_CARDS.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+}
+
+function renderJournalSectionTabs() {
+  const tabs = document.getElementById('journal-section-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = SECTION_TABS.map(section => `<button class="section-tab ${section.key === currentSection ? 'active' : ''}" onclick="switchSection('${section.key}', this)" id="tab-${section.key}">${section.label}<span class="tab-count">${section.count}</span></button>`).join('');
+}
 
 /* ══════ SECTION SWITCH ══════ */
 function switchSection(sectionKey, btn) {
@@ -1453,6 +1478,9 @@ function showToast(msg, type = 'success') {
 }
 
 /* ══════ INIT ══════ */
+renderJournalSummary();
+renderJournalSectionTabs();
+lucide.createIcons();
 renderTable();
 </script>
 </body>

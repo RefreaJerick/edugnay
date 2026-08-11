@@ -313,7 +313,7 @@
             </div>
           </div>
         </div>
-        <div class="config-panel-body">
+        <div class="config-panel-body" id="teacher-employment-details">
           <div class="profile-detail-row">
             <span class="profile-detail-label">Employee No.</span>
             <span class="profile-detail-value">FAC-2019-0042</span>
@@ -393,6 +393,20 @@
 </div>
 
 <script>
+  const EMPLOYMENT_DETAILS = [{
+    employeeNo: 'FAC-2019-0042',
+    sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
+  }];
+
+  function renderEmploymentDetails() {
+    const panel = document.getElementById('teacher-employment-details');
+    if (!panel) return;
+    const details = EMPLOYMENT_DETAILS[0];
+    panel.innerHTML = `<div class="profile-detail-row"><span class="profile-detail-label">Employee No.</span><span class="profile-detail-value">${details.employeeNo}</span></div><div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-pill-col">${details.sections.map(section => `<span class="badge badge-blue">${section}</span>`).join('')}</div></div>`;
+  }
+
+  renderEmploymentDetails();
+
   lucide.createIcons();
 
   function openModal(id)  { document.getElementById(id).classList.add('open'); }

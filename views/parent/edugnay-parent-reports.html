@@ -1312,6 +1312,12 @@
     let currentChild = 'juan';
     let activeReportId = null;
 
+    function renderChildSwitcher() {
+      const switcher = document.getElementById('child-switcher');
+      if (!switcher) return;
+      switcher.innerHTML = Object.entries(REPORTS_BY_CHILD).map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${getInitials(child.name)}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div><span class="child-report-badge">${child.reports.length}</span></div>`).join('');
+    }
+
     function getInitials(name) {
       return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
     }
@@ -1503,6 +1509,7 @@
     });
 
     /* ── INIT ── */
+    renderChildSwitcher();
     renderLatest();
     renderTimeline();
   </script>

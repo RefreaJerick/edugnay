@@ -238,7 +238,7 @@
         </span>
       </div>
 
-      <div class="pipeline-flow">
+      <div class="pipeline-flow" id="pipeline-flow-steps">
         <div class="flow-step">
           <div class="flow-step-icon"><i data-lucide="user-check" style="width:16px;height:16px;"></i></div>
           <div class="flow-step-label">Attendance</div>
@@ -282,7 +282,7 @@
       EJS: stats.total, stats.pending, stats.confirmed, stats.atRisk
       rendered server-side inside the strip below
     -->
-    <div class="summary-strip">
+    <div class="summary-strip" id="report-summary-strip">
       <div class="stat-card purple">
         <div class="stat-card-top">
           <div class="stat-card-icon">
@@ -693,6 +693,38 @@
       report: `Rosa is flagged as at-risk this week. She was absent in Math, Science, English, and TLE on Wednesday and completed only 2 of 4 assignments, continuing a pattern from prior weeks. Her journal described feeling overwhelmed. We recommend a supportive conversation at home about pacing.`
     },
   ];
+
+  const REPORT_SUMMARY_CARDS = [
+    { tone: 'purple', icon: 'file-text', trend: 'This week', trendClass: 'trend-neu', value: REPORTS.length, label: 'Reports this week', sub: 'New reports received' },
+    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', value: REPORTS.filter(report => report.status === 'pending').length, label: 'Awaiting confirmation', sub: 'Needs your review' },
+    { tone: 'green', icon: 'check-circle', trend: 'Complete', trendClass: 'trend-up', value: REPORTS.filter(report => report.status === 'confirmed').length, label: 'Confirmed and sent', sub: 'Already shared with families' },
+    { tone: 'red', icon: 'alert-triangle', trend: 'Follow up', trendClass: 'trend-down', value: REPORTS.filter(report => report.atRisk).length, label: 'At-risk students', sub: 'May need follow-up' }
+  ];
+
+  const PIPELINE_STEPS = [
+    { icon: 'user-check', label: 'Attendance', sub: 'All subjects' },
+    { icon: 'clipboard-check', label: 'Assignments', sub: 'All subjects' },
+    { icon: 'bar-chart-2', label: 'Academic', sub: 'At-risk only' },
+    { icon: 'notebook-pen', label: 'Journal', sub: 'Values Ed' },
+    { icon: 'sparkles', label: 'AI Synthesis', sub: 'Welfare check', className: 'ai' },
+    { icon: 'send', label: 'To Parent', sub: 'After confirm', className: 'final' }
+  ];
+
+  function renderTeacherReportSummary() {
+    const strip = document.getElementById('report-summary-strip');
+    if (!strip) return;
+    strip.innerHTML = REPORT_SUMMARY_CARDS.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+  }
+
+  function renderPipelineSteps() {
+    const flow = document.getElementById('pipeline-flow-steps');
+    if (!flow) return;
+    flow.innerHTML = PIPELINE_STEPS.map((step, index) => `${index ? '<i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>' : ''}<div class="flow-step ${step.className || ''}"><div class="flow-step-icon"><i data-lucide="${step.icon}" style="width:16px;height:16px;"></i></div><div class="flow-step-label">${step.label}</div><div class="flow-step-sub">${step.sub}</div></div>`).join('');
+  }
+
+  renderTeacherReportSummary();
+  renderPipelineSteps();
+  lucide.createIcons();
 
   let activeReportId = null;
 

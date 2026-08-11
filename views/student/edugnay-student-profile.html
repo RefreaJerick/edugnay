@@ -304,7 +304,7 @@
             </div>
           </div>
         </div>
-        <div>
+        <div id="student-subject-list">
           <!-- subjects[]: loop -->
           <div class="subject-row">
             <div class="subject-info">
@@ -543,6 +543,27 @@
 lucide.createIcons();
 
 /* ── AVATAR UPLOAD ── */
+// Page data boundary: replace this array with the enrolled-subjects endpoint later.
+const STUDENT_SUBJECTS = [
+  { name: 'Mathematics', teacher: 'Ms. Maria Reyes', adviser: true },
+  { name: 'English', teacher: 'Mr. Paolo Santos' },
+  { name: 'Science', teacher: 'Mrs. Liza Ramos' },
+  { name: 'Filipino', teacher: 'Mr. Andres Cruz' },
+  { name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes' },
+  { name: 'Values Education', teacher: 'Ms. Maria Reyes' },
+  { name: 'MAPEH', teacher: 'Mr. Jun Bautista' }
+];
+
+function renderStudentSubjects() {
+  const list = document.getElementById('student-subject-list');
+  if (!list) return;
+  list.innerHTML = STUDENT_SUBJECTS.map(subject => `
+    <div class="subject-row"><div class="subject-info"><div class="subject-name">${subject.name}</div><div class="subject-teacher">${subject.teacher}</div></div>${subject.adviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`).join('');
+  lucide.createIcons();
+}
+
+renderStudentSubjects();
+
 function handleAvatarUpload(event) {
   const file = event.target.files[0];
   if (!file) return;

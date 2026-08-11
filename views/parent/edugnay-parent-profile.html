@@ -281,7 +281,7 @@
               </div>
             </div>
           </div>
-          <div>
+          <div id="linked-children-list">
             <!-- children[]: loop -->
             <div class="child-record-card">
               <div class="child-record-avatar">JA</div>
@@ -456,6 +456,20 @@
 
   <script>
     lucide.createIcons();
+
+    const LINKED_CHILDREN = [
+      { initials: 'JA', name: 'Juan Alcantara', section: 'Grade 7 – St. Matthew', adviser: 'Ms. Maria Reyes', lrn: '100-201-0001', relationship: 'Mother' },
+      { initials: 'MA', name: 'Maya Alcantara', section: 'Grade 4 – St. Clare', adviser: 'Mrs. Liza Ramos', lrn: '100-201-0114', relationship: 'Mother' }
+    ];
+
+    function renderLinkedChildren() {
+      const list = document.getElementById('linked-children-list');
+      if (!list) return;
+      list.innerHTML = LINKED_CHILDREN.map(child => `<div class="child-record-card"><div class="child-record-avatar">${child.initials}</div><div class="child-record-info"><div class="child-record-name">${child.name}</div><div class="child-record-section">${child.section} · Adviser: ${child.adviser}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${child.lrn}</div></div><span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> ${child.relationship}</span></div>`).join('');
+      lucide.createIcons();
+    }
+
+    renderLinkedChildren();
 
     /* ── AVATAR UPLOAD ── */
     function handleAvatarUpload(event) {

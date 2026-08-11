@@ -321,7 +321,7 @@
             <span class="badge badge-green">100% ✓</span>
           </div>
           <div class="config-panel-body">
-            <div class="weight-rows">
+            <div class="weight-rows" id="grading-weight-rows">
               <div class="weight-row">
                 <span class="weight-label">Written Work</span>
                 <div class="weight-bar-wrap">
@@ -394,7 +394,7 @@
           </div>
           <div class="config-panel-body">
             <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Attendance Status Codes</div>
-            <div class="att-codes" style="margin-bottom:20px;">
+            <div class="att-codes" id="attendance-status-codes" style="margin-bottom:20px;">
               <div class="att-code">
                 <div class="att-code-dot dot-present"></div>
                 <div class="att-code-info">
@@ -482,7 +482,7 @@
             </div>
           </div>
           <div class="config-panel-body">
-            <div class="trigger-rows">
+            <div class="trigger-rows" id="notification-trigger-list">
 
               <div class="trigger-row">
                 <div class="trigger-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
@@ -574,6 +574,50 @@
 </div>
 
 <script>
+  const ATTENDANCE_CODES = [
+    { name: 'Present', description: 'Student attended class', key: 'P', dotClass: 'dot-present' },
+    { name: 'Absent', description: 'Student did not attend', key: 'A', dotClass: 'dot-absent' },
+    { name: 'Late / Tardy', description: 'Student arrived after roll call', key: 'L', dotClass: 'dot-late' },
+    { name: 'Excused', description: 'Absence with valid reason', key: 'E', dotClass: 'dot-excused' }
+  ];
+
+  const NOTIFICATION_TRIGGERS = [
+    { icon: 'trending-down', iconBackground: 'var(--red-pale)', iconColor: 'var(--red)', label: 'Grade Falls Below Threshold', description: "Notify parent when a student's final encoded grade for the quarter drops below the set value.", enabled: true },
+    { icon: 'calendar-x', iconBackground: 'var(--orange-pale)', iconColor: '#d97706', label: 'Consecutive Absences', description: 'Notify parent when a student has this many absences in a row.', enabled: true },
+    { icon: 'clipboard-check', iconBackground: 'var(--green-pale)', iconColor: '#16a34a', label: 'Assignment Not Completed', description: 'Notify parent when a student fails to submit this many consecutive assignments.', enabled: false, inputValue: 2, unit: 'tasks' },
+    { icon: 'file-text', iconBackground: 'var(--gold-pale)', iconColor: '#92400e', label: 'Narrative Report Released', description: 'Notify parent when a teacher confirms and releases a narrative report.', enabled: true },
+    { icon: 'notebook-pen', iconBackground: 'var(--gray-100)', iconColor: 'var(--gray-500)', label: 'Journal Not Submitted', description: 'Notify parent when a student misses this many consecutive journal submissions.', enabled: false, inputValue: 2, unit: 'weeks' }
+  ];
+
+  const GRADING_WEIGHTS = [
+    { id: 'ww', label: 'Written Work', value: 30, color: '#7c3aed', name: 'writtenWork' },
+    { id: 'pt', label: 'Performance Task', value: 50, color: 'var(--blue-mid)', name: 'performanceTask' },
+    { id: 'qa', label: 'Quarterly Assessment', value: 20, color: 'var(--green)', name: 'quarterlyAssessment' }
+  ];
+
+  function renderAttendanceCodes() {
+    const list = document.getElementById('attendance-status-codes');
+    if (!list) return;
+    list.innerHTML = ATTENDANCE_CODES.map(code => `<div class="att-code"><div class="att-code-dot ${code.dotClass}"></div><div class="att-code-info"><div class="att-code-name">${code.name}</div><div class="att-code-desc">${code.description}</div></div><span class="att-code-key">${code.key}</span></div>`).join('');
+  }
+
+  function renderNotificationTriggers() {
+    const list = document.getElementById('notification-trigger-list');
+    if (!list) return;
+    list.innerHTML = NOTIFICATION_TRIGGERS.map(trigger => `<div class="trigger-row"><div class="trigger-icon" style="background:${trigger.iconBackground};color:${trigger.iconColor};"><i data-lucide="${trigger.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${trigger.label}</div><div class="trigger-desc">${trigger.description}</div></div>${trigger.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" type="number" value="${trigger.inputValue}" min="1"/><span class="trigger-unit">${trigger.unit}</span></div>` : ''}<div class="toggle ${trigger.enabled ? 'on' : ''}" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div></div>`).join('');
+    lucide.createIcons();
+  }
+
+  function renderGradingWeights() {
+    const list = document.getElementById('grading-weight-rows');
+    if (!list) return;
+    list.innerHTML = GRADING_WEIGHTS.map(weight => `<div class="weight-row"><span class="weight-label">${weight.label}</span><div class="weight-bar-wrap"><div class="weight-track"><div class="weight-fill" id="${weight.id}Fill" style="width:${weight.value}%;background:${weight.color};"></div></div></div><div class="weight-input-wrap"><input class="weight-input" type="number" id="${weight.id}Input" name="${weight.name}" value="${weight.value}" min="0" max="100" oninput="updateWeights()"/><span class="weight-pct">%</span></div></div>`).join('');
+  }
+
+  renderAttendanceCodes();
+  renderNotificationTriggers();
+  renderGradingWeights();
+
   // Config nav highlight on click
   document.querySelectorAll('.config-nav-item').forEach(item => {
     item.addEventListener('click', function(e) {

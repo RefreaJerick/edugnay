@@ -210,8 +210,8 @@
 
           <!-- Weekly journal — Values Education only, separate from learning materials -->
           <!-- if (student.hasValuesSubject) { -->
-          <section class="journal-feature" aria-labelledby="weeklyJournalTitle">
-            <div class="journal-card">
+          <section class="journal-feature" id="student-journal-feature" aria-labelledby="weeklyJournalTitle">
+            <div class="journal-card" id="student-journal-card">
               <div class="journal-icon-chip">
                 <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
               </div>
@@ -239,7 +239,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div>
+            <div id="student-materials-list">
               <!-- materials[]: loop -->
               <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
                 <div class="material-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
@@ -278,7 +278,7 @@
 
             <!-- Journal prompt — Values subject only, conditional render -->
             <!-- if (student.hasValuesSubject) { -->
-            <div class="journal-card">
+            <div class="journal-card" id="student-inline-journal">
               <div class="journal-icon-chip">
                 <i data-lucide="notebook-pen" style="width:17px;height:17px;"></i>
               </div>
@@ -326,7 +326,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list">
+            <div class="ann-list" id="student-announcements-list">
               <!-- announcements[]: loop -->
               <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
                 <div class="ann-item-head">
@@ -400,6 +400,67 @@
 
   <script>
     lucide.createIcons();
+
+    // Page data boundary: replace these arrays with fetch results during EJS conversion.
+    const JOURNAL = [{
+      subject: 'Values Education',
+      title: "This Week's Journal",
+      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?',
+      status: 'Window open',
+      due: 'due Friday'
+    }];
+
+    function renderStudentJournal() {
+      const card = document.getElementById('student-journal-card');
+      if (!card) return;
+      const journal = JOURNAL[0];
+      card.innerHTML = `<div class="journal-icon-chip"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div><div class="journal-body"><div class="journal-eyebrow" id="weeklyJournalTitle">${journal.subject} · ${journal.title}</div><div class="journal-prompt">"${journal.prompt}"</div><div class="journal-foot"><span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> ${journal.status} · ${journal.due}</span><a href="edugnay-student-journal.html" class="journal-cta">Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a></div></div>`;
+      document.getElementById('student-inline-journal')?.remove();
+      lucide.createIcons();
+    }
+
+    const MATERIALS = [
+      { title: 'Lesson 2 - Equations Slides', subject: 'Mathematics', posted: 'Posted June 12, 2025', icon: 'presentation', tone: 'blue' },
+      { title: 'Solving for X - Video Lesson', subject: 'Mathematics', posted: 'Posted June 10, 2025', icon: 'video', tone: 'green' },
+      { title: 'Quiz 1 Answer Key', subject: 'Mathematics', posted: 'Posted June 9, 2025', icon: 'file-check', tone: 'gold' }
+    ];
+
+    const ANNOUNCEMENTS = [
+      { title: 'Foundation Day - June 20', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Today, 8:00 AM', author: 'Admin' },
+      { title: 'Intramurals Sign-up Open', tag: 'Event', tagClass: 'badge-gold', body: 'Visit the Student Affairs table during recess to join a sports team.', time: 'Yesterday, 1:30 PM', author: 'Admin' },
+      { title: 'Values Journal - Window Open', tag: 'Reminder', tagClass: 'badge-blue', body: 'Submit your weekly reflection before 11:59 PM Friday.', time: '2 days ago', author: 'Ms. Reyes' }
+    ];
+
+    function renderStudentDashboardLists() {
+      const toneStyles = {
+        blue: 'background:var(--blue-xpale);color:var(--blue-mid);',
+        green: 'background:var(--green-pale);color:var(--green-dark);',
+        gold: 'background:var(--gold-pale);color:var(--gold-dark);'
+      };
+      const materials = document.getElementById('student-materials-list');
+      if (materials) {
+        materials.innerHTML = MATERIALS.map(item => `
+          <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
+            <div class="material-icon" style="${toneStyles[item.tone]}"><i data-lucide="${item.icon}" style="width:18px;height:18px;"></i></div>
+            <div class="material-info"><div class="material-title">${item.title}</div><div class="material-meta">${item.subject} · ${item.posted}</div></div>
+            <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
+          </div>`).join('');
+      }
+
+      const announcements = document.getElementById('student-announcements-list');
+      if (announcements) {
+        announcements.innerHTML = ANNOUNCEMENTS.map(item => `
+          <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
+            <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+            <div class="ann-item-body">${item.body}</div>
+            <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
+          </div>`).join('');
+      }
+      lucide.createIcons();
+    }
+
+    renderStudentJournal();
+    renderStudentDashboardLists();
 
     /*
       EJS NOTE: this entire greeting block is a client-side placeholder.

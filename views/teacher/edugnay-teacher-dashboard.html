@@ -374,7 +374,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list">
+            <div class="ann-list" id="teacher-dashboard-announcements">
               <div class="ann-item">
                 <div class="ann-item-head">
                   <span class="ann-item-title">Q2 Grade Encoding Deadline: June 14</span>
@@ -438,7 +438,7 @@
               <div class="panel-title">Pending Tasks</div>
               <span class="panel-meta">3 items need attention</span>
             </div>
-            <div class="task-list">
+            <div class="task-list" id="teacher-pending-tasks">
               <div class="task-item" onclick="navigate('reports')">
                 <div class="task-icon" style="background:var(--orange-pale);color:#d97706;">
                   <i data-lucide="file-text" style="width:15px;height:15px;"></i>
@@ -555,6 +555,69 @@
 
   <script>
     lucide.createIcons();
+
+    // Page data boundary: replace these arrays with dashboard endpoints later.
+    const TEACHER_SECTIONS = [
+      { grade: '7', id: '7-matthew', name: 'Grade 7 - St. Matthew', sub: 'Class Adviser · Math', students: '38', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '8', id: '8-luke', name: 'Grade 8 - St. Luke', sub: 'Math', students: '36', attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '8', id: '8-mark', name: 'Grade 8 - St. Mark', sub: 'Science', students: '35', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '9', id: '9-peter', name: 'Grade 9 - St. Peter', sub: 'Math', students: '37', attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '9', id: '9-john', name: 'Grade 9 - St. John', sub: 'Science', students: '34', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
+    ];
+
+    const TEACHER_DASHBOARD_ANNOUNCEMENTS = [
+      { title: 'Q2 Grade Encoding Deadline: June 14', tag: 'Urgent', tagClass: 'badge-red', body: 'All subject teachers must complete Q2 grade encoding no later than June 14, 2025.', time: 'Today, 8:00 AM', author: 'Admin' },
+      { title: 'Foundation Day: June 20, 2025', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. All faculty are expected to attend the program.', time: 'May 30, 10:00 AM', author: 'Admin' },
+      { title: 'Journal Window Open: Friday', tag: 'Normal', tagClass: 'badge-blue', body: 'Remind students to submit weekly journal entries before 11:59 PM Friday.', time: 'Yesterday, 3:00 PM', author: 'Admin' }
+    ];
+
+    const PENDING_TASKS = [
+      { title: '5 Narrative Reports Awaiting Confirmation', sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" },
+      { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
+      { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
+    ];
+
+    const FLAGGED_STUDENTS = [
+      { name: 'Ben Garcia', initials: 'BG', section: '9-peter', detail: 'Grade 9 - St. Peter', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
+      { name: 'Sofia Cruz', initials: 'SC', section: '8-luke', detail: 'Grade 8 - St. Luke', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
+      { name: 'Noel Pascual', initials: 'NP', section: '9-john', detail: 'Grade 9 - St. John', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
+      { name: 'Uma Reyes', initials: 'UR', section: '7-matthew', detail: 'Grade 7 - St. Matthew', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
+    ];
+
+    function renderTeacherDashboardData() {
+      const sectionList = document.getElementById('sectionCardsContainer');
+      if (sectionList) {
+        sectionList.innerHTML = TEACHER_SECTIONS.map(section => `
+          <div class="section-card" data-grade="${section.grade}" onclick="navigate('section','${section.id}')">
+            <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
+            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${section.sub}</div></div></div>
+            <div class="section-card-divider"></div>
+            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${section.students}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
+          </div>`).join('');
+      }
+
+      const announcements = document.getElementById('teacher-dashboard-announcements');
+      if (announcements) {
+        announcements.innerHTML = TEACHER_DASHBOARD_ANNOUNCEMENTS.map(item => `
+          <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div><div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
+      }
+
+      const taskList = document.getElementById('teacher-pending-tasks');
+      if (taskList) {
+        const tones = { orange: ['var(--orange-pale)', 'var(--orange-dark)'], red: ['var(--red-pale)', 'var(--red)'] };
+        taskList.innerHTML = PENDING_TASKS.map(task => `
+          <div class="task-item" onclick="${task.target}"><div class="task-icon" style="background:${tones[task.tone][0]};color:${tones[task.tone][1]};"><i data-lucide="${task.icon}" style="width:15px;height:15px;"></i></div><div class="task-body"><div class="task-title">${task.title}</div><div class="task-sub">${task.sub}</div></div><a class="task-action">${task.action} <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a></div>`).join('');
+      }
+
+      const flagList = document.getElementById('flagGridSingle');
+      if (flagList) {
+        flagList.innerHTML = FLAGGED_STUDENTS.map(student => `
+          <div class="flag-card flag-${student.kind}" data-section="${student.section}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${student.initials}</div><div class="flag-info"><div class="flag-name">${student.name}</div><div class="flag-detail">${student.detail}</div></div></div><div class="flag-reason-row"><span class="flag-tag flag-${student.kind === 'attendance' ? 'absences' : 'grades'}"><i data-lucide="${student.icon}" style="width:10px;height:10px;"></i> ${student.reason}</span></div></div>`).join('');
+      }
+      lucide.createIcons();
+    }
+
+    renderTeacherDashboardData();
 
     const MAX_SECTION_CARDS = 6;
     let currentSectionFilter = 'all';
