@@ -881,11 +881,6 @@
     display: block;
   }
 
-  .topbar {
-    flex-wrap: wrap;
-    padding: 16px 20px;
-  }
-
   .hamburger {
     display: grid;
   }

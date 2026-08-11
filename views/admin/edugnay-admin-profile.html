@@ -429,7 +429,8 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      document.getElementById('avatarImage').src = e.target.result;
+    document.getElementById('avatarImage').src = e.target.result;
+    document.getElementById('profileAvatar').classList.add('has-photo');
       document.getElementById('avatarImage').style.display = 'block';
       document.getElementById('avatarInitials').style.display = 'none';
       document.getElementById('avatarRemoveBtn').style.display = 'flex';
@@ -442,7 +443,8 @@
   // fetch('/admin/profile/avatar', { method: 'DELETE' }) to clear user.avatarUrl server-side
   function removeAvatarPhoto() {
     const img = document.getElementById('avatarImage');
-    img.src = '';
+  img.src = '';
+  document.getElementById('profileAvatar').classList.remove('has-photo');
     img.style.display = 'none';
     document.getElementById('avatarInitials').style.display = 'block';
     document.getElementById('avatarFileInput').value = '';

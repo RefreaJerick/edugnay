@@ -197,9 +197,6 @@
             <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
             <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
           </div>
-          <span class="prompt-status-pill" id="window-status-pill">
-            <i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
-          </span>
         </div>
         <p class="prompt-text">"Describe a moment this week when you helped a classmate or a classmate helped you. What
           did you learn from that experience?"</p>
@@ -368,7 +365,6 @@
       }
 
       if (!JOURNAL_WINDOW.isOpen) {
-        document.getElementById('window-status-pill').innerHTML = `<i data-lucide="lock" style="width:11px;height:11px;"></i> Window closed`;
         panel.innerHTML = `
       <div class="closed-state">
         <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>

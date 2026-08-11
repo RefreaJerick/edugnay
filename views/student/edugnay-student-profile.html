@@ -263,6 +263,7 @@
 
     <!-- ── ACADEMIC RECORD TAB ── -->
     <div class="profile-pane active" id="pane-academic">
+      <div class="profile-panel-grid">
       <div class="panel">
         <div class="panel-head">
           <div class="panel-head-title-group">
@@ -306,9 +307,6 @@
         <div>
           <!-- subjects[]: loop -->
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--blue-xpale);">
-              <i data-lucide="sigma" style="width:18px;height:18px;color:var(--blue-mid);"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">Mathematics</div>
               <div class="subject-teacher">Ms. Maria Reyes</div>
@@ -316,54 +314,36 @@
             <span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--purple-pale);">
-              <i data-lucide="book-open" style="width:18px;height:18px;color:var(--purple);"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">English</div>
               <div class="subject-teacher">Mr. Paolo Santos</div>
             </div>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--green-pale);">
-              <i data-lucide="flask-conical" style="width:18px;height:18px;color:#16a34a;"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">Science</div>
               <div class="subject-teacher">Mrs. Liza Ramos</div>
             </div>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--gold-pale);">
-              <i data-lucide="languages" style="width:18px;height:18px;color:#92400e;"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">Filipino</div>
               <div class="subject-teacher">Mr. Andres Cruz</div>
             </div>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--blue-xpale);">
-              <i data-lucide="globe" style="width:18px;height:18px;color:var(--blue-mid);"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">Araling Panlipunan</div>
               <div class="subject-teacher">Mrs. Carmen Reyes</div>
             </div>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--purple-pale);">
-              <i data-lucide="heart-handshake" style="width:18px;height:18px;color:var(--purple);"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">Values Education</div>
               <div class="subject-teacher">Ms. Maria Reyes</div>
             </div>
           </div>
           <div class="subject-row">
-            <div class="subject-icon" style="background:var(--green-pale);">
-              <i data-lucide="dumbbell" style="width:18px;height:18px;color:#16a34a;"></i>
-            </div>
             <div class="subject-info">
               <div class="subject-name">MAPEH</div>
               <div class="subject-teacher">Mr. Jun Bautista</div>
@@ -371,6 +351,7 @@
           </div>
           <!-- end subjects[] loop -->
         </div>
+      </div>
       </div>
     </div>
 
@@ -568,6 +549,7 @@ function handleAvatarUpload(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     document.getElementById('avatarImage').src = e.target.result;
+    document.getElementById('profileAvatar').classList.add('has-photo');
     document.getElementById('avatarImage').style.display = 'block';
     document.getElementById('avatarInitials').style.display = 'none';
     document.getElementById('avatarRemoveBtn').style.display = 'flex';
@@ -578,6 +560,7 @@ function handleAvatarUpload(event) {
 function removeAvatarPhoto() {
   const img = document.getElementById('avatarImage');
   img.src = '';
+  document.getElementById('profileAvatar').classList.remove('has-photo');
   img.style.display = 'none';
   document.getElementById('avatarInitials').style.display = 'block';
   document.getElementById('avatarFileInput').value = '';
