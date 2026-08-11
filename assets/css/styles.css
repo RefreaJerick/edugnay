@@ -401,7 +401,7 @@ body.drawer-open .sidebar {
   gap: 16px;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
   backdrop-filter: blur(10px);
   /* box-shadow: 0 10px 30px rgba(16, 40, 80, 0.08); */
 }
@@ -447,7 +447,7 @@ body.drawer-open .sidebar {
   border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(16, 40, 80, 0.16);
-  z-index: 30;
+  z-index: 120;
 }
 
 .tb-notif-panel {
