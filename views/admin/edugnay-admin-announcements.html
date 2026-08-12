@@ -574,17 +574,17 @@
                   <label class="aud-opt">
                     <input type="checkbox" name="audience" value="teachers"/>
                     <div class="aud-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:13px;height:13px;"></i></div>
-                    <span class="aud-opt-label">Teachers Only</span>
+                    <span class="aud-opt-label">Teachers</span>
                   </label>
                   <label class="aud-opt">
                     <input type="checkbox" name="audience" value="students"/>
                     <div class="aud-opt-icon" style="background:var(--green-pale);color:var(--green);"><i data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
-                    <span class="aud-opt-label">Students Only</span>
+                    <span class="aud-opt-label">Students</span>
                   </label>
                   <label class="aud-opt">
                     <input type="checkbox" name="audience" value="parents"/>
                     <div class="aud-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i data-lucide="heart-handshake" style="width:13px;height:13px;"></i></div>
-                    <span class="aud-opt-label">Parents Only</span>
+                    <span class="aud-opt-label">Parents</span>
                   </label>
                 </div>
               </div>
@@ -612,12 +612,11 @@
                 <input class="form-input" type="datetime-local" name="schedule"/>
               </div>
 
-              <div class="compose-footer">
-                <button type="button" class="btn btn-draft" onclick="saveDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
-                <button type="submit" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post Announcement</button>
-              </div>
-
             </form>
+          </div>
+          <div class="compose-footer">
+            <button type="button" class="btn btn-draft" onclick="saveDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
+            <button type="submit" form="composeAnnouncementForm" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post Announcement</button>
           </div>
         </div>
       </div>
@@ -651,10 +650,21 @@
     console.log('Saving draft:', Object.fromEntries(formData));
   }
 
-  document.querySelectorAll('.aud-opt').forEach(opt => {
-    opt.addEventListener('click', function() {
-      const cb = this.querySelector('input[type="checkbox"]');
-      this.classList.toggle('checked', cb.checked);
+  const audienceCheckboxes = Array.from(document.querySelectorAll('.aud-opt input[type="checkbox"]'));
+  audienceCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked && this.value === 'all') {
+        audienceCheckboxes
+          .filter(other => other !== this)
+          .forEach(other => { other.checked = false; });
+      } else if (this.checked) {
+        const allUsers = audienceCheckboxes.find(other => other.value === 'all');
+        if (allUsers) allUsers.checked = false;
+      }
+
+      audienceCheckboxes.forEach(input => {
+        input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
+      });
     });
   });
 
