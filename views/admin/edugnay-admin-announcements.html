@@ -22,9 +22,12 @@
 <div class="modal-backdrop" id="editModal">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="megaphone"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Edit Announcement</div>
         <div class="modal-sub">Make changes and repost to notify users.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
@@ -88,9 +91,12 @@
 <div class="modal-backdrop" id="deleteModalBackdrop">
   <div class="modal" style="max-width:400px;">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Delete Announcement</div>
         <div class="modal-sub">This action cannot be undone.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
@@ -525,7 +531,6 @@
                 <i data-lucide="megaphone" style="width:17px;height:17px;"></i>
               </div>
               <div>
-                <div class="compose-kicker">Publisher</div>
                 <div class="panel-title">New Announcement</div>
                 <div class="compose-sub">Share an update with the school community.</div>
               </div>

@@ -409,34 +409,8 @@
 }
 
 .materials-panel #materials-container {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-}
-
-.week-group-label {
-  padding: 8px 4px 1px;
-  background: transparent;
-  border: 0;
-}
-
-.material-row {
-  padding: 13px;
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--white), #fbfdff);
-  transition: border-color .18s, box-shadow .18s, transform .18s;
-}
-
-.material-row:hover {
-  background: var(--white);
-  border-color: var(--blue-pale);
-  box-shadow: 0 6px 16px rgba(26, 64, 128, .08);
-  transform: translateY(-1px);
-}
-
-.material-row:last-child {
-  border-bottom: 1px solid var(--gray-200);
+  display: block;
+  padding: 4px 0;
 }
 
 .material-icon {
@@ -488,14 +462,13 @@
   }
 
   .materials-panel #materials-container {
-    padding: 12px;
-    gap: 8px;
+    padding: 2px 0;
   }
 
   .material-row {
     align-items: flex-start;
     gap: 10px;
-    padding: 12px;
+    padding: 12px 16px;
   }
 
   .material-icon {

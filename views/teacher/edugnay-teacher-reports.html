@@ -263,54 +263,7 @@
       EJS: stats.total, stats.pending, stats.confirmed, stats.atRisk
       rendered server-side inside the strip below
     -->
-    <div class="summary-strip" id="report-summary-strip">
-      <div class="stat-card purple">
-        <div class="stat-card-top">
-          <div class="stat-card-icon">
-          <i data-lucide="file-text" style="width:18px;height:18px;"></i>
-          </div>
-          <span class="stat-card-trend trend-neu">This week</span>
-        </div>
-        <div class="stat-card-num" id="stat-total">38</div>
-        <div class="stat-card-label">Reports this week</div>
-        <div class="stat-card-sub">New reports received</div>
-      </div>
-      <div class="stat-card orange">
-        <div class="stat-card-top">
-          <div class="stat-card-icon">
-          <i data-lucide="hourglass" style="width:18px;height:18px;"></i>
-          </div>
-          <span class="stat-card-trend trend-neu">Needs review</span>
-        </div>
-        <div class="stat-card-num" id="stat-pending">5</div>
-        <div class="stat-card-label">Awaiting confirmation</div>
-        <div class="stat-card-sub">Needs your review</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-card-top">
-          <div class="stat-card-icon">
-          <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
-          </div>
-          <span class="stat-card-trend trend-up">Complete</span>
-        </div>
-        <div class="stat-card-num" id="stat-confirmed">33</div>
-        <div class="stat-card-label">Confirmed and sent</div>
-        <div class="stat-card-sub">Already shared with families</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-card-top">
-          <div class="stat-card-icon">
-          <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
-          </div>
-          <span class="stat-card-trend trend-down">Follow up</span>
-        </div>
-        <div class="stat-card-num" id="stat-atrisk">3</div>
-        <div class="stat-card-label">At-risk students</div>
-        <div class="stat-card-sub">May need follow-up</div>
-      </div>
-    </div>
-
-    <!-- ── REPORTS PANEL ── -->
+    <div class="summary-strip" id="report-summary-strip"></div>
     <div class="panel">
       <div class="panel-head">
         <!--
@@ -369,12 +322,14 @@
   Option (b) is easiest to integrate with the current JS.
 -->
 <div class="modal-backdrop" id="review-modal">
-  <div class="review-modal">
-    <div class="review-modal-head">
-      <div class="review-avatar" id="rm-avatar">JA</div>
-      <div>
-        <div class="review-modal-title" id="rm-name">Student Name</div>
-        <div class="review-modal-sub" id="rm-sub">Grade 7 – St. Matthew · Week of June 9–14, 2025</div>
+  <div class="review-modal modal">
+    <div class="review-modal-head modal-head">
+      <div class="modal-heading">
+      <div class="modal-heading-icon review-avatar" id="rm-avatar">JA</div>
+      <div class="modal-heading-copy">
+        <div class="modal-title review-modal-title" id="rm-name">Student Name</div>
+        <div class="modal-sub review-modal-sub" id="rm-sub">Grade 7 – St. Matthew · Week of June 9–14, 2025</div>
+      </div>
       </div>
       <button class="modal-close" onclick="closeModal('review-modal')">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
@@ -483,17 +438,19 @@
 
 <!-- ══════ GENERATE MODAL ══════ -->
 <div class="modal-backdrop" id="gen-modal">
-  <div class="review-modal gen-modal">
-    <div class="review-modal-head" style="border-bottom:none;">
-      <div class="review-avatar icon-purple">
+  <div class="review-modal gen-modal modal">
+    <div class="review-modal-head modal-head" style="border-bottom:none;">
+      <div class="modal-heading">
+      <div class="modal-heading-icon review-avatar icon-purple">
         <i data-lucide="sparkles" style="width:20px;height:20px;"></i>
       </div>
-      <div>
-        <div class="review-modal-title">Generate Weekly Reports</div>
+      <div class="modal-heading-copy">
+        <div class="modal-title review-modal-title">Generate Weekly Reports</div>
         <!--
           EJS: <div class="review-modal-sub"><%= adviser.sectionName %> · <%= stats.total %> students</div>
         -->
-        <div class="review-modal-sub">Grade 7 – St. Matthew · 38 students</div>
+        <div class="modal-sub review-modal-sub">Grade 7 – St. Matthew · 38 students</div>
+      </div>
       </div>
       <button class="modal-close" onclick="closeModal('gen-modal')">
         <i data-lucide="x" style="width:14px;height:14px;"></i>

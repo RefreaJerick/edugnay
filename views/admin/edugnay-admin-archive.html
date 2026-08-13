@@ -25,9 +25,12 @@
 <div class="modal-backdrop" id="confirmModal">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="archive-restore"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Confirm Archive</div>
         <div class="modal-sub">This action cannot be undone.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeModal('confirmModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
@@ -53,9 +56,12 @@
 <div class="modal-backdrop" id="viewModal">
   <div class="modal view-modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="archive"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title" id="viewModalTitle">S.Y. 2024–2025: Archive</div>
         <div class="modal-sub">Read-only archived records</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeModal('viewModal')"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
     </div>
@@ -253,32 +259,7 @@
     </div>
 
     <!-- Stat cards -->
-    <div class="stat-grid" id="archive-summary-cards">
-      <div class="stat-card blue">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">3</div>
-        <div class="stat-card-label">Archived Years</div>
-        <div class="stat-card-sub">S.Y. 2022–2023 to 2024–2025</div>
-      </div>
-      <div class="stat-card gold">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">743</div>
-        <div class="stat-card-label">Archived Students</div>
-        <div class="stat-card-sub">Across all archived years</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">23</div>
-        <div class="stat-card-label">Archived Sections</div>
-        <div class="stat-card-sub">Across all archived years</div>
-      </div>
-      <div class="stat-card gray">
-        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="trending-up" style="width:18px;height:18px;"></i></div></div>
-        <div class="stat-card-num">89%</div>
-        <div class="stat-card-label">Avg Pass Rate</div>
-        <div class="stat-card-sub">Across archived years</div>
-      </div>
-    </div>
+    <div class="stat-grid" id="archive-summary-cards"></div>
 
     <!-- Two column -->
     <div class="two-col">
@@ -546,12 +527,21 @@
     },
   };
 
-  const ARCHIVE_SUMMARY_CARDS = [
-    { tone: 'blue', icon: 'archive', value: '3', label: 'Archived Years', sub: 'S.Y. 2022–2023 to 2024–2025' },
-    { tone: 'gold', icon: 'users', value: '743', label: 'Archived Students', sub: 'Across all archived years' },
-    { tone: 'green', icon: 'door-open', value: '23', label: 'Archived Sections', sub: 'Across all archived years' },
-    { tone: 'gray', icon: 'trending-up', value: '89%', label: 'Avg Pass Rate', sub: 'Across archived years' }
-  ];
+  function buildArchiveSummaryCards(data = archiveData) {
+    const years = Object.keys(data).sort();
+    const records = years.map(year => data[year]);
+    const totalStudents = records.reduce((sum, record) => sum + Number(record.students || 0), 0);
+    const totalSections = records.reduce((sum, record) => sum + Number(record.sections || 0), 0);
+    const averagePassRate = records.length
+      ? Math.round(records.reduce((sum, record) => sum + parseInt(record.passRate, 10), 0) / records.length)
+      : 0;
+    return [
+      { tone: 'blue', icon: 'archive', value: records.length, label: 'Archived Years', sub: years.length ? `S.Y. ${years[0]} to ${years[years.length - 1]}` : 'No archived years' },
+      { tone: 'gold', icon: 'users', value: totalStudents, label: 'Archived Students', sub: 'Across all archived years' },
+      { tone: 'green', icon: 'door-open', value: totalSections, label: 'Archived Sections', sub: 'Across all archived years' },
+      { tone: 'gray', icon: 'trending-up', value: `${averagePassRate}%`, label: 'Avg Pass Rate', sub: 'Across archived years' },
+    ];
+  }
 
   const ARCHIVE_CHECKLIST = [
     'All 4 quarters finalized',
@@ -560,10 +550,10 @@
     'Attendance records complete'
   ];
 
-  function renderArchiveSummary() {
+  function renderArchiveSummary(data = archiveData) {
     const grid = document.getElementById('archive-summary-cards');
     if (!grid) return;
-    grid.innerHTML = ARCHIVE_SUMMARY_CARDS.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+    grid.innerHTML = buildArchiveSummaryCards(data).map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
   }
 
   function renderArchiveYears() {

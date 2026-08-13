@@ -26,11 +26,14 @@
   <div class="student-modal-backdrop" id="studentModalBackdrop">
     <div class="modal">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-plus"></i></div>
+          <div class="modal-heading-copy">
           <div class="modal-title" id="studentModalTitle">Assign Student</div>
           <div class="modal-sub">Place a student into a section.</div>
+          </div>
         </div>
-        <button class="modal-close" onclick="closeStudentModal()">✕</button>
+        <button class="modal-close" type="button" aria-label="Close assign student dialog" onclick="closeStudentModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
         <form id="assignStudentForm" method="post" action="/assignments/students/create">
@@ -101,18 +104,16 @@
   <div class="account-modal-backdrop" id="accountModalBackdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
       <div class="modal-head">
-        <div class="account-modal-heading">
-          <div class="account-modal-icon" aria-hidden="true">
+        <div class="modal-heading account-modal-heading">
+          <div class="modal-heading-icon account-modal-icon" aria-hidden="true">
             <i data-lucide="user-plus" style="width:19px;height:19px;"></i>
           </div>
-          <div>
-            <div class="account-modal-kicker">Account management</div>
+          <div class="modal-heading-copy">
             <div class="modal-title" id="accountModalTitle">Add New Account</div>
             <div class="modal-sub">Create a secure portal account for a member of your school community.</div>
           </div>
         </div>
-        <button class="modal-close" type="button" aria-label="Close add account dialog" onclick="closeAccountModal()"><i data-lucide="x"
-            style="width:18px;height:18px;"></i></button>
+        <button class="modal-close" type="button" aria-label="Close add account dialog" onclick="closeAccountModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
         <form id="createAccountForm" method="post" action="/users/create">
@@ -193,11 +194,11 @@
             <label class="form-label">Temporary Password</label>
             <input class="form-input" name="password" type="password" placeholder="Set a temporary password" />
           </div>
-          <div class="modal-foot">
-            <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
-            <button type="submit" class="btn btn-save">Create Account</button>
-          </div>
         </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+        <button type="submit" form="createAccountForm" class="btn btn-save">Create Account</button>
       </div>
     </div>
   </div>
@@ -206,25 +207,28 @@
   <div class="announcement-modal-backdrop" id="announcementModalBackdrop">
     <div class="modal">
       <div class="modal-head">
-        <div>
-          <div class="modal-title">Post Announcement</div>
-          <div class="modal-sub">Broadcast a message to the school community.</div>
+        <div class="modal-heading compose-heading">
+          <div class="modal-heading-icon compose-icon" aria-hidden="true">
+            <i data-lucide="megaphone" style="width:17px;height:17px;"></i>
+          </div>
+          <div class="modal-heading-copy">
+            <div class="modal-title">New Announcement</div>
+            <div class="modal-sub">Share an update with the school community.</div>
+          </div>
         </div>
-        <button class="modal-close" type="button" onclick="closeAnnouncementModal()"><i data-lucide="x"
-            style="width:18px;height:18px;"></i></button>
+        <button class="modal-close" type="button" aria-label="Close announcement composer" onclick="closeAnnouncementModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
-        <form id="postAnnouncementForm" method="post" action="/announcements/create">
-          <div class="form-group" style="margin-bottom:14px;">
+        <form id="postAnnouncementForm" method="post" action="/announcements/create" enctype="multipart/form-data">
+          <div class="form-group">
             <label class="form-label">Title</label>
-            <input class="form-input" type="text" name="title" placeholder="e.g. Q2 Grade Encoding Deadline" />
+            <input class="form-input" type="text" name="title" placeholder="e.g. Reminder: Grade Submission Deadline" />
           </div>
-          <div class="form-group" style="margin-bottom:14px;">
+          <div class="form-group">
             <label class="form-label">Content</label>
-            <textarea class="form-textarea" name="content" style="min-height:120px;"
-              placeholder="Write your announcement here..."></textarea>
+            <textarea class="form-textarea" name="content" placeholder="Write the announcement here..."></textarea>
           </div>
-          <div class="form-group" style="margin-bottom:14px;">
+          <div class="form-group">
             <label class="form-label">Priority</label>
             <input type="hidden" id="modalPriorityValue" name="priority" value="normal" />
             <div class="priority-opts">
@@ -255,19 +259,19 @@
                 <input type="checkbox" name="audience" value="teachers" />
                 <div class="aud-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i
                     data-lucide="book-open" style="width:13px;height:13px;"></i></div>
-                <span class="aud-opt-label">Teachers Only</span>
+                <span class="aud-opt-label">Teachers</span>
               </label>
               <label class="aud-opt">
                 <input type="checkbox" name="audience" value="students" />
                 <div class="aud-opt-icon" style="background:var(--green-pale);color:var(--green);"><i
                     data-lucide="graduation-cap" style="width:13px;height:13px;"></i></div>
-                <span class="aud-opt-label">Students Only</span>
+                <span class="aud-opt-label">Students</span>
               </label>
               <label class="aud-opt">
                 <input type="checkbox" name="audience" value="parents" />
                 <div class="aud-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i
                     data-lucide="heart-handshake" style="width:13px;height:13px;"></i></div>
-                <span class="aud-opt-label">Parents Only</span>
+                <span class="aud-opt-label">Parents</span>
               </label>
             </div>
           </div>
@@ -291,11 +295,15 @@
               </div>
             </div>
           </div>
-          <div class="modal-foot">
-            <button type="button" class="btn btn-cancel" onclick="closeAnnouncementModal()">Cancel</button>
-            <button type="submit" class="btn btn-save">Post Announcement</button>
+          <div class="form-group">
+            <label class="form-label">Schedule (optional)</label>
+            <input class="form-input" type="datetime-local" name="schedule" />
           </div>
         </form>
+      </div>
+      <div class="compose-footer">
+        <button type="button" class="btn btn-draft" onclick="saveDashboardAnnouncementDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
+        <button type="submit" form="postAnnouncementForm" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post Announcement</button>
       </div>
     </div>
   </div>
@@ -594,41 +602,7 @@
           </div>
 
           <!-- STAT CARDS -->
-          <div class="stat-grid" id="admin-summary-cards">
-
-            <div class="stat-card green">
-              <div class="stat-card-top">
-                <div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:20px;height:20px;"></i>
-                </div>
-                <span class="stat-card-trend trend-up">▲ 4%</span>
-              </div>
-              <div class="stat-card-num">284</div>
-              <div class="stat-card-label">Students</div>
-              <div class="stat-card-sub">Across 8 sections · JHS</div>
-            </div>
-
-            <div class="stat-card gold">
-              <div class="stat-card-top">
-                <div class="stat-card-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div>
-                <span class="stat-card-trend trend-neu">— 0%</span>
-              </div>
-              <div class="stat-card-num">24</div>
-              <div class="stat-card-label">Faculty</div>
-              <div class="stat-card-sub">Active teachers this quarter</div>
-            </div>
-
-            <div class="stat-card purple">
-              <div class="stat-card-top">
-                <div class="stat-card-icon"><i data-lucide="heart-handshake" style="width:20px;height:20px;"></i>
-                </div>
-                <span class="stat-card-trend trend-up">▲ 11%</span>
-              </div>
-              <div class="stat-card-num">261</div>
-              <div class="stat-card-label">Parents</div>
-              <div class="stat-card-sub">Linked to student accounts</div>
-            </div>
-
-          </div>
+          <div class="stat-grid" id="admin-summary-cards"></div>
 
           <!-- Recent Activity -->
           <div class="panel panel-activity">
@@ -648,7 +622,7 @@
           <div class="panel panel-week" id="weekPanel">
             <div class="panel-head">
               <div class="week-title-wrap">
-                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i>
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i>
                 </div>
                 <div>
                   <div class="panel-title">This Week</div>
@@ -702,12 +676,35 @@
   </div>
 
   <script>
-    // Page data boundary: replace these arrays with admin dashboard endpoints later.
-    const ADMIN_SUMMARY_CARDS = [
-      { tone: 'green', icon: 'graduation-cap', trend: '▲ 4%', trendClass: 'trend-up', value: '284', label: 'Students', sub: 'Across 8 sections · JHS' },
-      { tone: 'gold', icon: 'book-open', trend: '0%', trendClass: 'trend-neu', value: '24', label: 'Faculty', sub: 'Active teachers this quarter' },
-      { tone: 'purple', icon: 'heart-handshake', trend: '▲ 11%', trendClass: 'trend-up', value: '261', label: 'Parents', sub: 'Linked to student accounts' }
-    ];
+    // Page data boundary: replace ADMIN_DASHBOARD_DATA with the dashboard endpoint later.
+    const ADMIN_DASHBOARD_DATA = {
+      sectionCount: 8,
+      accounts: [
+        { role: 'students', total: 284, previousTotal: 273 },
+        { role: 'faculty', total: 24, previousTotal: 24 },
+        { role: 'parents', total: 261, previousTotal: 235 },
+      ],
+    };
+
+    function formatSummaryTrend(current, previous) {
+      if (!Number.isFinite(previous) || previous === 0) return '— 0%';
+      const change = Math.round(((current - previous) / previous) * 100);
+      if (change > 0) return `▲ ${change}%`;
+      if (change < 0) return `▼ ${Math.abs(change)}%`;
+      return '— 0%';
+    }
+
+    function buildAdminSummaryCards(data = ADMIN_DASHBOARD_DATA) {
+      const account = role => data.accounts.find(item => item.role === role) || { total: 0, previousTotal: 0 };
+      const students = account('students');
+      const faculty = account('faculty');
+      const parents = account('parents');
+      return [
+        { tone: 'green', icon: 'graduation-cap', trend: formatSummaryTrend(students.total, students.previousTotal), trendClass: 'trend-up', value: students.total, label: 'Students', sub: `Across ${data.sectionCount} sections · JHS` },
+        { tone: 'gold', icon: 'book-open', trend: formatSummaryTrend(faculty.total, faculty.previousTotal), trendClass: 'trend-neu', value: faculty.total, label: 'Faculty', sub: 'Active teachers this quarter' },
+        { tone: 'purple', icon: 'heart-handshake', trend: formatSummaryTrend(parents.total, parents.previousTotal), trendClass: 'trend-up', value: parents.total, label: 'Parents', sub: 'Linked to student accounts' },
+      ];
+    }
 
     const ADMIN_QUICK_ACTIONS = [
       { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', action: "openAccountModal(); return false;" },
@@ -715,10 +712,10 @@
       { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
     ];
 
-    function renderAdminDashboardData() {
+    function renderAdminDashboardData(data = ADMIN_DASHBOARD_DATA) {
       const cards = document.getElementById('admin-summary-cards');
       if (cards) {
-        cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => `
+        cards.innerHTML = buildAdminSummaryCards(data).map(card => `
           <div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
       }
       const actions = document.getElementById('admin-quick-actions');
@@ -942,10 +939,33 @@
       document.getElementById('modalPriorityValue').value = value;
     }
 
-    document.querySelectorAll('.announcement-modal-backdrop .aud-opt').forEach(opt => {
-      opt.addEventListener('click', function () {
-        const cb = this.querySelector('input[type="checkbox"]');
-        this.classList.toggle('checked', cb.checked);
+    function saveDashboardAnnouncementDraft() {
+      const form = document.getElementById('postAnnouncementForm');
+      const formData = new FormData(form);
+      formData.append('isDraft', 'true');
+
+      // TODO on backend conversion: submit this payload with isDraft=true.
+      console.log('Saving announcement draft:', Object.fromEntries(formData));
+    }
+
+    const modalAudienceCheckboxes = Array.from(
+      document.querySelectorAll('#announcementModalBackdrop .aud-opt input[type="checkbox"]')
+    );
+
+    modalAudienceCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (this.checked && this.value === 'all') {
+          modalAudienceCheckboxes
+            .filter(other => other !== this)
+            .forEach(other => { other.checked = false; });
+        } else if (this.checked) {
+          const allUsers = modalAudienceCheckboxes.find(other => other.value === 'all');
+          if (allUsers) allUsers.checked = false;
+        }
+
+        modalAudienceCheckboxes.forEach(input => {
+          input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
+        });
       });
     });
 

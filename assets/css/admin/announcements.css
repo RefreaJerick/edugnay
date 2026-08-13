@@ -1062,14 +1062,6 @@
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
-.compose-kicker {
-  margin-bottom: 2px;
-  color: var(--blue-mid);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
 .compose-panel .panel-title { font-size: 16px; letter-spacing: -.2px; }
 .compose-sub {
   margin-top: 3px;

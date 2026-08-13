@@ -716,44 +716,12 @@ tbody tr:hover {
   color: var(--gray-500);
 }
 
-.coverage-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mini-bar {
-  width: 60px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--gray-100);
-  overflow: hidden;
-}
-
-.mini-fill {
-  height: 100%;
-  border-radius: 999px;
-}
-
 .fill-full {
   background: #16a34a;
 }
 
 .fill-partial {
   background: var(--orange);
-}
-
-.coverage-text {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.text-full {
-  color: #16a34a;
-}
-
-.text-partial {
-  color: #d97706;
 }
 
 /* ══════ ASSIGN TEACHERS TAB ══════ */

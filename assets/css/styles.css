@@ -60,6 +60,18 @@
   --gold-border:          #e8c96d;
   --red-border:           #f5c2c2;
   --overlay-modal:        rgba(11, 31, 58, .48);
+  /* Shared portal content-panel system */
+  --panel-bg:             var(--white);
+  --panel-border:         var(--gray-200);
+  --panel-divider:        var(--gray-100);
+  --panel-radius:         14px;
+  --panel-shadow:         none;
+  --panel-head-py:        16px;
+  --panel-head-px:        24px;
+  --panel-head-gap:       10px;
+  --panel-title-size:     16px;
+  --panel-sub-size:       11px;
+  --panel-footer-bg:      var(--gray-50);
   --sidebar-w:   240px;
   --topbar-h:    76px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
@@ -2264,4 +2276,96 @@ html, body {
 
 .scroll-fade-wrap.has-more-right::after {
   opacity: 1;
+}
+
+/*
+  Shared portal panel system
+  Page styles still own each panel's inner layout. These rules keep the outer
+  surface, heading hierarchy, divider and footer treatment consistent across
+  admin, teacher, parent and student pages.
+*/
+.shell .main :is(
+  .panel,
+  .notif-panel,
+  .compose-panel,
+  .config-panel,
+  .rail-card
+),
+.shell .main #current-week-panel.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  overflow: hidden;
+}
+
+.shell .main :is(.panel:not(.panel-week), .compose-panel) > .panel-head,
+.shell .main #current-week-panel.panel > .panel-head,
+.shell .main .notif-panel > .notif-panel-head,
+.shell .main .config-panel > .config-panel-head,
+.shell .main .rail-card > .rail-head,
+.shell .main .panel > .enrolled-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--panel-head-gap);
+  min-height: 0;
+  padding: var(--panel-head-py) var(--panel-head-px);
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-divider);
+}
+
+.shell .main :is(.panel:not(.panel-week), .compose-panel) > .panel-head :is(.panel-title, .enrolled-title),
+.shell .main #current-week-panel.panel > .panel-head .panel-title,
+.shell .main .notif-panel > .notif-panel-head .notif-panel-title,
+.shell .main .config-panel > .config-panel-head .cph-title,
+.shell .main .rail-card > .rail-head .rail-title,
+.shell .main .panel > .enrolled-head .enrolled-title {
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: var(--panel-title-size);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -.15px;
+}
+
+.shell .main :is(
+  .panel-sub,
+  .section-panel-sub,
+  .assignment-panel-sub,
+  .cph-sub,
+  .enrolled-meta
+) {
+  margin-top: 2px;
+  color: var(--gray-400);
+  font-size: var(--panel-sub-size);
+  line-height: 1.45;
+}
+
+.shell .main :is(.panel-title-icon, .cph-icon, .compose-icon) {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+
+.shell .main :is(.config-panel-foot, .compose-footer) {
+  padding: 14px var(--panel-head-px);
+  background: var(--panel-footer-bg);
+  border-top: 1px solid var(--panel-divider);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --panel-head-py: 14px;
+    --panel-head-px: 16px;
+    --panel-title-size: 15px;
+  }
+
+  .shell .main :is(.config-panel-foot, .compose-footer) {
+    padding-right: var(--panel-head-px);
+    padding-left: var(--panel-head-px);
+  }
 }

@@ -52,10 +52,13 @@
   <div class="modal-backdrop" id="annDetailModal">
     <div class="modal">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="megaphone"></i></div>
+          <div class="modal-heading-copy">
           <!-- EJS: <%= announcement.title %> -->
           <div class="modal-title" id="modalAnnTitle">Announcement Title</div>
           <div class="modal-sub" id="modalAnnMeta">Posted by Admin · Today, 8:00 AM</div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeAnnModal()">
           <i data-lucide="x" style="width:14px;height:14px;"></i>

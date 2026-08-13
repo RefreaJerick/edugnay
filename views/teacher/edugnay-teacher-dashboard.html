@@ -208,12 +208,18 @@
             </div>
           </div>
 
+          <!-- TEACHER SUMMARY CARDS -->
+          <div class="stat-grid teacher-summary-grid" id="teacher-summary-cards" aria-label="Teacher summary"></div>
+
           <!-- My Sections -->
           <div class="panel panel-sections">
             <div class="panel-head">
-              <div class="panel-title">My Sections</div>
-              <div style="display:flex;align-items:center;gap:12px;">
-                <span style="font-size:11px;color:var(--gray-400);">5 sections</span>
+              <div class="section-panel-heading">
+                <div class="panel-title">My Sections</div>
+                <div class="section-panel-sub">Classes assigned this term</div>
+              </div>
+              <div class="section-panel-meta">
+                <span class="section-count" id="teacherSectionCount">5 sections</span>
                 <a class="panel-action" onclick="navigate('section')">
                   View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
                 </a>
@@ -402,7 +408,7 @@
           <div class="panel panel-week" id="weekPanel">
             <div class="panel-head">
               <div class="week-title-wrap">
-                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i></div>
+                <div class="week-title-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div>
                 <div>
                   <div class="panel-title">This Week</div>
                   <div class="week-title-sub">Your teaching schedule</div>
@@ -546,6 +552,23 @@
       { grade: '9', id: '9-john', name: 'Grade 9 - St. John', sub: 'Science', students: '34', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
     ];
 
+    const TEACHER_SUMMARY_CARDS = [
+      {
+        tone: 'green',
+        icon: 'graduation-cap',
+        label: 'Total Students',
+        getValue: () => TEACHER_SECTIONS.reduce((total, section) => total + Number(section.students), 0),
+        getSub: () => `Across ${TEACHER_SECTIONS.length} assigned sections`
+      },
+      {
+        tone: 'gold',
+        icon: 'school',
+        label: 'Sections Handled',
+        getValue: () => TEACHER_SECTIONS.length,
+        sub: 'Assigned for the current term'
+      }
+    ];
+
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = [
       { title: 'Q2 Grade Encoding Deadline: June 14', tag: 'Urgent', tagClass: 'badge-red', body: 'All subject teachers must complete Q2 grade encoding no later than June 14, 2025.', time: 'Today, 8:00 AM', author: 'Admin' },
       { title: 'Foundation Day: June 20, 2025', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. All faculty are expected to attend the program.', time: 'May 30, 10:00 AM', author: 'Admin' },
@@ -566,15 +589,31 @@
     ];
 
     function renderTeacherDashboardData() {
+      const summaryList = document.getElementById('teacher-summary-cards');
+      if (summaryList) {
+        summaryList.innerHTML = TEACHER_SUMMARY_CARDS.map(card => `
+          <div class="stat-card ${card.tone}">
+            <div class="stat-card-top">
+              <div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div>
+            </div>
+            <div class="stat-card-num">${typeof card.getValue === 'function' ? card.getValue() : card.value}</div>
+            <div class="stat-card-label">${card.label}</div>
+            <div class="stat-card-sub">${typeof card.getSub === 'function' ? card.getSub() : card.sub}</div>
+          </div>`).join('');
+      }
+
       const sectionList = document.getElementById('sectionCardsContainer');
       if (sectionList) {
         sectionList.innerHTML = TEACHER_SECTIONS.map(section => `
-          <div class="section-card" data-grade="${section.grade}" onclick="navigate('section','${section.id}')">
+          <div class="section-card" data-grade="${section.grade}" onclick="navigate('section','${section.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); navigate('section','${section.id}'); }" role="button" tabindex="0">
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
             <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${section.sub}</div></div></div>
             <div class="section-card-divider"></div>
             <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${section.students}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
           </div>`).join('');
+
+        const sectionCount = document.getElementById('teacherSectionCount');
+        if (sectionCount) sectionCount.textContent = `${TEACHER_SECTIONS.length} sections`;
       }
 
       const announcements = document.getElementById('teacher-dashboard-announcements');
@@ -665,13 +704,15 @@
     }
     renderWeekCalendar();
 
-    document.getElementById('currentDate').textContent =
-      new Date().toLocaleDateString('en-US', {
+    const currentDate = document.getElementById('currentDate');
+    if (currentDate) {
+      currentDate.textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
+    }
 
     function filterFlaggedStudents() {
       const selected = document.getElementById('flagSectionFilter').value;

@@ -26,9 +26,12 @@
   <div class="modal-backdrop" id="accountModalBackdrop">
     <div class="modal">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-plus"></i></div>
+          <div class="modal-heading-copy">
           <div class="modal-title" id="accountModalTitle">Add New Account</div>
           <div class="modal-sub" id="accountModalSub">Fill in the details to create a new user.</div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeAccountModal()"><i data-lucide="x"
             style="width:18px;height:18px;"></i></button>
@@ -122,11 +125,11 @@
               placeholder="Set a temporary password" />
           </div>
 
-          <div class="modal-foot">
-            <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
-            <button type="submit" class="btn btn-save" id="accountSaveBtn">Create Account</button>
-          </div>
         </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeAccountModal()">Cancel</button>
+        <button type="submit" form="accountForm" class="btn btn-save" id="accountSaveBtn">Create Account</button>
       </div>
     </div>
   </div>
@@ -135,9 +138,12 @@
   <div class="modal-backdrop" id="deactivateModalBackdrop">
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-x"></i></div>
+          <div class="modal-heading-copy">
           <div class="modal-title" id="deactivateModalTitle">Confirm Action</div>
           <div class="modal-sub" id="deactivateModalSub"></div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeDeactivateModal()"><i data-lucide="x"
             style="width:18px;height:18px;"></i></button>
@@ -168,9 +174,12 @@
   <div class="modal-backdrop" id="deleteModalBackdrop">
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+          <div class="modal-heading-copy">
           <div class="modal-title" id="deleteModalTitle">Delete Account</div>
           <div class="modal-sub">This action cannot be undone.</div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeDeleteModal()"><i data-lucide="x"
             style="width:18px;height:18px;"></i></button>
@@ -203,10 +212,13 @@
   <div class="modal-backdrop" id="importModalBackdrop">
     <div class="modal">
       <div class="modal-head">
-        <div>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="upload"></i></div>
+          <div class="modal-heading-copy">
           <div class="modal-title">Import Users</div>
           <div class="modal-sub">School email and login credentials will be auto-generated and sent to each person's
             personal email.</div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeImportModal()"><i data-lucide="x"
             style="width:18px;height:18px;"></i></button>
@@ -483,7 +495,7 @@
         <div class="rs-card all selected" onclick="filterRole('all', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div><span class="rs-badge">All accounts</span></div>
           <div class="rs-info">
-            <div class="rs-num">0</div>
+            <div class="rs-num"></div>
             <div class="rs-label">All Users</div>
           </div>
           <div class="rs-caption">All school accounts</div>
@@ -491,7 +503,7 @@
         <div class="rs-card admin" onclick="filterRole('admin', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div><span class="rs-badge">System access</span></div>
           <div class="rs-info">
-            <div class="rs-num">0</div>
+            <div class="rs-num"></div>
             <div class="rs-label">Admins</div>
           </div>
           <div class="rs-caption">System access accounts</div>
@@ -499,7 +511,7 @@
         <div class="rs-card fac" onclick="filterRole('fac', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Teaching staff</span></div>
           <div class="rs-info">
-            <div class="rs-num">0</div>
+            <div class="rs-num"></div>
             <div class="rs-label">Faculty</div>
           </div>
           <div class="rs-caption">Teaching staff accounts</div>
@@ -507,7 +519,7 @@
         <div class="rs-card stud" onclick="filterRole('stud', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Learners</span></div>
           <div class="rs-info">
-            <div class="rs-num">0</div>
+            <div class="rs-num"></div>
             <div class="rs-label">Students</div>
           </div>
           <div class="rs-caption">Learner accounts</div>
@@ -515,7 +527,7 @@
         <div class="rs-card par" onclick="filterRole('par', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div><span class="rs-badge">Family accounts</span></div>
           <div class="rs-info">
-            <div class="rs-num">0</div>
+            <div class="rs-num"></div>
             <div class="rs-label">Parents</div>
           </div>
           <div class="rs-caption">Family accounts</div>

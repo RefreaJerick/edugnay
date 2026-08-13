@@ -24,9 +24,12 @@
 <div class="modal-backdrop" id="sectionAddModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="door-open"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Add New Section</div>
         <div class="modal-sub">Set up a new class section for JHS.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeSectionAddModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -77,9 +80,12 @@
 <div class="modal-backdrop" id="sectionEditModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="pencil"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Edit Section</div>
         <div class="modal-sub">Update the details of this section.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeSectionEditModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -130,9 +136,12 @@
 <div class="modal-backdrop" id="sectionStudentsModalBackdrop">
   <div class="modal modal-lg">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="users"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title" id="sectionStudentsModalTitle">Students</div>
         <div class="modal-sub" id="sectionStudentsModalSub">Enrolled students in this section.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeSectionStudentsModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -158,9 +167,12 @@
 <div class="modal-backdrop" id="subjectModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="library"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title" id="subjectModalTitle">Add New Subject</div>
         <div class="modal-sub">Define a subject and assign it to grade levels.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeSubjectModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -204,9 +216,12 @@
 <div class="modal-backdrop" id="teacherModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-check"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Assign Teacher</div>
         <div class="modal-sub">Select a faculty member for this assignment.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeTeacherModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -241,11 +256,11 @@
             <div class="tp-check"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div>
           </div>
         </div>
-        <div class="modal-foot">
-          <button type="button" class="btn btn-cancel" onclick="closeTeacherModal()">Cancel</button>
-          <button type="submit" class="btn btn-save">Save Assignment</button>
-        </div>
       </form>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeTeacherModal()">Cancel</button>
+      <button type="submit" form="assignTeacherForm" class="btn btn-save">Save Assignment</button>
     </div>
   </div>
 </div>
@@ -256,9 +271,12 @@
 <div class="modal-backdrop" id="studentAssignModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-plus"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title" id="studentModalTitle">Assign Student</div>
         <div class="modal-sub">Place a student into a section.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeStudentAssignModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -360,9 +378,12 @@
 <div class="modal-backdrop" id="confirmRemoveModalBackdrop">
   <div class="modal" style="max-width:400px;">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="user-minus"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title" id="confirmRemoveTitle">Remove Student</div>
         <div class="modal-sub">This action cannot be undone.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeConfirmRemoveModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -392,9 +413,12 @@
 <div class="modal-backdrop" id="importStudentsModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div>
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="upload"></i></div>
+        <div class="modal-heading-copy">
         <div class="modal-title">Import and Auto-Sort Students</div>
         <div class="modal-sub">Upload a CSV with student averages to auto-assign sections.</div>
+        </div>
       </div>
       <button class="modal-close" onclick="closeImportStudentsModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
@@ -653,26 +677,7 @@
     ══════════════════════════════════════════════════ -->
     <section class="mgmt-panel active" id="panel-sections">
 
-      <div class="stat-grid">
-        <div class="stat-card blue">
-          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div></div>
-          <div class="stat-card-num">8</div>
-          <div class="stat-card-label">Total Sections</div>
-          <div class="stat-card-sub">Across Grades 7 – 10</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:18px;height:18px;"></i></div></div>
-          <div class="stat-card-num">284</div>
-          <div class="stat-card-label">Students</div>
-          <div class="stat-card-sub">Enrolled this school year</div>
-        </div>
-        <div class="stat-card gold">
-          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div></div>
-          <div class="stat-card-num">7</div>
-          <div class="stat-card-label">With Adviser</div>
-          <div class="stat-card-sub">Out of 8 total sections</div>
-        </div>
-      </div>
+      <div class="stat-grid" id="sections-summary-cards"></div>
 
       <div class="info-banner">
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
@@ -737,40 +742,7 @@
     ══════════════════════════════════════════════════ -->
     <section class="mgmt-panel" id="panel-subjects">
 
-      <div class="stat-grid">
-        <div class="stat-card blue">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="library" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">8</div>
-          <div class="stat-card-label">Total Subjects</div>
-          <div class="stat-card-sub">Shared across all grade levels</div>
-        </div>
-        <div class="stat-card gold">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="layers" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">64</div>
-          <div class="stat-card-label">Subject Slots</div>
-          <div class="stat-card-sub">8 subjects × 8 sections</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">58</div>
-          <div class="stat-card-label">Slots Assigned</div>
-          <div class="stat-card-sub">Teachers already linked</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">6</div>
-          <div class="stat-card-label">Slots Unassigned</div>
-          <div class="stat-card-sub">Still needs a teacher</div>
-        </div>
-      </div>
+      <div class="stat-grid" id="subjects-summary-cards"></div>
 
       <div class="info-banner">
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
@@ -805,7 +777,7 @@
 
         <div class="table-wrap">
           <table id="subjectTable">
-            <thead><tr><th>Subject</th><th>Applies To</th><th>Teacher Coverage</th><th>Sections</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Subject</th><th>Applies To</th><th>Sections</th><th>Actions</th></tr></thead>
             <tbody id="subjectTableBody">
 
             </tbody>
@@ -819,40 +791,7 @@
     ══════════════════════════════════════════════════ -->
     <section class="mgmt-panel" id="panel-teachers">
 
-      <div class="stat-grid">
-        <div class="stat-card blue">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">64</div>
-          <div class="stat-card-label">Total Assignments</div>
-          <div class="stat-card-sub">Across all sections &amp; subjects</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">58</div>
-          <div class="stat-card-label">Assigned</div>
-          <div class="stat-card-sub">Subject-section slots filled</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">6</div>
-          <div class="stat-card-label">Unassigned</div>
-          <div class="stat-card-sub">Still needs a teacher</div>
-        </div>
-        <div class="stat-card gold">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">7</div>
-          <div class="stat-card-label">Faculty Assigned</div>
-          <div class="stat-card-sub">Out of 24 total faculty</div>
-        </div>
-      </div>
+      <div class="stat-grid" id="teacher-summary-cards"></div>
 
       <div class="info-banner">
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
@@ -887,40 +826,7 @@
     ══════════════════════════════════════════════════ -->
     <section class="mgmt-panel" id="panel-students">
 
-      <div class="stat-grid">
-        <div class="stat-card green">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="graduation-cap" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">284</div>
-          <div class="stat-card-label">Total Students</div>
-          <div class="stat-card-sub">Registered in the system</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">271</div>
-          <div class="stat-card-label">Assigned</div>
-          <div class="stat-card-sub">Placed in a section</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">13</div>
-          <div class="stat-card-label">Unassigned</div>
-          <div class="stat-card-sub">Still needs a section</div>
-        </div>
-        <div class="stat-card blue">
-          <div class="stat-card-top">
-            <div class="stat-card-icon"><i data-lucide="door-open" style="width:18px;height:18px;"></i></div>
-          </div>
-          <div class="stat-card-num">8</div>
-          <div class="stat-card-label">Active Sections</div>
-          <div class="stat-card-sub">Across Grades 7 – 10</div>
-        </div>
-      </div>
+      <div class="stat-grid" id="students-summary-cards"></div>
 
       <div class="info-banner">
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
@@ -1088,14 +994,14 @@ const GRADE_PILL_CLASS  = { 7: 'gp-7', 8: 'gp-8', 9: 'gp-9', 10: 'gp-10' };
 const BAR_CLASS_BY_GRADE = { 7: 'bar-blue', 8: 'bar-gold', 9: 'bar-green', 10: 'bar-orange' };
 
 const SUBJECTS_DATA = [
-  { id: 'mathematics', name: 'Mathematics', code: 'MATH', type: 'Core Subject', icon: 'hash', iconBg: 'var(--blue-xpale)', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'english', name: 'English', code: 'ENG', type: 'Core Subject', icon: 'book', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'filipino', name: 'Filipino', code: 'FIL', type: 'Core Subject', icon: 'message-circle', iconBg: '#fef9c3', iconColor: '#92400e', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'science', name: 'Science', code: 'SCI', type: 'Core Subject', icon: 'flask-conical', iconBg: '#ecfdf5', iconColor: '#16a34a', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'ap', name: 'Araling Panlipunan', code: 'AP', type: 'Core Subject', icon: 'globe', iconBg: '#eff6ff', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'esp', name: 'ESP', code: 'EsP', type: 'Core Subject', icon: 'bird', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], assigned: 8, total: 8 },
-  { id: 'tle', name: 'TLE', code: 'TLE', type: 'Applied Subject', icon: 'wrench', iconBg: 'var(--orange-pale)', iconColor: '#d97706', grades: ['7','8','9','10'], assigned: 6, total: 8 },
-  { id: 'mapeh', name: 'MAPEH', code: 'MAPEH', type: 'Applied Subject', icon: 'music', iconBg: '#fdf4ff', iconColor: '#92400e', grades: ['7','8','9','10'], assigned: 6, total: 8 },
+  { id: 'mathematics', name: 'Mathematics', code: 'MATH', type: 'Core Subject', icon: 'hash', iconBg: 'var(--blue-xpale)', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], total: 8 },
+  { id: 'english', name: 'English', code: 'ENG', type: 'Core Subject', icon: 'book', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
+  { id: 'filipino', name: 'Filipino', code: 'FIL', type: 'Core Subject', icon: 'message-circle', iconBg: '#fef9c3', iconColor: '#92400e', grades: ['7','8','9','10'], total: 8 },
+  { id: 'science', name: 'Science', code: 'SCI', type: 'Core Subject', icon: 'flask-conical', iconBg: '#ecfdf5', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
+  { id: 'ap', name: 'Araling Panlipunan', code: 'AP', type: 'Core Subject', icon: 'globe', iconBg: '#eff6ff', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], total: 8 },
+  { id: 'esp', name: 'ESP', code: 'EsP', type: 'Core Subject', icon: 'bird', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
+  { id: 'tle', name: 'TLE', code: 'TLE', type: 'Applied Subject', icon: 'wrench', iconBg: 'var(--orange-pale)', iconColor: '#d97706', grades: ['7','8','9','10'], total: 8 },
+  { id: 'mapeh', name: 'MAPEH', code: 'MAPEH', type: 'Applied Subject', icon: 'music', iconBg: '#fdf4ff', iconColor: '#92400e', grades: ['7','8','9','10'], total: 8 },
 ];
 
 function teacherRow(name, code, icon, iconColor, teacher, email, initials, avClass) {
@@ -1202,14 +1108,37 @@ const STUDENTS_DATA = [
 /* ══════════════════════════════════════════════
    RENDER FUNCTIONS
 ══════════════════════════════════════════════ */
+function renderManagementStatCards(targetId, cards) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  target.innerHTML = cards.map(card => `
+    <div class="stat-card ${card.tone}">
+      <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div>
+      <div class="stat-card-num">${card.value}</div>
+      <div class="stat-card-label">${card.label}</div>
+      <div class="stat-card-sub">${card.sub}</div>
+    </div>`).join('');
+}
+
+function getTeacherAssignmentStats() {
+  const slots = TEACHER_ASSIGNMENTS_DATA.flatMap(section => section.subjects);
+  const assigned = slots.filter(subject => subject.teacher).length;
+  return {
+    total: slots.length,
+    assigned,
+    unassigned: slots.length - assigned,
+    faculty: new Set(slots.filter(subject => subject.teacher).map(subject => subject.teacher)).size,
+  };
+}
+
 function renderSections() {
-  // stats
   const withAdviser = SECTIONS_DATA.filter(s => s.adviser).length;
   const totalStudents = SECTIONS_DATA.reduce((sum, s) => sum + s.students, 0);
-  const nums = document.querySelectorAll('#panel-sections .stat-grid .stat-card-num');
-  nums[0].textContent = SECTIONS_DATA.length;
-  nums[1].textContent = totalStudents;
-  nums[2].textContent = withAdviser;
+  renderManagementStatCards('sections-summary-cards', [
+    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Total Sections', sub: 'Across Grades 7 – 10' },
+    { tone: 'green', icon: 'graduation-cap', value: totalStudents, label: 'Students', sub: 'Enrolled this school year' },
+    { tone: 'gold', icon: 'book-open', value: withAdviser, label: 'With Adviser', sub: `Out of ${SECTIONS_DATA.length} total sections` },
+  ]);
 
   // card view
   const container = document.getElementById('sectionCardView');
@@ -1263,17 +1192,21 @@ function renderSections() {
 }
 
 function renderSubjects() {
+  const assignmentStats = getTeacherAssignmentStats();
+  const subjectSlots = SUBJECTS_DATA.reduce((total, subject) => total + subject.total, 0);
+  renderManagementStatCards('subjects-summary-cards', [
+    { tone: 'blue', icon: 'library', value: SUBJECTS_DATA.length, label: 'Total Subjects', sub: 'Shared across all grade levels' },
+    { tone: 'gold', icon: 'layers', value: subjectSlots, label: 'Subject Slots', sub: `${SUBJECTS_DATA.length} subjects × ${SECTIONS_DATA.length} sections` },
+    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Slots Assigned', sub: 'Teachers already linked' },
+    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Slots Unassigned', sub: 'Still needs a teacher' },
+  ]);
   const tbody = document.getElementById('subjectTableBody');
   tbody.innerHTML = SUBJECTS_DATA.map(s => {
-    const pct = Math.round((s.assigned / s.total) * 100);
-    const full = s.assigned === s.total;
     return `
     <tr data-grades="${s.grades.join(',')}" data-name="${s.name.toLowerCase()}" data-id="${s.id}">
       <td><div class="subj-cell"><div><div class="subj-name">${s.name}</div><div class="subj-code-text">${s.code} · ${s.type}</div></div></div></td>
       <td><div class="applies-wrap">${s.grades.map(g => `<span class="grade-pill">Gr. ${g}</span>`).join('')}</div></td>
-      <td><div class="coverage-cell"><div class="mini-bar"><div class="mini-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-text ${full ? 'text-full' : 'text-partial'}">${s.assigned}/${s.total}</span></div></td>
       <td>${s.total} sections</td>
-      <td>${full ? '<span class="badge badge-green">✓ Full Coverage</span>' : '<span class="badge" style="background:var(--orange-pale);color:#92400e;">⚠ Partial</span>'}</td>
       <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('${s.name}')">Edit</button><button class="row-btn remove">Remove</button></div></td>
     </tr>`;
   }).join('');
@@ -1284,6 +1217,13 @@ let teacherTargetSection = null;
 let teacherTargetSubject = null;
 
 function renderTeacherAssignments() {
+  const assignmentStats = getTeacherAssignmentStats();
+  renderManagementStatCards('teacher-summary-cards', [
+    { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across all sections & subjects' },
+    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Assigned', sub: 'Subject-section slots filled' },
+    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Unassigned', sub: 'Still needs a teacher' },
+    { tone: 'gold', icon: 'book-open', value: assignmentStats.faculty, label: 'Faculty Assigned', sub: 'Unique teachers linked' },
+  ]);
   const container = document.getElementById('panel-teachers');
   container.querySelectorAll('.section-block').forEach(el => el.remove());
 
@@ -1383,6 +1323,13 @@ function renderSectionOverviewCards() {
 }
 
 function renderStudentsTab() {
+  const assigned = STUDENTS_DATA.filter(student => student.section).length;
+  renderManagementStatCards('students-summary-cards', [
+    { tone: 'green', icon: 'graduation-cap', value: STUDENTS_DATA.length, label: 'Total Students', sub: 'Registered in the system' },
+    { tone: 'green', icon: 'check-circle', value: assigned, label: 'Assigned', sub: 'Placed in a section' },
+    { tone: 'orange', icon: 'alert-triangle', value: STUDENTS_DATA.length - assigned, label: 'Unassigned', sub: 'Still needs a section' },
+    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Active Sections', sub: 'Across Grades 7 – 10' },
+  ]);
   renderEnrolledTable();
   renderSectionOverviewCards();
   applyStudentFilters();
