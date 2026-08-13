@@ -77,6 +77,10 @@
           <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Dashboard</span>
         </a>
+        <a href="edugnay-student-assignments.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Assignments</span>
+        </a>
         <a href="edugnay-student-materials.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Learning Materials</span>
@@ -319,6 +323,17 @@
             <div class="week-calendar-grid" id="weekCalendarGrid"></div>
           </div>
 
+          <!-- Upcoming assignments -->
+          <div class="panel panel-upcoming-assignments">
+            <div class="panel-head">
+              <div class="panel-title">Assignments</div>
+              <a href="edugnay-student-assignments.html" class="panel-action">
+                View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+              </a>
+            </div>
+            <div class="assignment-preview-list" id="student-upcoming-assignments"></div>
+          </div>
+
           <!-- Announcements -->
           <div class="panel panel-announcements">
             <div class="panel-head">
@@ -412,6 +427,25 @@
       { title: 'Values Journal - Window Open', tag: 'Reminder', tagClass: 'badge-blue', body: 'Submit your weekly reflection before 11:59 PM Friday.', time: '2 days ago', author: 'Ms. Reyes' }
     ];
 
+    const UPCOMING_ASSIGNMENTS = [
+      { id: 2, title: 'Quiz 1 Review: Core Values', subject: 'Values Education', due: 'Due Jun 11', status: 'pending' },
+      { id: 4, title: 'Linear Equations Practice', subject: 'Mathematics', due: 'Due Jun 12', status: 'pending' },
+      { id: 5, title: 'Reading Response: Short Stories', subject: 'English', due: 'Due Jun 10', status: 'completed' }
+    ];
+
+    function renderUpcomingAssignments() {
+      const container = document.getElementById('student-upcoming-assignments');
+      if (!container) return;
+      container.innerHTML = UPCOMING_ASSIGNMENTS.map(item =>
+        '<a class="assignment-preview-row" href="edugnay-student-assignments.html">' +
+          '<span class="assignment-preview-icon"><i data-lucide="clipboard-check" style="width:15px;height:15px;"></i></span>' +
+          '<span class="assignment-preview-copy"><span class="assignment-preview-title">' + item.title + '</span><span class="assignment-preview-meta">' + item.subject + ' / ' + item.due + '</span></span>' +
+          '<span class="assignment-preview-status ' + item.status + '">' + (item.status === 'completed' ? 'Completed' : 'Pending') + '</span>' +
+        '</a>'
+      ).join('');
+      lucide.createIcons();
+    }
+
     function renderStudentDashboardLists() {
       const toneStyles = {
         blue: 'background:var(--blue-xpale);color:var(--blue-mid);',
@@ -437,6 +471,7 @@
             <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
           </div>`).join('');
       }
+      renderUpcomingAssignments();
       lucide.createIcons();
     }
 

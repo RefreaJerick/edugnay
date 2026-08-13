@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/student/assignments.css">
+  <link rel="stylesheet" href="../../assets/css/scroll-fades.css">
+  <script src="../../assets/js/scroll-fades.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/student/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+</head>
+
+<body>
+
+  <!--
+    EJS CONVERSION MAP
+    assignments[] should come from the student's enrolled sections for the
+    active quarter. Keep the shared teacher fields (id, title, subject, dueDate)
+    and add the student's physical completion status from the assignment record.
+    The local array below is only mock data for the static prototype.
+  -->
+
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-assignments.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Assignments</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <a href="edugnay-student-journal.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">3</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-student-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Current page">
+          <div class="topbar-context-copy">
+            <strong>Assignments</strong>
+          </div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-student-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar student">JD</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-role">Student</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i> My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="portal-overview" aria-labelledby="assignment-page-title">
+        <div class="portal-overview-copy">
+          <div class="portal-overview-kicker">Student workspace</div>
+          <h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1>
+          <p class="portal-overview-description">Track the assignments given by your teachers and see which ones are completed.</p>
+        </div>
+      </section>
+
+      <div class="filter-tabs assignment-filter-tabs" id="assignmentFilters" aria-label="Filter assignments"></div>
+
+      <section class="panel assignment-panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Your assignments</div>
+            <div class="assignment-panel-sub" id="assignmentPanelSub">Assignments from your enrolled subjects</div>
+          </div>
+        </div>
+        <div class="assignment-toolbar">
+          <div class="search-wrap assignment-search">
+            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+            <input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" oninput="renderAssignments()" />
+          </div>
+          <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" onchange="renderAssignments()" aria-label="Filter by subject"></select>
+        </div>
+        <div class="assignment-list" id="assignmentList"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Replace this array with the GET /student/assignments response later.
+    // These records mirror the teacher assignment fields. The status only
+    // tracks physical completion, so no submission, prompt, or feedback data
+    // is needed here.
+    const ASSIGNMENTS = [
+      {
+        id: 1,
+        title: 'Seatwork 1: Kindness and Respect',
+        subject: 'Values Education',
+        teacher: 'Ms. Maria Reyes',
+        dueDate: '2025-06-09',
+        status: 'completed'
+      },
+      {
+        id: 2,
+        title: 'Quiz 1 Review: Core Values',
+        subject: 'Values Education',
+        teacher: 'Ms. Maria Reyes',
+        dueDate: '2025-06-11',
+        status: 'pending'
+      },
+      {
+        id: 3,
+        title: 'Activity 1: Good Citizenship',
+        subject: 'Values Education',
+        teacher: 'Ms. Maria Reyes',
+        dueDate: '2025-06-13',
+        status: 'completed'
+      },
+      {
+        id: 4,
+        title: 'Linear Equations Practice',
+        subject: 'Mathematics',
+        teacher: 'Ms. Maria Reyes',
+        dueDate: '2025-06-12',
+        status: 'pending'
+      },
+      {
+        id: 5,
+        title: 'Reading Response: Short Stories',
+        subject: 'English',
+        teacher: 'Mr. Paolo Santos',
+        dueDate: '2025-06-10',
+        status: 'pending'
+      }
+    ];
+
+    const ASSIGNMENT_FILTERS = [
+      { key: 'all', label: 'All' },
+      { key: 'pending', label: 'Pending' },
+      { key: 'completed', label: 'Completed' }
+    ];
+
+    const STATUS_META = {
+      pending: { label: 'Pending', icon: 'clock-3', tone: 'blue' },
+      completed: { label: 'Completed', icon: 'check-circle-2', tone: 'green' }
+    };
+
+    let currentFilter = 'all';
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character];
+      });
+    }
+
+    function formatDate(isoDate) {
+      return new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric'
+      });
+    }
+
+    function getStatusCount(status) {
+      return ASSIGNMENTS.filter(function (item) { return item.status === status; }).length;
+    }
+
+    function renderFilterTabs() {
+      const filters = document.getElementById('assignmentFilters');
+      filters.innerHTML = ASSIGNMENT_FILTERS.map(function (filter) {
+        const count = filter.key === 'all' ? ASSIGNMENTS.length : getStatusCount(filter.key);
+        return '<button class="filter-tab assignment-filter-tab' + (currentFilter === filter.key ? ' active' : '') + '" type="button" onclick="setAssignmentFilter(&quot;' + filter.key + '&quot;)">' +
+          escapeHtml(filter.label) + '<span class="assignment-filter-count">' + count + '</span></button>';
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function setAssignmentFilter(filter) {
+      currentFilter = filter;
+      renderFilterTabs();
+      renderAssignments();
+    }
+
+    function getVisibleAssignments() {
+      const search = document.getElementById('assignmentSearch').value.trim().toLowerCase();
+      const subject = document.getElementById('assignmentSubjectFilter').value;
+      return ASSIGNMENTS.filter(function (item) {
+        const matchesFilter = currentFilter === 'all' || item.status === currentFilter;
+        const matchesSubject = subject === 'all' || item.subject === subject;
+        const matchesSearch = !search || (item.title + ' ' + item.subject + ' ' + item.teacher).toLowerCase().includes(search);
+        return matchesFilter && matchesSubject && matchesSearch;
+      });
+    }
+
+    function renderAssignments() {
+      const list = document.getElementById('assignmentList');
+      const visible = getVisibleAssignments();
+
+      if (!visible.length) {
+        list.innerHTML = '<div class="assignment-empty"><div class="assignment-empty-icon"><i data-lucide="clipboard-x" style="width:22px;height:22px;"></i></div><div class="assignment-empty-title">No assignments found</div><div class="assignment-empty-copy">Try another status, subject, or search term.</div></div>';
+        lucide.createIcons();
+        return;
+      }
+
+      list.innerHTML = visible.map(function (item) {
+        const status = STATUS_META[item.status];
+        return '<article class="assignment-row">' +
+          '<div class="assignment-row-icon tone-' + status.tone + '" aria-hidden="true"><i data-lucide="list-checks" style="width:18px;height:18px;"></i></div>' +
+          '<div class="assignment-row-content">' +
+            '<h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
+            '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + '</div>' +
+          '</div>' +
+          '<span class="assignment-status ' + item.status + '"><i data-lucide="' + status.icon + '" style="width:12px;height:12px;"></i>' + status.label + '</span>' +
+        '</article>';
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function populateSubjectFilter() {
+      const subjects = [];
+      ASSIGNMENTS.forEach(function (item) {
+        if (!subjects.includes(item.subject)) subjects.push(item.subject);
+      });
+      document.getElementById('assignmentSubjectFilter').innerHTML =
+        '<option value="all">All subjects</option>' +
+        subjects.map(function (subject) {
+          return '<option value="' + escapeHtml(subject) + '">' + escapeHtml(subject) + '</option>';
+        }).join('');
+    }
+
+    populateSubjectFilter();
+    document.getElementById('assignmentPanelSub').textContent = ASSIGNMENTS.length + ' assignments from your enrolled subjects';
+    renderFilterTabs();
+    renderAssignments();
+  </script>
+</body>
+
+</html>

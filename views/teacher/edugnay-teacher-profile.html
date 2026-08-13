@@ -242,10 +242,22 @@
       </div>
     </div>
 
-    <div class="two-col" style="align-items:start;">
+    <div class="profile-tab-bar" id="teacher-profile-tabs">
+      <button class="profile-tab active" onclick="switchTab('personal', this)">
+        <i data-lucide="user-round" style="width:13px;height:13px;"></i> Personal Info
+      </button>
+      <button class="profile-tab" onclick="switchTab('sections', this)">
+        <i data-lucide="door-open" style="width:13px;height:13px;"></i> Sections Handled
+      </button>
+      <button class="profile-tab" onclick="switchTab('security', this)">
+        <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account &amp; Security
+      </button>
+    </div>
+
+    <div class="two-col teacher-profile-content" style="align-items:start;">
 
       <!-- Personal Information (editable) -->
-      <div class="panel">
+      <div class="panel profile-pane active" id="pane-personal">
         <!-- Personal Information -->
         <div class="panel-head">
           <div class="panel-head-title-group">
@@ -268,6 +280,11 @@
               <input class="form-input" type="email" name="email" value="m.reyes.fac@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
               <span class="form-hint">Used for account sign-in · cannot be changed here</span>
             </div>
+            <div class="form-group">
+              <label class="form-label">Employee Number</label>
+              <input class="form-input" type="text" name="employeeNo" value="FAC-2019-0042" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <span class="form-hint">Assigned by the school administrator</span>
+            </div>
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">Contact Number</label>
               <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 123 4567" placeholder="e.g. 0917 123 4567"/>
@@ -281,24 +298,20 @@
         </form>
       </div>
 
-      <!-- Employment Details (read-only) -->
-      <div class="panel">
+      <!-- Sections Handled (read-only) -->
+      <div class="panel profile-pane" id="pane-sections">
         <div class="panel-head">
           <div class="panel-head-title-group">
-            <div class="panel-title-icon" style="background:var(--blue-xpale);color:var(--blue-mid);">
-              <i data-lucide="briefcase" style="width:18px;height:18px;"></i>
+            <div class="panel-title-icon">
+              <i data-lucide="door-open" style="width:16px;height:16px;"></i>
             </div>
             <div>
-              <div class="panel-title">Employment Details</div>
-              <div class="panel-sub">Set by the school administrator</div>
+              <div class="panel-title">Sections Handled</div>
+              <div class="panel-sub">Your current teaching assignments, set by the school administrator</div>
             </div>
           </div>
         </div>
         <div class="config-panel-body" id="teacher-employment-details">
-          <div class="profile-detail-row">
-            <span class="profile-detail-label">Employee No.</span>
-            <span class="profile-detail-value">FAC-2019-0042</span>
-          </div>
           <div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;">
             <span class="profile-detail-label">Sections Handled</span>
             <div class="section-pill-col">
@@ -314,7 +327,7 @@
     </div>
 
     <!-- Security -->
-    <div class="panel">
+    <div class="panel profile-pane" id="pane-security">
       <!-- Security -->
       <div class="panel-head">
         <div class="panel-head-title-group">
@@ -375,7 +388,6 @@
 
 <script>
   const EMPLOYMENT_DETAILS = [{
-    employeeNo: 'FAC-2019-0042',
     sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
   }];
 
@@ -383,12 +395,21 @@
     const panel = document.getElementById('teacher-employment-details');
     if (!panel) return;
     const details = EMPLOYMENT_DETAILS[0];
-    panel.innerHTML = `<div class="profile-detail-row"><span class="profile-detail-label">Employee No.</span><span class="profile-detail-value">${details.employeeNo}</span></div><div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-pill-col">${details.sections.map(section => `<span class="badge badge-blue">${section}</span>`).join('')}</div></div>`;
+    panel.innerHTML = `<div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-pill-col">${details.sections.map(section => `<span class="badge badge-blue">${section}</span>`).join('')}</div></div>`;
   }
 
   renderEmploymentDetails();
 
   lucide.createIcons();
+
+  function switchTab(tabKey, button) {
+    document.querySelectorAll('.profile-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.profile-pane').forEach(pane => pane.classList.remove('active'));
+    if (button) button.classList.add('active');
+    const pane = document.getElementById('pane-' + tabKey);
+    if (pane) pane.classList.add('active');
+    if (window.lucide) lucide.createIcons();
+  }
 
   function openModal(id)  { document.getElementById(id).classList.add('open'); }
   function closeModal(id) {

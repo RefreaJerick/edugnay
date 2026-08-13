@@ -1,0 +1,276 @@
+/* Student assignment tracker
+   Data is rendered by the page script so this layout can later receive API data. */
+
+.assignment-filter-tabs {
+  margin-bottom: 16px;
+}
+
+.assignment-filter-tabs .assignment-filter-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assignment-filter-count {
+  min-width: 18px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.assignment-filter-tab.active .assignment-filter-count {
+  background: var(--blue-pale);
+  color: var(--blue-mid);
+}
+
+.assignment-panel {
+  margin-bottom: 20px;
+  border: 1px solid var(--gray-200);
+  border-radius: 17px;
+  background: var(--white);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(16, 40, 80, .07);
+}
+
+.assignment-panel .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 19px 22px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.assignment-panel .panel-title {
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.assignment-panel-sub {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.assignment-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--gray-100);
+  background: #fbfdff;
+}
+
+.assignment-toolbar .search-wrap {
+  position: relative;
+}
+
+.assignment-toolbar .search-icon {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  color: var(--gray-400);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.assignment-toolbar .search-input,
+.assignment-toolbar .filter-select {
+  min-height: 40px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--gray-700);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.assignment-toolbar .search-input {
+  width: 100%;
+  padding: 9px 12px 9px 34px;
+}
+
+.assignment-toolbar .search-input::placeholder {
+  color: var(--gray-300);
+}
+
+.assignment-toolbar .search-input:focus,
+.assignment-toolbar .filter-select:focus {
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+}
+
+.assignment-toolbar .filter-select {
+  min-width: 150px;
+  padding: 9px 34px 9px 12px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 17px, calc(100% - 11px) 17px;
+  background-repeat: no-repeat;
+  background-size: 4px 4px, 4px 4px;
+}
+
+.assignment-search {
+  flex: 1;
+  min-width: 180px;
+}
+
+.assignment-subject-filter {
+  min-width: 150px;
+}
+
+.assignment-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.assignment-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid var(--gray-200);
+  border-radius: 13px;
+  background: var(--white);
+}
+
+.assignment-row-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.assignment-row-icon.tone-green {
+  background: var(--green-pale);
+  color: var(--green-dark);
+}
+
+.assignment-row-content {
+  min-width: 0;
+}
+
+.assignment-row-title {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.assignment-row-meta {
+  margin-top: 5px;
+  color: var(--gray-400);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.assignment-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.assignment-status.pending {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.assignment-status.completed {
+  background: var(--green-pale);
+  color: var(--green-dark);
+}
+
+.assignment-empty {
+  padding: 46px 22px;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.assignment-empty-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--gray-100);
+  color: var(--gray-400);
+}
+
+.assignment-empty-title {
+  margin-bottom: 4px;
+  color: var(--gray-700);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.assignment-empty-copy {
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .assignment-filter-tabs {
+    margin-inline: -2px;
+  }
+
+  .assignment-panel .panel-head {
+    padding: 16px;
+  }
+
+  .assignment-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px 14px;
+  }
+
+  .assignment-search,
+  .assignment-subject-filter {
+    width: 100%;
+  }
+
+  .assignment-list {
+    padding: 10px;
+  }
+
+  .assignment-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    padding: 13px;
+  }
+
+  .assignment-status {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 8px;
+  }
+
+}

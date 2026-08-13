@@ -239,6 +239,42 @@
   box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
 }
 
+/* Shared select control language. Keep the same compact arrow used by the
+   student assignment subject filter while allowing each page to keep its
+   existing width and placement. */
+select:not([multiple]) {
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 9px 34px 9px 12px !important;
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: 10px !important;
+  background-color: var(--white) !important;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%) !important;
+  background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50% !important;
+  background-repeat: no-repeat !important;
+  background-size: 4px 4px, 4px 4px !important;
+  color: var(--gray-700) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.3;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+select:not([multiple]):focus {
+  border-color: var(--blue-mid) !important;
+  background-color: var(--white) !important;
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+}
+
+select:not([multiple]):disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
 /* Shared tab active state, matching Admin Class Management. */
 .mgmt-tab.active,
 .filter-tab.active,

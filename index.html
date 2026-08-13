@@ -216,6 +216,12 @@
     }
   }
 
+  document.addEventListener("keydown", (event) => {
+    if (event.key === 'Enter') {
+      checkEmail();
+    }
+  });
+
   function togglePassword() {
     const pw = document.getElementById('passwordInput')
     pw.type = pw.type === 'password' ? 'text' : 'password'

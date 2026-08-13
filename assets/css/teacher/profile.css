@@ -497,3 +497,83 @@
   .profile-detail-row { flex-wrap: wrap; }
   .profile-detail-value { text-align: left; }
 }
+
+/* Teacher profile tabs and section assignment panel. */
+.main .teacher-profile-content {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.main .teacher-profile-content .profile-pane {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.main .teacher-profile-content .profile-pane:not(.active),
+.main > #pane-security.profile-pane:not(.active) {
+  display: none;
+}
+
+.main .teacher-profile-content .profile-pane.active,
+.main > #pane-security.profile-pane.active {
+  display: block;
+}
+
+.main #pane-sections .config-panel-body {
+  display: grid;
+  gap: 16px;
+}
+
+.main #pane-sections .profile-detail-row-stacked {
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.main #pane-sections .profile-detail-row-stacked > .profile-detail-label {
+  font-size: 11px;
+  letter-spacing: .45px;
+  text-transform: uppercase;
+}
+
+.main #pane-sections .section-pill-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.main #pane-sections .section-pill-col .badge {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--blue-mid);
+  box-shadow: 0 2px 8px rgba(16, 40, 80, .04);
+}
+
+.teacher-security-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.teacher-security-copy {
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+@media (max-width: 640px) {
+  .main #pane-sections .section-pill-col {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-security-body {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .teacher-security-body .top-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
