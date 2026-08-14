@@ -43,6 +43,8 @@
 .announcement-modal-backdrop .modal-head,
 .entry-modal-backdrop .modal-head {
   padding: 20px 22px !important;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 14px;
   background: var(--gray-50);
@@ -112,6 +114,8 @@
   color: var(--gray-800);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
   letter-spacing: -.25px;
 }
 
@@ -169,6 +173,20 @@
   position: static;
   top: auto;
   right: auto;
+}
+
+/* The past-entry dialog uses the same neutral header treatment as every
+   other shared modal, even when a page stylesheet supplies legacy entry
+   dialog rules. */
+.entry-modal-backdrop .modal-head {
+  background: var(--gray-50) !important;
+  color: var(--gray-800);
+}
+
+.entry-modal-backdrop .modal-close {
+  border-color: var(--gray-200) !important;
+  background: var(--white) !important;
+  color: var(--gray-500) !important;
 }
 
 .modal-backdrop .modal-body,

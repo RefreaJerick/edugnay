@@ -236,7 +236,7 @@
   <!-- PAST ENTRY VIEW MODAL -->
   <div class="entry-modal-backdrop" id="entryModalBackdrop" onclick="if(event.target===this) closeEntryModal()">
     <div class="entry-modal modal">
-      <div class="entry-modal-head modal-head">
+      <div class="modal-head">
         <div class="modal-heading">
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></div>
           <div class="modal-heading-copy">
@@ -244,7 +244,7 @@
             <div class="modal-sub"><span id="entryModalWeek">Not available</span> · <span id="entryModalDate">Not available</span></div>
           </div>
         </div>
-        <button class="entry-modal-close modal-close" onclick="closeEntryModal()" aria-label="Close journal entry">
+        <button class="modal-close" type="button" onclick="closeEntryModal()" aria-label="Close journal entry">
           <i data-lucide="x" style="width:14px;height:14px;"></i>
         </button>
       </div>

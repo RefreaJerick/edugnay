@@ -1094,36 +1094,19 @@
   backdrop-filter: blur(4px);
 }
 .account-modal-backdrop .modal {
-  max-width: 560px;
+  max-width: 520px;
   border: 1px solid rgba(178, 194, 214, .78);
   border-radius: 18px;
   box-shadow: 0 24px 64px rgba(15, 32, 58, .2);
-  transform: translateY(14px) scale(.98);
+  transform: translateY(20px);
 }
-.account-modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+.account-modal-backdrop.open .modal { transform: translateY(0); }
 .account-modal-backdrop .modal-head {
   align-items: center;
   gap: 16px;
   padding: 20px 22px;
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-200);
-}
-.account-modal-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 0;
-}
-.account-modal-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border: 1px solid var(--blue-pale);
-  border-radius: 11px;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
 }
 .account-modal-backdrop .modal-title {
   margin-bottom: 0;
@@ -1144,7 +1127,7 @@
   background: var(--white);
 }
 .account-modal-backdrop .modal-body { padding: 20px 22px 4px; }
-.account-modal-backdrop .form-row-2 { gap: 12px; }
+.account-modal-backdrop .form-row-2 { gap: 16px; }
 .account-modal-backdrop .form-group { margin-bottom: 15px; }
 .account-modal-backdrop .form-label {
   margin-bottom: 6px;
@@ -1161,18 +1144,18 @@
 .account-modal-backdrop .form-input:focus,
 .account-modal-backdrop .form-select:focus { background: var(--white); }
 .account-modal-backdrop .role-opts {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .account-modal-backdrop .role-opt {
-  min-height: 68px;
-  flex-direction: column;
+  min-height: 0;
+  flex-direction: row;
   gap: 6px;
-  padding: 9px 6px;
-  border-radius: 11px;
-  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
 }
-.account-modal-backdrop .role-opt-icon { width: 28px; height: 28px; border-radius: 8px; }
+.account-modal-backdrop .role-opt-icon { width: 24px; height: 24px; border-radius: 6px; }
 .account-modal-backdrop .modal-foot {
   padding: 14px 22px 20px;
   margin-top: 2px;
@@ -1364,8 +1347,8 @@
 
 /* Dashboard announcement composer: mirrors the dedicated announcements composer. */
 #announcementModalBackdrop .modal {
-  width: min(100%, 620px);
-  max-width: 620px;
+  width: min(100%, 450px);
+  max-width: 560px;
   transform: translateY(14px) scale(.98);
   transition: transform .22s ease;
 }

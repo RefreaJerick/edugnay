@@ -104,13 +104,13 @@
   <div class="account-modal-backdrop" id="accountModalBackdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
       <div class="modal-head">
-        <div class="modal-heading account-modal-heading">
-          <div class="modal-heading-icon account-modal-icon" aria-hidden="true">
-            <i data-lucide="user-plus" style="width:19px;height:19px;"></i>
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true">
+            <i data-lucide="user-plus"></i>
           </div>
           <div class="modal-heading-copy">
             <div class="modal-title" id="accountModalTitle">Add New Account</div>
-            <div class="modal-sub">Create a secure portal account for a member of your school community.</div>
+            <div class="modal-sub" id="accountModalSub">Fill in the details to create a new user.</div>
           </div>
         </div>
         <button class="modal-close" type="button" aria-label="Close add account dialog" onclick="closeAccountModal()"><i data-lucide="x"></i></button>
@@ -144,12 +144,12 @@
                     data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
               </div>
               <div class="role-opt" data-role="stud" onclick="selectAccountRole(this, 'stud')">
-                <div class="role-opt-icon" style="background:var(--green-pale);color:var(--green);"><i
-                    data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Student</span>
+                <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open"
+                    style="width:14px;height:14px;"></i></div><span>Student</span>
               </div>
               <div class="role-opt" data-role="parents" onclick="selectAccountRole(this, 'parents')">
-                <div class="role-opt-icon" style="background:var(--purple-pale);color:var(--purple);"><i
-                    data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
+                <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake"
+                    style="width:14px;height:14px;"></i></div><span>Parent</span>
               </div>
             </div>
           </div>

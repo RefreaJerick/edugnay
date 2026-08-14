@@ -233,8 +233,8 @@
     ];
 
     const STATUS_META = {
-      pending: { label: 'Pending', icon: 'clock-3', tone: 'blue' },
-      completed: { label: 'Completed', icon: 'check-circle-2', tone: 'green' }
+      pending: { label: 'Pending', icon: 'clock-3' },
+      completed: { label: 'Completed', icon: 'check-circle-2' }
     };
 
     let currentFilter = 'all';
@@ -295,12 +295,11 @@
       list.innerHTML = visible.map(function (item) {
         const status = STATUS_META[item.status];
         return '<article class="assignment-row">' +
-          '<div class="assignment-row-icon tone-' + status.tone + '" aria-hidden="true"><i data-lucide="list-checks" style="width:18px;height:18px;"></i></div>' +
           '<div class="assignment-row-content">' +
             '<h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
             '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + '</div>' +
           '</div>' +
-          '<span class="assignment-status ' + item.status + '"><i data-lucide="' + status.icon + '" style="width:12px;height:12px;"></i>' + status.label + '</span>' +
+          '<span class="assignment-status ' + item.status + '" aria-label="' + escapeHtml(status.label) + '" title="' + escapeHtml(status.label) + '"><i data-lucide="' + status.icon + '" style="width:12px;height:12px;"></i><span class="assignment-status-label">' + escapeHtml(status.label) + '</span></span>' +
         '</article>';
       }).join('');
       lucide.createIcons();

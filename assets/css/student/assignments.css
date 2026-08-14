@@ -142,7 +142,7 @@
 
 .assignment-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 14px 22px;
@@ -154,22 +154,6 @@
 
 .assignment-row:last-child {
   border-bottom: 0;
-}
-
-.assignment-row-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.assignment-row-icon.tone-green {
-  background: var(--green-pale);
-  color: var(--green-dark);
 }
 
 .assignment-row-content {
@@ -266,15 +250,30 @@
   }
 
   .assignment-row {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 28px;
+    align-items: center;
     padding: 13px 16px;
   }
 
   .assignment-status {
     grid-column: 2;
-    justify-self: start;
-    margin-top: 8px;
+    grid-row: 1;
+    width: 28px;
+    height: 28px;
+    justify-content: center;
+    justify-self: end;
+    align-self: center;
+    padding: 0;
+    border-radius: 8px;
+  }
+
+  .assignment-status svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  .assignment-status-label {
+    display: none;
   }
 
 }

@@ -860,25 +860,6 @@
     display: block;
   }
 
-  .topbar {
-    flex-wrap: wrap;
-    padding: 16px 20px;
-  }
-
-  .topbar-left {
-    width: 100%;
-  }
-
-  .hamburger {
-    display: grid;
-  }
-
-  .topbar-right {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -893,10 +874,6 @@
   .top-btn {
     width: 100%;
     justify-content: center;
-  }
-
-  .topbar-right {
-    justify-content: space-between;
   }
 
   .ayc-stats {

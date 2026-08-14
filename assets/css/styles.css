@@ -2196,8 +2196,93 @@ html, body {
 .stat-card-label { font-size: 11px; letter-spacing: .35px; }
 .stat-card-sub { margin-top: 5px; font-size: 10.5px; }
 @media (max-width: 520px) {
-  .stat-card { min-height: 138px; padding: 13px; }
-  .stat-card-num { font-size: 26px; }
+  /* Compact mobile summary cards keep the metric visible without turning a
+     short set of counts into a tall stack of panels. */
+  .stat-grid:has(> .stat-card:nth-child(3):last-child),
+  .summary-strip:has(> .stat-card:nth-child(3):last-child) {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .stat-grid:has(> .stat-card:nth-child(4)),
+  .summary-strip:has(> .stat-card:nth-child(4)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 84px !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .stat-card-top {
+    margin: 0 !important;
+  }
+
+  .stat-card-trend,
+  .stat-card-sub {
+    display: none !important;
+  }
+
+  .stat-card-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+  }
+
+  .stat-card-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .stat-card-num {
+    margin: 2px 0 0 !important;
+    font-size: 27px !important;
+    line-height: 1;
+    letter-spacing: -.8px;
+  }
+
+  .stat-card-label {
+    margin-top: auto;
+    color: var(--gray-600);
+    font-size: 9.5px;
+    line-height: 1.15;
+    letter-spacing: .15px;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 360px) {
+  .stat-grid:has(> .stat-card),
+  .summary-strip:has(> .stat-card) {
+    gap: 6px !important;
+  }
+
+  .stat-card {
+    min-height: 80px !important;
+    padding: 9px !important;
+  }
+
+  .stat-card-icon {
+    top: 9px;
+    right: 9px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .stat-card-num {
+    font-size: 25px !important;
+  }
+
+  .stat-card-label {
+    font-size: 9px;
+  }
 }
 
 @media (max-width: 980px) {
