@@ -15,12 +15,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .ann-summary-item:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transform: none;
+  border-color: var(--blue-pale);
+  box-shadow: var(--summary-card-hover-shadow);
+  transform: translateY(-2px);
 }
 
 .ann-sum-icon {

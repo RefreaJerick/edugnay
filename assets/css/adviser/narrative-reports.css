@@ -183,7 +183,7 @@
     }
 
     .summary-item:hover {
-      box-shadow: 0 9px 20px rgba(16,40,80,0.1);
+      box-shadow: var(--summary-card-hover-shadow);
       border-color: var(--blue-pale);
       transform: translateY(-2px);
     }
@@ -1167,4 +1167,3 @@
 @media (max-width: 380px) {
   .pipeline-flow { grid-template-columns: 1fr; }
 }
-

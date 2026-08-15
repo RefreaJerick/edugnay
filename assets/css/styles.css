@@ -59,6 +59,8 @@
   --orange-border:        #fde68a;
   --gold-border:          #e8c96d;
   --red-border:           #f5c2c2;
+  --card-hover-shadow:         0 9px 20px rgba(16, 40, 80, .09);
+  --summary-card-hover-shadow: var(--card-hover-shadow);
   --overlay-modal:        rgba(11, 31, 58, .48);
   /* Shared portal content-panel system */
   --panel-bg:             var(--white);
@@ -150,8 +152,8 @@ button {
 }
 .stat-card:hover {
   border-color: var(--blue-pale);
-  box-shadow: 0 10px 24px rgba(16, 40, 80, 0.1);
-  transform: translateY(-3px);
+  box-shadow: var(--summary-card-hover-shadow);
+  transform: translateY(-2px);
 }
 .stat-card-top {
   display: flex;
@@ -1862,6 +1864,60 @@ html, body {
   }
 }
 
+/* Shared card interaction: match the Admin Dashboard summary-card hover
+   everywhere a card surface is used, while keeping panels and modals static. */
+.shell .main :is(
+  .ann-card,
+  .archive-year-card,
+  .assignment-card,
+  .child-card,
+  .child-record-card,
+  .data-source-card,
+  .flag-card,
+  .grading-period-card,
+  .guardian-card,
+  .journal-card,
+  .profile-header-card,
+  .prompt-card,
+  .rail-card,
+  .report-card,
+  .rs-card,
+  .sc-card,
+  .section-card,
+  .stat-card
+) {
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease !important;
+}
+
+.shell .main :is(
+  .ann-card,
+  .archive-year-card,
+  .assignment-card,
+  .child-card,
+  .child-record-card,
+  .data-source-card,
+  .flag-card,
+  .grading-period-card,
+  .guardian-card,
+  .journal-card,
+  .profile-header-card,
+  .prompt-card,
+  .rail-card,
+  .report-card,
+  .rs-card,
+  .sc-card,
+  .section-card,
+  .stat-card
+):hover {
+  border-color: var(--blue-pale) !important;
+  box-shadow: var(--card-hover-shadow) !important;
+  transform: translateY(-2px) !important;
+}
+
+.shell .main :is(.child-card.active, .rs-card.selected):hover {
+  border-color: var(--blue-mid) !important;
+}
+
 @media (max-width: 760px) {
   .page-overview {
     align-items: flex-start;
@@ -2187,7 +2243,7 @@ html, body {
 .stat-card.gray { border-color: var(--gray-200); background: #fbfcfe; }
 .stat-card:hover {
   border-color: var(--blue-pale);
-  box-shadow: 0 9px 20px rgba(16,40,80,.09);
+  box-shadow: var(--summary-card-hover-shadow);
   transform: translateY(-2px);
 }
 .stat-card-top { margin-bottom: 14px; }

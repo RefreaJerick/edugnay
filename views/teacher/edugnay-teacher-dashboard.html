@@ -552,6 +552,16 @@
       { grade: '9', id: '9-john', name: 'Grade 9 - St. John', sub: 'Science', students: '34', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
     ];
 
+    const TEACHER_REPORTS_TO_CONFIRM = [
+      { id: 3, studentName: 'Cruz, Ramon D.', status: 'pending' },
+      { id: 4, studentName: 'Dela Torre, Ana F.', status: 'pending' },
+      { id: 5, studentName: 'Estrada, Jose G.', status: 'pending' },
+      { id: 7, studentName: 'Hernandez, Carlo I.', status: 'pending' },
+      { id: 8, studentName: 'Ibarra, Rosa J.', status: 'pending' }
+    ];
+
+    const TEACHER_IS_ADVISER = TEACHER_SECTIONS.some(section => section.sub.includes('Class Adviser'));
+
     const TEACHER_SUMMARY_CARDS = [
       {
         tone: 'green',
@@ -561,12 +571,27 @@
         getSub: () => `Across ${TEACHER_SECTIONS.length} assigned sections`
       },
       {
-        tone: 'gold',
+        tone: 'purple',
         icon: 'school',
         label: 'Sections Handled',
         getValue: () => TEACHER_SECTIONS.length,
         sub: 'Assigned for the current term'
-      }
+      },
+      TEACHER_IS_ADVISER
+        ? {
+            tone: 'gold',
+            icon: 'hourglass',
+            label: 'Reports to Confirm',
+            getValue: () => TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length,
+            getSub: () => 'Ready for your review'
+          }
+        : {
+            tone: 'red',
+            icon: 'alert-triangle',
+            label: 'Needs Attention',
+            getValue: () => FLAGGED_STUDENTS.length,
+            getSub: () => 'Flagged students to review'
+          }
     ];
 
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = [
@@ -576,7 +601,7 @@
     ];
 
     const PENDING_TASKS = [
-      { title: '5 Narrative Reports Awaiting Confirmation', sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" },
+      { title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" },
       { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
       { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
     ];

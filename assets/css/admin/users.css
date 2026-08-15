@@ -834,7 +834,8 @@ tbody td {
 }
 
 .rs-card {
-  animation: fadeUp 0.35s ease both;
+  /* Let the shared hover transform take over after the entrance animation. */
+  animation: fadeUp 0.35s ease;
 }
 
 .rs-card:nth-child(1) {
@@ -926,7 +927,7 @@ tbody td {
 }
 .rs-card:hover {
   border-color: var(--blue-pale);
-  box-shadow: 0 9px 20px rgba(16,40,80,.09);
+  box-shadow: var(--summary-card-hover-shadow);
   transform: translateY(-2px);
 }
 .rs-card.all { border-color: var(--blue-pale); background: #f8fbff; }

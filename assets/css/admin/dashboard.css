@@ -391,7 +391,9 @@
 
 /* Animations */
 .stat-card {
-  animation: fadeUp 0.4s ease both;
+  /* Keep the entrance animation from owning transform after it finishes,
+     so the shared hover lift can take effect. */
+  animation: fadeUp 0.4s ease;
 }
 .stat-card:nth-child(1) {
   animation-delay: 0.05s;

@@ -1481,7 +1481,7 @@ tbody tr:hover {
 
 .mgmt-panel .stat-card:hover {
   border-color: var(--blue-pale);
-  box-shadow: 0 8px 22px rgba(16, 40, 80, 0.09);
+  box-shadow: var(--summary-card-hover-shadow);
   transform: translateY(-2px);
 }
 

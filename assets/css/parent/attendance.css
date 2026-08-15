@@ -693,7 +693,7 @@
 .summary-item:hover {
   transform: translateY(-2px);
   border-color: var(--blue-pale);
-  box-shadow: 0 8px 18px rgba(16, 40, 80, .08);
+  box-shadow: var(--summary-card-hover-shadow);
 }
 
 .summary-item:last-child {
@@ -1020,7 +1020,7 @@
 
 .summary-item:hover {
   border-color: var(--blue-pale);
-  box-shadow: 0 9px 20px rgba(16, 40, 80, .1);
+  box-shadow: var(--summary-card-hover-shadow);
   transform: translateY(-2px);
 }
 
@@ -1257,16 +1257,12 @@
   background: #fff8f8;
 }
 
-.summary-item-present:hover {
-  border-color: #9bd6aa;
-}
-
-.summary-item-late:hover {
-  border-color: #e8c86f;
-}
-
+.summary-item-present:hover,
+.summary-item-late:hover,
 .summary-item-absent:hover {
-  border-color: #eca2a2;
+  border-color: var(--blue-pale);
+  box-shadow: var(--summary-card-hover-shadow);
+  transform: translateY(-2px);
 }
 
 .summary-card-top,
