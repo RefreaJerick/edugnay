@@ -236,14 +236,12 @@
           <!-- EJS: <% if (weeklyReport) { %> -->
           <section class="report-hero" aria-labelledby="weeklyReportTitle">
             <div class="report-hero-head">
+              <div class="report-hero-icon" aria-hidden="true">
+                <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
+              </div>
               <div class="report-hero-title-wrap">
-                <div class="report-hero-icon"><i data-lucide="sparkles"
-                    style="width:19px;height:19px;color:var(--gold);"></i></div>
-                <div>
-                  <div class="report-hero-kicker">Latest insight</div>
-                  <div class="report-hero-title" id="weeklyReportTitle">Weekly Report</div>
-                  <div class="report-hero-sub">Week of June 9–14, 2025 · Juan Alcantara</div>
-                </div>
+                <div class="report-hero-kicker" id="weeklyReportTitle">Weekly Report</div>
+                <div class="report-hero-sub">Week of June 9–14, 2025 · Juan Alcantara</div>
               </div>
             </div>
             <div class="report-hero-text" id="report-hero-text">
@@ -261,9 +259,8 @@
           <!-- EJS: <% } else { %> -->
           <!--
       <div class="report-hero is-waiting">
-        <div class="report-hero-head" style="margin-bottom:0;">
+        <div class="report-hero-head">
           <div class="report-hero-title-wrap">
-            <div class="report-waiting-icon"><i data-lucide="hourglass" style="width:20px;height:20px;color:var(--gold);"></i></div>
             <div>
               <div class="report-waiting-title">This week's report isn't ready yet</div>
               <div class="report-waiting-sub">Your child's teacher is still preparing this week's report. You'll be notified as soon as it's sent.</div>

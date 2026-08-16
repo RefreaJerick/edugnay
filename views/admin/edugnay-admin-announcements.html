@@ -322,7 +322,6 @@
                   </div>
                 </div>
                 <div class="ann-badges">
-                  <span class="badge badge-red"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Urgent</span>
                   <span class="badge badge-green">Active</span>
                 </div>
               </div>
@@ -361,7 +360,6 @@
                   </div>
                 </div>
                 <div class="ann-badges">
-                  <span class="badge badge-blue">Normal</span>
                   <span class="badge badge-green">Active</span>
                 </div>
               </div>
@@ -396,7 +394,6 @@
                   </div>
                 </div>
                 <div class="ann-badges">
-                  <span class="badge badge-gold"><i data-lucide="calendar" style="width:10px;height:10px;"></i> Event</span>
                   <span class="badge badge-green">Active</span>
                 </div>
               </div>
@@ -431,7 +428,6 @@
                   </div>
                 </div>
                 <div class="ann-badges">
-                  <span class="badge badge-blue">Normal</span>
                   <span class="badge badge-green">Active</span>
                 </div>
               </div>
@@ -466,7 +462,6 @@
                   </div>
                 </div>
                 <div class="ann-badges">
-                  <span class="badge badge-blue">Normal</span>
                   <span class="badge badge-green">Active</span>
                 </div>
               </div>
@@ -689,7 +684,7 @@
     list.innerHTML = ANNOUNCEMENTS.map(ann => `
       <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-audience="${ann.audienceKey}">
         ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
-        <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div><div class="ann-badges"><span class="badge ${ann.tagClass}">${ann.tag}</span>${ann.draft ? '' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${ann.body}</div>${ann.image ? `<div class="ann-image-wrap"><img class="ann-image" src="${ann.image}" alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div>
+        <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div><div class="ann-badges">${ann.draft ? '<span class="badge badge-gray">Draft</span>' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${ann.body}</div>${ann.image ? `<div class="ann-image-wrap"><img class="ann-image" src="${ann.image}" alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div>
         <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.seen}</div><div class="ann-footer-right">${ann.draft ? '' : `<button class="footer-btn pin" onclick="${ann.pinned ? 'unpinCard' : 'pinCard'}(this)"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>`}<button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.draft ? 'Edit & Publish' : 'Edit'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
       </div>`).join('');
     lucide.createIcons();

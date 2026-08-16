@@ -775,6 +775,14 @@ thead tr:hover .comp-delete-btn {
   box-shadow: 0 3px 12px rgba(16, 40, 80, 0.05);
 }
 
+/* The published-state banner sits above the score panel, so it should align
+   with the full tab workspace instead of stopping at an inner gutter. */
+#content-scores > .publish-banner {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .publish-banner-left {
   display: flex;
   align-items: flex-start;

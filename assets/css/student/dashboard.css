@@ -554,9 +554,9 @@
 
 /* ── Journal prompt card — Values subject only ── */
 .journal-feature {
-  border: 1px solid #ead8f9;
+  border: 1px solid var(--purple-border);
   border-radius: 16px;
-  background: linear-gradient(135deg, #faf5ff 0%, #ffffff 72%);
+  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--white) 72%);
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
   overflow: hidden;
 }
