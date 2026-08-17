@@ -25,7 +25,7 @@
   ─────────────────────────────────────────
   - student            → session record:
                          { firstName, lastName, lrn, gradeLevel, section, adviserName,
-                           email, phone, address, birthdate, avatarUrl }
+                           email, phone, avatarUrl }
   - academicInfo        → read-only block: { lrn, gradeLevel, section, schoolYear,
                          adviserName, enrollmentStatus, enrollmentDate }
                          NEVER editable by the student — any change to LRN/section/
@@ -33,12 +33,12 @@
   - subjects[]          → enrolled subjects + assigned teacher for current quarter,
                          read-only (same source as the student subject list,
                          minus the grade column)
-  - guardians[]          → { name, relationship, phone, email, isPrimary }
-  - Personal info form   → ONLY editable fields are phone and address — email is
-                         fixed (registrar-controlled, same tier as name/birthdate)
+  - linkedParent         → { name, phone, email }
+  - Personal info form   → ONLY editable field is phone — email is
+                         fixed (registrar-controlled, same tier as name)
                          since it's tied to the student's school account/login.
-                         Name/birthdate also admin-controlled depending on school
-                         policy; mark as disabled if so (already disabled here).
+                         Name is admin-controlled depending on school policy;
+                         mark as disabled if so (already disabled here).
 
   FORM SUBMIT: POST /student/profile/update — validate server-side regardless of
   client-side input types. Avatar upload goes through the same handler pattern as
@@ -259,7 +259,7 @@
         <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
       </button>
       <button class="profile-tab" onclick="switchTab('guardian', this)">
-        <i data-lucide="heart-handshake" style="width:13px;height:13px;"></i> Guardian / Emergency
+        <i data-lucide="heart-handshake" style="width:13px;height:13px;"></i> Linked Parent
       </button>
       <button class="profile-tab" onclick="switchTab('security', this)">
         <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
@@ -387,17 +387,6 @@
             </div>
           </div>
 
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Date of Birth</label>
-              <input class="form-input" type="text" name="birthdate" value="March 14, 2012" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Gender</label>
-              <input class="form-input" type="text" name="gender" value="Male" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-            </div>
-          </div>
-
           <div class="form-divider"></div>
 
           <div class="form-grid-2">
@@ -412,10 +401,6 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label">Home Address</label>
-            <input class="form-input" type="text" name="address" id="profile-address" value="123 Sampaguita St., Brgy. San Isidro, Quezon City" placeholder="Street, Barangay, City"/>
-          </div>
         </div>
         <div class="config-panel-foot">
           <button type="button" class="btn btn-cancel" onclick="resetForm()">Discard</button>
@@ -425,39 +410,36 @@
       </div>
     </div>
 
-    <!-- ── GUARDIAN / EMERGENCY TAB ── -->
+    <!-- ── LINKED PARENT TAB ── -->
     <div class="profile-pane" id="pane-guardian">
       <div class="panel">
         <div class="panel-head">
           <div class="panel-head-title-group">
             <div class="panel-title-icon"><i data-lucide="heart-handshake" style="width:16px;height:16px;"></i></div>
             <div>
-              <div class="panel-title">Guardian & Emergency Contacts</div>
+              <div class="panel-title">Linked Parent</div>
               <div class="panel-sub">For updates, please coordinate with the registrar's office</div>
             </div>
           </div>
         </div>
         <div>
-          <!-- guardians[]: loop -->
+          <!-- linkedParent: render the parent record here -->
           <div class="guardian-card">
             <div class="guardian-avatar">RA</div>
             <div class="guardian-info">
               <div class="guardian-name">Rosario Alcantara</div>
-              <div class="guardian-rel">Mother</div>
               <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> 0918 234 5678</div>
               <div class="guardian-contact-row"><i data-lucide="mail" style="width:12px;height:12px;"></i> rosario.alcantara@gmail.com</div>
             </div>
-            <span class="guardian-primary-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> Primary</span>
           </div>
           <div class="guardian-card">
             <div class="guardian-avatar">FA</div>
             <div class="guardian-info">
               <div class="guardian-name">Fernando Alcantara</div>
-              <div class="guardian-rel">Father</div>
               <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> 0917 345 6789</div>
             </div>
           </div>
-          <!-- end guardians[] loop -->
+          <!-- end linkedParent record -->
         </div>
       </div>
     </div>
@@ -650,7 +632,6 @@ function submitProfile(event) {
 
 function resetForm() {
   document.getElementById('profile-phone').value = '0917 123 4567';
-  document.getElementById('profile-address').value = '123 Sampaguita St., Brgy. San Isidro, Quezon City';
 }
 </script>
 

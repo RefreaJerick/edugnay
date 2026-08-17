@@ -140,8 +140,8 @@
           <div class="settings-field">
             <label class="settings-field-label">Submission Day</label>
             <select class="settings-select" id="settings-day">
-              <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-              <option>Thursday</option><option selected>Friday</option>
+              <option>Sunday</option><option>Monday</option><option>Tuesday</option>
+              <option>Wednesday</option><option>Thursday</option><option selected>Friday</option>
             </select>
           </div>
           <div class="settings-field">
@@ -149,14 +149,10 @@
             <input class="settings-input" type="time" id="settings-deadline" value="23:59"/>
           </div>
         </div>
-        <div class="settings-row-2">
+        <div class="settings-row-2 settings-row-single">
           <div class="settings-field">
             <label class="settings-field-label">Min. Words</label>
             <input class="settings-input" type="number" id="settings-minwords" value="50" min="10"/>
-          </div>
-          <div class="settings-field">
-            <label class="settings-field-label">Max. Words</label>
-            <input class="settings-input" type="number" id="settings-maxwords" value="500" min="50"/>
           </div>
         </div>
       </div>
@@ -257,7 +253,7 @@
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
         <a class="nav-item" onclick="navigate('reports')">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
@@ -508,7 +504,6 @@ const JOURNAL_SETTINGS = {
   day: 'Friday',
   deadline: '23:59',
   minWords: 50,
-  maxWords: 500,
   allowLate: false,
 };
 
@@ -521,7 +516,6 @@ function openSettingsDrawer() {
   document.getElementById('settings-day').value = JOURNAL_SETTINGS.day;
   document.getElementById('settings-deadline').value = JOURNAL_SETTINGS.deadline;
   document.getElementById('settings-minwords').value = JOURNAL_SETTINGS.minWords;
-  document.getElementById('settings-maxwords').value = JOURNAL_SETTINGS.maxWords;
 
   setToggle('toggle-allow-late', JOURNAL_SETTINGS.allowLate);
 
@@ -550,7 +544,6 @@ function saveJournalSettings() {
   JOURNAL_SETTINGS.day        = document.getElementById('settings-day').value;
   JOURNAL_SETTINGS.deadline   = document.getElementById('settings-deadline').value;
   JOURNAL_SETTINGS.minWords   = parseInt(document.getElementById('settings-minwords').value) || 50;
-  JOURNAL_SETTINGS.maxWords   = parseInt(document.getElementById('settings-maxwords').value) || 500;
   JOURNAL_SETTINGS.allowLate  = document.getElementById('toggle-allow-late').classList.contains('on');
 
   document.getElementById('panel-sub').textContent =

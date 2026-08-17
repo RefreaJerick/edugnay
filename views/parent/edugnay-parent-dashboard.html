@@ -82,7 +82,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-parent-reports.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
         </a>
         <a href="edugnay-parent-attendance.html" class="nav-item">
@@ -241,16 +241,20 @@
               </div>
               <div class="report-hero-title-wrap">
                 <div class="report-hero-kicker" id="weeklyReportTitle">Weekly Report</div>
-                <div class="report-hero-sub">Week of June 9–14, 2025 · Juan Alcantara</div>
+                <div class="report-hero-sub">Week of June 9–14, 2025</div>
               </div>
             </div>
+            <div class="report-hero-quote-mark">"</div>
             <div class="report-hero-text" id="report-hero-text">
               Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked
               assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment
               in group activities. No concerns to report this week — keep up the encouragement at home!
             </div>
             <div class="report-hero-foot">
-              <span class="report-hero-meta">Sent by Ms. Maria Reyes · June 14, 8:02 AM</span>
+              <div class="report-hero-meta-wrap">
+                <span class="report-hero-avatar" aria-hidden="true">MR</span>
+                <span class="report-hero-meta">Sent by Ms. Maria Reyes · June 14, 8:02 AM</span>
+              </div>
               <a href="edugnay-parent-reports.html" class="report-hero-link">
                 View all reports <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
               </a>
@@ -508,7 +512,7 @@
     function updateChildContext() {
       const data = CHILDREN_DATA[currentChild];
       document.getElementById('banner-child-context').textContent = `Viewing: ${data.name} · ${data.section}`;
-      document.querySelector('.report-hero-sub').textContent = `Week of June 9–14, 2025 · ${data.name}`;
+      document.querySelector('.report-hero-sub').textContent = 'Week of June 9–14, 2025';
       document.getElementById('report-hero-text').textContent = data.report.text;
       document.querySelector('.report-hero-meta').textContent = `Sent by ${data.report.sentBy}`;
     }

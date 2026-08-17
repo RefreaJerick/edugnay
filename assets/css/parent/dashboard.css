@@ -363,7 +363,7 @@
 .report-hero {
   position: relative;
   overflow: hidden;
-  padding: 0;
+  padding: 24px 26px;
   border: 1px solid var(--purple-border);
   border-radius: var(--panel-radius);
   background: linear-gradient(135deg, var(--purple-pale) 0%, var(--white) 72%);
@@ -374,26 +374,27 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 20px 22px 6px;
-  margin-bottom: 0;
+  padding: 0;
+  margin-bottom: 14px;
   position: relative;
   z-index: 1;
 }
 
 .report-hero-icon {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--purple);
   color: var(--white);
 }
 
 .report-hero-title-wrap {
   display: block;
+  min-width: 0;
 }
 
 .report-hero-kicker {
@@ -406,17 +407,33 @@
 }
 
 .report-hero-sub {
-  margin-top: 3px;
-  color: var(--gray-500);
-  font-size: 11.5px;
+  margin-top: 4px;
+  color: var(--navy);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.report-hero-quote-mark {
+  position: relative;
+  z-index: 1;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 38px;
+  line-height: .65;
+  color: var(--purple-border-strong);
+  margin-bottom: -2px;
+  user-select: none;
 }
 
 .report-hero-text {
   margin: 0;
-  padding: 8px 22px 0;
+  margin-bottom: 16px;
+  padding: 0;
   color: var(--gray-700);
   font-size: 13.5px;
   line-height: 1.7;
+  max-width: 720px;
   position: relative;
   z-index: 1;
 }
@@ -427,10 +444,32 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 22px 18px;
+  padding: 0;
   margin-top: 0;
   position: relative;
   z-index: 1;
+}
+
+.report-hero-meta-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.report-hero-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  flex: 0 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--purple-pale);
+  border: 1px solid var(--purple-border);
+  color: var(--purple);
+  font-size: 9px;
+  font-weight: 800;
 }
 
 .report-hero-meta {
@@ -888,20 +927,20 @@
   }
 
   .report-hero {
-    padding: 0;
+    padding: 20px;
   }
 
   .report-hero-head {
-    padding: 18px 18px 6px;
+    padding: 0;
   }
 
   .report-hero-text {
-    padding: 8px 18px 0;
+    padding: 0;
     font-size: 13px;
   }
 
   .report-hero-foot {
-    padding: 10px 18px 16px;
+    padding: 0;
     margin-top: 0;
     flex-direction: column;
     align-items: stretch;
@@ -938,6 +977,10 @@
 
   .report-hero-meta {
     line-height: 1.45;
+  }
+
+  .report-hero-sub {
+    font-size: 16px;
   }
 
   .subject-att-row,

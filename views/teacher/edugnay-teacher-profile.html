@@ -71,7 +71,7 @@
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
         <a class="nav-item" onclick="navigate('reports')">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
@@ -314,7 +314,7 @@
         <div class="config-panel-body" id="teacher-employment-details">
           <div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;">
             <span class="profile-detail-label">Sections Handled</span>
-            <div class="section-pill-col">
+            <div class="section-list" role="list" aria-label="Sections handled">
               <span class="badge badge-blue">Gr. 7 – St. Matthew</span>
               <span class="badge badge-blue">Gr. 8 – St. Luke</span>
               <span class="badge badge-blue">Gr. 9 – St. Peter</span>
@@ -398,7 +398,7 @@
     const panel = document.getElementById('teacher-employment-details');
     if (!panel) return;
     const details = EMPLOYMENT_DETAILS[0];
-    panel.innerHTML = `<div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-pill-col">${details.sections.map(section => `<span class="badge badge-blue">${section}</span>`).join('')}</div></div>`;
+    panel.innerHTML = `<div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-list" role="list" aria-label="Sections handled">${details.sections.map(section => `<span class="badge badge-blue" role="listitem">${section}</span>`).join('')}</div></div>`;
   }
 
   renderEmploymentDetails();

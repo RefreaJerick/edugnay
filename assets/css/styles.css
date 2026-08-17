@@ -74,6 +74,16 @@
   --panel-title-size:     16px;
   --panel-sub-size:       11px;
   --panel-footer-bg:      var(--gray-50);
+  /* Shared button tokens. Pages can still adjust width/layout for their
+     location, but the type, rhythm and interaction language stays unified. */
+  --button-radius:        10px;
+  --button-radius-compact: 9px;
+  --button-height:        38px;
+  --button-height-compact: 32px;
+  --button-pad-x:         14px;
+  --button-gap:           7px;
+  --button-focus-ring:    rgba(29, 92, 180, .24);
+  --button-primary-shadow: 0 3px 10px rgba(26, 64, 128, .18);
   --sidebar-w:   240px;
   --topbar-h:    76px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
@@ -101,6 +111,12 @@ body:has(.shell) {
 
 button {
   font-family: inherit;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
 
@@ -1527,6 +1543,11 @@ html, body {
 
 .btn-login:active { transform: translateY(0); }
 
+.btn-login:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring), 0 4px 14px rgba(26,64,128,0.35);
+}
+
 /* Footer */
 .login-footer {
   margin-top: 28px;
@@ -1810,7 +1831,7 @@ html, body {
 
 /* Shared navy overview banner for pages that need a clear page introduction. */
 .portal-overview {
-  display: block;
+  display: none;
   margin-bottom: 18px;
   padding: 24px 26px;
   border: 1px solid rgba(255, 255, 255, .12);
@@ -1855,6 +1876,7 @@ html, body {
 
 @media (max-width: 760px) {
   .portal-overview {
+    display: block;
     padding: 15px;
     border-radius: 16px;
   }
@@ -1871,13 +1893,9 @@ html, body {
   .archive-year-card,
   .assignment-card,
   .child-card,
-  .child-record-card,
   .data-source-card,
   .flag-card,
-  .guardian-card,
   .journal-card,
-  .profile-header-card,
-  .prompt-card,
   .report-card,
   .rs-card,
   .sc-card,
@@ -1892,13 +1910,9 @@ html, body {
   .archive-year-card,
   .assignment-card,
   .child-card,
-  .child-record-card,
   .data-source-card,
   .flag-card,
-  .guardian-card,
   .journal-card,
-  .profile-header-card,
-  .prompt-card,
   .report-card,
   .rs-card,
   .sc-card,

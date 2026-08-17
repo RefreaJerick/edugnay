@@ -28,14 +28,14 @@
   EJS CONVERSION MAP — parent-profile.html
   ─────────────────────────────────────────
   - parent              → session record:
-                         { firstName, lastName, email, phone, address, avatarUrl }
+                         { firstName, lastName, email, phone, avatarUrl }
   - children[]           → linked student records (read-only here):
                          { firstName, lastName, gradeSection, adviserName,
                            relationship: 'Mother'|'Father'|'Guardian', isPrimary }
                          NEVER editable by the parent — linking/unlinking a child
                          to a parent account must go through the registrar/admin
                          portal, not here.
-  - Personal info form   → ONLY editable fields are phone and address — email is
+  - Personal info form   → ONLY editable field is phone — email is
                          fixed (registrar-controlled, tied to the parent's
                          school-account login), same tier as name.
 
@@ -73,7 +73,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-parent-reports.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
         </a>
         <a href="edugnay-parent-attendance.html" class="nav-item">
@@ -356,11 +356,6 @@
                 </div>
               </div>
 
-              <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Home Address</label>
-                <input class="form-input" type="text" name="address" id="profile-address"
-                  value="123 Sampaguita St., Brgy. San Isidro, Quezon City" placeholder="Street, Barangay, City" />
-              </div>
             </div>
             <div class="config-panel-foot">
               <button type="button" class="btn btn-cancel" onclick="resetForm()">Discard</button>
@@ -554,7 +549,6 @@
 
     function resetForm() {
       document.getElementById('profile-phone').value = '0918 234 5678';
-      document.getElementById('profile-address').value = '123 Sampaguita St., Brgy. San Isidro, Quezon City';
     }
   </script>
 

@@ -11,66 +11,160 @@
   <link rel="stylesheet" href="./assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
-    /* Login page refinements */
-    html, body { background: #eaf0f7; }
+    /* Login page layout */
+    html, body { background: var(--white); }
     .page {
       grid-template-columns: minmax(0, 1fr) minmax(420px, 500px);
-      gap: 28px; padding: 28px; background: #eaf0f7;
+      min-height: 100dvh;
+      gap: 0;
+      padding: 0;
+      background: var(--white);
     }
     .photo-panel {
-      min-height: calc(100vh - 56px); border-radius: 24px;
-      box-shadow: 0 18px 42px rgba(11,31,58,.18);
+      min-height: 100dvh;
+      border-radius: 0;
+      box-shadow: none;
+      border-right: 1px solid var(--gray-200);
     }
     .photo-panel::before {
       background:
-        linear-gradient(90deg, rgba(11,31,58,.64), rgba(11,31,58,.18)),
-        linear-gradient(0deg, rgba(11,31,58,.88), transparent 64%);
+        linear-gradient(90deg, color-mix(in srgb, var(--navy) 76%, transparent), color-mix(in srgb, var(--navy) 22%, transparent)),
+        linear-gradient(0deg, color-mix(in srgb, var(--navy) 90%, transparent), transparent 64%);
     }
-    .photo-panel .photo-content { padding: 42px 48px; }
+    .photo-panel .photo-content { padding: clamp(32px, 5vw, 68px); }
+    .school-crest {
+      box-shadow: none;
+      border: 1px solid color-mix(in srgb, var(--white) 36%, transparent);
+    }
     .photo-bottom {
-      max-width: 680px; padding: 24px 26px 22px; border-radius: 20px;
-      background: transparent; border: 0; box-shadow: none; backdrop-filter: none;
+      max-width: 680px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
     }
     .photo-heading { max-width: 620px; font-size: clamp(34px, 4vw, 56px); letter-spacing: -1px; margin-bottom: 14px; }
-    .photo-sub { max-width: 500px; margin-bottom: 26px; color: rgba(255,255,255,.72); }
-    .stat-strip { border-radius: 14px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
-    .stat-block { min-width: 112px; padding: 13px 19px; }
+    .photo-sub { max-width: 500px; margin-bottom: 28px; color: color-mix(in srgb, var(--white) 76%, transparent); }
+    .stat-strip { border: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
+    .stat-block { min-width: 112px; padding: 0 20px; }
+    .stat-block:first-child { padding-left: 0; }
+    .stat-block:not(:last-child) { border-right-color: color-mix(in srgb, var(--white) 22%, transparent); }
     .login-panel {
-      margin: 0; border-radius: 24px; padding: 56px 52px;
-      background: var(--white); box-shadow: 0 18px 42px rgba(16,40,80,.12);
+      margin: 0;
+      border-radius: 0;
+      padding: clamp(40px, 7vw, 80px) clamp(32px, 5vw, 64px);
+      background: var(--white);
+      box-shadow: none;
       align-self: stretch;
+      align-items: center;
     }
     .login-panel::before { display: none; }
-    .login-top { margin-bottom: 30px; }
-    .login-eyebrow { color: var(--blue); letter-spacing: 1.5px; }
+    .auth-view {
+      display: none;
+      width: 100%;
+      max-width: 370px;
+    }
+    .auth-view.active { display: block; }
+    .login-top, .login-form, .login-footer { width: 100%; max-width: 370px; }
+    .login-top { margin-bottom: 34px; }
+    .login-eyebrow {
+      color: var(--blue-mid);
+      letter-spacing: 1.5px;
+    }
     .login-title { font-size: clamp(30px, 3vw, 38px); letter-spacing: -.8px; }
     .login-sub { color: var(--gray-500); line-height: 1.6; }
     .form-group { margin-bottom: 20px; }
-    .form-input { min-height: 50px; border-radius: 11px; background: #fbfdff; }
+    .form-input { min-height: 50px; border-radius: var(--button-radius); background: var(--gray-50); }
     .form-input:hover { border-color: var(--gray-400); }
     .form-bottom { margin-top: 4px; margin-bottom: 26px; }
-    .btn-login { min-height: 51px; border-radius: 11px; }
-    .login-footer { margin-top: 30px; padding-top: 22px; }
+    button.forgot {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-login { min-height: 51px; border-radius: var(--button-radius); box-shadow: none; }
+    .btn-login::after { display: none; }
+    .btn-login:hover { box-shadow: none; transform: none; }
+    .login-footer { margin-top: 28px; padding-top: 0; border-top: 0; text-align: left; }
     .login-footer p { color: var(--gray-500); }
+    .auth-back,
+    .auth-text-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--blue-mid);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .auth-back { margin-bottom: 30px; }
+    .auth-back:hover,
+    .auth-text-action:hover { color: var(--blue); }
+    .auth-inline-message {
+      min-height: 18px;
+      margin-top: 12px;
+      color: var(--gray-500);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .auth-inline-message.error { color: var(--red); }
+    .auth-status-icon {
+      width: 38px;
+      height: 38px;
+      margin-bottom: 20px;
+      color: var(--blue-mid);
+    }
+    .auth-status-icon.success { color: var(--green-dark); }
+    .auth-status-email {
+      margin-top: 8px;
+      color: var(--gray-700);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .auth-actions { margin-top: 0; }
+    .auth-text-action {
+      display: flex;
+      width: fit-content;
+      margin: 18px auto 0;
+    }
+    .password-guidance {
+      color: var(--gray-500);
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+    .password-guidance { margin: -8px 0 20px; }
+    .btn-login:disabled {
+      background: var(--gray-300);
+      color: var(--white);
+      cursor: wait;
+    }
 
     @media (max-width: 1100px) and (min-width: 861px) {
-      .page { grid-template-columns: minmax(0, 1fr) 440px; gap: 20px; padding: 20px; }
-      .photo-panel { min-height: calc(100vh - 40px); }
+      .page { grid-template-columns: minmax(0, 1fr) 440px; }
+      .photo-panel { min-height: 100dvh; }
       .photo-panel .photo-content { padding: 34px; }
-      .photo-bottom { padding: 20px; }
       .login-panel { padding: 44px 36px; }
     }
     @media (max-width: 860px) {
-      .page { display: block; min-height: 100vh; padding: 16px; }
+      .page { display: block; min-height: 100dvh; padding: 0; }
       .photo-panel { display: none; }
       .login-panel {
-        min-height: calc(100vh - 32px); padding: 38px clamp(20px, 7vw, 48px);
-        border-radius: 20px; justify-content: center;
+        min-height: 100dvh;
+        padding: 38px clamp(24px, 8vw, 48px);
+        border-radius: 0;
+        justify-content: center;
       }
     }
     @media (max-width: 460px) {
-      .page { padding: 10px; }
-      .login-panel { min-height: calc(100vh - 20px); padding: 28px 20px; border-radius: 17px; }
+      .login-panel { min-height: 100dvh; padding: 28px 20px; border-radius: 0; }
       .login-top { margin-bottom: 26px; }
       .login-title { font-size: 29px; }
       .form-input { min-height: 48px; font-size: 13px; }
@@ -135,13 +229,14 @@
 
   <!-- ── RIGHT: LOGIN PANEL ── -->
   <div class="login-panel">
+    <section class="auth-view active" id="signInView" data-auth-view="signin" aria-labelledby="signInTitle">
     <div class="login-top">
       <div class="login-eyebrow">E-Ugnay Portal</div>
-      <h1 class="login-title">Sign in to<br/>your account</h1>
+      <h1 class="login-title" id="signInTitle">Sign in to<br/>your account</h1>
       <p class="login-sub">Enter your school email to get started.</p>
     </div>
 
-    <form class="login-form" action="" method="post">
+    <form class="login-form" id="signInForm" action="" method="post" onsubmit="checkEmail(event)" novalidate>
       <!-- Email -->
     <div class="form-group">
       <label class="form-label" for="emailInput">School Email</label>
@@ -179,14 +274,15 @@
       <label class="remember" for="rememberMe">
         <input type="checkbox" id="rememberMe" name="remember" value="yes"/> Keep me signed in
       </label>
-      <a href="#" class="forgot">Forgot password?</a>
+      <button type="button" class="forgot" onclick="openForgotPassword()">Forgot password?</button>
     </div>
 
     <!-- <button class="btn-login" type="submit">Sign In</button> -->
 
-    <button class="btn-login" type="button" onclick="checkEmail()">
+    <button class="btn-login" type="submit">
       Sign In
     </button>
+    <div class="auth-inline-message" id="signInMessage" role="alert" aria-live="polite"></div>
     </form>
 
     <div class="login-footer">
@@ -196,31 +292,279 @@
         Contact your administrator if you cannot log in.
       </p>
     </div>
+    </section>
+
+    <section class="auth-view" id="forgotView" data-auth-view="forgot" aria-labelledby="forgotTitle" aria-hidden="true">
+      <button type="button" class="auth-back" onclick="showAuthView('signin')">
+        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to sign in
+      </button>
+      <div class="login-top">
+        <div class="login-eyebrow">Account Recovery</div>
+        <h1 class="login-title" id="forgotTitle">Reset your password</h1>
+        <p class="login-sub">Enter the school email connected to your account. We will prepare a secure reset link.</p>
+      </div>
+      <form class="login-form" id="forgotPasswordForm" onsubmit="requestPasswordReset(event)">
+        <div class="form-group">
+          <label class="form-label" for="resetEmailInput">School Email</label>
+          <div class="input-wrap">
+            <input
+              class="form-input"
+              type="email"
+              id="resetEmailInput"
+              name="email"
+              placeholder="firstname.lastname.fac@stcolumban.edu.ph"
+              autocomplete="email"
+              required
+            />
+          </div>
+        </div>
+        <button class="btn-login" type="submit">Send Reset Link</button>
+        <div class="auth-inline-message" id="forgotMessage" role="alert" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="auth-view" id="resetSentView" data-auth-view="sent" aria-labelledby="resetSentTitle" aria-hidden="true">
+      <i class="auth-status-icon" data-lucide="mail-check" aria-hidden="true"></i>
+      <div class="login-top">
+        <div class="login-eyebrow">Request Received</div>
+        <h1 class="login-title" id="resetSentTitle">Check your email</h1>
+        <p class="login-sub">If an account exists for this address, password reset instructions have been sent.</p>
+        <p class="auth-status-email" id="resetEmailSummary"></p>
+      </div>
+      <div class="auth-actions">
+        <button class="btn-login" id="resetFlowButton" type="button" onclick="openResetPassword()">Continue to Reset Password</button>
+        <button class="auth-text-action" type="button" onclick="showAuthView('signin')">Back to sign in</button>
+      </div>
+    </section>
+
+    <section class="auth-view" id="resetPasswordView" data-auth-view="reset" aria-labelledby="resetPasswordTitle" aria-hidden="true">
+      <button type="button" class="auth-back" onclick="goBackFromReset()">
+        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back
+      </button>
+      <div class="login-top">
+        <div class="login-eyebrow">Create New Password</div>
+        <h1 class="login-title" id="resetPasswordTitle">Choose a new password</h1>
+        <p class="login-sub">Use a password that is different from your previous password.</p>
+      </div>
+      <form class="login-form" id="resetPasswordForm" onsubmit="completePasswordReset(event)" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="newPasswordInput">New Password</label>
+          <div class="input-wrap">
+            <input class="form-input" type="password" id="newPasswordInput" name="password" autocomplete="new-password" minlength="8" required/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirmPasswordInput">Confirm Password</label>
+          <div class="input-wrap">
+            <input class="form-input" type="password" id="confirmPasswordInput" name="confirmPassword" autocomplete="new-password" minlength="8" required/>
+          </div>
+        </div>
+        <p class="password-guidance">Use at least 8 characters. Both password fields must match.</p>
+        <button class="btn-login" type="submit">Reset Password</button>
+        <div class="auth-inline-message" id="resetPasswordMessage" role="alert" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="auth-view" id="resetCompleteView" data-auth-view="complete" aria-labelledby="resetCompleteTitle" aria-hidden="true">
+      <i class="auth-status-icon success" data-lucide="circle-check-big" aria-hidden="true"></i>
+      <div class="login-top">
+        <div class="login-eyebrow">Password Updated</div>
+        <h1 class="login-title" id="resetCompleteTitle">Reset complete</h1>
+        <p class="login-sub">Your password has been updated. You can now sign in using your new password.</p>
+      </div>
+      <div class="auth-actions">
+        <button class="btn-login" type="button" onclick="returnToSignIn()">Return to Sign In</button>
+      </div>
+    </section>
 
   </div>
 </div>
 
 <script>
 
-  function checkEmail() {
-    const email = document.getElementById("emailInput").value;
+  const AUTH_CONFIG = {
+    frontendOnly: true,
+    endpoints: {
+      requestPasswordReset: '/api/auth/password-reset/request',
+      confirmPasswordReset: '/api/auth/password-reset/confirm'
+    }
+  };
 
-    if (email === "adm") {
-      window.location.href='./views/admin/edugnay-admin-dashboard.html';
-    } else if (email === "fac") {
-      window.location.href='./views/teacher/edugnay-teacher-dashboard.html';
-    } else if (email === "stud") {
-      window.location.href='./views/student/edugnay-student-dashboard.html';
-    } else if (email === "par") {
-      window.location.href='./views/parent/edugnay-parent-dashboard.html';
+  const AUTH_VIEWS = ['signin', 'forgot', 'sent', 'reset', 'complete'];
+  const FRONTEND_ACCOUNT_ROUTES = [
+    { identifier: 'adm', dashboard: './views/admin/edugnay-admin-dashboard.html' },
+    { identifier: 'fac', dashboard: './views/teacher/edugnay-teacher-dashboard.html' },
+    { identifier: 'stud', dashboard: './views/student/edugnay-student-dashboard.html' },
+    { identifier: 'par', dashboard: './views/parent/edugnay-parent-dashboard.html' }
+  ];
+  const AUTH_STATE = {
+    pendingEmail: '',
+    resetToken: new URLSearchParams(window.location.search).get('token')
+      || new URLSearchParams(window.location.search).get('resetToken')
+      || ''
+  };
+
+  function showAuthView(viewName) {
+    AUTH_VIEWS.forEach(name => {
+      const view = document.querySelector(`[data-auth-view="${name}"]`);
+      if (!view) return;
+      const isActive = name === viewName;
+      view.classList.toggle('active', isActive);
+      view.setAttribute('aria-hidden', String(!isActive));
+    });
+
+    const activeView = document.querySelector(`[data-auth-view="${viewName}"]`);
+    const firstInput = activeView?.querySelector('input');
+    if (firstInput) window.setTimeout(() => firstInput.focus(), 0);
+  }
+
+  function openForgotPassword() {
+    const signInEmail = document.getElementById('emailInput').value.trim();
+    const resetEmail = document.getElementById('resetEmailInput');
+    if (signInEmail.includes('@')) resetEmail.value = signInEmail;
+    setAuthMessage('forgotMessage', '');
+    showAuthView('forgot');
+  }
+
+  function setAuthMessage(elementId, message, isError = false) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.textContent = message;
+    element.classList.toggle('error', isError);
+  }
+
+  function setSubmitting(button, isSubmitting, loadingLabel) {
+    if (!button) return;
+    if (isSubmitting) {
+      button.dataset.originalLabel = button.textContent;
+      button.textContent = loadingLabel;
+      button.disabled = true;
+      return;
+    }
+    button.textContent = button.dataset.originalLabel || button.textContent;
+    button.disabled = false;
+  }
+
+  async function postAuthData(endpoint, payload) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('The request could not be completed.');
+    return response.status === 204 ? {} : response.json();
+  }
+
+  async function requestPasswordReset(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const emailInput = document.getElementById('resetEmailInput');
+    const email = emailInput.value.trim();
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (!email || !emailInput.checkValidity()) {
+      setAuthMessage('forgotMessage', 'Enter a valid school email address.', true);
+      emailInput.focus();
+      return;
+    }
+
+    setAuthMessage('forgotMessage', '');
+    setSubmitting(submitButton, true, 'Preparing Reset...');
+
+    try {
+      if (!AUTH_CONFIG.frontendOnly) {
+        await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { email });
+      }
+      AUTH_STATE.pendingEmail = email;
+      document.getElementById('resetEmailSummary').textContent = email;
+      showAuthView('sent');
+    } catch (error) {
+      setAuthMessage('forgotMessage', 'Unable to process the request right now. Please try again.', true);
+    } finally {
+      setSubmitting(submitButton, false, 'Send Reset Link');
     }
   }
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === 'Enter') {
-      checkEmail();
+  function openResetPassword() {
+    if (AUTH_CONFIG.frontendOnly && !AUTH_STATE.resetToken) {
+      AUTH_STATE.resetToken = 'frontend-reset-token';
     }
-  });
+    document.getElementById('resetPasswordForm').reset();
+    setAuthMessage('resetPasswordMessage', '');
+    showAuthView('reset');
+  }
+
+  function goBackFromReset() {
+    showAuthView(AUTH_STATE.pendingEmail ? 'sent' : 'signin');
+  }
+
+  async function completePasswordReset(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = document.getElementById('newPasswordInput').value;
+    const confirmation = document.getElementById('confirmPasswordInput').value;
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (password.length < 8) {
+      setAuthMessage('resetPasswordMessage', 'Your password must contain at least 8 characters.', true);
+      return;
+    }
+    if (password !== confirmation) {
+      setAuthMessage('resetPasswordMessage', 'The passwords do not match.', true);
+      return;
+    }
+    if (!AUTH_STATE.resetToken) {
+      setAuthMessage('resetPasswordMessage', 'This reset link is missing or invalid.', true);
+      return;
+    }
+
+    setAuthMessage('resetPasswordMessage', '');
+    setSubmitting(submitButton, true, 'Updating Password...');
+
+    try {
+      if (!AUTH_CONFIG.frontendOnly) {
+        await postAuthData(AUTH_CONFIG.endpoints.confirmPasswordReset, {
+          token: AUTH_STATE.resetToken,
+          password
+        });
+      }
+      form.reset();
+      showAuthView('complete');
+    } catch (error) {
+      setAuthMessage('resetPasswordMessage', 'Unable to reset the password. The link may have expired.', true);
+    } finally {
+      setSubmitting(submitButton, false, 'Reset Password');
+    }
+  }
+
+  function returnToSignIn() {
+    AUTH_STATE.pendingEmail = '';
+    AUTH_STATE.resetToken = '';
+    document.getElementById('passwordInput').value = '';
+    setAuthMessage('signInMessage', '');
+    if (window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    showAuthView('signin');
+  }
+
+  function checkEmail(event) {
+    if (event) event.preventDefault();
+    const identifier = document.getElementById('emailInput').value.trim();
+    const account = FRONTEND_ACCOUNT_ROUTES.find(item => item.identifier === identifier);
+
+    if (!identifier) {
+      setAuthMessage('signInMessage', 'Enter your school email.', true);
+      return;
+    }
+    if (!account) {
+      setAuthMessage('signInMessage', 'The email or password you entered is incorrect.', true);
+      return;
+    }
+
+    setAuthMessage('signInMessage', '');
+    window.location.href = account.dashboard;
+  }
 
   function togglePassword() {
     const pw = document.getElementById('passwordInput')
@@ -260,7 +604,11 @@
     }, 6000);
   }
 
-  document.addEventListener('DOMContentLoaded', initPhotoSlideshow);
+  document.addEventListener('DOMContentLoaded', () => {
+    initPhotoSlideshow();
+    document.getElementById('resetFlowButton').hidden = !AUTH_CONFIG.frontendOnly;
+    if (AUTH_STATE.resetToken) showAuthView('reset');
+  });
 </script>
 
 <script>

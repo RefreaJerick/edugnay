@@ -85,23 +85,24 @@
   border-radius: 999px;
 }
 
-/* ── Hero strip: latest report, large and central — the centerpiece treatment ── */
+/* ── Latest report panel ── */
 .latest-report-hero {
   position: relative;
   overflow: hidden;
-  background: var(--navy);
-  border-radius: 18px;
-  padding: 26px 28px;
-  margin-bottom: 24px;
-  box-shadow: 0 10px 28px rgba(11, 31, 58, 0.22);
+  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--white) 72%);
+  border: 1px solid var(--purple-border);
+  border-radius: var(--panel-radius);
+  padding: 24px 26px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
 }
 
 .lr-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 14px;
   position: relative;
   z-index: 1;
   flex-wrap: wrap;
@@ -109,57 +110,59 @@
 
 .lr-head-left {
   display: flex;
-  align-items: center;
-  gap: 13px;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
 }
 
 .lr-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  display: flex;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 36px;
+  background: var(--purple);
+  color: var(--white);
 }
 
 .lr-eyebrow {
+  color: var(--purple);
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: rgba(212, 175, 55, 0.85);
 }
 
 .lr-week {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 800;
-  color: var(--white);
-  margin-top: 2px;
+  color: var(--navy);
+  line-height: 1.25;
+  margin-top: 4px;
 }
 
 .lr-quote-mark {
   position: relative;
   z-index: 1;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 56px;
-  line-height: 0.5;
-  color: rgba(255, 255, 255, 0.15);
-  margin-bottom: -6px;
+  font-size: 38px;
+  line-height: 0.65;
+  color: var(--purple-border-strong);
+  margin-bottom: -2px;
   user-select: none;
 }
 
 .lr-text {
   position: relative;
   z-index: 1;
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.94);
-  line-height: 1.8;
-  margin-bottom: 18px;
-  max-width: 640px;
+  font-size: 13.5px;
+  color: var(--gray-700);
+  line-height: 1.7;
+  margin-bottom: 16px;
+  max-width: 720px;
 }
 
 .lr-foot {
@@ -176,8 +179,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  color: var(--gray-500);
 }
 
 .lr-teacher-avatar {
@@ -185,22 +188,23 @@
   height: 22px;
   border-radius: 7px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--purple-pale);
+  border: 1px solid var(--purple-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
   font-weight: 800;
-  color: var(--white);
+  color: var(--purple);
 }
 
 .lr-risk-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.32);
-  color: #fca5a5;
+  background: var(--red-pale);
+  border: 1px solid var(--red-border);
+  color: var(--red-dark);
   font-size: 11px;
   font-weight: 700;
   padding: 5px 12px;
@@ -722,20 +726,8 @@
   background: var(--purple);
 }
 
-.latest-report-hero {
-  background: var(--navy);
-  border-radius: 16px;
-  padding: 25px 27px;
-  box-shadow: 0 8px 22px rgba(11, 31, 58, .16);
-}
-
 .latest-report-hero.is-empty {
   background: var(--gray-700);
-}
-
-.lr-icon {
-  background: rgba(255, 255, 255, .08);
-  border-color: rgba(255, 255, 255, .14);
 }
 
 .filter-row {

@@ -602,3 +602,338 @@ select:not([multiple]):disabled {
 .mini-tab {
   flex: 1 0 auto;
 }
+
+/* -------------------------------------------------------------------------
+   Shared button system
+   -------------------------------------------------------------------------
+   Portal pages keep their own layout rules, but all action controls now use
+   the same type scale, spacing rhythm, corner language and keyboard states.
+   Compact row actions remain compact so a dense table does not become a
+   stack of oversized controls.
+*/
+body :is(
+  .btn,
+  .top-btn,
+  .file-upload-btn,
+  .settings-trigger,
+  .btn-submit,
+  .btn-close-modal,
+  .report-hero-link,
+  .journal-cta
+) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-gap);
+  min-height: var(--button-height);
+  padding: 9px var(--button-pad-x);
+  border-radius: var(--button-radius);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.08px;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, opacity .16s ease,
+    transform .16s ease;
+}
+
+body :is(.activity-loadmore-btn, .ub-btn, .row-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--button-height-compact);
+  padding: 7px 11px;
+  border-radius: var(--button-radius-compact);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.04px;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, opacity .16s ease,
+    transform .16s ease;
+}
+
+/* Full-width destructive actions keep a little more vertical emphasis. */
+body .btn-archive-full {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 11px var(--button-pad-x);
+  border-radius: var(--button-radius);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.08px;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+/* Read links are intentionally text-like, but share the same type rhythm. */
+body .rc-read-link {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -.02px;
+  transition: color .16s ease, background-color .16s ease;
+}
+
+body :is(.page-btn, .cal-nav-btn, .modal-nav-btn, .material-action, .comp-delete-btn, .comp-btn, .att-btn, .vt-btn) {
+  border-radius: var(--button-radius-compact);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+body :is(
+  .btn,
+  .top-btn,
+  .file-upload-btn,
+  .settings-trigger,
+  .btn-submit,
+  .btn-close-modal,
+  .report-hero-link,
+  .journal-cta,
+  .activity-loadmore-btn,
+  .ub-btn,
+  .row-btn,
+  .footer-btn,
+  .card-btn,
+  .btn-sm,
+  .panel-action,
+  .task-action
+) > svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+/* Semantic hierarchy. Existing page classes still control their local
+   composition; these shared colors keep primary, neutral and destructive
+   actions recognizable everywhere. */
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit) {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--white);
+  box-shadow: var(--button-primary-shadow);
+}
+
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit):hover:not(:disabled) {
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+}
+
+body :is(.btn-cancel, .btn-draft, .top-btn.secondary, .file-upload-btn, .btn-close-modal) {
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  color: var(--gray-600);
+  box-shadow: none;
+}
+
+body :is(.btn-cancel, .btn-draft, .top-btn.secondary, .file-upload-btn, .btn-close-modal):hover:not(:disabled) {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+body :is(.btn-danger, .btn-confirm, .btn-archive-full.enabled) {
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--white);
+}
+
+body :is(.btn-danger, .btn-confirm, .btn-archive-full.enabled):hover:not(:disabled) {
+  border-color: var(--red-dark);
+  background: var(--red-dark);
+}
+
+/* Keyboard users get a predictable, high-contrast focus treatment. */
+body :is(
+  .btn,
+  .top-btn,
+  .settings-trigger,
+  .btn-submit,
+  .btn-close-modal,
+  .report-hero-link,
+  .journal-cta,
+  .activity-loadmore-btn,
+  .ub-btn,
+  .row-btn,
+  .footer-btn,
+  .card-btn,
+  .btn-sm,
+  .panel-action,
+  .task-action,
+  .rc-read-link,
+  .page-btn,
+  .cal-nav-btn,
+  .modal-nav-btn,
+  .material-action,
+  .comp-delete-btn,
+  .comp-btn,
+  .att-btn,
+  .vt-btn,
+  .modal-close,
+  .hamburger,
+  .tb-notif-btn,
+  .tb-profile-trigger,
+  .profile-trigger,
+  .tb-notif-mark-read,
+  .notif-mark-read-all,
+  .tb-dropdown-item,
+  .profile-dropdown-item
+):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+body .btn-archive-full:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+body :is(
+  .btn,
+  .top-btn,
+  .settings-trigger,
+  .btn-submit,
+  .btn-close-modal,
+  .report-hero-link,
+  .journal-cta,
+  .activity-loadmore-btn,
+  .ub-btn,
+  .row-btn,
+  .footer-btn,
+  .card-btn,
+  .btn-sm,
+  .panel-action,
+  .task-action,
+  .page-btn,
+  .cal-nav-btn,
+  .modal-nav-btn,
+  .material-action,
+  .comp-delete-btn,
+  .comp-btn,
+  .att-btn,
+  .vt-btn,
+  .btn-archive-full
+):disabled,
+body :is(
+  .btn,
+  .top-btn,
+  .settings-trigger,
+  .btn-submit,
+  .btn-close-modal,
+  .report-hero-link,
+  .journal-cta,
+  .activity-loadmore-btn,
+  .ub-btn,
+  .row-btn,
+  .footer-btn,
+  .card-btn,
+  .btn-sm,
+  .panel-action,
+  .task-action,
+  .page-btn,
+  .cal-nav-btn,
+  .modal-nav-btn,
+  .material-action,
+  .comp-delete-btn,
+  .comp-btn,
+  .att-btn,
+  .vt-btn,
+  .btn-archive-full
+)[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: .58;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Tabs retain their established active colors and pill/segment geometry, but
+   use the same type and focus language as every other control. */
+body :is(
+  .mgmt-tab,
+  .filter-tab,
+  .tab-btn,
+  .cat-tab,
+  .att-hist-tab,
+  .profile-tab,
+  .notif-filter-btn,
+  .atf-chip,
+  .grade-tab,
+  .subject-tab,
+  .quarter-tab,
+  .section-tab,
+  .mini-tab,
+  .section-filter-btn,
+  .assignment-filter-tab,
+  .vt-btn
+) {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease;
+}
+
+body :is(
+  .mgmt-tab,
+  .filter-tab,
+  .tab-btn,
+  .cat-tab,
+  .att-hist-tab,
+  .profile-tab,
+  .notif-filter-btn,
+  .atf-chip,
+  .grade-tab,
+  .subject-tab,
+  .quarter-tab,
+  .section-tab,
+  .mini-tab,
+  .section-filter-btn,
+  .assignment-filter-tab,
+  .vt-btn
+):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+@media (max-width: 560px) {
+  body :is(
+    .btn,
+    .top-btn,
+    .file-upload-btn,
+    .settings-trigger,
+    .btn-submit,
+    .btn-close-modal,
+    .report-hero-link,
+    .journal-cta
+  ) {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+
+  body :is(.activity-loadmore-btn, .ub-btn, .row-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  body .btn-archive-full {
+    min-height: 42px;
+    padding-inline: 12px;
+  }
+}

@@ -139,7 +139,7 @@
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
         <div class="modal-heading">
-          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-x"></i></div>
+          <div class="modal-heading-icon danger" id="deactivateHeadingIcon" aria-hidden="true"><i data-lucide="user-x"></i></div>
           <div class="modal-heading-copy">
           <div class="modal-title" id="deactivateModalTitle">Confirm Action</div>
           <div class="modal-sub" id="deactivateModalSub"></div>
@@ -1009,11 +1009,13 @@
 
       // context block colors
       const ctx = document.getElementById('deactivateModalContext');
+      const headingIcon = document.getElementById('deactivateHeadingIcon');
       const icon = document.getElementById('deactivateCtxIcon');
       const label = document.getElementById('deactivateCtxLabel');
       const btn = document.getElementById('deactivateConfirmBtn');
 
       if (isActive) {
+        headingIcon.classList.add('danger');
         ctx.style.background = '#fef2f2';
         ctx.style.borderColor = '#fecaca';
         icon.style.color = '#dc2626';
@@ -1023,6 +1025,7 @@
         btn.style.borderColor = '#dc2626';
         btn.textContent = 'Yes, Deactivate';
       } else {
+        headingIcon.classList.remove('danger');
         ctx.style.background = '#f0fdf4';
         ctx.style.borderColor = '#86efac';
         icon.style.color = '#16a34a';

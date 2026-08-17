@@ -587,13 +587,6 @@
   color: var(--gray-800);
 }
 
-.guardian-rel {
-  font-size: 11px;
-  color: var(--gray-400);
-  margin-top: 1px;
-  margin-bottom: 8px;
-}
-
 .guardian-contact-row {
   display: flex;
   align-items: center;
@@ -606,19 +599,6 @@
 .guardian-contact-row i {
   color: var(--gray-400);
   flex-shrink: 0;
-}
-
-.guardian-primary-tag {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--green-pale);
-  color: #15803d;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
 }
 
 .modal-backdrop {
@@ -762,6 +742,7 @@
   .form-grid-2 {
     grid-template-columns: 1fr;
   }
+
 }
 
 @media (max-width: 640px) {

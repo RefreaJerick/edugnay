@@ -31,7 +31,7 @@
   !student.hasValuesSubject — don't rely on hiding the sidebar link alone.
 
   - journalWindow    → active journal config (mirrors admin "Journal Settings"):
-                       { weekLabel, dateRange, prompt, isOpen, deadline, minWords, maxWords,
+                       { weekLabel, dateRange, prompt, isOpen, deadline, minWords,
                          allowLateSubmissions }
   - currentEntry      → student's entry for the CURRENT week, if any:
                        { text, submittedAt, score (null until teacher reviews), reviewed }
@@ -41,11 +41,11 @@
                        in the teacher portal's journal review modal).
   - pastEntries[]     → student's entry history across prior weeks:
                        { week, dateRange, excerpt, score, reviewed }
-  - Word count validation (minWords/maxWords) → enforce SERVER-SIDE on submit, not
+  - Minimum word count validation (minWords) → enforce SERVER-SIDE on submit, not
                        just client-side; the JS below is a UX nicety only.
 
   SUBMIT ACTION: POST /student/journal/submit { text } — server stamps submittedAt,
-  validates window is still open and word count, then locks the entry from further edits.
+  validates window is still open and the minimum word count, then locks the entry from further edits.
 
   PARTIALS: same sidebar/topbar partials as other student pages (activeNav='journal').
 -->
@@ -187,20 +187,23 @@
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
-      <section class="page-overview" aria-labelledby="page-overview-title">
-        <div class="page-overview-copy">
-          <div class="page-overview-kicker">Overview</div>
-          <h1 class="page-overview-title" id="page-overview-title">My Journal</h1>
-          <p class="page-overview-description">Write and review your weekly reflections.</p>
+      <section class="portal-overview" aria-labelledby="journal-page-title">
+        <div class="portal-overview-copy">
+          <div class="portal-overview-kicker">Student workspace</div>
+          <h1 class="portal-overview-title" id="journal-page-title">My Journal</h1>
+          <p class="portal-overview-description">Write and review your weekly reflections.</p>
         </div>
       </section>
 
       <!-- journalWindow: prompt card -->
       <div class="prompt-card">
         <div class="prompt-card-top">
-          <div>
+          <div class="prompt-card-heading">
+            <div class="prompt-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
+            <div>
             <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
             <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
+            </div>
           </div>
         </div>
         <p class="prompt-text">"Describe a moment this week when you helped a classmate or a classmate helped you. What
@@ -242,8 +245,8 @@
           <div class="modal-heading-copy">
             <div class="modal-title">Weekly Journal Entry</div>
             <div class="modal-sub"><span id="entryModalWeek">Not available</span> · <span id="entryModalDate">Not available</span></div>
+            </div>
           </div>
-        </div>
         <button class="modal-close" type="button" onclick="closeEntryModal()" aria-label="Close journal entry">
           <i data-lucide="x" style="width:14px;height:14px;"></i>
         </button>
@@ -270,12 +273,11 @@
       - JOURNAL_WINDOW + CURRENT_ENTRY come from the page's initial server render
         (no client fetch needed for the current week — render directly via EJS).
       - PAST_ENTRIES likewise renders server-side as a simple loop; the only
-        remaining client-side JS should be the word-count helper on the composer.
+        remaining client-side JS should be the minimum-word helper on the composer.
     */
     const JOURNAL_WINDOW = {
       isOpen: true,
       minWords: 50,
-      maxWords: 500,
     };
 
     // null = student has not submitted yet this week
@@ -369,7 +371,7 @@
     <div class="panel-head">
       <div>
         <div class="panel-title">Write Your Entry</div>
-      <div class="panel-sub">${JOURNAL_WINDOW.minWords} to ${JOURNAL_WINDOW.maxWords} words</div>
+      <div class="panel-sub">${JOURNAL_WINDOW.minWords} words minimum</div>
       </div>
     </div>
     <div class="composer-body">
@@ -403,7 +405,7 @@
         label.classList.add('ok');
       }
 
-      submitBtn.disabled = count < JOURNAL_WINDOW.minWords || count > JOURNAL_WINDOW.maxWords;
+      submitBtn.disabled = count < JOURNAL_WINDOW.minWords;
     }
 
     function submitEntry() {

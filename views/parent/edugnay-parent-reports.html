@@ -81,7 +81,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-parent-reports.html" class="nav-item active">
-          <div class="nav-icon"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
         </a>
         <a href="edugnay-parent-attendance.html" class="nav-item">
@@ -176,11 +176,11 @@
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
-      <section class="page-overview" aria-labelledby="page-overview-title">
-        <div class="page-overview-copy">
-          <div class="page-overview-kicker">Overview</div>
-          <h1 class="page-overview-title" id="page-overview-title">Narrative Reports</h1>
-          <p class="page-overview-description">Read recent progress summaries and teacher insights.</p>
+      <section class="portal-overview" aria-labelledby="reports-page-title">
+        <div class="portal-overview-copy">
+          <div class="portal-overview-kicker">Parent workspace</div>
+          <h1 class="portal-overview-title" id="reports-page-title">Narrative Reports</h1>
+          <p class="portal-overview-description">Read recent progress summaries and teacher insights.</p>
         </div>
       </section>
 
@@ -349,11 +349,11 @@
       if (!latest) {
         wrap.innerHTML = `
       <div class="latest-report-hero is-empty">
-        <div class="lr-head">
-          <div class="lr-head-left">
-            <div class="lr-icon"><i data-lucide="hourglass" style="width:20px;height:20px;color:var(--gold);"></i></div>
+          <div class="lr-head">
+            <div class="lr-head-left">
+              <div class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
             <div>
-              <div class="lr-eyebrow">This Week</div>
+              <div class="lr-eyebrow">Weekly Report</div>
               <div class="lr-week">Report not yet ready</div>
             </div>
           </div>
@@ -362,6 +362,7 @@
           ${child.name.split(' ')[0]}'s teacher is still preparing this week's report. You'll see it here as soon as it's confirmed and sent.
         </div>
       </div>`;
+        lucide.createIcons();
         return;
       }
       // EJS: <% } else { %>
@@ -370,9 +371,9 @@
     <div class="latest-report-hero">
       <div class="lr-head">
         <div class="lr-head-left">
-          <div class="lr-icon"><i data-lucide="sparkles" style="width:20px;height:20px;color:var(--gold);"></i></div>
+          <div class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
           <div>
-            <div class="lr-eyebrow">This Week's Report</div>
+            <div class="lr-eyebrow">Weekly Report</div>
             <div class="lr-week">${latest.weekLabel}</div>
           </div>
         </div>
@@ -387,6 +388,7 @@
         </div>
       </div>
     </div>`;
+      lucide.createIcons();
       // EJS: <% } %>
     }
 
