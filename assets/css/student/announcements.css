@@ -135,7 +135,7 @@
 /* ── LAYOUT ── */
 .ann-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 380px;
   gap: 20px;
   align-items: start;
 }

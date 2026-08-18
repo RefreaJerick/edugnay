@@ -426,9 +426,97 @@
 .main .form-input:focus,
 .main .form-select:focus,
 .main .form-textarea:focus {
-  background: var(--white);
+  background-color: var(--white);
   border-color: var(--blue-mid);
-  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+/* Shared text-control interaction language. Individual layouts keep their own
+   width, padding, and compact sizing, while every editable text control uses
+   the same surface, hover, and focus treatment as School Onboarding. */
+:where(
+  input:not([type]),
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='url'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'],
+  textarea
+) {
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: var(--button-radius) !important;
+  background-color: var(--gray-50) !important;
+  color: var(--gray-800) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  outline: none;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+:where(
+  input:not([type]),
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='url'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'],
+  textarea
+)::placeholder {
+  color: var(--gray-400) !important;
+  opacity: 1;
+}
+
+:where(
+  input:not([type]),
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='url'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'],
+  textarea
+):not(:disabled):not([readonly]):hover {
+  border-color: var(--gray-300) !important;
+}
+
+:where(
+  input:not([type]),
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='url'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'],
+  textarea
+):not(:disabled):not([readonly]):focus {
+  border-color: var(--blue-mid) !important;
+  background-color: var(--white) !important;
+  box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
 }
 
 /* Shared select control language. Selects use the same height and surface as
@@ -458,7 +546,11 @@ select:not([multiple]) {
 select:not([multiple]):focus {
   border-color: var(--blue-mid) !important;
   background-color: var(--white) !important;
-  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+select:not([multiple]):not(:disabled):hover {
+  border-color: var(--gray-300) !important;
 }
 
 select:not([multiple]):disabled {
@@ -486,7 +578,7 @@ select:not([multiple]):disabled {
 
 .search-wrap ~ select.filter-select:hover,
 .search-wrap ~ select.select-filter:hover {
-  border-color: var(--blue-pale) !important;
+  border-color: var(--gray-300) !important;
 }
 
 .search-wrap ~ select.filter-select:focus,
@@ -549,7 +641,7 @@ select:not([multiple]):disabled {
 }
 
 .activity-filterbar .activity-search ~ select.activity-date-select:hover {
-  border-color: var(--blue-pale) !important;
+  border-color: var(--gray-300) !important;
 }
 
 .activity-filterbar .activity-search ~ select.activity-date-select:focus {

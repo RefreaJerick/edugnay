@@ -347,13 +347,13 @@ body:has(.onboarding-page) {
   padding: 10px 12px;
   border: 1.5px solid var(--gray-200);
   border-radius: var(--button-radius);
-  background: var(--gray-50);
+  background-color: var(--gray-50);
   color: var(--gray-800);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   line-height: 1.35;
   outline: none;
-  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
 
 .onboarding-field input::placeholder,
@@ -372,7 +372,7 @@ body:has(.onboarding-page) {
 .onboarding-field select:focus,
 .onboarding-field textarea:focus {
   border-color: var(--blue-mid);
-  background: var(--white);
+  background-color: var(--white);
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
