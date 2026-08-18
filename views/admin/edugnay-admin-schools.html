@@ -250,7 +250,7 @@
       document.getElementById('settingsTitle').textContent = school?.name || 'New school profile';
       document.getElementById('settingsSubtitle').textContent = school?.typeLabel || 'Configure school details and branding.';
       const photos = Array.isArray(school?.photos) ? school.photos : [];
-      document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-profile-pane active"><form id="schoolProfileForm"><div class="school-form-grid"><div class="school-field"><label for="profileName">School name</label><input id="profileName" name="name" required value="${esc(school?.name)}"></div><div class="school-field"><label for="profileType">School type</label><select id="profileType" name="schoolType">${SCHOOL_TYPES.map(type => `<option value="${type.value}" ${type.value === school?.schoolType ? 'selected' : ''}>${esc(type.label)}</option>`).join('')}</select></div><div class="school-field"><label for="profileId">School ID</label><input id="profileId" name="schoolId" value="${esc(school?.schoolId)}"></div><div class="school-field"><label for="profileAddress">Address</label><input id="profileAddress" name="address" value="${esc(school?.address)}"></div><div class="school-field"><label for="profilePhone">Contact number</label><input id="profilePhone" name="phone" value="${esc(school?.phone)}"></div><div class="school-field"><label for="profileEmail">School email</label><input id="profileEmail" name="email" type="email" value="${esc(school?.email)}"></div><div class="school-field"><label for="profileWebsite">Website</label><input id="profileWebsite" name="website" value="${esc(school?.website)}"></div><div class="school-field school-branding-field"><label for="profileLogo">Logo or branding</label><div class="school-logo-preview">${school?.logoUrl ? `<img src="${esc(school.logoUrl)}" alt="${esc(school.name)} logo">` : '<span class="school-logo-placeholder"><i data-lucide="image"></i></span>'}<input id="profileLogo" name="logo" type="file" accept="image/*"></div><small>The school logo is used across the school profile and portal shell.</small></div><div class="school-field school-photos-field full"><label for="profilePhotos">School photos</label><input id="profilePhotos" name="photos" type="file" accept="image/*" multiple><div class="school-photo-list">${photos.map(photo => `<img src="${esc(photo)}" alt="School photo">`).join('')}</div><small>These photos appear in the slideshow on the school login page.</small></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button></div></form></div>`;
+      document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-profile-pane active"><form id="schoolProfileForm"><div class="school-form-grid"><div class="school-field"><label for="profileName">School name</label><input id="profileName" name="name" required value="${esc(school?.name)}"></div><div class="school-field"><label for="profileType">School type</label><select id="profileType" name="schoolType">${SCHOOL_TYPES.map(type => `<option value="${type.value}" ${type.value === school?.schoolType ? 'selected' : ''}>${esc(type.label)}</option>`).join('')}</select></div><div class="school-field"><label for="profileId">School ID</label><input id="profileId" name="schoolId" value="${esc(school?.schoolId)}"></div><div class="school-field"><label for="profileAddress">Address</label><input id="profileAddress" name="address" value="${esc(school?.address)}"></div><div class="school-field"><label for="profilePhone">Contact number</label><input id="profilePhone" name="phone" value="${esc(school?.phone)}"></div><div class="school-field"><label for="profileEmail">School email</label><input id="profileEmail" name="email" type="email" value="${esc(school?.email)}"></div><div class="school-field"><label for="profileWebsite">Website</label><input id="profileWebsite" name="website" value="${esc(school?.website)}"></div><div class="school-field school-branding-field"><label for="profileLogo">Logo or branding</label><div class="school-logo-preview" id="profileLogoPreview"><span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span><img id="profileLogoImage" src="${school?.logoUrl ? esc(school.logoUrl) : ''}" alt="${esc(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}><div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div></div><small>The school logo is used across the school profile and portal shell.</small></div><div class="school-field school-photos-field full"><label for="profilePhotos">School photos</label><input id="profilePhotos" name="photos" type="file" accept="image/*" multiple><div class="school-photo-list" id="profilePhotosPreview">${photos.map((photo, index) => `<img src="${esc(photo)}" alt="School photo ${index + 1}">`).join('')}</div><small>These photos appear in the slideshow on the school login page.</small></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button></div></form></div>`;
       document.getElementById('schoolProfileForm').addEventListener('submit', saveProfile);
       document.getElementById('profileLogo').addEventListener('change', readLogo);
       document.getElementById('profilePhotos').addEventListener('change', readPhotos);
@@ -354,8 +354,62 @@
 
     function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else renderProfilePane(); }
     function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
-    function readLogo(event) { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { state.logoData = reader.result; }; reader.readAsDataURL(file); }
-    function readPhotos(event) { const files = [...(event.target.files || [])]; if (!files.length) return; Promise.all(files.map(file => new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); }))).then(data => { state.photoData = data; }); }
+    function renderLogoPreview(logoUrl) {
+      const image = document.getElementById('profileLogoImage');
+      const placeholder = document.getElementById('profileLogoPlaceholder');
+      if (!image || !placeholder) return;
+      const hasLogo = Boolean(logoUrl);
+      image.hidden = !hasLogo;
+      placeholder.hidden = hasLogo;
+      placeholder.setAttribute('aria-hidden', hasLogo ? 'true' : 'false');
+      if (hasLogo) {
+        image.src = logoUrl;
+        image.alt = `${activeSchool()?.name || 'School'} logo preview`;
+      } else {
+        image.removeAttribute('src');
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+    function renderPhotoPreview(photos) {
+      const list = document.getElementById('profilePhotosPreview');
+      if (!list) return;
+      list.innerHTML = (Array.isArray(photos) ? photos : []).map((photo, index) => `<img src="${esc(photo)}" alt="School photo preview ${index + 1}">`).join('');
+    }
+    function readLogo(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        event.target.value = '';
+        notify('Choose an image file for the school logo.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.logoData = reader.result;
+        renderLogoPreview(state.logoData);
+      };
+      reader.onerror = () => notify('The logo could not be previewed. Please try another image.');
+      reader.readAsDataURL(file);
+    }
+    function readPhotos(event) {
+      const files = [...(event.target.files || [])];
+      if (!files.length) return;
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      if (!imageFiles.length) {
+        event.target.value = '';
+        notify('Choose one or more image files for the school slideshow.');
+        return;
+      }
+      Promise.all(imageFiles.map(file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }))).then(data => {
+        state.photoData = data;
+        renderPhotoPreview(data);
+      }).catch(() => notify('The photos could not be previewed. Please try again.'));
+    }
     function saveProfile(event) {
       event.preventDefault();
       const form = event.currentTarget;

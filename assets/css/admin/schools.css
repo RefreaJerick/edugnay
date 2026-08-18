@@ -354,6 +354,22 @@
   gap: 12px;
 }
 
+.school-logo-preview > .school-logo-placeholder,
+.school-logo-preview > img {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.school-logo-preview > .school-logo-upload {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.school-logo-preview [hidden] {
+  display: none;
+}
+
 .school-logo-preview img {
   width: 76px;
   height: 76px;

@@ -25,18 +25,26 @@
         <h1>Bring your school community into one clear view.</h1>
         <p>Set up the school profile, academic structure, and first administrator that will appear throughout your E-Ugnay portals.</p>
       </div>
-      <div class="onboarding-trust">Your profile can be reviewed and updated from School Management after setup.</div>
+      <div class="onboarding-trust">
+        <i data-lucide="shield-check" aria-hidden="true"></i>
+        <span>Your profile can be reviewed and updated from School Management after setup.</span>
+      </div>
     </section>
 
     <section class="onboarding-form-area">
       <div class="onboarding-card">
-        <div class="onboarding-form-head">
-          <div>
-            <div class="onboarding-form-kicker">New organization</div>
-            <h2>Create a school account</h2>
-            <p>Provide the core details first. You can add staff, learners, sections, and templates later.</p>
+          <div class="onboarding-form-head">
+            <div class="onboarding-form-heading">
+              <div>
+                <div class="onboarding-form-kicker">New organization</div>
+                <h2>Create a school account</h2>
+              <p>Provide the core details first. You can add staff, learners, sections, and templates later.</p>
+            </div>
           </div>
-          <a class="onboarding-back" href="../../index.html">Back to sign in</a>
+          <a class="onboarding-back" href="../../index.html">
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span>Back to sign in</span>
+          </a>
         </div>
 
         <div class="onboarding-steps" aria-label="Onboarding sections">
@@ -47,31 +55,41 @@
 
         <form id="schoolOnboardingForm" onsubmit="submitSchoolOnboarding(event)">
           <section class="onboarding-section">
-            <h3>School profile</h3>
-            <p>Choose the school type and the information used across reports and forms.</p>
+            <div class="onboarding-section-heading">
+              <span class="onboarding-section-icon" aria-hidden="true"><i data-lucide="school"></i></span>
+              <div>
+                <h3>School profile</h3>
+                <p>Choose the school type and the information used across reports and forms.</p>
+              </div>
+            </div>
             <div class="onboarding-grid">
-              <div class="onboarding-field full">
+              <div class="onboarding-field">
                 <label for="schoolName">School or organization name</label>
                 <input id="schoolName" name="schoolName" type="text" placeholder="St. Columban's College" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolId">School ID</label>
+                <input id="schoolId" name="schoolId" type="text" placeholder="Optional DepEd school ID" />
               </div>
               <div class="onboarding-field">
                 <label for="schoolType">School type</label>
                 <select id="schoolType" name="schoolType" required></select>
               </div>
               <div class="onboarding-field">
-                <label for="schoolId">School ID</label>
-                <input id="schoolId" name="schoolId" type="text" placeholder="Optional DepEd school ID" />
-              </div>
-              <div class="onboarding-field full">
                 <label for="schoolAddress">Address</label>
-                <textarea id="schoolAddress" name="schoolAddress" placeholder="Street, barangay, municipality, province"></textarea>
+                <input id="schoolAddress" name="schoolAddress" type="text" placeholder="Street, barangay, municipality, province" />
               </div>
             </div>
           </section>
 
           <section class="onboarding-section">
-            <h3>Contact and branding</h3>
-            <p>These details help families and staff identify the active school.</p>
+            <div class="onboarding-section-heading">
+              <span class="onboarding-section-icon" aria-hidden="true"><i data-lucide="contact"></i></span>
+              <div>
+                <h3>Contact and branding</h3>
+                <p>These details help families and staff identify the active school.</p>
+              </div>
+            </div>
             <div class="onboarding-grid">
               <div class="onboarding-field">
                 <label for="schoolEmail">School email</label>
@@ -87,15 +105,28 @@
               </div>
               <div class="onboarding-field">
                 <label for="schoolLogo">Logo or branding image</label>
-                <input id="schoolLogo" name="schoolLogo" type="file" accept="image/*" />
-                <small>You can update this branding later in School Management.</small>
+                <div class="onboarding-logo-preview">
+                  <span class="onboarding-logo-placeholder" id="schoolLogoPlaceholder" aria-hidden="true">
+                    <i data-lucide="image"></i>
+                  </span>
+                  <img id="schoolLogoPreviewImage" src="" alt="School logo preview" hidden />
+                  <div class="onboarding-logo-upload">
+                    <input id="schoolLogo" name="schoolLogo" type="file" accept="image/*" />
+                    <small>Preview the logo here. You can update this branding later in School Management.</small>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
           <section class="onboarding-section">
-            <h3>Initial administrator</h3>
-            <p>This profile will be used as the first administrator record for the organization.</p>
+            <div class="onboarding-section-heading">
+              <span class="onboarding-section-icon" aria-hidden="true"><i data-lucide="user-round-cog"></i></span>
+              <div>
+                <h3>Initial administrator</h3>
+                <p>This profile will be used as the first administrator record for the organization.</p>
+              </div>
+            </div>
             <div class="onboarding-grid">
               <div class="onboarding-field">
                 <label for="adminName">Administrator name</label>
@@ -105,7 +136,7 @@
                 <label for="adminEmail">Administrator email</label>
                 <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@school.edu.ph" required />
               </div>
-              <div class="onboarding-field full">
+              <div class="onboarding-field">
                 <label for="adminPassword">Temporary password</label>
                 <input id="adminPassword" name="adminPassword" type="password" minlength="8" placeholder="At least 8 characters" required />
                 <small>Use at least 8 characters. This can be changed after account activation.</small>
@@ -138,6 +169,37 @@
 
     function slugify(value) {
       return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `school-${Date.now()}`;
+    }
+
+    let schoolLogoData = '';
+
+    function previewSchoolLogo(event) {
+      const file = event.target.files?.[0];
+      const placeholder = document.getElementById('schoolLogoPlaceholder');
+      const preview = document.getElementById('schoolLogoPreviewImage');
+      schoolLogoData = '';
+      if (!file) {
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        placeholder.hidden = false;
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        event.target.value = '';
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        placeholder.hidden = false;
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        schoolLogoData = reader.result;
+        preview.src = reader.result;
+        preview.alt = `${file.name} preview`;
+        preview.hidden = false;
+        placeholder.hidden = true;
+      };
+      reader.readAsDataURL(file);
     }
 
     function submitSchoolOnboarding(event) {
@@ -198,7 +260,9 @@
         if (window.lucide) lucide.createIcons();
       };
 
-      if (logoInput.files?.[0]) {
+      if (schoolLogoData) {
+        saveSchool(schoolLogoData);
+      } else if (logoInput.files?.[0]) {
         const reader = new FileReader();
         reader.onload = () => saveSchool(reader.result);
         reader.readAsDataURL(logoInput.files[0]);
@@ -208,6 +272,7 @@
     }
 
     populateSchoolTypes();
+    document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
     if (window.lucide) lucide.createIcons();
   </script>
 </body>
