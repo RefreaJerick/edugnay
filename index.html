@@ -88,13 +88,13 @@
     .btn-login { min-height: 51px; border-radius: var(--button-radius); box-shadow: none; }
     .btn-login::after { display: none; }
     .btn-login:hover { box-shadow: none; transform: none; }
-    .login-footer { margin-top: 28px; padding-top: 0; border-top: 0; text-align: left; }
+    .login-footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--gray-200); text-align: center; }
     .login-footer p { color: var(--gray-500); }
     .school-onboarding-link {
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      margin-top: 14px;
+      margin-top: 20px;
       color: var(--blue-mid);
       font-size: 12px;
       font-weight: 800;
@@ -179,7 +179,23 @@
       .login-top { margin-bottom: 26px; }
       .login-title { font-size: 29px; }
       .form-input { min-height: 48px; font-size: 13px; }
-      .form-bottom { align-items: flex-start; gap: 12px; flex-direction: column; }
+      .form-bottom {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+      }
+      .remember {
+        min-width: 0;
+        gap: 6px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .form-bottom .forgot {
+        flex: 0 0 auto;
+        font-size: 12px;
+        white-space: nowrap;
+      }
       .login-footer { margin-top: 24px; padding-top: 18px; }
     }
   </style>
