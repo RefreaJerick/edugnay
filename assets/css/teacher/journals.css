@@ -737,30 +737,6 @@ tbody td.center {
   color: #92400e;
 }
 
-.row-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
-.row-btn.primary {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  border-color: var(--blue-pale);
-}
-
-.row-btn.primary:hover {
-  background: var(--blue-pale);
-}
-
 /* score chip */
 .score-chip {
   display: inline-flex;

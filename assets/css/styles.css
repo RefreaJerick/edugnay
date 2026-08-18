@@ -84,7 +84,7 @@
   --button-gap:           7px;
   --button-focus-ring:    rgba(29, 92, 180, .24);
   --button-primary-shadow: 0 3px 10px rgba(26, 64, 128, .18);
-  --sidebar-w:   240px;
+  --sidebar-w:   270px;
   --topbar-h:    76px;
   --body-bg:     linear-gradient(180deg, #08172d 0%, #0b1f3a 100%);
 }
@@ -267,13 +267,61 @@ button:focus-visible,
   background: var(--navy);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-w);
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   border-right: 1px solid rgba(255,255,255,0.08);
   box-shadow: 4px 0 18px rgba(5,17,34,0.12);
   transition: transform 0.25s ease, visibility 0.25s ease;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The sidebar uses a small custom thumb so its track and native arrow controls
+   never appear. The page/browser scrollbar remains untouched. */
+.sidebar-scrollbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 100dvh;
+  z-index: 140;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.sidebar-scrollbar.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.sidebar-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  width: 6px;
+  min-height: 32px;
+  border-radius: 999px;
+  background: var(--gray-400);
+  cursor: default;
+  transition: background 0.15s ease;
+  touch-action: none;
+}
+
+.sidebar-scrollbar-thumb:hover,
+.sidebar-scrollbar.is-dragging .sidebar-scrollbar-thumb {
+  background: var(--gray-500);
 }
 
 .sidebar-overlay {
@@ -438,6 +486,8 @@ body.drawer-open .sidebar {
     TOPBAR
 ══════════════════════════════ */
 .topbar {
+  grid-column: 2;
+  grid-row: 1;
   background: rgba(255,255,255,0.95);
   border-bottom: 1px solid var(--gray-200);
   display: flex;
@@ -963,6 +1013,8 @@ body.drawer-open .sidebar {
     MAIN CONTENT
 ══════════════════════════════ */
 .main {
+  grid-column: 2;
+  grid-row: 2;
   padding: 28px 32px;
   overflow-y: visible;
   background: var(--gray-100);
@@ -1886,6 +1938,86 @@ html, body {
   }
 }
 
+/* Shared holiday and no-class notice used by every portal shell. */
+.system-day-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--orange-border);
+  border-radius: 13px;
+  background: var(--orange-pale);
+  color: var(--gray-700);
+  box-shadow: 0 3px 12px rgba(180, 83, 9, .06);
+}
+
+.system-day-banner-icon {
+  display: inline-flex;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--orange-dark);
+  box-shadow: 0 2px 7px rgba(16, 40, 80, .08);
+}
+
+.system-day-banner-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.system-day-banner-kicker {
+  margin-bottom: 3px;
+  color: var(--orange-dark);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.system-day-banner-title {
+  color: var(--gray-800);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.system-day-banner-text {
+  margin-top: 2px;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Keep dynamically rendered navigation icons aligned with the established
+   portal sidebar proportions. */
+.sidebar .nav-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.sidebar .nav-chevron {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+@media (max-width: 640px) {
+  .system-day-banner {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .system-day-banner-icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* Shared card interaction: match the Admin Dashboard summary-card hover
    everywhere a card surface is used, while keeping panels and modals static. */
 .shell .main :is(
@@ -2519,4 +2651,53 @@ html, body {
     padding-right: var(--panel-head-px);
     padding-left: var(--panel-head-px);
   }
+}
+
+/* Shared native checkbox treatment. Custom switch controls are excluded. */
+input[type="checkbox"]:not(.school-toggle-input) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  flex: 0 0 16px;
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0;
+  place-content: center;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 5px;
+  background: var(--white);
+  accent-color: transparent;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+input[type="checkbox"]:not(.school-toggle-input)::before {
+  width: 7px;
+  height: 4px;
+  content: "";
+  border: solid var(--white);
+  border-width: 0 0 1.8px 1.8px;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform .12s ease;
+}
+
+input[type="checkbox"]:not(.school-toggle-input):checked {
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+}
+
+input[type="checkbox"]:not(.school-toggle-input):checked::before {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+input[type="checkbox"]:not(.school-toggle-input):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .14);
+}
+
+input[type="checkbox"]:not(.school-toggle-input):disabled {
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  cursor: not-allowed;
+  opacity: .7;
 }

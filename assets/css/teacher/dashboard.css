@@ -667,30 +667,6 @@ tbody td {
   color: #92400e;
 }
 
-.row-btn {
-  padding: 5px 12px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.row-btn.primary {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  border-color: var(--blue-pale);
-}
-
-.row-btn.primary:hover {
-  background: var(--blue-pale);
-}
-
 /* Pending tasks */
 .panel-meta {
   font-size: 10px;

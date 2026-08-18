@@ -28,7 +28,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="door-open"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title">Add New Section</div>
-        <div class="modal-sub">Set up a new class section for JHS.</div>
+        <div class="modal-sub" id="sectionAddModalSub">Set up a class section for the selected school level.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeSectionAddModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
@@ -37,32 +37,36 @@
       <form id="createSectionForm" method="post" action="/sections/create">
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label">Grade Level</label>
-            <select class="form-select dropdown" name="gradeLevel">
-              <option value="">Select grade</option>
-              <option value="7">Grade 7</option>
-              <option value="8">Grade 8</option>
-              <option value="9">Grade 9</option>
-              <option value="10">Grade 10</option>
-            </select>
+            <label class="form-label" for="createSchoolLevel">School Level</label>
+            <select class="form-select dropdown" name="schoolLevel" id="createSchoolLevel" onchange="updateSectionFormFields('create')" required></select>
           </div>
           <div class="form-group">
-            <label class="form-label">Section Name</label>
-            <input class="form-select" type="text" name="sectionName" placeholder="e.g. St. Matthew"/>
+            <label class="form-label" for="createGradeLevel">Grade Level</label>
+            <select class="form-select dropdown" name="gradeLevel" id="createGradeLevel" onchange="updateSectionFormFields('create')" required></select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Assigned Adviser</label>
-          <select class="form-select dropdown" name="adviserId">
-            <option value="">Select faculty</option>
-            <option value="mr1">Ms. Maria Reyes</option>
-            <option value="lv1">Ms. Lara Villanueva</option>
-            <option value="pt1">Mr. Paolo Tan</option>
-            <option value="cd1">Ms. Carla Dizon</option>
-            <option value="rs1">Mr. Rico Santos</option>
-          </select>
+        <div class="form-row-2">
+          <div class="form-group" id="createStrandGroup" style="display:none;">
+            <label class="form-label" for="createStrand">Track / Strand</label>
+            <select class="form-select dropdown" name="strand" id="createStrand" onchange="updateSectionFormFields('create')"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="createSectionName">Section Name</label>
+            <input class="form-select" type="text" name="sectionName" id="createSectionName" placeholder="e.g. St. Matthew" required/>
+          </div>
         </div>
         <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Assigned Adviser</label>
+            <select class="form-select dropdown" name="adviserId">
+              <option value="">Select faculty</option>
+              <option value="mr1">Ms. Maria Reyes</option>
+              <option value="lv1">Ms. Lara Villanueva</option>
+              <option value="pt1">Mr. Paolo Tan</option>
+              <option value="cd1">Ms. Carla Dizon</option>
+              <option value="rs1">Mr. Rico Santos</option>
+            </select>
+          </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Max Capacity</label>
             <input class="form-select" type="number" name="maxCapacity" placeholder="e.g. 40"/>
@@ -84,7 +88,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="pencil"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title">Edit Section</div>
-        <div class="modal-sub">Update the details of this section.</div>
+        <div class="modal-sub" id="sectionEditModalSub">Update the details of this section.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeSectionEditModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
@@ -94,31 +98,36 @@
         <input type="hidden" name="_method" value="PUT"/>
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label">Grade Level</label>
-            <select class="form-select dropdown" name="gradeLevel" id="editGradeLevel">
-              <option value="7">Grade 7</option>
-              <option value="8">Grade 8</option>
-              <option value="9">Grade 9</option>
-              <option value="10">Grade 10</option>
-            </select>
+            <label class="form-label" for="editSchoolLevel">School Level</label>
+            <select class="form-select dropdown" name="schoolLevel" id="editSchoolLevel" onchange="updateSectionFormFields('edit')" required></select>
           </div>
           <div class="form-group">
-            <label class="form-label">Section Name</label>
-            <input class="form-select" type="text" name="sectionName" id="editSectionName"/>
+            <label class="form-label" for="editGradeLevel">Grade Level</label>
+            <select class="form-select dropdown" name="gradeLevel" id="editGradeLevel" onchange="updateSectionFormFields('edit')" required></select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Assigned Adviser</label>
-          <select class="form-select dropdown" name="adviserId" id="editAdviser">
-            <option value="">Select faculty</option>
-            <option value="mr1">Ms. Maria Reyes</option>
-            <option value="lv1">Ms. Lara Villanueva</option>
-            <option value="pt1">Mr. Paolo Tan</option>
-            <option value="cd1">Ms. Carla Dizon</option>
-            <option value="rs1">Mr. Rico Santos</option>
-          </select>
+        <div class="form-row-2">
+          <div class="form-group" id="editStrandGroup" style="display:none;">
+            <label class="form-label" for="editStrand">Track / Strand</label>
+            <select class="form-select dropdown" name="strand" id="editStrand" onchange="updateSectionFormFields('edit')"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editSectionName">Section Name</label>
+            <input class="form-select" type="text" name="sectionName" id="editSectionName" required/>
+          </div>
         </div>
         <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Assigned Adviser</label>
+            <select class="form-select dropdown" name="adviserId" id="editAdviser">
+              <option value="">Select faculty</option>
+              <option value="mr1">Ms. Maria Reyes</option>
+              <option value="lv1">Ms. Lara Villanueva</option>
+              <option value="pt1">Mr. Paolo Tan</option>
+              <option value="cd1">Ms. Carla Dizon</option>
+              <option value="rs1">Mr. Rico Santos</option>
+            </select>
+          </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Max Capacity</label>
             <input class="form-select" type="number" name="maxCapacity" id="editCapacity"/>
@@ -167,39 +176,32 @@
 <div class="modal-backdrop" id="subjectModalBackdrop">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-heading">
+    <div class="modal-heading">
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="library"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title" id="subjectModalTitle">Add New Subject</div>
-        <div class="modal-sub">Define a subject and assign it to grade levels.</div>
+        <div class="modal-sub" id="subjectModalSub">Define a subject and assign it to the selected school scope.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeSubjectModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
       <form id="createSubjectForm" method="post" action="/subjects/create">
+        <input type="hidden" name="subjectId" id="subjectModalSubjectId" value="">
+        <input type="hidden" name="subjectContext" id="subjectModalContext" value="all">
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Subject Name</label>
-            <input class="form-select" type="text" name="subjectName" placeholder="e.g. Mathematics"/>
+            <input class="form-select" type="text" name="subjectName" placeholder="e.g. Mathematics" required/>
           </div>
           <div class="form-group">
             <label class="form-label">Subject Code</label>
-            <input class="form-select" type="text" name="subjectCode" placeholder="e.g. MATH"/>
+            <input class="form-select" type="text" name="subjectCode" placeholder="e.g. MATH" required/>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Description <span style="color:var(--gray-300);font-weight:400;">(optional)</span></label>
-          <textarea class="form-textarea" name="description" placeholder="Brief description of this subject..."></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Applies to Grade Level(s)</label>
-          <div class="grade-checks">
-            <label class="grade-check-item"><input type="checkbox" name="grades" value="7" checked/><span>Grade 7</span></label>
-            <label class="grade-check-item"><input type="checkbox" name="grades" value="8" checked/><span>Grade 8</span></label>
-            <label class="grade-check-item"><input type="checkbox" name="grades" value="9" checked/><span>Grade 9</span></label>
-            <label class="grade-check-item"><input type="checkbox" name="grades" value="10" checked/><span>Grade 10</span></label>
-          </div>
+        <div class="form-group" id="subjectGradesGroup" style="margin-bottom:0">
+          <label class="form-label" id="subjectGradeScopeLabel">Applies to Grade Level(s)</label>
+          <div class="grade-checks" id="subjectGradeChecks"></div>
         </div>
       </form>
     </div>
@@ -231,10 +233,10 @@
           <div class="ctx-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
           <div>
             <div class="ctx-label">Assigning to</div>
-            <div class="ctx-val" id="teacherCtxVal">Grade 7 – St. Matthew · Mathematics</div>
+            <div class="ctx-val" id="teacherCtxVal">Select a section and subject</div>
           </div>
         </div>
-        <input type="hidden" name="assignmentContext" id="teacherAssignmentContext" value="Grade 7 – St. Matthew · Mathematics"/>
+        <input type="hidden" name="assignmentContext" id="teacherAssignmentContext" value=""/>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Faculty Member</label>
           <select class="form-select dropdown" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
@@ -275,7 +277,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-plus"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title" id="studentModalTitle">Assign Student</div>
-        <div class="modal-sub">Place a student into a section.</div>
+        <div class="modal-sub" id="studentModalSub">Choose the student and class placement.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeStudentAssignModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
@@ -291,16 +293,8 @@
         </div>
         <div class="form-group">
           <label class="form-label">Student</label>
-          <select class="form-select dropdown" id="studentSelect" name="studentId" onchange="previewStudent(this.value)">
-            <option value="">— Select a student —</option>
-            <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
-            <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
-            <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
-            <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
-            <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
-            <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
-            <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
-            <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+          <select class="form-select dropdown" id="studentSelect" name="studentId" onchange="handleManagementStudentChange(this.value)" required>
+            <option value="">Select a student</option>
           </select>
           <div class="student-preview" id="studentPreview">
             <div class="sp-av" id="spAv">JD</div>
@@ -310,28 +304,31 @@
             </div>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Assign to Section</label>
-          <select class="form-select dropdown" id="studentSectionSelect" name="sectionId">
-            <option value="">— Select a section —</option>
-            <optgroup label="Grade 7">
-              <option>Grade 7 – St. Matthew (38/40)</option>
-              <option>Grade 7 – St. Mark (34/40)</option>
-            </optgroup>
-            <optgroup label="Grade 8">
-              <option>Grade 8 – St. Luke (36/40)</option>
-              <option>Grade 8 – St. John (34/40)</option>
-            </optgroup>
-            <optgroup label="Grade 9">
-              <option>Grade 9 – St. Peter (37/40)</option>
-              <option>Grade 9 – St. Paul (37/40)</option>
-            </optgroup>
-            <optgroup label="Grade 10">
-              <option>Grade 10 – St. James (35/40)</option>
-              <option>Grade 10 – St. Thomas (33/40)</option>
-            </optgroup>
-          </select>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="studentSchoolLevel">School level</label>
+            <select class="form-select dropdown" id="studentSchoolLevel" name="schoolLevel" onchange="updateManagementAssignmentFields()" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="studentGradeLevel">Grade level</label>
+            <select class="form-select dropdown" id="studentGradeLevel" name="gradeLevel" onchange="updateManagementAssignmentFields()" required></select>
+          </div>
         </div>
+        <div class="form-row-2">
+          <div class="form-group" id="studentStrandGroup" style="display:none;">
+            <label class="form-label" for="studentStrand">Track / Strand</label>
+            <select class="form-select dropdown" id="studentStrand" name="strand" onchange="updateManagementAssignmentFields()"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="studentSectionSelect">Assign to section</label>
+            <select class="form-select dropdown" id="studentSectionSelect" name="sectionId" onchange="updateManagementAssignmentContext()" required>
+              <option value="">Select a section</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" id="studentSchoolLevelValue" name="schoolLevel">
+        <input type="hidden" id="studentGradeLevelValue" name="gradeLevel">
+        <input type="hidden" id="studentStrandValue" name="strand">
       </form>
 
       <form id="moveStudentForm" method="post" action="/assignments/students/move" style="display:none;">
@@ -344,28 +341,31 @@
             <div class="ctx-val" id="moveCtxVal">Select a new section below</div>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Move to Section</label>
-          <select class="form-select dropdown" name="sectionId">
-            <option value="">— Select a section —</option>
-            <optgroup label="Grade 7">
-              <option>Grade 7 – St. Matthew (38/40)</option>
-              <option>Grade 7 – St. Mark (34/40)</option>
-            </optgroup>
-            <optgroup label="Grade 8">
-              <option>Grade 8 – St. Luke (36/40)</option>
-              <option>Grade 8 – St. John (34/40)</option>
-            </optgroup>
-            <optgroup label="Grade 9">
-              <option>Grade 9 – St. Peter (37/40)</option>
-              <option>Grade 9 – St. Paul (37/40)</option>
-            </optgroup>
-            <optgroup label="Grade 10">
-              <option>Grade 10 – St. James (35/40)</option>
-              <option>Grade 10 – St. Thomas (33/40)</option>
-            </optgroup>
-          </select>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="moveSchoolLevel">School level</label>
+            <select class="form-select dropdown" id="moveSchoolLevel" name="schoolLevel" onchange="updateManagementMoveFields()" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="moveGradeLevel">Grade level</label>
+            <select class="form-select dropdown" id="moveGradeLevel" name="gradeLevel" onchange="updateManagementMoveFields()" required></select>
+          </div>
         </div>
+        <div class="form-row-2">
+          <div class="form-group" id="moveStrandGroup" style="display:none;">
+            <label class="form-label" for="moveStrand">Track / Strand</label>
+            <select class="form-select dropdown" id="moveStrand" name="strand" onchange="updateManagementMoveFields()"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="moveSectionSelect">Move to section</label>
+            <select class="form-select dropdown" id="moveSectionSelect" name="sectionId" onchange="updateManagementMoveContext()" required>
+              <option value="">Select a section</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" id="moveSchoolLevelValue" name="schoolLevel">
+        <input type="hidden" id="moveGradeLevelValue" name="gradeLevel">
+        <input type="hidden" id="moveStrandValue" name="strand">
       </form>
     </div>
     <div class="modal-foot">
@@ -424,23 +424,19 @@
     </div>
     <div class="modal-body">
       <form id="importStudentsForm" method="post" action="/assignments/students/import" enctype="multipart/form-data">
-        <div class="form-group">
-          <label class="form-label">Grade Level</label>
-          <input type="hidden" id="importGrade" name="gradeLevel" value=""/>
-          <div class="role-opts" id="importGradeOpts">
-            <div class="role-opt" data-grade="7" onclick="selectImportGrade(this, '7')">
-              <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 7</span>
-            </div>
-            <div class="role-opt" data-grade="8" onclick="selectImportGrade(this, '8')">
-              <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 8</span>
-            </div>
-            <div class="role-opt" data-grade="9" onclick="selectImportGrade(this, '9')">
-              <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i></div><span>Grade 9</span>
-            </div>
-            <div class="role-opt" data-grade="10" onclick="selectImportGrade(this, '10')">
-              <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Grade 10</span>
-            </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="importSchoolLevel">School Level</label>
+            <select class="form-select dropdown" id="importSchoolLevel" name="schoolLevel" onchange="updateImportGradeOptions()" required></select>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="importGrade">Grade Level</label>
+            <select class="form-select dropdown" id="importGrade" name="gradeLevel" onchange="selectImportGrade(this.value)" required></select>
+          </div>
+        </div>
+        <div class="form-group" id="importStrandGroup" style="display:none;">
+          <label class="form-label" for="importStrand">Track / Strand</label>
+          <select class="form-select dropdown" id="importStrand" name="strand" onchange="updateImportGradeOptions()"></select>
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">CSV File</label>
@@ -664,11 +660,11 @@
       </button>
       <button class="mgmt-tab" data-tab="teachers" onclick="switchMgmtTab('teachers', this)">
         <i data-lucide="clipboard-list" style="width:15px;height:15px;"></i>Assign Teachers
-        <span class="tab-pill">6 open</span>
+        <span class="tab-pill" id="teacherTabPill">0 open</span>
       </button>
       <button class="mgmt-tab" data-tab="students" onclick="switchMgmtTab('students', this)">
         <i data-lucide="user-plus" style="width:15px;height:15px;"></i>Assign Students
-        <span class="tab-pill">13 open</span>
+        <span class="tab-pill" id="studentTabPill">0 open</span>
       </button>
     </div>
 
@@ -683,7 +679,7 @@
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
         <div>
           <div class="info-title">What you can do here</div>
-          <div class="info-text">Create and edit class sections, assign a class adviser, and view each section's enrolled students. Sections are grouped by grade level below.</div>
+          <div class="info-text">Create and edit class sections, assign a class adviser, and view each section's enrolled students. Sections are grouped by school level and grade below.</div>
         </div>
       </div>
 
@@ -694,11 +690,7 @@
             <input class="search-input" type="text" id="sectionSearchInput" placeholder="Search sections..." oninput="filterSections()"/>
           </div>
           <select class="filter-select" id="sectionGradeFilter" onchange="filterSections()">
-            <option value="all">All Grade Levels</option>
-            <option value="7">Grade 7</option>
-            <option value="8">Grade 8</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
+            <option value="all">All School Levels</option>
           </select>
         </div>
         <div class="toolbar-actions">
@@ -752,19 +744,11 @@
         </div>
       </div>
 
-      <div class="filter-tabs" id="subjectGradeTabs">
-        <div class="filter-tab active" data-grade="all" onclick="switchSubjectGradeTab('all', this)">All Grades <span class="tab-count">8</span></div>
-        <div class="filter-tab" data-grade="7" onclick="switchSubjectGradeTab('7', this)">Grade 7 <span class="tab-count">8</span></div>
-        <div class="filter-tab" data-grade="8" onclick="switchSubjectGradeTab('8', this)">Grade 8 <span class="tab-count">8</span></div>
-        <div class="filter-tab" data-grade="9" onclick="switchSubjectGradeTab('9', this)">Grade 9 <span class="tab-count">8</span></div>
-        <div class="filter-tab" data-grade="10" onclick="switchSubjectGradeTab('10', this)">Grade 10 <span class="tab-count">8</span></div>
-      </div>
-
       <div class="panel">
         <div class="panel-head">
           <div>
             <div class="panel-title" id="subjectPanelTitle">All Subjects</div>
-            <div class="panel-sub" id="subjectPanelSub">Subjects shared across Grades 7 – 10 · S.Y. 2025–2026</div>
+            <div class="panel-sub" id="subjectPanelSub">Subjects configured for the active school levels</div>
           </div>
           <div class="panel-head-right">
             <div class="search-wrap">
@@ -774,15 +758,9 @@
             <button class="top-btn primary" onclick="openSubjectModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Subject</button>
           </div>
         </div>
+        <div class="hierarchical-filter-tabs" id="subjectGradeTabs"></div>
 
-        <div class="table-wrap">
-          <table id="subjectTable">
-            <thead><tr><th>Subject</th><th>Applies To</th><th>Sections</th><th>Actions</th></tr></thead>
-            <tbody id="subjectTableBody">
-
-            </tbody>
-          </table>
-        </div>
+        <div class="subject-grid" id="subjectTableBody"></div>
       </div>
     </section>
 
@@ -808,8 +786,7 @@
             <input class="search-input" type="text" id="teacherSearchInput" placeholder="Search section or teacher..." oninput="filterTeacherBlocks()"/>
           </div>
           <select class="filter-select" id="teacherGradeFilter" onchange="filterTeacherBlocks()">
-            <option value="all">All Grade Levels</option>
-            <option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option>
+            <option value="all">All School Levels</option>
           </select>
           <select class="filter-select" id="teacherStatusFilter" onchange="filterTeacherBlocks()">
             <option value="all">All Sections</option>
@@ -832,33 +809,17 @@
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
         <div>
           <div class="info-title">How student assignments work</div>
-          <div class="info-text">Assign individual students to a section, move them between sections, or import a CSV to auto-sort an entire grade level by average.</div>
+          <div class="info-text">Assign individual students to a section, move them between sections, or import a CSV to auto-sort a configured school level and grade by average.</div>
         </div>
       </div>
 
       <div class="unassigned-banner">
         <div class="ub-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
         <div class="ub-body">
-          <div class="ub-title">13 students are not yet assigned to any section</div>
+          <div class="ub-title" id="unassignedBannerTitle">Students are not yet assigned to any section</div>
           <div class="ub-text">These students have accounts but are not enrolled in a section. Assign them before the grading period starts.</div>
         </div>
         <button class="ub-btn" onclick="switchStudentGradeTab('unassigned', null)">View Unassigned</button>
-      </div>
-
-      <div class="filter-tabs" id="studentGradeTabs">
-        <div class="filter-tab active" id="stu-tab-all" onclick="switchStudentGradeTab('all', this)">All Sections <span
-            class="tab-count">284</span></div>
-        <div class="filter-tab" id="stu-tab-7" onclick="switchStudentGradeTab('7', this)">Grade 7 <span
-            class="tab-count">72</span></div>
-        <div class="filter-tab" id="stu-tab-8" onclick="switchStudentGradeTab('8', this)">Grade 8 <span
-            class="tab-count">70</span></div>
-        <div class="filter-tab" id="stu-tab-9" onclick="switchStudentGradeTab('9', this)">Grade 9 <span
-            class="tab-count">74</span></div>
-        <div class="filter-tab" id="stu-tab-10" onclick="switchStudentGradeTab('10', this)">Grade 10 <span
-            class="tab-count">68</span></div>
-        <div class="filter-tab" id="stu-tab-unassigned" onclick="switchStudentGradeTab('unassigned', this)"
-          style="border-color:#fcd34d;color:#d97706;">Unassigned <span class="tab-count"
-            style="background:var(--orange-pale);color:#92400e;">13</span></div>
       </div>
 
       <div class="two-panel">
@@ -867,13 +828,14 @@
           <div class="enrolled-head">
             <div>
               <div class="enrolled-title" id="enrolledTitle">All Enrolled Students</div>
-              <div class="enrolled-meta" id="enrolledMeta">Showing 271 students across 8 sections</div>
+              <div class="enrolled-meta" id="enrolledMeta">Showing students across the configured sections</div>
             </div>
             <div class="toolbar-actions">
               <button class="top-btn secondary" onclick="openImportStudentsModal()"><i data-lucide="file-up" style="width:16px;height:16px;"></i>Import Students</button>
               <button class="top-btn primary" onclick="openStudentAssignModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Assign Student</button>
             </div>
           </div>
+          <div class="hierarchical-filter-tabs" id="studentGradeTabs"></div>
           <div class="enrolled-search">
             <span class="es-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
             <input class="es-input" type="text" id="studentSearchInput" placeholder="Search students by name or email..." oninput="filterStudentsList()"/>
@@ -963,7 +925,34 @@ if (tab) {
 /* ══════════════════════════════════════════════
    SECTIONS TAB
 ══════════════════════════════════════════════ */
-function openSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.add('open'); }
+function updateSectionFormFields(mode) {
+  const prefix = mode === 'edit' ? 'edit' : 'create';
+  const levelSelect = document.getElementById(`${prefix}SchoolLevel`);
+  const gradeSelect = document.getElementById(`${prefix}GradeLevel`);
+  const strandSelect = document.getElementById(`${prefix}Strand`);
+  const strandGroup = document.getElementById(`${prefix}StrandGroup`);
+  const level = levelSelect?.value || managementDefaultLevel();
+  const currentGrade = gradeSelect?.value || '';
+  const grades = managementGradeOptions(level);
+  const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(currentGrade)) || grades[0] || '';
+  managementSetOptions(levelSelect, managementSchoolLevels().map(option => ({ value: option, label: managementLevelLabel(option) })), 'Select a school level', level);
+  managementSetOptions(gradeSelect, grades.map(option => ({ value: option, label: option })), 'Select a grade level', grade);
+  const strands = managementStrandOptions(level);
+  const strand = strands.includes(strandSelect?.value) ? strandSelect.value : strands[0] || '';
+  if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
+  managementSetOptions(strandSelect, strands.map(option => ({ value: option, label: option })), 'Select a track or strand', strand);
+  if (strandSelect) strandSelect.required = level === 'shs';
+  const sub = document.getElementById(`${prefix === 'create' ? 'sectionAddModalSub' : 'sectionEditModalSub'}`);
+  if (sub) sub.textContent = `${prefix === 'create' ? 'Set up' : 'Update'} a ${managementLevelLabel(level)} class section.`;
+}
+
+function openSectionAddModal() {
+  const form = document.getElementById('createSectionForm');
+  form.reset();
+  document.getElementById('createSchoolLevel').value = managementDefaultLevel();
+  updateSectionFormFields('create');
+  document.getElementById('sectionAddModalBackdrop').classList.add('open');
+}
 function closeSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.remove('open'); }
 document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
 
@@ -1103,6 +1092,50 @@ const STUDENTS_DATA = [
   { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
   { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
   { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
+  { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
+  { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
+  { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
+  { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
+  { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
+  { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
+  { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
+  { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
+  { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
+  { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
+  { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
+  { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
+  { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
+  { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
+  { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
+  { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
+  { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
+  { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
+  { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
+  { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
+  { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
+  { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
+  { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
+  { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
+  { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
+  { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
+  { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
+  { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
+  { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
+  { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
+  { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
+  { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
+  { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', section: 'elem-grade4-luke', grade: '4', level: 'elementary' },
+  { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', section: 'elem-grade4-luke', grade: '4', level: 'elementary' },
+  { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', section: 'elem-grade5-mark', grade: '5', level: 'elementary' },
+  { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', section: 'elem-grade5-mark', grade: '5', level: 'elementary' },
+  { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', section: 'shs-grade11-stem-a', grade: '11', level: 'shs', strand: 'STEM' },
+  { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', section: 'shs-grade11-stem-a', grade: '11', level: 'shs', strand: 'STEM' },
+  { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', section: 'shs-grade11-humss-a', grade: '11', level: 'shs', strand: 'HUMSS' },
+  { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', section: 'shs-grade11-humss-a', grade: '11', level: 'shs', strand: 'HUMSS' },
+  { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', section: 'shs-grade12-abm-a', grade: '12', level: 'shs', strand: 'ABM' },
+  { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', section: 'shs-grade12-abm-a', grade: '12', level: 'shs', strand: 'ABM' },
+  { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', section: 'shs-grade12-tvl-a', grade: '12', level: 'shs', strand: 'TVL' },
+  { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', section: 'shs-grade12-tvl-a', grade: '12', level: 'shs', strand: 'TVL' },
 ];
 
 /* ══════════════════════════════════════════════
@@ -1120,7 +1153,7 @@ function renderManagementStatCards(targetId, cards) {
     </div>`).join('');
 }
 
-function getTeacherAssignmentStats() {
+function getTeacherAssignmentStatsLegacy() {
   const slots = TEACHER_ASSIGNMENTS_DATA.flatMap(section => section.subjects);
   const assigned = slots.filter(subject => subject.teacher).length;
   return {
@@ -1131,11 +1164,11 @@ function getTeacherAssignmentStats() {
   };
 }
 
-function renderSections() {
+function renderSectionsLegacy() {
   const withAdviser = SECTIONS_DATA.filter(s => s.adviser).length;
   const totalStudents = SECTIONS_DATA.reduce((sum, s) => sum + s.students, 0);
   renderManagementStatCards('sections-summary-cards', [
-    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Total Sections', sub: 'Across Grades 7 – 10' },
+    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Total Sections', sub: 'Across configured school levels' },
     { tone: 'green', icon: 'graduation-cap', value: totalStudents, label: 'Students', sub: 'Enrolled this school year' },
     { tone: 'gold', icon: 'book-open', value: withAdviser, label: 'With Adviser', sub: `Out of ${SECTIONS_DATA.length} total sections` },
   ]);
@@ -1191,32 +1224,216 @@ function renderSections() {
   lucide.createIcons();
 }
 
-function renderSubjects() {
-  const assignmentStats = getTeacherAssignmentStats();
-  const subjectSlots = SUBJECTS_DATA.reduce((total, subject) => total + subject.total, 0);
-  renderManagementStatCards('subjects-summary-cards', [
-    { tone: 'blue', icon: 'library', value: SUBJECTS_DATA.length, label: 'Total Subjects', sub: 'Shared across all grade levels' },
-    { tone: 'gold', icon: 'layers', value: subjectSlots, label: 'Subject Slots', sub: `${SUBJECTS_DATA.length} subjects × ${SECTIONS_DATA.length} sections` },
-    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Slots Assigned', sub: 'Teachers already linked' },
-    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Slots Unassigned', sub: 'Still needs a teacher' },
+function renderSections() {
+  const records = managementSectionRecords();
+  const withAdviser = records.filter(section => section.adviser).length;
+  const totalStudents = records.reduce((sum, section) => sum + section.students, 0);
+  const levelSummary = managementSchoolLevels().map(managementLevelShortLabel).join(', ');
+  renderManagementStatCards('sections-summary-cards', [
+    { tone: 'blue', icon: 'door-open', value: records.length, label: 'Total Sections', sub: `Across ${levelSummary}` },
+    { tone: 'green', icon: 'graduation-cap', value: totalStudents, label: 'Students', sub: 'Enrolled this school year' },
+    { tone: 'gold', icon: 'book-open', value: withAdviser, label: 'With Adviser', sub: `Out of ${records.length} total sections` },
   ]);
-  const tbody = document.getElementById('subjectTableBody');
-  tbody.innerHTML = SUBJECTS_DATA.map(s => {
-    return `
-    <tr data-grades="${s.grades.join(',')}" data-name="${s.name.toLowerCase()}" data-id="${s.id}">
-      <td><div class="subj-cell"><div><div class="subj-name">${s.name}</div><div class="subj-code-text">${s.code} · ${s.type}</div></div></div></td>
-      <td><div class="applies-wrap">${s.grades.map(g => `<span class="grade-pill">Gr. ${g}</span>`).join('')}</div></td>
-      <td>${s.total} sections</td>
-      <td><div class="row-actions"><button class="row-btn edit" onclick="openSubjectModal('${s.name}')">Edit</button><button class="row-btn remove">Remove</button></div></td>
-    </tr>`;
-  }).join('');
+
+  const container = document.getElementById('sectionCardView');
+  const groups = managementGradeFilterOptions().map(option => ({
+    ...option,
+    items: records.filter(section => managementSectionFilterKey(section) === option.value)
+  })).filter(group => group.items.length);
+
+  container.innerHTML = groups.map(group => `
+    <div class="grade-group" data-grade="${group.value}" data-level="${group.level}">
+      <div class="grade-label"><span class="grade-text">${group.label}</span><div class="grade-line"></div><span class="grade-count">${group.items.length} Sections · ${group.items.reduce((sum, section) => sum + section.students, 0)} Students</span></div>
+      <div class="sections-grid">
+        ${group.items.map(section => `
+          <div class="section-card" data-grade="${managementSectionFilterKey(section)}" data-name="${section.name.toLowerCase()}" data-id="${section.id}">
+            <div class="card-stripe stripe-${managementSectionTone(section.level, section.gradeValue)}"></div>
+            <div class="card-body">
+              <div class="card-head"><div class="section-name">${section.name}</div><span class="section-grade-badge gb-${managementSectionTone(section.level, section.gradeValue)}">${managementSectionBadgeLabel(section)}</span></div>
+              <div class="card-stats">
+                <div class="cs-item"><div class="cs-num">${section.students}</div><div class="cs-label">Students</div></div>
+                <div class="cs-item"><div class="cs-num">${section.subjects}</div><div class="cs-label">Subjects</div></div>
+                <div class="cs-item"><div class="cs-num">${section.capacity}</div><div class="cs-label">Capacity</div></div>
+              </div>
+              ${section.adviser
+                ? `<div class="card-adviser"><div class="adviser-av">${section.adviserInitials || section.adviser.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">${section.adviser}</div></div></div>`
+                : `<div class="no-adviser"><div class="no-adviser-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div><div class="no-adviser-text">No adviser assigned yet</div></div>`}
+              <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">${section.adviser ? 'Edit' : 'Assign Adviser'}</button></div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  container.querySelectorAll('.section-card').forEach(card => {
+    card.querySelector('.card-btn.edit').addEventListener('click', () => openSectionEditModal(card));
+    card.querySelector('.card-btn.view').addEventListener('click', () => openSectionStudentsModal(card));
+  });
+
+  const tbody = document.querySelector('#sectionTableView tbody');
+  tbody.innerHTML = records.map(section => `
+    <tr data-id="${section.id}" data-grade="${managementSectionFilterKey(section)}" data-name="${section.name.toLowerCase()}">
+      <td><strong>${section.name}</strong></td>
+      <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${managementSectionPlacement(section)}</span></td>
+      <td>${section.adviser || '<span style="color:var(--red);font-weight:600;"><i data-lucide="alert-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Unassigned</span>'}</td>
+      <td>${section.students}</td>
+      <td>${section.subjects}</td>
+      <td>${section.capacity}</td>
+      <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">${section.adviser ? 'Edit' : 'Assign'}</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('.row-btn.view').forEach(button => button.addEventListener('click', () => openSectionStudentsModal(button.closest('tr'))));
+  tbody.querySelectorAll('.row-btn.edit').forEach(button => button.addEventListener('click', () => openSectionEditModal(button.closest('tr'))));
   lucide.createIcons();
 }
 
+const subjectGradeOverrides = new Map();
+
+function managementSubjectRecords() {
+  const configSubjects = Array.isArray(window.EDUGNAY_CONFIG.subjects) ? window.EDUGNAY_CONFIG.subjects : [];
+  const localSubjects = Array.isArray(SUBJECTS_DATA) ? SUBJECTS_DATA : [];
+  const aliases = { ap: 'araling-panlipunan', esp: 'edukasyon-sa-pagpapakatao' };
+  const normalizeName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const sections = managementSectionRecords();
+
+  const records = configSubjects.map(subject => {
+    const local = localSubjects.find(item => item.id === subject.id || aliases[item.id] === subject.id || normalizeName(item.name) === normalizeName(subject.name));
+    const levels = managementSchoolLevels().filter(level => {
+      const division = managementDivision(level);
+      return Array.isArray(division.subjects) && division.subjects.includes(subject.id);
+    });
+    const fallbackGrades = local?.grades?.map(grade => `jhs:${managementGradeKey(grade)}`) || [];
+    const configuredGrades = (levels.length ? levels.flatMap(level => managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`)) : fallbackGrades);
+    const grades = [...(subjectGradeOverrides.get(local?.id || subject.id) || configuredGrades)];
+    const total = sections.filter(section => grades.includes(managementSectionFilterKey(section))).length;
+    return {
+      ...(local || {}),
+      id: local?.id || subject.id,
+      name: local?.name || subject.name,
+      code: local?.code || subject.code,
+      type: local?.type || (subject.levels?.includes('shs') && subject.levels.length === 1 ? 'Specialized Subject' : 'Core Subject'),
+      icon: local?.icon || 'book-open',
+      iconBg: local?.iconBg || 'var(--blue-xpale)',
+      iconColor: local?.iconColor || 'var(--blue-mid)',
+      grades,
+      total
+    };
+  });
+
+  localSubjects.forEach(local => {
+    if (records.some(subject => subject.id === local.id || normalizeName(subject.name) === normalizeName(local.name))) return;
+    const grades = [...(subjectGradeOverrides.get(local.id) || local.grades.map(grade => `jhs:${managementGradeKey(grade)}`))];
+    records.push({ ...local, grades, total: sections.filter(section => grades.includes(managementSectionFilterKey(section))).length });
+  });
+  return records;
+}
+
+function managementFilterMatches(filterValue, keys) {
+  if (filterValue === 'all') return true;
+  const values = Array.isArray(keys) ? keys : [keys];
+  if (managementSchoolLevels().includes(filterValue)) {
+    return values.some(key => String(key).startsWith(`${filterValue}:`));
+  }
+  return values.includes(filterValue);
+}
+
+function renderSubjectGradeTabs(level) {
+  const tabs = document.getElementById('subjectGradeSubTabs');
+  if (!tabs) return;
+  if (level === 'all') {
+    tabs.innerHTML = '';
+    tabs.classList.add('is-empty');
+    return;
+  }
+
+  if (activeSubjectGrade !== level && !activeSubjectGrade.startsWith(`${level}:`)) activeSubjectGrade = level;
+  tabs.classList.remove('is-empty');
+  const subjects = managementSubjectRecords();
+  const levelLabel = managementLevelLabel(level);
+  const grades = managementGradeOptions(level);
+  subjectTabTitles[level] = {
+    title: `${levelLabel} Subjects`,
+    sub: `Subjects assigned across all ${levelLabel} grades`
+  };
+
+  tabs.innerHTML = [
+    `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchSubjectGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${subjects.filter(subject => managementFilterMatches(level, subject.grades)).length}</span></div>`,
+    ...grades.map(grade => {
+      const key = `${level}:${managementGradeKey(grade)}`;
+      subjectTabTitles[key] = {
+        title: `${levelLabel} · ${grade} Subjects`,
+        sub: `Subjects assigned to ${grade}`
+      };
+      const count = subjects.filter(subject => subject.grades.includes(key)).length;
+      return `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === key ? 'active' : ''}" data-grade="${key}" onclick="switchSubjectGradeTab('${key}', this)">${grade} <span class="tab-count">${count}</span></div>`;
+    })
+  ].join('');
+}
+
+function renderManagementSubjectTabs() {
+  const tabs = document.getElementById('subjectGradeTabs');
+  if (!tabs) return;
+  const subjects = managementSubjectRecords();
+  const levels = managementSchoolLevels();
+  const activeDivision = activeSubjectGrade === 'all' ? 'all' : activeSubjectGrade.split(':')[0];
+  tabs.classList.add('hierarchical-filter-tabs');
+  subjectTabTitles = { all: { title: 'All Subjects', sub: 'Subjects configured for the active school levels' } };
+  tabs.innerHTML = `
+    <div class="division-filter-tabs" role="tablist" aria-label="School levels">
+      <button type="button" class="division-filter-tab ${activeDivision === 'all' ? 'active' : ''}" data-division="all" role="tab" aria-selected="${activeDivision === 'all'}" onclick="switchSubjectDivisionTab('all', this)">All School Levels <span class="tab-count">${subjects.length}</span></button>
+      ${levels.map(level => {
+        subjectTabTitles[level] = { title: `${managementLevelLabel(level)} Subjects`, sub: `Subjects assigned across all ${managementLevelLabel(level)} grades` };
+        const count = subjects.filter(subject => managementFilterMatches(level, subject.grades)).length;
+        return `<button type="button" class="division-filter-tab ${activeDivision === level ? 'active' : ''}" data-division="${level}" role="tab" aria-selected="${activeDivision === level}" onclick="switchSubjectDivisionTab('${level}', this)">${managementLevelLabel(level)} <span class="tab-count">${count}</span></button>`;
+      }).join('')}
+    </div>
+    <div class="grade-filter-tabs is-empty" id="subjectGradeSubTabs" role="tablist" aria-label="Grade levels"></div>`;
+  renderSubjectGradeTabs(activeDivision === 'all' ? 'all' : activeDivision);
+  const initialInfo = subjectTabTitles[activeSubjectGrade] || subjectTabTitles[activeDivision] || subjectTabTitles.all;
+  document.getElementById('subjectPanelTitle').textContent = initialInfo.title;
+  document.getElementById('subjectPanelSub').textContent = initialInfo.sub;
+}
+
+function getManagementTeacherSlots() {
+  const subjects = managementSubjectRecords();
+  return managementSectionRecords().flatMap(section => section.teacherAssignments?.length
+    ? section.teacherAssignments
+    : subjects.filter(subject => subject.grades.includes(managementSectionFilterKey(section))).map(subject => ({ name: subject.name, teacher: null })));
+}
+
+function getTeacherAssignmentStats() {
+  const slots = getManagementTeacherSlots();
+  const assigned = slots.filter(subject => subject.teacher).length;
+  return {
+    total: slots.length,
+    assigned,
+    unassigned: slots.length - assigned,
+    faculty: new Set(slots.filter(subject => subject.teacher).map(subject => subject.teacher)).size,
+  };
+}
+
+function renderSubjects() {
+  const subjectRecords = managementSubjectRecords();
+  const assignmentStats = getTeacherAssignmentStats();
+  const subjectSlots = subjectRecords.reduce((total, subject) => total + subject.total, 0);
+  renderManagementStatCards('subjects-summary-cards', [
+    { tone: 'blue', icon: 'library', value: subjectRecords.length, label: 'Total Subjects', sub: 'Configured for this school' },
+    { tone: 'gold', icon: 'layers', value: subjectSlots, label: 'Subject Slots', sub: `${subjectRecords.length} subjects · ${managementSectionRecords().length} sections` },
+    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Slots Assigned', sub: 'Teachers already linked' },
+    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Slots Unassigned', sub: 'Still needs a teacher' },
+  ]);
+  const subjectGrid = document.getElementById('subjectTableBody');
+  subjectGrid.innerHTML = subjectRecords.map(subject => `
+    <article class="subject-card" data-grades="${subject.grades.join(',')}" data-name="${subject.name.toLowerCase()}" data-id="${subject.id}">
+      <div class="subject-card-content"><div class="subj-name">${subject.name}</div><div class="subj-code-text">${subject.code} · ${subject.type}</div></div>
+      <div class="subject-card-actions row-actions"><button class="row-btn edit" onclick="openSubjectModal('${subject.id}')">Edit</button><button class="row-btn remove">Remove</button></div>
+    </article>`).join('');
+  lucide.createIcons();
+}
+
+const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
 let teacherTargetSubject = null;
 
-function renderTeacherAssignments() {
+function renderTeacherAssignmentsLegacy() {
   const assignmentStats = getTeacherAssignmentStats();
   renderManagementStatCards('teacher-summary-cards', [
     { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across all sections & subjects' },
@@ -1276,12 +1493,76 @@ function renderTeacherAssignments() {
   lucide.createIcons();
 }
 
+function renderTeacherAssignments() {
+  const sections = managementSectionRecords();
+  const assignmentStats = getTeacherAssignmentStats();
+  renderManagementStatCards('teacher-summary-cards', [
+    { tone: 'blue', icon: 'clipboard-list', value: sections.reduce((sum, section) => sum + (section.teacherAssignments?.length || managementSubjectRecords().filter(subject => subject.grades.includes(managementSectionFilterKey(section))).length), 0), label: 'Total Assignments', sub: 'Across configured sections' },
+    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Assigned', sub: 'Subject-section slots filled' },
+    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Unassigned', sub: 'Still needs a teacher' },
+    { tone: 'gold', icon: 'book-open', value: assignmentStats.faculty, label: 'Faculty Assigned', sub: 'Unique teachers linked' },
+  ]);
+  const container = document.getElementById('panel-teachers');
+  container.querySelectorAll('.section-block').forEach(element => element.remove());
+  const subjects = managementSubjectRecords();
+  const html = sections.map(section => {
+    const sectionSubjects = section.teacherAssignments?.length
+      ? section.teacherAssignments
+      : subjects.filter(subject => subject.grades.includes(managementSectionFilterKey(section))).map(subject => ({
+        name: subject.name,
+        code: subject.code,
+        teacher: null
+      }));
+    const assignedCount = sectionSubjects.filter(subject => subject.teacher).length;
+    const total = sectionSubjects.length;
+    const full = total > 0 && assignedCount === total;
+    const pct = total ? Math.round((assignedCount / total) * 100) : 0;
+    const rows = sectionSubjects.length ? sectionSubjects.map(subject => `
+      <div class="subject-row">
+        <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
+        ${subject.teacher ? `
+          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${subject.initials || subject.teacher.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div><div class="teacher-name">${subject.teacher}</div><div class="teacher-email">${subject.email || ''}</div></div></div>
+          <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
+        ` : `
+          <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
+          <div class="row-actions"><button class="row-btn assign">+ Assign</button></div>
+        `}
+      </div>`).join('') : '<div class="empty-state">No subjects configured for this section.</div>';
+    const collapsed = managementTeacherCollapseState[section.id] ?? section.collapsed;
+    return `
+      <div class="section-block${collapsed ? ' collapsed' : ''}" data-grade="${managementSectionFilterKey(section)}" data-level="${section.level}" data-name="${section.name.toLowerCase()}" data-status="${full ? 'complete' : 'incomplete'}" data-id="${section.id}">
+        <div class="section-head" onclick="toggleTeacherSection(this)">
+          <div class="section-head-left"><span class="section-grade-pill gp-${managementSectionTone(section.level, section.gradeValue)}">${managementSectionBadgeLabel(section)}</span><div class="section-name">${section.name}</div></div>
+          <div class="section-meta">
+            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>${total}</strong> Subjects</div>
+            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong${section.adviser ? '' : ' style="color:var(--red)"'}>${section.adviser || 'None'}</strong></div>
+            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-label ${full ? 'label-full' : 'label-partial'}">${assignedCount}/${total} Assigned</span></div>
+            ${full ? '<span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>' : '<span class="badge badge-orange"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Incomplete</span>'}
+          </div>
+          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+        </div>
+        <div class="subject-list">${rows}</div>
+      </div>`;
+  }).join('');
+  container.insertAdjacentHTML('beforeend', html);
+  container.querySelectorAll('.section-block .row-btn.change, .section-block .row-btn.assign').forEach(button => button.addEventListener('click', event => {
+    event.stopPropagation();
+    const block = button.closest('.section-block');
+    const row = button.closest('.subject-row');
+    teacherTargetSection = block.dataset.id;
+    teacherTargetSubject = row?.querySelector('.subj-name')?.textContent.trim() || '';
+    openTeacherModal(`${block.querySelector('.section-grade-pill').textContent.trim()} · ${block.querySelector('.section-name').textContent.trim()} · ${teacherTargetSubject}`);
+  }));
+  filterTeacherBlocks();
+  lucide.createIcons();
+}
+
 function sectionNameById(id) {
-  const s = SECTIONS_DATA.find(sec => sec.id === id);
+  const s = managementSectionById(id);
   return s ? s.name : null;
 }
 
-function renderEnrolledTable() {
+function renderEnrolledTableLegacy() {
   const tbody = document.getElementById('enrolledBody');
   tbody.innerHTML = STUDENTS_DATA.map(st => {
     const initials = st.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -1290,9 +1571,9 @@ function renderEnrolledTable() {
       return `
       <tr data-grade="${st.grade}" data-section="${secName.toLowerCase()}" data-assigned="true" data-id="${st.id}">
         <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${st.name}</div><div class="user-email">${st.email}</div></div></div></td>
-        <td>${secName}</td>
+        <td><span class="enrolled-section-name">${secName}</span></td>
         <td><span class="badge ${GRADE_BADGE_CLASS[st.grade]}">Grade ${st.grade}</span></td>
-        <td><div class="row-actions"><button class="row-btn move" onclick="openMoveStudentModal('${st.name}', '${st.id}', '${secName}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${st.name}', '${secName}', '${st.id}', this)">Remove</button></div></td>
+        <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${st.name}', '${st.id}', '${secName}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${st.name}', '${secName}', '${st.id}', this)">Remove</button></div></td>
       </tr>`;
     }
     return `
@@ -1306,7 +1587,7 @@ function renderEnrolledTable() {
   lucide.createIcons();
 }
 
-function renderSectionOverviewCards() {
+function renderSectionOverviewCardsLegacy() {
   const container = document.querySelector('#panel-students .sc-list');
   container.innerHTML = SECTIONS_DATA.map(s => {
     const pct = Math.round((s.students / s.capacity) * 100);
@@ -1322,20 +1603,146 @@ function renderSectionOverviewCards() {
   }).join('');
 }
 
-function renderStudentsTab() {
+function renderStudentsTabLegacy() {
   const assigned = STUDENTS_DATA.filter(student => student.section).length;
   renderManagementStatCards('students-summary-cards', [
     { tone: 'green', icon: 'graduation-cap', value: STUDENTS_DATA.length, label: 'Total Students', sub: 'Registered in the system' },
     { tone: 'green', icon: 'check-circle', value: assigned, label: 'Assigned', sub: 'Placed in a section' },
     { tone: 'orange', icon: 'alert-triangle', value: STUDENTS_DATA.length - assigned, label: 'Unassigned', sub: 'Still needs a section' },
-    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Active Sections', sub: 'Across Grades 7 – 10' },
+    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Active Sections', sub: 'Across configured school levels' },
   ]);
   renderEnrolledTable();
   renderSectionOverviewCards();
   applyStudentFilters();
 }
 
-function openSectionEditModal(card) {
+function renderStudentGradeTabs() {
+  const tabs = document.getElementById('studentGradeTabs');
+  if (!tabs) return;
+  const records = managementSectionRecords();
+  const assigned = STUDENTS_DATA.filter(student => student.section);
+  const countFor = key => key === 'unassigned'
+    ? STUDENTS_DATA.length - assigned.length
+    : key === 'all'
+      ? assigned.length
+      : assigned.filter(student => {
+        const section = managementSectionById(student.section);
+        return section && managementFilterMatches(key, [managementSectionFilterKey(section)]);
+      }).length;
+  const levels = managementSchoolLevels();
+  const activeDivision = activeStudentGrade === 'all' || activeStudentGrade === 'unassigned'
+    ? activeStudentGrade
+    : activeStudentGrade.split(':')[0];
+  studentTabTitles = {
+    all: { title: 'All Enrolled Students', meta: `Showing ${assigned.length} students across ${records.length} sections` },
+    unassigned: { title: 'Unassigned Students', meta: `${STUDENTS_DATA.length - assigned.length} students not yet placed in any section` }
+  };
+  tabs.classList.add('hierarchical-filter-tabs');
+  tabs.innerHTML = `
+    <div class="division-filter-tabs" role="tablist" aria-label="School levels">
+      <button type="button" class="division-filter-tab ${activeDivision === 'all' ? 'active' : ''}" data-division="all" role="tab" aria-selected="${activeDivision === 'all'}" onclick="switchStudentDivisionTab('all', this)">All Sections <span class="tab-count">${countFor('all')}</span></button>
+      ${levels.map(level => {
+        studentTabTitles[level] = { title: `${managementLevelLabel(level)} Students`, meta: `Showing students enrolled across ${managementLevelLabel(level)} grades` };
+        return `<button type="button" class="division-filter-tab ${activeDivision === level ? 'active' : ''}" data-division="${level}" role="tab" aria-selected="${activeDivision === level}" onclick="switchStudentDivisionTab('${level}', this)">${managementLevelLabel(level)} <span class="tab-count">${countFor(level)}</span></button>`;
+      }).join('')}
+      <button type="button" class="division-filter-tab division-filter-warning ${activeDivision === 'unassigned' ? 'active' : ''}" data-division="unassigned" role="tab" aria-selected="${activeDivision === 'unassigned'}" onclick="switchStudentGradeTab('unassigned', this)">Unassigned <span class="tab-count">${countFor('unassigned')}</span></button>
+    </div>
+    <div class="grade-filter-tabs is-empty" id="studentGradeSubTabs" role="tablist" aria-label="Grade levels"></div>`;
+  renderStudentGradeSubTabs(activeDivision === 'all' || activeDivision === 'unassigned' ? 'all' : activeDivision);
+  const initialInfo = studentTabTitles[activeStudentGrade] || studentTabTitles[activeDivision] || studentTabTitles.all;
+  document.getElementById('enrolledTitle').textContent = initialInfo.title;
+  document.getElementById('enrolledMeta').textContent = initialInfo.meta;
+  const banner = document.getElementById('unassignedBannerTitle');
+  if (banner) banner.textContent = `${STUDENTS_DATA.length - assigned.length} students are not yet assigned to any section`;
+}
+
+function renderStudentGradeSubTabs(level) {
+  const tabs = document.getElementById('studentGradeSubTabs');
+  if (!tabs) return;
+  if (level === 'all' || level === 'unassigned') {
+    tabs.innerHTML = '';
+    tabs.classList.add('is-empty');
+    return;
+  }
+
+  if (activeStudentGrade !== level && !activeStudentGrade.startsWith(`${level}:`)) activeStudentGrade = level;
+  tabs.classList.remove('is-empty');
+  const assigned = STUDENTS_DATA.filter(student => student.section);
+  const levelLabel = managementLevelLabel(level);
+  const grades = managementGradeOptions(level);
+  studentTabTitles[level] = { title: `${levelLabel} Students`, meta: `Showing students enrolled across ${levelLabel} grades` };
+  tabs.innerHTML = [
+    `<div class="filter-tab grade-filter-tab ${activeStudentGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchStudentGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${assigned.filter(student => { const section = managementSectionById(student.section); return section && managementFilterMatches(level, [managementSectionFilterKey(section)]); }).length}</span></div>`,
+    ...grades.map(grade => {
+      const key = `${level}:${managementGradeKey(grade)}`;
+      studentTabTitles[key] = { title: `${levelLabel} · ${grade} Students`, meta: `Showing students enrolled in ${grade}` };
+      const count = assigned.filter(student => {
+        const section = managementSectionById(student.section);
+        return section && managementSectionFilterKey(section) === key;
+      }).length;
+      return `<div class="filter-tab grade-filter-tab ${activeStudentGrade === key ? 'active' : ''}" data-grade="${key}" onclick="switchStudentGradeTab('${key}', this)">${grade} <span class="tab-count">${count}</span></div>`;
+    })
+  ].join('');
+}
+
+function renderEnrolledTable() {
+  const tbody = document.getElementById('enrolledBody');
+  tbody.innerHTML = STUDENTS_DATA.map(student => {
+    const initials = student.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase();
+    const section = student.section ? managementSectionById(student.section) : null;
+    if (section) {
+      return `
+      <tr data-grade="${managementSectionFilterKey(section)}" data-section="${section.id}" data-assigned="true" data-id="${student.id}">
+        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.name}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><span class="enrolled-section-name">${section.name}</span><div class="table-secondary">${managementSectionContext(section)}</div></td>
+        <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${section.grade}</span></td>
+        <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${student.name}', '${student.id}', '${section.id}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${student.name}', '${section.name}', '${student.id}', this)">Remove</button></div></td>
+      </tr>`;
+    }
+    return `
+      <tr data-grade="unassigned" data-section="none" data-assigned="false" data-id="${student.id}">
+        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.name}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><span class="table-warning">Unassigned</span></td>
+        <td><span class="badge badge-gray">Not set</span></td>
+        <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.name}')">+ Assign</button></td>
+      </tr>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function renderSectionOverviewCards() {
+  const container = document.querySelector('#panel-students .sc-list');
+  const records = managementSectionRecords().sort(managementSectionSort);
+  container.innerHTML = records.map(section => {
+    const pct = section.capacity ? Math.round((section.students / section.capacity) * 100) : 0;
+    return `
+    <div class="sc-card" data-id="${section.id}" onclick="filterByStudentSection('${section.id}', this)">
+      <div class="sc-head">
+        <div class="sc-info"><div class="sc-section-name">${section.name}</div><div class="sc-grade-text">${managementSectionPlacement(section)}</div></div>
+        <div class="sc-count-wrap"><div class="sc-count-num">${section.students}</div><div class="sc-count-label">Students</div></div>
+      </div>
+      <div class="sc-bar"><div class="sc-fill ${managementSectionBarClass(section.level, section.gradeValue)}" style="width:${Math.min(pct, 100)}%"></div></div>
+      <div class="sc-cap-text">${section.students} / ${section.capacity} capacity</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStudentsTab() {
+  const records = managementSectionRecords();
+  const assigned = STUDENTS_DATA.filter(student => student.section).length;
+  renderManagementStatCards('students-summary-cards', [
+    { tone: 'green', icon: 'graduation-cap', value: STUDENTS_DATA.length, label: 'Total Students', sub: 'Registered in the system' },
+    { tone: 'green', icon: 'check-circle', value: assigned, label: 'Assigned', sub: 'Placed in a section' },
+    { tone: 'orange', icon: 'alert-triangle', value: STUDENTS_DATA.length - assigned, label: 'Unassigned', sub: 'Still needs a section' },
+    { tone: 'blue', icon: 'door-open', value: records.length, label: 'Active Sections', sub: `Across ${managementSchoolLevels().map(managementLevelShortLabel).join(', ')}` },
+  ]);
+  renderStudentGradeTabs();
+  renderEnrolledTable();
+  renderSectionOverviewCards();
+  applyStudentFilters();
+}
+
+function openSectionEditModalLegacy(card) {
   const name     = card.querySelector('.section-name').textContent.trim();
   const grade    = card.dataset.grade;
   const adviser  = card.querySelector('.adviser-name')?.textContent.trim() || '';
@@ -1366,7 +1773,7 @@ const sectionStudents = {
   'st. thomas': [{ name: 'Kyla Ramos',   email: 'kyla.ramos@school.edu',   status: 'Inactive' }],
 };
 
-function openSectionStudentsModal(card) {
+function openSectionStudentsModalLegacy(card) {
   const name  = card.querySelector('.section-name').textContent.trim();
   const grade = card.dataset.grade;
   const list  = sectionStudents[name.toLowerCase()] || [];
@@ -1396,6 +1803,51 @@ function removeSectionStudent(btn, name) {
   btn.closest('tr').remove();
 }
 
+function managementSectionById(id) {
+  return managementSectionRecords().find(section => section.id === id) || null;
+}
+
+function openSectionEditModal(card) {
+  const section = managementSectionById(card.dataset.id);
+  if (!section) return;
+  document.getElementById('editSectionName').value = section.name;
+  document.getElementById('editSchoolLevel').value = section.level;
+  document.getElementById('editGradeLevel').value = section.grade;
+  document.getElementById('editStrand').value = section.strand || '';
+  document.getElementById('editCapacity').value = section.capacity;
+  document.getElementById('editAdviser').value = adviserMap[section.adviser?.toLowerCase()] || '';
+  document.getElementById('editSectionForm').action = `/admin/sections/update/${section.id}`;
+  updateSectionFormFields('edit');
+  document.getElementById('sectionEditModalBackdrop').classList.add('open');
+}
+
+function openSectionStudentsModal(card) {
+  const section = managementSectionById(card.dataset.id);
+  if (!section) return;
+  const assigned = STUDENTS_DATA.filter(student => student.section === section.id).map(student => ({
+    name: student.name,
+    email: student.email,
+    status: 'Active',
+    id: student.id
+  }));
+  const fallback = sectionStudents[section.name.toLowerCase()] || [];
+  const list = assigned.length ? assigned : fallback;
+  document.getElementById('sectionStudentsModalTitle').textContent = `${section.name}: Students`;
+  document.getElementById('sectionStudentsModalSub').textContent = `${managementSectionPlacement(section)} · ${section.students} enrolled`;
+  const tbody = document.getElementById('sectionStudentsTableBody');
+  tbody.innerHTML = list.length
+    ? list.map((student, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${student.name}</strong></td>
+          <td>${student.email || ''}</td>
+          <td><span class="badge ${student.status === 'Active' ? 'badge-green' : 'badge-orange'}">${student.status || 'Active'}</span></td>
+          <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.name}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
+        </tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px">No students enrolled yet.</td></tr>';
+  document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
+}
+
 function setSectionView(view) {
   const cardView  = document.getElementById('sectionCardView');
   const tableView = document.getElementById('sectionTableView');
@@ -1418,41 +1870,227 @@ function filterSections() {
     });
     group.style.display = anyVisible ? '' : 'none';
   });
+  document.querySelectorAll('#sectionTableView tbody tr').forEach(row => {
+    const matchGrade = grade === 'all' || row.dataset.grade === grade;
+    const matchSearch = row.dataset.name.includes(search);
+    row.style.display = matchGrade && matchSearch ? '' : 'none';
+  });
 }
 
 /* ══════════════════════════════════════════════
    SUBJECTS TAB
 ══════════════════════════════════════════════ */
-function openSubjectModal(subjectName) {
-  document.getElementById('subjectModalTitle').textContent = subjectName ? `Edit Subject: ${subjectName}` : 'Add New Subject';
-  document.getElementById('subjectModalBackdrop').classList.add('open');
+const subjectModalState = { subject: null, contextValue: 'all' };
+
+function getSubjectModalContext(value = activeSubjectGrade) {
+  const levels = managementSchoolLevels();
+  const selected = value || 'all';
+  const keysForLevel = level => managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`);
+
+  if (selected === 'all') {
+    return {
+      mode: 'all',
+      key: 'all',
+      level: null,
+      grade: null,
+      label: 'All School Levels',
+      scopeKeys: levels.flatMap(keysForLevel)
+    };
+  }
+
+  if (levels.includes(selected)) {
+    return {
+      mode: 'division',
+      key: selected,
+      level: selected,
+      grade: null,
+      label: managementLevelLabel(selected),
+      scopeKeys: keysForLevel(selected)
+    };
+  }
+
+  const [level, grade] = selected.split(':');
+  if (levels.includes(level) && grade) {
+    const gradeOption = managementGradeOptions(level).find(option => managementGradeKey(option) === grade);
+    return {
+      mode: 'grade',
+      key: `${level}:${grade}`,
+      level,
+      grade,
+      label: `${managementLevelLabel(level)} / ${gradeOption || (grade === 'kindergarten' ? 'Kindergarten' : `Grade ${grade}`)}`,
+      scopeKeys: [`${level}:${grade}`]
+    };
+  }
+
+  return getSubjectModalContext('all');
 }
-function closeSubjectModal() { document.getElementById('subjectModalBackdrop').classList.remove('open'); }
-document.getElementById('subjectModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSubjectModal(); });
+
+function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = null) {
+  const target = document.getElementById('subjectGradeChecks');
+  const group = document.getElementById('subjectGradesGroup');
+  const scopeLabel = document.getElementById('subjectGradeScopeLabel');
+  const contextInput = document.getElementById('subjectModalContext');
+  if (!target || !group) return;
+
+  const context = getSubjectModalContext(contextValue);
+  const lockedToGrade = context.mode === 'grade';
+  group.style.display = lockedToGrade ? 'none' : '';
+  target.innerHTML = '';
+  if (contextInput) contextInput.value = context.key;
+  if (scopeLabel) {
+    scopeLabel.textContent = context.mode === 'all'
+      ? 'Applies to Grade Level(s)'
+      : `Applies to ${context.label} Grade Level(s)`;
+  }
+  if (lockedToGrade) return;
+
+  const existingGrades = new Set(subject?.grades || []);
+  const levels = context.mode === 'division' ? [context.level] : managementSchoolLevels();
+  target.innerHTML = levels.map(level => {
+    const grades = managementGradeOptions(level);
+    if (!grades.length) return '';
+    return `
+      <div class="grade-check-group">
+        <div class="grade-check-group-title">${managementLevelLabel(level)}</div>
+        <div class="grade-check-grid">
+          ${grades.map(grade => {
+            const value = `${level}:${managementGradeKey(grade)}`;
+            const checked = subject ? existingGrades.has(value) : true;
+            return `<label class="grade-check-item"><input type="checkbox" name="grades" value="${value}"${checked ? ' checked' : ''}/><span>${grade}</span></label>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openSubjectModal(subjectKey) {
+  const form = document.getElementById('createSubjectForm');
+  const records = managementSubjectRecords();
+  const subject = subjectKey
+    ? records.find(record => record.id === subjectKey || record.name === subjectKey)
+    : null;
+  const contextValue = activeSubjectGrade || 'all';
+  const context = getSubjectModalContext(contextValue);
+  subjectModalState.subject = subject || null;
+  subjectModalState.contextValue = contextValue;
+
+  form.reset();
+  form.action = subject ? `/subjects/update/${encodeURIComponent(subject.id)}` : '/subjects/create';
+  form.dataset.mode = subject ? 'edit' : 'create';
+  document.getElementById('subjectModalTitle').textContent = subject ? `Edit Subject: ${subject.name}` : 'Add New Subject';
+  document.getElementById('subjectModalSub').textContent = subject
+    ? `Update this subject for ${context.label}.`
+    : `Define a subject for ${context.label}.`;
+  document.getElementById('subjectModalSubjectId').value = subject?.id || '';
+  form.elements.subjectName.value = subject?.name || '';
+  form.elements.subjectCode.value = subject?.code || '';
+  renderSubjectGradeChecks(contextValue, subject);
+  document.querySelector('#subjectModalBackdrop .btn-save').textContent = subject ? 'Save Changes' : 'Save Subject';
+  document.getElementById('subjectModalBackdrop').classList.add('open');
+  lucide.createIcons();
+}
+
+function closeSubjectModal() {
+  document.getElementById('subjectModalBackdrop').classList.remove('open');
+}
+
+document.getElementById('subjectModalBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeSubjectModal();
+});
+
+document.getElementById('createSubjectForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const name = String(form.elements.subjectName.value || '').trim();
+  const code = String(form.elements.subjectCode.value || '').trim();
+  if (!name || !code) {
+    form.reportValidity();
+    return;
+  }
+
+  const context = getSubjectModalContext(subjectModalState.contextValue);
+  const existing = subjectModalState.subject;
+  const existingGrades = [...(existing?.grades || [])];
+  const checkedGrades = [...form.querySelectorAll('input[name="grades"]:checked')].map(input => input.value);
+  const scope = new Set(context.scopeKeys);
+  let grades;
+
+  if (context.mode === 'grade') {
+    grades = existing ? [...existingGrades] : [context.key];
+    if (existing && !grades.includes(context.key)) grades.push(context.key);
+  } else if (existing) {
+    grades = [...new Set([...existingGrades.filter(key => !scope.has(key)), ...checkedGrades])];
+  } else {
+    grades = [...new Set(checkedGrades)];
+  }
+
+  if (!grades.length) {
+    alert('Select at least one grade level for this subject.');
+    return;
+  }
+
+  const subjectId = existing?.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `subject-${Date.now()}`;
+  const localIndex = SUBJECTS_DATA.findIndex(item => item.id === subjectId);
+  const localRecord = {
+    ...(existing || {}),
+    id: subjectId,
+    name,
+    code,
+    type: existing?.type || 'Core Subject',
+    icon: existing?.icon || 'book-open',
+    iconBg: existing?.iconBg || 'var(--blue-xpale)',
+    iconColor: existing?.iconColor || 'var(--blue-mid)',
+    grades: grades.map(key => key.includes(':') ? key.split(':')[1] : key),
+    total: existing?.total || 0
+  };
+  if (localIndex >= 0) SUBJECTS_DATA[localIndex] = { ...SUBJECTS_DATA[localIndex], ...localRecord };
+  else SUBJECTS_DATA.push(localRecord);
+  subjectGradeOverrides.set(subjectId, grades);
+
+  /* Backend integration: replace this local merge with fetch(form.action, ...),
+     then merge the returned subject into the same local record collection. */
+  closeSubjectModal();
+  renderManagementSubjectTabs();
+  renderSubjects();
+  filterSubjects();
+});
 
 let activeSubjectGrade = 'all';
-const subjectTabTitles = {
-  all: { title: 'All Subjects', sub: 'Subjects shared across Grades 7 – 10 · S.Y. 2025–2026' },
-  '7': { title: 'Grade 7 Subjects', sub: 'Subjects assigned to all Grade 7 sections · S.Y. 2025–2026' },
-  '8': { title: 'Grade 8 Subjects', sub: 'Subjects assigned to all Grade 8 sections · S.Y. 2025–2026' },
-  '9': { title: 'Grade 9 Subjects', sub: 'Subjects assigned to all Grade 9 sections · S.Y. 2025–2026' },
-  '10': { title: 'Grade 10 Subjects', sub: 'Subjects assigned to all Grade 10 sections · S.Y. 2025–2026' },
+let subjectTabTitles = {
+  all: { title: 'All Subjects', sub: 'Subjects configured for the active school levels' },
 };
 
 function switchSubjectGradeTab(grade, el) {
   activeSubjectGrade = grade;
-  document.querySelectorAll('#subjectGradeTabs .filter-tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('subjectPanelTitle').textContent = subjectTabTitles[grade].title;
-  document.getElementById('subjectPanelSub').textContent   = subjectTabTitles[grade].sub;
+  const level = grade === 'all' ? 'all' : (managementSchoolLevels().includes(grade) ? grade : grade.split(':')[0]);
+  document.querySelectorAll('#subjectGradeTabs .division-filter-tab, #subjectGradeTabs .grade-filter-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#subjectGradeTabs .division-filter-tab[data-division="${level}"]`)?.classList.add('active');
+  renderSubjectGradeTabs(level);
+  (el || document.querySelector(`#subjectGradeTabs .grade-filter-tab[data-grade="${grade}"]`))?.classList.add('active');
+  const info = subjectTabTitles[grade] || subjectTabTitles.all;
+  document.getElementById('subjectPanelTitle').textContent = info.title;
+  document.getElementById('subjectPanelSub').textContent   = info.sub;
+  filterSubjects();
+}
+
+function switchSubjectDivisionTab(level, el) {
+  activeSubjectGrade = level;
+  document.querySelectorAll('#subjectGradeTabs .division-filter-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.division === level);
+    tab.setAttribute('aria-selected', String(tab.dataset.division === level));
+  });
+  renderSubjectGradeTabs(level);
+  const info = subjectTabTitles[level] || subjectTabTitles.all;
+  document.getElementById('subjectPanelTitle').textContent = info.title;
+  document.getElementById('subjectPanelSub').textContent = info.sub;
   filterSubjects();
 }
 
 function filterSubjects() {
   const search = document.getElementById('subjectSearchInput').value.toLowerCase();
-  document.querySelectorAll('#subjectTableBody tr').forEach(row => {
+  document.querySelectorAll('#subjectTableBody .subject-card').forEach(row => {
     const matchSearch = row.dataset.name.includes(search);
-    const matchGrade  = activeSubjectGrade === 'all' || row.dataset.grades.includes(activeSubjectGrade);
+    const matchGrade  = managementFilterMatches(activeSubjectGrade, row.dataset.grades.split(',').filter(Boolean));
     row.style.display = (matchSearch && matchGrade) ? '' : 'none';
   });
 }
@@ -1463,8 +2101,7 @@ function filterSubjects() {
 function toggleTeacherSection(head) {
   const block = head.closest('.section-block');
   block.classList.toggle('collapsed');
-  const item = TEACHER_ASSIGNMENTS_DATA.find(s => s.id === block.dataset.id);
-  if (item) item.collapsed = block.classList.contains('collapsed');
+  managementTeacherCollapseState[block.dataset.id] = block.classList.contains('collapsed');
 }
 
 function openTeacherModal(context) {
@@ -1503,10 +2140,343 @@ function filterTeacherBlocks() {
 /* ══════════════════════════════════════════════
    ASSIGN STUDENTS TAB
 ══════════════════════════════════════════════ */
+const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.getStudentDirectory();
+const managementAssignState = { student: null, level: '', grade: '', strand: '', section: '' };
+const managementMoveState = { student: null, level: '', grade: '', strand: '', section: '', excludedSection: '' };
+
+function managementGradeKey(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return text === 'kindergarten' ? text : text.replace(/^grade\s*/, '');
+}
+
+function managementLevelLabel(level) {
+  return window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level;
+}
+
+function managementLevelShortLabel(level) {
+  return ({ elementary: 'Elementary', jhs: 'JHS', shs: 'SHS' }[level]) || managementLevelLabel(level);
+}
+
+function managementSchoolLevels() {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  return Array.isArray(school?.schoolLevels) && school.schoolLevels.length
+    ? school.schoolLevels
+    : (school?.schoolType === 'k12' ? window.EDUGNAY_CONFIG.grades.map(item => item.key) : [school?.schoolType || 'jhs']);
+}
+
+function managementDefaultLevel() {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  const levels = managementSchoolLevels();
+  return levels.includes(school?.activeDivision) ? school.activeDivision : levels[0];
+}
+
+function managementDivision(level) {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  return school?.divisions?.[level] || (school?.schoolType === level ? school : {}) || {};
+}
+
+function managementSectionStudentCount(sectionId) {
+  /* Backend integration: replace STUDENTS_DATA with the student records returned by the API. */
+  const records = Array.isArray(STUDENTS_DATA) ? STUDENTS_DATA : [];
+  return records.filter(student => (student.sectionId || student.section) === sectionId).length;
+}
+
+function managementSectionRecords() {
+  const configured = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+  const localJhs = managementSchoolLevels().includes('jhs') ? SECTIONS_DATA.map(section => ({
+    id: section.id,
+    level: 'jhs',
+    grade: `Grade ${section.grade}`,
+    name: section.name,
+    strand: '',
+    track: '',
+    capacity: section.capacity,
+    enrolled: section.students
+  })) : [];
+  const localKeys = new Set(localJhs.map(section => `${managementGradeKey(section.grade)}|${section.name.toLowerCase()}`));
+  const merged = [...localJhs, ...configured.filter(section => !localKeys.has(`${managementGradeKey(section.grade)}|${section.name.toLowerCase()}`))];
+  return merged.map(section => {
+    const local = SECTIONS_DATA.find(item => item.id === section.id)
+      || SECTIONS_DATA.find(item => item.name.toLowerCase() === section.name.toLowerCase() && managementGradeKey(item.grade) === managementGradeKey(section.grade));
+    const teacherSection = typeof TEACHER_ASSIGNMENTS_DATA !== 'undefined'
+      ? TEACHER_ASSIGNMENTS_DATA.find(item => item.id === local?.id || (item.name.toLowerCase() === section.name.toLowerCase() && managementGradeKey(item.grade) === managementGradeKey(section.grade)))
+      : null;
+    const division = managementDivision(section.level);
+    const configuredSubjectCount = Array.isArray(division.subjects) ? division.subjects.length : 0;
+    const subjects = local?.subjects ?? (section.subjects > 0 ? section.subjects : teacherSection?.subjects?.length || configuredSubjectCount);
+    const students = managementSectionStudentCount(section.id);
+    return {
+      ...section,
+      gradeValue: managementGradeKey(section.grade),
+      enrolled: students,
+      students,
+      subjects,
+      adviser: local?.adviser || section.adviser || teacherSection?.adviser || null,
+      adviserInitials: local?.adviserInitials || section.adviserInitials || '',
+      teacherAssignments: teacherSection?.subjects || [],
+      collapsed: teacherSection?.collapsed ?? true
+    };
+  });
+}
+
+function managementGradeFilterOptions() {
+  return managementSchoolLevels().flatMap(level => managementGradeOptions(level).map(grade => ({
+    value: `${level}:${managementGradeKey(grade)}`,
+    level,
+    grade,
+    label: `${managementLevelLabel(level)} · ${grade}`
+  })));
+}
+
+function managementSectionFilterKey(section) {
+  return `${section.level}:${managementGradeKey(section.grade)}`;
+}
+
+function managementSectionTone(level, grade = '') {
+  if (level === 'jhs') return grade || 'jhs';
+  return level || 'default';
+}
+
+function managementSectionBarClass(level, grade = '') {
+  if (level === 'jhs') return BAR_CLASS_BY_GRADE[grade] || 'bar-jhs';
+  if (level === 'shs') return 'bar-shs';
+  if (level === 'elementary') return 'bar-elementary';
+  return 'bar-blue';
+}
+
+function managementSectionSort(a, b) {
+  const levelOrder = { elementary: 0, jhs: 1, shs: 2 };
+  const levelDifference = (levelOrder[a.level] ?? 99) - (levelOrder[b.level] ?? 99);
+  if (levelDifference) return levelDifference;
+
+  const gradeValue = section => section.gradeValue === 'kindergarten'
+    ? 0
+    : Number.parseInt(section.gradeValue, 10) || 99;
+  const gradeDifference = gradeValue(a) - gradeValue(b);
+  if (gradeDifference) return gradeDifference;
+  return String(a.name || '').localeCompare(String(b.name || ''));
+}
+
+function managementSectionBadgeLabel(section) {
+  return section.strand ? `${section.grade} · ${section.strand}` : section.grade;
+}
+
+function managementSectionPlacement(section) {
+  return [managementLevelLabel(section.level), section.grade, section.strand].filter(Boolean).join(' · ');
+}
+
+function managementSectionContext(section) {
+  return [managementLevelLabel(section.level), section.strand].filter(Boolean).join(' · ');
+}
+
+function renderManagementGradeFilters() {
+  const options = managementGradeFilterOptions();
+  ['sectionGradeFilter', 'teacherGradeFilter'].forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    select.innerHTML = '<option value="all">All School Levels</option>';
+    options.forEach(optionData => select.appendChild(new Option(optionData.label, optionData.value)));
+  });
+}
+
+function renderManagementTabPills() {
+  const teacherPill = document.getElementById('teacherTabPill');
+  const studentPill = document.getElementById('studentTabPill');
+  if (teacherPill) teacherPill.textContent = `${getTeacherAssignmentStats().unassigned} open`;
+  if (studentPill) studentPill.textContent = `${STUDENTS_DATA.filter(student => !student.section).length} open`;
+}
+
+function renderManagementSubjectTabsLegacy() {
+  const tabs = document.getElementById('subjectGradeTabs');
+  if (!tabs) return;
+  const options = managementGradeFilterOptions();
+  tabs.innerHTML = [
+    `<div class="filter-tab active" data-grade="all" onclick="switchSubjectGradeTab('all', this)">All School Levels <span class="tab-count">${SUBJECTS_DATA.length}</span></div>`,
+    ...options.map(optionData => `<div class="filter-tab" data-grade="${optionData.value}" onclick="switchSubjectGradeTab('${optionData.value}', this)">${optionData.label} <span class="tab-count">${SUBJECTS_DATA.filter(subject => subject.grades.map(managementGradeKey).includes(optionData.grade ? managementGradeKey(optionData.grade) : '')).length}</span></div>`)
+  ].join('');
+}
+
+function managementSetOptions(select, options, placeholder, selectedValue) {
+  if (!select) return;
+  select.innerHTML = '';
+  if (placeholder) select.appendChild(new Option(placeholder, ''));
+  options.forEach(optionData => {
+    const option = new Option(optionData.label, optionData.value);
+    option.disabled = Boolean(optionData.disabled);
+    select.appendChild(option);
+  });
+  select.value = options.some(option => option.value === selectedValue) ? selectedValue : '';
+}
+
+function managementGradeOptions(level) {
+  const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || {};
+  const division = managementDivision(level);
+  const enabled = Array.isArray(division.enabledGrades) && division.enabledGrades.length
+    ? division.enabledGrades
+    : catalog.grades || [];
+  return (catalog.grades || []).filter(grade => enabled.some(item => managementGradeKey(item) === managementGradeKey(grade)));
+}
+
+function managementStrandOptions(level) {
+  if (level !== 'shs') return [];
+  const division = managementDivision(level);
+  const sectionStrands = managementSectionRecords().filter(section => section.level === level).map(section => section.strand).filter(Boolean);
+  if (sectionStrands.length) return [...new Set(sectionStrands)];
+  return [...new Set([
+    ...(Array.isArray(division.strands) ? division.strands : []),
+    ...(Array.isArray(division.tracks) ? division.tracks : [])
+  ])];
+}
+
+function managementSectionLabel(section) {
+  const strand = section.strand ? ` · ${section.strand}` : '';
+  return `${section.grade}${strand} · ${section.name} (${section.students}/${section.capacity})`;
+}
+
+function managementStudentMeta(studentName, studentId) {
+  const directoryStudent = MANAGEMENT_ASSIGNMENT_STUDENTS.find(student => student.id === studentId || student.name.toLowerCase() === String(studentName || '').toLowerCase());
+  if (directoryStudent) return directoryStudent;
+  const localStudent = STUDENTS_DATA.find(student => student.id === studentId || student.name.toLowerCase() === String(studentName || '').toLowerCase());
+  if (!localStudent) return null;
+  const section = SECTIONS_DATA.find(item => item.id === localStudent.section);
+  return {
+    id: localStudent.id,
+    name: localStudent.name,
+    email: localStudent.email,
+    initials: localStudent.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase(),
+    level: localStudent.level || 'jhs',
+    grade: localStudent.grade ? `Grade ${localStudent.grade}` : section ? `Grade ${section.grade}` : '',
+    strand: localStudent.strand || ''
+  };
+}
+
+function managementRenderStudentOptions(selectedId = '') {
+  managementSetOptions(
+    document.getElementById('studentSelect'),
+    MANAGEMENT_ASSIGNMENT_STUDENTS.map(student => ({ value: student.id, label: `${student.name} · ${student.email}` })),
+    'Select a student',
+    selectedId
+  );
+}
+
+function managementRenderFields(state, ids, excludeSection = '') {
+  const levelSelect = document.getElementById(ids.level);
+  const gradeSelect = document.getElementById(ids.grade);
+  const strandSelect = document.getElementById(ids.strand);
+  const sectionSelect = document.getElementById(ids.section);
+  const level = state.student?.level || levelSelect?.value || state.level || managementDefaultLevel();
+  state.level = level;
+  managementSetOptions(levelSelect, managementSchoolLevels().map(item => ({ value: item, label: managementLevelLabel(item) })), 'Select a school level', level);
+  if (levelSelect) {
+    levelSelect.value = level;
+    levelSelect.disabled = Boolean(state.student);
+  }
+
+  const grades = managementGradeOptions(level);
+  const requestedGrade = state.student?.grade || gradeSelect?.value || state.grade;
+  const grade = grades.find(item => managementGradeKey(item) === managementGradeKey(requestedGrade)) || grades[0] || '';
+  state.grade = grade;
+  managementSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
+  if (gradeSelect) gradeSelect.disabled = Boolean(state.student);
+
+  const strands = managementStrandOptions(level);
+  const selectedStrand = state.student?.strand || strandSelect?.value || state.strand;
+  const strand = strands.find(item => managementGradeKey(item) === managementGradeKey(selectedStrand)) || strands[0] || '';
+  state.strand = level === 'shs' ? strand : '';
+  const strandGroup = document.getElementById(ids.strandGroup);
+  if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
+  managementSetOptions(strandSelect, strands.map(item => ({ value: item, label: item })), 'Select a track or strand', strand);
+  if (strandSelect) {
+    strandSelect.disabled = Boolean(state.student);
+    strandSelect.required = level === 'shs';
+  }
+
+  const hiddenValues = {
+    [ids.levelValue]: state.level,
+    [ids.gradeValue]: state.grade,
+    [ids.strandValue]: state.strand
+  };
+  Object.entries(hiddenValues).forEach(([id, value]) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.value = value || '';
+    input.disabled = !state.student;
+  });
+
+  const gradeKey = managementGradeKey(state.grade);
+  const sectionOptions = managementSectionRecords().filter(section => {
+    if (section.level !== level || managementGradeKey(section.grade) !== gradeKey) return false;
+    if (level === 'shs' && state.strand && managementGradeKey(section.strand) !== managementGradeKey(state.strand)) return false;
+    if (excludeSection && (section.id === excludeSection || section.name.toLowerCase() === String(excludeSection).toLowerCase())) return false;
+    return true;
+  }).map(section => ({
+    value: section.id,
+    label: managementSectionLabel(section),
+    disabled: section.students >= section.capacity
+  }));
+  if (!sectionOptions.length) sectionOptions.push({ value: '', label: 'No matching sections configured', disabled: true });
+  managementSetOptions(sectionSelect, sectionOptions, 'Select a section', state.section);
+  state.section = sectionSelect?.value || '';
+}
+
+function updateManagementAssignmentContext() {
+  const section = managementSectionRecords().find(item => item.id === document.getElementById('studentSectionSelect')?.value);
+  managementAssignState.section = section?.id || '';
+  const context = document.getElementById('studentCtxVal');
+  if (!context) return;
+  const student = managementAssignState.student;
+  const placement = [managementLevelLabel(managementAssignState.level), managementAssignState.grade, managementAssignState.strand].filter(Boolean).join(' · ');
+  context.textContent = section ? `${student?.name || 'Student not selected'} · ${placement} · ${section.name}` : `${student?.name || 'Select a student'} · ${placement}`;
+}
+
+function updateManagementMoveContext() {
+  const section = managementSectionRecords().find(item => item.id === document.getElementById('moveSectionSelect')?.value);
+  managementMoveState.section = section?.id || '';
+  const context = document.getElementById('moveCtxVal');
+  if (!context) return;
+  const placement = [managementLevelLabel(managementMoveState.level), managementMoveState.grade, managementMoveState.strand].filter(Boolean).join(' · ');
+  context.textContent = section ? `${placement} · ${section.name}` : `Currently in ${managementMoveState.excludedSection || 'an existing section'}`;
+}
+
+function updateManagementAssignmentFields() {
+  managementRenderFields(managementAssignState, { level: 'studentSchoolLevel', grade: 'studentGradeLevel', strand: 'studentStrand', strandGroup: 'studentStrandGroup', section: 'studentSectionSelect', levelValue: 'studentSchoolLevelValue', gradeValue: 'studentGradeLevelValue', strandValue: 'studentStrandValue' });
+  updateManagementAssignmentContext();
+}
+
+function updateManagementMoveFields() {
+  managementRenderFields(managementMoveState, { level: 'moveSchoolLevel', grade: 'moveGradeLevel', strand: 'moveStrand', strandGroup: 'moveStrandGroup', section: 'moveSectionSelect', levelValue: 'moveSchoolLevelValue', gradeValue: 'moveGradeLevelValue', strandValue: 'moveStrandValue' }, managementMoveState.excludedSection);
+  updateManagementMoveContext();
+}
+
+function handleManagementStudentChange(studentId) {
+  const student = managementStudentMeta('', studentId);
+  managementAssignState.student = student;
+  managementAssignState.level = student?.level || managementDefaultLevel() || '';
+  managementAssignState.grade = student?.grade || '';
+  managementAssignState.strand = student?.strand || '';
+  managementAssignState.section = '';
+  const preview = document.getElementById('studentPreview');
+  if (!student) {
+    preview?.classList.remove('visible');
+  } else {
+    document.getElementById('spAv').textContent = student.initials;
+    document.getElementById('spName').textContent = student.name;
+    document.getElementById('spDetail').textContent = student.email;
+    preview?.classList.add('visible');
+  }
+  updateManagementAssignmentFields();
+}
+
 function openStudentAssignModal(studentName) {
   const isQuickAssign = !!studentName;
   document.getElementById('studentModalTitle').textContent = isQuickAssign ? `Assign: ${studentName}` : 'Assign Student';
-  document.getElementById('studentCtxVal').textContent = 'Select a section below';
+  document.getElementById('studentModalSub').textContent = 'Choose the student and class placement.';
+  managementAssignState.student = null;
+  managementAssignState.level = managementDefaultLevel() || '';
+  managementAssignState.grade = '';
+  managementAssignState.strand = '';
+  managementAssignState.section = '';
+  managementRenderStudentOptions();
 
   document.getElementById('studentSelect').closest('.form-group').style.display = isQuickAssign ? 'none' : '';
   document.getElementById('studentPreview').classList.remove('visible');
@@ -1517,6 +2487,20 @@ function openStudentAssignModal(studentName) {
   document.getElementById('studentModalSubmitBtn').setAttribute('form', 'assignStudentForm');
   document.getElementById('studentModalSubmitBtn').textContent = 'Save Assignment';
 
+  const matchedStudent = managementStudentMeta(studentName, '');
+  if (matchedStudent) {
+    managementAssignState.student = matchedStudent;
+    managementAssignState.level = matchedStudent.level || managementAssignState.level;
+    managementAssignState.grade = matchedStudent.grade || '';
+    managementAssignState.strand = matchedStudent.strand || '';
+    document.getElementById('studentSelect').value = matchedStudent.id;
+    document.getElementById('spAv').textContent = matchedStudent.initials;
+    document.getElementById('spName').textContent = matchedStudent.name;
+    document.getElementById('spDetail').textContent = matchedStudent.email;
+    document.getElementById('studentPreview').classList.add('visible');
+  }
+  updateManagementAssignmentFields();
+
   document.getElementById('studentAssignModalBackdrop').classList.add('open');
 }
 function closeStudentAssignModal() { document.getElementById('studentAssignModalBackdrop').classList.remove('open'); }
@@ -1524,13 +2508,22 @@ document.getElementById('studentAssignModalBackdrop').addEventListener('click', 
 
 function openMoveStudentModal(studentName, studentId, currentSection) {
   document.getElementById('studentModalTitle').textContent = `Move: ${studentName}`;
-  document.getElementById('moveCtxVal').textContent = `Currently in ${currentSection}`;
+  document.getElementById('studentModalSub').textContent = 'Choose a new class placement.';
   document.getElementById('moveStudentId').value = studentId;
+
+  const student = managementStudentMeta(studentName, studentId) || { name: studentName, level: 'jhs', grade: '', strand: '' };
+  managementMoveState.student = student;
+  managementMoveState.level = student.level || 'jhs';
+  managementMoveState.grade = student.grade || '';
+  managementMoveState.strand = student.strand || '';
+  managementMoveState.section = '';
+  managementMoveState.excludedSection = currentSection || '';
 
   document.getElementById('assignStudentForm').style.display = 'none';
   document.getElementById('moveStudentForm').style.display = '';
   document.getElementById('studentModalSubmitBtn').setAttribute('form', 'moveStudentForm');
   document.getElementById('studentModalSubmitBtn').textContent = 'Save Move';
+  updateManagementMoveFields();
 
   document.getElementById('studentAssignModalBackdrop').classList.add('open');
 }
@@ -1547,21 +2540,11 @@ function removeStudentFromClass(studentName, section, studentId, rowElement) {
 function closeConfirmRemoveModal() { document.getElementById('confirmRemoveModalBackdrop').classList.remove('open'); }
 document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeConfirmRemoveModal(); });
 
-function previewStudent(val) {
-  const preview = document.getElementById('studentPreview');
-  if (!val) { preview.classList.remove('visible'); return; }
-  const [name, email, initials] = val.split('|');
-  document.getElementById('spAv').textContent = initials;
-  document.getElementById('spName').textContent = name;
-  document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
-  preview.classList.add('visible');
-}
-
 function openImportStudentsModal() {
   document.getElementById('importStudentsForm').reset();
   document.getElementById('csvPreviewWrap').style.display = 'none';
-  document.querySelectorAll('#importGradeOpts .role-opt').forEach(o => o.classList.remove('selected'));
-  document.getElementById('importGrade').value = '';
+  document.getElementById('importSchoolLevel').value = managementDefaultLevel();
+  updateImportGradeOptions();
   document.getElementById('fileUploadName').textContent = 'No file selected';
   document.getElementById('fileUploadName').classList.remove('has-file');
   document.getElementById('importStudentsModalBackdrop').classList.add('open');
@@ -1569,10 +2552,25 @@ function openImportStudentsModal() {
 function closeImportStudentsModal() { document.getElementById('importStudentsModalBackdrop').classList.remove('open'); }
 document.getElementById('importStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeImportStudentsModal(); });
 
-function selectImportGrade(el, value) {
-  document.querySelectorAll('#importGradeOpts .role-opt').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('importGrade').value = value;
+function updateImportGradeOptions() {
+  const level = document.getElementById('importSchoolLevel')?.value || managementDefaultLevel();
+  const gradeSelect = document.getElementById('importGrade');
+  const currentGrade = gradeSelect?.value || '';
+  const grades = managementGradeOptions(level);
+  const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(currentGrade)) || grades[0] || '';
+  managementSetOptions(gradeSelect, grades.map(option => ({ value: option, label: option })), 'Select a grade level', grade);
+  const strandSelect = document.getElementById('importStrand');
+  const strandGroup = document.getElementById('importStrandGroup');
+  const strands = managementStrandOptions(level);
+  const strand = strands.includes(strandSelect?.value) ? strandSelect.value : strands[0] || '';
+  if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
+  managementSetOptions(strandSelect, strands.map(option => ({ value: option, label: option })), 'Select a track or strand', strand);
+  if (strandSelect) strandSelect.required = level === 'shs';
+}
+
+function selectImportGrade(value) {
+  const gradeSelect = document.getElementById('importGrade');
+  if (gradeSelect) gradeSelect.value = value;
 }
 
 function previewCSV(input) {
@@ -1600,14 +2598,34 @@ function previewCSV(input) {
 }
 
 /* ── IMPORT & AUTO-SORT SUBMIT (mirrors importUsersForm on the users page) ── */
+function incrementManagementSectionEnrollment(sectionId, amount = 1) {
+  const local = SECTIONS_DATA.find(section => section.id === sectionId);
+  if (local) {
+    local.students = Math.max(0, local.students + amount);
+    return;
+  }
+  const config = window.EDUGNAY_CONFIG;
+  const schools = config.getSchools();
+  const active = config.getActiveSchool();
+  const school = schools.find(item => item.id === active.id);
+  if (!school) return;
+  Object.values(school.divisions || {}).forEach(division => {
+    const section = Array.isArray(division.sections) ? division.sections.find(item => item.id === sectionId) : null;
+    if (section) section.enrolled = Math.max(0, Number(section.enrolled || section.students || 0) + amount);
+  });
+  config.saveSchools(schools);
+}
+
 document.getElementById('importStudentsForm').addEventListener('submit', function (e) {
   e.preventDefault(); // remove this line once a real backend handles the POST
 
+  const level = document.getElementById('importSchoolLevel').value;
   const grade = document.getElementById('importGrade').value;
+  const strand = document.getElementById('importStrand').value;
   const fileInput = document.getElementById('csvFileInput');
   const file = fileInput.files[0];
 
-  if (!grade) { alert('Please select a grade level.'); return; }
+  if (!level || !grade || (level === 'shs' && !strand)) { alert('Please select a school level, grade level, and strand where required.'); return; }
   if (!file) { alert('Please choose a CSV file.'); return; }
 
   const reader = new FileReader();
@@ -1629,8 +2647,8 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
     // across this grade's sections so no single section overfills first.
     records.sort((a, b) => (parseFloat(b.average) || 0) - (parseFloat(a.average) || 0));
 
-    const gradeSections = SECTIONS_DATA.filter(s => s.grade === grade);
-    if (!gradeSections.length) { alert('No sections found for this grade level.'); return; }
+    const gradeSections = managementSectionRecords().filter(section => section.level === level && managementGradeKey(section.grade) === managementGradeKey(grade) && (level !== 'shs' || section.strand === strand));
+    if (!gradeSections.length) { alert('No sections found for this placement.'); return; }
 
     let sectionIdx = 0;
     let placed = 0;
@@ -1653,10 +2671,11 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
         name: `${firstName} ${lastName}`.trim(),
         email: record.email || '',
         section: targetSection.id,
-        grade,
+        grade: grade.replace(/^Grade\s*/i, ''),
       });
 
       targetSection.students++;
+      incrementManagementSectionEnrollment(targetSection.id);
       placed++;
       sectionIdx = (sectionIdx + 1) % gradeSections.length;
     });
@@ -1664,7 +2683,7 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
     closeImportStudentsModal();
     renderSections();
     renderStudentsTab();
-    alert(`${placed} of ${records.length} student(s) auto-sorted into Grade ${grade} sections.`);
+    alert(`${placed} of ${records.length} student(s) auto-sorted into ${managementLevelLabel(level)} ${grade} sections.`);
 
     // --- ASYNC (swap in later, once backend exists) ---
     // async function submitImportStudentsForm(form) {
@@ -1680,28 +2699,43 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
 let activeStudentGrade   = 'all';
 let activeStudentSection = null;
 
-const studentTabTitles = {
+let studentTabTitles = {
   all: { title: 'All Enrolled Students', meta: 'Showing students across all sections' },
-  '7': { title: 'Grade 7 Students', meta: 'Showing students enrolled in Grade 7 sections' },
-  '8': { title: 'Grade 8 Students', meta: 'Showing students enrolled in Grade 8 sections' },
-  '9': { title: 'Grade 9 Students', meta: 'Showing students enrolled in Grade 9 sections' },
-  '10': { title: 'Grade 10 Students', meta: 'Showing students enrolled in Grade 10 sections' },
-  unassigned: { title: 'Unassigned Students', meta: '13 students not yet placed in any section' },
+  unassigned: { title: 'Unassigned Students', meta: 'Students not yet placed in any section' },
 };
 
 function switchStudentGradeTab(grade, el) {
   activeStudentGrade   = grade;
   activeStudentSection = null;
 
-  document.querySelectorAll('#studentGradeTabs .filter-tab').forEach(t => t.classList.remove('active'));
+  const level = grade === 'all' || grade === 'unassigned'
+    ? grade
+    : (managementSchoolLevels().includes(grade) ? grade : grade.split(':')[0]);
+  document.querySelectorAll('#studentGradeTabs .division-filter-tab, #studentGradeTabs .grade-filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.sc-card').forEach(c => c.classList.remove('selected'));
 
-  if (el) el.classList.add('active');
-  else document.getElementById('stu-tab-unassigned')?.classList.add('active');
+  document.querySelector(`#studentGradeTabs .division-filter-tab[data-division="${level}"]`)?.classList.add('active');
+  renderStudentGradeSubTabs(level);
+  (el || document.querySelector(`#studentGradeTabs .grade-filter-tab[data-grade="${grade}"]`))?.classList.add('active');
 
   const info = studentTabTitles[grade] || studentTabTitles.all;
   document.getElementById('enrolledTitle').textContent = info.title;
   document.getElementById('enrolledMeta').textContent  = info.meta;
+  applyStudentFilters();
+}
+
+function switchStudentDivisionTab(level, el) {
+  activeStudentGrade = level;
+  activeStudentSection = null;
+  document.querySelectorAll('#studentGradeTabs .division-filter-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.division === level);
+    tab.setAttribute('aria-selected', String(tab.dataset.division === level));
+  });
+  document.querySelectorAll('.sc-card').forEach(card => card.classList.remove('selected'));
+  renderStudentGradeSubTabs(level);
+  const info = studentTabTitles[level] || studentTabTitles.all;
+  document.getElementById('enrolledTitle').textContent = info.title;
+  document.getElementById('enrolledMeta').textContent = info.meta;
   applyStudentFilters();
 }
 
@@ -1710,8 +2744,9 @@ function filterByStudentSection(section, card) {
   document.querySelectorAll('.sc-card').forEach(c => c.classList.remove('selected'));
   if (activeStudentSection) card.classList.add('selected');
 
+  const sectionRecord = managementSectionById(section);
   document.getElementById('enrolledTitle').textContent = activeStudentSection
-    ? `Students in ${section.replace(/\b\w/g, l => l.toUpperCase())}`
+    ? `Students in ${sectionRecord?.name || section}`
     : (studentTabTitles[activeStudentGrade]?.title || 'All Students');
 
   applyStudentFilters();
@@ -1725,12 +2760,18 @@ function applyStudentFilters() {
     const name  = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
     const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
     const matchSearch  = name.includes(search) || email.includes(search);
-    const matchGrade   = activeStudentGrade === 'all' || row.dataset.grade === activeStudentGrade;
+    const matchGrade   = managementFilterMatches(activeStudentGrade, [row.dataset.grade]);
     const matchSection = !activeStudentSection || row.dataset.section === activeStudentSection;
     row.style.display = (matchSearch && matchGrade && matchSection) ? '' : 'none';
   });
 }
 
+renderManagementGradeFilters();
+renderManagementSubjectTabs();
+renderManagementTabPills();
+updateSectionFormFields('create');
+updateSectionFormFields('edit');
+updateImportGradeOptions();
 renderSections();
 renderSubjects();
 renderTeacherAssignments();

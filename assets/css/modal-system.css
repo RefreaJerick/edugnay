@@ -431,16 +431,15 @@
   box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
 }
 
-/* Shared select control language. Keep the same compact arrow used by the
-   student assignment subject filter while allowing each page to keep its
-   existing width and placement. */
+/* Shared select control language. Selects use the same height and surface as
+   the input controls while keeping the compact assignment-style arrow. */
 select:not([multiple]) {
   box-sizing: border-box;
-  min-height: 40px;
-  padding: 9px 34px 9px 12px !important;
+  min-height: 42px !important;
+  padding: 10px 34px 10px 12px !important;
   border: 1.5px solid var(--gray-200) !important;
   border-radius: 10px !important;
-  background-color: var(--white) !important;
+  background-color: var(--gray-50) !important;
   background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%) !important;
   background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50% !important;
   background-repeat: no-repeat !important;
@@ -465,6 +464,98 @@ select:not([multiple]):focus {
 select:not([multiple]):disabled {
   cursor: not-allowed;
   opacity: .65;
+}
+
+/* Search-adjacent filters only. Form and modal selects keep the shared
+   control treatment above. */
+.search-wrap ~ select.filter-select,
+.search-wrap ~ select.select-filter {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 36px 0 14px !important;
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: 10px !important;
+  background-color: var(--white) !important;
+  color: var(--gray-700) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  line-height: 1.2;
+  transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+
+.search-wrap ~ select.filter-select:hover,
+.search-wrap ~ select.select-filter:hover {
+  border-color: var(--blue-pale) !important;
+}
+
+.search-wrap ~ select.filter-select:focus,
+.search-wrap ~ select.select-filter:focus {
+  border-color: var(--blue-mid) !important;
+  background-color: var(--white) !important;
+  box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
+  outline: none;
+}
+
+/* Keep filters beside gray search fields on that same softer surface. */
+.search-wrap ~ select.filter-select#status-filter,
+.search-wrap ~ select.filter-select#type-filter,
+.search-wrap ~ select.filter-select#flagReasonFilter {
+  border-radius: 9px !important;
+  background-color: var(--gray-50) !important;
+}
+
+/* Teacher report filters use the compact report-search rhythm. */
+.search-wrap ~ select.select-filter#status-filter {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 36px 0 14px !important;
+  border-width: 1px !important;
+  border-radius: 8px !important;
+  background-color: var(--gray-50) !important;
+  font-size: 11px !important;
+}
+
+.search-wrap ~ select.select-filter#status-filter:focus {
+  background-color: var(--white) !important;
+  box-shadow: 0 0 0 3px var(--blue-xpale) !important;
+}
+
+/* Student assignments use the compact 40px search control. */
+.assignment-toolbar .search-wrap ~ select.filter-select {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 9px 34px 9px 12px !important;
+  border-radius: 10px !important;
+  background-color: var(--white) !important;
+  font-size: 12px !important;
+}
+
+.assignment-toolbar .search-wrap ~ select.filter-select:focus {
+  box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
+}
+
+/* Admin activity uses a dedicated search wrapper rather than .search-wrap. */
+.activity-filterbar .activity-search ~ select.activity-date-select {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 8px 36px 8px 12px !important;
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: 9px !important;
+  background-color: var(--white) !important;
+  color: var(--gray-700) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 13px !important;
+}
+
+.activity-filterbar .activity-search ~ select.activity-date-select:hover {
+  border-color: var(--blue-pale) !important;
+}
+
+.activity-filterbar .activity-search ~ select.activity-date-select:focus {
+  border-color: var(--blue-mid) !important;
+  background-color: var(--white) !important;
+  box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
 }
 
 /* Shared tab active state, matching Admin Class Management. */
@@ -935,5 +1026,123 @@ body :is(
   body .btn-archive-full {
     min-height: 42px;
     padding-inline: 12px;
+  }
+}
+
+/* Shared row actions
+   Row-level edit, view, move, remove, delete, and account-state actions use
+   one compact control language. Page styles may still control the action
+   group's width or wrapping for its table layout. */
+body .row-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 11px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--button-radius-compact);
+  background: var(--white);
+  color: var(--gray-600);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.04px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+body .row-btn:hover:not(:disabled) {
+  border-color: var(--gray-300);
+  background: var(--gray-50);
+  color: var(--gray-800);
+}
+
+body .row-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Neutral and edit actions */
+body :is(.row-btn.edit, .row-btn.change, .row-btn.view, .row-btn.move, .row-btn.primary) {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+body :is(.row-btn.edit, .row-btn.change, .row-btn.view, .row-btn.move, .row-btn.primary):hover:not(:disabled) {
+  border-color: var(--blue-light);
+  background: var(--blue-pale);
+  color: var(--blue);
+}
+
+/* Destructive actions */
+body :is(.row-btn.remove, .row-btn.delete, .row-btn.danger, .row-btn.deactivate) {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+body :is(.row-btn.remove, .row-btn.delete, .row-btn.danger, .row-btn.deactivate):hover:not(:disabled) {
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--white);
+}
+
+/* Positive account-state actions */
+body :is(.row-btn.reactivate, .row-btn.activate) {
+  border-color: var(--green-border);
+  background: var(--green-pale);
+  color: var(--green-dark);
+}
+
+body :is(.row-btn.reactivate, .row-btn.activate):hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--white);
+}
+
+/* Assignment actions retain the system's gold emphasis. */
+body .row-btn.assign {
+  border-color: var(--orange-border);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
+}
+
+body .row-btn.assign:hover:not(:disabled) {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: var(--white);
+}
+
+/* Icon-only delete actions stay square wherever the row places them. */
+body .row-btn.delete {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  flex: 0 0 32px;
+}
+
+body .row-btn.delete > svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  body .row-btn {
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  body .row-btn.delete {
+    width: 32px;
+    min-width: 32px;
+    padding-inline: 0;
   }
 }

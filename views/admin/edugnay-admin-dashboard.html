@@ -30,7 +30,7 @@
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-plus"></i></div>
           <div class="modal-heading-copy">
           <div class="modal-title" id="studentModalTitle">Assign Student</div>
-          <div class="modal-sub">Place a student into a section.</div>
+          <div class="modal-sub">Choose the student and class placement.</div>
           </div>
         </div>
         <button class="modal-close" type="button" aria-label="Close assign student dialog" onclick="closeStudentModal()"><i data-lucide="x"></i></button>
@@ -48,16 +48,8 @@
 
           <div class="form-group">
             <label class="form-label">Student</label>
-            <select class="form-select" id="modalStudent" name="studentId" onchange="previewStudent(this.value)">
-              <option value="">— Select a student —</option>
-              <option value="Juan Dela Cruz|j.delacruz.stud|JD">Juan Dela Cruz</option>
-              <option value="Ana Santos|a.santos.stud|AS">Ana Santos</option>
-              <option value="Ben Garcia|b.garcia.stud|BG">Ben Garcia</option>
-              <option value="Maria Lopez|m.lopez.stud|ML">Maria Lopez</option>
-              <option value="Carlo Mendoza|c.mendoza.stud|CM">Carlo Mendoza</option>
-              <option value="Liza Reyes|l.reyes.stud|LR">Liza Reyes</option>
-              <option value="Rico Cruz|r.cruz.stud|RC">Rico Cruz</option>
-              <option value="Ella Tan|e.tan.stud|ET">Ella Tan</option>
+            <select class="form-select" id="modalStudent" name="studentId" onchange="handleDashboardStudentChange(this.value)" required>
+              <option value="">Select a student</option>
             </select>
             <div class="student-preview" id="studentPreview">
               <div class="sp-av" id="spAv">JD</div>
@@ -68,28 +60,31 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Assign to Section</label>
-            <select class="form-select" id="modalSection" name="sectionId">
-              <option value="">— Select a section —</option>
-              <optgroup label="Grade 7">
-                <option>Grade 7 – St. Matthew (38/40)</option>
-                <option>Grade 7 – St. Mark (34/40)</option>
-              </optgroup>
-              <optgroup label="Grade 8">
-                <option>Grade 8 – St. Luke (36/40)</option>
-                <option>Grade 8 – St. John (34/40)</option>
-              </optgroup>
-              <optgroup label="Grade 9">
-                <option>Grade 9 – St. Peter (37/40)</option>
-                <option>Grade 9 – St. Paul (37/40)</option>
-              </optgroup>
-              <optgroup label="Grade 10">
-                <option>Grade 10 – St. James (35/40)</option>
-                <option>Grade 10 – St. Thomas (33/40)</option>
-              </optgroup>
-            </select>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="modalSchoolLevel">School level</label>
+              <select class="form-select" id="modalSchoolLevel" name="schoolLevel" onchange="updateDashboardAssignmentFields()" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modalGradeLevel">Grade level</label>
+              <select class="form-select" id="modalGradeLevel" name="gradeLevel" onchange="updateDashboardAssignmentFields()" required></select>
+            </div>
           </div>
+          <div class="form-row-2">
+            <div class="form-group" id="modalStrandGroup" style="display:none;">
+              <label class="form-label" for="modalStrand">Track / Strand</label>
+              <select class="form-select" id="modalStrand" name="strand" onchange="updateDashboardAssignmentFields()"></select>
+            </div>
+            <div class="form-group" id="modalSectionGroup" style="margin-bottom:0;">
+              <label class="form-label" for="modalSection">Assign to section</label>
+              <select class="form-select" id="modalSection" name="sectionId" onchange="updateDashboardAssignmentContext()" required>
+                <option value="">Select a section</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="modalSchoolLevelValue" name="schoolLevel">
+          <input type="hidden" id="modalGradeLevelValue" name="gradeLevel">
+          <input type="hidden" id="modalStrandValue" name="strand">
         </form>
 
       </div>
@@ -676,15 +671,263 @@
   </div>
 
   <script>
-    // Page data boundary: replace ADMIN_DASHBOARD_DATA with the dashboard endpoint later.
+    // Page data boundary: replace ADMIN_DASHBOARD_DATA with the dashboard
+    // endpoint later. Account records are kept as arrays so card totals can
+    // be replaced by API collections without changing the renderer.
+    const ADMIN_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections(
+      window.EDUGNAY_CONFIG.getActiveSchool()
+    );
+
+    const ADMIN_ACCOUNT_RECORDS = [
+      {
+        role: 'students',
+        records: window.EDUGNAY_CONFIG.getStudentDirectory(),
+      },
+      {
+        role: 'faculty',
+        records: [
+          { id: 'FAC-001', name: 'Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph' },
+          { id: 'FAC-002', name: 'Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph' },
+          { id: 'FAC-003', name: 'Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph' },
+        ],
+      },
+      {
+        role: 'parents',
+        records: [
+          { id: 'PAR-001', name: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph' },
+          { id: 'PAR-002', name: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph' },
+        ],
+      },
+    ];
+
+    const ADMIN_SUMMARY_CARDS = [
+      {
+        id: 'students',
+        accountRole: 'students',
+        tone: 'green',
+        icon: 'graduation-cap',
+        trendClass: 'trend-up',
+        label: 'Students',
+        sub: 'Across {sectionCount} sections · JHS',
+      },
+      {
+        id: 'faculty',
+        accountRole: 'faculty',
+        tone: 'gold',
+        icon: 'book-open',
+        trendClass: 'trend-neu',
+        label: 'Faculty',
+        sub: 'Active teachers this quarter',
+      },
+      {
+        id: 'parents',
+        accountRole: 'parents',
+        tone: 'purple',
+        icon: 'heart-handshake',
+        trendClass: 'trend-up',
+        label: 'Parents',
+        sub: 'Linked to student accounts',
+      },
+    ];
+
     const ADMIN_DASHBOARD_DATA = {
-      sectionCount: 8,
-      accounts: [
-        { role: 'students', total: 284, previousTotal: 273 },
-        { role: 'faculty', total: 24, previousTotal: 24 },
-        { role: 'parents', total: 261, previousTotal: 235 },
-      ],
+      sectionCount: ADMIN_SECTION_RECORDS.filter(section => section.level === 'jhs').length,
+      accountRecords: ADMIN_ACCOUNT_RECORDS,
+      summaryCards: ADMIN_SUMMARY_CARDS,
     };
+
+    const DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_ACCOUNT_RECORDS.find(item => item.role === 'students')?.records || [];
+    const dashboardAssignmentState = {
+      student: null,
+      level: '',
+      grade: '',
+      strand: '',
+      section: ''
+    };
+
+    function dashboardGradeKey(value) {
+      const text = String(value || '').trim().toLowerCase();
+      return text === 'kindergarten' ? text : text.replace(/^grade\s*/, '');
+    }
+
+    function dashboardLevelLabel(level) {
+      return window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level;
+    }
+
+    function dashboardSchoolLevels() {
+      const school = window.EDUGNAY_CONFIG.getActiveSchool();
+      return Array.isArray(school?.schoolLevels) && school.schoolLevels.length
+        ? school.schoolLevels
+        : (school?.schoolType === 'k12' ? window.EDUGNAY_CONFIG.grades.map(item => item.key) : [school?.schoolType || 'jhs']);
+    }
+
+    function dashboardDefaultLevel() {
+      const school = window.EDUGNAY_CONFIG.getActiveSchool();
+      const levels = dashboardSchoolLevels();
+      return levels.includes(school?.activeDivision) ? school.activeDivision : levels[0];
+    }
+
+    function dashboardDivision(level) {
+      const school = window.EDUGNAY_CONFIG.getActiveSchool();
+      return school?.divisions?.[level] || (school?.schoolType === level ? school : {}) || {};
+    }
+
+    function dashboardAssignmentSections() {
+      return window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+    }
+
+    function dashboardSetOptions(select, options, placeholder, selectedValue) {
+      if (!select) return;
+      select.innerHTML = '';
+      if (placeholder) select.appendChild(new Option(placeholder, ''));
+      options.forEach(optionData => {
+        const option = new Option(optionData.label, optionData.value);
+        option.disabled = Boolean(optionData.disabled);
+        select.appendChild(option);
+      });
+      const selected = options.some(option => option.value === selectedValue) ? selectedValue : '';
+      select.value = selected;
+    }
+
+    function dashboardGradeOptions(level) {
+      const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || {};
+      const division = dashboardDivision(level);
+      const enabled = Array.isArray(division.enabledGrades) && division.enabledGrades.length
+        ? division.enabledGrades
+        : catalog.grades || [];
+      return (catalog.grades || []).filter(grade => enabled.some(item => dashboardGradeKey(item) === dashboardGradeKey(grade)));
+    }
+
+    function dashboardStrandOptions(level) {
+      if (level !== 'shs') return [];
+      const division = dashboardDivision(level);
+      const sections = dashboardAssignmentSections().filter(section => section.level === level);
+      const sectionStrands = sections.map(section => section.strand).filter(Boolean);
+      if (sectionStrands.length) return [...new Set(sectionStrands)];
+      return [...new Set([
+        ...(Array.isArray(division.strands) ? division.strands : []),
+        ...(Array.isArray(division.tracks) ? division.tracks : []),
+      ])];
+    }
+
+    function dashboardSectionLabel(section) {
+      const strand = section.strand ? ` · ${section.strand}` : '';
+      const occupancy = `${section.enrolled}/${section.capacity}`;
+      return `${section.grade}${strand} · ${section.name} (${occupancy})`;
+    }
+
+    function renderDashboardStudentOptions(selectedId = '') {
+      const select = document.getElementById('modalStudent');
+      if (!select) return;
+      dashboardSetOptions(select, DASHBOARD_ASSIGNMENT_STUDENTS.map(student => ({
+        value: student.id,
+        label: `${student.name} · ${student.email}`
+      })), 'Select a student', selectedId);
+    }
+
+    function renderDashboardAssignmentSections() {
+      const level = dashboardAssignmentState.level;
+      const grade = dashboardGradeKey(dashboardAssignmentState.grade);
+      const strand = dashboardAssignmentState.strand;
+      const select = document.getElementById('modalSection');
+      if (!select) return;
+
+      const sections = dashboardAssignmentSections().filter(section => {
+        if (section.level !== level || dashboardGradeKey(section.grade) !== grade) return false;
+        return level !== 'shs' || !strand || dashboardGradeKey(section.strand) === dashboardGradeKey(strand);
+      });
+      const options = sections.map(section => ({
+        value: section.id,
+        label: dashboardSectionLabel(section),
+        disabled: section.enrolled >= section.capacity
+      }));
+      if (!options.length) options.push({ value: '', label: 'No matching sections configured', disabled: true });
+      dashboardSetOptions(select, options, 'Select a section', dashboardAssignmentState.section);
+      dashboardAssignmentState.section = select.value;
+    }
+
+    function updateDashboardAssignmentContext() {
+      const selectedSection = dashboardAssignmentSections().find(section => section.id === document.getElementById('modalSection')?.value);
+      dashboardAssignmentState.section = selectedSection?.id || '';
+      const context = document.getElementById('ctxVal');
+      if (!context) return;
+      if (!dashboardAssignmentState.student && !selectedSection) {
+        context.textContent = 'Select a student and section';
+        return;
+      }
+      const student = dashboardAssignmentState.student;
+      const studentLabel = student ? student.name : 'Student not selected';
+      const placement = [dashboardLevelLabel(dashboardAssignmentState.level), dashboardAssignmentState.grade, dashboardAssignmentState.strand].filter(Boolean).join(' · ');
+      context.textContent = selectedSection
+        ? `${studentLabel} · ${placement} · ${selectedSection.name}`
+        : `${studentLabel} · ${placement}`;
+    }
+
+    function updateDashboardAssignmentFields() {
+      const levelSelect = document.getElementById('modalSchoolLevel');
+      const gradeSelect = document.getElementById('modalGradeLevel');
+      const strandSelect = document.getElementById('modalStrand');
+      const level = dashboardAssignmentState.student?.level || levelSelect?.value || dashboardAssignmentState.level || dashboardDefaultLevel();
+      dashboardAssignmentState.level = level;
+      dashboardSetOptions(levelSelect, dashboardSchoolLevels().map(item => ({ value: item, label: dashboardLevelLabel(item) })), 'Select a school level', level);
+      if (levelSelect) {
+        levelSelect.value = level;
+        levelSelect.disabled = Boolean(dashboardAssignmentState.student);
+      }
+
+      const grades = dashboardGradeOptions(level);
+      const studentGrade = dashboardAssignmentState.student?.grade || gradeSelect?.value || dashboardAssignmentState.grade;
+      const grade = grades.find(item => dashboardGradeKey(item) === dashboardGradeKey(studentGrade)) || grades[0] || '';
+      dashboardAssignmentState.grade = grade;
+      dashboardSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
+      if (gradeSelect) gradeSelect.disabled = Boolean(dashboardAssignmentState.student);
+
+      const strands = dashboardStrandOptions(level);
+      const strandGroup = document.getElementById('modalStrandGroup');
+      const selectedStrand = dashboardAssignmentState.student?.strand || strandSelect?.value || dashboardAssignmentState.strand;
+      const strand = strands.find(item => dashboardGradeKey(item) === dashboardGradeKey(selectedStrand)) || strands[0] || '';
+      dashboardAssignmentState.strand = level === 'shs' ? strand : '';
+      if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
+      dashboardSetOptions(strandSelect, strands.map(item => ({ value: item, label: item })), 'Select a track or strand', strand);
+      if (strandSelect) {
+        strandSelect.disabled = Boolean(dashboardAssignmentState.student);
+        strandSelect.required = level === 'shs';
+      }
+
+      const hiddenValues = {
+        modalSchoolLevelValue: dashboardAssignmentState.level,
+        modalGradeLevelValue: dashboardAssignmentState.grade,
+        modalStrandValue: dashboardAssignmentState.strand
+      };
+      Object.entries(hiddenValues).forEach(([id, value]) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.value = value || '';
+        input.disabled = !dashboardAssignmentState.student;
+      });
+
+      renderDashboardAssignmentSections();
+      updateDashboardAssignmentContext();
+    }
+
+    function handleDashboardStudentChange(studentId) {
+      const student = DASHBOARD_ASSIGNMENT_STUDENTS.find(item => item.id === studentId) || null;
+      dashboardAssignmentState.student = student;
+      dashboardAssignmentState.level = student?.level || dashboardDefaultLevel() || '';
+      dashboardAssignmentState.grade = student?.grade || '';
+      dashboardAssignmentState.strand = student?.strand || '';
+      dashboardAssignmentState.section = '';
+      const preview = document.getElementById('studentPreview');
+      if (!student) {
+        preview?.classList.remove('visible');
+      } else {
+        document.getElementById('spAv').textContent = student.initials;
+        document.getElementById('spName').textContent = student.name;
+        document.getElementById('spDetail').textContent = student.email;
+        preview?.classList.add('visible');
+      }
+      updateDashboardAssignmentFields();
+    }
 
     function formatSummaryTrend(current, previous) {
       if (!Number.isFinite(previous) || previous === 0) return '— 0%';
@@ -695,15 +938,20 @@
     }
 
     function buildAdminSummaryCards(data = ADMIN_DASHBOARD_DATA) {
-      const account = role => data.accounts.find(item => item.role === role) || { total: 0, previousTotal: 0 };
-      const students = account('students');
-      const faculty = account('faculty');
-      const parents = account('parents');
-      return [
-        { tone: 'green', icon: 'graduation-cap', trend: formatSummaryTrend(students.total, students.previousTotal), trendClass: 'trend-up', value: students.total, label: 'Students', sub: `Across ${data.sectionCount} sections · JHS` },
-        { tone: 'gold', icon: 'book-open', trend: formatSummaryTrend(faculty.total, faculty.previousTotal), trendClass: 'trend-neu', value: faculty.total, label: 'Faculty', sub: 'Active teachers this quarter' },
-        { tone: 'purple', icon: 'heart-handshake', trend: formatSummaryTrend(parents.total, parents.previousTotal), trendClass: 'trend-up', value: parents.total, label: 'Parents', sub: 'Linked to student accounts' },
-      ];
+      const cards = Array.isArray(data.summaryCards) ? data.summaryCards : [];
+      const accountRecords = Array.isArray(data.accountRecords) ? data.accountRecords : [];
+      return cards.map(card => {
+        const account = accountRecords.find(item => item.role === card.accountRole);
+        const records = Array.isArray(account?.records) ? account.records : [];
+        const value = Number.isFinite(Number(card.value)) ? Number(card.value) : records.length;
+        const previousValue = Number.isFinite(Number(card.previousValue)) ? Number(card.previousValue) : value;
+        return {
+          ...card,
+          value,
+          trend: card.trend || formatSummaryTrend(value, previousValue),
+          sub: String(card.sub || '').replace('{sectionCount}', String(data.sectionCount ?? 0)),
+        };
+      });
     }
 
     const ADMIN_QUICK_ACTIONS = [
@@ -727,6 +975,9 @@
     }
 
     renderAdminDashboardData();
+    renderDashboardStudentOptions();
+    dashboardAssignmentState.level = dashboardDefaultLevel() || '';
+    updateDashboardAssignmentFields();
 
     function renderWeekCalendar() {
       const grid = document.getElementById('weekCalendarGrid');
@@ -895,9 +1146,20 @@
     function openStudentModal(studentName) {
       const title = document.getElementById('studentModalTitle');
       title.textContent = studentName ? `Assign: ${studentName}` : 'Assign Student';
-      document.getElementById('ctxVal').textContent = 'Select a section below';
-      document.getElementById('modalStudent').value = '';
-      document.getElementById('studentPreview').classList.remove('visible');
+      dashboardAssignmentState.student = null;
+      dashboardAssignmentState.level = dashboardDefaultLevel() || '';
+      dashboardAssignmentState.grade = '';
+      dashboardAssignmentState.strand = '';
+      dashboardAssignmentState.section = '';
+      renderDashboardStudentOptions();
+      const matchedStudent = DASHBOARD_ASSIGNMENT_STUDENTS.find(student => student.name.toLowerCase() === String(studentName || '').toLowerCase());
+      if (matchedStudent) {
+        document.getElementById('modalStudent').value = matchedStudent.id;
+        handleDashboardStudentChange(matchedStudent.id);
+      } else {
+        document.getElementById('studentPreview').classList.remove('visible');
+        updateDashboardAssignmentFields();
+      }
       document.getElementById('studentModalBackdrop').classList.add('open');
     }
 
@@ -910,16 +1172,6 @@
     });
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });
-
-    function previewStudent(val) {
-      const preview = document.getElementById('studentPreview');
-      if (!val) { preview.classList.remove('visible'); return; }
-      const [name, email, initials] = val.split('|');
-      document.getElementById('spAv').textContent = initials;
-      document.getElementById('spName').textContent = name;
-      document.getElementById('spDetail').textContent = email + '@stcolumban.edu.ph';
-      preview.classList.add('visible');
-    }
 
     function openAnnouncementModal() {
       document.getElementById('announcementModalBackdrop').classList.add('open');

@@ -396,62 +396,7 @@ tbody td {
 .row-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.row-btn {
-  padding: 5px 10px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
-.row-btn.edit {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  border-color: var(--blue-pale);
-}
-
-.row-btn.edit:hover {
-  background: var(--blue-pale);
-}
-
-.row-btn.deactivate {
-  background: var(--red-pale);
-  color: var(--red);
-  border-color: #fca5a5;
-}
-
-.row-btn.deactivate:hover {
-  background: #fecaca;
-}
-
-.row-btn.reactivate {
-  background: #f0fdf4;
-  color: #16a34a;
-  border-color: #86efac;
-}
-
-.row-btn.reactivate:hover {
-  background: #bbf7d0;
-}
-
-.row-btn.delete {
-  background: var(--red-pale);
-  color: var(--red);
-  border-color: #fca5a5;
-  padding: 5px 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.row-btn.delete:hover {
-  background: #fecaca;
+  gap: 8px;
 }
 
 
@@ -779,15 +724,6 @@ tbody td {
 
 .btn-danger:hover {
   background: #b91c1c;
-}
-
-.row-btn.delete {
-  color: #dc2626;
-  border-color: #dc2626;
-}
-
-.row-btn.delete:hover {
-  background: #fef2f2;
 }
 
 /* ── MODAL CONTEXT BLOCK ── */

@@ -90,6 +90,17 @@
     .btn-login:hover { box-shadow: none; transform: none; }
     .login-footer { margin-top: 28px; padding-top: 0; border-top: 0; text-align: left; }
     .login-footer p { color: var(--gray-500); }
+    .school-onboarding-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 14px;
+      color: var(--blue-mid);
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .school-onboarding-link:hover { color: var(--blue); }
     .auth-back,
     .auth-text-action {
       display: inline-flex;
@@ -291,6 +302,10 @@
         from your school email address.<br/> -->
         Contact your administrator if you cannot log in.
       </p>
+      <a class="school-onboarding-link" href="./views/onboarding/edugnay-school-onboarding.html">
+        <i data-lucide="building-2" style="width:14px;height:14px;"></i>
+        Create an account for an organization/school
+      </a>
     </div>
     </section>
 

@@ -31,7 +31,7 @@ function getAdminNotifItems() {
       icon: 'unlock',
       color: 'gold',
       title: `Reopen requested: Q${r.quarter.slice(1)}`,
-      desc: `${r.teacher} — ${r.section} · ${r.subject}`,
+      desc: `${r.teacher} - ${r.section} · ${r.subject}`,
       read: readIds.includes(r.createdAt),
       link: 'edugnay-admin-system-config.html#reopen-requests',
       created_at: r.createdAt
@@ -110,8 +110,39 @@ function toggleNavGroup(group) {
   group.classList.toggle('open');
 }
 
+function ensureAdminConfigurationNav() {
+  const settingsSection = [...document.querySelectorAll('.nav-section')]
+    .find(section => section.querySelector('.nav-section-label')?.textContent.trim().toLowerCase() === 'settings');
+  if (!settingsSection || settingsSection.dataset.adminConfigNavReady === 'true') return;
+
+  const items = [
+    { href: 'edugnay-admin-schools.html', icon: 'building-2', label: 'School Settings' },
+    { href: 'edugnay-admin-sf-templates.html', icon: 'file-cog', label: 'SF Templates' },
+    { href: 'edugnay-admin-system-config.html', icon: 'settings', label: 'System Config' },
+    { href: 'edugnay-admin-archive.html', icon: 'archive', label: 'Archive Data' }
+  ];
+  const current = location.pathname.split('/').pop();
+  items.forEach(item => {
+    const link = settingsSection.querySelector(`a[href="${item.href}"]`)
+      || [...settingsSection.querySelectorAll('a.nav-item')]
+        .find(candidate => candidate.querySelector('.nav-label')?.textContent.trim() === item.label);
+
+    const normalizedLink = link || document.createElement('a');
+    normalizedLink.className = `nav-item ${current === item.href ? 'active' : ''}`;
+    normalizedLink.href = item.href;
+    normalizedLink.dataset.adminConfigNav = 'true';
+    if (!link) {
+      normalizedLink.innerHTML = `<div class="nav-icon"><i data-lucide="${item.icon}" style="width:16px;height:16px;"></i></div><span class="nav-label">${item.label}</span>`;
+    }
+    settingsSection.append(normalizedLink);
+  });
+  settingsSection.dataset.adminConfigNavReady = 'true';
+  if (window.lucide) lucide.createIcons();
+}
+
 /* ── ACTIVE NAV ITEM ON CLICK ── */
 document.addEventListener('DOMContentLoaded', () => {
+  ensureAdminConfigurationNav();
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function () {
       document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));

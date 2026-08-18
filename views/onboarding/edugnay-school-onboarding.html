@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create organization account | E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <link rel="stylesheet" href="../../assets/css/onboarding.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+</head>
+<body>
+  <main class="onboarding-page">
+    <section class="onboarding-brand" aria-label="E-Ugnay organization onboarding">
+      <div class="onboarding-brand-mark">
+        <img src="../../assets/images/edUgnay-logo-circle.png" alt="E-Ugnay" />
+        <div class="onboarding-brand-name">e<span>Ugnay</span></div>
+      </div>
+      <div class="onboarding-brand-copy">
+        <div class="onboarding-brand-kicker">Organization setup</div>
+        <h1>Bring your school community into one clear view.</h1>
+        <p>Set up the school profile, academic structure, and first administrator that will appear throughout your E-Ugnay portals.</p>
+      </div>
+      <div class="onboarding-trust">Your profile can be reviewed and updated from School Management after setup.</div>
+    </section>
+
+    <section class="onboarding-form-area">
+      <div class="onboarding-card">
+        <div class="onboarding-form-head">
+          <div>
+            <div class="onboarding-form-kicker">New organization</div>
+            <h2>Create a school account</h2>
+            <p>Provide the core details first. You can add staff, learners, sections, and templates later.</p>
+          </div>
+          <a class="onboarding-back" href="../../index.html">Back to sign in</a>
+        </div>
+
+        <div class="onboarding-steps" aria-label="Onboarding sections">
+          <div class="onboarding-step"><span class="onboarding-step-index">1</span><span>School profile</span></div>
+          <div class="onboarding-step"><span class="onboarding-step-index">2</span><span>Contact and branding</span></div>
+          <div class="onboarding-step"><span class="onboarding-step-index">3</span><span>Initial administrator</span></div>
+        </div>
+
+        <form id="schoolOnboardingForm" onsubmit="submitSchoolOnboarding(event)">
+          <section class="onboarding-section">
+            <h3>School profile</h3>
+            <p>Choose the school type and the information used across reports and forms.</p>
+            <div class="onboarding-grid">
+              <div class="onboarding-field full">
+                <label for="schoolName">School or organization name</label>
+                <input id="schoolName" name="schoolName" type="text" placeholder="St. Columban's College" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolType">School type</label>
+                <select id="schoolType" name="schoolType" required></select>
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolId">School ID</label>
+                <input id="schoolId" name="schoolId" type="text" placeholder="Optional DepEd school ID" />
+              </div>
+              <div class="onboarding-field full">
+                <label for="schoolAddress">Address</label>
+                <textarea id="schoolAddress" name="schoolAddress" placeholder="Street, barangay, municipality, province"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="onboarding-section">
+            <h3>Contact and branding</h3>
+            <p>These details help families and staff identify the active school.</p>
+            <div class="onboarding-grid">
+              <div class="onboarding-field">
+                <label for="schoolEmail">School email</label>
+                <input id="schoolEmail" name="schoolEmail" type="email" placeholder="office@school.edu.ph" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolPhone">Contact number</label>
+                <input id="schoolPhone" name="schoolPhone" type="tel" placeholder="(049) 123 4567" />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolWebsite">Website</label>
+                <input id="schoolWebsite" name="schoolWebsite" type="url" placeholder="https://school.edu.ph" />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolLogo">Logo or branding image</label>
+                <input id="schoolLogo" name="schoolLogo" type="file" accept="image/*" />
+                <small>You can update this branding later in School Management.</small>
+              </div>
+            </div>
+          </section>
+
+          <section class="onboarding-section">
+            <h3>Initial administrator</h3>
+            <p>This profile will be used as the first administrator record for the organization.</p>
+            <div class="onboarding-grid">
+              <div class="onboarding-field">
+                <label for="adminName">Administrator name</label>
+                <input id="adminName" name="adminName" type="text" placeholder="Full name" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="adminEmail">Administrator email</label>
+                <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@school.edu.ph" required />
+              </div>
+              <div class="onboarding-field full">
+                <label for="adminPassword">Temporary password</label>
+                <input id="adminPassword" name="adminPassword" type="password" minlength="8" placeholder="At least 8 characters" required />
+                <small>Use at least 8 characters. This can be changed after account activation.</small>
+              </div>
+            </div>
+          </section>
+
+          <div class="onboarding-actions">
+            <p>You can update these details later in School Management.</p>
+            <button class="onboarding-submit" type="submit"><i data-lucide="arrow-right" style="width:15px;height:15px;"></i> Create school profile</button>
+          </div>
+          <div class="onboarding-message" id="onboardingMessage" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SCHOOL_TYPES = [
+      { value: 'k12', label: 'K-12 School' },
+      { value: 'elementary', label: 'Elementary' },
+      { value: 'jhs', label: 'Junior High School' },
+      { value: 'shs', label: 'Senior High School' }
+    ];
+
+    function populateSchoolTypes() {
+      const select = document.getElementById('schoolType');
+      select.innerHTML = SCHOOL_TYPES.map(type => `<option value="${type.value}">${type.label}</option>`).join('');
+    }
+
+    function slugify(value) {
+      return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `school-${Date.now()}`;
+    }
+
+    function submitSchoolOnboarding(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const values = Object.fromEntries(new FormData(form).entries());
+      const type = SCHOOL_TYPES.find(item => item.value === values.schoolType) || SCHOOL_TYPES[0];
+      const schoolLevels = type.value === 'k12' ? ['elementary', 'jhs', 'shs'] : [type.value];
+      const school = {
+        id: `${slugify(values.schoolName)}-${Date.now()}`,
+        name: values.schoolName.trim(),
+        shortName: values.schoolName.trim().toUpperCase(),
+        schoolType: type.value,
+        typeLabel: type.label,
+        schoolId: values.schoolId.trim(),
+        address: values.schoolAddress.trim(),
+        phone: values.schoolPhone.trim(),
+        email: values.schoolEmail.trim(),
+        website: values.schoolWebsite.trim(),
+        logoUrl: '',
+        photos: [],
+        schoolYear: '2025-2026',
+        academicPeriod: type.value === 'shs' ? '1st Semester' : 'Quarter 1',
+        schoolLevels,
+        sections: [],
+        gradingRules: [
+          { id: 'ww', label: 'Written Work', weight: 30 },
+          { id: 'pt', label: 'Performance Task', weight: 50 },
+          { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
+        ],
+        initialAdministrator: {
+          name: values.adminName.trim(),
+          email: values.adminEmail.trim()
+        }
+      };
+      if (type.value === 'k12') {
+        school.activeDivision = 'jhs';
+        school.divisions = Object.fromEntries(schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)]));
+      }
+
+      const logoInput = document.getElementById('schoolLogo');
+      const saveSchool = logoData => {
+        if (logoData) school.logoUrl = logoData;
+        const schools = window.EDUGNAY_CONFIG?.getSchools?.() || [];
+        schools.push(school);
+        window.EDUGNAY_CONFIG?.saveSchools?.(schools);
+        window.EDUGNAY_CONFIG?.setActiveSchool?.(school.id);
+        localStorage.setItem('edugnay_onboarding_admin', JSON.stringify(school.initialAdministrator));
+        const message = document.getElementById('onboardingMessage');
+        message.textContent = `${school.name} is ready. Configure grades, sections, subjects, grading rules, and calendar settings in `;
+        const adminLink = document.createElement('a');
+        adminLink.href = '../../views/admin/edugnay-admin-schools.html';
+        adminLink.textContent = 'School Management';
+        message.append(adminLink);
+        message.append('.');
+        message.classList.add('show');
+        form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = true; });
+        if (window.lucide) lucide.createIcons();
+      };
+
+      if (logoInput.files?.[0]) {
+        const reader = new FileReader();
+        reader.onload = () => saveSchool(reader.result);
+        reader.readAsDataURL(logoInput.files[0]);
+      } else {
+        saveSchool('');
+      }
+    }
+
+    populateSchoolTypes();
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
