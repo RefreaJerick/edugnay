@@ -38,17 +38,6 @@ body:has(.onboarding-page) {
   object-fit: contain;
 }
 
-.onboarding-brand-name {
-  color: var(--white);
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -.45px;
-}
-
-.onboarding-brand-name span {
-  color: var(--gold-light);
-}
-
 .onboarding-brand-copy {
   width: min(100%, 450px);
   margin: auto 0;
@@ -168,21 +157,18 @@ body:has(.onboarding-page) {
 .onboarding-back {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 7px;
   flex: 0 0 auto;
-  min-height: var(--button-height-compact);
-  padding: 0 11px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--button-radius-compact);
-  background: var(--white);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--blue-mid);
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
-  transition: background .16s ease, border-color .16s ease, color .16s ease;
+  transition: color .16s ease;
 }
 
 .onboarding-back svg {
@@ -191,8 +177,6 @@ body:has(.onboarding-page) {
 }
 
 .onboarding-back:hover {
-  border-color: var(--blue-pale);
-  background: var(--blue-xpale);
   color: var(--blue);
 }
 
@@ -362,9 +346,9 @@ body:has(.onboarding-page) {
   opacity: 1;
 }
 
-.onboarding-field input:hover,
-.onboarding-field select:hover,
-.onboarding-field textarea:hover {
+.onboarding-field input:not(:focus):hover,
+.onboarding-field select:not(:focus):hover,
+.onboarding-field textarea:not(:focus):hover {
   border-color: var(--gray-300);
 }
 
@@ -421,7 +405,7 @@ body:has(.onboarding-page) {
   transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
 
-.onboarding-field input[type='file']:hover {
+.onboarding-field input[type='file']:not(:focus):hover {
   border-color: var(--blue-pale);
   background: var(--white);
 }
@@ -648,10 +632,6 @@ body:has(.onboarding-page) {
     width: 40px;
     height: 40px;
     flex-basis: 40px;
-  }
-
-  .onboarding-brand-name {
-    font-size: 19px;
   }
 
   .onboarding-brand-copy {

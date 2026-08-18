@@ -336,7 +336,7 @@
   transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
 
-.school-field input[type='file']:hover {
+.school-field input[type='file']:not(:focus):hover {
   border-color: var(--blue-pale);
   background: var(--white);
 }

@@ -494,7 +494,7 @@
   input[type='month'],
   input[type='week'],
   textarea
-):not(:disabled):not([readonly]):hover {
+):not(:disabled):not([readonly]):not(:focus):hover {
   border-color: var(--gray-300) !important;
 }
 
@@ -549,7 +549,7 @@ select:not([multiple]):focus {
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
-select:not([multiple]):not(:disabled):hover {
+select:not([multiple]):not(:disabled):not(:focus):hover {
   border-color: var(--gray-300) !important;
 }
 
@@ -576,8 +576,8 @@ select:not([multiple]):disabled {
   transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
 }
 
-.search-wrap ~ select.filter-select:hover,
-.search-wrap ~ select.select-filter:hover {
+.search-wrap ~ select.filter-select:not(:focus):hover,
+.search-wrap ~ select.select-filter:not(:focus):hover {
   border-color: var(--gray-300) !important;
 }
 
@@ -640,7 +640,7 @@ select:not([multiple]):disabled {
   font-size: 13px !important;
 }
 
-.activity-filterbar .activity-search ~ select.activity-date-select:hover {
+.activity-filterbar .activity-search ~ select.activity-date-select:not(:focus):hover {
   border-color: var(--gray-300) !important;
 }
 

@@ -101,7 +101,6 @@ html, body {
 html { overflow-y: auto; }
 body { min-height: 100%; overflow: visible; }
 
-html:has(.shell),
 /* Dashboard shells own the page canvas. Keep their scrollbar outside the chrome
    and use the same neutral surface behind the full-width layout. */
 html:has(.shell),
@@ -136,35 +135,43 @@ button:focus-visible,
 
 /* ── STAT CARDS ── */
 .stat-card {
-  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
-  box-shadow: 0 2px 8px rgba(16, 40, 80, 0.03);
-  border-radius: 16px;
-  padding: 18px;
-  min-height: 178px;
+  background: var(--white);
+  box-shadow: 0 4px 14px rgba(16,40,80,.055);
+  border-radius: 15px;
+  padding: 16px;
+  min-height: 156px;
   border: 1px solid var(--gray-200);
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
+.stat-card.blue {
+  border-color: var(--blue-pale);
+  background: #f8fbff;
+}
 .stat-card.green {
-  background: linear-gradient(145deg, #ffffff 0%, #f9fffb 100%);
+  border-color: #c8ead2;
+  background: #f8fcf9;
 }
-
 .stat-card.gold {
-  background: linear-gradient(145deg, #ffffff 0%, #fffdf8 100%);
+  border-color: #f5dfaa;
+  background: #fffaf1;
 }
-
 .stat-card.purple {
-  background: linear-gradient(145deg, #ffffff 0%, #fcfaff 100%);
+  border-color: #e9d5ff;
+  background: #fcfaff;
 }
 .stat-card.orange {
-  background: linear-gradient(145deg, #ffffff 0%, #fffaf3 100%);
+  border-color: #f5dfaa;
+  background: #fffaf1;
 }
 .stat-card.red {
-  background: linear-gradient(145deg, #ffffff 0%, #fffafa 100%);
+  border-color: #f4caca;
+  background: #fff8f8;
 }
 .stat-card.gray {
-  background: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
+  border-color: var(--gray-200);
+  background: #fbfcfe;
 }
 .stat-card:hover {
   border-color: var(--blue-pale);
@@ -175,12 +182,12 @@ button:focus-visible,
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .stat-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,22 +245,22 @@ button:focus-visible,
 }
 .stat-card-num {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   color: var(--gray-800);
   line-height: 1;
   margin-bottom: 4px;
-  letter-spacing: -1px;
+  letter-spacing: -.8px;
 }
 .stat-card-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--gray-700);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .35px;
 }
 .stat-card-sub {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--gray-400);
   margin-top: 5px;
   line-height: 1.4;
@@ -488,21 +495,25 @@ body.drawer-open .sidebar {
 .topbar {
   grid-column: 2;
   grid-row: 1;
-  background: rgba(255,255,255,0.95);
+  min-height: 76px;
+  min-width: 0;
+  background: rgba(255,255,255,.97);
   border-bottom: 1px solid var(--gray-200);
+  border-bottom-color: rgba(183,196,214,.72);
   display: flex;
   align-items: center;
-  padding: 0 32px;
+  padding: 0 28px;
   gap: 16px;
   position: sticky;
   top: 0;
   width: auto;
   z-index: 100;
   backdrop-filter: blur(10px);
-  /* box-shadow: 0 10px 30px rgba(16, 40, 80, 0.08); */
+  box-shadow: 0 4px 18px rgba(16,40,80,.045);
 }
 
-.topbar-left { flex: 1; }
+.topbar-left { flex: 1; min-width: 0; }
+.topbar-left .page-title { line-height: 1.2; }
 
 .page-eyebrow {
   font-size: 10px;
@@ -524,7 +535,7 @@ body.drawer-open .sidebar {
 .topbar-right, .parent-topbar-right, .student-topbar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .topbar-right a {
@@ -547,11 +558,14 @@ body.drawer-open .sidebar {
 }
 
 .tb-notif-panel {
-  width: 340px;
-  max-height: 400px;
+  width: 380px;
+  max-height: min(520px, calc(100vh - 96px));
   display: none;
   flex-direction: column;
   overflow: hidden;
+  border-top: 3px solid var(--blue-mid);
+  border-radius: 16px;
+  box-shadow: 0 20px 48px rgba(11, 31, 58, 0.18), 0 3px 10px rgba(16, 40, 80, 0.06);
 }
 .tb-notif-panel.open { display: flex; }
 
@@ -569,7 +583,8 @@ body.drawer-open .sidebar {
   }
 
   .tb-notif-panel {
-    width: min(340px, calc(100vw - 24px));
+    width: min(380px, calc(100vw - 24px));
+    max-height: calc(100vh - 88px);
   }
 
   .tb-dropdown {
@@ -581,18 +596,6 @@ body.drawer-open .sidebar {
     transform: none;
   }
 
-  .tb-notif-panel-head,
-  .tb-notif-panel-foot,
-  .tb-notif-item {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
-  .tb-notif-item { gap: 10px; }
-  .tb-notif-icon { width: 28px; height: 28px; }
-  .tb-notif-title { font-size: 12px; }
-  .tb-notif-desc { font-size: 11px; }
-  .tb-notif-time { font-size: 10px; }
 }
 
 .tb-notif-panel-head {
@@ -601,6 +604,7 @@ body.drawer-open .sidebar {
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--gray-100);
+  background: var(--white);
 }
 .tb-notif-panel-title { font-size: 14px; font-weight: 700; color: var(--gray-800); }
 .tb-notif-mark-read {
@@ -664,15 +668,26 @@ body.drawer-open .sidebar {
 .tb-notif-time { font-size: 11px; color: var(--gray-400); }
 
 .tb-notif-panel-foot {
-  padding: 10px 16px;
+  padding: 11px 16px 13px;
   border-top: 1px solid var(--gray-100);
+  background: var(--white);
   text-align: center;
 }
 .tb-notif-panel-foot a {
-  font-size: 12px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 9px;
+  background: var(--blue-xpale);
   color: var(--blue-mid);
+  font-size: 11.5px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
 }
 
 /* ══════════════════════════════
@@ -1509,7 +1524,7 @@ html, body {
 
 .form-input::placeholder { color: var(--gray-400); }
 
-.form-input:not(:disabled):not([readonly]):hover {
+.form-input:not(:disabled):not([readonly]):not(:focus):hover {
   border-color: var(--gray-300);
 }
 
@@ -1631,25 +1646,27 @@ html, body {
     TOPBAR — NOTIFICATION + PROFILE
 ══════════════════════════════ */
 .tb-notif-btn {
-  width: 36px; height: 36px;
-  border-radius: 50%;
+  width: 38px; height: 38px;
+  border-radius: 10px;
   background: transparent;
-  border: none;
+  border: 0;
   display: flex; align-items: center; justify-content: center;
   color: var(--gray-600);
   cursor: pointer;
   position: relative;
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition: background .16s, border-color .16s, color .16s;
   flex-shrink: 0;
 }
 .tb-notif-btn:hover {
-  color: var(--gray-800);
-  transform: scale(1.04);
+  background: transparent;
+  border-color: transparent;
+  color: var(--blue-mid);
+  transform: none;
 }
 
 .tb-notif-dot {
   position: absolute;
-  top: 7px; right: 7px;
+  top: 6px; right: 6px;
   width: 8px; height: 8px;
   background: var(--red);
   border-radius: 50%;
@@ -1794,7 +1811,7 @@ html, body {
     display: block;
   }
   .sidebar-overlay { display: block; }
-  .topbar { flex-wrap: wrap; padding: 16px 20px; width: 100%; max-width: 100%; }
+  .topbar { flex-wrap: wrap; padding: 0 28px; width: 100%; max-width: 100%; }
   .hamburger { display: grid; }
   .topbar-left::before { display: block; }
   .topbar-profile { display: block; }
@@ -1825,25 +1842,7 @@ html, body {
   .page-title { font-size: 18px; }
 }
 
-/* Shared topbar polish */
-.topbar {
-  min-height: 76px;
-  padding: 0 28px;
-  min-width: 0;
-  background: rgba(255,255,255,.97);
-  border-bottom-color: rgba(183,196,214,.72);
-  box-shadow: 0 4px 18px rgba(16,40,80,.045);
-}
-.topbar-left { min-width: 0; }
-.topbar-left .page-title { line-height: 1.2; }
-.topbar-right, .parent-topbar-right, .student-topbar-right { gap: 12px; }
-.tb-notif-btn {
-  width: 38px; height: 38px; border: 0;
-  border-radius: 10px; background: transparent;
-  transition: background .16s, border-color .16s, color .16s;
-}
-.tb-notif-btn:hover { background: transparent; border-color: transparent; color: var(--blue-mid); transform: none; }
-.tb-notif-dot { top: 6px; right: 6px; }
+/* Responsive topbar refinements */
 @media (max-width: 760px) {
   .topbar { min-height: 68px; padding: 12px 16px; gap: 10px; }
   .page-eyebrow { font-size: 9px; }
@@ -1855,16 +1854,13 @@ html, body {
 
 /* Shared page overview replacing the repeated topbar page label. */
 .page-overview {
-  display: flex;
+  display: none !important;
   align-items: flex-end;
   justify-content: flex-start;
   gap: 18px;
   margin: 2px 0 18px;
 }
 
-/* Page overviews are temporarily hidden while the page header direction is
-   being revisited. Keep the markup available for a later redesign. */
-.page-overview { display: none !important; }
 .page-overview-copy { min-width: 0; }
 .page-overview-kicker {
   margin-bottom: 5px;
@@ -2071,23 +2067,12 @@ html, body {
   border-color: var(--blue-mid) !important;
 }
 
-@media (max-width: 760px) {
-  .page-overview {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .page-overview-title { font-size: 20px; }
-  .page-overview-description { font-size: 12px; }
-}
-
 /* Shared active academic period context for every portal topbar. */
 .topbar-context,
 .admin-topbar-context {
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 0 !important;
   min-width: 0;
   max-width: 100%;
   padding: 0;
@@ -2097,7 +2082,7 @@ html, body {
 }
 .topbar-context-icon,
 .admin-topbar-context-icon {
-  display: none;
+  display: none !important;
 }
 .topbar-context-copy,
 .admin-topbar-context-copy {
@@ -2114,10 +2099,10 @@ html, body {
 .admin-topbar-context-copy strong {
   max-width: 100%;
   overflow: hidden;
-  color: var(--gray-800);
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -.25px;
+  color: var(--gray-800) !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: -.35px;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2125,38 +2110,6 @@ html, body {
 .topbar-left > .hamburger {
   order: -1;
 }
-@media (max-width: 760px) {
-  .topbar-context,
-  .admin-topbar-context { gap: 0; }
-  .topbar-context-copy strong,
-  .admin-topbar-context-copy strong {
-    max-width: 100%;
-    overflow: hidden;
-    font-size: 14px;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-
-
-/* Unified topbar notification panel */
-.tb-notif-panel {
-  width: 380px;
-  max-height: min(520px, calc(100vh - 96px));
-  border: 1px solid var(--gray-200);
-  border-top: 3px solid var(--blue-mid);
-  border-radius: 16px;
-  box-shadow: 0 20px 48px rgba(11, 31, 58, 0.18), 0 3px 10px rgba(16, 40, 80, 0.06);
-}
-
-.tb-notif-panel-head {
-  align-items: center;
-  padding: 14px 16px;
-  background: var(--white);
-}
-
 .tb-notif-heading {
   display: flex;
   align-items: center;
@@ -2326,38 +2279,12 @@ html, body {
   line-height: 1.5;
 }
 
-.tb-notif-panel-foot {
-  padding: 11px 16px 13px;
-  background: var(--white);
-}
-
-.tb-notif-panel-foot a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--blue-pale);
-  border-radius: 9px;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  font-size: 11.5px;
-  font-weight: 700;
-  transition: background .15s ease, border-color .15s ease;
-}
-
 .tb-notif-panel-foot a:hover {
   border-color: #93c5fd;
   background: var(--blue-pale);
 }
 
 @media (max-width: 640px) {
-  .tb-notif-panel {
-    width: min(380px, calc(100vw - 24px));
-    max-height: calc(100vh - 88px);
-  }
-
   .tb-notif-panel-head {
     padding: 13px 14px;
   }
@@ -2378,32 +2305,6 @@ html, body {
   }
 }
 
-/* Shared stat card treatment */
-.stat-card {
-  min-height: 156px;
-  padding: 16px;
-  border: 1px solid var(--gray-200);
-  border-radius: 15px;
-  background: var(--white);
-  box-shadow: 0 4px 14px rgba(16,40,80,.055);
-}
-.stat-card.blue { border-color: var(--blue-pale); background: #f8fbff; }
-.stat-card.green { border-color: #c8ead2; background: #f8fcf9; }
-.stat-card.gold { border-color: #f5dfaa; background: #fffaf1; }
-.stat-card.purple { border-color: #e9d5ff; background: #fcfaff; }
-.stat-card.orange { border-color: #f5dfaa; background: #fffaf1; }
-.stat-card.red { border-color: #f4caca; background: #fff8f8; }
-.stat-card.gray { border-color: var(--gray-200); background: #fbfcfe; }
-.stat-card:hover {
-  border-color: var(--blue-pale);
-  box-shadow: var(--summary-card-hover-shadow);
-  transform: translateY(-2px);
-}
-.stat-card-top { margin-bottom: 14px; }
-.stat-card-icon { width: 38px; height: 38px; border-radius: 10px; }
-.stat-card-num { font-size: 30px; letter-spacing: -.8px; }
-.stat-card-label { font-size: 11px; letter-spacing: .35px; }
-.stat-card-sub { margin-top: 5px; font-size: 10.5px; }
 @media (max-width: 520px) {
   /* Compact mobile summary cards keep the metric visible without turning a
      short set of counts into a tall stack of panels. */
@@ -2495,32 +2396,8 @@ html, body {
 }
 
 @media (max-width: 980px) {
-  .topbar .topbar-context,
-  .topbar .admin-topbar-context { display: none; }
-}
-
-@media (max-width: 980px) {
   .sidebar-overlay { z-index: 125 !important; }
   body.drawer-open .sidebar { z-index: 130 !important; }
-}
-
-/* Final page-title treatment for every portal topbar. */
-.topbar-context,
-.admin-topbar-context {
-  gap: 0 !important;
-}
-
-.topbar-context-icon,
-.admin-topbar-context-icon {
-  display: none !important;
-}
-
-.topbar-context-copy strong,
-.admin-topbar-context-copy strong {
-  color: var(--gray-800) !important;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-  letter-spacing: -.35px;
 }
 
 @media (max-width: 980px) {
@@ -2531,14 +2408,6 @@ html, body {
 @media (max-width: 760px) {
   .topbar .topbar-context,
   .topbar .admin-topbar-context { display: none !important; }
-
-  .topbar-context,
-  .admin-topbar-context { gap: 0 !important; }
-
-  .topbar-context-copy strong,
-  .admin-topbar-context-copy strong {
-    font-size: 14px !important;
-  }
 }
 
 /* Shared right-edge fade for horizontally scrollable tabs and switchers. */
