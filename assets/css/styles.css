@@ -1782,6 +1782,12 @@ html, body {
     transform: translateX(-100%); z-index: 130;
     border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18);
   }
+  .sidebar-scrollbar {
+    display: none;
+  }
+  body.drawer-open .sidebar-scrollbar.is-visible {
+    display: block;
+  }
   .sidebar-overlay { display: block; }
   .topbar { flex-wrap: wrap; padding: 16px 20px; width: 100%; max-width: 100%; }
   .hamburger { display: grid; }

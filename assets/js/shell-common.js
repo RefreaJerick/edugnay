@@ -739,6 +739,9 @@ window.initSidebarScrollbars = function initSidebarScrollbars() {
     });
 
     sidebar.addEventListener('scroll', scheduleUpdate, { passive: true });
+    sidebar.addEventListener('transitionend', event => {
+      if (event.propertyName === 'transform') scheduleUpdate();
+    });
     window.addEventListener('resize', scheduleUpdate, { passive: true });
 
     if ('ResizeObserver' in window) {
