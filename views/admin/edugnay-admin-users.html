@@ -550,6 +550,9 @@
           <select class="filter-select" id="sectionFilter" onchange="filterTable()">
             <option value="all">All Sections</option>
           </select>
+          <select class="filter-select" id="gradeLevelFilter" onchange="filterTable()" hidden aria-label="Filter students by grade level">
+            <option value="all">All Grade Levels</option>
+          </select>
         </div>
         <div class="toolbar-actions">
           <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up"
@@ -572,7 +575,7 @@
               <tr>
                 <th>User</th>
                 <th>Role</th>
-                <th>Section / Link</th>
+                <th id="gradeLinkHeading">Grade / Link</th>
                 <th>Status</th>
                 <th class="sortable" id="sortDateAdded">Date Added ↕</th>
                 <th>Actions</th>
@@ -700,11 +703,30 @@
       { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', section: 'Grade 12 / ABM A', grade: '12', level: 'shs', strand: 'ABM' },
       { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', section: 'Grade 12 / TVL A', grade: '12', level: 'shs', strand: 'TVL' },
       { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', section: 'Grade 12 / TVL A', grade: '12', level: 'shs', strand: 'TVL' },
+      { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', section: 'Unassigned', grade: 'Kindergarten', level: 'elementary' },
+      { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', section: 'Unassigned', grade: 'Kindergarten', level: 'elementary' },
+      { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', section: 'Unassigned', grade: '1', level: 'elementary' },
+      { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', section: 'Unassigned', grade: '1', level: 'elementary' },
+      { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', section: 'Unassigned', grade: '2', level: 'elementary' },
+      { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', section: 'Unassigned', grade: '2', level: 'elementary' },
+      { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', section: 'Unassigned', grade: '3', level: 'elementary' },
+      { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', section: 'Unassigned', grade: '3', level: 'elementary' },
+      { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', section: 'Unassigned', grade: '6', level: 'elementary' },
+      { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', section: 'Unassigned', grade: '6', level: 'elementary' },
     ];
 
     function splitStudentName(name) {
       const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
       return { firstName: parts.shift() || '', lastName: parts.join(' ') };
+    }
+
+    function formatGradeLevel(value) {
+      const raw = String(value || '').trim();
+      if (!raw || /^unassigned$/i.test(raw)) return '';
+      if (/^kindergarten$/i.test(raw)) return 'Kindergarten';
+
+      const match = raw.match(/(?:grade|gr\.?)\s*(\d{1,2})/i) || raw.match(/^(\d{1,2})$/);
+      return match ? `Grade ${match[1]}` : '';
     }
 
     // Keep existing account metadata such as status and date added, while
@@ -715,7 +737,13 @@
       const seed = studentSeedByEmail.get(user.email);
       if (!seed) return user;
       const names = splitStudentName(seed.name);
-      return { ...user, ...names, displayName: seed.name, section: seed.section };
+      return {
+        ...user,
+        ...names,
+        displayName: seed.name,
+        section: seed.section,
+        gradeLevel: formatGradeLevel(seed.grade)
+      };
     });
 
     const existingStudentEmails = new Set(USERS.filter(user => user.role === 'stud').map(user => user.email));
@@ -729,6 +757,7 @@
         email: student.email,
         role: 'stud',
         section: student.section,
+        gradeLevel: formatGradeLevel(student.grade),
         status: 'active',
         dateAdded: 'Jun 10, 2025',
         lrn: '',
@@ -736,6 +765,52 @@
       });
       existingStudentEmails.add(student.email);
     });
+
+    // Account records retain their section assignment for Class Management,
+    // while this page reads the structured grade level for student reporting.
+    // Replace this normalization with API-provided gradeLevel values later.
+    USERS = USERS.map(user => ({
+      ...user,
+      linkedStudents: (user.linkedStudents || []).map(student => ({
+        ...student,
+        gradeLevel: formatGradeLevel(student.gradeLevel || student.grade || student.section)
+      }))
+    }));
+
+    function getStudentGradeLevels(user) {
+      if (user.role !== 'stud') return [];
+
+      const values = Array.isArray(user.gradeLevels) && user.gradeLevels.length
+        ? user.gradeLevels
+        : [user.gradeLevel, user.grade, user.section];
+
+      return [...new Set(values.map(formatGradeLevel).filter(Boolean))];
+    }
+
+    function getLinkedStudentGrade(student) {
+      return formatGradeLevel(student.gradeLevel || student.grade || student.section);
+    }
+
+    function getGradeLinkDisplay(user) {
+      if (user.role === 'par') {
+        if (!user.linkedStudents.length) return 'No linked students';
+        return 'Linked: ' + user.linkedStudents.map(student => {
+          const gradeLevel = getLinkedStudentGrade(student);
+          return student.name + (gradeLevel ? ` (${gradeLevel})` : '');
+        }).join(', ');
+      }
+
+      if (user.role === 'stud') {
+        return getStudentGradeLevels(user).join(', ') || 'Unassigned';
+      }
+
+      return '—';
+    }
+
+    function gradeLevelSortValue(gradeLevel) {
+      if (/^kindergarten$/i.test(gradeLevel)) return 0;
+      return Number((String(gradeLevel).match(/\d+/) || [99])[0]);
+    }
 
     function getSectionDisplay(user) {
       if (user.role === 'par') {
@@ -769,10 +844,36 @@
       select.value = sections.includes(currentValue) ? currentValue : 'all';
     }
 
+    function updateGradeLevelFilter() {
+      const select = document.getElementById('gradeLevelFilter');
+      if (!select) return;
+
+      const isStudentView = activeRole === 'stud';
+      select.hidden = !isStudentView;
+      select.disabled = !isStudentView;
+
+      if (!isStudentView) {
+        select.value = 'all';
+        return;
+      }
+
+      const currentValue = select.value;
+      const gradeLevels = [...new Set(
+        USERS
+          .filter(user => user.role === 'stud')
+          .flatMap(getStudentGradeLevels)
+      )].sort((a, b) => gradeLevelSortValue(a) - gradeLevelSortValue(b) || a.localeCompare(b));
+
+      select.innerHTML = '<option value="all">All Grade Levels</option>' +
+        gradeLevels.map(gradeLevel => `<option value="${gradeLevel}">${gradeLevel}</option>`).join('');
+      select.value = gradeLevels.includes(currentValue) ? currentValue : 'all';
+    }
+
     function getFilteredUsers() {
       const search = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('statusFilter').value;
       const section = document.getElementById('sectionFilter').value;
+      const gradeLevel = document.getElementById('gradeLevelFilter').value;
 
       return USERS.filter(u => {
         const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase();
@@ -783,15 +884,19 @@
         const matchRole = activeRole === 'all' || u.role === activeRole;
         const matchStatus = status === 'all' || u.status === status;
         const matchSection = section === 'all' || sectionDisplay === section;
+        const matchGradeLevel = gradeLevel === 'all' || getStudentGradeLevels(u).includes(gradeLevel);
 
-        return matchSearch && matchRole && matchStatus && matchSection;
+        return matchSearch && matchRole && matchStatus && matchSection && matchGradeLevel;
       });
     }
 
     function renderUsers() {
       renderSectionFilterOptions();
+      updateGradeLevelFilter();
       const tbody = document.getElementById('tableBody');
       const filtered = getFilteredUsers();
+      const showGradeLinkColumn = !['admin', 'fac'].includes(activeRole);
+      document.getElementById('gradeLinkHeading').hidden = !showGradeLinkColumn;
 
       const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
       if (currentPage > totalPages) currentPage = totalPages;
@@ -827,7 +932,7 @@
           </div>
         </td>
         <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
-        <td class="account-scope-cell"><span class="account-scope">${getSectionDisplay(u)}</span></td>
+        ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${getGradeLinkDisplay(u)}</span></td>` : ''}
         <td class="account-status-cell">${statusBadge}</td>
         <td class="date-cell account-date-cell">${u.dateAdded}</td>
         <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
@@ -927,6 +1032,7 @@
           user.email = email;
           user.role = role;
           user.lrn = role === 'stud' ? lrn : '';
+          if (role !== 'stud') user.gradeLevel = '';
           user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
         }
       } else {
@@ -936,6 +1042,7 @@
           displayName: `${firstName} ${lastName}`,
           email, role,
           section: (role === 'stud' || role === 'fac') ? 'Unassigned' : '',
+          gradeLevel: '',
           status: 'active',
           dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           lrn: role === 'stud' ? lrn : '',
@@ -1004,6 +1111,7 @@
         rows.forEach(cols => {
           const record = {};
           headers.forEach((h, i) => record[h] = cols[i] || '');
+          const tableRole = ROLE_OPT_TO_TABLE[role] || role;
 
           USERS.push({
             id: String(nextUserId++),
@@ -1011,8 +1119,11 @@
             lastName: record.lastName || '',
             displayName: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
             email: record.personalEmail || record.email || '',
-            role: ROLE_OPT_TO_TABLE[role] || role,
+            role: tableRole,
             section: 'Unassigned',
+            gradeLevel: tableRole === 'stud'
+              ? formatGradeLevel(record.gradeLevel || record.grade)
+              : '',
             status: 'active',
             dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             lrn: record.lrn || '',
@@ -1327,9 +1438,10 @@
         id: user.id,
         name: [user.honorific, user.firstName, user.lastName].filter(Boolean).join(' '),
         section: getSectionDisplay(user),
+        gradeLevel: getStudentGradeLevels(user)[0] || '',
       }));
 
-    let linkedStudents = []; // [{ id, name, section }]
+    let linkedStudents = []; // [{ id, name, section, gradeLevel }]
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
@@ -1348,7 +1460,7 @@
 
       dropdown.innerHTML = results.map(s => `
       <div
-        onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}')"
+        onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}', '${s.gradeLevel}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
         onmouseenter="this.style.background='var(--gray-50)'"
         onmouseleave="this.style.background=''"
@@ -1361,9 +1473,9 @@
       dropdown.style.display = '';
     }
 
-    function addLinkedStudent(id, name, section) {
+    function addLinkedStudent(id, name, section, gradeLevel = '') {
       if (linkedStudents.find(s => s.id === id)) return;
-      linkedStudents.push({ id, name, section });
+      linkedStudents.push({ id, name, section, gradeLevel: formatGradeLevel(gradeLevel) });
       renderLinkedStudents();
 
       document.getElementById('studentSearchInput').value = '';

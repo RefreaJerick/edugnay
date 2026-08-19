@@ -674,14 +674,14 @@
     // Page data boundary: replace ADMIN_DASHBOARD_DATA with the dashboard
     // endpoint later. Account records are kept as arrays so card totals can
     // be replaced by API collections without changing the renderer.
-    const ADMIN_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections(
-      window.EDUGNAY_CONFIG.getActiveSchool()
-    );
+    // Includes every learner in the local K-12 directory. Replace this
+    // collection with the school's student-count endpoint later.
+    const ADMIN_STUDENT_RECORDS = window.EDUGNAY_CONFIG.getStudentDirectory();
 
     const ADMIN_ACCOUNT_RECORDS = [
       {
         role: 'students',
-        records: window.EDUGNAY_CONFIG.getStudentDirectory(),
+        records: ADMIN_STUDENT_RECORDS,
       },
       {
         role: 'faculty',
@@ -708,7 +708,7 @@
         icon: 'graduation-cap',
         trendClass: 'trend-up',
         label: 'Students',
-        sub: 'Across {sectionCount} sections · JHS',
+        sub: 'Across all configured grade levels',
       },
       {
         id: 'faculty',
@@ -731,7 +731,6 @@
     ];
 
     const ADMIN_DASHBOARD_DATA = {
-      sectionCount: ADMIN_SECTION_RECORDS.filter(section => section.level === 'jhs').length,
       accountRecords: ADMIN_ACCOUNT_RECORDS,
       summaryCards: ADMIN_SUMMARY_CARDS,
     };
@@ -949,7 +948,7 @@
           ...card,
           value,
           trend: card.trend || formatSummaryTrend(value, previousValue),
-          sub: String(card.sub || '').replace('{sectionCount}', String(data.sectionCount ?? 0)),
+          sub: String(card.sub || ''),
         };
       });
     }
