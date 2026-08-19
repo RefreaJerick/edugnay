@@ -249,15 +249,15 @@
 
       </div>
 
-      <!-- Narrative Reports — only shown for journal handler -->
+      <!-- Advisers review reports; Values Education teachers manage journals. -->
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
-        <a class="nav-item" onclick="navigate('reports')">
+        <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
-        <a class="nav-item active">
+        <a class="nav-item active" data-teacher-access="journals">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
@@ -468,21 +468,41 @@
 lucide.createIcons();
 
 /* ══════ DATA ══════ */
+// Shared learner identities, with this page retaining only journal workflow state.
+// Replace JOURNAL_ENTRY_STATE with the journal-entry API response later.
+const JOURNAL_ROSTER_IDS = ['cm-001', 'lr-002', 'mt-012', 'sc-013', 'gb-014', 'na-015'];
+const JOURNAL_ENTRY_STATE = [
+  { studentId: 'cm-001', entry: `This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.`, submitted: true, score: 40, reviewed: true },
+  { studentId: 'lr-002', entry: `I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.`, submitted: true, score: 45, reviewed: true },
+  { studentId: 'mt-012', entry: '', submitted: false, score: null, reviewed: false },
+  { studentId: 'sc-013', entry: `The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item, and I managed to finish before the bell. I will keep practicing this.`, submitted: true, score: null, reviewed: false, late: true },
+  { studentId: 'gb-014', entry: '', submitted: false, score: null, reviewed: false },
+  { studentId: 'na-015', entry: `I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and now I understand when to flip the sign and when not to.`, submitted: true, score: 50, reviewed: true }
+];
+
+function buildJournalStudents(states) {
+  return states
+    .filter(state => JOURNAL_ROSTER_IDS.includes(state.studentId))
+    .map((state, index) => {
+      const student = window.EDUGNAY_CONFIG.students.find(record => record.id === state.studentId);
+      if (!student) return null;
+      return {
+        ...state,
+        id: student.id,
+        name: student.name,
+        av: student.initials,
+        avClass: `av-${String.fromCharCode(97 + (index % 6))}`
+      };
+    })
+    .filter(Boolean);
+}
+
 const SECTIONS = {
   '7-matthew': {
     label: 'Grade 7 – St. Matthew',
     hasPrompt: true,
     prompt: '"Describe a challenge you faced this week in class and how you handled it."',
-    students: [
-      { id:1, name:'Alcantara, Juan B.',    av:'JA', avClass:'av-a', entry:`This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.`, submitted:true, score:40,  reviewed:true  },
-      { id:2, name:'Bautista, Maria C.',    av:'MB', avClass:'av-b', entry:`I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.`, submitted:true, score:45,  reviewed:true  },
-      { id:3, name:'Cruz, Ramon D.',        av:'RC', avClass:'av-c', entry:``, submitted:false, score:null, reviewed:false },
-      { id:4, name:'Dela Torre, Ana F.',    av:'DA', avClass:'av-d', entry:`The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item — two minutes max — and I managed to finish before the bell. I will keep practicing this.`, submitted:true, score:null, reviewed:false },
-      { id:5, name:'Estrada, Jose G.',      av:'EJ', avClass:'av-e', entry:``, submitted:false, score:null, reviewed:false },
-      { id:6, name:'Garcia, Luisa H.',      av:'GL', avClass:'av-f', entry:`I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and watched a short video about it. Now I think I understand when to flip the sign and when not to.`, submitted:true, score:50, reviewed:true  },
-      { id:7, name:'Hernandez, Carlo I.',   av:'HC', avClass:'av-a', entry:`My challenge this week was group work. My groupmates and I disagreed on how to present our solution on the board. We talked it over and decided to combine both approaches to show two different methods. Our teacher appreciated that we showed more than one way.`, submitted:true, score:45, reviewed:false, late:true},
-      { id:8, name:'Ibarra, Rosa J.',       av:'IR', avClass:'av-b', entry:`I had difficulty remembering the formula for the slope of a line. I made a small flashcard and kept it in my notebook. When I looked at it before the quiz it helped me remember.`, submitted:true, score:50,  reviewed:false },
-    ]
+    students: buildJournalStudents(JOURNAL_ENTRY_STATE)
   },
   '8-luke': {
     label: 'Grade 8 – St. Luke',
@@ -554,13 +574,14 @@ let activeStudentIndex = 0;
 
 function buildJournalSummaryCards() {
   const students = Object.values(SECTIONS).flatMap(section => section.students);
-  const submitted = students.filter(student => student.submitted).length;
-  const reviewed = students.filter(student => student.reviewed).length;
+  const submittedStudents = students.filter(student => student.submitted);
+  const pendingReviewStudents = submittedStudents.filter(student => !student.reviewed);
+  const notSubmittedStudents = students.filter(student => !student.submitted);
   return [
-    { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', value: students.length, label: 'Total students', sub: 'Students in your sections' },
-    { tone: 'green', icon: 'send', trend: 'On track', trendClass: 'trend-up', value: submitted, label: 'Submitted this week', sub: 'Entries received so far' },
-    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', value: submitted - reviewed, label: 'Pending review', sub: 'Entries waiting for feedback' },
-    { tone: 'red', icon: 'circle-x', trend: 'Needs follow up', trendClass: 'trend-down', value: students.length - submitted, label: 'Not submitted', sub: 'Students to remind' },
+    { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', records: students, label: 'Total students', sub: 'Students in your sections' },
+    { tone: 'green', icon: 'send', trend: 'On track', trendClass: 'trend-up', records: submittedStudents, label: 'Submitted this week', sub: 'Entries received so far' },
+    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', records: pendingReviewStudents, label: 'Pending review', sub: 'Entries waiting for feedback' },
+    { tone: 'red', icon: 'circle-x', trend: 'Needs follow up', trendClass: 'trend-down', records: notSubmittedStudents, label: 'Not submitted', sub: 'Students to remind' },
   ];
 }
 
@@ -573,7 +594,8 @@ const SECTION_TABS = Object.entries(SECTIONS).map(([key, section]) => ({
 function renderJournalSummary() {
   const strip = document.getElementById('journal-summary-strip');
   if (!strip) return;
-  strip.innerHTML = buildJournalSummaryCards().map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+  strip.innerHTML = buildJournalSummaryCards().map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+  lucide.createIcons();
 }
 
 function renderJournalSectionTabs() {
@@ -664,7 +686,7 @@ function renderTable() {
     }
 
     return `
-      <tr class="${s.reviewed ? 'reviewed' : ''}" onclick="openEntry(${s.id})">
+      <tr class="${s.reviewed ? 'reviewed' : ''}" onclick="openEntry('${s.id}')">
         <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
         <td>
           <div class="student-cell">
@@ -685,7 +707,7 @@ function renderTable() {
         <td class="center">${scoreCellHtml}</td>
         <td class="center">${statusBadge}</td>
         <td>
-          <button class="row-btn primary" onclick="event.stopPropagation();openEntry(${s.id})">
+          <button class="row-btn primary" onclick="event.stopPropagation();openEntry('${s.id}')">
             <i data-lucide="eye" style="width:11px;height:11px;"></i> Review
           </button>
         </td>
@@ -785,6 +807,7 @@ function markReviewed() {
   s.reviewed = true;
 
   renderTable();
+  renderJournalSummary();
   populateModal(s);
   showToast(`${s.name} · marked as reviewed`, 'success');
 }

@@ -68,15 +68,15 @@
 
       </div>
 
-      <!-- Narrative Reports — only shown for journal handler -->
+      <!-- Advisers review reports; Values Education teachers manage journals. -->
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
-        <a class="nav-item active" onclick="navigate('reports')">
+        <a class="nav-item active" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
-        <a class="nav-item" onclick="navigate('journals')">
+        <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
@@ -631,12 +631,18 @@
     },
   ];
 
-  const REPORT_SUMMARY_CARDS = [
-    { tone: 'purple', icon: 'file-text', trend: 'This week', trendClass: 'trend-neu', value: REPORTS.length, label: 'Reports this week', sub: 'New reports received' },
-    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', value: REPORTS.filter(report => report.status === 'pending').length, label: 'Awaiting confirmation', sub: 'Needs your review' },
-    { tone: 'green', icon: 'check-circle', trend: 'Complete', trendClass: 'trend-up', value: REPORTS.filter(report => report.status === 'confirmed').length, label: 'Confirmed and sent', sub: 'Already shared with families' },
-    { tone: 'red', icon: 'alert-triangle', trend: 'Follow up', trendClass: 'trend-down', value: REPORTS.filter(report => report.atRisk).length, label: 'At-risk students', sub: 'May need follow-up' }
-  ];
+  function buildTeacherReportSummaryCards() {
+    const pendingReports = REPORTS.filter(report => report.status === 'pending');
+    const confirmedReports = REPORTS.filter(report => report.status === 'confirmed');
+    const atRiskReports = REPORTS.filter(report => report.atRisk);
+
+    return [
+      { tone: 'purple', icon: 'file-text', trend: 'This week', trendClass: 'trend-neu', records: REPORTS, label: 'Reports this week', sub: 'New reports received' },
+      { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', records: pendingReports, label: 'Awaiting confirmation', sub: 'Needs your review' },
+      { tone: 'green', icon: 'check-circle', trend: 'Complete', trendClass: 'trend-up', records: confirmedReports, label: 'Confirmed and sent', sub: 'Already shared with families' },
+      { tone: 'red', icon: 'alert-triangle', trend: 'Follow up', trendClass: 'trend-down', records: atRiskReports, label: 'At-risk students', sub: 'May need follow-up' }
+    ];
+  }
 
   const PIPELINE_STEPS = [
     { icon: 'user-check', label: 'Attendance', sub: 'All subjects' },
@@ -650,7 +656,8 @@
   function renderTeacherReportSummary() {
     const strip = document.getElementById('report-summary-strip');
     if (!strip) return;
-    strip.innerHTML = REPORT_SUMMARY_CARDS.map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+    strip.innerHTML = buildTeacherReportSummaryCards().map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+    lucide.createIcons();
   }
 
   function renderPipelineSteps() {
@@ -883,6 +890,7 @@
     }
     closeModal('review-modal');
     renderReports();
+    renderTeacherReportSummary();
     showToast('Report confirmed and sent to parent', 'success');
   }
 

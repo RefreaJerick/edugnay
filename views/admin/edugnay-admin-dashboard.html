@@ -670,71 +670,47 @@
   </div>
 
   <script>
-    // Page data boundary: replace ADMIN_DASHBOARD_DATA with the dashboard
-    // endpoint later. Account records are kept as arrays so card totals can
-    // be replaced by API collections without changing the renderer.
-    // Includes every learner in the local K-12 directory. Replace this
-    // collection with the school's student-count endpoint later.
-    const ADMIN_STUDENT_RECORDS = window.EDUGNAY_CONFIG.getStudentDirectory();
-
-    const ADMIN_ACCOUNT_RECORDS = [
-      {
-        role: 'students',
-        records: ADMIN_STUDENT_RECORDS,
-      },
-      {
-        role: 'faculty',
-        records: [
-          { id: 'FAC-001', name: 'Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph' },
-          { id: 'FAC-002', name: 'Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph' },
-          { id: 'FAC-003', name: 'Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph' },
-        ],
-      },
-      {
-        role: 'parents',
-        records: [
-          { id: 'PAR-001', name: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph' },
-          { id: 'PAR-002', name: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph' },
-        ],
-      },
-    ];
+    // Local arrays for the static frontend. Replace these with fetched data
+    // later, then call renderAdminDashboard().
+    const ADMIN_ACCOUNTS = window.EDUGNAY_CONFIG.accounts;
+    const ADMIN_STUDENTS = window.EDUGNAY_CONFIG.students;
 
     const ADMIN_SUMMARY_CARDS = [
       {
         id: 'students',
-        accountRole: 'students',
         tone: 'green',
         icon: 'graduation-cap',
         trendClass: 'trend-up',
+        trend: '— 0%',
         label: 'Students',
         sub: 'Across all configured grade levels',
+        records: ADMIN_STUDENTS,
       },
       {
         id: 'faculty',
-        accountRole: 'faculty',
         tone: 'gold',
         icon: 'book-open',
         trendClass: 'trend-neu',
+        trend: '— 0%',
         label: 'Faculty',
         sub: 'Active teachers this quarter',
+        records: ADMIN_ACCOUNTS,
+        accountRole: 'fac',
       },
       {
         id: 'parents',
-        accountRole: 'parents',
         tone: 'purple',
         icon: 'heart-handshake',
         trendClass: 'trend-up',
+        trend: '— 0%',
         label: 'Parents',
         sub: 'Linked to student accounts',
+        records: ADMIN_ACCOUNTS,
+        accountRole: 'par',
       },
     ];
 
-    const ADMIN_DASHBOARD_DATA = {
-      accountRecords: ADMIN_ACCOUNT_RECORDS,
-      summaryCards: ADMIN_SUMMARY_CARDS,
-    };
-
-    const DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_ACCOUNT_RECORDS.find(item => item.role === 'students')?.records || [];
+    const DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS;
     const dashboardAssignmentState = {
       student: null,
       level: '',
@@ -927,42 +903,25 @@
       updateDashboardAssignmentFields();
     }
 
-    function formatSummaryTrend(current, previous) {
-      if (!Number.isFinite(previous) || previous === 0) return '— 0%';
-      const change = Math.round(((current - previous) / previous) * 100);
-      if (change > 0) return `▲ ${change}%`;
-      if (change < 0) return `▼ ${Math.abs(change)}%`;
-      return '— 0%';
-    }
-
-    function buildAdminSummaryCards(data = ADMIN_DASHBOARD_DATA) {
-      const cards = Array.isArray(data.summaryCards) ? data.summaryCards : [];
-      const accountRecords = Array.isArray(data.accountRecords) ? data.accountRecords : [];
-      return cards.map(card => {
-        const account = accountRecords.find(item => item.role === card.accountRole);
-        const records = Array.isArray(account?.records) ? account.records : [];
-        const value = Number.isFinite(Number(card.value)) ? Number(card.value) : records.length;
-        const previousValue = Number.isFinite(Number(card.previousValue)) ? Number(card.previousValue) : value;
-        return {
-          ...card,
-          value,
-          trend: card.trend || formatSummaryTrend(value, previousValue),
-          sub: String(card.sub || ''),
-        };
-      });
-    }
-
     const ADMIN_QUICK_ACTIONS = [
       { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', action: "openAccountModal(); return false;" },
       { icon: 'user-plus', title: 'Enroll Student to Section', desc: 'Place students in their sections', action: "openStudentModal();" },
       { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
     ];
 
-    function renderAdminDashboardData(data = ADMIN_DASHBOARD_DATA) {
+    function getAdminSummaryRecords(card) {
+      return card.accountRole
+        ? card.records.filter(account => account.role === card.accountRole)
+        : card.records;
+    }
+
+    function renderAdminDashboard() {
       const cards = document.getElementById('admin-summary-cards');
       if (cards) {
-        cards.innerHTML = buildAdminSummaryCards(data).map(card => `
-          <div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
+        cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => {
+          const records = getAdminSummaryRecords(card);
+          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`;
+        }).join('');
       }
       const actions = document.getElementById('admin-quick-actions');
       if (actions) {
@@ -972,7 +931,7 @@
       lucide.createIcons();
     }
 
-    renderAdminDashboardData();
+    renderAdminDashboard();
     renderDashboardStudentOptions();
     dashboardAssignmentState.level = dashboardDefaultLevel() || '';
     updateDashboardAssignmentFields();
@@ -1015,6 +974,11 @@
     renderWeekCalendar();
 
     function openAccountModal() {
+      const form = document.getElementById('createAccountForm');
+      form.reset();
+      document.querySelectorAll('#accountRoleOpts .role-opt').forEach(option => option.classList.remove('selected'));
+      clearLinkedStudents();
+      updateAccountModalFields();
       document.getElementById('accountModalBackdrop').classList.add('open');
     }
 
@@ -1046,15 +1010,13 @@
 
     /* ── STUDENT LIVE SEARCH PICKER ── */
 
-    // Mock student list — replace with a real fetch('/api/students?q=') call when wired to backend
-    const MOCK_STUDENTS = [
-      { id: 'STU-001', name: 'Juan Dela Cruz', section: 'Grade 8 – St. Mark' },
-      { id: 'STU-002', name: 'Ana Santos', section: 'Grade 10 – St. James' },
-      { id: 'STU-003', name: 'Ben Garcia', section: 'Grade 9 – St. Peter' },
-      { id: 'STU-004', name: 'Carlo Mendoza', section: 'Grade 7 – St. Matthew' },
-      { id: 'STU-005', name: 'Maria Flores', section: 'Grade 8 – St. Luke' },
-      { id: 'STU-006', name: 'Jose Ramos', section: 'Grade 7 – St. Mark' },
-    ];
+    // The same student directory powers the assignment modal and parent link picker.
+    // Replace it with a student API response later.
+    const MOCK_STUDENTS = () => ADMIN_STUDENTS.map(student => ({
+      id: student.id,
+      name: student.name,
+      section: student.section || 'Unassigned'
+    }));
 
     let linkedStudents = []; // [{ id, name, section }]
 
@@ -1062,7 +1024,7 @@
       const dropdown = document.getElementById('studentDropdown');
       if (!query.trim()) { dropdown.style.display = 'none'; return; }
 
-      const results = MOCK_STUDENTS.filter(s =>
+      const results = MOCK_STUDENTS().filter(s =>
         s.name.toLowerCase().includes(query.toLowerCase()) &&
         !linkedStudents.find(l => l.id === s.id)
       );
@@ -1110,6 +1072,44 @@
       const dd = document.getElementById('studentDropdown');
       if (dd) dd.style.display = 'none';
     }
+
+    const DASHBOARD_ROLE_MAP = { adm: 'admin', fac: 'fac', stud: 'stud', parents: 'par' };
+
+    document.getElementById('createAccountForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const firstName = String(form.elements.firstName.value || '').trim();
+      const lastName = String(form.elements.lastName.value || '').trim();
+      const email = String(form.elements.email.value || '').trim();
+      const role = DASHBOARD_ROLE_MAP[document.getElementById('accountRole').value];
+      if (!firstName || !lastName || !email || !role) {
+        alert('Please complete the name, school email, and role.');
+        return;
+      }
+
+      const account = {
+        id: `local-${Date.now()}`,
+        firstName,
+        lastName,
+        displayName: `${firstName} ${lastName}`,
+        email,
+        role,
+        section: role === 'stud' || role === 'fac' ? 'Unassigned' : '',
+        sectionId: null,
+        gradeLevel: '',
+        status: 'active',
+        dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        lrn: role === 'stud' ? String(form.elements.lrn?.value || '').trim() : '',
+        linkedStudents: role === 'par' ? [...linkedStudents] : []
+      };
+
+      ADMIN_ACCOUNTS.push(account);
+      if (role === 'stud') window.EDUGNAY_CONFIG.upsertStudentProfile(account);
+
+      closeAccountModal();
+      renderDashboardStudentOptions();
+      renderAdminDashboard();
+    });
 
     function renderLinkedStudents() {
       const tags = document.getElementById('linkedStudentTags');
@@ -1167,6 +1167,28 @@
 
     document.getElementById('studentModalBackdrop').addEventListener('click', function (e) {
       if (e.target === this) closeStudentModal();
+    });
+
+    document.getElementById('assignStudentForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const student = dashboardAssignmentState.student;
+      const section = dashboardAssignmentSections().find(item => item.id === dashboardAssignmentState.section);
+      if (!student || !section) {
+        alert('Choose a student and section first.');
+        return;
+      }
+
+      window.EDUGNAY_CONFIG.updateStudentPlacement(student.id, {
+        level: section.level,
+        grade: section.grade,
+        strand: section.strand || '',
+        section: `${section.grade} / ${section.name}`,
+        sectionId: section.id
+      });
+
+      closeStudentModal();
+      renderDashboardStudentOptions(student.id);
+      renderAdminDashboard();
     });
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });

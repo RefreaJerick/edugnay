@@ -68,12 +68,12 @@
 
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
-        <a class="nav-item" onclick="navigate('reports')">
+        <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
-        <a class="nav-item" onclick="navigate('journals')">
+        <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
@@ -207,13 +207,14 @@
   }
 
   function markAllRead() {
-    NOTIFICATIONS.forEach(n => n.read = true);
-    setReadIds(NOTIFICATIONS.map(n => n.id));
+    const visibleNotifications = getTeacherVisibleNotifications();
+    visibleNotifications.forEach(n => n.read = true);
+    setReadIds(visibleNotifications.map(n => n.id));
     renderNotifList();
   }
 
   function getFilteredNotifs() {
-    return NOTIFICATIONS
+    return getTeacherVisibleNotifications()
       .filter(n => activeNotifFilter === 'unread' ? !n.read : true)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
@@ -235,7 +236,7 @@
       emptyState.style.display = 'flex';
       const emptyTitle = document.getElementById('notifEmptyTitle');
       const emptyText = document.getElementById('notifEmptyText');
-      if (activeNotifFilter === 'unread' && NOTIFICATIONS.length) {
+      if (activeNotifFilter === 'unread' && getTeacherVisibleNotifications().length) {
         emptyTitle.textContent = 'No unread notifications';
         emptyText.textContent = "You're all caught up.";
       } else {

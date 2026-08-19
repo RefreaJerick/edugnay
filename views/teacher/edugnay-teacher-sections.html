@@ -338,15 +338,15 @@
 
       </div>
 
-      <!-- Narrative Reports: only shown for journal handler -->
+      <!-- Advisers review reports; Values Education teachers manage journals. -->
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
-        <a class="nav-item" onclick="navigate('reports')">
+        <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
           <span class="nav-badge">5</span>
         </a>
-        <a class="nav-item" onclick="navigate('journals')">
+        <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
@@ -467,7 +467,7 @@
         <div class="section-info">
           <div class="section-name">Grade 7 – St. Matthew</div>
           <div class="section-meta">
-            <div class="section-meta-item">
+            <div class="section-meta-item" id="sectionAdviserMeta">
               <i data-lucide="book-open" style="width:13px;height:13px;"></i>
               Subject: <strong>Values Education</strong>
             </div>
@@ -499,7 +499,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchTab('students')" id="tab-students">
         <i data-lucide="users" style="width:14px;height:14px;"></i>
-        Students <span class="tab-count">38</span>
+        Students <span class="tab-count" id="studentCount">0</span>
       </button>
       <button class="tab-btn" onclick="switchTab('scores')" id="tab-scores">
         <i data-lucide="clipboard-pen" style="width:14px;height:14px;"></i>
@@ -525,7 +525,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Student List</div>
-            <div class="panel-sub">Grade 7 – St. Matthew · 38 enrolled students</div>
+            <div class="panel-sub" id="studentListMeta">Grade 7 – St. Matthew</div>
           </div>
         </div>
         <div class="search-toolbar">
@@ -551,52 +551,11 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody id="studentTbody">
-              <tr data-student-id="STU-001">
-                <td style="color:var(--gray-400);font-size:12px;">1</td>
-                <td><div class="student-cell"><div class="student-av av-a">JD</div><div><div class="student-name">Juan Dela Cruz</div></div></div></td>
-                <td style="font-size:12px;color:var(--gray-400);">j.delacruz.stud@stcolumban.edu.ph</td>
-                <td><span class="badge badge-green">96%</span></td>
-                <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:#16a34a;">88</span></td>
-                <td><span class="badge badge-green">Passing</span></td>
-              </tr>
-              <tr data-student-id="STU-002">
-                <td style="color:var(--gray-400);font-size:12px;">2</td>
-                <td><div class="student-cell"><div class="student-av av-b">AS</div><div><div class="student-name">Ana Santos</div></div></div></td>
-                <td style="font-size:12px;color:var(--gray-400);">a.santos.stud@stcolumban.edu.ph</td>
-                <td><span class="badge badge-green">100%</span></td>
-                <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:#16a34a;">92</span></td>
-                <td><span class="badge badge-green">Passing</span></td>
-              </tr>
-              <tr data-student-id="STU-003">
-                <td style="color:var(--gray-400);font-size:12px;">3</td>
-                <td><div class="student-cell"><div class="student-av av-c">BG</div><div><div class="student-name">Ben Garcia</div></div></div></td>
-                <td style="font-size:12px;color:var(--gray-400);">b.garcia.stud@stcolumban.edu.ph</td>
-                <td><span class="badge badge-red">72%</span></td>
-                <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:var(--red);">71</span></td>
-                <td><span class="badge badge-red">⚠ Failing</span></td>
-              </tr>
-              <tr data-student-id="STU-004">
-                <td style="color:var(--gray-400);font-size:12px;">4</td>
-                <td><div class="student-cell"><div class="student-av av-d">ML</div><div><div class="student-name">Maria Lopez</div></div></div></td>
-                <td style="font-size:12px;color:var(--gray-400);">m.lopez.stud@stcolumban.edu.ph</td>
-                <td><span class="badge badge-green">94%</span></td>
-                <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:#16a34a;">85</span></td>
-                <td><span class="badge badge-green">Passing</span></td>
-              </tr>
-              <tr data-student-id="STU-005">
-                <td style="color:var(--gray-400);font-size:12px;">5</td>
-                <td><div class="student-cell"><div class="student-av av-e">CM</div><div><div class="student-name">Carlo Mendoza</div></div></div></td>
-                <td style="font-size:12px;color:var(--gray-400);">c.mendoza.stud@stcolumban.edu.ph</td>
-                <td><span class="badge badge-orange">80%</span></td>
-                <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:#d97706;">76</span></td>
-                <td><span class="badge badge-orange">Near Failing</span></td>
-              </tr>
-            </tbody>
+            <tbody id="studentTbody"></tbody>
           </table>
         </div>
-        <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);">
-          Showing 5 of 38 students · <a href="#" style="color:var(--blue-mid);font-weight:600;">View all</a>
+        <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);" id="studentListFooter">
+          Showing 0 students
         </div>
       </div>
     </div>
@@ -764,77 +723,11 @@
                 <th>Remarks <span style="font-weight:400;text-transform:none;font-size:10px;">(optional)</span></th>
               </tr>
             </thead>
-            <tbody id="attTbody">
-              <tr data-student-id="STU-001">
-                <td style="color:var(--gray-400);font-size:12px;">1</td>
-                <td><div class="student-cell"><div class="student-av av-a" style="width:28px;height:28px;font-size:10px;">JD</div><div class="student-name">Juan Dela Cruz</div></div></td>
-                <td class="center">
-                  <div class="att-btn-group" style="justify-content:center;">
-                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
-                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
-                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
-                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
-                  </div>
-                </td>
-                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="e.g. sick leave"/></td>
-              </tr>
-              <tr data-student-id="STU-002">
-                <td style="color:var(--gray-400);font-size:12px;">2</td>
-                <td><div class="student-cell"><div class="student-av av-b" style="width:28px;height:28px;font-size:10px;">AS</div><div class="student-name">Ana Santos</div></div></td>
-                <td class="center">
-                  <div class="att-btn-group" style="justify-content:center;">
-                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
-                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
-                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
-                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
-                  </div>
-                </td>
-                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder=""/></td>
-              </tr>
-              <tr data-student-id="STU-003">
-                <td style="color:var(--gray-400);font-size:12px;">3</td>
-                <td><div class="student-cell"><div class="student-av av-c" style="width:28px;height:28px;font-size:10px;">BG</div><div class="student-name">Ben Garcia</div></div></td>
-                <td class="center">
-                  <div class="att-btn-group" style="justify-content:center;">
-                    <button class="att-btn P" onclick="setAtt(this,'P')">P</button>
-                    <button class="att-btn A selected" onclick="setAtt(this,'A')">A</button>
-                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
-                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
-                  </div>
-                </td>
-                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="4th consecutive absence"/></td>
-              </tr>
-              <tr data-student-id="STU-004">
-                <td style="color:var(--gray-400);font-size:12px;">4</td>
-                <td><div class="student-cell"><div class="student-av av-d" style="width:28px;height:28px;font-size:10px;">ML</div><div class="student-name">Maria Lopez</div></div></td>
-                <td class="center">
-                  <div class="att-btn-group" style="justify-content:center;">
-                    <button class="att-btn P selected" onclick="setAtt(this,'P')">P</button>
-                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
-                    <button class="att-btn L" onclick="setAtt(this,'L')">L</button>
-                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
-                  </div>
-                </td>
-                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder=""/></td>
-              </tr>
-              <tr data-student-id="STU-005">
-                <td style="color:var(--gray-400);font-size:12px;">5</td>
-                <td><div class="student-cell"><div class="student-av av-e" style="width:28px;height:28px;font-size:10px;">CM</div><div class="student-name">Carlo Mendoza</div></div></td>
-                <td class="center">
-                  <div class="att-btn-group" style="justify-content:center;">
-                    <button class="att-btn P" onclick="setAtt(this,'P')">P</button>
-                    <button class="att-btn A" onclick="setAtt(this,'A')">A</button>
-                    <button class="att-btn L selected" onclick="setAtt(this,'L')">L</button>
-                    <button class="att-btn E" onclick="setAtt(this,'E')">E</button>
-                  </div>
-                </td>
-                <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="arrived 15 minutes late"/></td>
-              </tr>
-            </tbody>
+            <tbody id="attTbody"></tbody>
           </table>
         </div>
-        <div style="padding:12px 24px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100);">
-          Showing 5 of 38 · <a href="#" style="color:var(--blue-mid);font-weight:600;">Load all</a>
+        <div style="padding:12px 24px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100);" id="attendanceListFooter">
+          Showing 0 students
         </div>
       </div>
 
@@ -1142,20 +1035,95 @@
   const QUARTER_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
   const ACTIVE_QUARTER = 'Q2';
   const LOCK_PREVIOUS_QUARTERS = true;
+  // A teaching assignment and an advisership are separate records. A teacher
+  // can advise this section even when they have no subject assignment in it.
+  const CURRENT_TEACHER_ASSIGNMENT = {
+    teacherAccountId: '2',
+    sectionId: 'jhs-grade7-matthew',
+    sectionName: 'Grade 7 – St. Matthew',
+    subject: 'Values Education',
+    isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser
+  };
   const CURRENT_TEACHER = 'Ms. Maria Reyes';
-  const CURRENT_TEACHER_ID = 'TCH-002'; // mock ID, replace with session user_id once backend is wired
-  const CURRENT_SECTION = 'Grade 7 – St. Matthew';
-  const CURRENT_SECTION_ID = 'SEC-7MATTHEW'; // mock ID, replace with real section id once backend is wired
-  const CURRENT_SUBJECT = 'Values Education';
+  const CURRENT_TEACHER_ID = CURRENT_TEACHER_ASSIGNMENT.teacherAccountId; // replace with the signed-in account ID later
+  const CURRENT_SECTION = CURRENT_TEACHER_ASSIGNMENT.sectionName;
+  const CURRENT_SECTION_ID = CURRENT_TEACHER_ASSIGNMENT.sectionId;
+  const CURRENT_SUBJECT = CURRENT_TEACHER_ASSIGNMENT.subject;
+  document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
 
-  const STUDENTS = [
-    { id: 'STU-001', name: 'Juan Dela Cruz', av: 'av-a', init: 'JD' },
-    { id: 'STU-002', name: 'Ana Santos',     av: 'av-b', init: 'AS' },
-    { id: 'STU-003', name: 'Ben Garcia',     av: 'av-c', init: 'BG' },
-    { id: 'STU-004', name: 'Maria Lopez',    av: 'av-d', init: 'ML' },
-    { id: 'STU-005', name: 'Carlo Mendoza',  av: 'av-e', init: 'CM' },
-  ];
+  // Shared learner identities; score, attendance, and assignment state below
+  // remain page-specific until their respective API endpoints are available.
+  const CURRENT_SECTION_STUDENT_IDS = ['cm-001', 'lr-002', 'mt-012', 'sc-013', 'gb-014'];
+  const STUDENTS = CURRENT_SECTION_STUDENT_IDS
+    .map(id => window.EDUGNAY_CONFIG.students.find(student => student.id === id))
+    .filter(Boolean)
+    .map((student, index) => ({
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      av: `av-${String.fromCharCode(97 + index)}`,
+      init: student.initials
+    }));
   const STUDENTS_BY_ID = Object.fromEntries(STUDENTS.map(s => [s.id, s]));
+
+  const STUDENT_PROGRESS = [
+    { studentId: 'cm-001', attendanceRate: '96%', grade: 88, status: 'Passing', tone: 'green' },
+    { studentId: 'lr-002', attendanceRate: '100%', grade: 92, status: 'Passing', tone: 'green' },
+    { studentId: 'mt-012', attendanceRate: '72%', grade: 71, status: 'Failing', tone: 'red' },
+    { studentId: 'sc-013', attendanceRate: '94%', grade: 85, status: 'Passing', tone: 'green' },
+    { studentId: 'gb-014', attendanceRate: '80%', grade: 76, status: 'Near Failing', tone: 'orange' }
+  ];
+
+  function renderTeacherStudentList() {
+    const tbody = document.getElementById('studentTbody');
+    if (!tbody) return;
+    const progressByStudent = Object.fromEntries(STUDENT_PROGRESS.map(record => [record.studentId, record]));
+    const gradeColor = { green: '#16a34a', orange: '#d97706', red: 'var(--red)' };
+
+    tbody.innerHTML = STUDENTS.map((student, index) => {
+      const progress = progressByStudent[student.id] || { attendanceRate: '—', grade: '—', status: 'Pending', tone: 'gray' };
+      return `
+        <tr data-student-id="${student.id}">
+          <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
+          <td><div class="student-cell"><div class="student-av ${student.av}">${student.init}</div><div><div class="student-name">${student.name}</div></div></div></td>
+          <td style="font-size:12px;color:var(--gray-400);">${student.email}</td>
+          <td><span class="badge badge-${progress.tone}">${progress.attendanceRate}</span></td>
+          <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.tone] || 'var(--gray-400)'};">${progress.grade}</span></td>
+          <td><span class="badge badge-${progress.tone}">${progress.status}</span></td>
+        </tr>`;
+    }).join('');
+
+    const count = String(STUDENTS.length);
+    document.getElementById('studentCount').textContent = count;
+    document.getElementById('studentListMeta').textContent = `Grade 7 – St. Matthew · ${count} enrolled students`;
+    document.getElementById('studentListFooter').textContent = `Showing ${count} students`;
+  }
+
+  const ATTENDANCE_REMARKS = {
+    'mt-012': '4th consecutive absence',
+    'gb-014': 'arrived 15 minutes late'
+  };
+
+  function renderTeacherAttendanceRows() {
+    const tbody = document.getElementById('attTbody');
+    if (!tbody) return;
+    const record = ATTENDANCE_RECORDS[APP_TODAY] || {};
+
+    tbody.innerHTML = STUDENTS.map((student, index) => {
+      const status = record[student.id] || 'P';
+      const buttons = ['P', 'A', 'L', 'E'].map(code => (
+        `<button class="att-btn ${code} ${status === code ? 'selected' : ''}" onclick="setAtt(this,'${code}')">${code}</button>`
+      )).join('');
+      return `
+        <tr data-student-id="${student.id}">
+          <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
+          <td><div class="student-cell"><div class="student-av ${student.av}" style="width:28px;height:28px;font-size:10px;">${student.init}</div><div class="student-name">${student.name}</div></div></td>
+          <td class="center"><div class="att-btn-group" style="justify-content:center;">${buttons}</div></td>
+          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="${ATTENDANCE_REMARKS[student.id] || ''}"></td>
+        </tr>`;
+    }).join('');
+    document.getElementById('attendanceListFooter').textContent = `Showing ${STUDENTS.length} students`;
+  }
 
   const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
   let pendingReopenQuarter = null;
@@ -1310,11 +1278,11 @@
         { name: 'Qtrly Exam', max: 100, cat: 'QA' },
       ],
       scores: {
-        'STU-001': [18, 17, 26, 85, 42, 80],
-        'STU-002': [20, 19, 29, 92, 48, 88],
-        'STU-003': [12, 14, 20, 68, null, 65],
-        'STU-004': [16, 18, 25, 80, null, 76],
-        'STU-005': [15, 13, 22, 74, 38, 70],
+        'cm-001': [18, 17, 26, 85, 42, 80],
+        'lr-002': [20, 19, 29, 92, 48, 88],
+        'mt-012': [12, 14, 20, 68, null, 65],
+        'sc-013': [16, 18, 25, 80, null, 76],
+        'gb-014': [15, 13, 22, 74, 38, 70],
       }
     },
     Q2: {
@@ -1328,11 +1296,11 @@
         { name: 'Qtrly Exam', max: 100, cat: 'QA' },
       ],
       scores: {
-        'STU-001': [45, 28, 18, 88, 90, 45, 82],
-        'STU-002': [50, 30, 20, 95, 92, 50, 90],
-        'STU-003': [30, 18, 12, 70, 65, null, 68],
-        'STU-004': [42, 25, 17, 85, 88, null, 80],
-        'STU-005': [38, 20, 14, 78, 75, 40, 72],
+        'cm-001': [45, 28, 18, 88, 90, 45, 82],
+        'lr-002': [50, 30, 20, 95, 92, 50, 90],
+        'mt-012': [30, 18, 12, 70, 65, null, 68],
+        'sc-013': [42, 25, 17, 85, 88, null, 80],
+        'gb-014': [38, 20, 14, 78, 75, 40, 72],
       }
     },
     Q3: { components: [], scores: {} },
@@ -1498,13 +1466,13 @@
 
   // Built from the Attendance History table below — stand-in until a real per-day store exists
   const ATTENDANCE_RECORDS = {
-    '2025-06-02': { 'STU-001':'P','STU-002':'P','STU-003':'A','STU-004':'P','STU-005':'L' },
-    '2025-06-03': { 'STU-001':'P','STU-002':'P','STU-003':'A','STU-004':'E','STU-005':'P' },
-    '2025-06-04': { 'STU-001':'P','STU-002':'P','STU-003':'A','STU-004':'P','STU-005':'A' },
-    '2025-06-05': { 'STU-001':'P','STU-002':'P','STU-003':'P','STU-004':'P','STU-005':'P' },
-    '2025-06-06': { 'STU-001':'P','STU-002':'P','STU-003':'A','STU-004':'P','STU-005':'P' },
-    '2025-06-09': { 'STU-001':'L','STU-002':'P','STU-003':'A','STU-004':'P','STU-005':'P' },
-    '2025-06-10': { 'STU-001':'P','STU-002':'P','STU-003':'A','STU-004':'P','STU-005':'L' },
+    '2025-06-02': { 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'L' },
+    '2025-06-03': { 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'E','gb-014':'P' },
+    '2025-06-04': { 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'A' },
+    '2025-06-05': { 'cm-001':'P','lr-002':'P','mt-012':'P','sc-013':'P','gb-014':'P' },
+    '2025-06-06': { 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'P' },
+    '2025-06-09': { 'cm-001':'L','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'P' },
+    '2025-06-10': { 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'L' },
   };
 
   function formatAttDate(dateStr) {
@@ -1619,9 +1587,9 @@
 
   /* ── ASSIGNMENTS ── */
   let ASSIGNMENTS = [
-    { id: 1, title: 'Seatwork 1 – Kindness and Respect', subject: 'Values Education', dueDate: '2025-06-09', done: new Set(['STU-001', 'STU-002', 'STU-004', 'STU-005']) },
-    { id: 2, title: 'Quiz 1 Review – Core Values', subject: 'Values Education', dueDate: '2025-06-11', done: new Set(['STU-002']) },
-    { id: 3, title: 'Activity 1 – Good Citizenship', subject: 'Values Education', dueDate: '2025-06-13', done: new Set(['STU-001', 'STU-002', 'STU-004']) },
+    { id: 1, title: 'Seatwork 1 – Kindness and Respect', subject: 'Values Education', dueDate: '2025-06-09', done: new Set(['cm-001', 'lr-002', 'sc-013', 'gb-014']) },
+    { id: 2, title: 'Quiz 1 Review – Core Values', subject: 'Values Education', dueDate: '2025-06-11', done: new Set(['lr-002']) },
+    { id: 3, title: 'Activity 1 – Good Citizenship', subject: 'Values Education', dueDate: '2025-06-13', done: new Set(['cm-001', 'lr-002', 'sc-013']) },
   ];
   let nextAssignmentId = 4;
 
@@ -1703,7 +1671,8 @@
     renderAssignments();
   }
 
-
+  renderTeacherStudentList();
+  renderTeacherAttendanceRows();
   renderScoreTable(ACTIVE_QUARTER);
 
   renderAssignments();

@@ -626,98 +626,9 @@
     const ROLE_OPT_TO_TABLE = { adm: 'admin', fac: 'fac', stud: 'stud', parents: 'par' };
     const TABLE_TO_ROLE_OPT = { admin: 'adm', fac: 'fac', stud: 'stud', par: 'parents' };
 
-    // Seed data starts with the core accounts below. Replace the local
-    // collections with a real fetch('/api/users') once the backend exists.
-    let USERS = [
-      { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
-      { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-      { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
-      { id: '4', firstName: 'Juan', lastName: 'Dela Cruz', displayName: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 8 / St. Luke', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-      { id: '5', firstName: 'Ana', lastName: 'Santos', displayName: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 10 / St. James', status: 'active', dateAdded: 'May 26, 2025', lrn: '', linkedStudents: [] },
-      { id: '6', firstName: 'Ben', lastName: 'Garcia', displayName: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 9 / St. Paul', status: 'inactive', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-      { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
-      { id: '8', firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'inactive', dateAdded: 'May 24, 2025', lrn: '', linkedStudents: [{ id: 'STU-M-CRUZ', name: 'M. Cruz', section: 'Gr. 7' }] },
-      { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 9 / St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-      { id: '10', firstName: 'Carlo', lastName: 'Mendoza', displayName: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', role: 'stud', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-    ];
-
-    /*
-     * Student accounts mirror the records used by Class Management. Keep this
-     * as a local collection for the static frontend; replace it with the
-     * students returned by the users/students API during backend integration.
-     */
-    const STUDENT_ACCOUNT_SEED = [
-      { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Mark', grade: '7', level: 'jhs' },
-      { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', section: 'Grade 8 / St. Luke', grade: '8', level: 'jhs' },
-      { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', section: 'Grade 8 / St. John', grade: '8', level: 'jhs' },
-      { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Peter', grade: '9', level: 'jhs' },
-      { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Paul', grade: '9', level: 'jhs' },
-      { id: 'as-008', name: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', section: 'Grade 10 / St. James', grade: '10', level: 'jhs' },
-      { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', section: 'Unassigned', grade: '', level: 'jhs' },
-      { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', section: 'Unassigned', grade: '', level: 'jhs' },
-      { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', section: 'Unassigned', grade: '', level: 'jhs' },
-      { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Matthew', grade: '7', level: 'jhs' },
-      { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Mark', grade: '7', level: 'jhs' },
-      { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Mark', grade: '7', level: 'jhs' },
-      { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Mark', grade: '7', level: 'jhs' },
-      { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', section: 'Grade 7 / St. Mark', grade: '7', level: 'jhs' },
-      { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', section: 'Grade 8 / St. Luke', grade: '8', level: 'jhs' },
-      { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', section: 'Grade 8 / St. Luke', grade: '8', level: 'jhs' },
-      { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', section: 'Grade 8 / St. Luke', grade: '8', level: 'jhs' },
-      { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', section: 'Grade 8 / St. Luke', grade: '8', level: 'jhs' },
-      { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', section: 'Grade 8 / St. John', grade: '8', level: 'jhs' },
-      { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', section: 'Grade 8 / St. John', grade: '8', level: 'jhs' },
-      { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', section: 'Grade 8 / St. John', grade: '8', level: 'jhs' },
-      { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', section: 'Grade 8 / St. John', grade: '8', level: 'jhs' },
-      { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Peter', grade: '9', level: 'jhs' },
-      { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Peter', grade: '9', level: 'jhs' },
-      { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Peter', grade: '9', level: 'jhs' },
-      { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Peter', grade: '9', level: 'jhs' },
-      { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Paul', grade: '9', level: 'jhs' },
-      { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Paul', grade: '9', level: 'jhs' },
-      { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Paul', grade: '9', level: 'jhs' },
-      { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', section: 'Grade 9 / St. Paul', grade: '9', level: 'jhs' },
-      { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', section: 'Grade 10 / St. James', grade: '10', level: 'jhs' },
-      { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', section: 'Grade 10 / St. James', grade: '10', level: 'jhs' },
-      { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', section: 'Grade 10 / St. James', grade: '10', level: 'jhs' },
-      { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', section: 'Grade 10 / St. James', grade: '10', level: 'jhs' },
-      { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', section: 'Grade 10 / St. Thomas', grade: '10', level: 'jhs' },
-      { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', section: 'Grade 10 / St. Thomas', grade: '10', level: 'jhs' },
-      { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', section: 'Grade 10 / St. Thomas', grade: '10', level: 'jhs' },
-      { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', section: 'Grade 10 / St. Thomas', grade: '10', level: 'jhs' },
-      { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', section: 'Grade 4 / St. Luke', grade: '4', level: 'elementary' },
-      { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', section: 'Grade 4 / St. Luke', grade: '4', level: 'elementary' },
-      { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', section: 'Grade 5 / St. Mark', grade: '5', level: 'elementary' },
-      { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', section: 'Grade 5 / St. Mark', grade: '5', level: 'elementary' },
-      { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', section: 'Grade 11 / STEM A', grade: '11', level: 'shs', strand: 'STEM' },
-      { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', section: 'Grade 11 / STEM A', grade: '11', level: 'shs', strand: 'STEM' },
-      { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', section: 'Grade 11 / HUMSS A', grade: '11', level: 'shs', strand: 'HUMSS' },
-      { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', section: 'Grade 11 / HUMSS A', grade: '11', level: 'shs', strand: 'HUMSS' },
-      { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', section: 'Grade 12 / ABM A', grade: '12', level: 'shs', strand: 'ABM' },
-      { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', section: 'Grade 12 / ABM A', grade: '12', level: 'shs', strand: 'ABM' },
-      { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', section: 'Grade 12 / TVL A', grade: '12', level: 'shs', strand: 'TVL' },
-      { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', section: 'Grade 12 / TVL A', grade: '12', level: 'shs', strand: 'TVL' },
-      { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', section: 'Unassigned', grade: 'Kindergarten', level: 'elementary' },
-      { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', section: 'Unassigned', grade: 'Kindergarten', level: 'elementary' },
-      { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', section: 'Unassigned', grade: '1', level: 'elementary' },
-      { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', section: 'Unassigned', grade: '1', level: 'elementary' },
-      { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', section: 'Unassigned', grade: '2', level: 'elementary' },
-      { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', section: 'Unassigned', grade: '2', level: 'elementary' },
-      { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', section: 'Unassigned', grade: '3', level: 'elementary' },
-      { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', section: 'Unassigned', grade: '3', level: 'elementary' },
-      { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', section: 'Unassigned', grade: '6', level: 'elementary' },
-      { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', section: 'Unassigned', grade: '6', level: 'elementary' },
-    ];
-
-    function splitStudentName(name) {
-      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-      return { firstName: parts.shift() || '', lastName: parts.join(' ') };
-    }
+    // One shared account source for Admin Users and dashboard role counts.
+    // Replace it with fetch('/api/users') once the backend exists.
+    const USERS = window.EDUGNAY_CONFIG.accounts;
 
     function formatGradeLevel(value) {
       const raw = String(value || '').trim();
@@ -728,53 +639,23 @@
       return match ? `Grade ${match[1]}` : '';
     }
 
-    // Keep existing account metadata such as status and date added, while
-    // bringing the student name and section into sync with Class Management.
-    const studentSeedByEmail = new Map(STUDENT_ACCOUNT_SEED.map(student => [student.email, student]));
-    USERS = USERS.map(user => {
-      if (user.role !== 'stud') return user;
-      const seed = studentSeedByEmail.get(user.email);
-      if (!seed) return user;
-      const names = splitStudentName(seed.name);
-      return {
-        ...user,
-        ...names,
-        displayName: seed.name,
-        section: seed.section,
-        gradeLevel: formatGradeLevel(seed.grade)
-      };
-    });
-
-    const existingStudentEmails = new Set(USERS.filter(user => user.role === 'stud').map(user => user.email));
-    STUDENT_ACCOUNT_SEED.forEach(student => {
-      if (existingStudentEmails.has(student.email)) return;
-      const names = splitStudentName(student.name);
-      USERS.push({
-        id: `student-${student.id}`,
-        ...names,
-        displayName: student.name,
-        email: student.email,
-        role: 'stud',
-        section: student.section,
-        gradeLevel: formatGradeLevel(student.grade),
-        status: 'active',
-        dateAdded: 'Jun 10, 2025',
-        lrn: '',
-        linkedStudents: [],
-      });
-      existingStudentEmails.add(student.email);
-    });
-
-    // Account records retain their section assignment for Class Management,
-    // while this page reads the structured grade level for student reporting.
-    // Replace this normalization with API-provided gradeLevel values later.
-    USERS = USERS.map(user => ({
-      ...user,
-      linkedStudents: (user.linkedStudents || []).map(student => ({
+    // Normalize linked child display data while the frontend uses local arrays.
+    // API account records can provide gradeLevel directly later.
+    USERS.forEach(user => {
+      user.linkedStudents = (user.linkedStudents || []).map(student => ({
         ...student,
         gradeLevel: formatGradeLevel(student.gradeLevel || student.grade || student.section)
-      }))
-    }));
+      }));
+    });
+
+    function syncStudentProfile(user) {
+      if (user.role !== 'stud') return null;
+      return window.EDUGNAY_CONFIG.upsertStudentProfile(user, {
+        grade: user.gradeLevel || '',
+        section: user.section || 'Unassigned',
+        sectionId: user.sectionId || null
+      });
+    }
 
     function getStudentGradeLevels(user) {
       if (user.role !== 'stud') return [];
@@ -1025,6 +906,7 @@
       if (userId) {
         const user = USERS.find(u => u.id === userId);
         if (user) {
+          const wasStudent = user.role === 'stud';
           user.firstName = firstName;
           user.lastName = lastName;
           user.displayName = `${firstName} ${lastName}`;
@@ -1033,9 +915,11 @@
           user.lrn = role === 'stud' ? lrn : '';
           if (role !== 'stud') user.gradeLevel = '';
           user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
+          if (wasStudent && role !== 'stud') window.EDUGNAY_CONFIG.removeStudentProfile(user);
+          if (role === 'stud') syncStudentProfile(user);
         }
       } else {
-        USERS.push({
+        const user = {
           id: String(nextUserId++),
           firstName, lastName,
           displayName: `${firstName} ${lastName}`,
@@ -1046,7 +930,9 @@
           dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           lrn: role === 'stud' ? lrn : '',
           linkedStudents: role === 'par' ? [...linkedStudents] : [],
-        });
+        };
+        USERS.push(user);
+        syncStudentProfile(user);
       }
 
       closeAccountModal();
@@ -1080,7 +966,11 @@
       e.preventDefault();
 
       const userId = document.getElementById('deleteUserId').value;
-      USERS = USERS.filter(u => u.id !== userId);
+      const index = USERS.findIndex(user => user.id === userId);
+      if (index >= 0) {
+        const [user] = USERS.splice(index, 1);
+        if (user.role === 'stud') window.EDUGNAY_CONFIG.removeStudentProfile(user);
+      }
 
       closeDeleteModal();
       renderUsers();
@@ -1112,7 +1002,7 @@
           headers.forEach((h, i) => record[h] = cols[i] || '');
           const tableRole = ROLE_OPT_TO_TABLE[role] || role;
 
-          USERS.push({
+          const user = {
             id: String(nextUserId++),
             firstName: record.firstName || '',
             lastName: record.lastName || '',
@@ -1127,7 +1017,9 @@
             dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             lrn: record.lrn || '',
             linkedStudents: [],
-          });
+          };
+          USERS.push(user);
+          syncStudentProfile(user);
         });
 
         closeImportModal();
@@ -1434,7 +1326,7 @@
     const MOCK_STUDENTS = () => USERS
       .filter(user => user.role === 'stud')
       .map(user => ({
-        id: user.id,
+        id: user.studentId || user.id,
         name: [user.honorific, user.firstName, user.lastName].filter(Boolean).join(' '),
         section: getSectionDisplay(user),
         gradeLevel: getStudentGradeLevels(user)[0] || '',

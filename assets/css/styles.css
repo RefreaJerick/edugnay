@@ -435,6 +435,12 @@ body.drawer-open .sidebar {
   text-decoration: none;
 }
 
+/* Teacher-only sidebar items respect role and subject access rules. */
+.sidebar [data-teacher-access][hidden],
+.sidebar #reports-nav[hidden] {
+  display: none !important;
+}
+
 .nav-item:hover {
   background: rgba(255,255,255,0.07);
 }

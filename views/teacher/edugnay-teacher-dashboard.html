@@ -70,15 +70,15 @@
 
         </div>
 
-        <!-- Narrative Reports — only shown for journal handler -->
+        <!-- Advisers review reports; Values Education teachers manage journals. -->
         <div class="nav-section" id="reports-nav">
           <div class="nav-section-label">Reports</div>
-          <a class="nav-item" onclick="navigate('reports')">
+          <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
             <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
             <span class="nav-label">Narrative Reports</span>
             <span class="nav-badge">5</span>
           </a>
-          <a class="nav-item" onclick="navigate('journals')">
+          <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
             <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
             <span class="nav-label">Student Journals</span>
           </a>
@@ -240,7 +240,7 @@
                 <div class="section-card-top">
                   <div class="section-card-main">
                     <div class="section-card-name">Grade 7 – St. Matthew</div>
-                    <div class="section-card-sub">Class Adviser · Math</div>
+                    <div class="section-card-sub">Class Adviser · Values Education</div>
                   </div>
                 </div>
                 <div class="section-card-divider"></div>
@@ -465,9 +465,9 @@
                 <option value="all">All My Sections</option>
                 <option value="7-matthew">Grade 7 – St. Matthew</option>
                 <option value="8-luke">Grade 8 – St. Luke</option>
-                <option value="8-mark">Grade 8 – St. Mark</option>
+                <option value="8-john">Grade 8 – St. John</option>
                 <option value="9-peter">Grade 9 – St. Peter</option>
-                <option value="9-john">Grade 9 – St. John</option>
+                <option value="9-paul">Grade 9 – St. Paul</option>
               </select>
             </div>
             <div class="flag-grid-single" id="flagGridSingle">
@@ -541,14 +541,35 @@
   <script>
     lucide.createIcons();
 
-    // Page data boundary: replace these arrays with dashboard endpoints later.
+    // Page data boundary: replace this array with the teacher dashboard API later.
+    // Advisership and a subject assignment stay separate, so subject can be blank.
     const TEACHER_SECTIONS = [
-      { grade: '7', id: '7-matthew', name: 'Grade 7 - St. Matthew', sub: 'Class Adviser · Math', students: '38', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '8', id: '8-luke', name: 'Grade 8 - St. Luke', sub: 'Math', students: '36', attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '8', id: '8-mark', name: 'Grade 8 - St. Mark', sub: 'Science', students: '35', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '9', id: '9-peter', name: 'Grade 9 - St. Peter', sub: 'Math', students: '37', attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '9', id: '9-john', name: 'Grade 9 - St. John', sub: 'Science', students: '34', attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
+      { grade: '7', id: '7-matthew', sourceSectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subject: 'Values Education', isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '8', id: '8-luke', sourceSectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '8', id: '8-john', sourceSectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subject: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '9', id: '9-peter', sourceSectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '9', id: '9-paul', sourceSectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subject: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
     ];
+
+    function getTeacherSectionSub(section) {
+      return [section.isAdviser ? 'Class Adviser' : '', section.subject || '']
+        .filter(Boolean)
+        .join(' · ');
+    }
+
+    // The dashboard derives its roster from the same shared student directory
+    // used by Admin Users and Class Management. An API response can replace this
+    // filtered array later without changing the card or section renderers.
+    const TEACHER_STUDENT_RECORDS = window.EDUGNAY_CONFIG.students
+      .filter(student => TEACHER_SECTIONS.some(section => section.sourceSectionId === student.sectionId))
+      .map(student => ({
+        ...student,
+        teacherSectionId: TEACHER_SECTIONS.find(section => section.sourceSectionId === student.sectionId).id
+      }));
+
+    function getTeacherSectionStudentCount(sectionId) {
+      return TEACHER_STUDENT_RECORDS.filter(student => student.teacherSectionId === sectionId).length;
+    }
 
     const TEACHER_REPORTS_TO_CONFIRM = [
       { id: 3, studentName: 'Cruz, Ramon D.', status: 'pending' },
@@ -558,57 +579,57 @@
       { id: 8, studentName: 'Ibarra, Rosa J.', status: 'pending' }
     ];
 
-    const TEACHER_IS_ADVISER = TEACHER_SECTIONS.some(section => section.sub.includes('Class Adviser'));
+    const FLAGGED_STUDENTS = [
+      { name: 'Ben Garcia', initials: 'BG', section: '9-peter', detail: 'Grade 9 - St. Peter', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
+      { name: 'Sofia Cruz', initials: 'SC', section: '8-luke', detail: 'Grade 8 - St. Luke', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
+      { name: 'Noel Pascual', initials: 'NP', section: '9-paul', detail: 'Grade 9 - St. Paul', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
+      { name: 'Uma Reyes', initials: 'UR', section: '7-matthew', detail: 'Grade 7 - St. Matthew', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
+    ];
+
+    const TEACHER_IS_ADVISER = window.EDUGNAY_TEACHER_ACCESS.isAdviser;
 
     const TEACHER_SUMMARY_CARDS = [
       {
         tone: 'green',
         icon: 'graduation-cap',
         label: 'Total Students',
-        getValue: () => TEACHER_SECTIONS.reduce((total, section) => total + Number(section.students), 0),
-        getSub: () => `Across ${TEACHER_SECTIONS.length} assigned sections`
+        sub: 'Across assigned sections',
+        records: TEACHER_STUDENT_RECORDS,
       },
       {
         tone: 'purple',
         icon: 'school',
         label: 'Sections Handled',
-        getValue: () => TEACHER_SECTIONS.length,
-        sub: 'Assigned for the current term'
+        sub: 'Assigned for the current term',
+        records: TEACHER_SECTIONS,
       },
       TEACHER_IS_ADVISER
         ? {
             tone: 'gold',
             icon: 'hourglass',
             label: 'Reports to Confirm',
-            getValue: () => TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length,
-            getSub: () => 'Ready for your review'
+            sub: 'Ready for your review',
+            records: TEACHER_REPORTS_TO_CONFIRM,
           }
         : {
             tone: 'red',
             icon: 'alert-triangle',
             label: 'Needs Attention',
-            getValue: () => FLAGGED_STUDENTS.length,
-            getSub: () => 'Flagged students to review'
+            sub: 'Flagged students to review',
+            records: FLAGGED_STUDENTS,
           }
     ];
 
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = [
       { title: 'Q2 Grade Encoding Deadline: June 14', tag: 'Urgent', tagClass: 'badge-red', body: 'All subject teachers must complete Q2 grade encoding no later than June 14, 2025.', time: 'Today, 8:00 AM', author: 'Admin' },
       { title: 'Foundation Day: June 20, 2025', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. All faculty are expected to attend the program.', time: 'May 30, 10:00 AM', author: 'Admin' },
-      { title: 'Journal Window Open: Friday', tag: 'Normal', tagClass: 'badge-blue', body: 'Remind students to submit weekly journal entries before 11:59 PM Friday.', time: 'Yesterday, 3:00 PM', author: 'Admin' }
+      { title: 'Journal Window Open: Friday', tag: 'Normal', tagClass: 'badge-blue', body: 'Remind students to submit weekly journal entries before 11:59 PM Friday.', time: 'Yesterday, 3:00 PM', author: 'Admin', access: 'journals' }
     ];
 
     const PENDING_TASKS = [
-      { title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" },
+      ...(TEACHER_IS_ADVISER ? [{ title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
       { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
       { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
-    ];
-
-    const FLAGGED_STUDENTS = [
-      { name: 'Ben Garcia', initials: 'BG', section: '9-peter', detail: 'Grade 9 - St. Peter', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
-      { name: 'Sofia Cruz', initials: 'SC', section: '8-luke', detail: 'Grade 8 - St. Luke', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
-      { name: 'Noel Pascual', initials: 'NP', section: '9-john', detail: 'Grade 9 - St. John', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
-      { name: 'Uma Reyes', initials: 'UR', section: '7-matthew', detail: 'Grade 7 - St. Matthew', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
     ];
 
     function renderTeacherDashboardData() {
@@ -619,9 +640,9 @@
             <div class="stat-card-top">
               <div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div>
             </div>
-            <div class="stat-card-num">${typeof card.getValue === 'function' ? card.getValue() : card.value}</div>
+            <div class="stat-card-num">${card.records.length}</div>
             <div class="stat-card-label">${card.label}</div>
-            <div class="stat-card-sub">${typeof card.getSub === 'function' ? card.getSub() : card.sub}</div>
+            <div class="stat-card-sub">${card.sub}</div>
           </div>`).join('');
       }
 
@@ -630,9 +651,9 @@
         sectionList.innerHTML = TEACHER_SECTIONS.map(section => `
           <div class="section-card" data-grade="${section.grade}" onclick="navigate('section','${section.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); navigate('section','${section.id}'); }" role="button" tabindex="0">
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${section.sub}</div></div></div>
+            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${getTeacherSectionSub(section)}</div></div></div>
             <div class="section-card-divider"></div>
-            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${section.students}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
+            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.id)}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
           </div>`).join('');
 
         const sectionCount = document.getElementById('teacherSectionCount');
@@ -641,7 +662,9 @@
 
       const announcements = document.getElementById('teacher-dashboard-announcements');
       if (announcements) {
-        announcements.innerHTML = TEACHER_DASHBOARD_ANNOUNCEMENTS.map(item => `
+        announcements.innerHTML = TEACHER_DASHBOARD_ANNOUNCEMENTS
+          .filter(item => !item.access || teacherCanAccess(item.access))
+          .map(item => `
           <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div><div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
       }
 

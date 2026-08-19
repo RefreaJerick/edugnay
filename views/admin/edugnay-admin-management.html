@@ -961,16 +961,13 @@ const adviserMap = {
 /* ══════════════════════════════════════════════
    DATA ARRAYS
 ══════════════════════════════════════════════ */
-const SECTIONS_DATA = [
-  { id: 'st-matthew', grade: '7', name: 'St. Matthew', students: 38, subjects: 6, capacity: 40, adviser: 'Ms. Maria Reyes', adviserInitials: 'MR' },
-  { id: 'st-mark',    grade: '7', name: 'St. Mark',    students: 34, subjects: 6, capacity: 40, adviser: 'Ms. Carla Dizon', adviserInitials: 'CD' },
-  { id: 'st-luke',    grade: '8', name: 'St. Luke',    students: 36, subjects: 7, capacity: 40, adviser: 'Ms. Lara Villanueva', adviserInitials: 'LV' },
-  { id: 'st-john',    grade: '8', name: 'St. John',    students: 34, subjects: 7, capacity: 40, adviser: null, adviserInitials: null },
-  { id: 'st-peter',   grade: '9', name: 'St. Peter',   students: 37, subjects: 8, capacity: 40, adviser: 'Mr. Rico Santos', adviserInitials: 'RS' },
-  { id: 'st-paul',    grade: '9', name: 'St. Paul',    students: 37, subjects: 8, capacity: 40, adviser: 'Ms. Jana Mendez', adviserInitials: 'JM' },
-  { id: 'st-james',   grade: '10', name: 'St. James',  students: 35, subjects: 8, capacity: 40, adviser: 'Mr. Paolo Tan', adviserInitials: 'PT' },
-  { id: 'st-thomas',  grade: '10', name: 'St. Thomas', students: 33, subjects: 8, capacity: 40, adviser: 'Ms. Ana Garcia', adviserInitials: 'AG' },
-];
+// The School Settings structure is the shared section source for Class Management.
+const SECTIONS_DATA = window.EDUGNAY_CONFIG
+  .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+  .map(section => ({
+    ...section,
+    students: section.enrolled,
+  }));
 
 const GRADE_BADGE_CLASS = { 7: 'badge-blue', 8: 'badge-gold', 9: 'badge-green', 10: 'badge-orange' };
 const GRADE_PILL_CLASS  = { 7: 'gp-7', 8: 'gp-8', 9: 'gp-9', 10: 'gp-10' };
@@ -1074,73 +1071,41 @@ const TEACHER_ASSIGNMENTS_DATA = [
   ]},
 ];
 
-const STUDENTS_DATA = [
-  { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
-  { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
-  { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
-  { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
-  { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
-  { id: 'as-008', name: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
-  { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
-  { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
-  { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', section: null, grade: 'unassigned' },
-  { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', section: 'st-matthew', grade: '7' },
-  { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
-  { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
-  { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
-  { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', section: 'st-mark', grade: '7' },
-  { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
-  { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
-  { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
-  { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', section: 'st-luke', grade: '8' },
-  { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
-  { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
-  { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
-  { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', section: 'st-john', grade: '8' },
-  { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
-  { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
-  { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
-  { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', section: 'st-peter', grade: '9' },
-  { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
-  { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
-  { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
-  { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', section: 'st-paul', grade: '9' },
-  { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
-  { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
-  { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
-  { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', section: 'st-james', grade: '10' },
-  { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
-  { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
-  { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
-  { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', section: 'st-thomas', grade: '10' },
-  { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', section: 'elem-grade4-luke', grade: '4', level: 'elementary' },
-  { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', section: 'elem-grade4-luke', grade: '4', level: 'elementary' },
-  { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', section: 'elem-grade5-mark', grade: '5', level: 'elementary' },
-  { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', section: 'elem-grade5-mark', grade: '5', level: 'elementary' },
-  { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', section: 'shs-grade11-stem-a', grade: '11', level: 'shs', strand: 'STEM' },
-  { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', section: 'shs-grade11-stem-a', grade: '11', level: 'shs', strand: 'STEM' },
-  { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', section: 'shs-grade11-humss-a', grade: '11', level: 'shs', strand: 'HUMSS' },
-  { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', section: 'shs-grade11-humss-a', grade: '11', level: 'shs', strand: 'HUMSS' },
-  { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', section: 'shs-grade12-abm-a', grade: '12', level: 'shs', strand: 'ABM' },
-  { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', section: 'shs-grade12-abm-a', grade: '12', level: 'shs', strand: 'ABM' },
-  { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', section: 'shs-grade12-tvl-a', grade: '12', level: 'shs', strand: 'TVL' },
-  { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', section: 'shs-grade12-tvl-a', grade: '12', level: 'shs', strand: 'TVL' },
-  { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', section: null, grade: 'kindergarten', level: 'elementary' },
-  { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', section: null, grade: 'kindergarten', level: 'elementary' },
-  { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', section: null, grade: '1', level: 'elementary' },
-  { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', section: null, grade: '1', level: 'elementary' },
-  { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', section: null, grade: '2', level: 'elementary' },
-  { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', section: null, grade: '2', level: 'elementary' },
-  { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', section: null, grade: '3', level: 'elementary' },
-  { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', section: null, grade: '3', level: 'elementary' },
-  { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', section: null, grade: '6', level: 'elementary' },
-  { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', section: null, grade: '6', level: 'elementary' },
-];
+// Keep the management table in step with the shared student directory.
+// Later, replace this source with the student API response in the same shape.
+function managementStudentSectionId(student) {
+  if (student.sectionId) return student.sectionId;
+  const sectionLabel = String(student.section || '').trim();
+  if (!sectionLabel || sectionLabel === 'Unassigned') return null;
+
+  const grade = managementGradeKey(student.grade);
+  const name = sectionLabel.split('/').pop().trim().toLowerCase();
+  const configuredSections = window.EDUGNAY_CONFIG
+    .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+  const matchingSection = [...SECTIONS_DATA, ...configuredSections].find(section => (
+    managementGradeKey(section.grade) === grade
+    && String(section.name || '').trim().toLowerCase() === name
+  ));
+
+  return matchingSection ? matchingSection.id : null;
+}
+
+const STUDENTS_DATA = [];
+
+function syncManagementStudentRecords() {
+  const records = window.EDUGNAY_CONFIG.students.map(student => ({
+    id: student.id,
+    name: student.name,
+    email: student.email,
+    section: managementStudentSectionId(student),
+    grade: managementGradeKey(student.grade),
+    level: student.level,
+    strand: student.strand || '',
+  }));
+  STUDENTS_DATA.splice(0, STUDENTS_DATA.length, ...records);
+}
+
+syncManagementStudentRecords();
 
 /* ══════════════════════════════════════════════
    RENDER FUNCTIONS
@@ -1170,7 +1135,7 @@ function getTeacherAssignmentStatsLegacy() {
 
 function renderSectionsLegacy() {
   const withAdviser = SECTIONS_DATA.filter(s => s.adviser).length;
-  const totalStudents = SECTIONS_DATA.reduce((sum, s) => sum + s.students, 0);
+  const totalStudents = STUDENTS_DATA.filter(student => student.section).length;
   renderManagementStatCards('sections-summary-cards', [
     { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Total Sections', sub: 'Across configured school levels' },
     { tone: 'green', icon: 'graduation-cap', value: totalStudents, label: 'Students', sub: 'Enrolled this school year' },
@@ -2133,7 +2098,7 @@ function filterTeacherBlocks() {
 /* ══════════════════════════════════════════════
    ASSIGN STUDENTS TAB
 ══════════════════════════════════════════════ */
-const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.getStudentDirectory();
+const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.students;
 const managementAssignState = { student: null, level: '', grade: '', strand: '', section: '' };
 const managementMoveState = { student: null, level: '', grade: '', strand: '', section: '', excludedSection: '' };
 
@@ -2169,26 +2134,14 @@ function managementDivision(level) {
 }
 
 function managementSectionStudentCount(sectionId) {
-  /* Backend integration: replace STUDENTS_DATA with the student records returned by the API. */
+  /* STUDENTS_DATA is derived from the shared directory above. Replace its source with the student API later. */
   const records = Array.isArray(STUDENTS_DATA) ? STUDENTS_DATA : [];
   return records.filter(student => (student.sectionId || student.section) === sectionId).length;
 }
 
 function managementSectionRecords() {
   const configured = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
-  const localJhs = managementSchoolLevels().includes('jhs') ? SECTIONS_DATA.map(section => ({
-    id: section.id,
-    level: 'jhs',
-    grade: `Grade ${section.grade}`,
-    name: section.name,
-    strand: '',
-    track: '',
-    capacity: section.capacity,
-    enrolled: section.students
-  })) : [];
-  const localKeys = new Set(localJhs.map(section => `${managementGradeKey(section.grade)}|${section.name.toLowerCase()}`));
-  const merged = [...localJhs, ...configured.filter(section => !localKeys.has(`${managementGradeKey(section.grade)}|${section.name.toLowerCase()}`))];
-  return merged.map(section => {
+  return configured.map(section => {
     const local = SECTIONS_DATA.find(item => item.id === section.id)
       || SECTIONS_DATA.find(item => item.name.toLowerCase() === section.name.toLowerCase() && managementGradeKey(item.grade) === managementGradeKey(section.grade));
     const teacherSection = typeof TEACHER_ASSIGNMENTS_DATA !== 'undefined'
@@ -2533,6 +2486,72 @@ function removeStudentFromClass(studentName, section, studentId, rowElement) {
 function closeConfirmRemoveModal() { document.getElementById('confirmRemoveModalBackdrop').classList.remove('open'); }
 document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeConfirmRemoveModal(); });
 
+function saveManagementStudentPlacement(studentId, section) {
+  if (!studentId || !section) return null;
+  const placement = `${section.grade} / ${section.name}`;
+  const student = window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
+    level: section.level,
+    grade: section.grade,
+    strand: section.strand || '',
+    section: placement,
+    sectionId: section.id
+  });
+  if (student) syncManagementStudentRecords();
+  return student;
+}
+
+function renderManagementStudentChanges() {
+  renderSections();
+  renderStudentsTab();
+  renderManagementTabPills();
+}
+
+document.getElementById('assignStudentForm').addEventListener('submit', function (event) {
+  event.preventDefault();
+  const studentId = managementAssignState.student?.id || document.getElementById('studentSelect').value;
+  const section = managementSectionById(document.getElementById('studentSectionSelect').value);
+  if (!studentId || !section) { alert('Choose a student and section first.'); return; }
+
+  if (!saveManagementStudentPlacement(studentId, section)) {
+    alert('That student could not be updated.');
+    return;
+  }
+
+  closeStudentAssignModal();
+  renderManagementStudentChanges();
+});
+
+document.getElementById('moveStudentForm').addEventListener('submit', function (event) {
+  event.preventDefault();
+  const studentId = document.getElementById('moveStudentId').value;
+  const section = managementSectionById(document.getElementById('moveSectionSelect').value);
+  if (!studentId || !section) { alert('Choose a new section first.'); return; }
+
+  if (!saveManagementStudentPlacement(studentId, section)) {
+    alert('That student could not be updated.');
+    return;
+  }
+
+  closeStudentAssignModal();
+  renderManagementStudentChanges();
+});
+
+document.getElementById('removeStudentForm').addEventListener('submit', function (event) {
+  event.preventDefault();
+  const studentId = document.getElementById('removeStudentId').value;
+  const student = window.EDUGNAY_CONFIG.students.find(record => record.id === studentId);
+  if (!student) { closeConfirmRemoveModal(); return; }
+
+  window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
+    section: 'Unassigned',
+    sectionId: null
+  });
+  syncManagementStudentRecords();
+  closeConfirmRemoveModal();
+  closeSectionStudentsModal();
+  renderManagementStudentChanges();
+});
+
 function openImportStudentsModal() {
   document.getElementById('importStudentsForm').reset();
   document.getElementById('csvPreviewWrap').style.display = 'none';
@@ -2591,22 +2610,46 @@ function previewCSV(input) {
 }
 
 /* ── IMPORT & AUTO-SORT SUBMIT (mirrors importUsersForm on the users page) ── */
-function incrementManagementSectionEnrollment(sectionId, amount = 1) {
-  const local = SECTIONS_DATA.find(section => section.id === sectionId);
-  if (local) {
-    local.students = Math.max(0, local.students + amount);
-    return;
-  }
+function createImportedStudentAccount(record, level, grade, strand, section) {
   const config = window.EDUGNAY_CONFIG;
-  const schools = config.getSchools();
-  const active = config.getActiveSchool();
-  const school = schools.find(item => item.id === active.id);
-  if (!school) return;
-  Object.values(school.divisions || {}).forEach(division => {
-    const section = Array.isArray(division.sections) ? division.sections.find(item => item.id === sectionId) : null;
-    if (section) section.enrolled = Math.max(0, Number(section.enrolled || section.students || 0) + amount);
+  const firstName = String(record.firstName || '').trim();
+  const lastName = String(record.lastName || '').trim();
+  const name = `${firstName} ${lastName}`.trim() || 'Unnamed Student';
+  const email = String(record.email || '').trim();
+  let account = email && config.accounts.find(item => item.email === email);
+
+  if (!account) {
+    const recordId = `stu-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    account = {
+      id: `student-${recordId}`,
+      studentId: recordId,
+      firstName,
+      lastName,
+      displayName: name,
+      email,
+      role: 'stud',
+      status: 'active',
+      dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      lrn: String(record.lrn || '').trim(),
+      linkedStudents: []
+    };
+    config.accounts.push(account);
+  }
+
+  account.role = 'stud';
+  account.firstName = firstName || account.firstName;
+  account.lastName = lastName || account.lastName;
+  account.displayName = name;
+  account.email = email || account.email;
+  account.lrn = String(record.lrn || account.lrn || '').trim();
+
+  return config.upsertStudentProfile(account, {
+    level,
+    grade,
+    strand: strand || '',
+    section: `${section.grade} / ${section.name}`,
+    sectionId: section.id
   });
-  config.saveSchools(schools);
 }
 
 document.getElementById('importStudentsForm').addEventListener('submit', function (e) {
@@ -2656,34 +2699,24 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
       if (attempts >= gradeSections.length) return; // all sections full, student stays unplaced
 
       const targetSection = gradeSections[sectionIdx];
-      const firstName = record.firstName || '';
-      const lastName = record.lastName || '';
-
-      STUDENTS_DATA.push({
-        id: 'stu-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
-        name: `${firstName} ${lastName}`.trim(),
-        email: record.email || '',
-        section: targetSection.id,
-        grade: grade.replace(/^Grade\s*/i, ''),
-      });
+      createImportedStudentAccount(record, level, grade, strand, targetSection);
 
       targetSection.students++;
-      incrementManagementSectionEnrollment(targetSection.id);
       placed++;
       sectionIdx = (sectionIdx + 1) % gradeSections.length;
     });
 
+    syncManagementStudentRecords();
     closeImportStudentsModal();
-    renderSections();
-    renderStudentsTab();
+    renderManagementStudentChanges();
     alert(`${placed} of ${records.length} student(s) auto-sorted into ${managementLevelLabel(level)} ${grade} sections.`);
 
     // --- ASYNC (swap in later, once backend exists) ---
     // async function submitImportStudentsForm(form) {
     //   const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
     //   if (!res.ok) { alert('Could not import students.'); return; }
-    //   const created = await res.json(); // expect an array of placed students back
-    //   // merge `created` into STUDENTS_DATA and section counts the same way as the sync block above, then re-render
+    //   const created = await res.json(); // expect created student records back
+    //   // replace the shared student response, then syncManagementStudentRecords() and renderManagementStudentChanges()
     // }
   };
   reader.readAsText(file);

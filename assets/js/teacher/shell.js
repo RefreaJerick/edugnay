@@ -6,9 +6,23 @@
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
+// Replace this local object with the signed-in teacher's access payload later.
+const TEACHER_PORTAL_ACCESS = {
+  subjects: ['Values Education', 'Math', 'Science'],
+  isAdviser: true
+};
+
+window.EDUGNAY_TEACHER_ACCESS = TEACHER_PORTAL_ACCESS;
+
+function teacherCanAccess(feature) {
+  if (feature === 'journals') return TEACHER_PORTAL_ACCESS.subjects.includes('Values Education');
+  if (feature === 'reports') return TEACHER_PORTAL_ACCESS.isAdviser;
+  return true;
+}
+
 const NOTIFICATIONS = [
   {
-    id: 5, icon: 'file-text', color: 'orange', tag: 'Report', read: false,
+    id: 5, icon: 'file-text', color: 'orange', tag: 'Report', read: false, access: 'reports',
     title: '5 reports awaiting confirmation',
     desc: 'Gr. 7 – St. Matthew narrative reports are ready for your review.',
     link: { page: 'reports' },
@@ -43,7 +57,7 @@ const NOTIFICATIONS = [
     created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   },
   {
-    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true,
+    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true, access: 'journals',
     title: 'Journal window reminder',
     desc: 'Weekly journal entries close Friday, 11:59 PM.',
     link: { page: 'journals' },
@@ -64,6 +78,10 @@ function setReadIds(ids) {
 function applyReadState() {
   const readIds = getReadIds();
   NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
+}
+
+function getTeacherVisibleNotifications() {
+  return NOTIFICATIONS.filter(notification => !notification.access || teacherCanAccess(notification.access));
 }
 
 /* ── TIME HELPERS ── */
@@ -88,11 +106,12 @@ function renderTopbarNotifs() {
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
   const teacherDashboardPanel = document.querySelector('.teacher-notif-panel');
-  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+  const visibleNotifications = getTeacherVisibleNotifications();
+  const unreadCount = visibleNotifications.filter(n => !n.read).length;
   const unreadLabel = document.querySelector('.teacher-notif-unread-count');
   if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
-  const top5 = [...NOTIFICATIONS]
+  const top5 = [...visibleNotifications]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5);
 
@@ -122,7 +141,7 @@ function renderTopbarNotifs() {
     </a>
   `).join('');
 
-  const hasUnread = NOTIFICATIONS.some(n => !n.read);
+  const hasUnread = visibleNotifications.some(n => !n.read);
   if (dot) dot.style.display = hasUnread ? 'block' : 'none';
 
   if (window.lucide) lucide.createIcons();
@@ -140,10 +159,12 @@ function navigate(page, section, tab) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-teacher-dashboard.html';
   } else if (page === 'journals') {
+    if (!teacherCanAccess('journals')) return;
     window.location.href = './edugnay-teacher-journals.html';
   } else if (page === 'section') {
     window.location.href = './edugnay-teacher-sections.html';
   } else if (page === 'reports') {
+    if (!teacherCanAccess('reports')) return;
     window.location.href = './edugnay-teacher-reports.html';
   } else if (page === 'announcements') {
     window.location.href = 'edugnay-teacher-announcements.html';
@@ -152,9 +173,40 @@ function navigate(page, section, tab) {
   }
 }
 
+function applyTeacherAccess() {
+  document.querySelectorAll('[data-teacher-access]').forEach(item => {
+    item.hidden = !teacherCanAccess(item.dataset.teacherAccess);
+  });
+
+  document.querySelectorAll('#reports-nav').forEach(section => {
+    section.hidden = !section.querySelector('[data-teacher-access]:not([hidden])');
+  });
+}
+
+function guardTeacherPageAccess() {
+  const page = window.location.pathname.split('/').pop();
+  const restrictedFeature = page === 'edugnay-teacher-journals.html'
+    ? 'journals'
+    : page === 'edugnay-teacher-reports.html'
+      ? 'reports'
+      : '';
+
+  if (restrictedFeature && !teacherCanAccess(restrictedFeature)) {
+    window.location.replace('./edugnay-teacher-dashboard.html');
+    return true;
+  }
+
+  return false;
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') toggleDrawer(false);
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', renderTopbarNotifs);
+if (!guardTeacherPageAccess()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTeacherAccess();
+    renderTopbarNotifs();
+  });
+}

@@ -144,7 +144,7 @@
         jhs: makeDivision('jhs', {
           academicPeriod: 'Quarter 2',
           sections: [
-            { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38 },
+            { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviser: 'Ms. Maria Reyes', adviserInitials: 'MR' },
             { id: 'jhs-grade7-mark', name: 'St. Mark', grade: 'Grade 7', capacity: 40, enrolled: 34 },
             { id: 'jhs-grade8-luke', name: 'St. Luke', grade: 'Grade 8', capacity: 40, enrolled: 36 },
             { id: 'jhs-grade8-john', name: 'St. John', grade: 'Grade 8', capacity: 40, enrolled: 34 },
@@ -172,7 +172,7 @@
       enabledGrades: GRADE_CATALOG.find(item => item.key === 'jhs').grades,
       subjects: SUBJECT_CATALOG.filter(subject => subject.levels.includes('jhs')).map(subject => subject.id),
       sections: [
-        { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38 },
+        { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviser: 'Ms. Maria Reyes', adviserInitials: 'MR' },
         { id: 'jhs-grade8-luke', name: 'St. Luke', grade: 'Grade 8', capacity: 40, enrolled: 36 },
         { id: 'jhs-grade9-peter', name: 'St. Peter', grade: 'Grade 9', capacity: 40, enrolled: 37 }
       ],
@@ -382,78 +382,210 @@
     });
   }
 
+  // Shared non-student accounts.
+  const CORE_ACCOUNT_DIRECTORY = [
+    { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
+    { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+    { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
+    { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
+    { id: '8', firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'inactive', dateAdded: 'May 24, 2025', lrn: '', linkedStudents: [{ id: 'STU-M-CRUZ', name: 'M. Cruz', section: 'Gr. 7' }] },
+    { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 9 / St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+  ];
+
   // Shared K-12 student collection. Replace this local array with the
   // school's student API response while keeping its record shape unchanged.
   const STUDENT_DIRECTORY = [
-    { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', initials: 'CM', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', initials: 'LR', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', initials: 'RC', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', initials: 'JC', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', initials: 'ET', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', initials: 'ML', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', initials: 'BG', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'as-008', name: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', initials: 'AS', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', initials: 'KS', level: 'jhs', grade: '', strand: '' },
-    { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', initials: 'PN', level: 'jhs', grade: '', strand: '' },
-    { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', initials: 'DO', level: 'jhs', grade: '', strand: '' },
-    { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', initials: 'MT', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', initials: 'SC', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', initials: 'GB', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', initials: 'NA', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', initials: 'PR', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', initials: 'AV', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', initials: 'LD', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', initials: 'BR', level: 'jhs', grade: 'Grade 7', strand: '' },
-    { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', initials: 'MG', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', initials: 'AC', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', initials: 'EB', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', initials: 'CH', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', initials: 'NR', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', initials: 'IS', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', initials: 'LM', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', initials: 'GR', level: 'jhs', grade: 'Grade 8', strand: '' },
-    { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', initials: 'DS', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', initials: 'CB', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', initials: 'JR', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', initials: 'RR', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', initials: 'MP', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', initials: 'AL', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', initials: 'AD', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', initials: 'TD', level: 'jhs', grade: 'Grade 9', strand: '' },
-    { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', initials: 'VP', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', initials: 'HC', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', initials: 'SA', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', initials: 'PM', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', initials: 'OV', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', initials: 'BB', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', initials: 'MM', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', initials: 'CC', level: 'jhs', grade: 'Grade 10', strand: '' },
-    { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', initials: 'EM', level: 'elementary', grade: 'Grade 4', strand: '' },
-    { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', initials: 'RS', level: 'elementary', grade: 'Grade 4', strand: '' },
-    { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', initials: 'JA', level: 'elementary', grade: 'Grade 5', strand: '' },
-    { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', initials: 'CP', level: 'elementary', grade: 'Grade 5', strand: '' },
-    { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', initials: 'LS', level: 'shs', grade: 'Grade 11', strand: 'STEM' },
-    { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', initials: 'KM', level: 'shs', grade: 'Grade 11', strand: 'STEM' },
-    { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', initials: 'HC', level: 'shs', grade: 'Grade 11', strand: 'HUMSS' },
-    { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', initials: 'DV', level: 'shs', grade: 'Grade 11', strand: 'HUMSS' },
-    { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', initials: 'AB', level: 'shs', grade: 'Grade 12', strand: 'ABM' },
-    { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', initials: 'RG', level: 'shs', grade: 'Grade 12', strand: 'ABM' },
-    { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', initials: 'TM', level: 'shs', grade: 'Grade 12', strand: 'TVL' },
-    { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', initials: 'JN', level: 'shs', grade: 'Grade 12', strand: 'TVL' },
-    { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', initials: 'AR', level: 'elementary', grade: 'Kindergarten', strand: '' },
-    { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', initials: 'DM', level: 'elementary', grade: 'Kindergarten', strand: '' },
-    { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', initials: 'CV', level: 'elementary', grade: 'Grade 1', strand: '' },
-    { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', initials: 'ER', level: 'elementary', grade: 'Grade 1', strand: '' },
-    { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', initials: 'BS', level: 'elementary', grade: 'Grade 2', strand: '' },
-    { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', initials: 'LC', level: 'elementary', grade: 'Grade 2', strand: '' },
-    { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', initials: 'FG', level: 'elementary', grade: 'Grade 3', strand: '' },
-    { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', initials: 'NB', level: 'elementary', grade: 'Grade 3', strand: '' },
-    { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', initials: 'IM', level: 'elementary', grade: 'Grade 6', strand: '' },
-    { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', initials: 'MF', level: 'elementary', grade: 'Grade 6', strand: '' }
+    { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', initials: 'CM', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', initials: 'LR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', initials: 'RC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
+    { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', initials: 'JC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', initials: 'ET', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
+    { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', initials: 'ML', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
+    { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', initials: 'BG', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
+    { id: 'as-008', name: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', initials: 'AS', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
+    { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', initials: 'KS', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
+    { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', initials: 'PN', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
+    { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', initials: 'DO', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
+    { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', initials: 'MT', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', initials: 'SC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', initials: 'GB', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', initials: 'NA', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', initials: 'PR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
+    { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', initials: 'AV', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
+    { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', initials: 'LD', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
+    { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', initials: 'BR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
+    { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', initials: 'MG', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', initials: 'AC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', initials: 'EB', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', initials: 'CH', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', initials: 'NR', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
+    { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', initials: 'IS', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
+    { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', initials: 'LM', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
+    { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', initials: 'GR', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
+    { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', initials: 'DS', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
+    { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', initials: 'CB', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
+    { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', initials: 'JR', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
+    { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', initials: 'RR', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
+    { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', initials: 'MP', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
+    { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', initials: 'AL', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
+    { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', initials: 'AD', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
+    { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', initials: 'TD', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
+    { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', initials: 'VP', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
+    { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', initials: 'HC', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
+    { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', initials: 'SA', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
+    { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', initials: 'PM', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
+    { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', initials: 'OV', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
+    { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', initials: 'BB', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
+    { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', initials: 'MM', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
+    { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', initials: 'CC', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
+    { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', initials: 'EM', level: 'elementary', grade: 'Grade 4', strand: '', section: 'Grade 4 / St. Luke' },
+    { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', initials: 'RS', level: 'elementary', grade: 'Grade 4', strand: '', section: 'Grade 4 / St. Luke' },
+    { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', initials: 'JA', level: 'elementary', grade: 'Grade 5', strand: '', section: 'Grade 5 / St. Mark' },
+    { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', initials: 'CP', level: 'elementary', grade: 'Grade 5', strand: '', section: 'Grade 5 / St. Mark' },
+    { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', initials: 'LS', level: 'shs', grade: 'Grade 11', strand: 'STEM', section: 'Grade 11 / STEM A' },
+    { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', initials: 'KM', level: 'shs', grade: 'Grade 11', strand: 'STEM', section: 'Grade 11 / STEM A' },
+    { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', initials: 'HC', level: 'shs', grade: 'Grade 11', strand: 'HUMSS', section: 'Grade 11 / HUMSS A' },
+    { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', initials: 'DV', level: 'shs', grade: 'Grade 11', strand: 'HUMSS', section: 'Grade 11 / HUMSS A' },
+    { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', initials: 'AB', level: 'shs', grade: 'Grade 12', strand: 'ABM', section: 'Grade 12 / ABM A' },
+    { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', initials: 'RG', level: 'shs', grade: 'Grade 12', strand: 'ABM', section: 'Grade 12 / ABM A' },
+    { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', initials: 'TM', level: 'shs', grade: 'Grade 12', strand: 'TVL', section: 'Grade 12 / TVL A' },
+    { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', initials: 'JN', level: 'shs', grade: 'Grade 12', strand: 'TVL', section: 'Grade 12 / TVL A' },
+    { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', initials: 'AR', level: 'elementary', grade: 'Kindergarten', strand: '', section: 'Unassigned' },
+    { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', initials: 'DM', level: 'elementary', grade: 'Kindergarten', strand: '', section: 'Unassigned' },
+    { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', initials: 'CV', level: 'elementary', grade: 'Grade 1', strand: '', section: 'Unassigned' },
+    { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', initials: 'ER', level: 'elementary', grade: 'Grade 1', strand: '', section: 'Unassigned' },
+    { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', initials: 'BS', level: 'elementary', grade: 'Grade 2', strand: '', section: 'Unassigned' },
+    { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', initials: 'LC', level: 'elementary', grade: 'Grade 2', strand: '', section: 'Unassigned' },
+    { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', initials: 'FG', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
+    { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', initials: 'NB', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
+    { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', initials: 'IM', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
+    { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', initials: 'MF', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
   ];
 
-  function getStudentDirectory() {
-    return clone(STUDENT_DIRECTORY);
+  function resolveStudentSectionId(student) {
+    const sectionLabel = String(student?.section || '').trim();
+    const grade = String(student?.grade || '').trim().toLowerCase();
+    const name = sectionLabel.split('/').pop().trim().toLowerCase();
+    if (!sectionLabel || /^unassigned$/i.test(sectionLabel)) return null;
+
+    const section = getAssignmentSections(getActiveSchool()).find(record => (
+      String(record.grade || '').trim().toLowerCase() === grade
+      && String(record.name || '').trim().toLowerCase() === name
+    ));
+    return section?.id || null;
+  }
+
+  // Keep the display label for the current UI and the relational ID needed by
+  // management pages. An API student record can provide this sectionId directly.
+  STUDENT_DIRECTORY.forEach(student => {
+    student.sectionId = resolveStudentSectionId(student);
+  });
+
+  const STUDENT_ACCOUNT_OVERRIDES = {
+    'j.delacruz.stud@stcolumban.edu.ph': { id: '4', status: 'active', dateAdded: 'Jun 3, 2024' },
+    'a.santos.stud@stcolumban.edu.ph': { id: '5', status: 'active', dateAdded: 'May 26, 2025' },
+    'b.garcia.stud@stcolumban.edu.ph': { id: '6', status: 'inactive', dateAdded: 'Jun 3, 2024' },
+    'c.mendoza.stud@stcolumban.edu.ph': { id: '10', status: 'active', dateAdded: 'Jun 3, 2024' }
+  };
+
+  function splitAccountName(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    return { firstName: parts.shift() || '', lastName: parts.join(' ') };
+  }
+
+  function formatAccountGrade(value) {
+    const grade = String(value || '').trim();
+    return grade && !/^unassigned$/i.test(grade) ? grade : '';
+  }
+
+  function getInitials(name) {
+    return String(name || '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(part => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  // Every person who can use the portal has one account. Student accounts are
+  // built from the shared learner directory so the Users page, Dashboard, and
+  // Class Management all begin with the same source of truth.
+  const ACCOUNT_DIRECTORY = [
+    ...CORE_ACCOUNT_DIRECTORY,
+    ...STUDENT_DIRECTORY.map(student => {
+      const override = STUDENT_ACCOUNT_OVERRIDES[student.email] || {};
+      return {
+        id: override.id || `student-${student.id}`,
+        ...splitAccountName(student.name),
+        displayName: student.name,
+        email: student.email,
+        role: 'stud',
+        studentId: student.id,
+        section: student.section,
+        sectionId: student.sectionId,
+        gradeLevel: formatAccountGrade(student.grade),
+        status: override.status || 'active',
+        dateAdded: override.dateAdded || 'Jun 10, 2025',
+        lrn: '',
+        linkedStudents: []
+      };
+    })
+  ];
+
+  function upsertStudentProfile(account, values = {}) {
+    if (!account || account.role !== 'stud') return null;
+
+    const index = STUDENT_DIRECTORY.findIndex(student => (
+      student.id === account.studentId || student.email === account.email
+    ));
+    const current = index >= 0 ? STUDENT_DIRECTORY[index] : {};
+    const name = values.name || account.displayName || [account.firstName, account.lastName].filter(Boolean).join(' ');
+    const section = values.section ?? account.section ?? current.section ?? 'Unassigned';
+    const grade = values.grade ?? account.gradeLevel ?? current.grade ?? '';
+    const record = {
+      ...current,
+      id: current.id || account.studentId || `student-${account.id}`,
+      name,
+      email: values.email ?? account.email ?? current.email ?? '',
+      initials: values.initials || current.initials || getInitials(name),
+      level: values.level ?? current.level ?? '',
+      grade,
+      strand: values.strand ?? current.strand ?? '',
+      section,
+      sectionId: values.sectionId ?? account.sectionId ?? current.sectionId ?? null
+    };
+
+    if (index >= 0) STUDENT_DIRECTORY[index] = record;
+    else STUDENT_DIRECTORY.push(record);
+
+    account.studentId = record.id;
+    account.section = record.section;
+    account.sectionId = record.sectionId;
+    account.gradeLevel = formatAccountGrade(record.grade);
+    return record;
+  }
+
+  function removeStudentProfile(account) {
+    if (!account) return;
+    const index = STUDENT_DIRECTORY.findIndex(student => (
+      student.id === account.studentId || student.email === account.email
+    ));
+    if (index >= 0) STUDENT_DIRECTORY.splice(index, 1);
+  }
+
+  function updateStudentPlacement(studentId, values = {}) {
+    const student = STUDENT_DIRECTORY.find(record => record.id === studentId);
+    if (!student) return null;
+
+    Object.assign(student, values);
+    const account = ACCOUNT_DIRECTORY.find(record => record.studentId === student.id || record.email === student.email);
+    if (account) {
+      account.section = student.section || 'Unassigned';
+      account.sectionId = student.sectionId || null;
+      account.gradeLevel = formatAccountGrade(student.grade);
+    }
+    return student;
   }
 
   function getHolidays() {
@@ -482,6 +614,11 @@
     grades: GRADE_CATALOG,
     createDivision: makeDivision,
     subjects: SUBJECT_CATALOG,
+    accounts: ACCOUNT_DIRECTORY,
+    students: STUDENT_DIRECTORY,
+    upsertStudentProfile,
+    removeStudentProfile,
+    updateStudentPlacement,
     periods: PERIOD_CATALOG,
     attendanceDefaults: makeAttendanceRules(),
     holidays: DEFAULT_HOLIDAYS,
@@ -490,7 +627,6 @@
     getActiveSchool,
     setActiveSchool,
     getAssignmentSections,
-    getStudentDirectory,
     getHolidays,
     saveHolidays,
     getLocalDateISO,
