@@ -43,8 +43,11 @@
       background: transparent;
       box-shadow: none;
       backdrop-filter: none;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
     }
-    .photo-heading { max-width: 620px; font-size: clamp(34px, 4vw, 56px); letter-spacing: -1px; margin-bottom: 14px; }
+    .photo-heading { max-width: 620px; font-size: clamp(34px, 4vw, 56px); letter-spacing: -1px; margin: 0; }
     .photo-sub { max-width: 500px; margin-bottom: 28px; color: color-mix(in srgb, var(--white) 76%, transparent); }
     .stat-strip { border: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
     .stat-block { min-width: 112px; padding: 0 20px; }
@@ -73,6 +76,8 @@
       letter-spacing: 1.5px;
     }
     .login-title { font-size: clamp(30px, 3vw, 38px); letter-spacing: -.8px; }
+    #signInView .login-title,
+    #resetPasswordView .login-title { margin-bottom: 0; }
     .login-sub { color: var(--gray-500); line-height: 1.6; }
     .form-group { margin-bottom: 20px; }
     .form-input { min-height: 50px; border-radius: var(--button-radius); background: var(--gray-50); }
@@ -219,7 +224,6 @@
         </div>
         <div class="school-info">
           <div class="school-name">St. Columban's College</div>
-          <div class="school-dept">Junior High School Department</div>
         </div>
       </div>
 
@@ -230,10 +234,6 @@
           <em>is seen, heard,</em><br/>
           and supported.
         </h2>
-
-        <p class="photo-sub">
-          An AI-powered monitoring system that connects teachers, students, and parents, built for St. Columban's College JHS.
-        </p>
 
         <div class="stat-strip">
           <div class="stat-block">
@@ -260,7 +260,6 @@
     <div class="login-top">
       <div class="login-eyebrow">E-Ugnay Portal</div>
       <h1 class="login-title" id="signInTitle">Sign in to<br/>your account</h1>
-      <p class="login-sub">Enter your school email to get started.</p>
     </div>
 
     <form class="login-form" id="signInForm" action="" method="post" onsubmit="checkEmail(event)" novalidate>
@@ -375,7 +374,6 @@
       <div class="login-top">
         <div class="login-eyebrow">Create New Password</div>
         <h1 class="login-title" id="resetPasswordTitle">Choose a new password</h1>
-        <p class="login-sub">Use a password that is different from your previous password.</p>
       </div>
       <form class="login-form" id="resetPasswordForm" onsubmit="completePasswordReset(event)" novalidate>
         <div class="form-group">

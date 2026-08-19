@@ -643,13 +643,8 @@
       <div class="page-overview-copy">
         <div class="page-overview-kicker">Overview</div>
         <h1 class="page-overview-title" id="page-overview-title">Class Management</h1>
-        <p class="page-overview-description">Manage classes, sections, and assignments.</p>
       </div>
     </section>
-
-    <!-- <div class="page-header-row">
-      <div class="page-desc">Sections, subjects, and teacher/student assignments for S.Y. 2025–2026.</div>
-    </div> -->
 
     <div class="mgmt-tabs" id="mgmtTabs">
       <button class="mgmt-tab active" data-tab="sections" onclick="switchMgmtTab('sections', this)">
@@ -748,7 +743,6 @@
         <div class="panel-head">
           <div>
             <div class="panel-title" id="subjectPanelTitle">All Subjects</div>
-            <div class="panel-sub" id="subjectPanelSub">Subjects configured for the active school levels</div>
           </div>
           <div class="panel-head-right">
             <div class="search-wrap">
@@ -1359,19 +1353,13 @@ function renderSubjectGradeTabs(level) {
   const subjects = managementSubjectRecords();
   const levelLabel = managementLevelLabel(level);
   const grades = managementGradeOptions(level);
-  subjectTabTitles[level] = {
-    title: `${levelLabel} Subjects`,
-    sub: `Subjects assigned across all ${levelLabel} grades`
-  };
+  subjectTabTitles[level] = { title: `${levelLabel} Subjects` };
 
   tabs.innerHTML = [
     `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchSubjectGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${subjects.filter(subject => managementFilterMatches(level, subject.grades)).length}</span></div>`,
     ...grades.map(grade => {
       const key = `${level}:${managementGradeKey(grade)}`;
-      subjectTabTitles[key] = {
-        title: `${levelLabel} · ${grade} Subjects`,
-        sub: `Subjects assigned to ${grade}`
-      };
+      subjectTabTitles[key] = { title: `${levelLabel} · ${grade} Subjects` };
       const count = subjects.filter(subject => subject.grades.includes(key)).length;
       return `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === key ? 'active' : ''}" data-grade="${key}" onclick="switchSubjectGradeTab('${key}', this)">${grade} <span class="tab-count">${count}</span></div>`;
     })
@@ -1385,12 +1373,12 @@ function renderManagementSubjectTabs() {
   const levels = managementSchoolLevels();
   const activeDivision = activeSubjectGrade === 'all' ? 'all' : activeSubjectGrade.split(':')[0];
   tabs.classList.add('hierarchical-filter-tabs');
-  subjectTabTitles = { all: { title: 'All Subjects', sub: 'Subjects configured for the active school levels' } };
+  subjectTabTitles = { all: { title: 'All Subjects' } };
   tabs.innerHTML = `
     <div class="division-filter-tabs" role="tablist" aria-label="School levels">
       <button type="button" class="division-filter-tab ${activeDivision === 'all' ? 'active' : ''}" data-division="all" role="tab" aria-selected="${activeDivision === 'all'}" onclick="switchSubjectDivisionTab('all', this)">All School Levels <span class="tab-count">${subjects.length}</span></button>
       ${levels.map(level => {
-        subjectTabTitles[level] = { title: `${managementLevelLabel(level)} Subjects`, sub: `Subjects assigned across all ${managementLevelLabel(level)} grades` };
+        subjectTabTitles[level] = { title: `${managementLevelLabel(level)} Subjects` };
         const count = subjects.filter(subject => managementFilterMatches(level, subject.grades)).length;
         return `<button type="button" class="division-filter-tab ${activeDivision === level ? 'active' : ''}" data-division="${level}" role="tab" aria-selected="${activeDivision === level}" onclick="switchSubjectDivisionTab('${level}', this)">${managementLevelLabel(level)} <span class="tab-count">${count}</span></button>`;
       }).join('')}
@@ -1399,7 +1387,6 @@ function renderManagementSubjectTabs() {
   renderSubjectGradeTabs(activeDivision === 'all' ? 'all' : activeDivision);
   const initialInfo = subjectTabTitles[activeSubjectGrade] || subjectTabTitles[activeDivision] || subjectTabTitles.all;
   document.getElementById('subjectPanelTitle').textContent = initialInfo.title;
-  document.getElementById('subjectPanelSub').textContent = initialInfo.sub;
 }
 
 function getManagementTeacherSlots() {
@@ -2066,9 +2053,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
 });
 
 let activeSubjectGrade = 'all';
-let subjectTabTitles = {
-  all: { title: 'All Subjects', sub: 'Subjects configured for the active school levels' },
-};
+let subjectTabTitles = { all: { title: 'All Subjects' } };
 
 function switchSubjectGradeTab(grade, el) {
   activeSubjectGrade = grade;
@@ -2079,7 +2064,6 @@ function switchSubjectGradeTab(grade, el) {
   (el || document.querySelector(`#subjectGradeTabs .grade-filter-tab[data-grade="${grade}"]`))?.classList.add('active');
   const info = subjectTabTitles[grade] || subjectTabTitles.all;
   document.getElementById('subjectPanelTitle').textContent = info.title;
-  document.getElementById('subjectPanelSub').textContent   = info.sub;
   filterSubjects();
 }
 
@@ -2092,7 +2076,6 @@ function switchSubjectDivisionTab(level, el) {
   renderSubjectGradeTabs(level);
   const info = subjectTabTitles[level] || subjectTabTitles.all;
   document.getElementById('subjectPanelTitle').textContent = info.title;
-  document.getElementById('subjectPanelSub').textContent = info.sub;
   filterSubjects();
 }
 

@@ -241,7 +241,6 @@
             <div class="panel-head">
               <div class="assignment-panel-heading">
                 <div class="panel-title" id="dashboardAssignmentsTitle">Assignments</div>
-                <div class="assignment-panel-sub" id="dashboardAssignmentsSummary">Your current assignment tracker</div>
               </div>
               <a href="edugnay-student-assignments.html" class="panel-action">
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
@@ -261,7 +260,6 @@
                 <div class="week-title-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div>
                 <div>
                   <div class="panel-title">This Week</div>
-                  <div class="week-title-sub">Your class schedule</div>
                 </div>
               </div>
               <span id="weekRangeLabel" class="week-range-label"></span>
@@ -404,15 +402,6 @@
     function renderUpcomingAssignments() {
       const container = document.getElementById('student-upcoming-assignments');
       if (!container) return;
-
-      const pendingCount = UPCOMING_ASSIGNMENTS.filter(item => item.status === 'pending').length;
-      const completedCount = UPCOMING_ASSIGNMENTS.filter(item => item.status === 'completed').length;
-      const summary = document.getElementById('dashboardAssignmentsSummary');
-      if (summary) {
-        summary.textContent = UPCOMING_ASSIGNMENTS.length
-          ? `${pendingCount} pending · ${completedCount} completed`
-          : 'No assignments to track';
-      }
 
       if (!UPCOMING_ASSIGNMENTS.length) {
         container.innerHTML = '<div class="assignment-preview-empty">No assignments have been added yet.</div>';

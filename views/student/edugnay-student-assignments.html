@@ -151,7 +151,7 @@
         <div class="portal-overview-copy">
           <div class="portal-overview-kicker">Student workspace</div>
           <h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1>
-          <p class="portal-overview-description">Track the assignments given by your teachers and see which ones are completed.</p>
+          <p class="portal-overview-description">Track your assignments and completion.</p>
         </div>
       </section>
 
@@ -161,7 +161,6 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Your assignments</div>
-            <div class="assignment-panel-sub" id="assignmentPanelSub">Assignments from your enrolled subjects</div>
           </div>
         </div>
         <div class="assignment-toolbar">
@@ -318,7 +317,6 @@
     }
 
     populateSubjectFilter();
-    document.getElementById('assignmentPanelSub').textContent = ASSIGNMENTS.length + ' assignments from your enrolled subjects';
     renderFilterTabs();
     renderAssignments();
   </script>

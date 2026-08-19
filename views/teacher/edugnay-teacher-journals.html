@@ -369,7 +369,6 @@
       <div class="page-overview-copy">
         <div class="page-overview-kicker">Overview</div>
         <h1 class="page-overview-title" id="page-overview-title">Student Journals</h1>
-        <p class="page-overview-description">Review student reflections and submissions.</p>
       </div>
     </section>
 
@@ -397,7 +396,6 @@
       <div class="panel-head">
         <div>
           <div class="panel-title" id="panel-title">Journal Entries: Grade 7 – St. Matthew</div>
-          <div class="panel-sub" id="panel-sub">Week 3 · June 9–14, 2025 · Prompt: "Describe a challenge you faced this week in class and how you handled it."</div>
         </div>
         <div class="panel-head-right">
           <!-- EJS: render only if teacher.subjects.includes('Values Education') -->
@@ -546,9 +544,6 @@ function saveJournalSettings() {
   JOURNAL_SETTINGS.minWords   = parseInt(document.getElementById('settings-minwords').value) || 50;
   JOURNAL_SETTINGS.allowLate  = document.getElementById('toggle-allow-late').classList.contains('on');
 
-  document.getElementById('panel-sub').textContent =
-    `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`;
-
   closeSettingsDrawer();
   showToast('Journal settings updated', 'success');
 }
@@ -595,10 +590,6 @@ function switchSection(sectionKey, btn) {
 
   const sec = SECTIONS[sectionKey];
   document.getElementById('panel-title').textContent = `Journal Entries: ${sec.label}`;
-  document.getElementById('panel-sub').textContent = sec.hasPrompt
-  ? `Week 3 · June 9–14, 2025 · Prompt: ${sec.prompt}`
-  : 'No prompt configured for this section yet';
-
   document.getElementById('search-input').value = '';
   document.getElementById('status-filter').value = 'all';
   renderTable();
