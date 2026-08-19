@@ -135,6 +135,9 @@
 .account-modal-backdrop .modal-close,
 .announcement-modal-backdrop .modal-close,
 .entry-modal-backdrop .modal-close {
+  position: static;
+  top: auto;
+  right: auto;
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
@@ -163,16 +166,6 @@
   background: var(--gray-200);
   border-color: var(--gray-300);
   color: var(--gray-700);
-}
-
-.modal-backdrop .modal-close,
-.student-modal-backdrop .modal-close,
-.account-modal-backdrop .modal-close,
-.announcement-modal-backdrop .modal-close,
-.entry-modal-backdrop .modal-close {
-  position: static;
-  top: auto;
-  right: auto;
 }
 
 /* The past-entry dialog uses the same neutral header treatment as every
@@ -656,7 +649,6 @@ select:not([multiple]):disabled {
 .tab-btn.active,
 .cat-tab.active,
 .att-hist-tab.active,
-.profile-tab.active,
 .notif-filter-btn.active,
 .atf-chip.active,
 .grade-tab.active,
@@ -689,7 +681,6 @@ select:not([multiple]):disabled {
 .tab-bar,
 .cat-tabs,
 .att-history-tabs,
-.profile-tab-bar,
 .grade-tabs,
 .subject-tab-bar,
 .mini-tab-bar,
@@ -698,6 +689,11 @@ select:not([multiple]):disabled {
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 3px 14px rgba(16, 40, 80, 0.045);
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -708,7 +704,6 @@ select:not([multiple]):disabled {
 .tab-bar::-webkit-scrollbar,
 .cat-tabs::-webkit-scrollbar,
 .att-history-tabs::-webkit-scrollbar,
-.profile-tab-bar::-webkit-scrollbar,
 .grade-tabs::-webkit-scrollbar,
 .subject-tab-bar::-webkit-scrollbar,
 .mini-tab-bar::-webkit-scrollbar,
@@ -716,29 +711,11 @@ select:not([multiple]):disabled {
   display: none;
 }
 
-.mgmt-tabs,
-.filter-tabs,
-.tab-bar,
-.cat-tabs,
-.att-history-tabs,
-.profile-tab-bar,
-.grade-tabs,
-.subject-tab-bar,
-.mini-tab-bar,
-.section-tab-bar {
-  padding: 5px;
-  border: 1px solid var(--gray-200);
-  border-radius: 14px;
-  background: var(--white);
-  box-shadow: 0 3px 14px rgba(16, 40, 80, 0.045);
-}
-
 .mgmt-tab,
 .filter-tab,
 .tab-btn,
 .cat-tab,
 .att-hist-tab,
-.profile-tab,
 .grade-tab,
 .subject-tab,
 .mini-tab,
@@ -759,7 +736,6 @@ select:not([multiple]):disabled {
 .tab-btn:not(.active):hover,
 .cat-tab:not(.active):hover,
 .att-hist-tab:not(.active):hover,
-.profile-tab:not(.active):hover,
 .grade-tab:not(.active):hover,
 .subject-tab:not(.active):hover,
 .mini-tab:not(.active):hover,
@@ -774,7 +750,6 @@ select:not([multiple]):disabled {
 .tab-btn.active,
 .cat-tab.active,
 .att-hist-tab.active,
-.profile-tab.active,
 .grade-tab.active,
 .subject-tab.active,
 .mini-tab.active,
@@ -1050,7 +1025,6 @@ body :is(
   .tab-btn,
   .cat-tab,
   .att-hist-tab,
-  .profile-tab,
   .notif-filter-btn,
   .atf-chip,
   .grade-tab,
@@ -1077,7 +1051,6 @@ body :is(
   .tab-btn,
   .cat-tab,
   .att-hist-tab,
-  .profile-tab,
   .notif-filter-btn,
   .atf-chip,
   .grade-tab,

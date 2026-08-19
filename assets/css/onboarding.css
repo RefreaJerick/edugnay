@@ -44,16 +44,6 @@ body:has(.onboarding-page) {
   padding: 52px 0;
 }
 
-.onboarding-brand-kicker,
-.onboarding-form-kicker {
-  color: var(--gold-light);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.35px;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
 .onboarding-brand h1 {
   max-width: 450px;
   margin-top: 13px;
@@ -62,32 +52,6 @@ body:has(.onboarding-page) {
   font-weight: 800;
   letter-spacing: -1px;
   line-height: 1.1;
-}
-
-.onboarding-brand p {
-  max-width: 430px;
-  margin-top: 17px;
-  color: var(--gray-300);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.onboarding-trust {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  max-width: 420px;
-  color: var(--gray-400);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.onboarding-trust svg {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  margin-top: 1px;
-  color: var(--gold-light);
 }
 
 /* Form surface */
@@ -130,6 +94,8 @@ body:has(.onboarding-page) {
 
 .onboarding-section-icon {
   display: grid;
+  width: 36px;
+  height: 36px;
   place-items: center;
   flex: 0 0 auto;
   border-radius: 9px;
@@ -275,19 +241,6 @@ body:has(.onboarding-page) {
   font-weight: 800;
   line-height: 1.3;
   letter-spacing: -.15px;
-}
-
-.onboarding-section-heading p {
-  margin: 2px 0 0;
-  color: var(--gray-400);
-  font-size: var(--panel-sub-size, 11px);
-  line-height: 1.45;
-}
-
-.onboarding-section-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
 }
 
 .onboarding-section-icon svg {
@@ -486,13 +439,6 @@ body:has(.onboarding-page) {
   border-top: 1px solid var(--panel-divider);
 }
 
-.onboarding-actions p {
-  max-width: 330px;
-  color: var(--gray-400);
-  font-size: 10.5px;
-  line-height: 1.5;
-}
-
 .onboarding-submit {
   display: inline-flex;
   align-items: center;
@@ -643,11 +589,6 @@ body:has(.onboarding-page) {
     font-size: 30px;
   }
 
-  .onboarding-brand p {
-    margin-top: 13px;
-    font-size: 12px;
-  }
-
   .onboarding-form-area {
     padding: 16px;
   }
@@ -718,10 +659,6 @@ body:has(.onboarding-page) {
     align-items: stretch;
     flex-direction: column;
     margin-top: 22px;
-  }
-
-  .onboarding-actions p {
-    max-width: none;
   }
 
   .onboarding-submit {
