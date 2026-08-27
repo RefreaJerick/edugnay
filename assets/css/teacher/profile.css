@@ -563,26 +563,23 @@
   box-shadow: none;
 }
 
-.teacher-security-body {
+.main .teacher-security-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
-.teacher-security-copy {
+.main .teacher-security-copy {
+  min-width: 0;
+  flex: 1 1 auto;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--gray-600);
 }
 
-@media (max-width: 640px) {
-  .teacher-security-body {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .teacher-security-body .top-btn {
-    width: 100%;
-    justify-content: center;
-  }
+.main .teacher-security-body .top-btn {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
 }

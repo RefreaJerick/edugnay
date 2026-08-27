@@ -238,16 +238,16 @@
         </div>
         <input type="hidden" name="assignmentContext" id="teacherAssignmentContext" value=""/>
         <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Faculty Member</label>
+          <label class="form-label" for="teacherSelect-search">Faculty Member</label>
           <select class="form-select dropdown" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
             <option value="">— Select a teacher —</option>
-            <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes</option>
-            <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva</option>
-            <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan</option>
-            <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos</option>
-            <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon</option>
-            <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez</option>
-            <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia</option>
+            <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes · m.reyes.fac@stcolumban.edu.ph</option>
+            <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva · l.villanueva.fac@stcolumban.edu.ph</option>
+            <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan · p.tan.fac@stcolumban.edu.ph</option>
+            <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos · r.santos.fac@stcolumban.edu.ph</option>
+            <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon · c.dizon.fac@stcolumban.edu.ph</option>
+            <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez · j.mendez.fac@stcolumban.edu.ph</option>
+            <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia · a.garcia.fac@stcolumban.edu.ph</option>
           </select>
           <div class="teacher-preview" id="teacherPreview">
             <div class="tp-av" id="tpAv">MR</div>
@@ -255,7 +255,6 @@
               <div class="tp-name" id="tpName">Ms. Maria Reyes</div>
               <div class="tp-detail" id="tpDetail">m.reyes.fac@stcolumban.edu.ph</div>
             </div>
-            <div class="tp-check"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div>
           </div>
         </div>
       </form>
@@ -379,33 +378,33 @@
   <div class="modal" style="max-width:400px;">
     <div class="modal-head">
       <div class="modal-heading">
-        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="user-minus"></i></div>
+        <div class="modal-heading-icon danger" aria-hidden="true"><i id="confirmRemoveHeaderIcon" data-lucide="user-minus"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title" id="confirmRemoveTitle">Remove Student</div>
-        <div class="modal-sub">This action cannot be undone.</div>
+        <div class="modal-sub" id="confirmRemoveSub">This action cannot be undone.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeConfirmRemoveModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
-      <div class="modal-context" style="background:#fef2f2;border-color:#fecaca;">
-        <div class="ctx-icon"><i data-lucide="user-minus" style="width:18px;height:18px;color:#dc2626;"></i></div>
+      <div class="modal-context confirm-remove-context">
+        <div class="ctx-icon"><i id="confirmRemoveContextIcon" data-lucide="user-minus" style="width:18px;height:18px;"></i></div>
         <div>
-          <div class="ctx-label" style="color:#dc2626;">Removing</div>
-          <div class="ctx-val" id="confirmStudentName">—</div>
+          <div class="ctx-label" id="confirmRemoveLabel">Removing</div>
+          <div class="ctx-val" id="confirmRemoveName">—</div>
         </div>
       </div>
-      <p style="margin:0;font-size:13px;color:var(--gray-500);line-height:1.6;">
-        This will remove <strong id="confirmStudentNameInline">the student</strong> from <strong id="confirmSectionName">this section</strong>. They will appear as unassigned and will need to be re-enrolled.
-      </p>
+      <p class="confirm-remove-message" id="confirmRemoveMessage"></p>
       <form id="removeStudentForm" method="post" action="/assignments/students/remove">
         <input type="hidden" name="_method" value="DELETE">
         <input type="hidden" name="studentId" id="removeStudentId">
+        <input type="hidden" name="recordType" id="confirmRemoveType">
+        <input type="hidden" name="targetId" id="confirmRemoveTargetId">
       </form>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-cancel" onclick="closeConfirmRemoveModal()">Cancel</button>
-      <button type="submit" form="removeStudentForm" class="btn btn-save" style="background:#dc2626;box-shadow:none;">Yes, Remove</button>
+      <button type="submit" form="removeStudentForm" id="confirmRemoveSubmit" class="btn btn-danger">Yes, Remove</button>
     </div>
   </div>
 </div>
@@ -1257,6 +1256,7 @@ function renderSections() {
 }
 
 const subjectGradeOverrides = new Map();
+const removedSubjectIds = new Set();
 
 function managementSubjectRecords() {
   const configSubjects = Array.isArray(window.EDUGNAY_CONFIG.subjects) ? window.EDUGNAY_CONFIG.subjects : [];
@@ -1265,7 +1265,10 @@ function managementSubjectRecords() {
   const normalizeName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const sections = managementSectionRecords();
 
-  const records = configSubjects.map(subject => {
+  const records = configSubjects.filter(subject => (
+    !removedSubjectIds.has(subject.id)
+    && !removedSubjectIds.has(normalizeName(subject.name))
+  )).map(subject => {
     const local = localSubjects.find(item => item.id === subject.id || aliases[item.id] === subject.id || normalizeName(item.name) === normalizeName(subject.name));
     const levels = managementSchoolLevels().filter(level => {
       const division = managementDivision(level);
@@ -1290,6 +1293,7 @@ function managementSubjectRecords() {
   });
 
   localSubjects.forEach(local => {
+    if (removedSubjectIds.has(local.id) || removedSubjectIds.has(normalizeName(local.name))) return;
     if (records.some(subject => subject.id === local.id || normalizeName(subject.name) === normalizeName(local.name))) return;
     const grades = [...(subjectGradeOverrides.get(local.id) || local.grades.map(grade => `jhs:${managementGradeKey(grade)}`))];
     records.push({ ...local, grades, total: sections.filter(section => grades.includes(managementSectionFilterKey(section))).length });
@@ -1390,12 +1394,43 @@ function renderSubjects() {
       <div class="subject-card-content"><div class="subj-name">${subject.name}</div><div class="subj-code-text">${subject.code} · ${subject.type}</div></div>
       <div class="subject-card-actions row-actions"><button class="row-btn edit" onclick="openSubjectModal('${subject.id}')">Edit</button><button class="row-btn remove">Remove</button></div>
     </article>`).join('');
+  subjectGrid.querySelectorAll('.row-btn.remove').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const card = button.closest('.subject-card');
+      const subject = subjectRecords.find(record => record.id === card?.dataset.id);
+      if (subject) openSubjectRemoveConfirmation(subject);
+    });
+  });
   lucide.createIcons();
 }
 
 const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
 let teacherTargetSubject = null;
+
+function bindTeacherRemoveButtons(container) {
+  container.querySelectorAll('.section-block .row-btn.remove').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const block = button.closest('.section-block');
+      const row = button.closest('.subject-row');
+      const subjectName = row?.querySelector('.subj-name')?.textContent.trim() || '';
+      const teacherName = row?.querySelector('.teacher-name')?.textContent.trim() || '';
+      const sectionName = block?.querySelector('.section-name')?.textContent.trim() || '';
+      const gradeLabel = block?.querySelector('.section-grade-pill')?.textContent.trim() || '';
+      if (block && subjectName && teacherName) {
+        openTeacherRemoveConfirmation({
+          sectionId: block.dataset.id,
+          sectionName,
+          gradeLabel,
+          subjectName,
+          teacherName
+        });
+      }
+    });
+  });
+}
 
 function renderTeacherAssignmentsLegacy() {
   const assignmentStats = getTeacherAssignmentStats();
@@ -1443,6 +1478,8 @@ function renderTeacherAssignmentsLegacy() {
   }).join('');
 
   container.insertAdjacentHTML('beforeend', html);
+
+  bindTeacherRemoveButtons(container);
 
   container.querySelectorAll('.row-btn.change').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1509,6 +1546,7 @@ function renderTeacherAssignments() {
       </div>`;
   }).join('');
   container.insertAdjacentHTML('beforeend', html);
+  bindTeacherRemoveButtons(container);
   container.querySelectorAll('.section-block .row-btn.change, .section-block .row-btn.assign').forEach(button => button.addEventListener('click', event => {
     event.stopPropagation();
     const block = button.closest('.section-block');
@@ -1994,6 +2032,8 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
   }
 
   const subjectId = existing?.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `subject-${Date.now()}`;
+  removedSubjectIds.delete(subjectId);
+  removedSubjectIds.delete(name.toLowerCase().replace(/[^a-z0-9]+/g, ''));
   const localIndex = SUBJECTS_DATA.findIndex(item => item.id === subjectId);
   const localRecord = {
     ...(existing || {}),
@@ -2070,19 +2110,26 @@ function openTeacherModal(context) {
   document.getElementById('teacherAssignmentContext').value = ctx;
   document.getElementById('teacherModalBackdrop').classList.add('open');
   document.getElementById('teacherPreview').classList.remove('visible');
-  document.getElementById('teacherSelect').value = '';
+  const select = document.getElementById('teacherSelect');
+  select.value = '';
+  window.syncSearchableSelect?.(select);
 }
 function closeTeacherModal() { document.getElementById('teacherModalBackdrop').classList.remove('open'); }
 document.getElementById('teacherModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeTeacherModal(); });
 
 function previewTeacher(val) {
   const preview = document.getElementById('teacherPreview');
-  if (!val) { preview.classList.remove('visible'); return; }
+  if (!val) {
+    preview.classList.remove('visible');
+    window.syncSearchableSelect?.(document.getElementById('teacherSelect'));
+    return;
+  }
   const [name, email, initials] = val.split('|');
   document.getElementById('tpAv').textContent = initials;
   document.getElementById('tpName').textContent = name;
   document.getElementById('tpDetail').textContent = email;
   preview.classList.add('visible');
+  window.syncSearchableSelect?.(document.getElementById('teacherSelect'));
 }
 
 function filterTeacherBlocks() {
@@ -2479,16 +2526,135 @@ function openMoveStudentModal(studentName, studentId, currentSection) {
   document.getElementById('studentAssignModalBackdrop').classList.add('open');
 }
 
-function removeStudentFromClass(studentName, section, studentId, rowElement) {
-  document.getElementById('confirmRemoveTitle').textContent = `Remove: ${studentName}`;
-  document.getElementById('confirmStudentName').textContent = studentName;
-  document.getElementById('confirmStudentNameInline').textContent = studentName;
-  document.getElementById('confirmSectionName').textContent = section;
-  document.getElementById('removeStudentId').value = studentId;
-  document.getElementById('removeStudentForm')._rowElement = rowElement;
+let pendingRemoveRequest = null;
+
+function setConfirmRemoveIcons(iconName) {
+  ['confirmRemoveHeaderIcon', 'confirmRemoveContextIcon'].forEach(id => {
+    const current = document.getElementById(id);
+    if (!current || !current.parentElement) return;
+    current.parentElement.innerHTML = `<i id="${id}" data-lucide="${iconName}" aria-hidden="true"></i>`;
+  });
+  lucide.createIcons();
+}
+
+function setConfirmRemoveMessage(parts = []) {
+  const target = document.getElementById('confirmRemoveMessage');
+  if (!target) return;
+  target.replaceChildren();
+  parts.forEach(part => {
+    const node = document.createElement(part.strong ? 'strong' : 'span');
+    node.textContent = part.text;
+    target.appendChild(node);
+  });
+}
+
+function openConfirmRemoveModal(config) {
+  pendingRemoveRequest = { ...config };
+  const form = document.getElementById('removeStudentForm');
+  const type = config.type || 'record';
+  const targetId = config.targetId || config.id || '';
+
+  document.getElementById('confirmRemoveTitle').textContent = config.title || `Remove: ${config.name || 'record'}`;
+  document.getElementById('confirmRemoveSub').textContent = config.sub || 'Review this change before continuing.';
+  document.getElementById('confirmRemoveLabel').textContent = config.label || 'Removing';
+  document.getElementById('confirmRemoveName').textContent = config.name || 'Selected record';
+  document.getElementById('confirmRemoveType').value = type;
+  document.getElementById('confirmRemoveTargetId').value = targetId;
+  document.getElementById('removeStudentId').value = type === 'student' ? config.id || '' : '';
+  form.action = config.action || '/records/remove';
+  form.dataset.removeType = type;
+  form.dataset.targetId = targetId;
+  form._rowElement = config.rowElement || null;
+
+  const context = config.context || '';
+  const contextValue = document.getElementById('confirmRemoveName');
+  if (context && config.contextLabel) {
+    document.getElementById('confirmRemoveLabel').textContent = config.contextLabel;
+    contextValue.textContent = context;
+  }
+  setConfirmRemoveIcons(config.icon || 'trash-2');
+  setConfirmRemoveMessage(config.messageParts || [{ text: 'This action cannot be undone.' }]);
+  document.getElementById('confirmRemoveSubmit').textContent = config.submitLabel || 'Yes, Remove';
   document.getElementById('confirmRemoveModalBackdrop').classList.add('open');
 }
-function closeConfirmRemoveModal() { document.getElementById('confirmRemoveModalBackdrop').classList.remove('open'); }
+
+function openTeacherRemoveConfirmation({ sectionId, sectionName, gradeLabel, subjectName, teacherName }) {
+  const placement = [gradeLabel, sectionName].filter(Boolean).join(' · ');
+  openConfirmRemoveModal({
+    type: 'teacher',
+    id: `${sectionId}|${subjectName}`,
+    targetId: `${sectionId}|${subjectName}`,
+    sectionId,
+    subjectName,
+    name: teacherName,
+    context: `${subjectName}${placement ? ` · ${placement}` : ''}`,
+    contextLabel: 'Unassigning from',
+    title: `Remove: ${teacherName}`,
+    sub: 'This will clear the current teacher assignment.',
+    label: 'Unassigning from',
+    icon: 'user-minus',
+    action: '/assignments/remove',
+    submitLabel: 'Yes, Unassign',
+    messageParts: [
+      { text: 'This will unassign ' },
+      { text: teacherName, strong: true },
+      { text: ' from ' },
+      { text: subjectName, strong: true },
+      ...(placement ? [{ text: ' in ' }, { text: placement, strong: true }] : []),
+      { text: '. The subject slot will remain available.' }
+    ]
+  });
+}
+
+function openSubjectRemoveConfirmation(subject) {
+  if (!subject) return;
+  openConfirmRemoveModal({
+    type: 'subject',
+    id: subject.id,
+    targetId: subject.id,
+    name: subject.name,
+    context: `${subject.code || 'Subject'} · ${subject.type || 'Configured subject'}`,
+    contextLabel: 'Removing from',
+    title: `Remove: ${subject.name}`,
+    sub: 'This removes the subject from the current list.',
+    label: 'Removing from',
+    icon: 'book-minus',
+    action: '/subjects/remove',
+    messageParts: [
+      { text: 'This will remove ' },
+      { text: subject.name, strong: true },
+      { text: ' from the subject list and clear its configured assignment slots.' }
+    ]
+  });
+}
+
+function removeStudentFromClass(studentName, section, studentId, rowElement) {
+  openConfirmRemoveModal({
+    type: 'student',
+    id: studentId,
+    targetId: studentId,
+    name: studentName,
+    context: section,
+    title: `Remove: ${studentName}`,
+    sub: 'This action cannot be undone.',
+    label: 'Removing',
+    icon: 'user-minus',
+    action: '/assignments/students/remove',
+    rowElement,
+    messageParts: [
+      { text: 'This will remove ' },
+      { text: studentName, strong: true },
+      { text: ' from ' },
+      { text: section || 'this section', strong: true },
+      { text: '. They will appear as unassigned and will need to be re-enrolled.' }
+    ]
+  });
+}
+
+function closeConfirmRemoveModal() {
+  document.getElementById('confirmRemoveModalBackdrop').classList.remove('open');
+  pendingRemoveRequest = null;
+}
 document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeConfirmRemoveModal(); });
 
 function saveManagementStudentPlacement(studentId, section) {
@@ -2509,6 +2675,42 @@ function renderManagementStudentChanges() {
   renderSections();
   renderStudentsTab();
   renderManagementTabPills();
+}
+
+function removeTeacherAssignment(sectionId, subjectName, sectionName, gradeLabel) {
+  const normalizedSectionName = String(sectionName || '').trim().toLowerCase();
+  const normalizedGrade = managementGradeKey(gradeLabel);
+  const section = TEACHER_ASSIGNMENTS_DATA.find(record => (
+    record.id === sectionId
+    || (
+      String(record.name || '').trim().toLowerCase() === normalizedSectionName
+      && managementGradeKey(record.grade) === normalizedGrade
+    )
+  ));
+  const assignment = section?.subjects?.find(subject => subject.name === subjectName);
+  if (!assignment || !assignment.teacher) return false;
+  assignment.teacher = null;
+  assignment.email = null;
+  assignment.initials = null;
+  assignment.avClass = null;
+  return true;
+}
+
+function removeSubjectRecord(subjectId) {
+  const subject = managementSubjectRecords().find(record => record.id === subjectId);
+  if (!subject) return false;
+
+  const normalizedName = String(subject.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  removedSubjectIds.add(subject.id);
+  if (normalizedName) removedSubjectIds.add(normalizedName);
+  subjectGradeOverrides.delete(subject.id);
+
+  /* A removed subject no longer contributes assignment slots in this local
+     frontend source. Replace this local mutation with the backend DELETE later. */
+  TEACHER_ASSIGNMENTS_DATA.forEach(section => {
+    section.subjects = section.subjects.filter(assignment => assignment.name !== subject.name);
+  });
+  return true;
 }
 
 document.getElementById('assignStudentForm').addEventListener('submit', function (event) {
@@ -2543,7 +2745,30 @@ document.getElementById('moveStudentForm').addEventListener('submit', function (
 
 document.getElementById('removeStudentForm').addEventListener('submit', function (event) {
   event.preventDefault();
-  const studentId = document.getElementById('removeStudentId').value;
+  const type = this.dataset.removeType || document.getElementById('confirmRemoveType').value || 'student';
+  const targetId = this.dataset.targetId || document.getElementById('confirmRemoveTargetId').value;
+
+  if (type === 'teacher') {
+    const request = pendingRemoveRequest || {};
+    const removed = removeTeacherAssignment(request.sectionId, request.subjectName, request.sectionName, request.gradeLabel);
+    closeConfirmRemoveModal();
+    if (!removed) return;
+    renderTeacherAssignments();
+    return;
+  }
+
+  if (type === 'subject') {
+    const removed = removeSubjectRecord(targetId);
+    closeConfirmRemoveModal();
+    if (!removed) return;
+    renderManagementSubjectTabs();
+    renderSubjects();
+    filterSubjects();
+    renderTeacherAssignments();
+    return;
+  }
+
+  const studentId = document.getElementById('removeStudentId').value || targetId;
   const student = window.EDUGNAY_CONFIG.students.find(record => record.id === studentId);
   if (!student) { closeConfirmRemoveModal(); return; }
 
@@ -2818,6 +3043,12 @@ updateSectionFormFields('edit');
     searchPlaceholder: 'Search students...',
     emptyText: 'No matching students',
     ariaLabel: 'Student'
+  });
+  window.initSearchableSelect?.(document.getElementById('teacherSelect'), {
+    placeholder: 'Select a teacher',
+    searchPlaceholder: 'Search teachers...',
+    emptyText: 'No matching teachers',
+    ariaLabel: 'Faculty member'
   });
   lucide.createIcons();
 

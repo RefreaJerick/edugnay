@@ -146,6 +146,32 @@
   color: var(--gray-500) !important;
 }
 
+.confirm-remove-context {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+}
+
+.confirm-remove-context :is(.ctx-icon, .ctx-label, .ctx-icon svg) {
+  color: var(--red);
+}
+
+.confirm-remove-context .ctx-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.confirm-remove-message {
+  margin: 0;
+  color: var(--gray-500);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.confirm-remove-message strong {
+  color: var(--gray-700);
+  font-weight: 700;
+}
+
 .modal-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -159,11 +185,27 @@
   overflow-y: auto;
 }
 
-/* Student assignment dialogs keep the dialog itself still. Only the long
+/* Assignment dialogs keep the dialog itself still. Only the long
    searchable result list receives an internal scrollbar. */
 .student-modal-backdrop .modal-body,
-#studentAssignModalBackdrop .modal-body {
+#studentAssignModalBackdrop .modal-body,
+#teacherModalBackdrop .modal-body {
   overflow: visible !important;
+}
+
+/* Let the teacher list extend over the dialog footer instead of being clipped
+   by the modal shell. The list remains bounded and scrollable on its own. */
+#teacherModalBackdrop .modal {
+  overflow: visible;
+  border-radius: 18px !important;
+}
+
+#teacherModalBackdrop .modal-head {
+  border-radius: 17px 17px 0 0;
+}
+
+#teacherModalBackdrop .modal-foot {
+  border-radius: 0 0 17px 17px;
 }
 
 /* Searchable user fields keep the native select in the form while presenting
@@ -240,7 +282,7 @@
 
 .searchable-select-menu {
   position: absolute;
-  z-index: 40;
+  z-index: 1000;
   top: calc(100% + 6px);
   right: 0;
   left: 0;
@@ -252,7 +294,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: 10px 0px 0px 10px;
   background: var(--white);
   box-shadow: 0 12px 24px rgba(15, 32, 58, .12);
 }
