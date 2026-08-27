@@ -523,25 +523,11 @@
   .profile-detail-value { text-align: left; }
 }
 
-/* Teacher profile tabs and section assignment panel. */
+/* Teacher profile layout and section assignment panel. */
 .main .teacher-profile-content {
-  display: block;
+  display: grid;
+  align-items: start;
   margin-bottom: 20px;
-}
-
-.main .teacher-profile-content .profile-pane {
-  width: 100%;
-  margin-bottom: 0;
-}
-
-.main .teacher-profile-content .profile-pane:not(.active),
-.main > #pane-security.profile-pane:not(.active) {
-  display: none;
-}
-
-.main .teacher-profile-content .profile-pane.active,
-.main > #pane-security.profile-pane.active {
-  display: block;
 }
 
 .main #pane-sections .config-panel-body {

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Accounts | E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css" />
+  <link rel="stylesheet" href="../../assets/css/platform/school-accounts.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/platform/shell.js"></script>
+</head>
+<body class="platform-school-accounts" data-platform-portal="true">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar" aria-label="Platform navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay" /></div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-platform-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+        <a href="edugnay-platform-school-accounts.html" class="nav-item active"><div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Accounts</span></a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-platform-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <div class="admin-topbar-context" aria-label="School Accounts page"><div class="admin-topbar-context-copy"><span>Platform administration</span><strong>School Accounts</strong></div></div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span></button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span></div><button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
+            <div class="tb-notif-list" id="tbNotifList"></div>
+          </div>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false"><div class="tb-avatar admin">PA</div><div class="tb-profile-info"><div class="tb-profile-name">Platform Admin</div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel" aria-labelledby="school-accounts-title">
+        <div class="panel-head"><div><div class="panel-title" id="school-accounts-title">School Accounts</div></div></div>
+        <div class="cat-tabs" id="schoolAccountTabs" role="tablist" aria-label="School account status"></div>
+        <div class="school-account-toolbar">
+          <div class="school-account-search search-wrap"><span class="search-icon" aria-hidden="true"><i data-lucide="search" style="width:14px;height:14px;"></i></span><input class="search-input" id="schoolAccountSearch" type="search" autocomplete="off" placeholder="Search school accounts" aria-label="Search school accounts" /></div>
+          <div class="school-account-result-count" id="schoolAccountResultCount"></div>
+        </div>
+        <div class="school-account-table-wrap">
+          <table class="school-account-table">
+            <thead><tr><th>School</th><th>Administrator</th><th>School ID</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="schoolAccountList"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="schoolAccountModal" aria-hidden="true">
+    <section class="modal platform-account-modal" role="dialog" aria-modal="true" aria-labelledby="schoolAccountModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading"><div class="modal-heading-icon" aria-hidden="true"><i data-lucide="building-2"></i></div><div class="modal-heading-copy"><div class="modal-title" id="schoolAccountModalTitle">School Account</div><div class="modal-sub">Review school details and platform access.</div></div></div>
+        <button class="modal-close" type="button" aria-label="Close school account" onclick="closeSchoolAccountModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body" id="schoolAccountModalBody"></div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeSchoolAccountModal()">Close</button><div class="modal-foot-actions" id="schoolAccountModalActions"></div></div>
+    </section>
+  </div>
+
+  <script>
+    const PLATFORM = window.EDUGNAY_PLATFORM;
+    const schoolAccountState = { filter: 'all', query: '', selectedSchoolId: null };
+    const SCHOOL_ACCOUNT_FILTERS = [
+      { id: 'all', label: 'All schools' },
+      { id: 'active', label: 'Active' },
+      { id: 'pending', label: 'Pending review' },
+      { id: 'suspended', label: 'Suspended' }
+    ];
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    }
+
+    function getSchoolStatus(school) {
+      return ['active', 'pending', 'suspended'].includes(school.status) ? school.status : 'active';
+    }
+
+    function schoolStatusLabel(status) {
+      return status === 'pending' ? 'Pending review' : status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function schoolStatusIcon(status) {
+      return status === 'active' ? 'circle-check-big' : status === 'pending' ? 'clock-3' : 'circle-off';
+    }
+
+    function schoolLogoMarkup(school, className) {
+      const logo = school.logoUrl
+        ? `<img src="${escapeHtml(school.logoUrl)}" alt="" onerror="this.parentElement.classList.remove('has-logo'); this.remove();">`
+        : '';
+      return `<div class="${className}${logo ? ' has-logo' : ''}" aria-hidden="true">${logo}<i data-lucide="building-2" style="width:16px;height:16px;"></i></div>`;
+    }
+
+    function getFilteredSchoolAccounts() {
+      const query = schoolAccountState.query.trim().toLowerCase();
+      return PLATFORM.getSchoolRecords().filter(school => {
+        const status = getSchoolStatus(school);
+        const matchesFilter = schoolAccountState.filter === 'all' || status === schoolAccountState.filter;
+        const searchable = [school.name, school.schoolId, school.administrator, school.administratorEmail, school.email].join(' ').toLowerCase();
+        return matchesFilter && (!query || searchable.includes(query));
+      });
+    }
+
+    function renderSchoolAccountTabs(schools) {
+      const counts = schools.reduce((result, school) => {
+        const status = getSchoolStatus(school);
+        result.all += 1;
+        result[status] += 1;
+        return result;
+      }, { all: 0, active: 0, pending: 0, suspended: 0 });
+
+      document.getElementById('schoolAccountTabs').innerHTML = SCHOOL_ACCOUNT_FILTERS.map(filter => `
+        <button class="cat-tab ${schoolAccountState.filter === filter.id ? 'active' : ''}" type="button" role="tab" aria-selected="${schoolAccountState.filter === filter.id}" data-school-account-filter="${filter.id}">${filter.label}<span class="tab-count">${counts[filter.id]}</span></button>`).join('');
+
+      document.querySelectorAll('[data-school-account-filter]').forEach(button => {
+        button.addEventListener('click', () => {
+          schoolAccountState.filter = button.dataset.schoolAccountFilter;
+          renderSchoolAccounts();
+        });
+      });
+    }
+
+    function renderSchoolAccounts() {
+      const schools = PLATFORM.getSchoolRecords();
+      const filtered = getFilteredSchoolAccounts();
+      const resultCount = document.getElementById('schoolAccountResultCount');
+      const list = document.getElementById('schoolAccountList');
+
+      renderSchoolAccountTabs(schools);
+      resultCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`;
+
+      list.innerHTML = filtered.length ? filtered.map(school => {
+        const status = getSchoolStatus(school);
+        const type = school.typeLabel || school.schoolType || 'School';
+        return `<tr>
+          <td><div class="school-account-identity">${schoolLogoMarkup(school, 'school-account-logo')}<div><div class="school-account-name">${escapeHtml(school.name)}</div><div class="school-account-meta">${escapeHtml(type)}</div></div></div></td>
+          <td><div class="school-account-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorEmail || 'No administrator email')}</div></td>
+          <td><div class="school-account-id">${escapeHtml(school.schoolId || 'Not set')}</div></td>
+          <td><span class="school-account-status ${status}"><i data-lucide="${schoolStatusIcon(status)}" style="width:13px;height:13px;"></i>${schoolStatusLabel(status)}</span></td>
+          <td><button class="row-btn edit" type="button" data-review-school="${escapeHtml(school.id)}">Review</button></td>
+        </tr>`;
+      }).join('') : '<tr><td class="school-account-empty" colspan="5">No school accounts match this filter.</td></tr>';
+
+      document.querySelectorAll('[data-review-school]').forEach(button => button.addEventListener('click', () => openSchoolAccountModal(button.dataset.reviewSchool)));
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function openSchoolAccountModal(schoolId) {
+      const school = PLATFORM.getSchoolRecords().find(item => item.id === schoolId);
+      if (!school) return;
+      schoolAccountState.selectedSchoolId = school.id;
+      const status = getSchoolStatus(school);
+      const type = school.typeLabel || school.schoolType || 'School';
+      const levels = Array.isArray(school.schoolLevels) && school.schoolLevels.length ? school.schoolLevels.map(level => ({ elementary: 'Elementary', jhs: 'Junior High School', shs: 'Senior High School' }[level] || level)).join(', ') : 'Not set';
+
+      document.getElementById('schoolAccountModalBody').innerHTML = `
+        <div class="account-review-profile">${schoolLogoMarkup(school, 'account-review-logo')}<div><div class="account-review-name">${escapeHtml(school.name)}</div><div class="account-review-type">${escapeHtml(type)}</div></div></div>
+        <dl class="account-review-details">
+          <div><dt>School ID</dt><dd>${escapeHtml(school.schoolId || 'Not set')}</dd></div>
+          <div><dt>Platform access</dt><dd>${schoolStatusLabel(status)}</dd></div>
+          <div><dt>Initial administrator</dt><dd>${escapeHtml(school.administrator)}</dd></div>
+          <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorEmail || 'Not set')}</dd></div>
+          <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>
+          <div><dt>School email</dt><dd>${escapeHtml(school.email || 'Not set')}</dd></div>
+        </dl>`;
+
+      const action = status === 'active'
+        ? '<button class="btn btn-save school-account-suspend" type="button" data-school-status="suspended">Suspend school</button>'
+        : '<button class="btn btn-save" type="button" data-school-status="active">Activate school</button>';
+      document.getElementById('schoolAccountModalActions').innerHTML = action;
+      document.querySelector('[data-school-status]').addEventListener('click', () => updateSchoolAccountStatus(document.querySelector('[data-school-status]').dataset.schoolStatus));
+
+      const modal = document.getElementById('schoolAccountModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeSchoolAccountModal() {
+      const modal = document.getElementById('schoolAccountModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      schoolAccountState.selectedSchoolId = null;
+    }
+
+    function updateSchoolAccountStatus(status) {
+      const schools = window.EDUGNAY_CONFIG.getSchools();
+      const index = schools.findIndex(school => school.id === schoolAccountState.selectedSchoolId);
+      if (index < 0) return;
+      schools[index] = { ...schools[index], platformStatus: status };
+      window.EDUGNAY_CONFIG.saveSchools(schools);
+      closeSchoolAccountModal();
+      renderSchoolAccounts();
+    }
+
+    document.getElementById('schoolAccountSearch').addEventListener('input', event => {
+      schoolAccountState.query = event.target.value;
+      renderSchoolAccounts();
+    });
+
+    document.getElementById('schoolAccountModal').addEventListener('click', event => {
+      if (event.target.id === 'schoolAccountModal') closeSchoolAccountModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      PLATFORM.renderTopbarNotifs();
+      renderSchoolAccounts();
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

@@ -385,11 +385,11 @@
   // Shared non-student accounts.
   const CORE_ACCOUNT_DIRECTORY = [
     { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
-    { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-    { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
+    { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2019-0042', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+    { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2021-0017', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
     { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
     { id: '8', firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'inactive', dateAdded: 'May 24, 2025', lrn: '', linkedStudents: [{ id: 'STU-M-CRUZ', name: 'M. Cruz', section: 'Gr. 7' }] },
-    { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', section: 'Grade 9 / St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+    { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2018-0031', section: 'Grade 9 / St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
   ];
 
   // Shared K-12 student collection. Replace this local array with the
@@ -707,10 +707,14 @@ function confirmLogout() {
 }
 
 function applyActiveSchoolToShell() {
+  /* Platform pages operate across every registered school, so they must keep
+     their platform context instead of inheriting the active school label. */
+  if (document.body?.dataset.platformPortal === 'true') return;
+
   const school = window.EDUGNAY_CONFIG?.getActiveSchool?.();
   if (!school) return;
 
-  document.querySelectorAll('.brand-sub').forEach(element => {
+  document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => {
     element.textContent = school.shortName || school.name;
   });
   document.querySelectorAll('[data-school-name]').forEach(element => {
@@ -734,6 +738,7 @@ function applyActiveSchoolToShell() {
 }
 
 function renderNoClassNotice() {
+  if (document.body?.dataset.platformPortal === 'true') return;
   const pageName = location.pathname.split('/').pop().toLowerCase();
   if (!/(dashboard|notifications)\.html$/.test(pageName)) return;
 

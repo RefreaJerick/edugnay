@@ -1358,7 +1358,7 @@ tbody td {
 }
 
 .teacher-notif-panel-foot a:hover {
-  border-color: #93c5fd;
+  border-color: var(--blue-border-hover);
   background: var(--blue-pale);
 }
 

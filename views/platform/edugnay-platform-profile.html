@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Profile | E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <link rel="stylesheet" href="../../assets/css/admin/profile.css" />
+  <link rel="stylesheet" href="../../assets/css/profile-common.css" />
+  <link rel="stylesheet" href="../../assets/css/platform/profile.css" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/platform/shell.js"></script>
+</head>
+<body class="platform-profile" data-platform-portal="true">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar" aria-label="Platform navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay" /></div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-platform-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-platform-school-accounts.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Accounts</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-platform-profile.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <div class="admin-topbar-context" aria-label="Platform profile page">
+          <div class="admin-topbar-context-copy"><span>Platform administration</span><strong>My Profile</strong></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span></button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading"><span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span></div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList"></div>
+          </div>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false"><div class="tb-avatar admin">PA</div><div class="tb-profile-info"><div class="tb-profile-name">Platform Admin</div><div class="tb-profile-role">Administrator</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="page-overview" aria-labelledby="platform-profile-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Account</div>
+          <h1 class="page-overview-title" id="platform-profile-title">My Profile</h1>
+        </div>
+      </section>
+
+      <section class="profile-header-card" aria-labelledby="profile-header-name">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" data-color="blue" aria-hidden="true"><span id="profileInitials">PA</span></div>
+        </div>
+        <div class="profile-header-info">
+          <div class="profile-header-name" id="profile-header-name">Platform Admin</div>
+          <div class="profile-header-meta"><span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i><span class="profile-email-value" id="profileEmail"></span></span></div>
+        </div>
+      </section>
+
+      <div class="two-col">
+        <section class="panel personal-info-panel" aria-labelledby="profile-details-title">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+              <div><div class="panel-title" id="profile-details-title">Personal Information</div></div>
+            </div>
+          </div>
+          <div class="config-panel-body profile-fields" id="platformProfileFields"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="profile-access-title">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+              <div><div class="panel-title" id="profile-access-title">Platform Access</div></div>
+            </div>
+          </div>
+          <div class="config-panel-body profile-details" id="platformAccessDetails"></div>
+          <p class="profile-note">Your platform role is limited to school registration and account review workflows.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const PLATFORM = window.EDUGNAY_PLATFORM;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    }
+
+    const PLATFORM_PROFILE_FIELDS = [
+      { label: 'Full Name', getValue: admin => admin.name },
+      { label: 'Account Email', getValue: admin => admin.email },
+      { label: 'Role', getValue: admin => admin.role }
+    ];
+
+    const PLATFORM_ACCESS_DETAILS = [
+      { label: 'Account status', value: 'Active' },
+      { label: 'Access scope', value: 'All registered schools' },
+      { label: 'Primary responsibility', value: 'School account review' }
+    ];
+
+    function renderPlatformProfile() {
+      const admin = PLATFORM.admin;
+      document.getElementById('profileInitials').textContent = admin.initials;
+      document.getElementById('profile-header-name').textContent = admin.name;
+      document.getElementById('profileEmail').textContent = admin.email;
+      document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.map(field => `
+        <div class="form-group">
+          <label class="form-label">${escapeHtml(field.label)}</label>
+          <div class="form-input profile-readonly-value" role="textbox" aria-readonly="true">${escapeHtml(field.getValue(admin))}</div>
+        </div>`).join('');
+      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCESS_DETAILS.map(detail => `
+        <div class="profile-detail-row"><span class="profile-detail-label">${escapeHtml(detail.label)}</span><span class="profile-detail-value">${escapeHtml(detail.value)}</span></div>`).join('');
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderPlatformProfile();
+      PLATFORM.renderTopbarNotifs();
+    });
+  </script>
+</body>
+</html>

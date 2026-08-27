@@ -82,6 +82,12 @@
             </div>
           </div>
 
+          <!-- CONDITIONAL: Employee Number (Faculty only) -->
+          <div class="form-group" id="employeeNumberGroup" style="display:none;">
+            <label class="form-label">Employee Number</label>
+            <input class="form-input" name="employeeNo" id="accountEmployeeNo" type="text" placeholder="e.g. FAC-2019-0042" autocomplete="off" />
+          </div>
+
           <!-- CONDITIONAL: LRN (Student only) -->
           <div class="form-group" id="lrnGroup" style="display:none;">
             <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner
@@ -758,9 +764,10 @@
       return USERS.filter(u => {
         const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase();
         const email = u.email.toLowerCase();
+        const employeeNo = String(u.employeeNo || '').toLowerCase();
         const sectionDisplay = getSectionDisplay(u);
 
-        const matchSearch = displayName.includes(search) || email.includes(search);
+        const matchSearch = displayName.includes(search) || email.includes(search) || employeeNo.includes(search);
         const matchRole = activeRole === 'all' || u.role === activeRole;
         const matchStatus = status === 'all' || u.status === status;
         const matchSection = section === 'all' || sectionDisplay === section;
@@ -894,11 +901,18 @@
       const email = document.getElementById('accountEmail').value.trim();
       const roleOptValue = document.getElementById('accountRole').value;
       const role = ROLE_OPT_TO_TABLE[roleOptValue];
+      const employeeNo = document.getElementById('accountEmployeeNo').value.trim();
       const lrn = document.getElementById('accountLRN').value.trim();
       const userId = document.getElementById('accountUserId').value;
 
       if (!firstName || !lastName || !email || !role) {
         alert('Please fill in all required fields, including a role.');
+        return;
+      }
+      if ((role === 'fac' && !employeeNo) || (role === 'stud' && !lrn)) {
+        alert(role === 'fac'
+          ? 'Please provide the teacher employee number.'
+          : 'Please provide the student LRN.');
         return;
       }
 
@@ -912,6 +926,7 @@
           user.displayName = `${firstName} ${lastName}`;
           user.email = email;
           user.role = role;
+          user.employeeNo = role === 'fac' ? employeeNo : '';
           user.lrn = role === 'stud' ? lrn : '';
           if (role !== 'stud') user.gradeLevel = '';
           user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
@@ -924,6 +939,7 @@
           firstName, lastName,
           displayName: `${firstName} ${lastName}`,
           email, role,
+          employeeNo: role === 'fac' ? employeeNo : '',
           section: (role === 'stud' || role === 'fac') ? 'Unassigned' : '',
           gradeLevel: '',
           status: 'active',
@@ -997,11 +1013,38 @@
         const headers = lines[0].split(',').map(h => h.trim());
         const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
 
-        rows.forEach(cols => {
+        const tableRole = ROLE_OPT_TO_TABLE[role] || role;
+        const identityColumns = tableRole === 'fac'
+          ? ['employeeNo', 'employeeNumber']
+          : tableRole === 'stud'
+            ? ['lrn']
+            : [];
+
+        if (identityColumns.length && !identityColumns.some(column => headers.includes(column))) {
+          alert(tableRole === 'fac'
+            ? 'Teacher CSV files must include an employeeNo column.'
+            : 'Student CSV files must include an lrn column.');
+          return;
+        }
+
+        const records = rows.map(cols => {
           const record = {};
           headers.forEach((h, i) => record[h] = cols[i] || '');
-          const tableRole = ROLE_OPT_TO_TABLE[role] || role;
+          return record;
+        });
+        const invalidIdentityIndex = records.findIndex(record => (
+          (tableRole === 'fac' && !(record.employeeNo || record.employeeNumber || '').trim())
+          || (tableRole === 'stud' && !(record.lrn || '').trim())
+        ));
 
+        if (invalidIdentityIndex >= 0) {
+          alert(tableRole === 'fac'
+            ? `Teacher row ${invalidIdentityIndex + 2} is missing an employee number.`
+            : `Student row ${invalidIdentityIndex + 2} is missing an LRN.`);
+          return;
+        }
+
+        records.forEach(record => {
           const user = {
             id: String(nextUserId++),
             firstName: record.firstName || '',
@@ -1015,7 +1058,8 @@
               : '',
             status: 'active',
             dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            lrn: record.lrn || '',
+            employeeNo: tableRole === 'fac' ? String(record.employeeNo || record.employeeNumber || '').trim() : '',
+            lrn: tableRole === 'stud' ? String(record.lrn || '').trim() : '',
             linkedStudents: [],
           };
           USERS.push(user);
@@ -1072,6 +1116,7 @@
       document.getElementById('accountLastName').value = user.lastName;
       document.getElementById('accountEmail').value = user.email;
       document.getElementById('accountUserId').value = user.id;
+      document.getElementById('accountEmployeeNo').value = user.employeeNo || '';
 
       // EJS NOTE: when wired up, route is POST /users/:id/edit (or PATCH via method-override)
       form.action = `/users/${user.id}/edit`;
@@ -1305,10 +1350,18 @@
 
     function updateAccountModalFields() {
       const role = document.getElementById('accountRole').value;
-      document.getElementById('lrnGroup').style.display = role === 'stud' ? '' : 'none';
+      const isStudent = role === 'stud';
+      const isFaculty = role === 'fac';
+      const lrnInput = document.getElementById('accountLRN');
+      const employeeInput = document.getElementById('accountEmployeeNo');
+      document.getElementById('lrnGroup').style.display = isStudent ? '' : 'none';
+      document.getElementById('employeeNumberGroup').style.display = isFaculty ? '' : 'none';
       document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+      lrnInput.required = isStudent;
+      employeeInput.required = isFaculty;
 
-      if (role !== 'stud') document.getElementById('accountLRN').value = '';
+      if (!isStudent) lrnInput.value = '';
+      if (!isFaculty) employeeInput.value = '';
       if (role !== 'parents') clearLinkedStudents();
     }
 
@@ -1421,7 +1474,7 @@
 
     const CSV_COLS = {
       adm: ['firstName', 'lastName', 'personalEmail'],
-      fac: ['firstName', 'lastName', 'personalEmail'],
+      fac: ['firstName', 'lastName', 'personalEmail', 'employeeNo'],
       stud: ['firstName', 'lastName', 'personalEmail', 'lrn'],
       parents: ['firstName', 'lastName', 'personalEmail', 'studentIds'],
     };

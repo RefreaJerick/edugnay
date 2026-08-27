@@ -1,0 +1,30 @@
+/* Platform-only profile details. Layout and sizing come from the same
+   admin/profile.css + profile-common.css stack used by the school admin. */
+
+.platform-profile .profile-email-value {
+  display: inline !important;
+}
+
+.platform-profile .profile-readonly-value {
+  display: flex;
+  align-items: center;
+  color: var(--gray-400);
+  cursor: default;
+}
+
+.platform-profile .profile-note {
+  margin: 0;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-50);
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .platform-profile .profile-note {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}

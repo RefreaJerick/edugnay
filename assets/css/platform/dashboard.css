@@ -1,0 +1,142 @@
+/* Platform Administrator dashboard additions. Shared dashboard elements use
+   the existing Admin dashboard classes without visual overrides. */
+
+.platform-dashboard .school-directory {
+  padding: 6px 20px 10px;
+}
+
+.platform-dashboard .school-directory-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, .6fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.platform-dashboard .school-directory-row:last-child {
+  border-bottom: 0;
+}
+
+.platform-dashboard .school-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 11px;
+}
+
+.platform-dashboard .school-logo {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-50);
+  color: var(--blue-mid);
+}
+
+.platform-dashboard .school-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--white);
+}
+
+.platform-dashboard .school-logo.has-logo > i {
+  display: none;
+}
+
+.platform-dashboard .school-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gray-800);
+}
+
+.platform-dashboard .school-meta,
+.platform-dashboard .school-admin {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--gray-400);
+}
+
+.platform-dashboard .school-admin strong {
+  color: var(--gray-600);
+  font-weight: 600;
+}
+
+.platform-dashboard .school-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid var(--green-pale);
+  border-radius: 999px;
+  background: var(--green-pale);
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.platform-dashboard .school-status.pending {
+  border-color: var(--orange-border);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
+}
+
+.platform-dashboard .school-status.suspended {
+  border-color: var(--red-border-soft);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.platform-dashboard .school-row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 8px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.platform-dashboard .school-row-action:hover {
+  background: var(--blue-pale);
+}
+
+.platform-dashboard .platform-empty {
+  padding: 30px 20px;
+  color: var(--gray-400);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .platform-dashboard .school-directory {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .platform-dashboard .school-directory-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .platform-dashboard .school-admin {
+    grid-column: 1 / -1;
+    margin-top: -3px;
+  }
+
+  .platform-dashboard .school-row-action {
+    display: none;
+  }
+}

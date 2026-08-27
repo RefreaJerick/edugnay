@@ -149,6 +149,12 @@
             </div>
           </div>
 
+          <!-- CONDITIONAL: Employee Number (Faculty only) -->
+          <div class="form-group" id="employeeNumberGroup" style="display:none;">
+            <label class="form-label">Employee Number</label>
+            <input class="form-input" name="employeeNo" id="accountEmployeeNo" type="text" placeholder="e.g. FAC-2019-0042" autocomplete="off" />
+          </div>
+
           <!-- CONDITIONAL: LRN (Student only) -->
           <div class="form-group" id="lrnGroup" style="display:none;">
             <label class="form-label">LRN <span style="font-weight:400;color:var(--gray-400);font-size:12px;">(Learner
@@ -994,10 +1000,18 @@
 
     function updateAccountModalFields() {
       const role = document.getElementById('accountRole').value;
-      document.getElementById('lrnGroup').style.display = role === 'stud' ? '' : 'none';
+      const isStudent = role === 'stud';
+      const isFaculty = role === 'fac';
+      const lrnInput = document.getElementById('accountLRN');
+      const employeeInput = document.getElementById('accountEmployeeNo');
+      document.getElementById('lrnGroup').style.display = isStudent ? '' : 'none';
+      document.getElementById('employeeNumberGroup').style.display = isFaculty ? '' : 'none';
       document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
+      lrnInput.required = isStudent;
+      employeeInput.required = isFaculty;
 
-      if (role !== 'stud') document.getElementById('accountLRN').value = '';
+      if (!isStudent) lrnInput.value = '';
+      if (!isFaculty) employeeInput.value = '';
       if (role !== 'parents') clearLinkedStudents();
     }
 
@@ -1082,8 +1096,16 @@
       const lastName = String(form.elements.lastName.value || '').trim();
       const email = String(form.elements.email.value || '').trim();
       const role = DASHBOARD_ROLE_MAP[document.getElementById('accountRole').value];
+      const employeeNo = String(form.elements.employeeNo?.value || '').trim();
+      const lrn = String(form.elements.lrn?.value || '').trim();
       if (!firstName || !lastName || !email || !role) {
         alert('Please complete the name, school email, and role.');
+        return;
+      }
+      if ((role === 'fac' && !employeeNo) || (role === 'stud' && !lrn)) {
+        alert(role === 'fac'
+          ? 'Please provide the teacher employee number.'
+          : 'Please provide the student LRN.');
         return;
       }
 
@@ -1099,7 +1121,8 @@
         gradeLevel: '',
         status: 'active',
         dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        lrn: role === 'stud' ? String(form.elements.lrn?.value || '').trim() : '',
+        employeeNo: role === 'fac' ? employeeNo : '',
+        lrn: role === 'stud' ? lrn : '',
         linkedStudents: role === 'par' ? [...linkedStudents] : []
       };
 

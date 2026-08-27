@@ -36,8 +36,7 @@
   - Personal info form   → ONLY editable field is phone — email is
                          fixed (registrar-controlled, same tier as name)
                          since it's tied to the student's school account/login.
-                         Name is admin-controlled depending on school policy;
-                         mark as disabled if so (already disabled here).
+                         Name is school-admin controlled and remains disabled here.
 
   FORM SUBMIT: POST /student/profile/update — validate server-side regardless of
   client-side input types. Avatar upload goes through the same handler pattern as
@@ -375,12 +374,12 @@
             <div class="form-group">
               <label class="form-label">First Name</label>
               <input class="form-input" type="text" name="firstName" value="Juan" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Managed by the admin</span>
+              <span class="form-hint">Managed by your school administrator.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Last Name</label>
               <input class="form-input" type="text" name="lastName" value="Alcantara" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Managed by the admin</span>
+              <span class="form-hint">Managed by your school administrator.</span>
             </div>
           </div>
 
@@ -388,13 +387,14 @@
 
           <div class="form-grid-2">
             <div class="form-group">
-              <label class="form-label">School Email</label>
+              <label class="form-label">Account Email</label>
               <input class="form-input" type="email" name="email" id="profile-email" value="juan.alcantara@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+              <span class="form-hint">Used to sign in to your account.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Mobile Number</label>
               <input class="form-input" type="tel" name="phone" id="profile-phone" value="0917 123 4567" placeholder="09XX XXX XXXX"/>
+              <span class="form-hint">Optional contact number.</span>
             </div>
           </div>
 

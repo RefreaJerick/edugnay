@@ -247,7 +247,7 @@
 
     <div class="two-col" style="align-items:start;">
 
-      <!-- Personal Information (editable) -->
+      <!-- Personal Information -->
       <div class="panel personal-info-panel">
         <div class="panel-head">
           <div class="panel-head-title-group">
@@ -262,22 +262,22 @@
             <div class="form-group">
               <label class="form-label">Full Name</label>
               <input class="form-input" type="text" name="fullName" value="Sr. Admin" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Managed by the system owner</span>
+              <span class="form-hint">Managed through account administration.</span>
             </div>
             <div class="form-group">
-              <label class="form-label">School Email</label>
+              <label class="form-label">Account Email</label>
               <input class="form-input" type="email" name="email" value="admin@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Used for account sign-in · cannot be changed here</span>
+              <span class="form-hint">Used to sign in to your account.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Employee Number</label>
               <input class="form-input" type="text" name="employeeNo" value="ADM-2016-0001" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Assigned by the system owner</span>
+              <span class="form-hint">Your school-assigned ID.</span>
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">Contact Number</label>
-              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 555 2210" placeholder="e.g. 0917 123 4567"/>
-              <span class="form-hint">Used for urgent system or account concerns</span>
+              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 555 2210" placeholder="e.g. 0917 123 4567" autocomplete="tel"/>
+              <span class="form-hint">Optional contact number.</span>
             </div>
           </div>
           <div class="config-panel-foot">
@@ -287,52 +287,53 @@
         </form>
       </div>
 
-      <!-- Employment Details (read-only) -->
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-head-title-group">
-            <div class="panel-title-icon">
-              <i data-lucide="briefcase" style="width:16px;height:16px;"></i>
+      <div class="profile-side-column">
+        <!-- Employment Details (read-only) -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon">
+                <i data-lucide="briefcase" style="width:16px;height:16px;"></i>
+              </div>
+              <div>
+                <div class="panel-title">Employment Details</div>
+                <div class="panel-sub">Managed through account administration.</div>
+              </div>
             </div>
-            <div>
-              <div class="panel-title">Employment Details</div>
-              <div class="panel-sub">Set by the system owner</div>
+          </div>
+          <div class="config-panel-body" id="admin-employment-details">
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Office</span>
+              <span class="profile-detail-value">Registrar's Office</span>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Position</span>
+              <span class="profile-detail-value">System Administrator</span>
+            </div>
+            <div class="profile-detail-row">
+              <span class="profile-detail-label">Access Level</span>
+              <span class="profile-detail-value">Full System Access</span>
             </div>
           </div>
         </div>
-        <div class="config-panel-body" id="admin-employment-details">
-          <div class="profile-detail-row">
-            <span class="profile-detail-label">Office</span>
-            <span class="profile-detail-value">Registrar's Office</span>
+
+        <!-- Security -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
+              <div>
+                <div class="panel-title">Security</div>
+              </div>
+            </div>
           </div>
-          <div class="profile-detail-row">
-            <span class="profile-detail-label">Position</span>
-            <span class="profile-detail-value">System Administrator</span>
-          </div>
-          <div class="profile-detail-row">
-            <span class="profile-detail-label">Access Level</span>
-            <span class="profile-detail-value">Full System Access</span>
+          <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;color:var(--gray-600);">Password last changed on April 2, 2025</div>
+            <button class="top-btn secondary" onclick="openModal()">
+              <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
+            </button>
           </div>
         </div>
-      </div>
-
-    </div>
-
-    <!-- Security -->
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-head-title-group">
-          <div class="panel-title-icon"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
-          <div>
-            <div class="panel-title">Security</div>
-          </div>
-        </div>
-      </div>
-      <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:13px;color:var(--gray-600);">Password last changed on April 2, 2025</div>
-        <button class="top-btn secondary" onclick="openModal()">
-          <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
-        </button>
       </div>
     </div>
 
@@ -489,7 +490,7 @@
     const form = document.getElementById('profileForm');
     const body = Object.fromEntries(new FormData(form).entries());
     // fetch('/admin/profile', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-    alert('Profile updated.');
+    alert('Contact info updated.');
     return false;
   }
 

@@ -18,6 +18,7 @@
   --blue-light:  #3b82f6;
   --blue-pale:   #dbeafe;
   --blue-xpale:  #eff6ff;
+  --blue-border-hover: #93c5fd;
   --gold:        #c9a84c;
   --gold-light:  #f0d080;
   --white:       #ffffff;
@@ -59,6 +60,9 @@
   --orange-border:        #fde68a;
   --gold-border:          #e8c96d;
   --red-border:           #f5c2c2;
+  --red-border-soft:      #fecaca;
+  --input-focus-shadow:   0 0 0 3px rgba(29, 92, 180, .1);
+  --tab-count-active-bg:  rgba(255, 255, 255, .25);
   --card-hover-shadow:         0 9px 20px rgba(16, 40, 80, .09);
   --summary-card-hover-shadow: var(--card-hover-shadow);
   --overlay-modal:        rgba(11, 31, 58, .48);
@@ -2211,7 +2215,7 @@ body.drawer-open .sidebar {
 }
 
 .tb-notif-panel-foot a:hover {
-  border-color: #93c5fd;
+  border-color: var(--blue-border-hover);
   background: var(--blue-pale);
 }
 
