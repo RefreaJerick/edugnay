@@ -133,14 +133,22 @@ function goToTopbarNotif(link, id) {
 function navigate(page) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-parent-dashboard.html';
+  } else if (page === 'grades') {
+    if (window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() === false) {
+      window.location.href = './edugnay-parent-dashboard.html';
+      return;
+    }
+    window.location.href = './edugnay-parent-grades.html';
   } else if (page === 'reports') {
     window.location.href = './edugnay-parent-reports.html';
   } else if (page === 'attendance') {
     window.location.href = './edugnay-parent-attendance.html';
   } else if (page === 'announcements') {
-    window.location.href = './parent-announcements.html';
+    window.location.href = './edugnay-parent-announcements.html';
   } else if (page === 'profile') {
-    window.location.href = './parent-profile.html';
+    window.location.href = './edugnay-parent-profile.html';
+  } else if (page === 'notifications') {
+    window.location.href = './edugnay-parent-notifications.html';
   }
 }
 

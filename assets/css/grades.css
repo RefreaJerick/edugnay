@@ -1,0 +1,264 @@
+/* Shared grades page surface for the student and parent portals.
+   Records are rendered by each page script so this presentation can later
+   receive the same shape from an API response. */
+
+.grades-page {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Quarter navigation uses the shared tab-bar system from modal-system.css.
+   The page stack owns the vertical rhythm so the student and parent layouts
+   use the same spacing between the overview, tabs, panel, and note. */
+.grades-page :is(.portal-overview, .child-switcher, .grade-tabs, .grades-subject-panel) {
+  margin-bottom: 0;
+}
+
+.grades-page .grade-tab {
+  cursor: pointer;
+  user-select: none;
+}
+
+.grades-subject-panel .panel-head-title-group {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.grades-subject-panel .panel-title-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--blue-pale);
+  border-radius: 9px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.grade-subject-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 24px 24px;
+}
+
+.grade-subject-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--gray-50);
+}
+
+.grade-subject-copy {
+  min-width: 0;
+}
+
+.grade-subject-name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.grade-subject-teacher {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--gray-400);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grade-subject-score {
+  min-width: 74px;
+  text-align: right;
+}
+
+.grade-score-value {
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -.35px;
+  line-height: 1;
+}
+
+.grade-score-remark {
+  display: block;
+  margin-top: 5px;
+  color: var(--gray-500);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.grade-subject-score.is-outstanding .grade-score-value,
+.grade-subject-score.is-outstanding .grade-score-remark {
+  color: var(--green-dark);
+}
+
+.grade-subject-score.is-satisfactory .grade-score-value,
+.grade-subject-score.is-satisfactory .grade-score-remark {
+  color: var(--blue-mid);
+}
+
+.grade-subject-score.is-review .grade-score-value,
+.grade-subject-score.is-review .grade-score-remark {
+  color: var(--orange-dark);
+}
+
+.grade-subject-score.is-pending .grade-score-value,
+.grade-subject-score.is-pending .grade-score-remark {
+  color: var(--gray-400);
+}
+
+.grades-empty {
+  grid-column: 1 / -1;
+  display: grid;
+  min-height: 180px;
+  padding: 32px 24px;
+  place-items: center;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.grades-empty-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 10px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--gray-100);
+  color: var(--gray-400);
+}
+
+.grades-empty-title {
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.grades-empty-copy {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.grades-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 14px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 12px;
+  background: var(--blue-xpale);
+}
+
+.grades-note-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--white);
+  color: var(--blue-mid);
+}
+
+.grades-note-copy {
+  min-width: 0;
+  color: var(--gray-600);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.grades-note-copy strong {
+  color: var(--gray-800);
+  font-weight: 800;
+}
+
+@media (max-width: 980px) {
+  .grade-subject-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grade-subject-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .grades-subject-panel .panel-head {
+    align-items: flex-start;
+  }
+
+  .grade-subject-list {
+    padding: 14px 16px 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .grade-subject-row {
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .grade-subject-name {
+    font-size: 12px;
+  }
+
+  .grade-subject-teacher {
+    font-size: 10px;
+  }
+
+  .grade-subject-score {
+    min-width: 68px;
+  }
+
+  .grade-score-value {
+    font-size: 18px;
+  }
+
+  .grade-score-remark {
+    font-size: 9px;
+  }
+
+  .grades-note {
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 0;
+    padding: 11px 12px;
+    border-radius: 12px;
+  }
+
+  .grades-note-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .grades-note-copy {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+}

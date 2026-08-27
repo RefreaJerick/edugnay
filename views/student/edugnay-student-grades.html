@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/grades.css">
+  <script src="../../assets/js/scroll-fades.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/student/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+</head>
+
+<body>
+
+  <!--
+    EJS CONVERSION MAP
+    student                    -> authenticated student record
+    gradeRecords[]             -> grades for the active student and school year
+    gradeRecords[].subjects[]  -> structured subject marks from the gradebook
+
+    The arrays below are local frontend data for the prototype. Replace them
+    with the student grades response later and keep the render functions as the
+    view layer. Grade visibility can later be guarded by the school's portal
+    access setting on both the server and the client.
+  -->
+
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-grades.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Grades</span>
+        </a>
+        <a href="edugnay-student-assignments.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Assignments</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <a href="edugnay-student-journal.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+          <span class="nav-badge gold">3</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-student-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Current page">
+          <div class="topbar-context-copy"><strong>Grades</strong></div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-student-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar student">JD</div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-role">Student</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i> My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main grades-page">
+      <section class="portal-overview" aria-labelledby="student-grades-title">
+        <div class="portal-overview-copy">
+          <div class="portal-overview-kicker">Student workspace</div>
+          <h1 class="portal-overview-title" id="student-grades-title">My Grades</h1>
+          <p class="portal-overview-description">Review your academic performance by quarter.</p>
+        </div>
+      </section>
+
+      <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Academic quarter"></div>
+
+      <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon" aria-hidden="true"><i data-lucide="book-open-check" style="width:17px;height:17px;"></i></div>
+            <div>
+              <div class="panel-title" id="subjectGradesTitle">Subject grades</div>
+              <div class="panel-sub">Final marks by subject</div>
+            </div>
+          </div>
+        </div>
+        <div class="grade-subject-list" id="gradeSubjectList"></div>
+      </section>
+
+      <div class="grades-note" role="note">
+        <div class="grades-note-icon" aria-hidden="true"><i data-lucide="info" style="width:15px;height:15px;"></i></div>
+        <div class="grades-note-copy" id="gradesNoteCopy">These are the final marks available for the selected quarter. Contact your subject teacher for score details.</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const STUDENT_RECORD = {
+      id: 'STU-001',
+      name: 'Juan Dela Cruz',
+      section: 'Grade 7 - St. Matthew',
+      schoolYear: '2025-2026'
+    };
+
+    // Replace this local array with GET /student/grades?schoolYear=... later.
+    const STUDENT_GRADE_RECORDS = [
+      {
+        id: 'q1', label: 'Quarter 1', status: 'final',
+        subjects: [
+          { id: 'math-q1', subjectId: 'math', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 89, remark: 'Very Satisfactory' },
+          { id: 'eng-q1', subjectId: 'english', name: 'English', teacher: 'Mr. Paolo Santos', score: 87, remark: 'Very Satisfactory' },
+          { id: 'sci-q1', subjectId: 'science', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88, remark: 'Very Satisfactory' },
+          { id: 'fil-q1', subjectId: 'filipino', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 90, remark: 'Outstanding' },
+          { id: 've-q1', subjectId: 'values-education', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 91, remark: 'Outstanding' },
+          { id: 'ap-q1', subjectId: 'araling-panlipunan', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: 87, remark: 'Very Satisfactory' },
+          { id: 'mapeh-q1', subjectId: 'mapeh', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: 89, remark: 'Very Satisfactory' }
+        ]
+      },
+      {
+        id: 'q2', label: 'Quarter 2', status: 'final',
+        subjects: [
+          { id: 'math-q2', subjectId: 'math', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 92.5, remark: 'Outstanding' },
+          { id: 'eng-q2', subjectId: 'english', name: 'English', teacher: 'Mr. Paolo Santos', score: 90, remark: 'Outstanding' },
+          { id: 'sci-q2', subjectId: 'science', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88.5, remark: 'Very Satisfactory' },
+          { id: 'fil-q2', subjectId: 'filipino', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 91, remark: 'Outstanding' },
+          { id: 've-q2', subjectId: 'values-education', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 94, remark: 'Outstanding' },
+          { id: 'ap-q2', subjectId: 'araling-panlipunan', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: null, remark: 'Pending release' },
+          { id: 'mapeh-q2', subjectId: 'mapeh', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: null, remark: 'Pending release' }
+        ]
+      },
+      { id: 'q3', label: 'Quarter 3', status: 'not-started', subjects: [] },
+      {
+        id: 'q4', label: 'Quarter 4', status: 'not-started', subjects: []
+      }
+    ];
+
+    let activeQuarterId = 'q2';
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character];
+      });
+    }
+
+    function isRecorded(score) {
+      return score !== null && score !== undefined && score !== '' && Number.isFinite(Number(score));
+    }
+
+    function getActiveQuarter() {
+      return STUDENT_GRADE_RECORDS.find(record => record.id === activeQuarterId) || STUDENT_GRADE_RECORDS[0];
+    }
+
+    function scoreClass(score) {
+      if (!isRecorded(score)) return 'is-pending';
+      if (Number(score) >= 90) return 'is-outstanding';
+      if (Number(score) >= 85) return 'is-satisfactory';
+      return 'is-review';
+    }
+
+    function renderQuarterTabs() {
+      const tabs = document.getElementById('gradeTabs');
+      tabs.innerHTML = STUDENT_GRADE_RECORDS.map(record => {
+        return `<button class="grade-tab ${record.id === activeQuarterId ? 'active' : ''}" type="button" role="tab" aria-selected="${record.id === activeQuarterId}" data-quarter="${record.id}">
+          <span>${escapeHtml(record.label)}</span>
+        </button>`;
+      }).join('');
+      tabs.querySelectorAll('[data-quarter]').forEach(button => button.addEventListener('click', function () {
+        activeQuarterId = this.dataset.quarter;
+        renderGrades();
+      }));
+    }
+
+    function renderSubjectGrades(record) {
+      const subjects = Array.isArray(record.subjects) ? record.subjects : [];
+      const list = document.getElementById('gradeSubjectList');
+
+      if (!subjects.length) {
+        list.innerHTML = `<div class="grades-empty"><div><div class="grades-empty-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div><div class="grades-empty-title">No grades available yet</div><div class="grades-empty-copy">Subject marks will appear here when this quarter is opened.</div></div></div>`;
+        return;
+      }
+
+      list.innerHTML = subjects.map(subject => {
+        const recorded = isRecorded(subject.score);
+        return `<article class="grade-subject-row">
+          <div class="grade-subject-copy">
+            <div class="grade-subject-name">${escapeHtml(subject.name)}</div>
+            <div class="grade-subject-teacher">${escapeHtml(subject.teacher)}</div>
+          </div>
+          <div class="grade-subject-score ${scoreClass(subject.score)}">
+            <div class="grade-score-value">${recorded ? Number(subject.score).toFixed(1) : 'Not set'}</div>
+            <span class="grade-score-remark">${escapeHtml(subject.remark || (recorded ? 'Recorded' : 'Pending'))}</span>
+          </div>
+        </article>`;
+      }).join('');
+    }
+
+    function renderGrades() {
+      const record = getActiveQuarter();
+      if (!record) return;
+      renderQuarterTabs();
+      renderSubjectGrades(record);
+      const note = document.getElementById('gradesNoteCopy');
+      note.innerHTML = record.status === 'final'
+        ? '<strong>Final quarter grades.</strong> Contact your subject teacher for score details or corrections.'
+        : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the quarter is released.';
+      lucide.createIcons();
+    }
+
+    renderGrades();
+  </script>
+</body>
+
+</html>

@@ -125,6 +125,9 @@
       ],
       schoolYear: '2025-2026',
       academicPeriod: 'Quarter 2',
+      // School-wide portal policy. Replace this local setting with the
+      // authenticated school's settings response during backend integration.
+      gradesPageEnabled: true,
       attendanceRules: makeAttendanceRules(),
       activeDivision: 'jhs',
       schoolLevels: ['elementary', 'jhs', 'shs'],
@@ -279,6 +282,7 @@
       divisions,
       schoolYear: active.schoolYear,
       academicPeriod: active.academicPeriod,
+      gradesPageEnabled: first.gradesPageEnabled !== false,
       periodStartDate: active.periodStartDate,
       periodEndDate: active.periodEndDate,
       gradeEncodingOpen: active.gradeEncodingOpen,
@@ -320,6 +324,13 @@
   function setActiveSchool(schoolId) {
     localStorage.setItem(STORAGE_KEYS.activeSchool, schoolId);
     return getActiveSchool();
+  }
+
+  // Student and parent grade visibility is a school-level policy. Keeping the
+  // fallback enabled preserves existing saved school records created before
+  // this setting was added.
+  function isGradesPageEnabled(school = getActiveSchool()) {
+    return school?.gradesPageEnabled !== false;
   }
 
   function slug(value) {
@@ -626,6 +637,7 @@
     saveSchools,
     getActiveSchool,
     setActiveSchool,
+    isGradesPageEnabled,
     getAssignmentSections,
     getHolidays,
     saveHolidays,
@@ -1020,6 +1032,41 @@ function applyActiveSchoolToShell() {
      data-school-type content selector above. */
   document.body.dataset.activeSchool = school.id;
   document.body.dataset.schoolType = school.schoolType;
+  document.body.dataset.gradesPageEnabled = String(
+    window.EDUGNAY_CONFIG?.isGradesPageEnabled?.(school) !== false
+  );
+}
+
+/* Keep the grade portal policy in one place so every student and parent page
+   responds to the same school setting. The server should enforce this policy
+   again after backend integration; this client guard is for the current
+   frontend flow and prevents stale direct links from opening the page. */
+function applyGradePortalAccess() {
+  if (document.body?.dataset.platformPortal === 'true') return;
+
+  const pageName = location.pathname.split('/').pop().toLowerCase();
+  const isStudentOrParentPage = /edugnay-(student|parent)-/.test(pageName);
+  if (!isStudentOrParentPage) return;
+
+  const enabled = window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() !== false;
+  const gradeLinks = document.querySelectorAll(
+    'a[href*="edugnay-student-grades.html"], a[href*="edugnay-parent-grades.html"]'
+  );
+
+  gradeLinks.forEach(link => {
+    link.hidden = !enabled;
+    link.classList.toggle('is-grades-page-hidden', !enabled);
+    link.setAttribute('aria-hidden', String(!enabled));
+    if (!enabled) link.setAttribute('tabindex', '-1');
+    else link.removeAttribute('tabindex');
+  });
+
+  if (!enabled && /edugnay-(student|parent)-grades\.html$/.test(pageName)) {
+    const dashboard = pageName.includes('parent')
+      ? 'edugnay-parent-dashboard.html'
+      : 'edugnay-student-dashboard.html';
+    window.location.replace(dashboard);
+  }
 }
 
 function renderNoClassNotice() {
@@ -1053,6 +1100,7 @@ function renderNoClassNotice() {
 
 window.refreshEdUgnayShellContext = function refreshEdUgnayShellContext() {
   applyActiveSchoolToShell();
+  applyGradePortalAccess();
   renderNoClassNotice();
 };
 
@@ -1258,6 +1306,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyActiveSchoolToShell();
+  applyGradePortalAccess();
   renderNoClassNotice();
   applyPageTitleToTopbar();
   window.initScrollFades();

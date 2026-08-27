@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +8,8 @@
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="../../assets/css/styles.css" />
   <link rel="stylesheet" href="../../assets/css/admin/schools.css" />
   <link rel="stylesheet" href="../../assets/css/modal-system.css" />
@@ -15,41 +17,75 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
+
 <body>
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay" onerror="this.style.display='none'" /></div>
-        <div><div class="brand-name">e<span>Ugnay</span></div><div class="brand-sub">ST. COLUMBAN'S COLLEGE</div></div>
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay"
+            onerror="this.style.display='none'" /></div>
+        <div>
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Main</div>
-        <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
-        <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span><span class="nav-badge">3</span></a>
+        <a href="edugnay-admin-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-admin-users.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span><span
+            class="nav-badge">3</span>
+        </a>
         <div class="nav-group" id="classMgmtGroup">
-          <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)"><div class="nav-icon"><i data-lucide="school"></i></div><span>Class Management</span><i data-lucide="chevron-right" class="nav-chevron"></i></div>
+          <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
+            <div class="nav-icon"><i data-lucide="school"></i></div><span>Class Management</span><i
+              data-lucide="chevron-right" class="nav-chevron"></i>
+          </div>
           <div class="nav-children">
-            <a class="nav-child" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','sections')">Sections</a>
-            <a class="nav-child" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
-            <a class="nav-child" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
-            <a class="nav-child" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
+            <a class="nav-child" href="edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','sections')">Sections</a>
+            <a class="nav-child" href="edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
+            <a class="nav-child" href="edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
+            <a class="nav-child" href="edugnay-admin-management.html"
+              onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
           </div>
         </div>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Reports</div>
-        <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span></a>
-        <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+        <a href="edugnay-admin-reports.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span>
+        </a>
+        <a href="edugnay-admin-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span><span
+            class="nav-badge gold">2</span>
+        </a>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Settings</div>
-        <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span></a>
-        <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span></a>
-        <a href="edugnay-admin-schools.html" class="nav-item active"><div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span></a>
-        <a href="edugnay-admin-sf-templates.html" class="nav-item"><div class="nav-icon"><i data-lucide="file-cog"></i></div><span class="nav-label">SF Templates</span></a>
+        <a href="edugnay-admin-system-config.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span>
+        </a>
+        <a href="edugnay-admin-archive.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span>
+        </a>
+        <a href="edugnay-admin-schools.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span>
+        </a>
+        <a href="edugnay-admin-sf-templates.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="file-cog"></i></div><span class="nav-label">SF Templates</span>
+        </a>
       </div>
-      <div class="nav-section"><div class="nav-section-label">Account</div><a href="edugnay-admin-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a></div>
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div><a href="edugnay-admin-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span>
+        </a>
+      </div>
     </aside>
 
     <header class="topbar">
@@ -109,7 +145,8 @@
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
           </button>
           <div class="tb-dropdown" id="tbProfileDropdown">
-            <a class="tb-dropdown-item" href="edugnay-admin-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a>
+            <a class="tb-dropdown-item" href="edugnay-admin-profile.html"><i data-lucide="user"
+                style="width:15px;height:15px;"></i>My Profile</a>
             <div class="tb-dropdown-divider"></div>
             <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
               <i data-lucide="log-out" style="width:15px;height:15px;"></i>
@@ -121,12 +158,29 @@
     </header>
 
     <main class="main">
-      <section class="page-overview" aria-labelledby="page-overview-title"><div class="page-overview-copy"><div class="page-overview-kicker">Administration</div><h1 class="page-overview-title" id="page-overview-title">School Settings</h1></div></section>
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Administration</div>
+          <h1 class="page-overview-title" id="page-overview-title">School Settings</h1>
+        </div>
+      </section>
       <div class="school-notice" id="schoolNotice" role="status"></div>
       <div class="school-workspace">
         <section class="school-settings-card">
-          <div class="school-settings-head"><div class="school-settings-head-main"><div class="school-settings-icon"><i data-lucide="settings-2"></i></div><div><div class="school-settings-title" id="settingsTitle">School profile</div><div class="school-settings-sub" id="settingsSubtitle">Update the active school's details.</div></div></div></div>
-          <div class="school-tabs" role="tablist"><button class="school-tab active" data-school-tab="profile" type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic" type="button">Academic Structure</button><button class="school-tab" data-school-tab="grading" type="button">Grading Rules</button><button class="school-tab" data-school-tab="attendance" type="button">Attendance Rules</button></div>
+          <div class="school-settings-head">
+            <div class="school-settings-head-main">
+              <div class="school-settings-icon"><i data-lucide="settings-2"></i></div>
+              <div>
+                <div class="school-settings-title" id="settingsTitle">School profile</div>
+                <div class="school-settings-sub" id="settingsSubtitle">Update the active school's details.</div>
+              </div>
+            </div>
+          </div>
+          <div class="school-tabs" role="tablist"><button class="school-tab active" data-school-tab="profile"
+              type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic"
+              type="button">Academic Structure</button><button class="school-tab" data-school-tab="grading"
+              type="button">Grading Rules</button><button class="school-tab" data-school-tab="attendance"
+              type="button">Attendance Rules</button></div>
           <div class="school-settings-body" id="schoolSettingsBody"></div>
         </section>
         <section class="school-calendar-panel" aria-labelledby="calendar-panel-title">
@@ -300,10 +354,22 @@
       const rules = data.gradingRules || [];
       const passingGradeThreshold = Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : 75;
       const gradeRounding = data.gradeRounding || 'round';
+      const gradesPageEnabled = school?.gradesPageEnabled !== false;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolGradingForm">
+            <div class="school-section-block school-grading-access-block">
+              <div class="school-section-block-head">
+                <div>
+                  <div class="school-section-block-title">Grade portal access</div>
+                  <div class="school-section-block-sub">Control grade visibility for student and parent portals.</div>
+                </div>
+              </div>
+              <div class="school-toggle-list">
+                <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Allow students and parents to view grades</strong><small>When disabled, the Grades page and its navigation are hidden from student and parent portals.</small></span><input class="school-toggle-input" type="checkbox" name="gradesPageEnabled" ${gradesPageEnabled ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
+              </div>
+            </div>
             <div class="weight-list">${rules.map(rule => `<div class="weight-row"><label for="weight-${esc(rule.id)}">${esc(rule.label)}</label><input id="weight-${esc(rule.id)}" type="number" min="0" max="100" step="1" name="${esc(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('')}</div>
             <div class="weight-total" id="weightTotal"></div>
             <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
@@ -480,12 +546,14 @@
       const rules = target.gradingRules || [];
       const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
       if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
+      school.gradesPageEnabled = form.elements.gradesPageEnabled?.checked !== false;
       target.gradingRules = rules.map(rule => ({ ...rule, weight: Number(form.elements[rule.id].value || 0) }));
       target.passingGradeThreshold = Math.max(0, Math.min(100, Number(form.elements.passingGradeThreshold?.value || 75)));
       target.gradeRounding = form.elements.gradeRounding?.value || 'round';
       if (school.schoolType === 'k12' || school.divisions) syncSchoolCompatibility(school, level);
       persistSchool();
-      notify(`${levelLabel(level)} grading rules saved.`);
+      window.refreshEdUgnayShellContext?.();
+      notify(`${levelLabel(level)} grading rules and portal access saved.`);
     }
     function saveAttendance(event) {
       event.preventDefault();
@@ -512,4 +580,5 @@
     renderAll();
   </script>
 </body>
+
 </html>

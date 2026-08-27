@@ -439,6 +439,10 @@ body.drawer-open .sidebar {
   text-decoration: none;
 }
 
+.sidebar .is-grades-page-hidden {
+  display: none !important;
+}
+
 /* Teacher-only sidebar items respect role and subject access rules. */
 .sidebar [data-teacher-access][hidden],
 .sidebar #reports-nav[hidden] {

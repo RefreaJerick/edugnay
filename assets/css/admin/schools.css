@@ -425,6 +425,21 @@
   font-weight: 800;
 }
 
+.school-section-block-sub {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* The portal access setting starts the grading pane, so it follows the
+   division tabs without adding a second, oversized top divider. */
+.school-grading-access-block {
+  margin-top: 18px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .school-subsection-title {
   margin-top: 16px;
 }

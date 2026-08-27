@@ -133,6 +133,12 @@ function goToTopbarNotif(link, id) {
 function navigate(page) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-student-dashboard.html';
+  } else if (page === 'grades') {
+    if (window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() === false) {
+      window.location.href = './edugnay-student-dashboard.html';
+      return;
+    }
+    window.location.href = './edugnay-student-grades.html';
   } else if (page === 'materials') {
     window.location.href = './edugnay-student-materials.html';
   } else if (page === 'journal') {
