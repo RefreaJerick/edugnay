@@ -271,7 +271,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Employee Number</label>
-              <input class="form-input" type="text" name="employeeNo" value="ADM-2016-0001" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="text" name="employeeNo" id="adminEmployeeNoInput" value="" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
               <span class="form-hint">Your school-assigned ID.</span>
             </div>
             <div class="form-group" style="margin-bottom:0;">
@@ -494,10 +494,19 @@
     return false;
   }
 
+  // The account directory is the frontend source for now. Replace this lookup
+  // with the authenticated admin returned by the backend later.
+  function renderAdminEmployeeNumber() {
+    const account = window.EDUGNAY_CONFIG?.accounts?.find(record => record.role === 'admin');
+    const input = document.getElementById('adminEmployeeNoInput');
+    if (input) input.value = account?.employeeNo || 'Not assigned';
+  }
+
   function resetProfile() {
     document.getElementById('contactNumberInput').value = '0917 555 2210';
   }
 
+  renderAdminEmployeeNumber();
   lucide.createIcons();
 </script>
 

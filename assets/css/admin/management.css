@@ -1136,8 +1136,7 @@ tbody tr:hover {
   margin-top: 1px;
 }
 
-.teacher-preview,
-.student-preview {
+.teacher-preview {
   display: none;
   align-items: center;
   gap: 12px;
@@ -1146,6 +1145,17 @@ tbody tr:hover {
   border: 1px solid var(--gray-200);
   border-radius: 10px;
   background: var(--gray-50);
+}
+
+.student-preview {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  background: var(--green-pale);
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 10px;
 }
 
 .teacher-preview.visible,
@@ -1168,6 +1178,12 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
+.student-preview .sp-av {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .tp-name,
 .sp-name {
   font-size: 13px;
@@ -1179,6 +1195,11 @@ tbody tr:hover {
 .sp-detail {
   font-size: 11px;
   color: var(--gray-400);
+}
+
+.student-preview .sp-detail {
+  color: var(--gray-500);
+  margin-top: 1px;
 }
 
 .tp-check {
@@ -1573,6 +1594,10 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+#importStrandGroup {
+  grid-column: 1 / 2;
 }
 
 .form-select {

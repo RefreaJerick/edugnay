@@ -47,7 +47,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Student</label>
+            <label class="form-label" for="modalStudent-search">Student</label>
             <select class="form-select" id="modalStudent" name="studentId" onchange="handleDashboardStudentChange(this.value)" required>
               <option value="">Select a student</option>
             </select>
@@ -70,7 +70,7 @@
               <select class="form-select" id="modalGradeLevel" name="gradeLevel" onchange="updateDashboardAssignmentFields()" required></select>
             </div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row-2 modal-final-row">
             <div class="form-group" id="modalStrandGroup" style="display:none;">
               <label class="form-label" for="modalStrand">Track / Strand</label>
               <select class="form-select" id="modalStrand" name="strand" onchange="updateDashboardAssignmentFields()"></select>
@@ -149,9 +149,9 @@
             </div>
           </div>
 
-          <!-- CONDITIONAL: Employee Number (Faculty only) -->
+          <!-- CONDITIONAL: Employee Number (Admin and Faculty) -->
           <div class="form-group" id="employeeNumberGroup" style="display:none;">
-            <label class="form-label">Employee Number</label>
+            <label class="form-label" id="employeeNumberLabel">Employee Number</label>
             <input class="form-input" name="employeeNo" id="accountEmployeeNo" type="text" placeholder="e.g. FAC-2019-0042" autocomplete="off" />
           </div>
 
@@ -651,8 +651,8 @@
               <a href="#" class="qa-item" onclick="openStudentModal();">
                 <div class="qa-icon"><i data-lucide="user-plus" style="width:18px;height:18px;"></i></div>
                 <div class="qa-text">
-                  <div class="qa-title">Enroll Student to Section</div>
-                  <div class="qa-desc">Place students in their sections</div>
+                  <div class="qa-title">Assign Student to Section</div>
+                  <div class="qa-desc">Place an existing student in a section</div>
                 </div>
                 <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
               </a>
@@ -767,6 +767,7 @@
       });
       const selected = options.some(option => option.value === selectedValue) ? selectedValue : '';
       select.value = selected;
+      window.syncSearchableSelect?.(select);
     }
 
     function dashboardGradeOptions(level) {
@@ -907,11 +908,12 @@
         preview?.classList.add('visible');
       }
       updateDashboardAssignmentFields();
+      window.syncSearchableSelect?.(document.getElementById('modalStudent'));
     }
 
     const ADMIN_QUICK_ACTIONS = [
       { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', action: "openAccountModal(); return false;" },
-      { icon: 'user-plus', title: 'Enroll Student to Section', desc: 'Place students in their sections', action: "openStudentModal();" },
+      { icon: 'user-plus', title: 'Assign Student to Section', desc: 'Place an existing student in a section', action: "openStudentModal();" },
       { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
     ];
 
@@ -939,6 +941,12 @@
 
     renderAdminDashboard();
     renderDashboardStudentOptions();
+    window.initSearchableSelect?.(document.getElementById('modalStudent'), {
+      placeholder: 'Select a student',
+      searchPlaceholder: 'Search students...',
+      emptyText: 'No matching students',
+      ariaLabel: 'Student'
+    });
     dashboardAssignmentState.level = dashboardDefaultLevel() || '';
     updateDashboardAssignmentFields();
 
@@ -1001,17 +1009,18 @@
     function updateAccountModalFields() {
       const role = document.getElementById('accountRole').value;
       const isStudent = role === 'stud';
-      const isFaculty = role === 'fac';
+      const isStaff = role === 'adm' || role === 'fac';
       const lrnInput = document.getElementById('accountLRN');
       const employeeInput = document.getElementById('accountEmployeeNo');
       document.getElementById('lrnGroup').style.display = isStudent ? '' : 'none';
-      document.getElementById('employeeNumberGroup').style.display = isFaculty ? '' : 'none';
+      document.getElementById('employeeNumberGroup').style.display = isStaff ? '' : 'none';
       document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
       lrnInput.required = isStudent;
-      employeeInput.required = isFaculty;
+      employeeInput.required = isStaff;
+      employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001' : 'e.g. FAC-2019-0042';
 
       if (!isStudent) lrnInput.value = '';
-      if (!isFaculty) employeeInput.value = '';
+      if (!isStaff) employeeInput.value = '';
       if (role !== 'parents') clearLinkedStudents();
     }
 
@@ -1102,10 +1111,18 @@
         alert('Please complete the name, school email, and role.');
         return;
       }
-      if ((role === 'fac' && !employeeNo) || (role === 'stud' && !lrn)) {
-        alert(role === 'fac'
-          ? 'Please provide the teacher employee number.'
+      const isStaff = role === 'admin' || role === 'fac';
+      if ((isStaff && !employeeNo) || (role === 'stud' && !lrn)) {
+        alert(isStaff
+          ? 'Please provide the employee number.'
           : 'Please provide the student LRN.');
+        return;
+      }
+      if (isStaff && ADMIN_ACCOUNTS.some(account => (
+        (account.role === 'admin' || account.role === 'fac')
+        && String(account.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
+      ))) {
+        alert('That employee number is already assigned to another staff account.');
         return;
       }
 
@@ -1121,7 +1138,7 @@
         gradeLevel: '',
         status: 'active',
         dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        employeeNo: role === 'fac' ? employeeNo : '',
+        employeeNo: isStaff ? employeeNo : '',
         lrn: role === 'stud' ? lrn : '',
         linkedStudents: role === 'par' ? [...linkedStudents] : []
       };

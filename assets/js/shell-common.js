@@ -384,7 +384,7 @@
 
   // Shared non-student accounts.
   const CORE_ACCOUNT_DIRECTORY = [
-    { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
+    { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', employeeNo: 'ADM-2016-0001', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
     { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2019-0042', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
     { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2021-0017', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
     { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
@@ -631,6 +631,291 @@
     saveHolidays,
     getLocalDateISO,
     getNoClassDay
+  };
+})();
+
+/* Shared searchable select enhancement. The native select stays in the form
+   as the source of truth, while the visible combobox makes long user lists
+   easier to browse and search. Replace the option source with API data later
+   without changing the form field contract. */
+(function initializeSearchableSelectSupport() {
+  const states = new WeakMap();
+
+  function normalize(value) {
+    return String(value || '').trim().toLocaleLowerCase();
+  }
+
+  function getOptionRecords(state) {
+    return Array.from(state.select.options)
+      .map(option => ({
+        value: option.value,
+        label: option.textContent.trim(),
+        disabled: option.disabled
+      }))
+      .filter(option => option.value && option.label);
+  }
+
+  function initialsFor(label) {
+    const words = String(label || '').split(/\s+/).filter(Boolean);
+    return words.slice(0, 2).map(word => word[0]).join('').toUpperCase() || '?';
+  }
+
+  function splitOptionLabel(label) {
+    const parts = String(label || '').split(/\s*[\u00b7\u2022]\s*/);
+    return {
+      main: parts.shift() || label,
+      meta: parts.join(' · ')
+    };
+  }
+
+  function selectedRecord(state) {
+    return getOptionRecords(state).find(option => option.value === state.select.value) || null;
+  }
+
+  function syncInput(state) {
+    const selected = selectedRecord(state);
+    state.input.disabled = state.select.disabled;
+    state.input.required = state.required;
+    state.input.setAttribute('aria-required', String(state.required));
+    state.wrapper.classList.toggle('is-disabled', state.select.disabled);
+
+    if (!state.open) {
+      state.input.value = selected?.label || '';
+      state.input.placeholder = state.placeholder;
+    }
+  }
+
+  function setActiveOption(state, index) {
+    const options = Array.from(state.menu.querySelectorAll('.searchable-select-option'));
+    if (!options.length) {
+      state.activeIndex = -1;
+      state.input.removeAttribute('aria-activedescendant');
+      return;
+    }
+
+    state.activeIndex = state.activeIndex < 0
+      ? (index < 0 ? options.length - 1 : 0)
+      : (index + options.length) % options.length;
+    options.forEach((option, optionIndex) => {
+      const active = optionIndex === state.activeIndex;
+      option.classList.toggle('is-active', active);
+      if (active) state.input.setAttribute('aria-activedescendant', option.id);
+    });
+    options[state.activeIndex]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderOptions(state, query = '') {
+    const term = normalize(query);
+    const options = getOptionRecords(state).filter(option => (
+      !option.disabled && (!term || normalize(option.label).includes(term))
+    ));
+
+    state.visibleOptions = options;
+    state.activeIndex = -1;
+    state.menu.innerHTML = '';
+    state.input.removeAttribute('aria-activedescendant');
+
+    if (!options.length) {
+      const empty = document.createElement('div');
+      empty.className = 'searchable-select-empty';
+      empty.textContent = term ? state.emptyText : 'No options available';
+      state.menu.appendChild(empty);
+      return;
+    }
+
+    options.forEach((option, index) => {
+      const item = document.createElement('div');
+      const copy = splitOptionLabel(option.label);
+      item.className = 'searchable-select-option';
+      item.id = `${state.menu.id}-option-${index}`;
+      item.dataset.value = option.value;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', String(option.value === state.select.value));
+      if (option.value === state.select.value) item.classList.add('is-selected');
+
+      const avatar = document.createElement('span');
+      avatar.className = 'searchable-select-option-avatar';
+      avatar.textContent = initialsFor(copy.main);
+
+      const text = document.createElement('span');
+      text.className = 'searchable-select-option-copy';
+
+      const main = document.createElement('span');
+      main.className = 'searchable-select-option-main';
+      main.textContent = copy.main;
+      text.appendChild(main);
+
+      if (copy.meta) {
+        const meta = document.createElement('span');
+        meta.className = 'searchable-select-option-meta';
+        meta.textContent = copy.meta;
+        text.appendChild(meta);
+      }
+
+      item.append(avatar, text);
+      item.addEventListener('mousedown', event => event.preventDefault());
+      item.addEventListener('click', () => chooseOption(state, option.value));
+      state.menu.appendChild(item);
+    });
+  }
+
+  function openSelect(state) {
+    if (state.select.disabled) return;
+    if (!state.open) {
+      state.open = true;
+      state.wrapper.classList.add('is-open');
+      state.input.setAttribute('aria-expanded', 'true');
+      state.input.placeholder = state.searchPlaceholder;
+      state.input.value = '';
+      renderOptions(state, '');
+    }
+  }
+
+  function closeSelect(state) {
+    state.open = false;
+    state.wrapper.classList.remove('is-open');
+    state.input.setAttribute('aria-expanded', 'false');
+    state.input.removeAttribute('aria-activedescendant');
+    syncInput(state);
+  }
+
+  function chooseOption(state, value) {
+    const option = getOptionRecords(state).find(record => record.value === value);
+    if (!option || option.disabled) return;
+    state.select.value = option.value;
+    state.select.dispatchEvent(new Event('change', { bubbles: true }));
+    closeSelect(state);
+  }
+
+  function handleKeydown(state, event) {
+    if (event.key === 'Escape') {
+      if (state.open) {
+        event.preventDefault();
+        closeSelect(state);
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      openSelect(state);
+      setActiveOption(state, state.activeIndex + (event.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+
+    if (event.key === 'Enter' && state.open) {
+      const option = state.visibleOptions[state.activeIndex >= 0 ? state.activeIndex : 0];
+      if (option) {
+        event.preventDefault();
+        chooseOption(state, option.value);
+      }
+    }
+  }
+
+  function createSearchableSelect(selectOrSelector, settings = {}) {
+    const select = typeof selectOrSelector === 'string'
+      ? document.querySelector(selectOrSelector)
+      : selectOrSelector;
+    if (!select || select.tagName !== 'SELECT') return null;
+    if (states.has(select)) return states.get(select);
+
+    const wrapper = document.createElement('div');
+    const control = document.createElement('div');
+    const input = document.createElement('input');
+    const menu = document.createElement('div');
+    const baseId = select.id || `searchable-select-${Math.random().toString(36).slice(2)}`;
+
+    wrapper.className = 'searchable-select';
+    wrapper.dataset.searchableSelect = 'true';
+    control.className = 'searchable-select-control';
+    input.className = 'searchable-select-input';
+    input.type = 'text';
+    input.id = settings.inputId || `${baseId}-search`;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', `${baseId}-options`);
+    input.setAttribute('aria-label', settings.ariaLabel || select.getAttribute('aria-label') || 'Select an option');
+
+    menu.className = 'searchable-select-menu';
+    menu.id = `${baseId}-options`;
+    menu.setAttribute('role', 'listbox');
+
+    const state = {
+      select,
+      wrapper,
+      input,
+      menu,
+      placeholder: settings.placeholder || select.options[0]?.textContent.trim() || 'Select an option',
+      searchPlaceholder: settings.searchPlaceholder || 'Search options...',
+      emptyText: settings.emptyText || 'No matching options',
+      required: select.required,
+      open: false,
+      activeIndex: -1,
+      visibleOptions: []
+    };
+
+    select.classList.add('searchable-select-native');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    /* Let the visible combobox own native validation while the original
+       select remains available for form submission and backend integration. */
+    select.required = false;
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.append(control, select, menu);
+    control.appendChild(input);
+
+    input.addEventListener('focus', () => openSelect(state));
+    input.addEventListener('click', () => openSelect(state));
+    input.addEventListener('input', () => {
+      openSelect(state);
+      renderOptions(state, input.value);
+    });
+    input.addEventListener('keydown', event => handleKeydown(state, event));
+    input.addEventListener('blur', () => {
+      window.setTimeout(() => {
+        if (!wrapper.contains(document.activeElement)) closeSelect(state);
+      }, 0);
+    });
+    select.addEventListener('change', () => {
+      syncInput(state);
+      if (state.open) renderOptions(state, input.value);
+    });
+    document.addEventListener('click', event => {
+      if (!wrapper.contains(event.target)) closeSelect(state);
+    });
+
+    if ('MutationObserver' in window) {
+      const observer = new MutationObserver(() => {
+        syncInput(state);
+        if (state.open) renderOptions(state, input.value);
+      });
+      observer.observe(select, {
+        attributes: true,
+        attributeFilter: ['disabled'],
+        childList: true,
+        subtree: true
+      });
+      state.observer = observer;
+    }
+
+    states.set(select, state);
+    syncInput(state);
+    return state;
+  }
+
+  window.initSearchableSelect = createSearchableSelect;
+  window.syncSearchableSelect = function syncSearchableSelect(selectOrSelector) {
+    const select = typeof selectOrSelector === 'string'
+      ? document.querySelector(selectOrSelector)
+      : selectOrSelector;
+    const state = select && states.get(select);
+    if (!state) return;
+    syncInput(state);
+    if (state.open) renderOptions(state, state.input.value);
   };
 })();
 

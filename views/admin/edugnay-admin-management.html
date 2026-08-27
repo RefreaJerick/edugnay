@@ -55,7 +55,7 @@
             <input class="form-select" type="text" name="sectionName" id="createSectionName" placeholder="e.g. St. Matthew" required/>
           </div>
         </div>
-        <div class="form-row-2">
+        <div class="form-row-2 modal-final-row">
           <div class="form-group">
             <label class="form-label">Assigned Adviser</label>
             <select class="form-select dropdown" name="adviserId">
@@ -116,7 +116,7 @@
             <input class="form-select" type="text" name="sectionName" id="editSectionName" required/>
           </div>
         </div>
-        <div class="form-row-2">
+        <div class="form-row-2 modal-final-row">
           <div class="form-group">
             <label class="form-label">Assigned Adviser</label>
             <select class="form-select dropdown" name="adviserId" id="editAdviser">
@@ -292,7 +292,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Student</label>
+          <label class="form-label" for="studentSelect-search">Student</label>
           <select class="form-select dropdown" id="studentSelect" name="studentId" onchange="handleManagementStudentChange(this.value)" required>
             <option value="">Select a student</option>
           </select>
@@ -314,7 +314,7 @@
             <select class="form-select dropdown" id="studentGradeLevel" name="gradeLevel" onchange="updateManagementAssignmentFields()" required></select>
           </div>
         </div>
-        <div class="form-row-2">
+        <div class="form-row-2 modal-final-row">
           <div class="form-group" id="studentStrandGroup" style="display:none;">
             <label class="form-label" for="studentStrand">Track / Strand</label>
             <select class="form-select dropdown" id="studentStrand" name="strand" onchange="updateManagementAssignmentFields()"></select>
@@ -351,7 +351,7 @@
             <select class="form-select dropdown" id="moveGradeLevel" name="gradeLevel" onchange="updateManagementMoveFields()" required></select>
           </div>
         </div>
-        <div class="form-row-2">
+        <div class="form-row-2 modal-final-row">
           <div class="form-group" id="moveStrandGroup" style="display:none;">
             <label class="form-label" for="moveStrand">Track / Strand</label>
             <select class="form-select dropdown" id="moveStrand" name="strand" onchange="updateManagementMoveFields()"></select>
@@ -434,9 +434,11 @@
             <select class="form-select dropdown" id="importGrade" name="gradeLevel" onchange="selectImportGrade(this.value)" required></select>
           </div>
         </div>
-        <div class="form-group" id="importStrandGroup" style="display:none;">
-          <label class="form-label" for="importStrand">Track / Strand</label>
-          <select class="form-select dropdown" id="importStrand" name="strand" onchange="updateImportGradeOptions()"></select>
+        <div class="form-row-2" id="importStrandRow" style="display:none;">
+          <div class="form-group" id="importStrandGroup" style="display:none;">
+            <label class="form-label" for="importStrand">Track / Strand</label>
+            <select class="form-select dropdown" id="importStrand" name="strand" onchange="updateImportGradeOptions()"></select>
+          </div>
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">CSV File</label>
@@ -2252,6 +2254,7 @@ function managementSetOptions(select, options, placeholder, selectedValue) {
     select.appendChild(option);
   });
   select.value = options.some(option => option.value === selectedValue) ? selectedValue : '';
+  window.syncSearchableSelect?.(select);
 }
 
 function managementGradeOptions(level) {
@@ -2411,6 +2414,7 @@ function handleManagementStudentChange(studentId) {
     preview?.classList.add('visible');
   }
   updateManagementAssignmentFields();
+  window.syncSearchableSelect?.(document.getElementById('studentSelect'));
 }
 
 function openStudentAssignModal(studentName) {
@@ -2445,6 +2449,7 @@ function openStudentAssignModal(studentName) {
     document.getElementById('spDetail').textContent = matchedStudent.email;
     document.getElementById('studentPreview').classList.add('visible');
   }
+  window.syncSearchableSelect?.(document.getElementById('studentSelect'));
   updateManagementAssignmentFields();
 
   document.getElementById('studentAssignModalBackdrop').classList.add('open');
@@ -2565,16 +2570,22 @@ function closeImportStudentsModal() { document.getElementById('importStudentsMod
 document.getElementById('importStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeImportStudentsModal(); });
 
 function updateImportGradeOptions() {
-  const level = document.getElementById('importSchoolLevel')?.value || managementDefaultLevel();
+  const levelSelect = document.getElementById('importSchoolLevel');
+  const levels = managementSchoolLevels();
+  const requestedLevel = levelSelect?.value || managementDefaultLevel();
+  const level = levels.includes(requestedLevel) ? requestedLevel : levels[0] || '';
+  managementSetOptions(levelSelect, levels.map(option => ({ value: option, label: managementLevelLabel(option) })), 'Select a school level', level);
   const gradeSelect = document.getElementById('importGrade');
   const currentGrade = gradeSelect?.value || '';
   const grades = managementGradeOptions(level);
   const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(currentGrade)) || grades[0] || '';
   managementSetOptions(gradeSelect, grades.map(option => ({ value: option, label: option })), 'Select a grade level', grade);
   const strandSelect = document.getElementById('importStrand');
+  const strandRow = document.getElementById('importStrandRow');
   const strandGroup = document.getElementById('importStrandGroup');
   const strands = managementStrandOptions(level);
   const strand = strands.includes(strandSelect?.value) ? strandSelect.value : strands[0] || '';
+  if (strandRow) strandRow.style.display = level === 'shs' ? 'grid' : 'none';
   if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
   managementSetOptions(strandSelect, strands.map(option => ({ value: option, label: option })), 'Select a track or strand', strand);
   if (strandSelect) strandSelect.required = level === 'shs';
@@ -2797,12 +2808,18 @@ renderManagementSubjectTabs();
 renderManagementTabPills();
 updateSectionFormFields('create');
 updateSectionFormFields('edit');
-updateImportGradeOptions();
-renderSections();
-renderSubjects();
-renderTeacherAssignments();
-renderStudentsTab();
-lucide.createIcons();
+  updateImportGradeOptions();
+  renderSections();
+  renderSubjects();
+  renderTeacherAssignments();
+  renderStudentsTab();
+  window.initSearchableSelect?.(document.getElementById('studentSelect'), {
+    placeholder: 'Select a student',
+    searchPlaceholder: 'Search students...',
+    emptyText: 'No matching students',
+    ariaLabel: 'Student'
+  });
+  lucide.createIcons();
 
 </script>
 

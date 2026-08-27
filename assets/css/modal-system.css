@@ -1,20 +1,18 @@
 /* Shared modal and modal-form language for every portal role. */
-.modal-backdrop,
-.student-modal-backdrop,
-.account-modal-backdrop,
-.announcement-modal-backdrop,
-.entry-modal-backdrop {
+:is(
+  .modal-backdrop,
+  .student-modal-backdrop,
+  .account-modal-backdrop,
+  .announcement-modal-backdrop,
+  .entry-modal-backdrop
+) {
   background: rgba(15, 32, 58, .34) !important;
   backdrop-filter: blur(4px);
   padding: 16px !important;
   z-index: 300 !important;
 }
 
-.modal-backdrop .modal,
-.student-modal-backdrop .modal,
-.account-modal-backdrop .modal,
-.announcement-modal-backdrop .modal,
-.entry-modal-backdrop .modal {
+.modal {
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 32px);
@@ -37,11 +35,7 @@
   flex: 1 1 auto;
 }
 
-.modal-backdrop .modal-head,
-.student-modal-backdrop .modal-head,
-.account-modal-backdrop .modal-head,
-.announcement-modal-backdrop .modal-head,
-.entry-modal-backdrop .modal-head {
+.modal-head {
   padding: 20px 22px !important;
   display: flex;
   justify-content: space-between;
@@ -53,9 +47,7 @@
 
 /* Shared modal header language. Every modal uses the same icon, title,
    supporting copy, and close-button arrangement while keeping its own data. */
-.modal-heading,
-.account-modal-heading,
-.compose-heading {
+:is(.modal-heading, .compose-heading) {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -67,9 +59,7 @@
   min-width: 0;
 }
 
-.modal-heading-icon,
-.account-modal-icon,
-.compose-icon {
+:is(.modal-heading-icon, .compose-icon) {
   width: 36px;
   height: 36px;
   display: grid;
@@ -81,9 +71,7 @@
   color: var(--blue-mid);
 }
 
-.modal-heading-icon svg,
-.account-modal-icon svg,
-.compose-icon svg {
+:is(.modal-heading-icon, .compose-icon) svg {
   width: 17px;
   height: 17px;
 }
@@ -94,23 +82,15 @@
   color: var(--red);
 }
 
-.modal-heading .modal-title,
-.account-modal-heading .modal-title,
-.compose-heading .modal-title {
+:is(.modal-heading, .compose-heading) .modal-title {
   margin: 0;
 }
 
-.modal-heading .modal-sub,
-.account-modal-heading .modal-sub,
-.compose-heading .modal-sub {
+:is(.modal-heading, .compose-heading) .modal-sub {
   margin-top: 3px;
 }
 
-.modal-backdrop .modal-title,
-.student-modal-backdrop .modal-title,
-.account-modal-backdrop .modal-title,
-.announcement-modal-backdrop .modal-title,
-.entry-modal-backdrop .modal-title {
+.modal-title {
   color: var(--gray-800);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 18px;
@@ -119,22 +99,14 @@
   letter-spacing: -.25px;
 }
 
-.modal-backdrop .modal-sub,
-.student-modal-backdrop .modal-sub,
-.account-modal-backdrop .modal-sub,
-.announcement-modal-backdrop .modal-sub,
-.entry-modal-backdrop .modal-sub {
+.modal-sub {
   margin-top: 4px;
   color: var(--gray-500);
   font-size: 11.5px;
   line-height: 1.45;
 }
 
-.modal-backdrop .modal-close,
-.student-modal-backdrop .modal-close,
-.account-modal-backdrop .modal-close,
-.announcement-modal-backdrop .modal-close,
-.entry-modal-backdrop .modal-close {
+.modal-close {
   position: static;
   top: auto;
   right: auto;
@@ -149,20 +121,12 @@
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.modal-backdrop .modal-close svg,
-.student-modal-backdrop .modal-close svg,
-.account-modal-backdrop .modal-close svg,
-.announcement-modal-backdrop .modal-close svg,
-.entry-modal-backdrop .modal-close svg {
+.modal-close svg {
   width: 14px !important;
   height: 14px !important;
 }
 
-.modal-backdrop .modal-close:hover,
-.student-modal-backdrop .modal-close:hover,
-.account-modal-backdrop .modal-close:hover,
-.announcement-modal-backdrop .modal-close:hover,
-.entry-modal-backdrop .modal-close:hover {
+.modal-close:hover {
   background: var(--gray-200);
   border-color: var(--gray-300);
   color: var(--gray-700);
@@ -182,11 +146,7 @@
   color: var(--gray-500) !important;
 }
 
-.modal-backdrop .modal-body,
-.student-modal-backdrop .modal-body,
-.account-modal-backdrop .modal-body,
-.announcement-modal-backdrop .modal-body,
-.entry-modal-backdrop .modal-body {
+.modal-body {
   flex: 1 1 auto;
   min-height: 0;
   padding: 20px 22px !important;
@@ -199,38 +159,197 @@
   overflow-y: auto;
 }
 
-.modal-backdrop .form-group,
-.student-modal-backdrop .form-group,
-.account-modal-backdrop .form-group,
-.announcement-modal-backdrop .form-group,
-.entry-modal-backdrop .form-group {
+/* Student assignment dialogs keep the dialog itself still. Only the long
+   searchable result list receives an internal scrollbar. */
+.student-modal-backdrop .modal-body,
+#studentAssignModalBackdrop .modal-body {
+  overflow: visible !important;
+}
+
+/* Searchable user fields keep the native select in the form while presenting
+   a browsable, keyboard-friendly list for long student and faculty records. */
+.searchable-select {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-select-control {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-select-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 36px 10px 12px !important;
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: var(--button-radius) !important;
+  background: var(--gray-50) !important;
+  color: var(--gray-800) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.3;
+  outline: none;
+  cursor: text;
+}
+
+.searchable-select-input::placeholder {
+  color: var(--gray-400) !important;
+  opacity: 1;
+}
+
+.searchable-select-input:hover:not(:focus):not(:disabled) {
+  border-color: var(--gray-300) !important;
+}
+
+.searchable-select-input:focus {
+  border-color: var(--blue-mid) !important;
+  background: var(--white) !important;
+  box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
+}
+
+.searchable-select-control::after {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--gray-400);
+  border-bottom: 1.5px solid var(--gray-400);
+  content: '';
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
+.searchable-select.is-open .searchable-select-control::after {
+  border-color: var(--blue-mid);
+}
+
+.searchable-select-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.searchable-select-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  display: none;
+  /* Keep a small breathing space before the dialog edge on compact screens. */
+  max-height: 224px;
+  padding: 5px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  box-shadow: 0 12px 24px rgba(15, 32, 58, .12);
+}
+
+.searchable-select.is-open .searchable-select-menu {
+  display: block;
+}
+
+.searchable-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: var(--gray-800);
+  cursor: pointer;
+}
+
+.searchable-select-option:hover,
+.searchable-select-option.is-active {
+  background: var(--blue-xpale);
+}
+
+.searchable-select-option.is-selected {
+  background: var(--blue-xpale);
+}
+
+.searchable-select-option-avatar {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.searchable-select-option-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.searchable-select-option-main,
+.searchable-select-option-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchable-select-option-main {
+  color: var(--gray-800);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.searchable-select-option-meta {
+  color: var(--gray-400);
+  font-size: 10.5px;
+}
+
+.searchable-select-empty {
+  padding: 14px 10px;
+  color: var(--gray-400);
+  font-size: 11px;
+  text-align: center;
+}
+
+.searchable-select.is-disabled .searchable-select-input {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.modal .form-group {
   margin-bottom: 15px;
 }
 
-.modal-backdrop .form-label,
-.student-modal-backdrop .form-label,
-.account-modal-backdrop .form-label,
-.announcement-modal-backdrop .form-label,
-.entry-modal-backdrop .form-label {
+/* Keep the final two-column form row flush with the modal body. Conditional
+   SHS fields share this row, so their default field margin must not enlarge
+   the row when the track/strand control becomes visible. */
+.modal-final-row > .form-group {
+  margin-bottom: 0;
+}
+
+.modal .form-label {
   margin-bottom: 6px;
   color: var(--gray-600);
   font-size: 10px;
   letter-spacing: .75px;
 }
 
-.modal-backdrop .form-input,
-.modal-backdrop .form-select,
-.modal-backdrop .form-textarea,
-.student-modal-backdrop .form-input,
-.student-modal-backdrop .form-select,
-.account-modal-backdrop .form-input,
-.account-modal-backdrop .form-select,
-.announcement-modal-backdrop .form-input,
-.announcement-modal-backdrop .form-select,
-.announcement-modal-backdrop .form-textarea,
-.entry-modal-backdrop .form-input,
-.entry-modal-backdrop .form-select,
-.entry-modal-backdrop .form-textarea {
+.modal :is(.form-input, .form-select, .form-textarea) {
   min-height: 42px;
   border: 1.5px solid var(--gray-200);
   border-radius: 10px;
@@ -239,34 +358,13 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.modal-backdrop .form-input:focus,
-.modal-backdrop .form-select:focus,
-.modal-backdrop .form-textarea:focus,
-.student-modal-backdrop .form-input:focus,
-.student-modal-backdrop .form-select:focus,
-.account-modal-backdrop .form-input:focus,
-.account-modal-backdrop .form-select:focus,
-.announcement-modal-backdrop .form-input:focus,
-.announcement-modal-backdrop .form-select:focus,
-.announcement-modal-backdrop .form-textarea:focus,
-.entry-modal-backdrop .form-input:focus,
-.entry-modal-backdrop .form-select:focus,
-.entry-modal-backdrop .form-textarea:focus {
+.modal :is(.form-input, .form-select, .form-textarea):focus {
   background: var(--white);
   border-color: var(--blue-mid);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
 }
 
-.modal-backdrop .modal-foot,
-.modal-backdrop .modal-footer,
-.student-modal-backdrop .modal-foot,
-.account-modal-backdrop .modal-foot,
-.announcement-modal-backdrop .modal-foot,
-.announcement-modal-backdrop .modal-footer,
-.entry-modal-backdrop .modal-foot,
-.announcement-modal-backdrop .compose-footer,
-.rm-foot,
-.review-modal-foot {
+.modal :is(.modal-foot, .modal-footer, .compose-footer, .rm-foot, .review-modal-foot) {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -288,51 +386,26 @@
   margin: 20px -22px -20px !important;
 }
 
-.modal-backdrop .modal-foot:has(.modal-foot-left),
-.rm-foot,
-.review-modal-foot:has(.review-modal-foot-left) {
+.modal .modal-foot:has(.modal-foot-left),
+.modal .rm-foot,
+.modal .review-modal-foot:has(.review-modal-foot-left) {
   justify-content: space-between;
 }
 
-.modal-backdrop .btn,
-.student-modal-backdrop .btn,
-.account-modal-backdrop .btn,
-.announcement-modal-backdrop .btn,
-.entry-modal-backdrop .btn {
-  min-height: 40px;
-  border-radius: 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
 @media (max-width: 560px) {
-  .modal-backdrop,
-  .student-modal-backdrop,
-  .account-modal-backdrop,
-  .announcement-modal-backdrop,
-  .entry-modal-backdrop { padding: 10px !important; }
+  :is(
+    .modal-backdrop,
+    .student-modal-backdrop,
+    .account-modal-backdrop,
+    .announcement-modal-backdrop,
+    .entry-modal-backdrop
+  ) { padding: 10px !important; }
 
-  .modal-backdrop .modal-head,
-  .student-modal-backdrop .modal-head,
-  .account-modal-backdrop .modal-head,
-  .announcement-modal-backdrop .modal-head,
-  .entry-modal-backdrop .modal-head { padding: 17px 16px !important; }
+  .modal-head { padding: 17px 16px !important; }
 
-  .modal-backdrop .modal-body,
-  .student-modal-backdrop .modal-body,
-  .account-modal-backdrop .modal-body,
-  .announcement-modal-backdrop .modal-body,
-  .entry-modal-backdrop .modal-body { padding: 17px 16px !important; }
+  .modal-body { padding: 17px 16px !important; }
 
-  .modal-backdrop .modal-foot,
-  .modal-backdrop .modal-footer,
-  .student-modal-backdrop .modal-foot,
-  .account-modal-backdrop .modal-foot,
-  .announcement-modal-backdrop .modal-foot,
-  .announcement-modal-backdrop .modal-footer,
-  .entry-modal-backdrop .modal-foot,
-  .announcement-modal-backdrop .compose-footer,
-  .rm-foot,
-  .review-modal-foot {
+  .modal :is(.modal-foot, .modal-footer, .compose-footer, .rm-foot, .review-modal-foot) {
     min-height: 68px;
     padding: 12px 16px 16px !important;
   }
@@ -342,59 +415,56 @@
     margin: 20px -16px -17px !important;
   }
 
-  .modal-backdrop .modal-foot .btn,
-  .modal-backdrop .modal-footer .btn,
-  .student-modal-backdrop .modal-foot .btn,
-  .account-modal-backdrop .modal-foot .btn,
-  .announcement-modal-backdrop .modal-foot .btn,
-  .announcement-modal-backdrop .modal-footer .btn,
-  .entry-modal-backdrop .modal-foot .btn { flex: 1; justify-content: center; }
+  .modal :is(.modal-foot, .modal-footer, .compose-footer, .rm-foot, .review-modal-foot) .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .student-modal-backdrop .modal-final-row > .form-group {
+    margin-bottom: 15px;
+  }
+
+  .student-modal-backdrop .modal-final-row > .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .attendance-detail-modal .modal-head {
+    padding: 17px 16px !important;
+  }
 }
 
-/* Attendance uses a role-specific backdrop, but its header follows the same
-   modal language as every other portal dialog. */
-.attendance-detail-modal .modal {
-  border: 1px solid rgba(178, 194, 214, .78) !important;
-  border-radius: 18px !important;
-  box-shadow: 0 24px 64px rgba(15, 32, 58, .2) !important;
+/* The management page keeps its two-column rows until 520px. */
+@media (max-width: 520px) {
+  .modal-backdrop .modal-final-row > .form-group {
+    margin-bottom: 15px;
+  }
+
+  .modal-backdrop .modal-final-row > .form-group:last-child {
+    margin-bottom: 0;
+  }
 }
 
-.attendance-detail-modal .modal-head {
-  padding: 20px 22px !important;
-  align-items: center;
-  gap: 14px;
-  background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-200) !important;
-}
-
+/* Attendance has its own backdrop and content spacing. Its dialog shell and
+   header use the same shared modal rules above. */
 .attendance-detail-modal .modal-title {
-  color: var(--gray-800);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 18px;
-  letter-spacing: -.25px;
+  line-height: 1.3;
 }
 
-.attendance-detail-modal .modal-sub {
-  margin-top: 4px;
-  color: var(--gray-500);
-  font-size: 11.5px;
-  line-height: 1.45;
+.attendance-detail-modal .modal-body {
+  padding: 18px 24px 22px !important;
 }
 
-.attendance-detail-modal .modal-close {
-  position: static;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--gray-200);
-  border-radius: 10px;
-  background: var(--white);
-  color: var(--gray-500);
+@media (max-width: 520px) {
+  .attendance-detail-modal .modal-body {
+    padding-right: 18px !important;
+    padding-left: 18px !important;
+  }
 }
 
-@media (max-width: 560px) {
-  .attendance-detail-modal .modal-head { padding: 17px 16px !important; }
-}
-
+/* Shared form and control language
+   This stylesheet is loaded after each page stylesheet, so the shared input,
+   select, tab, and action rules below provide the final consistent treatment
+   without requiring page-by-page overrides. */
 /* Standalone page forms use the same control language as modal forms. */
 .main .form-group { margin-bottom: 16px; }
 .main .form-label {
@@ -406,22 +476,8 @@
   letter-spacing: .75px;
   text-transform: uppercase;
 }
-.main .form-input,
-.main .form-select,
-.main .form-textarea {
+.main :is(.form-input, .form-select, .form-textarea) {
   min-height: 42px;
-  border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
-  background: var(--gray-50);
-  color: var(--gray-800);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-.main .form-input:focus,
-.main .form-select:focus,
-.main .form-textarea:focus {
-  background-color: var(--white);
-  border-color: var(--blue-mid);
-  box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
 /* Shared text-control interaction language. Individual layouts keep their own
@@ -798,7 +854,7 @@ body :is(
     transform .16s ease;
 }
 
-body :is(.activity-loadmore-btn, .ub-btn, .row-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
+body :is(.activity-loadmore-btn, .ub-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -843,7 +899,7 @@ body .rc-read-link {
   transition: color .16s ease, background-color .16s ease;
 }
 
-body :is(.page-btn, .cal-nav-btn, .modal-nav-btn, .material-action, .comp-delete-btn, .comp-btn, .att-btn, .vt-btn) {
+body :is(.page-btn, .cal-nav-btn, .modal-nav-btn, .material-action, .comp-btn, .att-btn, .vt-btn) {
   border-radius: var(--button-radius-compact);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
@@ -935,7 +991,6 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-delete-btn,
   .comp-btn,
   .att-btn,
   .vt-btn,
@@ -978,7 +1033,6 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-delete-btn,
   .comp-btn,
   .att-btn,
   .vt-btn,
@@ -1004,7 +1058,6 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-delete-btn,
   .comp-btn,
   .att-btn,
   .vt-btn,

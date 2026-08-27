@@ -82,9 +82,9 @@
             </div>
           </div>
 
-          <!-- CONDITIONAL: Employee Number (Faculty only) -->
+          <!-- CONDITIONAL: Employee Number (Admin and Faculty) -->
           <div class="form-group" id="employeeNumberGroup" style="display:none;">
-            <label class="form-label">Employee Number</label>
+            <label class="form-label" id="employeeNumberLabel">Employee Number</label>
             <input class="form-input" name="employeeNo" id="accountEmployeeNo" type="text" placeholder="e.g. FAC-2019-0042" autocomplete="off" />
           </div>
 
@@ -909,10 +909,19 @@
         alert('Please fill in all required fields, including a role.');
         return;
       }
-      if ((role === 'fac' && !employeeNo) || (role === 'stud' && !lrn)) {
-        alert(role === 'fac'
-          ? 'Please provide the teacher employee number.'
+      const isStaff = role === 'admin' || role === 'fac';
+      if ((isStaff && !employeeNo) || (role === 'stud' && !lrn)) {
+        alert(isStaff
+          ? 'Please provide the employee number.'
           : 'Please provide the student LRN.');
+        return;
+      }
+      if (isStaff && USERS.some(user => (
+        user.id !== userId
+        && (user.role === 'admin' || user.role === 'fac')
+        && String(user.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
+      ))) {
+        alert('That employee number is already assigned to another staff account.');
         return;
       }
 
@@ -926,7 +935,7 @@
           user.displayName = `${firstName} ${lastName}`;
           user.email = email;
           user.role = role;
-          user.employeeNo = role === 'fac' ? employeeNo : '';
+          user.employeeNo = isStaff ? employeeNo : '';
           user.lrn = role === 'stud' ? lrn : '';
           if (role !== 'stud') user.gradeLevel = '';
           user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
@@ -939,7 +948,7 @@
           firstName, lastName,
           displayName: `${firstName} ${lastName}`,
           email, role,
-          employeeNo: role === 'fac' ? employeeNo : '',
+          employeeNo: isStaff ? employeeNo : '',
           section: (role === 'stud' || role === 'fac') ? 'Unassigned' : '',
           gradeLevel: '',
           status: 'active',
@@ -1014,15 +1023,15 @@
         const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
 
         const tableRole = ROLE_OPT_TO_TABLE[role] || role;
-        const identityColumns = tableRole === 'fac'
+        const identityColumns = tableRole === 'admin' || tableRole === 'fac'
           ? ['employeeNo', 'employeeNumber']
           : tableRole === 'stud'
             ? ['lrn']
             : [];
 
         if (identityColumns.length && !identityColumns.some(column => headers.includes(column))) {
-          alert(tableRole === 'fac'
-            ? 'Teacher CSV files must include an employeeNo column.'
+          alert(tableRole === 'admin' || tableRole === 'fac'
+            ? 'Admin and teacher CSV files must include an employeeNo column.'
             : 'Student CSV files must include an lrn column.');
           return;
         }
@@ -1033,15 +1042,33 @@
           return record;
         });
         const invalidIdentityIndex = records.findIndex(record => (
-          (tableRole === 'fac' && !(record.employeeNo || record.employeeNumber || '').trim())
+          ((tableRole === 'admin' || tableRole === 'fac') && !(record.employeeNo || record.employeeNumber || '').trim())
           || (tableRole === 'stud' && !(record.lrn || '').trim())
         ));
 
         if (invalidIdentityIndex >= 0) {
-          alert(tableRole === 'fac'
-            ? `Teacher row ${invalidIdentityIndex + 2} is missing an employee number.`
+          alert(tableRole === 'admin' || tableRole === 'fac'
+            ? `Staff row ${invalidIdentityIndex + 2} is missing an employee number.`
             : `Student row ${invalidIdentityIndex + 2} is missing an LRN.`);
           return;
+        }
+
+        if (tableRole === 'admin' || tableRole === 'fac') {
+          const existingEmployeeNumbers = new Set(USERS
+            .filter(user => user.role === 'admin' || user.role === 'fac')
+            .map(user => String(user.employeeNo || '').trim().toLowerCase())
+            .filter(Boolean));
+          const importedEmployeeNumbers = new Set();
+          const duplicateEmployeeIndex = records.findIndex(record => {
+            const employeeNo = String(record.employeeNo || record.employeeNumber || '').trim().toLowerCase();
+            if (existingEmployeeNumbers.has(employeeNo) || importedEmployeeNumbers.has(employeeNo)) return true;
+            importedEmployeeNumbers.add(employeeNo);
+            return false;
+          });
+          if (duplicateEmployeeIndex >= 0) {
+            alert(`Staff row ${duplicateEmployeeIndex + 2} uses an employee number that is already assigned.`);
+            return;
+          }
         }
 
         records.forEach(record => {
@@ -1058,7 +1085,9 @@
               : '',
             status: 'active',
             dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            employeeNo: tableRole === 'fac' ? String(record.employeeNo || record.employeeNumber || '').trim() : '',
+            employeeNo: tableRole === 'admin' || tableRole === 'fac'
+              ? String(record.employeeNo || record.employeeNumber || '').trim()
+              : '',
             lrn: tableRole === 'stud' ? String(record.lrn || '').trim() : '',
             linkedStudents: [],
           };
@@ -1351,17 +1380,18 @@
     function updateAccountModalFields() {
       const role = document.getElementById('accountRole').value;
       const isStudent = role === 'stud';
-      const isFaculty = role === 'fac';
+      const isStaff = role === 'adm' || role === 'fac';
       const lrnInput = document.getElementById('accountLRN');
       const employeeInput = document.getElementById('accountEmployeeNo');
       document.getElementById('lrnGroup').style.display = isStudent ? '' : 'none';
-      document.getElementById('employeeNumberGroup').style.display = isFaculty ? '' : 'none';
+      document.getElementById('employeeNumberGroup').style.display = isStaff ? '' : 'none';
       document.getElementById('linkedStudentsGroup').style.display = role === 'parents' ? '' : 'none';
       lrnInput.required = isStudent;
-      employeeInput.required = isFaculty;
+      employeeInput.required = isStaff;
+      employeeInput.placeholder = role === 'adm' ? 'e.g. ADM-2016-0001' : 'e.g. FAC-2019-0042';
 
       if (!isStudent) lrnInput.value = '';
-      if (!isFaculty) employeeInput.value = '';
+      if (!isStaff) employeeInput.value = '';
       if (role !== 'parents') clearLinkedStudents();
     }
 
@@ -1473,7 +1503,7 @@
     /* ── CSV HINT COLUMNS BY ROLE ── */
 
     const CSV_COLS = {
-      adm: ['firstName', 'lastName', 'personalEmail'],
+      adm: ['firstName', 'lastName', 'personalEmail', 'employeeNo'],
       fac: ['firstName', 'lastName', 'personalEmail', 'employeeNo'],
       stud: ['firstName', 'lastName', 'personalEmail', 'lrn'],
       parents: ['firstName', 'lastName', 'personalEmail', 'studentIds'],
