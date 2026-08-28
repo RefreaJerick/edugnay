@@ -1965,12 +1965,12 @@ body.drawer-open .sidebar {
 }
 
 /* Shared card interaction: match the Admin Dashboard summary-card hover
-   everywhere a card surface is used, while keeping panels and modals static. */
+   everywhere a card surface is used, while keeping panels, modals, and child
+   switchers on their own dedicated interaction rules. */
 .shell .main :is(
   .ann-card,
   .archive-year-card,
   .assignment-card,
-  .child-card,
   .data-source-card,
   .flag-card,
   .journal-card,
@@ -1987,7 +1987,6 @@ body.drawer-open .sidebar {
   .ann-card,
   .archive-year-card,
   .assignment-card,
-  .child-card,
   .data-source-card,
   .flag-card,
   .journal-card,
@@ -2002,7 +2001,7 @@ body.drawer-open .sidebar {
   transform: translateY(-2px) !important;
 }
 
-.shell .main :is(.child-card.active, .rs-card.selected):hover {
+.shell .main .rs-card.selected:hover {
   border-color: var(--blue-mid) !important;
 }
 

@@ -305,11 +305,22 @@
       });
     }
 
+    function updateChildSwitcherState() {
+      const switcher = document.getElementById('parentGradeChildSwitcher');
+      if (!switcher) return;
+      switcher.querySelectorAll('[data-child-id]').forEach(card => {
+        const isActive = card.dataset.childId === activeChildId;
+        card.classList.toggle('active', isActive);
+        card.setAttribute('aria-pressed', String(isActive));
+      });
+    }
+
     function switchChild(childId) {
       const child = PARENT_GRADE_RECORDS.find(record => record.childId === childId);
       if (!child) return;
       activeChildId = childId;
       if (!child.quarters.some(quarter => quarter.id === activeQuarterId)) activeQuarterId = 'q2';
+      updateChildSwitcherState();
       renderGrades();
     }
 
@@ -356,7 +367,6 @@
       const child = getActiveChild();
       const quarter = getActiveQuarter();
       if (!child || !quarter) return;
-      renderChildSwitcher();
       renderQuarterTabs(child);
       renderSubjectGrades(child, quarter);
       const firstName = child.name.split(' ')[0];
@@ -367,6 +377,7 @@
       lucide.createIcons();
     }
 
+    renderChildSwitcher();
     renderGrades();
   </script>
 </body>
