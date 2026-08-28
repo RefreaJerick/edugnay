@@ -1,5 +1,510 @@
-/* Platform Administrator dashboard additions. Shared dashboard elements use
-   the existing Admin dashboard classes without visual overrides. */
+/* Platform dashboard primitives. Keep this page self-contained so it does not
+   inherit the school-admin dashboard stylesheet. */
+
+/* Welcome banner */
+.platform-dashboard .grading-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  overflow: hidden;
+  min-height: 124px;
+  padding: 24px 26px;
+  border: 1px solid rgba(212, 175, 55, .22);
+  border-radius: 16px;
+  background: linear-gradient(120deg, var(--navy) 0%, #123d78 58%, var(--blue-mid) 100%);
+  box-shadow: 0 12px 26px rgba(11, 31, 58, .18);
+}
+
+.platform-dashboard .grading-welcome,
+.platform-dashboard .grading-period-card {
+  position: relative;
+  z-index: 1;
+}
+
+.platform-dashboard .grading-welcome-name {
+  margin-bottom: 5px;
+  color: var(--white);
+  font-size: 25px;
+  line-height: 1.1;
+}
+
+.platform-dashboard .grading-welcome-date {
+  color: rgba(255, 255, 255, .7);
+  font-size: 12px;
+}
+
+.platform-dashboard .grading-period-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .11);
+  backdrop-filter: blur(8px);
+}
+
+.platform-dashboard .grading-period-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: rgba(212, 175, 55, .16);
+  color: var(--gold-light);
+}
+
+.platform-dashboard .grading-period-label {
+  margin-bottom: 3px;
+  color: rgba(247, 217, 128, .9);
+  font-size: .68rem;
+}
+
+.platform-dashboard .grading-period-value {
+  color: var(--white);
+  font-size: 12px;
+}
+
+/* Two-column dashboard layout */
+.platform-dashboard .dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.platform-dashboard .dash-col-left,
+.platform-dashboard .dash-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Week panel */
+.platform-dashboard .panel-week .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 16px 18px;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.platform-dashboard .week-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-dashboard .week-title-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  box-shadow: none;
+}
+
+.platform-dashboard .week-title-sub {
+  margin-top: 2px;
+  color: var(--gray-400);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.platform-dashboard .week-range-label {
+  padding: 6px 10px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 999px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.platform-dashboard .week-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 16px 16px;
+  background: var(--white);
+}
+
+.platform-dashboard .week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 74px;
+  gap: 5px;
+  padding: 10px 4px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  box-shadow: none;
+}
+
+.platform-dashboard .week-day.is-weekend:not(.is-today) {
+  background: var(--gray-50);
+}
+
+.platform-dashboard .week-day-label {
+  color: var(--gray-400);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .55px;
+  text-transform: uppercase;
+}
+
+.platform-dashboard .week-day-num {
+  color: var(--gray-700);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.platform-dashboard .week-day.is-today {
+  border-color: var(--blue);
+  background: var(--blue);
+  box-shadow: none;
+}
+
+.platform-dashboard .week-day.is-today .week-day-label,
+.platform-dashboard .week-day.is-today .week-day-num {
+  color: var(--white);
+}
+
+/* Shared panel and action structure */
+.platform-dashboard .panel {
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+.platform-dashboard .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--panel-divider);
+}
+
+.platform-dashboard .panel-title {
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.platform-dashboard .panel-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 9px;
+  border: 1px solid var(--blue-pale);
+  border-radius: 8px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color .15s, background .15s;
+}
+
+.platform-dashboard .panel-action:hover {
+  background: var(--blue-pale);
+  color: var(--blue-light);
+}
+
+.platform-dashboard .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.platform-dashboard .panel-meta {
+  padding: 4px 8px;
+  border: 1px solid var(--orange-border);
+  border-radius: 999px;
+  background: var(--orange-pale);
+  color: var(--gold-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Quick actions */
+.platform-dashboard .quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.platform-dashboard .qa-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+
+.platform-dashboard .qa-item:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+}
+
+.platform-dashboard .qa-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--gray-100);
+  color: var(--blue-mid);
+  font-size: 16px;
+  transition: background .15s, color .15s;
+}
+
+.platform-dashboard .qa-item:hover .qa-icon {
+  background: var(--blue-pale);
+  color: var(--blue-mid);
+}
+
+.platform-dashboard .qa-text {
+  min-width: 0;
+}
+
+.platform-dashboard .qa-title {
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.platform-dashboard .qa-desc {
+  margin-top: 1px;
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.platform-dashboard .qa-arrow {
+  margin-left: auto;
+  color: var(--gray-300);
+  font-size: 16px;
+  transition: color .15s, transform .15s;
+}
+
+.platform-dashboard .qa-item:hover .qa-arrow {
+  color: var(--blue-mid);
+  transform: translateX(3px);
+}
+
+/* Activity feed */
+.platform-dashboard .panel-activity .panel-head {
+  padding: 16px 20px;
+}
+
+.platform-dashboard .activity-list {
+  display: block;
+  position: relative;
+  padding: 6px 0 10px;
+}
+
+.platform-dashboard .activity-list::before {
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 38px;
+  z-index: 0;
+  width: 2px;
+  background: var(--gray-200);
+  content: '';
+}
+
+.platform-dashboard .activity-group-label {
+  position: relative;
+  z-index: 2;
+  padding: 14px 20px 8px;
+  background: var(--white);
+  color: var(--gray-400);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.platform-dashboard .activity-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.platform-dashboard .act-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border-radius: 10px;
+}
+
+.platform-dashboard .act-icon.green { background: var(--green-pale); color: var(--green); }
+.platform-dashboard .act-icon.blue { background: var(--blue-xpale); color: var(--blue-mid); }
+.platform-dashboard .act-icon.gold { background: var(--gold-pale); color: var(--gold); }
+.platform-dashboard .act-icon.orange { background: var(--orange-pale); color: var(--orange); }
+.platform-dashboard .act-icon.red { background: var(--red-pale); color: var(--red); }
+.platform-dashboard .act-icon.purple { background: var(--purple-pale); color: var(--purple); }
+
+.platform-dashboard .act-body {
+  min-width: 0;
+}
+
+.platform-dashboard .act-text {
+  color: var(--gray-700);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.platform-dashboard .act-text strong {
+  color: var(--gray-800);
+  font-weight: 700;
+}
+
+.platform-dashboard .act-time {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.platform-dashboard .act-tag {
+  margin-top: 1px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Keep the same subtle entrance timing as the other dashboards. */
+.platform-dashboard .stat-card {
+  animation: platformFadeUp .4s ease both;
+}
+
+.platform-dashboard .stat-card:nth-child(1) { animation-delay: .05s; }
+.platform-dashboard .stat-card:nth-child(2) { animation-delay: .1s; }
+.platform-dashboard .stat-card:nth-child(3) { animation-delay: .15s; }
+
+@keyframes platformFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1180px) {
+  .platform-dashboard .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-dashboard .dash-col-left,
+  .platform-dashboard .dash-col-right {
+    display: contents;
+  }
+
+  .platform-dashboard .grading-banner { order: -2; }
+  .platform-dashboard #weekPanel { order: -1; }
+
+  .platform-dashboard .panel-week .panel-head {
+    justify-content: center;
+    min-height: 52px;
+    gap: 10px;
+    padding: 11px 16px;
+    background: var(--surface-blue-soft);
+    border-bottom-color: var(--blue-pale);
+  }
+
+  .platform-dashboard .panel-week .week-title-wrap,
+  .platform-dashboard .panel-week .week-range-label,
+  .platform-dashboard .panel-week .week-calendar-grid {
+    display: none;
+  }
+
+  .platform-dashboard .panel-week .panel-head::after {
+    display: block;
+    color: var(--blue-mid);
+    content: 'TODAY: ' attr(data-current-date);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .1px;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 760px) {
+  .platform-dashboard .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .platform-dashboard .act-tag {
+    display: none;
+  }
+}
+
+@media (max-width: 710px) {
+  .platform-dashboard .grading-welcome {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .platform-dashboard .grading-period-card {
+    width: 100%;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .platform-dashboard .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .platform-dashboard .stat-card {
+    min-height: 132px;
+    padding: 13px;
+  }
+}
 
 .platform-dashboard .school-directory {
   padding: 6px 20px 10px;
