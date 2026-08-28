@@ -146,30 +146,6 @@
   color: var(--gray-500);
 }
 
-/* ── EMPTY (kept for filter states, e.g. "Unread" with none left) ── */
-.notif-empty {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 64px 24px;
-  text-align: center;
-}
-.notif-empty-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: var(--gray-100);
-  color: var(--gray-400);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-.notif-empty-title { font-size: 13.5px; font-weight: 700; color: var(--gray-600); }
-.notif-empty-text { font-size: 12.5px; color: var(--gray-400); max-width: 240px; }
-
 /* ── RESPONSIVE ── */
 @media (max-width: 760px) {
 

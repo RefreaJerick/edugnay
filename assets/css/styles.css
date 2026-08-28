@@ -78,6 +78,14 @@
   --panel-title-size:     16px;
   --panel-sub-size:       11px;
   --panel-footer-bg:      var(--gray-50);
+  /* Shared panel empty-state rhythm. Keep every collection state on the same
+     vertical scale, even when its host is a grid, list, or table cell. */
+  --empty-state-min-height: 148px;
+  --empty-state-pad-y:      30px;
+  --empty-state-pad-x:      24px;
+  --empty-state-gap:        7px;
+  --empty-state-icon-size:  38px;
+  --empty-state-icon-radius: 10px;
   /* Shared button tokens. Pages can still adjust width/layout for their
      location, but the type, rhythm and interaction language stays unified. */
   --button-radius:        10px;
@@ -710,36 +718,82 @@ body.drawer-open .sidebar {
 }
 
 /* ══════════════════════════════
-    NOTIFICATION EMPTY STATE
+    SHARED EMPTY STATE
 ══════════════════════════════ */
-.tb-notif-empty {
-  padding: 40px 24px;
-  text-align: center;
-}
-
-.tb-notif-empty-icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 12px;
-  border-radius: 10px;
-  background: var(--gray-100);
-  color: var(--gray-400);
+.tb-notif-empty,
+.panel-empty-state {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--empty-state-min-height);
+  padding: var(--empty-state-pad-y) var(--empty-state-pad-x);
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: var(--empty-state-gap);
+  background: var(--panel-bg);
+  color: var(--gray-400);
+  text-align: center;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.tb-notif-empty-title {
+.panel-empty-state {
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  align-self: stretch;
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
+.tb-notif-empty-icon,
+.panel-empty-state-icon {
+  display: inline-flex;
+  flex: 0 0 var(--empty-state-icon-size);
+  width: var(--empty-state-icon-size);
+  height: var(--empty-state-icon-size);
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 2px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--empty-state-icon-radius);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.tb-notif-empty-title,
+.panel-empty-state-title {
+  margin: 0;
+  color: var(--gray-700);
   font-size: 13px;
   font-weight: 700;
-  color: var(--gray-700);
-  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.tb-notif-empty-text,
+.panel-empty-state-text {
+  margin: 0;
+  color: var(--gray-400);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .tb-notif-empty-text {
-  font-size: 12px;
-  color: var(--gray-400);
-  line-height: 1.5;
+  max-width: 230px;
+}
+
+.tb-notif-empty-icon svg,
+.panel-empty-state-icon svg {
+  width: 17px !important;
+  height: 17px !important;
+  stroke-width: 1.9;
 }
 
 
@@ -2188,35 +2242,6 @@ body.drawer-open .sidebar {
   color: var(--gray-400);
 }
 
-.tb-notif-panel .tb-notif-empty {
-  margin: 4px 0;
-  padding: 38px 24px;
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  background: var(--white);
-}
-
-.tb-notif-panel .tb-notif-empty-icon {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 13px;
-  border: 1px solid var(--blue-pale);
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.tb-notif-panel .tb-notif-empty-title {
-  color: var(--gray-700);
-  font-size: 13px;
-}
-
-.tb-notif-panel .tb-notif-empty-text {
-  max-width: 230px;
-  margin: 0 auto;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
 .tb-notif-panel-foot a:hover {
   border-color: var(--blue-border-hover);
   background: var(--blue-pale);
@@ -2449,6 +2474,257 @@ body.drawer-open .sidebar {
   padding: 14px var(--panel-head-px);
   background: var(--panel-footer-bg);
   border-top: 1px solid var(--panel-divider);
+}
+
+/* Collection layout normalization around the shared empty component. */
+.panel-empty-state-title,
+.panel-empty-state-text {
+  inline-size: min(100%, 300px);
+  overflow-wrap: anywhere;
+}
+
+.panel-empty-state-text {
+  max-width: 300px;
+}
+
+.panel-empty-slot {
+  /* Use a real block so the empty surface has a predictable width in every
+     host layout. The slot stays neutral and the shared state owns the visual
+     treatment inside it. */
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-column: 1 / -1;
+}
+
+.panel-empty-slot[hidden] {
+  display: none;
+}
+
+.panel-empty-slot > .panel-empty-state {
+  width: 100%;
+  margin: 0;
+}
+
+/* A few settings and report panels keep a heading or a timeline wrapper
+   around their collection. Collapse that host only when the shared state is
+   present so its empty surface has the same edge-to-edge rhythm as every
+   other panel, without changing the populated layout. */
+.shell .main .calendar-list:has(> .calendar-list-title + .panel-empty-state) {
+  gap: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.shell .main .calendar-list:has(> .calendar-list-title + .panel-empty-state) > .calendar-list-title {
+  display: none;
+}
+
+.shell .main .report-timeline-empty:has(> .panel-empty-state),
+.shell .main .panel-empty-noprompt:has(> .panel-empty-state) {
+  display: block;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  border-radius: var(--panel-radius);
+}
+
+/* Hero and feature panels can switch from their populated treatment to an
+   empty collection state. Reset that state to the same panel surface used by
+   every other empty collection, so gradients, decorative layers, and card
+   padding never leak through. */
+.shell .main :is(
+  .report-hero.is-empty,
+  .latest-report-hero.is-empty,
+  .journal-feature:has(> .journal-card.is-empty)
+) {
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+.shell .main :is(
+  .report-hero.is-empty,
+  .latest-report-hero.is-empty,
+  .journal-feature:has(> .journal-card.is-empty)
+)::before,
+.shell .main :is(
+  .report-hero.is-empty,
+  .latest-report-hero.is-empty,
+  .journal-feature:has(> .journal-card.is-empty)
+)::after {
+  display: none;
+}
+
+.shell .main .journal-card.is-empty {
+  display: block;
+  padding: 0;
+}
+
+.panel-empty-row,
+.panel-empty-row:hover {
+  background: transparent !important;
+  border-bottom: 0 !important;
+}
+
+.panel-empty-row td {
+  padding: 0 !important;
+  border-bottom: 0 !important;
+  background: var(--panel-bg) !important;
+  vertical-align: middle;
+}
+
+/* List panels own their rhythm. When the list is empty, remove the list's
+   row padding and timeline rule so the shared state occupies the same clean
+   surface on every portal. */
+.shell .main :is(
+  .announcements-list,
+  .ann-list,
+  .task-list,
+  .assignment-preview-list,
+  .activity-list,
+  .notif-list
+):has(> .panel-empty-slot:not([hidden]) > .panel-empty-state),
+.shell .main :is(
+  .announcements-list,
+  .ann-list,
+  .task-list,
+  .assignment-preview-list,
+  .activity-list,
+  .notif-list
+):has(> .panel-empty-state) {
+  gap: 0;
+  padding: 0;
+}
+
+/* Announcement pages keep the empty slot beside the list so their filter
+   controls can continue to replace the list contents. Treat that sibling
+   arrangement exactly like an empty list so every portal gets the same
+   surface, spacing, and vertical rhythm. */
+.shell .main :is(.announcements-list, .ann-list):has(+ .panel-empty-slot:not([hidden]) > .panel-empty-state) {
+  display: none;
+  gap: 0;
+  padding: 0;
+}
+
+.shell .main :is(.announcements-list, .ann-list) + .panel-empty-slot:not([hidden]) {
+  display: block;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+}
+
+.shell .main :is(.activity-list, .notif-list):has(+ .panel-empty-slot:not([hidden]) > .panel-empty-state) {
+  display: none;
+  gap: 0;
+  padding: 0;
+}
+
+.shell .main :is(.activity-list, .notif-list):is(
+  :has(> .panel-empty-slot:not([hidden]) > .panel-empty-state),
+  :has(> .panel-empty-state),
+  :has(+ .panel-empty-slot:not([hidden]) > .panel-empty-state)
+)::before {
+  display: none;
+}
+
+/* A content list should not leave its timeline rule behind when the list is
+   empty. The shared empty slot supplies the complete state instead. */
+.shell .main .notif-list:empty {
+  display: none;
+}
+
+/* When a data host has no other element children, let the shared empty state
+   own the spacing. A structural selector keeps this behavior consistent for
+   new panels without maintaining a page-by-page selector list. */
+.shell .main :not(.panel-empty-state):has(> .panel-empty-state):not(:has(> :not(.panel-empty-state))) {
+  padding: 0;
+  gap: 0;
+  margin-top: 0;
+  min-height: 0;
+  max-width: none;
+}
+
+/* The same normalization applies when a collection keeps a hidden slot beside
+   its records and reveals it after filtering. */
+.shell .main :not(.panel-empty-state):has(> .panel-empty-slot:not([hidden]) > .panel-empty-state) {
+  gap: 0;
+  padding: 0;
+  margin-top: 0;
+  min-height: 0;
+  max-width: none;
+}
+
+/* Empty announcement lists sit directly in the two-column page layout rather
+   than inside a standard panel. Their sibling slot owns the panel surface when
+   the filtered list is hidden. */
+
+/* An empty child switcher is a collection state too. Remove the switcher's
+   row spacing so the shared state stays centered and aligned with panels. */
+.shell .main .child-switcher:has(> .panel-empty-state) {
+  display: block;
+  gap: 0;
+  padding: 0;
+}
+
+/* Tab/filter hosts can also become empty after a data refresh. Remove their
+   navigation chrome so the shared state reads as one deliberate panel state,
+   not a card nested inside an empty tab bar. */
+.shell .main :is(.section-tab-bar, .section-tabs, .grade-filter-tabs, .grade-tabs):has(> .panel-empty-state) {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Configuration collections have useful max-widths while populated, but an
+   empty message should use the full panel width like every other collection. */
+.shell .main :is(.weight-list, .school-photo-list, .school-attendance-code-grid, .grade-grid, .track-options):has(> .panel-empty-state) {
+  max-width: none;
+  gap: 0;
+  margin-top: 0;
+}
+
+.shell .main :where(.grade-distribution, .absence-triggers):has(> .panel-empty-state):not(:has(> :not(.panel-empty-state))) {
+  border-top: 0;
+}
+
+/* Empty slots that sit beside a filtered list use the same edge-to-edge
+   treatment as a list that renders the state directly. */
+.shell .main :where(.flag-grid-scroll, #sectionCardView):has(> .panel-empty-slot:not([hidden])) {
+  gap: 0;
+  padding: 0;
+}
+
+.shell .main .flag-grid-scroll:has(> .panel-empty-slot:not([hidden])) {
+  margin-top: 0;
+}
+
+/* Keep the same empty-state proportions on compact layouts without letting a
+   short mobile panel feel over-padded. Both the topbar state and panel state
+   use the same tokens, so their visual language stays aligned. */
+@media (max-width: 760px) {
+  .tb-notif-empty,
+  .panel-empty-state {
+    min-height: 132px;
+    padding: 26px 18px;
+  }
+
+  .tb-notif-empty-icon,
+  .panel-empty-state-icon {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
 }
 
 @media (max-width: 760px) {

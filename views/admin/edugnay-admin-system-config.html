@@ -197,9 +197,7 @@
             <span class="badge badge-gray" id="reopenPanelCount">0 pending</span>
           </div>
           <div class="config-panel-body" style="padding-top:0;">
-            <div id="reopenRequestList">
-              <div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px;">No pending reopen requests.</div>
-            </div>
+            <div id="reopenRequestList" aria-live="polite"></div>
           </div>
         </div>
 
@@ -316,7 +314,9 @@
   function renderNotificationTriggers() {
     const list = document.getElementById('notification-trigger-list');
     if (!list) return;
-    list.innerHTML = NOTIFICATION_TRIGGERS.map(trigger => `<div class="trigger-row"><div class="trigger-icon" style="background:${trigger.iconBackground};color:${trigger.iconColor};"><i data-lucide="${trigger.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${trigger.label}</div><div class="trigger-desc">${trigger.description}</div></div>${trigger.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" type="number" value="${trigger.inputValue}" min="1"/><span class="trigger-unit">${trigger.unit}</span></div>` : ''}<div class="toggle ${trigger.enabled ? 'on' : ''}" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div></div>`).join('');
+    list.innerHTML = NOTIFICATION_TRIGGERS.length
+      ? NOTIFICATION_TRIGGERS.map(trigger => `<div class="trigger-row"><div class="trigger-icon" style="background:${trigger.iconBackground};color:${trigger.iconColor};"><i data-lucide="${trigger.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${trigger.label}</div><div class="trigger-desc">${trigger.description}</div></div>${trigger.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" type="number" value="${trigger.inputValue}" min="1"/><span class="trigger-unit">${trigger.unit}</span></div>` : ''}<div class="toggle ${trigger.enabled ? 'on' : ''}" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bell-off', title: 'No notification triggers configured', text: 'Add notification rules when the school defines its communication preferences.' });
     lucide.createIcons();
   }
 
@@ -367,7 +367,7 @@
     if (dot) dot.style.display = pending.length ? '' : 'none';
 
     if (!pending.length) {
-      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:13px;">No pending reopen requests.</div>';
+      listEl.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'unlock', title: 'No pending reopen requests', text: 'Requests to reopen locked grading periods will appear here.' });
       return;
     }
 

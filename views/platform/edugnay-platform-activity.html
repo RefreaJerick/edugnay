@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Activity | E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <link rel="stylesheet" href="../../assets/css/admin/activity.css" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/platform/shell.js"></script>
+</head>
+<body class="platform-activity" data-platform-portal="true">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar" aria-label="Platform navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay" /></div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-platform-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-platform-school-accounts.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Accounts</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-platform-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <div class="admin-topbar-context" aria-label="Platform Activity page">
+          <div class="admin-topbar-context-copy">
+            <span>Platform administration</span>
+            <strong>Activity Log</strong>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+                <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false">
+            <div class="tb-avatar admin">PA</div>
+            <div class="tb-profile-info"><div class="tb-profile-name">Platform Admin</div><div class="tb-profile-role">Administrator</div></div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Overview</div>
+          <h1 class="page-overview-title" id="page-overview-title">Platform Activity</h1>
+        </div>
+      </section>
+
+      <div class="activity-filterbar">
+        <div class="activity-search search-wrap">
+          <span class="search-icon" aria-hidden="true"><i data-lucide="search" style="width:15px;height:15px;"></i></span>
+          <input class="search-input" type="text" id="activitySearch" placeholder="Search activity..." autocomplete="off" oninput="applyActivityFilters()" />
+        </div>
+
+        <div class="activity-type-filters" id="activityTypeFilters" role="group" aria-label="Activity type filters">
+          <button class="atf-chip active" type="button" data-tag="all" onclick="setActivityTypeFilter(this, 'all')">All</button>
+          <button class="atf-chip" type="button" data-tag="School account" onclick="setActivityTypeFilter(this, 'School account')">School accounts</button>
+          <button class="atf-chip" type="button" data-tag="Access" onclick="setActivityTypeFilter(this, 'Access')">Access</button>
+          <button class="atf-chip" type="button" data-tag="Configuration" onclick="setActivityTypeFilter(this, 'Configuration')">Configuration</button>
+        </div>
+
+        <select class="activity-date-select" id="activityDateFilter" onchange="applyActivityFilters()" aria-label="Filter activity by date">
+          <option value="all">All time</option>
+          <option value="today">Today</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+
+      <section class="panel" aria-labelledby="all-platform-activity-title">
+        <div class="panel-head">
+          <div class="panel-title" id="all-platform-activity-title">All Platform Activity</div>
+        </div>
+        <div class="activity-list" id="activityList"></div>
+        <div class="panel-empty-slot" id="activityEmptyState" hidden aria-live="polite"></div>
+        <div class="activity-loadmore-wrap">
+          <button class="activity-loadmore-btn" id="activityLoadMoreBtn" type="button" onclick="loadMoreActivity()">Load more</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const PLATFORM = window.EDUGNAY_PLATFORM;
+    const PLATFORM_ACTIVITY = Array.isArray(PLATFORM?.activities) ? PLATFORM.activities : [];
+    const PAGE_SIZE = 5;
+    let activeTypeFilter = 'all';
+    let visibleCount = PAGE_SIZE;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    }
+
+    function formatDateGroup(value) {
+      const date = new Date(value);
+      const today = new Date();
+      const dayStart = item => new Date(item.getFullYear(), item.getMonth(), item.getDate());
+      const daysApart = Math.round((dayStart(today) - dayStart(date)) / 86400000);
+      if (daysApart === 0) return 'Today';
+      if (daysApart === 1) return 'Yesterday';
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    }
+
+    function formatTime(value) {
+      return new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function setActivityTypeFilter(element, type) {
+      document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(chip => chip.classList.remove('active'));
+      element.classList.add('active');
+      activeTypeFilter = type;
+      visibleCount = PAGE_SIZE;
+      renderActivityList();
+    }
+
+    function getFilteredActivity() {
+      const query = document.getElementById('activitySearch').value.trim().toLowerCase();
+      const dateFilter = document.getElementById('activityDateFilter').value;
+      const now = new Date();
+
+      return PLATFORM_ACTIVITY
+        .filter(activity => activeTypeFilter === 'all' || activity.type === activeTypeFilter)
+        .filter(activity => {
+          if (!query) return true;
+          return [activity.title, activity.detail, activity.type].join(' ').toLowerCase().includes(query);
+        })
+        .filter(activity => {
+          if (dateFilter === 'all') return true;
+          const created = new Date(activity.createdAt);
+          if (dateFilter === 'today') return formatDateGroup(activity.createdAt) === 'Today';
+          const days = parseInt(dateFilter, 10);
+          return (now - created) / 86400000 <= days;
+        })
+        .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+    }
+
+    function applyActivityFilters() {
+      visibleCount = PAGE_SIZE;
+      renderActivityList();
+    }
+
+    function loadMoreActivity() {
+      visibleCount += PAGE_SIZE;
+      renderActivityList();
+    }
+
+    function renderActivityList() {
+      const container = document.getElementById('activityList');
+      const emptyState = document.getElementById('activityEmptyState');
+      const loadMoreWrap = document.querySelector('.activity-loadmore-wrap');
+      const filtered = getFilteredActivity();
+
+      if (!filtered.length) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        emptyState.hidden = false;
+        emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: PLATFORM_ACTIVITY.length ? 'search-x' : 'activity',
+          title: PLATFORM_ACTIVITY.length ? 'No matching activity' : 'No platform activity yet',
+          text: PLATFORM_ACTIVITY.length ? 'Try a different search term or filter.' : 'School account changes and platform events will appear here.'
+        });
+        loadMoreWrap.style.display = 'none';
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      container.style.display = '';
+      emptyState.hidden = true;
+      emptyState.innerHTML = '';
+
+      let lastGroup = '';
+      const activityHtml = filtered.slice(0, visibleCount).map(activity => {
+        const group = formatDateGroup(activity.createdAt);
+        const groupHtml = group !== lastGroup ? `<div class="activity-group-label">${escapeHtml(group)}</div>` : '';
+        lastGroup = group;
+        return `${groupHtml}
+          <div class="activity-item">
+            <div class="act-icon ${escapeHtml(activity.tone)}"><i data-lucide="${escapeHtml(activity.icon)}" style="width:15px;height:15px;"></i></div>
+            <div class="act-body">
+              <div class="act-text"><strong>${escapeHtml(activity.title)}</strong> ${escapeHtml(activity.detail)}</div>
+              <div class="act-time">${escapeHtml(formatTime(activity.createdAt))}</div>
+            </div>
+            <span class="act-tag">${escapeHtml(activity.type)}</span>
+          </div>`;
+      }).join('');
+
+      container.innerHTML = activityHtml;
+      loadMoreWrap.style.display = visibleCount < filtered.length ? 'flex' : 'none';
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderActivityList();
+      PLATFORM.renderTopbarNotifs();
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

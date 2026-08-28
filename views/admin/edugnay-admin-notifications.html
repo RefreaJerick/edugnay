@@ -190,11 +190,7 @@
 
       <div class="notif-list" id="notifList"></div>
 
-      <div class="notif-empty" id="notifEmptyState">
-        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="notif-empty-title" id="notifEmptyTitle">No notifications yet</div>
-        <div class="notif-empty-text" id="notifEmptyText">You'll see reopen requests here as they happen.</div>
-      </div>
+      <div class="panel-empty-slot" id="notifEmptyState" hidden aria-live="polite"></div>
     </div>
 
   </main>
@@ -206,19 +202,7 @@
   let activeNotifFilter = 'all';
 
   function getNotifItems() {
-    const readIds = getReadIds();
-    return getReopenRequests()
-      .filter(r => r.status === 'pending')
-      .map(r => ({
-        id: r.createdAt,
-        icon: 'unlock',
-        color: 'gold',
-        title: `Reopen requested: Q${r.quarter.slice(1)}`,
-        desc: `${r.teacher} — ${r.section} · ${r.subject}`,
-        read: readIds.includes(r.createdAt),
-        created_at: r.createdAt
-      }))
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return typeof getAdminNotifItems === 'function' ? getAdminNotifItems() : [];
   }
 
   function formatDateGroup(dateStr) {
@@ -243,7 +227,12 @@
   }
 
   function markAllRead() {
-    setReadIds(getNotifItems().map(n => n.id));
+    const notifications = getNotifItems();
+    if (typeof NOTIFICATIONS !== 'undefined' && Array.isArray(NOTIFICATIONS)) {
+      NOTIFICATIONS.forEach(notification => { notification.read = true; });
+    }
+    setReadIds(notifications.map(notification => notification.id));
+    renderTopbarNotifs();
     renderNotifList();
   }
 
@@ -255,32 +244,31 @@
     }
   }
 
-  function goToNotif() {
-    window.location.href = 'edugnay-admin-system-config.html#reopen-requests';
+  function goToNotif(link) {
+    window.location.href = link || 'edugnay-admin-system-config.html#reopen-requests';
   }
 
   function renderNotifList() {
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
-    const emptyTitle = document.getElementById('notifEmptyTitle');
-    const emptyText = document.getElementById('notifEmptyText');
 
     const all = getNotifItems();
     const filtered = activeNotifFilter === 'unread' ? all.filter(n => !n.read) : all;
 
     if (!filtered.length) {
       container.innerHTML = '';
-      emptyState.style.display = 'flex';
-      if (activeNotifFilter === 'unread' && all.length) {
-        emptyTitle.textContent = 'No unread notifications';
-        emptyText.textContent = "You're all caught up.";
-      } else {
-        emptyTitle.textContent = 'No notifications yet';
-        emptyText.textContent = "You'll see reopen requests here as they happen.";
-      }
+      const isUnreadEmpty = activeNotifFilter === 'unread' && all.length;
+      emptyState.hidden = false;
+      emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'bell-off',
+        title: isUnreadEmpty ? 'No unread notifications' : 'No notifications yet',
+        text: isUnreadEmpty ? "You're all caught up." : 'Admin alerts and review requests will appear here as they happen.'
+      });
+      if (window.lucide) lucide.createIcons();
       return;
     }
-    emptyState.style.display = 'none';
+    emptyState.hidden = true;
+    emptyState.innerHTML = '';
 
     let html = '';
     let lastGroup = null;
@@ -292,7 +280,7 @@
         lastGroup = group;
       }
       html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead('${n.id}'); goToNotif();">
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='markRead(${JSON.stringify(n.id)}); goToNotif(${JSON.stringify(n.link || 'edugnay-admin-system-config.html#reopen-requests')});'>
           <div class="nt-icon ${n.color}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
             <div class="nt-text"><strong>${n.title}</strong></div>

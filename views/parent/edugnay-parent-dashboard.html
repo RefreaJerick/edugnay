@@ -383,12 +383,12 @@
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
       if (!list) return;
-      list.innerHTML = DASHBOARD_ANNOUNCEMENTS.map(item => `
+      list.innerHTML = DASHBOARD_ANNOUNCEMENTS.length ? DASHBOARD_ANNOUNCEMENTS.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
           <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
           <div class="ann-item-body">${item.body}</div>
           <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
-        </div>`).join('');
+        </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       lucide.createIcons();
     }
 
@@ -504,18 +504,37 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = Object.entries(CHILDREN_DATA).map(([key, data]) => {
+      switcher.innerHTML = Object.entries(CHILDREN_DATA).length ? Object.entries(CHILDREN_DATA).map(([key, data]) => {
         const initials = data.name.split(' ').map(part => part[0]).slice(0, 2).join('');
         return `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${initials}</div><div class="child-info"><div class="child-name">${data.name}</div><div class="child-section">${data.section}</div></div>${key === 'maya' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
-      }).join('');
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+      if (window.lucide) lucide.createIcons();
     }
 
     function updateChildContext() {
       const data = CHILDREN_DATA[currentChild];
+      const hero = document.querySelector('.report-hero');
+      const showEmptyReport = (title, text) => {
+        if (!hero) return;
+        hero.classList.add('is-empty');
+        hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title, text });
+        if (window.lucide) lucide.createIcons();
+      };
+      if (!data) {
+        document.getElementById('banner-child-context').textContent = 'No linked children';
+        showEmptyReport('No weekly report yet', 'A weekly report will appear here when a child account is linked.');
+        return;
+      }
+      const report = data.report;
       document.getElementById('banner-child-context').textContent = `Viewing: ${data.name} · ${data.section}`;
+      if (!report || !String(report.text || '').trim()) {
+        showEmptyReport('No weekly report yet', 'A weekly report will appear here when it is confirmed and sent.');
+        return;
+      }
+      hero?.classList.remove('is-empty');
       document.querySelector('.report-hero-sub').textContent = 'Week of June 9–14, 2025';
-      document.getElementById('report-hero-text').textContent = data.report.text;
-      document.querySelector('.report-hero-meta').textContent = `Sent by ${data.report.sentBy}`;
+      document.getElementById('report-hero-text').textContent = report.text;
+      document.querySelector('.report-hero-meta').textContent = `Sent by ${report.sentBy}`;
     }
 
     function switchChild(childKey, el) {
@@ -532,6 +551,11 @@
     function renderDayStrip() {
       const strip = document.getElementById('day-strip');
       const data = CHILDREN_DATA[currentChild];
+      if (!data) {
+        strip.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No child schedule', text: 'A child schedule will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
 
       strip.innerHTML = DAYS.map(d => {
         const att = data.attendance[d.key];
@@ -556,10 +580,16 @@
     function renderAttendanceDetail() {
       const container = document.getElementById('attendance-detail');
       const data = CHILDREN_DATA[currentChild];
-      const att = data.attendance[currentDay];
+      if (!data) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Attendance will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
+      const att = data.attendance?.[currentDay];
 
       if (!att) {
-        container.innerHTML = `<div style="padding:20px 0;text-align:center;color:var(--gray-400);font-size:13px;">No attendance recorded for this day yet.</div>`;
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance recorded', text: 'Attendance for this day has not been entered yet.' });
+        lucide.createIcons();
         return;
       }
 
@@ -569,6 +599,7 @@
       const bannerSub = att.status === 'present'
         ? `${data.name} attended school on this day.`
         : `${data.name} was marked absent for this day. Contact the adviser if this seems incorrect.`;
+      const subjects = Array.isArray(att.subjects) ? att.subjects : [];
 
       container.innerHTML = `
     <div class="daily-status-banner ${bannerClass}">
@@ -581,7 +612,7 @@
       </div>
     </div>
     <div>
-      ${att.subjects.map(s => {
+      ${subjects.length ? subjects.map(s => {
         const badge = s.status === 'present'
           ? '<span class="badge badge-green"><i data-lucide="check" style="width:8px;height:8px;"></i> Present</span>'
           : s.status === 'late'
@@ -592,7 +623,7 @@
             <div class="subject-att-name"><span class="subject-dot" style="background:${s.color};"></span> ${s.name}</div>
             ${badge}
           </div>`;
-      }).join('')}
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subject details', text: 'Subject attendance details have not been recorded.' })}
     </div>`;
       lucide.createIcons();
     }
@@ -610,10 +641,16 @@
     function renderAssignmentsDetail() {
       const container = document.getElementById('assignments-detail');
       const data = CHILDREN_DATA[currentChild];
-      const tasks = data.assignments[currentDay] || [];
+      if (!data) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignment data', text: 'Assignments will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
+      const tasks = data.assignments?.[currentDay] || [];
 
       if (tasks.length === 0) {
-        container.innerHTML = `<div style="padding:20px 0;text-align:center;color:var(--gray-400);font-size:13px;">No tasks recorded for this day.</div>`;
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No tasks recorded', text: 'No assignments were recorded for this day.' });
+        lucide.createIcons();
         return;
       }
 

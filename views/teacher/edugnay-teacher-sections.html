@@ -762,7 +762,7 @@
                 <th class="center" style="background:var(--blue-xpale);color:var(--blue-mid);">Total Absences</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="attendanceHistoryTbody">
               <tr>
                 <td class="sticky-col"><div class="student-name" style="font-size:12px;">Juan Dela Cruz</div></td>
                 <td class="center"><span class="att-record-cell att-P">P</span></td>
@@ -874,7 +874,7 @@
           </div>
         </div>
 
-        <div class="materials-list">
+        <div class="materials-list" id="teacherMaterialsList">
 
           <div class="material-item">
             <div class="material-icon" style="background:#fee2e2;">
@@ -1051,6 +1051,18 @@
   const CURRENT_SUBJECT = CURRENT_TEACHER_ASSIGNMENT.subject;
   document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
 
+  // Local collection boundaries for the history and materials panels. Replace
+  // these arrays with endpoint responses later without changing their markup.
+  const TEACHER_ATTENDANCE_HISTORY_DATES = ['2025-06-02', '2025-06-03', '2025-06-04', '2025-06-05', '2025-06-06', '2025-06-09', '2025-06-10'];
+  const TEACHER_MATERIALS = [
+    { name: 'Module 3 - Respect and Kindness.pdf', type: 'PDF', icon: 'file-text', iconBg: 'var(--red-pale)', iconColor: 'var(--red)', size: '2.4 MB', uploaded: 'June 3, 2025', views: '32 views', status: 'Visible to students', statusColor: 'var(--green)' },
+    { name: 'Q2 Lesson 4 - Good Citizenship.pptx', type: 'PowerPoint', icon: 'presentation', iconBg: 'var(--blue-xpale)', iconColor: 'var(--blue-mid)', size: '5.1 MB', uploaded: 'May 28, 2025', views: '28 views', status: 'Visible to students', statusColor: 'var(--green)' },
+    { name: 'Activity Sheet 3 - Reflection Exercises.xlsx', type: 'Excel', icon: 'table', iconBg: 'var(--green-pale)', iconColor: 'var(--green)', size: '0.8 MB', uploaded: 'May 22, 2025', views: '25 views', status: 'Visible to students', statusColor: 'var(--green)' },
+    { name: 'Reference - Values Education Guide.pdf', type: 'PDF', icon: 'file-text', iconBg: 'var(--red-pale)', iconColor: 'var(--red)', size: '1.2 MB', uploaded: 'May 15, 2025', views: '38 views', status: 'Visible to students', statusColor: 'var(--green)' },
+    { name: 'Values Poster Visual Aid.png', type: 'Image', icon: 'image', iconBg: 'var(--gold-pale)', iconColor: 'var(--gold-dark)', size: '0.4 MB', uploaded: 'May 10, 2025', views: '19 views', status: 'Visible to students', statusColor: 'var(--green)' },
+    { name: 'Q2 Study Guide.docx', type: 'Word', icon: 'file-text', iconBg: 'var(--purple-pale)', iconColor: 'var(--purple)', size: '0.6 MB', uploaded: 'June 8, 2025', views: 'Draft', status: 'Draft - Hidden from students', statusColor: 'var(--orange-dark)', draft: true }
+  ];
+
   // Shared learner identities; score, attendance, and assignment state below
   // remain page-specific until their respective API endpoints are available.
   const CURRENT_SECTION_STUDENT_IDS = ['cm-001', 'lr-002', 'mt-012', 'sc-013', 'gb-014'];
@@ -1080,7 +1092,7 @@
     const progressByStudent = Object.fromEntries(STUDENT_PROGRESS.map(record => [record.studentId, record]));
     const gradeColor = { green: '#16a34a', orange: '#d97706', red: 'var(--red)' };
 
-    tbody.innerHTML = STUDENTS.map((student, index) => {
+    tbody.innerHTML = STUDENTS.length ? STUDENTS.map((student, index) => {
       const progress = progressByStudent[student.id] || { attendanceRate: '—', grade: '—', status: 'Pending', tone: 'gray' };
       return `
         <tr data-student-id="${student.id}">
@@ -1091,7 +1103,7 @@
           <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.tone] || 'var(--gray-400)'};">${progress.grade}</span></td>
           <td><span class="badge badge-${progress.tone}">${progress.status}</span></td>
         </tr>`;
-    }).join('');
+    }).join('') : `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
     const count = String(STUDENTS.length);
     document.getElementById('studentCount').textContent = count;
@@ -1109,7 +1121,7 @@
     if (!tbody) return;
     const record = ATTENDANCE_RECORDS[APP_TODAY] || {};
 
-    tbody.innerHTML = STUDENTS.map((student, index) => {
+    tbody.innerHTML = STUDENTS.length ? STUDENTS.map((student, index) => {
       const status = record[student.id] || 'P';
       const buttons = ['P', 'A', 'L', 'E'].map(code => (
         `<button class="att-btn ${code} ${status === code ? 'selected' : ''}" onclick="setAtt(this,'${code}')">${code}</button>`
@@ -1121,8 +1133,31 @@
           <td class="center"><div class="att-btn-group" style="justify-content:center;">${buttons}</div></td>
           <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="${ATTENDANCE_REMARKS[student.id] || ''}"></td>
         </tr>`;
-    }).join('');
+    }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance roster', text: 'Students assigned to this section will appear here for attendance.' })}</td></tr>`;
     document.getElementById('attendanceListFooter').textContent = `Showing ${STUDENTS.length} students`;
+  }
+
+  function renderAttendanceHistory() {
+    const tbody = document.getElementById('attendanceHistoryTbody');
+    if (!tbody) return;
+    const dates = TEACHER_ATTENDANCE_HISTORY_DATES.filter(date => ATTENDANCE_RECORDS[date] && typeof ATTENDANCE_RECORDS[date] === 'object');
+    if (!STUDENTS.length || !dates.length) {
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="9">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No attendance history', text: 'Saved attendance records will appear here for this section.' })}</td></tr>`;
+      lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = STUDENTS.map(student => {
+      const statuses = dates.map(date => ATTENDANCE_RECORDS[date][student.id] || '');
+      const absences = statuses.filter(status => status === 'A').length;
+      const absenceTone = absences > 2 ? 'badge-red' : absences > 0 ? 'badge-orange' : 'badge-green';
+      return `<tr>
+        <td class="sticky-col"><div class="student-name" style="font-size:12px;">${student.name}</div></td>
+        ${statuses.map(status => `<td class="center"><span class="att-record-cell ${status ? `att-${status}` : 'att-empty'}">${status || '-'}</span></td>`).join('')}
+        <td class="center"><span class="badge ${absenceTone}">${absences}</span></td>
+      </tr>`;
+    }).join('');
+    lucide.createIcons();
   }
 
   const REOPEN_STORE_KEY = 'edugnay_reopen_requests';
@@ -1314,8 +1349,9 @@
 
     theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
 
-    if (!data || data.components.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px;">No score components have been added for this quarter yet.</td></tr>';
+    if (!data || !Array.isArray(data.components) || data.components.length === 0) {
+      const emptyColspan = Math.max((Array.isArray(data?.components) ? data.components.length + 5 : 1), 1);
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${emptyColspan}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this quarter to begin recording grades.' })}</td></tr>`;
       return;
     }
 
@@ -1349,7 +1385,7 @@
     theadRow.appendChild(finalTh);
 
     tbody.innerHTML = '';
-    Object.keys(data.scores).forEach((studentId, idx) => {
+    Object.keys(data.scores || {}).forEach((studentId, idx) => {
       const student = STUDENTS_BY_ID[studentId] || { av: 'av-a', init: '??', name: 'Unknown' };
       const scores = data.scores[studentId];
 
@@ -1386,6 +1422,10 @@
       tr.innerHTML = cellsHtml;
       tbody.appendChild(tr);
     });
+
+    if (!Object.keys(data.scores || {}).length) {
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${data.components.length + 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' })}</td></tr>`;
+    }
 
     tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
   }
@@ -1597,7 +1637,7 @@
     const list = document.getElementById('assignmentList');
     document.getElementById('assignmentCount').textContent = ASSIGNMENTS.length;
 
-    list.innerHTML = ASSIGNMENTS.map(a => {
+    list.innerHTML = ASSIGNMENTS.length ? ASSIGNMENTS.map(a => {
       const pct = Math.round((a.done.size / STUDENTS.length) * 100);
       const dueLabel = new Date(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       return `
@@ -1614,7 +1654,32 @@
             </button>
           </div>
         </div>`;
-    }).join('');
+    }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments you create for this section will appear here.' });
+    lucide.createIcons();
+  }
+
+  function renderTeacherMaterials() {
+    const list = document.getElementById('teacherMaterialsList');
+    if (!list) return;
+    list.innerHTML = TEACHER_MATERIALS.length ? TEACHER_MATERIALS.map(material => `
+      <div class="material-item">
+        <div class="material-icon" style="background:${material.iconBg};">
+          <i data-lucide="${material.icon}" style="width:18px;height:18px;color:${material.iconColor};"></i>
+        </div>
+        <div class="material-info">
+          <div class="material-name">${material.name}</div>
+          <div class="material-meta">${material.type} · ${material.size} · Uploaded ${material.uploaded} · <span style="color:${material.statusColor};font-weight:600;">${material.status}</span></div>
+        </div>
+        <div class="material-actions">
+          <span class="badge ${material.draft ? 'badge-gray' : 'badge-green'}" style="font-size:10px;">${material.views}</span>
+          <button class="row-btn edit" type="button">
+            <i data-lucide="${material.draft ? 'send' : 'eye'}" style="width:11px;height:11px;"></i> ${material.draft ? 'Publish' : 'Preview'}
+          </button>
+          <button class="row-btn danger" type="button" aria-label="Remove ${material.name}">
+            <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
+          </button>
+        </div>
+      </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials', text: 'Files uploaded for this section will appear here.' });
     lucide.createIcons();
   }
 
@@ -1639,7 +1704,7 @@
     document.getElementById('completionModalTitle').textContent = 'Mark Completion — ' + a.title;
 
     const tbody = document.getElementById('completionTbody');
-    tbody.innerHTML = STUDENTS.map(s => {
+    tbody.innerHTML = STUDENTS.length ? STUDENTS.map(s => {
       const isDone = a.done.has(s.id);
       return `
         <tr>
@@ -1655,7 +1720,7 @@
             </div>
           </td>
         </tr>`;
-    }).join('');
+    }).join('') : `<tr class="panel-empty-row"><td colspan="2">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students to update', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
     openModal('completionModal');
     lucide.createIcons();
@@ -1673,9 +1738,11 @@
 
   renderTeacherStudentList();
   renderTeacherAttendanceRows();
+  renderAttendanceHistory();
   renderScoreTable(ACTIVE_QUARTER);
 
   renderAssignments();
+  renderTeacherMaterials();
 
   // Init attendance count
   updateAttCount();

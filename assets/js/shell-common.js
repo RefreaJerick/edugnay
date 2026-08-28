@@ -619,6 +619,37 @@
     return getHolidays().find(day => day.date === date) || null;
   }
 
+  let panelEmptyIconRenderQueued = false;
+
+  function queuePanelEmptyIconRender() {
+    if (panelEmptyIconRenderQueued || !window.lucide?.createIcons) return;
+    panelEmptyIconRenderQueued = true;
+    const render = () => {
+      panelEmptyIconRenderQueued = false;
+      window.lucide?.createIcons?.();
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(render);
+    else Promise.resolve().then(render);
+  }
+
+  /* Shared empty-state markup for data panels. Pages can replace the local
+     arrays with API responses later without changing their empty-state UI. */
+  function renderPanelEmptyState(options = {}) {
+    const icon = String(options.icon || 'inbox').replace(/[^a-z0-9-]/gi, '');
+    const title = String(options.title || 'Nothing to show yet');
+    const text = String(options.text || 'Records will appear here when they are available.');
+    const escape = value => value.replace(/[&<>"']/g, character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character]));
+
+    queuePanelEmptyIconRender();
+    return `<div class="panel-empty-state" role="status"><div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="${icon}"></i></div><div class="panel-empty-state-title">${escape(title)}</div><div class="panel-empty-state-text">${escape(text)}</div></div>`;
+  }
+
   window.EDUGNAY_CONFIG = {
     storageKeys: STORAGE_KEYS,
     schools: DEFAULT_SCHOOLS,
@@ -642,7 +673,8 @@
     getHolidays,
     saveHolidays,
     getLocalDateISO,
-    getNoClassDay
+    getNoClassDay,
+    renderPanelEmptyState
   };
 })();
 

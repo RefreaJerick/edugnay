@@ -289,8 +289,12 @@
       const visible = getVisibleAssignments();
 
       if (!visible.length) {
-        list.innerHTML = '<div class="assignment-empty"><div class="assignment-empty-icon"><i data-lucide="clipboard-x" style="width:22px;height:22px;"></i></div><div class="assignment-empty-title">No assignments found</div><div class="assignment-empty-copy">Try another status, subject, or search term.</div></div>';
-        lucide.createIcons();
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'clipboard-check',
+          title: 'No assignments found',
+          text: 'Try another status, subject, or search term.'
+        });
+        if (window.lucide) lucide.createIcons();
         return;
       }
 

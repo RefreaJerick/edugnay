@@ -249,11 +249,11 @@
 
     function renderQuarterTabs() {
       const tabs = document.getElementById('gradeTabs');
-      tabs.innerHTML = STUDENT_GRADE_RECORDS.map(record => {
+      tabs.innerHTML = STUDENT_GRADE_RECORDS.length ? STUDENT_GRADE_RECORDS.map(record => {
         return `<button class="grade-tab ${record.id === activeQuarterId ? 'active' : ''}" type="button" role="tab" aria-selected="${record.id === activeQuarterId}" data-quarter="${record.id}">
           <span>${escapeHtml(record.label)}</span>
         </button>`;
-      }).join('');
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
       tabs.querySelectorAll('[data-quarter]').forEach(button => button.addEventListener('click', function () {
         activeQuarterId = this.dataset.quarter;
         renderGrades();
@@ -265,7 +265,12 @@
       const list = document.getElementById('gradeSubjectList');
 
       if (!subjects.length) {
-        list.innerHTML = `<div class="grades-empty"><div><div class="grades-empty-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div><div class="grades-empty-title">No grades available yet</div><div class="grades-empty-copy">Subject marks will appear here when this quarter is opened.</div></div></div>`;
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'book-open-check',
+          title: 'No grades available yet',
+          text: 'Subject marks will appear here when this quarter is opened.'
+        });
+        if (window.lucide) lucide.createIcons();
         return;
       }
 
@@ -286,10 +291,18 @@
 
     function renderGrades() {
       const record = getActiveQuarter();
-      if (!record) return;
+      const tabs = document.getElementById('gradeTabs');
+      const list = document.getElementById('gradeSubjectList');
+      const note = document.getElementById('gradesNoteCopy');
+      if (!record) {
+        tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a grading period is released.' });
+        note.textContent = '';
+        lucide.createIcons();
+        return;
+      }
       renderQuarterTabs();
       renderSubjectGrades(record);
-      const note = document.getElementById('gradesNoteCopy');
       note.innerHTML = record.status === 'final'
         ? '<strong>Final quarter grades.</strong> Contact your subject teacher for score details or corrections.'
         : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the quarter is released.';

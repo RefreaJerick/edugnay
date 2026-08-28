@@ -708,10 +708,6 @@
       margin-bottom: 2px;
     }
 
-    /* â”€â”€ EMPTY STATE â”€â”€ */
-    .no-results { padding: 48px 24px; text-align: center; color: var(--gray-400); grid-column: 1/-1; }
-    .no-results-text { font-size: 13px; font-weight: 600; }
-
     /* â”€â”€ GENERATE MODAL DONE ICON â”€â”€ */
     .gen-done-icon {
       width: 54px; height: 54px;

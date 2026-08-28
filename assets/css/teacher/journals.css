@@ -511,6 +511,26 @@
   flex-wrap: wrap;
 }
 
+.panel-empty-noprompt {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: var(--panel-bg);
+  text-align: center;
+}
+
+.panel-empty-noprompt > .panel-empty-state {
+  width: 100%;
+}
+
+.panel-empty-action {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 auto 24px;
+}
+
 .search-wrap {
   position: relative;
   flex: 1;
@@ -1124,37 +1144,6 @@ tbody td.center {
 /* reviewed overlay on row */
 tbody tr.reviewed td {
   opacity: 0.65;
-}
-
-/* empty state */
-.empty-state {
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-  color: var(--gray-400);
-}
-
-.empty-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gray-700);
-  margin-bottom: 4px;
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: var(--gray-400);
 }
 
 /* toast */

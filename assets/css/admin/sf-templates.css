@@ -44,7 +44,6 @@
 .sf-preview-title { color: var(--gray-800); font-size: 14px; font-weight: 800; }
 .sf-preview-meta { margin-top: 3px; color: var(--gray-400); font-size: 10px; }
 .sf-preview-body { padding: 16px; overflow-x: auto; }
-.sf-preview-empty { display: grid; min-height: 220px; place-items: center; color: var(--gray-400); font-size: 11px; text-align: center; }
 .sf-form-preview { min-width: 620px; }
 .sf-form-preview-head { padding: 12px; border: 1px solid var(--gray-200); border-bottom: 0; text-align: center; }
 .sf-form-preview-head strong { display: block; color: var(--gray-800); font-size: 13px; }
@@ -77,5 +76,4 @@
   body { background: var(--white) !important; }
   .sidebar, .topbar, .page-overview, .sf-page-note, .sf-tabs, .sf-generator-controls, .sf-preview-head .sf-actions { display: none !important; }
   .shell, .main, .sf-layout, .sf-pane, .sf-preview, .sf-preview-body { display: block !important; width: 100% !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; }
-  .sf-preview-empty { display: none !important; }
 }

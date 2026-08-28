@@ -499,14 +499,8 @@
           </div>
 
         </div>
+        <div class="panel-empty-slot" id="annEmpty" hidden aria-live="polite"></div>
         <!-- EJS: <% }); %> -->
-
-        <!-- Empty state -->
-        <div class="ann-empty" id="annEmpty">
-          <div class="ann-empty-icon"><i data-lucide="inbox" style="width:36px;height:36px;"></i></div>
-          <div class="ann-empty-title">No announcements found</div>
-          <div class="ann-empty-sub">Try adjusting your filters or search query.</div>
-        </div>
       </div>
 
       <!-- RIGHT: Info rail -->
@@ -642,9 +636,10 @@
   function renderTeacherDeadlines() {
     const rail = document.getElementById('teacher-deadlines');
     if (!rail) return;
-    rail.innerHTML = UPCOMING_DEADLINES
-      .filter(item => !item.access || teacherCanAccess(item.access))
-      .map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('');
+    const deadlines = UPCOMING_DEADLINES.filter(item => !item.access || teacherCanAccess(item.access));
+    rail.innerHTML = deadlines.length
+      ? deadlines.map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-clock', title: 'No upcoming deadlines', text: 'Upcoming events and due dates will appear here.' });
   }
 
   renderTeacherDeadlines();
@@ -674,8 +669,17 @@
       if (show) visible++;
     });
 
-    const empty = document.getElementById('annEmpty');
-    empty.classList.toggle('visible', visible === 0);
+      const empty = document.getElementById('annEmpty');
+      const isEmpty = visible === 0;
+      empty.hidden = !isEmpty;
+      if (isEmpty) {
+        empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'megaphone',
+          title: 'No announcements found',
+          text: 'Try adjusting your filters or search query.'
+        });
+        if (window.lucide) lucide.createIcons();
+      } else empty.innerHTML = '';
   }
 
   /* ── MODAL: open ── */
@@ -743,6 +747,8 @@
     // EJS/backend: PATCH /users/me/notif-prefs { [type]: input.checked }
     console.log('Notif pref:', type, input.checked);
   }
+
+  filterCards();
 
   /* ── ESC KEY ── */
   document.addEventListener('keydown', e => {

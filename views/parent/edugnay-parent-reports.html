@@ -326,7 +326,11 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = Object.entries(REPORTS_BY_CHILD).map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${getInitials(child.name)}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div><span class="child-report-badge">${child.reports.length}</span></div>`).join('');
+      const children = Object.entries(REPORTS_BY_CHILD);
+      switcher.innerHTML = children.length
+        ? children.map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${getInitials(child.name)}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div><span class="child-report-badge">${child.reports.length}</span></div>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+      lucide.createIcons();
     }
 
     function getInitials(name) {
@@ -346,25 +350,21 @@
     function renderLatest() {
       const child = REPORTS_BY_CHILD[currentChild];
       const wrap = document.getElementById('latest-report-wrap');
+      if (!child) {
+        wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Weekly reports will appear here when a child account is linked.' })}</div>`;
+        lucide.createIcons();
+        return;
+      }
       const latest = child.reports[0];
 
       // EJS: <% if (latestReport) { %>
       if (!latest) {
-        wrap.innerHTML = `
-      <div class="latest-report-hero is-empty">
-          <div class="lr-head">
-            <div class="lr-head-left">
-              <div class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
-            <div>
-              <div class="lr-eyebrow">Weekly Report</div>
-              <div class="lr-week">Report not yet ready</div>
-            </div>
-          </div>
-        </div>
-        <div class="lr-text" style="color:rgba(255,255,255,0.6);max-width:480px;">
-          ${child.name.split(' ')[0]}'s teacher is still preparing this week's report. You'll see it here as soon as it's confirmed and sent.
-        </div>
-      </div>`;
+        const firstName = child.name.split(' ')[0];
+        wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'notebook-pen',
+          title: 'Weekly report not ready yet',
+          text: `${firstName}'s teacher is still preparing this week's report. You'll see it here as soon as it's confirmed and sent.`
+        })}</div>`;
         lucide.createIcons();
         return;
       }
@@ -401,6 +401,12 @@
       const riskFilter = document.getElementById('risk-filter').value;
       const wrap = document.getElementById('timeline-wrap');
 
+      if (!child) {
+        wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Confirmed reports will appear here when a child account is linked.' })}</div>`;
+        lucide.createIcons();
+        return;
+      }
+
       // Skip the latest report in the timeline — it already has the hero treatment above
       const pastReports = child.reports.slice(1).filter(r => {
         if (query && !r.text.toLowerCase().includes(query) && !r.weekLabel.toLowerCase().includes(query)) return false;
@@ -409,13 +415,14 @@
       });
 
       if (pastReports.length === 0) {
-        wrap.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon"><i data-lucide="file-text" style="width:22px;height:22px;"></i></div>
-        <div class="empty-title">No past reports to show</div>
-        <div class="empty-sub">${child.reports.length <= 1 ? 'This is the first confirmed report for ' + child.name.split(' ')[0] + '.' : 'Try adjusting your search or filter.'}</div>
-      </div>`;
-        lucide.createIcons();
+        wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'notebook-pen',
+          title: 'No past reports to show',
+          text: child.reports.length <= 1
+            ? 'This is the first confirmed report for ' + child.name.split(' ')[0] + '.'
+            : 'Try adjusting your search or filter.'
+        })}</div>`;
+        if (window.lucide) lucide.createIcons();
         return;
       }
 

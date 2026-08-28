@@ -390,7 +390,9 @@
   function renderEmploymentDetails() {
     const panel = document.getElementById('admin-employment-details');
     if (!panel) return;
-    panel.innerHTML = EMPLOYMENT_DETAILS.map(item => `<div class="profile-detail-row"><span class="profile-detail-label">${item.label}</span><span class="profile-detail-value">${item.value}</span></div>`).join('');
+    panel.innerHTML = EMPLOYMENT_DETAILS.length
+      ? EMPLOYMENT_DETAILS.map(item => `<div class="profile-detail-row"><span class="profile-detail-label">${item.label}</span><span class="profile-detail-value">${item.value}</span></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'briefcase-business', title: 'No employment details', text: 'Employment information will appear here when it is configured.' });
   }
 
   renderEmploymentDetails();

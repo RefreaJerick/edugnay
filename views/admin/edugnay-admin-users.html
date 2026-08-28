@@ -791,7 +791,7 @@
       const startIdx = (currentPage - 1) * PAGE_SIZE;
       const pageUsers = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
-      tbody.innerHTML = pageUsers.map(u => {
+      tbody.innerHTML = pageUsers.length ? pageUsers.map(u => {
         const meta = ROLE_META[u.role];
         const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ');
         const initials = ((u.firstName || '?').charAt(0) + (u.lastName || '?').charAt(0)).toUpperCase();
@@ -824,7 +824,7 @@
         <td class="date-cell account-date-cell">${u.dateAdded}</td>
         <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
       </tr>`;
-      }).join('');
+      }).join('') : `<tr class="panel-empty-row"><td colspan="${showGradeLinkColumn ? 6 : 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No user accounts found', text: 'Try adjusting the role, status, grade level, or search filters.' })}</td></tr>`;
 
       lucide.createIcons();
       wireRowButtons();

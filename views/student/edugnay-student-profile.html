@@ -526,8 +526,8 @@ const STUDENT_SUBJECTS = [
 function renderStudentSubjects() {
   const list = document.getElementById('student-subject-list');
   if (!list) return;
-  list.innerHTML = STUDENT_SUBJECTS.map(subject => `
-    <div class="subject-row"><div class="subject-info"><div class="subject-name">${subject.name}</div><div class="subject-teacher">${subject.teacher}</div></div>${subject.adviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`).join('');
+  list.innerHTML = STUDENT_SUBJECTS.length ? STUDENT_SUBJECTS.map(subject => `
+    <div class="subject-row"><div class="subject-info"><div class="subject-name">${subject.name}</div><div class="subject-teacher">${subject.teacher}</div></div>${subject.adviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
   lucide.createIcons();
 }
 

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications | E-Ugnay</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../assets/css/styles.css" />
+  <link rel="stylesheet" href="../../assets/css/admin/dashboard.css" />
+  <link rel="stylesheet" href="../../assets/css/admin/notifications.css" />
+  <link rel="stylesheet" href="../../assets/css/modal-system.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/platform/shell.js"></script>
+</head>
+<body class="platform-notifications" data-platform-portal="true">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar" aria-label="Platform navigation">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="E-Ugnay" /></div>
+        <div class="brand-text">
+          <div class="brand-name">e<span>Ugnay</span></div>
+          <div class="brand-sub" data-platform-brand>PLATFORM ADMINISTRATION</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-platform-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-platform-school-accounts.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Accounts</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-platform-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+        <div class="admin-topbar-context" aria-label="Platform Notifications page">
+          <div class="admin-topbar-context-copy">
+            <span>Platform administration</span>
+            <strong>Notifications</strong>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Open notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+                <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()" aria-expanded="false">
+            <div class="tb-avatar admin">PA</div>
+            <div class="tb-profile-info"><div class="tb-profile-name">Platform Admin</div><div class="tb-profile-role">Administrator</div></div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-platform-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i>My Profile</a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="page-overview" aria-labelledby="page-overview-title">
+        <div class="page-overview-copy">
+          <div class="page-overview-kicker">Overview</div>
+          <h1 class="page-overview-title" id="page-overview-title">Notifications</h1>
+        </div>
+      </section>
+
+      <div class="notif-filterbar">
+        <div class="notif-filters" id="notifTypeFilters" role="group" aria-label="Notification filters">
+          <button class="notif-filter-btn active" type="button" onclick="setNotifFilter('all', this)">All</button>
+          <button class="notif-filter-btn" type="button" onclick="setNotifFilter('unread', this)">Unread</button>
+        </div>
+        <button class="notif-mark-read-all" type="button" onclick="markAllRead()">Mark all as read</button>
+      </div>
+
+      <section class="notif-panel" aria-labelledby="all-notifications-title">
+        <div class="notif-panel-head">
+          <div class="notif-panel-title" id="all-notifications-title">All Notifications</div>
+        </div>
+        <div class="notif-list" id="notifList"></div>
+        <div class="panel-empty-slot" id="notifEmptyState" hidden aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const PLATFORM = window.EDUGNAY_PLATFORM;
+    const PLATFORM_NOTIFICATIONS = Array.isArray(PLATFORM?.notifications) ? PLATFORM.notifications : [];
+    let activeNotifFilter = 'all';
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    }
+
+    function formatDateGroup(value) {
+      const date = new Date(value);
+      const today = new Date();
+      const dayStart = item => new Date(item.getFullYear(), item.getMonth(), item.getDate());
+      const daysApart = Math.round((dayStart(today) - dayStart(date)) / 86400000);
+      if (daysApart === 0) return 'Today';
+      if (daysApart === 1) return 'Yesterday';
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    }
+
+    function notificationTimestamp(notification) {
+      return notification.createdAt || notification.created_at || '';
+    }
+
+    function formatTime(value) {
+      return new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function notificationTime(notification) {
+      const timestamp = notificationTimestamp(notification);
+      return timestamp ? formatTime(timestamp) : String(notification.time || '');
+    }
+
+    function setNotifFilter(mode, button) {
+      document.querySelectorAll('#notifTypeFilters .notif-filter-btn').forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+      activeNotifFilter = mode;
+      renderNotifList();
+    }
+
+    function markRead(id) {
+      if (typeof PLATFORM.markPlatformNotificationRead === 'function') {
+        PLATFORM.markPlatformNotificationRead(id);
+      } else {
+        const notification = PLATFORM_NOTIFICATIONS.find(item => String(item.id) === String(id));
+        if (notification) notification.read = true;
+      }
+      PLATFORM.renderTopbarNotifs();
+    }
+
+    function openNotification(id) {
+      const notification = PLATFORM_NOTIFICATIONS.find(item => String(item.id) === String(id));
+      markRead(id);
+      renderNotifList();
+      if (notification?.link) window.location.href = notification.link;
+    }
+
+    function markAllRead() {
+      if (typeof PLATFORM.markAllPlatformNotificationsRead === 'function') {
+        PLATFORM.markAllPlatformNotificationsRead();
+      } else {
+        PLATFORM_NOTIFICATIONS.forEach(notification => { notification.read = true; });
+        PLATFORM.renderTopbarNotifs();
+      }
+      renderNotifList();
+    }
+
+    function renderNotifList() {
+      const container = document.getElementById('notifList');
+      const emptyState = document.getElementById('notifEmptyState');
+      const all = PLATFORM_NOTIFICATIONS.slice().sort((first, second) => {
+        const firstDate = notificationTimestamp(first);
+        const secondDate = notificationTimestamp(second);
+        return (secondDate ? new Date(secondDate) : 0) - (firstDate ? new Date(firstDate) : 0);
+      });
+      const filtered = activeNotifFilter === 'unread' ? all.filter(notification => !notification.read) : all;
+
+      if (!filtered.length) {
+        container.innerHTML = '';
+        emptyState.hidden = false;
+        const noUnread = activeNotifFilter === 'unread' && all.length;
+        emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'bell-off',
+          title: noUnread ? 'No unread notifications' : 'No notifications yet',
+          text: noUnread ? "You're all caught up." : 'Platform alerts and school account updates will appear here.'
+        });
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      emptyState.hidden = true;
+      emptyState.innerHTML = '';
+      let lastGroup = '';
+      container.innerHTML = filtered.map(notification => {
+        const timestamp = notificationTimestamp(notification);
+        const group = timestamp ? formatDateGroup(timestamp) : '';
+        const groupHtml = group && group !== lastGroup ? `<div class="notif-group-label">${escapeHtml(group)}</div>` : '';
+        lastGroup = group || lastGroup;
+        return `${groupHtml}
+          <div class="notif-item ${notification.read ? '' : 'unread'}" role="button" tabindex="0" data-platform-notification="${escapeHtml(notification.id)}">
+            <div class="nt-icon ${escapeHtml(notification.color || 'blue')}"><i data-lucide="${escapeHtml(notification.icon || 'bell')}" style="width:15px;height:15px;"></i></div>
+            <div class="nt-body">
+              <div class="nt-text"><strong>${escapeHtml(notification.title || 'Platform notification')}</strong></div>
+              <div class="nt-desc">${escapeHtml(notification.desc || notification.detail || '')}</div>
+              <div class="nt-time">${escapeHtml(notificationTime(notification))}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      container.querySelectorAll('[data-platform-notification]').forEach(item => {
+        const activate = () => openNotification(item.dataset.platformNotification);
+        item.addEventListener('click', activate);
+        item.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activate();
+          }
+        });
+      });
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      PLATFORM.renderTopbarNotifs();
+      renderNotifList();
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

@@ -128,39 +128,6 @@
   color: var(--gray-400);
 }
 
-.grades-empty {
-  grid-column: 1 / -1;
-  display: grid;
-  min-height: 180px;
-  padding: 32px 24px;
-  place-items: center;
-  color: var(--gray-400);
-  text-align: center;
-}
-
-.grades-empty-icon {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  margin: 0 auto 10px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--gray-100);
-  color: var(--gray-400);
-}
-
-.grades-empty-title {
-  color: var(--gray-700);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.grades-empty-copy {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.45;
-}
-
 .grades-note {
   display: flex;
   align-items: center;

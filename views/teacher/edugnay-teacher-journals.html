@@ -411,18 +411,7 @@
         </div>
       </div>
 
-      <div class="panel-empty-noprompt" id="noPromptState" style="display:none;padding:64px 24px;text-align:center;">
-        <div class="empty-icon" style="margin:0 auto 18px;">
-          <i data-lucide="book-plus" style="width:26px;height:26px;"></i>
-        </div>
-        <div class="empty-title">No journal prompt set yet</div>
-        <div class="empty-sub" style="max-width:380px;margin:0 auto 22px;line-height:1.7;">
-          Students in this section can't submit a journal entry until a weekly prompt is published. Set one up to open submissions.
-        </div>
-        <button class="btn btn-save" style="margin:0 auto;" onclick="openSettingsDrawer()">
-          <i data-lucide="plus" style="width:13px;height:13px;"></i> Create this week's prompt
-        </button>
-      </div>
+      <div class="panel-empty-noprompt" id="noPromptState" style="display:none;"></div>
 
       <div class="toolbar">
         <div class="search-wrap">
@@ -601,7 +590,10 @@ function renderJournalSummary() {
 function renderJournalSectionTabs() {
   const tabs = document.getElementById('journal-section-tabs');
   if (!tabs) return;
-  tabs.innerHTML = SECTION_TABS.map(section => `<button class="section-tab ${section.key === currentSection ? 'active' : ''}" onclick="switchSection('${section.key}', this)" id="tab-${section.key}">${section.label}<span class="tab-count">${section.count}</span></button>`).join('');
+  tabs.innerHTML = SECTION_TABS.length
+    ? SECTION_TABS.map(section => `<button class="section-tab ${section.key === currentSection ? 'active' : ''}" onclick="switchSection('${section.key}', this)" id="tab-${section.key}">${section.label}<span class="tab-count">${section.count}</span></button>`).join('')
+    : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to you will appear here.' });
+  lucide.createIcons();
 }
 
 /* ══════ SECTION SWITCH ══════ */
@@ -611,6 +603,7 @@ function switchSection(sectionKey, btn) {
   btn.classList.add('active');
 
   const sec = SECTIONS[sectionKey];
+  if (!sec) return;
   document.getElementById('panel-title').textContent = `Journal Entries: ${sec.label}`;
   document.getElementById('search-input').value = '';
   document.getElementById('status-filter').value = 'all';
@@ -626,6 +619,13 @@ function renderTable() {
   const tableFooter = document.getElementById('table-footer');
 
   if (!sec.hasPrompt) {
+      if (!noPromptEl.innerHTML.trim()) {
+        noPromptEl.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'notebook-pen',
+        title: 'No journal prompt set yet',
+        text: "Students in this section cannot submit a journal entry until a weekly prompt is published. Set one up to open submissions."
+      })}<button class="top-btn primary panel-empty-action" type="button" onclick="openSettingsDrawer()"><i data-lucide="plus" style="width:13px;height:13px;"></i> Create this week's prompt</button>`;
+    }
     noPromptEl.style.display = 'block';
     toolbar.style.display = 'none';
     tableWrap.style.display = 'none';
@@ -658,8 +658,8 @@ function renderTable() {
   const tbody = document.getElementById('journal-tbody');
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon"><i data-lucide="search" style="width:22px;height:22px;"></i></div><div class="empty-title">No entries found</div><div class="empty-sub">Try adjusting your search or filter.</div></div></td></tr>`;
-    lucide.createIcons();
+    tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="7">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No entries found', text: 'Try adjusting your search or filter.' })}</td></tr>`;
+    if (window.lucide) lucide.createIcons();
     return;
   }
 

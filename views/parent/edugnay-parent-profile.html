@@ -445,6 +445,11 @@
     function renderLinkedChildren() {
       const list = document.getElementById('linked-children-list');
       if (!list) return;
+      if (!LINKED_CHILDREN.length) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+        lucide.createIcons();
+        return;
+      }
       list.innerHTML = LINKED_CHILDREN.map(child => `<div class="child-record-card"><div class="child-record-avatar">${child.initials}</div><div class="child-record-info"><div class="child-record-name">${child.name}</div><div class="child-record-section">${child.section} · Adviser: ${child.adviser}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${child.lrn}</div></div><span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> ${child.relationship}</span></div>`).join('');
       lucide.createIcons();
     }

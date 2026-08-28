@@ -358,6 +358,13 @@
       const card = document.getElementById('student-journal-card');
       if (!card) return;
       const journal = JOURNAL[0];
+      if (!journal) {
+        card.classList.add('is-empty');
+        card.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No journal prompt yet', text: 'Your weekly reflection prompt will appear here when it is published.' });
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+      card.classList.remove('is-empty');
       card.innerHTML = `<div class="journal-icon-chip"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div><div class="journal-body"><div class="journal-eyebrow" id="weeklyJournalTitle">${journal.subject} · ${journal.title}</div><div class="journal-prompt">"${journal.prompt}"</div><div class="journal-foot"><span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> ${journal.status} · ${journal.due}</span><a href="edugnay-student-journal.html" class="journal-cta">Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a></div></div>`;
       lucide.createIcons();
     }
@@ -408,7 +415,8 @@
       if (!container) return;
 
       if (!UPCOMING_ASSIGNMENTS.length) {
-        container.innerHTML = '<div class="assignment-preview-empty">No assignments have been added yet.</div>';
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments shared by your teachers will appear here.' });
+        lucide.createIcons();
         return;
       }
 
@@ -448,22 +456,22 @@
       };
       const materials = document.getElementById('student-materials-list');
       if (materials) {
-        materials.innerHTML = MATERIALS.map(item => `
+        materials.innerHTML = MATERIALS.length ? MATERIALS.map(item => `
           <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
             <div class="material-icon" style="${toneStyles[item.tone]}"><i data-lucide="${item.icon}" style="width:18px;height:18px;"></i></div>
             <div class="material-info"><div class="material-title">${item.title}</div><div class="material-meta">${item.subject} · ${item.posted}</div></div>
             <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
-          </div>`).join('');
+          </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials yet', text: 'Materials shared by your teachers will appear here.' });
       }
 
       const announcements = document.getElementById('student-announcements-list');
       if (announcements) {
-        announcements.innerHTML = ANNOUNCEMENTS.map(item => `
+        announcements.innerHTML = ANNOUNCEMENTS.length ? ANNOUNCEMENTS.map(item => `
           <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
             <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
             <div class="ann-item-body">${item.body}</div>
             <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
-          </div>`).join('');
+          </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
       renderUpcomingAssignments();
       lucide.createIcons();

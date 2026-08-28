@@ -404,16 +404,27 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = Object.entries(ATTENDANCE_BY_CHILD).map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${child.name.split(' ').map(part => part[0]).slice(0, 2).join('')}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div></div>`).join('');
+      const children = Object.entries(ATTENDANCE_BY_CHILD);
+      switcher.innerHTML = children.length
+        ? children.map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${child.name.split(' ').map(part => part[0]).slice(0, 2).join('')}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div></div>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+      lucide.createIcons();
     }
 
     function switchChild(childKey, el) {
+      const child = ATTENDANCE_BY_CHILD[childKey];
+      if (!child) return;
       currentChild = childKey;
       document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
 
-      const child = ATTENDANCE_BY_CHILD[currentChild];
-      const months = Object.keys(child.months).sort();
+      const months = Object.keys(child.months || {}).sort();
+      if (!months.length) {
+        currentMonthKey = '';
+        selectedDate = null;
+        renderAll();
+        return;
+      }
       currentMonthKey = months[months.length - 1];
       selectedDate = null;
 
@@ -422,7 +433,8 @@
 
     function changeMonth(direction) {
       const child = ATTENDANCE_BY_CHILD[currentChild];
-      const months = Object.keys(child.months).sort();
+      const months = Object.keys(child?.months || {}).sort();
+      if (!child || !months.length) return;
       const idx = months.indexOf(currentMonthKey);
       const newIdx = idx + direction;
       if (newIdx < 0 || newIdx >= months.length) return;
@@ -439,8 +451,14 @@
 
     function renderSummaryStrip() {
       const child = ATTENDANCE_BY_CHILD[currentChild];
-      const month = child.months[currentMonthKey];
-      const dayEntries = Object.values(month.days);
+      const month = child?.months?.[currentMonthKey];
+      const summary = document.getElementById('summary-strip');
+      if (!child || !month) {
+        summary.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Attendance history will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
+      const dayEntries = Object.values(month.days || {});
 
       const present = dayEntries.filter(d => d.status === 'present').length;
       const absent = dayEntries.filter(d => d.status === 'absent').length;
@@ -479,17 +497,27 @@
 
     function renderCalendar() {
       const child = ATTENDANCE_BY_CHILD[currentChild];
-      const months = Object.keys(child.months).sort();
-      const month = child.months[currentMonthKey];
+      const months = Object.keys(child?.months || {}).sort();
+      const month = child?.months?.[currentMonthKey];
+      const grid = document.getElementById('cal-grid');
+      const monthLabel = document.getElementById('cal-month-label');
+      const prevButton = document.getElementById('cal-prev');
+      const nextButton = document.getElementById('cal-next');
+      if (!child || !month) {
+        monthLabel.textContent = 'Attendance history';
+        prevButton.disabled = true;
+        nextButton.disabled = true;
+        grid.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No attendance calendar', text: 'Attendance dates will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
 
-      document.getElementById('cal-month-label').textContent = month.label;
-      document.getElementById('cal-prev').disabled = months.indexOf(currentMonthKey) === 0;
-      document.getElementById('cal-next').disabled = months.indexOf(currentMonthKey) === months.length - 1;
+      monthLabel.textContent = month.label;
+      prevButton.disabled = months.indexOf(currentMonthKey) === 0;
+      nextButton.disabled = months.indexOf(currentMonthKey) === months.length - 1;
 
       const [year, monthNum] = currentMonthKey.split('-').map(Number);
       const lastDateOfMonth = new Date(year, monthNum, 0).getDate();
-      const grid = document.getElementById('cal-grid');
-
       // Compute Monday-based offset for day 1
       // getDay(): 0=Sun,1=Mon,...,6=Sat → remap to Mon=0..Sun=6
       const firstDow = new Date(year, monthNum - 1, 1).getDay();
@@ -501,7 +529,7 @@
       }
 
       for (let d = 1; d <= lastDateOfMonth; d++) {
-        const entry = month.days[d];
+        const entry = (month.days || {})[d];
         const dateISO = `${currentMonthKey}-${String(d).padStart(2, '0')}`;
         const isFuture = dateISO > TODAY_ISO;
         const dow = new Date(year, monthNum - 1, d).getDay(); // 0=Sun,6=Sat
@@ -538,8 +566,8 @@
 
     function renderDayDetail() {
       const child = ATTENDANCE_BY_CHILD[currentChild];
-      const month = child.months[currentMonthKey];
-      if (!selectedDate || !month.days[selectedDate]) return;
+      const month = child?.months?.[currentMonthKey];
+      if (!child || !month || !selectedDate || !month.days?.[selectedDate]) return;
 
       const titleEl = document.getElementById('dayDetailModalTitle');
       const container = document.getElementById('day-detail-modal-content');
@@ -550,6 +578,7 @@
       titleEl.textContent = dateLabel;
 
       const entry = month.days[selectedDate];
+      const subjects = Array.isArray(entry.subjects) ? entry.subjects : [];
       const bannerMap = {
         present: { cls: 'present', icon: 'check-circle', title: 'Present', sub: `${child.name.split(' ')[0]} attended school on this day.`, bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
         absent: { cls: 'absent', icon: 'circle-x', title: 'Absent', sub: `${child.name.split(' ')[0]} was marked absent. Contact the adviser if this seems incorrect.`, bg: 'rgba(239,68,68,0.12)', color: 'var(--red)' },
@@ -566,7 +595,7 @@
       </div>
     </div>
     <div>
-      ${entry.subjects.map(s => {
+      ${subjects.length ? subjects.map(s => {
         const badge = s.status === 'present'
           ? '<span class="badge badge-green"><i data-lucide="check" style="width:8px;height:8px;"></i> Present</span>'
           : s.status === 'late'
@@ -579,7 +608,7 @@
             <div class="subject-att-name"><span class="subject-dot" style="background:${s.color};"></span> ${s.name}</div>
             ${badge}
           </div>`;
-      }).join('')}
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subject details', text: 'Subject attendance details have not been recorded.' })}
     </div>`;
       lucide.createIcons();
     }
@@ -597,20 +626,25 @@
 
     function renderFlaggedDays() {
       const child = ATTENDANCE_BY_CHILD[currentChild];
-      const month = child.months[currentMonthKey];
       const container = document.getElementById('flagged-list');
+      const month = child?.months?.[currentMonthKey];
+      if (!child || !month) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No flagged days', text: 'Absence details will appear here when a child account is linked.' });
+        lucide.createIcons();
+        return;
+      }
 
-      const flagged = Object.entries(month.days)
+      const flagged = Object.entries(month.days || {})
         .filter(([, entry]) => entry.status === 'absent')
         .sort((a, b) => Number(a[0]) - Number(b[0]));
 
       if (flagged.length === 0) {
-        container.innerHTML = `
-      <div class="empty-flags">
-        <div class="empty-flags-icon"><i data-lucide="check" style="width:20px;height:20px;"></i></div>
-        <div class="empty-flags-title">No absences this month</div>
-        <div class="empty-flags-sub">${child.name.split(' ')[0]} has a clean attendance record so far.</div>
-      </div>`;
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'calendar-check',
+          title: 'No absences this month',
+          text: child.name.split(' ')[0] + ' has a clean attendance record so far.'
+        });
+        if (window.lucide) lucide.createIcons();
         return;
       }
 

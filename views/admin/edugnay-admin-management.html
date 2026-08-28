@@ -1123,6 +1123,20 @@ function renderManagementStatCards(targetId, cards) {
     </div>`).join('');
 }
 
+function updateManagementEmptySlot(container, key, options, show) {
+  if (!container) return;
+  let slot = container.querySelector(`[data-management-empty="${key}"]`);
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.dataset.managementEmpty = key;
+    slot.className = 'panel-empty-slot';
+    container.appendChild(slot);
+  }
+  slot.classList.add('panel-empty-slot');
+  slot.hidden = !show;
+  slot.innerHTML = show ? window.EDUGNAY_CONFIG.renderPanelEmptyState(options) : '';
+}
+
 function getTeacherAssignmentStatsLegacy() {
   const slots = TEACHER_ASSIGNMENTS_DATA.flatMap(section => section.subjects);
   const assigned = slots.filter(subject => subject.teacher).length;
@@ -1233,6 +1247,11 @@ function renderSections() {
           </div>`).join('')}
       </div>
     </div>`).join('');
+  updateManagementEmptySlot(container, 'sections', {
+    icon: 'door-open',
+    title: 'No sections found',
+    text: 'Create a section or adjust the search and grade filters.'
+  }, groups.length === 0);
 
   container.querySelectorAll('.section-card').forEach(card => {
     card.querySelector('.card-btn.edit').addEventListener('click', () => openSectionEditModal(card));
@@ -1240,7 +1259,7 @@ function renderSections() {
   });
 
   const tbody = document.querySelector('#sectionTableView tbody');
-  tbody.innerHTML = records.map(section => `
+  tbody.innerHTML = (records.length ? records.map(section => `
     <tr data-id="${section.id}" data-grade="${managementSectionFilterKey(section)}" data-name="${section.name.toLowerCase()}">
       <td><strong>${section.name}</strong></td>
       <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${managementSectionPlacement(section)}</span></td>
@@ -1249,7 +1268,9 @@ function renderSections() {
       <td>${section.subjects}</td>
       <td>${section.capacity}</td>
       <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">${section.adviser ? 'Edit' : 'Assign'}</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td>
-    </tr>`).join('');
+    </tr>`).join('') : '') + `<tr class="panel-empty-row" hidden><td colspan="7">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections found', text: 'Create a section or adjust the filters.' })}</td></tr>`;
+  const sectionTableEmpty = tbody.querySelector('.panel-empty-row');
+  if (sectionTableEmpty) sectionTableEmpty.hidden = records.length > 0;
   tbody.querySelectorAll('.row-btn.view').forEach(button => button.addEventListener('click', () => openSectionStudentsModal(button.closest('tr'))));
   tbody.querySelectorAll('.row-btn.edit').forEach(button => button.addEventListener('click', () => openSectionEditModal(button.closest('tr'))));
   lucide.createIcons();
@@ -1394,6 +1415,11 @@ function renderSubjects() {
       <div class="subject-card-content"><div class="subj-name">${subject.name}</div><div class="subj-code-text">${subject.code} · ${subject.type}</div></div>
       <div class="subject-card-actions row-actions"><button class="row-btn edit" onclick="openSubjectModal('${subject.id}')">Edit</button><button class="row-btn remove">Remove</button></div>
     </article>`).join('');
+  updateManagementEmptySlot(subjectGrid, 'subjects', {
+    icon: 'book-open',
+    title: 'No subjects found',
+    text: 'Add a subject or adjust the search and school-level filters.'
+  }, subjectRecords.length === 0);
   subjectGrid.querySelectorAll('.row-btn.remove').forEach(button => {
     button.addEventListener('click', event => {
       event.stopPropagation();
@@ -1505,6 +1531,7 @@ function renderTeacherAssignments() {
   ]);
   const container = document.getElementById('panel-teachers');
   container.querySelectorAll('.section-block').forEach(element => element.remove());
+  container.querySelector('[data-management-empty="teachers"]')?.remove();
   const subjects = managementSubjectRecords();
   const html = sections.map(section => {
     const sectionSubjects = section.teacherAssignments?.length
@@ -1518,7 +1545,7 @@ function renderTeacherAssignments() {
     const total = sectionSubjects.length;
     const full = total > 0 && assignedCount === total;
     const pct = total ? Math.round((assignedCount / total) * 100) : 0;
-    const rows = sectionSubjects.length ? sectionSubjects.map(subject => `
+      const rows = sectionSubjects.length ? sectionSubjects.map(subject => `
       <div class="subject-row">
         <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
         ${subject.teacher ? `
@@ -1528,7 +1555,7 @@ function renderTeacherAssignments() {
           <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
           <div class="row-actions"><button class="row-btn assign">+ Assign</button></div>
         `}
-      </div>`).join('') : '<div class="empty-state">No subjects configured for this section.</div>';
+      </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects configured', text: 'Assign subjects to this section to manage their teachers.' });
     const collapsed = managementTeacherCollapseState[section.id] ?? section.collapsed;
     return `
       <div class="section-block${collapsed ? ' collapsed' : ''}" data-grade="${managementSectionFilterKey(section)}" data-level="${section.level}" data-name="${section.name.toLowerCase()}" data-status="${full ? 'complete' : 'incomplete'}" data-id="${section.id}">
@@ -1546,6 +1573,11 @@ function renderTeacherAssignments() {
       </div>`;
   }).join('');
   container.insertAdjacentHTML('beforeend', html);
+  updateManagementEmptySlot(container, 'teachers', {
+    icon: 'clipboard-list',
+    title: 'No sections found',
+    text: 'Create a section before assigning subject teachers.'
+  }, sections.length === 0);
   bindTeacherRemoveButtons(container);
   container.querySelectorAll('.section-block .row-btn.change, .section-block .row-btn.assign').forEach(button => button.addEventListener('click', event => {
     event.stopPropagation();
@@ -1708,7 +1740,7 @@ function renderEnrolledTable() {
         <td><span class="badge badge-gray">Not set</span></td>
         <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.name}')">+ Assign</button></td>
       </tr>`;
-  }).join('');
+  }).join('') + `<tr class="panel-empty-row" hidden><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students found', text: 'Try adjusting the search, grade, or section filters.' })}</td></tr>`;
   lucide.createIcons();
 }
 
@@ -1727,6 +1759,11 @@ function renderSectionOverviewCards() {
       <div class="sc-cap-text">${section.students} / ${section.capacity} capacity</div>
     </div>`;
   }).join('');
+  updateManagementEmptySlot(container, 'section-overview', {
+    icon: 'layout-grid',
+    title: 'No sections found',
+    text: 'Create a section to see enrollment totals here.'
+  }, records.length === 0);
 }
 
 function renderStudentsTab() {
@@ -1793,7 +1830,7 @@ function openSectionStudentsModalLegacy(card) {
           <td><span class="badge ${s.status === 'Active' ? 'badge-green' : 'badge-orange'}">${s.status}</span></td>
           <td><button class="row-btn remove" onclick="removeSectionStudent(this, '${s.name}')">Remove</button></td>
         </tr>`).join('')
-    : `<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px">No students enrolled yet.</td></tr>`;
+    : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
   document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
 }
@@ -1846,7 +1883,7 @@ function openSectionStudentsModal(card) {
           <td><span class="badge ${student.status === 'Active' ? 'badge-green' : 'badge-orange'}">${student.status || 'Active'}</span></td>
           <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.name}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
         </tr>`).join('')
-    : '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px">No students enrolled yet.</td></tr>';
+    : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
   document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
 }
 
@@ -1862,21 +1899,38 @@ function setSectionView(view) {
 function filterSections() {
   const search = document.getElementById('sectionSearchInput').value.toLowerCase();
   const grade  = document.getElementById('sectionGradeFilter').value;
+  let visibleCards = 0;
   document.querySelectorAll('#sectionCardView .grade-group').forEach(group => {
     const matchGrade = grade === 'all' || group.dataset.grade === grade;
     let anyVisible = false;
     group.querySelectorAll('.section-card').forEach(card => {
       const show = matchGrade && card.dataset.name.includes(search);
       card.style.display = show ? '' : 'none';
-      if (show) anyVisible = true;
+      if (show) {
+        anyVisible = true;
+        visibleCards += 1;
+      }
     });
     group.style.display = anyVisible ? '' : 'none';
   });
-  document.querySelectorAll('#sectionTableView tbody tr').forEach(row => {
+  const tableRows = document.querySelectorAll('#sectionTableView tbody tr:not(.panel-empty-row)');
+  let visibleRows = 0;
+  tableRows.forEach(row => {
     const matchGrade = grade === 'all' || row.dataset.grade === grade;
     const matchSearch = row.dataset.name.includes(search);
-    row.style.display = matchGrade && matchSearch ? '' : 'none';
+    const visible = matchGrade && matchSearch;
+    row.style.display = visible ? '' : 'none';
+    if (visible) visibleRows += 1;
   });
+  updateManagementEmptySlot(document.getElementById('sectionCardView'), 'sections', {
+    icon: 'door-open',
+    title: 'No sections found',
+    text: 'Try adjusting the search or grade filter.'
+  }, visibleCards === 0);
+  const tableBody = document.querySelector('#sectionTableView tbody');
+  const tableEmptyRow = tableBody?.querySelector('.panel-empty-row');
+  if (tableEmptyRow) tableEmptyRow.hidden = visibleRows > 0;
+  lucide.createIcons();
 }
 
 /* ══════════════════════════════════════════════
@@ -2088,11 +2142,20 @@ function switchSubjectDivisionTab(level, el) {
 
 function filterSubjects() {
   const search = document.getElementById('subjectSearchInput').value.toLowerCase();
+  let visible = 0;
   document.querySelectorAll('#subjectTableBody .subject-card').forEach(row => {
     const matchSearch = row.dataset.name.includes(search);
     const matchGrade  = managementFilterMatches(activeSubjectGrade, row.dataset.grades.split(',').filter(Boolean));
-    row.style.display = (matchSearch && matchGrade) ? '' : 'none';
+    const show = matchSearch && matchGrade;
+    row.style.display = show ? '' : 'none';
+    if (show) visible += 1;
   });
+  updateManagementEmptySlot(document.getElementById('subjectTableBody'), 'subjects', {
+    icon: 'book-open',
+    title: 'No subjects found',
+    text: 'Try adjusting the search or school-level filters.'
+  }, visible === 0);
+  lucide.createIcons();
 }
 
 /* ══════════════════════════════════════════════
@@ -2136,12 +2199,21 @@ function filterTeacherBlocks() {
   const search = document.getElementById('teacherSearchInput').value.toLowerCase();
   const grade  = document.getElementById('teacherGradeFilter').value;
   const status = document.getElementById('teacherStatusFilter').value;
+  let visible = 0;
   document.querySelectorAll('#panel-teachers .section-block').forEach(block => {
     const matchSearch = block.dataset.name.includes(search);
     const matchGrade  = grade === 'all' || block.dataset.grade === grade;
     const matchStatus = status === 'all' || block.dataset.status === status;
-    block.style.display = (matchSearch && matchGrade && matchStatus) ? '' : 'none';
+    const show = matchSearch && matchGrade && matchStatus;
+    block.style.display = show ? '' : 'none';
+    if (show) visible += 1;
   });
+  updateManagementEmptySlot(document.getElementById('panel-teachers'), 'teachers', {
+    icon: 'clipboard-list',
+    title: 'No matching sections',
+    text: 'Try adjusting the search, grade, or assignment status filter.'
+  }, visible === 0);
+  lucide.createIcons();
 }
 
 /* ══════════════════════════════════════════════
@@ -3018,14 +3090,20 @@ function filterStudentsList() { applyStudentFilters(); }
 
 function applyStudentFilters() {
   const search = document.getElementById('studentSearchInput').value.toLowerCase();
-  document.querySelectorAll('#enrolledBody tr').forEach(row => {
+  let visible = 0;
+  document.querySelectorAll('#enrolledBody tr:not(.panel-empty-row)').forEach(row => {
     const name  = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
     const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
     const matchSearch  = name.includes(search) || email.includes(search);
     const matchGrade   = managementFilterMatches(activeStudentGrade, [row.dataset.grade]);
     const matchSection = !activeStudentSection || row.dataset.section === activeStudentSection;
-    row.style.display = (matchSearch && matchGrade && matchSection) ? '' : 'none';
+    const show = matchSearch && matchGrade && matchSection;
+    row.style.display = show ? '' : 'none';
+    if (show) visible += 1;
   });
+  const emptyRow = document.querySelector('#enrolledBody .panel-empty-row');
+  if (emptyRow) emptyRow.hidden = visible > 0;
+  lucide.createIcons();
 }
 
 renderManagementGradeFilters();

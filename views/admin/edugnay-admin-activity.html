@@ -194,9 +194,9 @@
 
     <!-- FILTER BAR -->
     <div class="activity-filterbar">
-      <div class="activity-search">
-        <i data-lucide="search" style="width:15px;height:15px;"></i>
-        <input type="text" id="activitySearch" placeholder="Search activity..." oninput="applyActivityFilters()"/>
+      <div class="activity-search search-wrap">
+        <span class="search-icon" aria-hidden="true"><i data-lucide="search" style="width:15px;height:15px;"></i></span>
+        <input class="search-input" type="text" id="activitySearch" placeholder="Search activity..." oninput="applyActivityFilters()"/>
       </div>
 
       <div class="activity-type-filters" id="activityTypeFilters">
@@ -222,11 +222,7 @@
       </div>
       <div class="activity-list" id="activityList"></div>
 
-      <div class="activity-empty" id="activityEmptyState" style="display:none;">
-        <div class="activity-empty-icon"><i data-lucide="search-x" style="width:22px;height:22px;"></i></div>
-        <div class="activity-empty-title">No matching activity</div>
-        <div class="activity-empty-text">Try a different search term or filter.</div>
-      </div>
+      <div class="panel-empty-slot" id="activityEmptyState" hidden aria-live="polite"></div>
 
       <div class="activity-loadmore-wrap">
         <button class="activity-loadmore-btn" id="activityLoadMoreBtn" onclick="loadMoreActivity()">Load more</button>
@@ -242,41 +238,18 @@
 </script>
 <script>
   /* ── ACTIVITY LOG ──
-     Columns to match later in Postgres:
-     id | actor | action | icon | color | tag | created_at
-     (date_group and time-of-day are computed, not stored)
-
-     TODO on backend conversion: replace RECENT_ACTIVITY with a fetch/EJS-rendered
-     dataset from GET /admin/activity, paginated server-side instead of the
-     client-side PAGE_SIZE slicing used here. */
-  const RECENT_ACTIVITY = [
-    { id: 4, actor: 'Admin', action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."', icon: 'megaphone', color: 'purple', tag: 'Announcement', created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString() },
-    { id: 3, actor: 'Admin', action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.', icon: 'user-check', color: 'blue', tag: 'Assignment', created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString() },
-    { id: 2, actor: 'System Config', action: 'updated: Q2 grading period activated.', icon: 'settings-2', color: 'gold', tag: 'Config', created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
-    { id: 1, actor: 'Ana Santos', action: 'flagged by system: 4 consecutive absences.', icon: 'alert-triangle', color: 'red', tag: 'Alert', created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() },
-    { id: 5, actor: 'Admin', action: 'created a new teacher account for Ms. Carla Dizon.', icon: 'user-plus', color: 'blue', tag: 'Assignment', created_at: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString() },
-    { id: 6, actor: 'Admin', action: 'posted an announcement to All Users: "Foundation Week Schedule."', icon: 'megaphone', color: 'purple', tag: 'Announcement', created_at: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString() },
-    { id: 7, actor: 'Ben Garcia', action: 'flagged by system: failing grade in 2 subjects.', icon: 'alert-triangle', color: 'red', tag: 'Alert', created_at: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString() },
-    { id: 8, actor: 'System Config', action: 'updated: archive policy set to 3 school years.', icon: 'settings-2', color: 'gold', tag: 'Config', created_at: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString() }
-  ];
+     RECENT_ACTIVITY is the shared source from assets/js/admin/shell.js.
+     The dashboard uses a four-item preview while this page handles the full
+     list, filtering, and pagination.
+     TODO on backend conversion: replace the shared shell source with records
+     from GET /admin/activity, then keep this rendering logic unchanged. */
+  const RECENT_ACTIVITY = Array.isArray(window.EDUGNAY_ADMIN?.activities)
+    ? window.EDUGNAY_ADMIN.activities
+    : [];
 
   const PAGE_SIZE = 5;
   let activeTypeFilter = 'all';
   let visibleCount = PAGE_SIZE;
-
-  function formatDateGroup(dateStr) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-  }
-
-  function formatTime(dateStr) {
-    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }
 
   function setActivityTypeFilter(el, tag) {
     document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(c => c.classList.remove('active'));
@@ -326,11 +299,20 @@
 
     if (!filtered.length) {
       container.innerHTML = '';
-      emptyState.style.display = 'flex';
+      container.style.display = 'none';
+      emptyState.hidden = false;
+      emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'search-x',
+        title: 'No matching activity',
+        text: 'Try a different search term or filter.'
+      });
       loadMoreWrap.style.display = 'none';
+      if (window.lucide) lucide.createIcons();
       return;
     }
-    emptyState.style.display = 'none';
+    container.style.display = '';
+    emptyState.hidden = true;
+    emptyState.innerHTML = '';
 
     const slice = filtered.slice(0, visibleCount);
     let html = '';

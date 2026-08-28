@@ -521,33 +521,6 @@
   margin-top: 14px;
 }
 
-/* ── FLAGGED STUDENTS: EMPTY STATE ── */
-.flag-empty {
-  padding: 48px 24px;
-  text-align: center;
-}
-.flag-empty-icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 12px;
-  border-radius: 10px;
-  background: var(--gray-100);
-  color: var(--gray-400);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flag-empty-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-700);
-  margin-bottom: 4px;
-}
-.flag-empty-text {
-  font-size: 12px;
-  color: var(--gray-400);
-}
-
 @keyframes fadeUp {
   from {
     opacity: 0;

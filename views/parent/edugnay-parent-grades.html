@@ -272,7 +272,8 @@
 
     function getActiveQuarter() {
       const child = getActiveChild();
-      return child?.quarters.find(quarter => quarter.id === activeQuarterId) || child?.quarters[0];
+      const quarters = Array.isArray(child?.quarters) ? child.quarters : [];
+      return quarters.find(quarter => quarter.id === activeQuarterId) || quarters[0];
     }
 
     function scoreClass(score) {
@@ -285,14 +286,14 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('parentGradeChildSwitcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_GRADE_RECORDS.map(child => `
+      switcher.innerHTML = PARENT_GRADE_RECORDS.length ? PARENT_GRADE_RECORDS.map(child => `
         <div class="child-card ${child.childId === activeChildId ? 'active' : ''}" data-child-id="${escapeHtml(child.childId)}" role="button" tabindex="0" aria-pressed="${child.childId === activeChildId}">
           <div class="child-avatar">${escapeHtml(getInitials(child.name))}</div>
           <div class="child-info">
             <div class="child-name">${escapeHtml(child.name)}</div>
             <div class="child-section">${escapeHtml(child.section)}</div>
           </div>
-        </div>`).join('');
+        </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       switcher.querySelectorAll('[data-child-id]').forEach(card => {
         const selectChild = () => switchChild(card.dataset.childId);
         card.addEventListener('click', selectChild);
@@ -326,12 +327,13 @@
 
     function renderQuarterTabs(child) {
       const tabs = document.getElementById('parentGradeTabs');
-      tabs.innerHTML = (child?.quarters || []).map(quarter => {
+      const quarters = child?.quarters || [];
+      tabs.innerHTML = quarters.length ? quarters.map(quarter => {
         const isActive = quarter.id === activeQuarterId;
         return `<button class="grade-tab ${isActive ? 'active' : ''}" type="button" role="tab" aria-selected="${isActive}" data-quarter="${escapeHtml(quarter.id)}">
           <span>${escapeHtml(quarter.label)}</span>
         </button>`;
-      }).join('');
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
       tabs.querySelectorAll('[data-quarter]').forEach(button => button.addEventListener('click', () => {
         activeQuarterId = button.dataset.quarter;
         renderGrades();
@@ -344,7 +346,12 @@
       document.getElementById('parentSubjectGradesSub').textContent = `${child.name}'s marks by subject`;
 
       if (!subjects.length) {
-        list.innerHTML = `<div class="grades-empty"><div><div class="grades-empty-icon"><i data-lucide="book-open" style="width:20px;height:20px;"></i></div><div class="grades-empty-title">No grades available yet</div><div class="grades-empty-copy">Subject marks will appear here when this quarter is opened.</div></div></div>`;
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'book-open-check',
+          title: 'No grades available yet',
+          text: 'Subject marks will appear here when this quarter is opened.'
+        });
+        if (window.lucide) lucide.createIcons();
         return;
       }
 
@@ -366,11 +373,26 @@
     function renderGrades() {
       const child = getActiveChild();
       const quarter = getActiveQuarter();
-      if (!child || !quarter) return;
+      const tabs = document.getElementById('parentGradeTabs');
+      const list = document.getElementById('parentGradeSubjectList');
+      const note = document.getElementById('parentGradesNoteCopy');
+      if (!child) {
+        tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Grades will appear here when a child account is linked.' });
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a child account is linked.' });
+        note.textContent = '';
+        lucide.createIcons();
+        return;
+      }
+      if (!quarter) {
+        renderQuarterTabs(child);
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a grading period is released.' });
+        note.textContent = '';
+        lucide.createIcons();
+        return;
+      }
       renderQuarterTabs(child);
       renderSubjectGrades(child, quarter);
       const firstName = child.name.split(' ')[0];
-      const note = document.getElementById('parentGradesNoteCopy');
       note.innerHTML = quarter.status === 'final'
         ? `<strong>Final quarter grades.</strong> Contact the subject teacher if ${escapeHtml(firstName)}'s record needs correction.`
         : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the quarter is released.';

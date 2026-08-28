@@ -434,36 +434,6 @@
   background: var(--blue-pale);
 }
 
-/* ── EMPTY STATE ── */
-.ann-empty {
-  padding: 48px 24px;
-  text-align: center;
-  color: var(--gray-400);
-  display: none;
-}
-
-.ann-empty.visible {
-  display: block;
-}
-
-.ann-empty-icon {
-  font-size: 32px;
-  margin-bottom: 10px;
-  opacity: 0.4;
-}
-
-.ann-empty-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gray-600);
-  margin-bottom: 4px;
-}
-
-.ann-empty-sub {
-  font-size: 12px;
-  color: var(--gray-400);
-}
-
 /* ── RIGHT RAIL: INFO PANEL ── */
 .info-rail {
   display: flex;

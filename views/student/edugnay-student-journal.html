@@ -424,10 +424,8 @@
       const list = document.getElementById('history-list');
 
       if (PAST_ENTRIES.length === 0) {
-        list.innerHTML = `
-      <div style="padding:40px 24px;text-align:center;color:var(--gray-400);font-size:13px;">
-        No past entries yet.
-      </div>`;
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No past entries yet', text: 'Submitted journal entries will appear here.' });
+        lucide.createIcons();
         return;
       }
 

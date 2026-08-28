@@ -211,16 +211,6 @@
   border-radius: 999px;
 }
 
-/* ── No report yet state ── */
-.latest-report-hero.is-empty {
-  background: var(--gray-700);
-}
-
-.latest-report-hero.is-empty::before,
-.latest-report-hero.is-empty::after {
-  display: none;
-}
-
 /* ── Filter row ── */
 .filter-row {
   display: flex;
@@ -296,6 +286,14 @@
 .report-timeline {
   position: relative;
   padding-left: 28px;
+}
+
+.report-timeline-empty {
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
 }
 
 .report-timeline::before {
@@ -489,40 +487,6 @@
 
 .rc-read-link:hover {
   color: var(--blue-light);
-}
-
-/* ── Empty state ── */
-.empty-state {
-  padding: 56px 24px;
-  text-align: center;
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 14px;
-}
-
-.empty-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-  color: var(--gray-400);
-}
-
-.empty-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gray-700);
-  margin-bottom: 4px;
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: var(--gray-400);
 }
 
 /* ── Detail modal ── */
@@ -724,10 +688,6 @@
 
 .child-card:nth-child(2) .child-avatar {
   background: var(--purple);
-}
-
-.latest-report-hero.is-empty {
-  background: var(--gray-700);
 }
 
 .filter-row {

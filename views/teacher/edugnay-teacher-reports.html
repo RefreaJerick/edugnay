@@ -745,12 +745,12 @@
     });
 
     if (filtered.length === 0) {
-      grid.innerHTML = `
-        <div class="no-results">
-          <i data-lucide="search-x" style="width:32px;height:32px;margin-bottom:10px;opacity:0.4;"></i>
-          <div class="no-results-text">No reports match your filters.</div>
-        </div>`;
-      lucide.createIcons();
+      grid.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'notebook-pen',
+        title: 'No reports match your filters',
+        text: 'Try adjusting your search or status filter.'
+      });
+      if (window.lucide) lucide.createIcons();
       return;
     }
 

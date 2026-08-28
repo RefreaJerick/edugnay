@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    ADMIN SHELL — shared across all admin pages
-   Nav, topbar, notif dropdown (reopen requests), profile dropdown
-   TODO on backend conversion: replace getReopenRequests() with
-   data from GET /admin/notifications (reopen_requests + future types)
+   Nav, topbar, notif dropdown, profile dropdown
+   TODO on backend conversion: replace NOTIFICATIONS and getReopenRequests()
+   with data from GET /admin/notifications
    ══════════════════════════════════════════ */
 
 /* ── REOPEN REQUEST DATA (source: quarter reopen request system) ── */
@@ -22,9 +22,124 @@ function setReadIds(ids) {
   localStorage.setItem(ADMIN_READ_STORE_KEY, JSON.stringify(ids));
 }
 
-function getAdminNotifItems() {
+/* ── NOTIFICATIONS DATA ──
+   Replace this local array with the signed-in school admin's notification
+   response later. Reopen requests remain local for now and are merged below. */
+const NOTIFICATIONS = [
+  {
+    id: 'admin-notif-announcement',
+    icon: 'megaphone',
+    color: 'gold',
+    tag: 'Announcement',
+    read: true,
+    title: 'Announcement published',
+    desc: 'The Q2 grade encoding deadline was sent to teachers.',
+    link: 'edugnay-admin-announcements.html',
+    created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
+  },
+  {
+    id: 'admin-notif-calendar',
+    icon: 'calendar-clock',
+    color: 'gray',
+    tag: 'Calendar',
+    read: true,
+    title: 'No-class day configured',
+    desc: 'Foundation Day has been added to the school calendar.',
+    link: 'edugnay-admin-schools.html',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+  }
+];
+
+function applyReadState() {
   const readIds = getReadIds();
-  return getReopenRequests()
+  NOTIFICATIONS.forEach(notification => {
+    if (readIds.includes(notification.id)) notification.read = true;
+  });
+}
+
+/* ── ADMIN ACTIVITY DATA (shared by the dashboard and activity page) ──
+   TODO on backend conversion: replace this local array with records from
+   GET /admin/activity (scoped to the authenticated school). */
+const ADMIN_ACTIVITY = [
+  {
+    id: 4,
+    actor: 'Admin',
+    action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."',
+    icon: 'megaphone',
+    color: 'purple',
+    tag: 'Announcement',
+    created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
+  },
+  {
+    id: 3,
+    actor: 'Admin',
+    action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.',
+    icon: 'user-check',
+    color: 'blue',
+    tag: 'Assignment',
+    created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
+  },
+  {
+    id: 2,
+    actor: 'System Config',
+    action: 'updated: Q2 grading period activated.',
+    icon: 'settings-2',
+    color: 'gold',
+    tag: 'Config',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
+  },
+  {
+    id: 1,
+    actor: 'Ana Santos',
+    action: 'flagged by system: 4 consecutive absences.',
+    icon: 'alert-triangle',
+    color: 'red',
+    tag: 'Alert',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+  },
+  {
+    id: 5,
+    actor: 'Admin',
+    action: 'created a new teacher account for Ms. Carla Dizon.',
+    icon: 'user-plus',
+    color: 'blue',
+    tag: 'Assignment',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString()
+  },
+  {
+    id: 6,
+    actor: 'Admin',
+    action: 'posted an announcement to All Users: "Foundation Week Schedule."',
+    icon: 'megaphone',
+    color: 'purple',
+    tag: 'Announcement',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString()
+  },
+  {
+    id: 7,
+    actor: 'Ben Garcia',
+    action: 'flagged by system: failing grade in 2 subjects.',
+    icon: 'alert-triangle',
+    color: 'red',
+    tag: 'Alert',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString()
+  },
+  {
+    id: 8,
+    actor: 'System Config',
+    action: 'updated: archive policy set to 3 school years.',
+    icon: 'settings-2',
+    color: 'gold',
+    tag: 'Config',
+    created_at: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
+  }
+];
+
+function getAdminNotifItems() {
+  applyReadState();
+  const readIds = getReadIds();
+  const localNotifications = NOTIFICATIONS.map(notification => ({ ...notification }));
+  const reopenNotifications = getReopenRequests()
     .filter(r => r.status === 'pending')
     .map(r => ({
       id: r.createdAt,
@@ -35,7 +150,9 @@ function getAdminNotifItems() {
       read: readIds.includes(r.createdAt),
       link: 'edugnay-admin-system-config.html#reopen-requests',
       created_at: r.createdAt
-    }))
+    }));
+
+  return [...localNotifications, ...reopenNotifications]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
@@ -105,6 +222,12 @@ function goToTopbarNotif(link, id) {
   if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
   window.location.href = link;
 }
+
+window.EDUGNAY_ADMIN = {
+  activities: ADMIN_ACTIVITY,
+  notifications: NOTIFICATIONS,
+  getNotifications: getAdminNotifItems
+};
 
 function toggleNavGroup(group) {
   group.classList.toggle('open');

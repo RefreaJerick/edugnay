@@ -51,6 +51,7 @@
           <div class="tb-notif-panel" id="tbNotifPanel">
             <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count"></span></span></div><button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
             <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
           </div>
         </div>
         <div class="tb-profile">
@@ -170,7 +171,11 @@
           <td><span class="school-account-status ${status}"><i data-lucide="${schoolStatusIcon(status)}" style="width:13px;height:13px;"></i>${schoolStatusLabel(status)}</span></td>
           <td><button class="row-btn edit" type="button" data-review-school="${escapeHtml(school.id)}">Review</button></td>
         </tr>`;
-      }).join('') : '<tr><td class="school-account-empty" colspan="5">No school accounts match this filter.</td></tr>';
+      }).join('') : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: schools.length ? 'search-x' : 'building-2',
+        title: schools.length ? 'No matching school accounts' : 'No school accounts yet',
+        text: schools.length ? 'Try a different search term or filter.' : 'Registered school accounts will appear here.'
+      })}</td></tr>`;
 
       document.querySelectorAll('[data-review-school]').forEach(button => button.addEventListener('click', () => openSchoolAccountModal(button.dataset.reviewSchool)));
       if (window.lucide) window.lucide.createIcons();

@@ -178,13 +178,6 @@
   transform: translateX(2px);
 }
 
-.assignment-preview-empty {
-  padding: 34px 20px;
-  color: var(--gray-400);
-  font-size: 12px;
-  text-align: center;
-}
-
 @media (max-width: 620px) {
   .assignment-preview-list {
     padding: 2px 0;

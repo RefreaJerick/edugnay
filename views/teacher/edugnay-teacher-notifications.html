@@ -163,11 +163,7 @@
 
       <div class="notif-list" id="notifList"></div>
 
-      <div class="notif-empty" id="notifEmptyState">
-        <div class="notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="notif-empty-title" id="notifEmptyTitle">No notifications yet</div>
-        <div class="notif-empty-text" id="notifEmptyText">You'll see updates here as they happen.</div>
-      </div>
+      <div class="panel-empty-slot" id="notifEmptyState" hidden aria-live="polite"></div>
     </div>
 
   </main>
@@ -233,19 +229,18 @@
 
     if (!filtered.length) {
       container.innerHTML = '';
-      emptyState.style.display = 'flex';
-      const emptyTitle = document.getElementById('notifEmptyTitle');
-      const emptyText = document.getElementById('notifEmptyText');
-      if (activeNotifFilter === 'unread' && getTeacherVisibleNotifications().length) {
-        emptyTitle.textContent = 'No unread notifications';
-        emptyText.textContent = "You're all caught up.";
-      } else {
-        emptyTitle.textContent = 'No notifications yet';
-        emptyText.textContent = "You'll see updates here as they happen.";
-      }
+      const isUnreadEmpty = activeNotifFilter === 'unread' && getTeacherVisibleNotifications().length;
+      emptyState.hidden = false;
+      emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'bell-off',
+        title: isUnreadEmpty ? 'No unread notifications' : 'No notifications yet',
+        text: isUnreadEmpty ? "You're all caught up." : "You'll see updates here as they happen."
+      });
+      if (window.lucide) lucide.createIcons();
       return;
     }
-    emptyState.style.display = 'none';
+    emptyState.hidden = true;
+    emptyState.innerHTML = '';
 
     let html = '';
     let lastGroup = null;

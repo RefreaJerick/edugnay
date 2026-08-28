@@ -71,6 +71,7 @@
               <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
             </div>
             <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
           </div>
         </div>
         <div class="tb-profile">
@@ -115,6 +116,7 @@
           <section class="panel panel-activity" aria-labelledby="platform-activity-title">
             <div class="panel-head">
               <div class="panel-title" id="platform-activity-title">Recent Platform Activity</div>
+              <a class="panel-action" href="edugnay-platform-activity.html">View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
             </div>
             <div class="activity-list" id="platform-activity-list"></div>
           </section>
@@ -192,7 +194,7 @@
     function renderPlatformActivity() {
       const activityList = document.getElementById('platform-activity-list');
       if (!activityList) return;
-      const activities = [...PLATFORM.activities].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+      const activities = (Array.isArray(PLATFORM.activities) ? PLATFORM.activities : []).slice().sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
       let lastGroup = '';
       let activityHtml = '';
 
@@ -204,7 +206,9 @@
         }
         activityHtml += `<div class="activity-item"><div class="act-icon ${activity.tone}"><i data-lucide="${activity.icon}" style="width:15px;height:15px;"></i></div><div class="act-body"><div class="act-text"><strong>${escapeHtml(activity.title)}</strong> ${escapeHtml(activity.detail)}</div><div class="act-time">${platformTime(activity.createdAt)}</div></div><span class="act-tag">${escapeHtml(activity.type)}</span></div>`;
       });
-      activityList.innerHTML = activityHtml;
+      activityList.innerHTML = activities.length
+        ? activityHtml
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'activity', title: 'No platform activity', text: 'School account changes and system events will appear here.' });
     }
 
     function renderPlatformDashboard() {
@@ -229,12 +233,15 @@
           <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorEmail)}</div>
           <div><span class="school-status ${status}"><i data-lucide="${status === 'active' ? 'circle-check-big' : 'clock-3'}" style="width:13px;height:13px;"></i>${status}</span></div>
         </article>`;
-      }).join('') : '<div class="platform-empty">No school accounts are registered yet.</div>';
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });
 
       renderPlatformActivity();
 
-      document.getElementById('platform-quick-actions').innerHTML = PLATFORM.quickActions.map(action => `
-        <a class="qa-item" href="${action.href}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('');
+      const quickActions = Array.isArray(PLATFORM.quickActions) ? PLATFORM.quickActions : [];
+      document.getElementById('platform-quick-actions').innerHTML = quickActions.length
+        ? quickActions.map(action => `
+          <a class="qa-item" href="${action.href}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are configured.' });
 
       if (window.lucide) window.lucide.createIcons();
     }

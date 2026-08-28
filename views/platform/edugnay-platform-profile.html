@@ -64,6 +64,7 @@
               <button class="tb-notif-mark-read" type="button" onclick="markAllPlatformNotificationsRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button>
             </div>
             <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-platform-notifications.html">View all notifications</a></div>
           </div>
         </div>
         <div class="tb-profile">
@@ -140,13 +141,13 @@
       document.getElementById('profileInitials').textContent = admin.initials;
       document.getElementById('profile-header-name').textContent = admin.name;
       document.getElementById('profileEmail').textContent = admin.email;
-      document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.map(field => `
+      document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.length ? PLATFORM_PROFILE_FIELDS.map(field => `
         <div class="form-group">
           <label class="form-label">${escapeHtml(field.label)}</label>
           <div class="form-input profile-readonly-value" role="textbox" aria-readonly="true">${escapeHtml(field.getValue(admin))}</div>
-        </div>`).join('');
-      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCESS_DETAILS.map(detail => `
-        <div class="profile-detail-row"><span class="profile-detail-label">${escapeHtml(detail.label)}</span><span class="profile-detail-value">${escapeHtml(detail.value)}</span></div>`).join('');
+        </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round', title: 'No profile details', text: 'Platform administrator details will appear here.' });
+      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCESS_DETAILS.length ? PLATFORM_ACCESS_DETAILS.map(detail => `
+        <div class="profile-detail-row"><span class="profile-detail-label">${escapeHtml(detail.label)}</span><span class="profile-detail-value">${escapeHtml(detail.value)}</span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'shield-check', title: 'No access details', text: 'Platform access information will appear here.' });
       if (window.lucide) window.lucide.createIcons();
     }
 

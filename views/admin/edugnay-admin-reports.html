@@ -697,11 +697,7 @@
           </div>
 
           <!-- Empty state, hidden by default, shown when a filter matches nothing -->
-          <div class="flag-empty" id="flagEmpty" style="display:none;">
-            <div class="flag-empty-icon"><i data-lucide="user-check" style="width:20px;height:20px;"></i></div>
-            <div class="flag-empty-title">No flagged students found</div>
-            <div class="flag-empty-text">Try a different grade level, reason, or search term.</div>
-          </div>
+          <div class="panel-empty-slot" id="flagEmpty" hidden aria-live="polite"></div>
         </div>
       </div>
 
@@ -761,29 +757,55 @@
     }
 
   function renderSubjectPerformance(data = REPORTS_DATA) {
-    document.getElementById('subject-performance-chart').innerHTML = data.subjectPerformance.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map((row, index) => `<div class="bar-row tier-${escapeReportHtml(row.tone)}"><span class="bar-rank">${index + 1}</span><span class="bar-label">${escapeReportHtml(row.subject)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.score)}%;background:${REPORTS_TONE_COLORS[row.tone] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.score)}</span></div>`).join('')}</div>`).join('');
+    const groups = Array.isArray(data.subjectPerformance) ? data.subjectPerformance : [];
+    const populatedGroups = groups.filter(group => Array.isArray(group.rows) && group.rows.length);
+    document.getElementById('subject-performance-chart').innerHTML = populatedGroups.length
+      ? populatedGroups.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map((row, index) => `<div class="bar-row tier-${escapeReportHtml(row.tone)}"><span class="bar-rank">${index + 1}</span><span class="bar-label">${escapeReportHtml(row.subject)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.score)}%;background:${REPORTS_TONE_COLORS[row.tone] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.score)}</span></div>`).join('')}</div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No subject performance data', text: 'Subject averages will appear here when records are available.' });
   }
 
   function renderGradeOutcome(data = REPORTS_DATA) {
-    const outcome = data.gradeOutcome;
+    const outcome = data.gradeOutcome || {};
+    const distribution = Array.isArray(outcome.distribution) ? outcome.distribution : [];
+    if (!Number(outcome.total)) {
+      document.getElementById('grade-outcome-donut').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No grade outcomes yet', text: 'Passing and failing totals will appear here after grades are recorded.' });
+      document.getElementById('grade-distribution').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when results are available.' });
+      return;
+    }
     const circumference = 251.2;
     const passRate = Math.round((outcome.passing / outcome.total) * 100);
     const passStroke = (outcome.passing / outcome.total * circumference).toFixed(1);
     const failStroke = (outcome.failing / outcome.total * circumference).toFixed(1);
     document.getElementById('grade-outcome-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126" aria-label="${passRate}% passing"><circle class="donut-bg" cx="50" cy="50" r="40"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--green)" stroke-dasharray="${passStroke} ${circumference}"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--red)" stroke-dasharray="${failStroke} ${circumference}" stroke-dashoffset="-${passStroke}"/></svg><div class="donut-label"><div class="donut-num">${passRate}%</div><div class="donut-sub">Passing</div></div></div><div class="donut-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Passing (75 and above)</span><span class="legend-val">${outcome.passing}</span></div><div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Failing (below 75)</span><span class="legend-val">${outcome.failing}</span></div><div class="legend-total"><div class="legend-item"><div class="legend-dot" style="background:var(--blue-mid);"></div><span class="legend-label">Total students</span><span class="legend-val">${outcome.total}</span></div></div></div>`;
-    document.getElementById('grade-distribution').innerHTML = `<div class="distribution-title">Grade distribution</div>${outcome.distribution.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.percent)}%;background:${row.color};"></div></div><span class="bar-val">${Number(row.value)}</span></div>`).join('')}`;
+    document.getElementById('grade-distribution').innerHTML = distribution.length
+      ? `<div class="distribution-title">Grade distribution</div>${distribution.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.percent)}%;background:${row.color};"></div></div><span class="bar-val">${Number(row.value)}</span></div>`).join('')}`
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when results are available.' });
   }
 
   function renderAttendance(data = REPORTS_DATA) {
-    document.getElementById('attendance-rate-chart').innerHTML = data.attendanceByGrade.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.section)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.rate)}%;background:${row.rate >= 90 ? 'var(--green)' : 'var(--orange)'};"></div></div><span class="bar-val">${Number(row.rate)}%</span></div>`).join('')}</div>`).join('');
+    const byGrade = Array.isArray(data.attendanceByGrade) ? data.attendanceByGrade : [];
+    const breakdown = Array.isArray(data.attendanceBreakdown) ? data.attendanceBreakdown : [];
+    const triggers = Array.isArray(data.absenceTriggers) ? data.absenceTriggers : [];
+    const populatedGrades = byGrade.filter(group => Array.isArray(group.rows) && group.rows.length);
+    document.getElementById('attendance-rate-chart').innerHTML = populatedGrades.length
+      ? populatedGrades.map(group => `<div class="bar-group"><div class="bar-group-label">${escapeReportHtml(group.grade)}</div>${group.rows.map(row => `<div class="bar-row"><span class="bar-label">${escapeReportHtml(row.section)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.rate)}%;background:${row.rate >= 90 ? 'var(--green)' : 'var(--orange)'};"></div></div><span class="bar-val">${Number(row.rate)}%</span></div>`).join('')}</div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Attendance rates will appear here when class records are available.' });
+    if (!breakdown.length) {
+      document.getElementById('attendance-breakdown-donut').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No attendance breakdown', text: 'Present, late, and absent totals will appear here.' });
+    } else {
     const circumference = 251.2; let offset = 0;
-    const segments = data.attendanceBreakdown.map(row => { const length = Number(row.value) / 100 * circumference; const html = `<circle class="donut-seg" cx="50" cy="50" r="40" stroke="${row.color}" stroke-dasharray="${length.toFixed(1)} ${circumference}" stroke-dashoffset="-${offset.toFixed(1)}"/>`; offset += length; return html; }).join('');
-    document.getElementById('attendance-breakdown-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${data.attendanceBreakdown[0].value}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${data.attendanceBreakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${row.color};"></div><span class="legend-label">${escapeReportHtml(row.label)}</span><span class="legend-val">${Number(row.value)}%</span></div>`).join('')}</div>`;
-    document.getElementById('absence-triggers').innerHTML = `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${data.absenceTriggers.map(row => `<div class="trigger-row ${escapeReportHtml(row.tone)}"><span>${escapeReportHtml(row.label)}</span><strong>${Number(row.value)}</strong></div>`).join('')}</div>`;
+    const segments = breakdown.map(row => { const length = Number(row.value) / 100 * circumference; const html = `<circle class="donut-seg" cx="50" cy="50" r="40" stroke="${row.color}" stroke-dasharray="${length.toFixed(1)} ${circumference}" stroke-dashoffset="-${offset.toFixed(1)}"/>`; offset += length; return html; }).join('');
+    const present = breakdown.find(row => row.label === 'Present') || breakdown[0];
+    document.getElementById('attendance-breakdown-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${present.value}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${breakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${row.color};"></div><span class="legend-label">${escapeReportHtml(row.label)}</span><span class="legend-val">${Number(row.value)}%</span></div>`).join('')}</div>`;
+    }
+    document.getElementById('absence-triggers').innerHTML = triggers.length
+      ? `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${triggers.map(row => `<div class="trigger-row ${escapeReportHtml(row.tone)}"><span>${escapeReportHtml(row.label)}</span><strong>${Number(row.value)}</strong></div>`).join('')}</div>`
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No absence triggers', text: 'Attendance alerts will appear here when a configured threshold is reached.' });
   }
 
   function renderFlaggedStudents(data = REPORTS_DATA) {
-    document.getElementById('flagGrid').innerHTML = data.flaggedStudents.map(student => `<div class="flag-card" data-grade="${escapeReportHtml(student.grade)}" data-reason="${student.reasons.map(reason => escapeReportHtml(reason.type)).join(' ')}" data-name="${escapeReportHtml(student.name.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${escapeReportHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${escapeReportHtml(student.name)}</div><div class="flag-detail">${escapeReportHtml(student.detail)}</div></div></div><div class="flag-reason-row">${student.reasons.map(reason => `<span class="flag-tag flag-${escapeReportHtml(reason.type)}"><i data-lucide="${escapeReportHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${escapeReportHtml(reason.label)}</span>`).join('')}</div></div>`).join('');
+    const students = Array.isArray(data.flaggedStudents) ? data.flaggedStudents : [];
+    document.getElementById('flagGrid').innerHTML = students.map(student => `<div class="flag-card" data-grade="${escapeReportHtml(student.grade)}" data-reason="${(student.reasons || []).map(reason => escapeReportHtml(reason.type)).join(' ')}" data-name="${escapeReportHtml(student.name.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${escapeReportHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${escapeReportHtml(student.name)}</div><div class="flag-detail">${escapeReportHtml(student.detail)}</div></div></div><div class="flag-reason-row">${(student.reasons || []).map(reason => `<span class="flag-tag flag-${escapeReportHtml(reason.type)}"><i data-lucide="${escapeReportHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${escapeReportHtml(reason.label)}</span>`).join('')}</div></div>`).join('');
   }
 
     function renderReportPanels(data = REPORTS_DATA) { renderReportSummary(data); renderSubjectPerformance(data); renderGradeOutcome(data); renderAttendance(data); renderFlaggedStudents(data); }
@@ -817,7 +839,17 @@
       });
 
       document.getElementById('flaggedCount').textContent = visibleCount + (visibleCount === 1 ? ' student' : ' students');
-      document.getElementById('flagEmpty').style.display = visibleCount === 0 ? 'block' : 'none';
+      const flagEmpty = document.getElementById('flagEmpty');
+      const hasNoVisibleFlags = visibleCount === 0;
+      flagEmpty.hidden = !hasNoVisibleFlags;
+      if (hasNoVisibleFlags) {
+        flagEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'user-round-search',
+          title: 'No flagged students found',
+          text: 'Try a different grade level, reason, or search term.'
+        });
+        if (window.lucide) lucide.createIcons();
+      } else flagEmpty.innerHTML = '';
       document.getElementById('flagGrid').style.display = visibleCount === 0 ? 'none' : 'grid';
     }
 

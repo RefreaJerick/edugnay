@@ -514,6 +514,7 @@
           </div>
 
         </div>
+        <div class="panel-empty-slot" id="adminAnnEmpty" hidden aria-live="polite"></div>
       </div>
 
       <!-- RIGHT: Compose panel -->
@@ -687,6 +688,7 @@
         <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.seen}</div><div class="ann-footer-right">${ann.draft ? '' : `<button class="footer-btn pin" onclick="${ann.pinned ? 'unpinCard' : 'pinCard'}(this)"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>`}<button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.draft ? 'Edit & Publish' : 'Edit'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
       </div>`).join('');
     lucide.createIcons();
+    filterAnnouncements();
   }
 
   renderAdminAnnouncements();
@@ -696,6 +698,7 @@
     const audience = document.getElementById('audienceFilter').value;
     const priority = document.getElementById('priorityFilter').value;
 
+    let visibleCount = 0;
     document.querySelectorAll('.ann-card').forEach(card => {
       const title    = card.querySelector('.ann-title').textContent.toLowerCase();
       const content  = card.querySelector('.ann-content').textContent.toLowerCase();
@@ -706,8 +709,21 @@
       const matchAudience = audience === 'all' || aud === audience;
       const matchPriority = priority === 'all' || pri === priority;
 
-      card.style.display = (matchSearch && matchAudience && matchPriority) ? '' : 'none';
+      const visible = matchSearch && matchAudience && matchPriority;
+      card.style.display = visible ? '' : 'none';
+      if (visible) visibleCount += 1;
     });
+
+    const empty = document.getElementById('adminAnnEmpty');
+    if (empty) {
+      empty.hidden = visibleCount > 0;
+      if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'megaphone',
+        title: 'No announcements found',
+        text: 'Try adjusting your filters or search query.'
+      });
+    }
+    lucide.createIcons();
   }
 
   function pinCard(btn) {

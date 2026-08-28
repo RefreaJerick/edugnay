@@ -197,34 +197,6 @@
   color: var(--green-dark);
 }
 
-.assignment-empty {
-  padding: 46px 22px;
-  color: var(--gray-400);
-  text-align: center;
-}
-
-.assignment-empty-icon {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 12px;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--gray-100);
-  color: var(--gray-400);
-}
-
-.assignment-empty-title {
-  margin-bottom: 4px;
-  color: var(--gray-700);
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.assignment-empty-copy {
-  font-size: 12px;
-}
-
 @media (max-width: 760px) {
   .assignment-filter-tabs {
     margin-inline: -2px;

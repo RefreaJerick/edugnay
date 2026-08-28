@@ -554,20 +554,35 @@
     grid.innerHTML = buildArchiveSummaryCards(data).map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
   }
 
+  function renderArchiveQuarterRows(data) {
+    const quarters = Array.isArray(data?.quarters) ? data.quarters : [];
+    return quarters.length
+      ? quarters.map(q => `<div class="quarter-row"><span class="quarter-label">${q.label}</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:${q.passRate}%;"></div></div><span class="quarter-pass">${q.passRate}%</span></div><span class="quarter-date">${q.period}</span></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No quarter results', text: 'Quarter pass rates will appear when archived records are available.' });
+  }
+
   function renderArchiveYears() {
     const list = document.getElementById('archive-year-list');
     if (!list) return;
-    list.innerHTML = Object.entries(archiveData).map(([year, data], index) => `
+    const years = Object.entries(archiveData);
+    list.innerHTML = years.map(([year, data], index) => `
       <div class="archive-year-card ${index > 0 ? 'collapsed' : ''}" data-year="${year}">
         <div class="ayc-head" onclick="toggleCard(this)"><div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div><div class="ayc-info"><div class="ayc-title">S.Y. ${year}</div><div class="ayc-meta">Archived on ${data.archivedOn} · By Sr. Admin</div></div><div class="ayc-right">${data.latest ? '<span class="badge badge-blue">Latest</span>' : ''}${data.oldest ? '<span class="badge badge-gray">Oldest</span>' : ''}<span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span><div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div></div></div>
-        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${data.students}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.sections}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.teachers}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Quarter Pass Rates</div><div class="quarter-rows">${data.quarters.map(q => `<div class="quarter-row"><span class="quarter-label">${q.label}</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:${q.passRate}%;"></div></div><span class="quarter-pass">${q.passRate}%</span></div><span class="quarter-date">${q.period}</span></div>`).join('')}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button><button class="footer-btn view" onclick="openViewModal('${year}')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
-      </div>`).join('');
+        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${data.students}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.sections}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.teachers}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Quarter Pass Rates</div><div class="quarter-rows">${renderArchiveQuarterRows(data)}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button><button class="footer-btn view" onclick="openViewModal('${year}')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
+      </div>`).join('') + (years.length ? '' : window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'archive',
+        title: 'No archived school years',
+        text: 'Archived records will appear here after a school year is closed.'
+      }));
   }
 
   function renderArchiveChecklist() {
     const list = document.getElementById('archive-checklist');
     if (!list) return;
-    list.innerHTML = ARCHIVE_CHECKLIST.map(item => `<div class="check-item done"><div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div><span class="check-text">${item}</span></div>`).join('');
+    list.innerHTML = ARCHIVE_CHECKLIST.length
+      ? ARCHIVE_CHECKLIST.map(item => `<div class="check-item done"><div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div><span class="check-text">${item}</span></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'list-checks', title: 'No archive checks', text: 'Archive requirements will appear here when they are configured.' });
+    if (window.lucide) lucide.createIcons();
   }
 
   renderArchiveSummary();
@@ -602,22 +617,23 @@
     document.getElementById('viewStatPassRate').textContent = data.passRate;
     document.getElementById('viewStatAttendance').textContent = data.attendance;
 
-    document.getElementById('viewSectionsBody').innerHTML = data.sectionsTable.map(s => `
+    document.getElementById('viewSectionsBody').innerHTML = (data.sectionsTable || []).map(s => `
       <tr>
         <td>${s.name}</td>
         <td>${s.grade}</td>
         <td>${s.students}</td>
         <td style="color:${s.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${s.passRate}%</td>
-      </tr>`).join('');
+      </tr>`).join('') || `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No section records', text: 'There are no archived section records for this school year.' })}</td></tr>`;
 
-    document.getElementById('viewQuartersBody').innerHTML = data.quarters.map(q => `
+    document.getElementById('viewQuartersBody').innerHTML = (data.quarters || []).map(q => `
       <tr>
         <td>${q.label}</td>
         <td>${q.period}</td>
         <td style="color:${q.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${q.passRate}%</td>
-      </tr>`).join('');
+      </tr>`).join('') || `<tr class="panel-empty-row"><td colspan="3">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No quarter records', text: 'There are no archived grading periods for this school year.' })}</td></tr>`;
 
     openModal('viewModal');
+    if (window.lucide) lucide.createIcons();
   }
 
   // Confirm modal — target year set dynamically, not hardcoded

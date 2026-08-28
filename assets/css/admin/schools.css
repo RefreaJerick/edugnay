@@ -753,6 +753,10 @@
   font-weight: 800;
 }
 
+.calendar-list:has(> .calendar-list-title + .panel-empty-state) {
+  gap: 0;
+}
+
 .holiday-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 28px;

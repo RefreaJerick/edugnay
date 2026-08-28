@@ -54,6 +54,35 @@
     }
   ];
 
+  /* ── READ STATE (localStorage; replace with a backend read flag later) ── */
+  const PLATFORM_READ_STORE_KEY = 'edugnay_platform_notif_read';
+
+  function getPlatformReadIds() {
+    try { return JSON.parse(localStorage.getItem(PLATFORM_READ_STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function setPlatformReadIds(ids) {
+    localStorage.setItem(PLATFORM_READ_STORE_KEY, JSON.stringify(ids));
+  }
+
+  function applyPlatformReadState() {
+    const readIds = getPlatformReadIds();
+    PLATFORM_NOTIFICATIONS.forEach(notification => {
+      if (readIds.includes(notification.id)) notification.read = true;
+    });
+  }
+
+  function markPlatformNotificationRead(id) {
+    const readIds = getPlatformReadIds();
+    if (!readIds.includes(id)) {
+      readIds.push(id);
+      setPlatformReadIds(readIds);
+    }
+    const notification = PLATFORM_NOTIFICATIONS.find(item => item.id === id);
+    if (notification) notification.read = true;
+  }
+
   const PLATFORM_QUICK_ACTIONS = [
     {
       icon: 'building-2',
@@ -104,6 +133,7 @@
   }
 
   function renderTopbarNotifs() {
+    applyPlatformReadState();
     const list = document.getElementById('tbNotifList');
     const dot = document.getElementById('tbNotifDot');
     const unreadLabel = document.querySelector('.tb-notif-unread-count');
@@ -128,8 +158,7 @@
     list.querySelectorAll('[data-platform-notification]').forEach(button => {
       button.addEventListener('click', event => {
         event.preventDefault();
-        const item = PLATFORM_NOTIFICATIONS.find(notification => notification.id === button.dataset.platformNotification);
-        if (item) item.read = true;
+        markPlatformNotificationRead(button.dataset.platformNotification);
         renderTopbarNotifs();
       });
     });
@@ -137,6 +166,7 @@
   }
 
   function markAllPlatformNotificationsRead() {
+    setPlatformReadIds(PLATFORM_NOTIFICATIONS.map(notification => notification.id));
     PLATFORM_NOTIFICATIONS.forEach(item => { item.read = true; });
     renderTopbarNotifs();
   }
@@ -144,6 +174,8 @@
   window.EDUGNAY_PLATFORM = {
     admin: PLATFORM_ADMIN,
     activities: PLATFORM_ACTIVITY,
+    notifications: PLATFORM_NOTIFICATIONS,
+    markPlatformNotificationRead,
     quickActions: PLATFORM_QUICK_ACTIONS,
     getSchoolRecords,
     getDashboardSummary,

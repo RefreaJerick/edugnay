@@ -348,13 +348,12 @@
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon"><i data-lucide="search" style="width:22px;height:22px;"></i></div>
-        <div class="empty-title">No materials found</div>
-        <div class="empty-sub">Try adjusting your search or filter.</div>
-      </div>`;
-        lucide.createIcons();
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'folder-open',
+          title: 'No materials found',
+          text: 'Try adjusting your search or filter.'
+        });
+        if (window.lucide) lucide.createIcons();
         return;
       }
 

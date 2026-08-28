@@ -251,13 +251,6 @@
   color: var(--red);
 }
 
-.platform-school-accounts .school-account-empty {
-  padding: 40px var(--panel-head-px) !important;
-  color: var(--gray-400);
-  font-size: 12px;
-  text-align: center;
-}
-
 .platform-school-accounts .platform-account-modal {
   width: min(100%, 560px);
   background: var(--white);
@@ -400,8 +393,7 @@
 }
 
 @media (max-width: 560px) {
-  .platform-school-accounts .school-account-toolbar,
-  .platform-school-accounts .school-account-empty {
+  .platform-school-accounts .school-account-toolbar {
     padding-right: 16px;
     padding-left: 16px;
   }

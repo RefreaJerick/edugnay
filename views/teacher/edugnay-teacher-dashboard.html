@@ -654,7 +654,12 @@
             <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${getTeacherSectionSub(section)}</div></div></div>
             <div class="section-card-divider"></div>
             <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.id)}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
-          </div>`).join('');
+          </div>`).join('') + `<div id="teacherSectionsEmpty" class="panel-empty-slot" hidden></div>`;
+        const sectionEmpty = document.getElementById('teacherSectionsEmpty');
+        if (sectionEmpty && !TEACHER_SECTIONS.length) {
+          sectionEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to you will appear here.' });
+          sectionEmpty.hidden = false;
+        }
 
         const sectionCount = document.getElementById('teacherSectionCount');
         if (sectionCount) sectionCount.textContent = `${TEACHER_SECTIONS.length} sections`;
@@ -662,23 +667,24 @@
 
       const announcements = document.getElementById('teacher-dashboard-announcements');
       if (announcements) {
-        announcements.innerHTML = TEACHER_DASHBOARD_ANNOUNCEMENTS
-          .filter(item => !item.access || teacherCanAccess(item.access))
-          .map(item => `
+        const visibleAnnouncements = TEACHER_DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || teacherCanAccess(item.access));
+        announcements.innerHTML = visibleAnnouncements.map(item => `
           <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div><div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
+        if (!visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
-
       const taskList = document.getElementById('teacher-pending-tasks');
       if (taskList) {
         const tones = { orange: ['var(--orange-pale)', 'var(--orange-dark)'], red: ['var(--red-pale)', 'var(--red)'] };
         taskList.innerHTML = PENDING_TASKS.map(task => `
           <div class="task-item" onclick="${task.target}"><div class="task-icon" style="background:${tones[task.tone][0]};color:${tones[task.tone][1]};"><i data-lucide="${task.icon}" style="width:15px;height:15px;"></i></div><div class="task-body"><div class="task-title">${task.title}</div><div class="task-sub">${task.sub}</div></div><a class="task-action">${task.action} <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a></div>`).join('');
+        if (!PENDING_TASKS.length) taskList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No pending tasks', text: 'Tasks that need your attention will appear here.' });
       }
 
       const flagList = document.getElementById('flagGridSingle');
       if (flagList) {
         flagList.innerHTML = FLAGGED_STUDENTS.map(student => `
           <div class="flag-card flag-${student.kind}" data-section="${student.section}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${student.initials}</div><div class="flag-info"><div class="flag-name">${student.name}</div><div class="flag-detail">${student.detail}</div></div></div><div class="flag-reason-row"><span class="flag-tag flag-${student.kind === 'attendance' ? 'absences' : 'grades'}"><i data-lucide="${student.icon}" style="width:10px;height:10px;"></i> ${student.reason}</span></div></div>`).join('');
+        if (!FLAGGED_STUDENTS.length) flagList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-search', title: 'No students need attention', text: 'Students flagged by attendance or progress rules will appear here.' });
       }
       lucide.createIcons();
     }
@@ -709,6 +715,12 @@
         card.style.display = visible ? '' : 'none';
         if (matches) shown++;
       });
+      const empty = document.getElementById('teacherSectionsEmpty');
+      if (empty) {
+        empty.hidden = shown > 0;
+        if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No matching sections', text: 'Try another grade filter.' });
+      }
+      lucide.createIcons();
     }
 
     applySectionFilter();
@@ -762,7 +774,9 @@
 
     function filterFlaggedStudents() {
       const selected = document.getElementById('flagSectionFilter').value;
-      const cards = document.querySelectorAll('#flagGridSingle .flag-card');
+      const flagList = document.getElementById('flagGridSingle');
+      const cards = flagList ? flagList.querySelectorAll('.flag-card') : [];
+      if (!cards.length) return;
       let visibleCount = 0;
 
       cards.forEach(card => {
@@ -777,13 +791,14 @@
         if (!emptyMsg) {
           emptyMsg = document.createElement('div');
           emptyMsg.id = 'flagEmptyMsg';
-          emptyMsg.className = 'flag-empty-msg';
-          emptyMsg.textContent = 'No flagged students in this section.';
-          document.getElementById('flagGridSingle').appendChild(emptyMsg);
+          emptyMsg.className = 'panel-empty-slot';
+          flagList.appendChild(emptyMsg);
         }
+        emptyMsg.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-search', title: 'No flagged students', text: 'No students in this section currently need attention.' });
       } else if (emptyMsg) {
         emptyMsg.remove();
       }
+      lucide.createIcons();
     }
 
     document.addEventListener('keydown', e => {

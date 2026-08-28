@@ -933,8 +933,10 @@
       }
       const actions = document.getElementById('admin-quick-actions');
       if (actions) {
-        actions.innerHTML = ADMIN_QUICK_ACTIONS.map(action => `
-          <a href="#" class="qa-item" onclick="${action.action}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('');
+        actions.innerHTML = ADMIN_QUICK_ACTIONS.length
+          ? ADMIN_QUICK_ACTIONS.map(action => `
+            <a href="#" class="qa-item" onclick="${action.action}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are configured.' });
       }
       lucide.createIcons();
     }
@@ -1324,52 +1326,21 @@
 
     setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
 
-    /* ── RECENT ACTIVITY ──
+    /* ── RECENT ACTIVITY PREVIEW ──
+     Shared records come from assets/js/admin/shell.js. The dashboard shows
+     the latest four; the activity page uses the same source for its full log.
      Columns to match later in Postgres:
      id | actor | action | icon | color | tag | created_at
      (date_group and time-of-day are computed, not stored) */
-    const RECENT_ACTIVITY = [
-      {
-        id: 4,
-        actor: 'Admin',
-        action: 'posted an announcement to Teachers: "Q2 Grade Encoding Deadline."',
-        icon: 'megaphone',
-        color: 'purple',
-        tag: 'Announcement',
-        created_at: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
-      },
-      {
-        id: 3,
-        actor: 'Admin',
-        action: 'assigned Mr. Paolo Tan to Grade 8 – Mathematics.',
-        icon: 'user-check',
-        color: 'blue',
-        tag: 'Assignment',
-        created_at: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
-      },
-      {
-        id: 2,
-        actor: 'System Config',
-        action: 'updated: Q2 grading period activated.',
-        icon: 'settings-2',
-        color: 'gold',
-        tag: 'Config',
-        created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
-      },
-      {
-        id: 1,
-        actor: 'Ana Santos',
-        action: 'flagged by system: 4 consecutive absences.',
-        icon: 'alert-triangle',
-        color: 'red',
-        tag: 'Alert',
-        created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-      }
-    ];
+    const RECENT_ACTIVITY = Array.isArray(window.EDUGNAY_ADMIN?.activities)
+      ? window.EDUGNAY_ADMIN.activities
+      : [];
 
     function renderActivityList() {
       const container = document.getElementById('activityList');
-      const sorted = [...RECENT_ACTIVITY].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const sorted = [...RECENT_ACTIVITY]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 4);
 
       let html = '';
       let lastGroup = null;
@@ -1392,7 +1363,13 @@
       `;
       });
 
-      container.innerHTML = html;
+      container.innerHTML = sorted.length
+        ? html
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'activity',
+          title: 'No recent activity',
+          text: 'System updates and account actions will appear here.'
+        });
       lucide.createIcons();
     }
 
