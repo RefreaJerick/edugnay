@@ -376,14 +376,15 @@
 
     // Page data boundary: replace this array with the parent announcements endpoint later.
     const DASHBOARD_ANNOUNCEMENTS = [
-      { title: 'Q2 Narrative Reports Now Available', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports are now viewable in your EdUgnay parent dashboard.', time: 'Today, 9:00 AM', author: 'Admin' },
+      { title: 'Q2 Narrative Reports Now Available', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports are now viewable in your EdUgnay parent dashboard.', time: 'Today, 9:00 AM', author: 'Admin', access: 'reports' },
       { title: 'Foundation Day - June 20', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Yesterday, 10:00 AM', author: 'Admin' }
     ];
 
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
       if (!list) return;
-      list.innerHTML = DASHBOARD_ANNOUNCEMENTS.length ? DASHBOARD_ANNOUNCEMENTS.map(item => `
+      const visibleAnnouncements = DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false);
+      list.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
           <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
           <div class="ann-item-body">${item.body}</div>

@@ -15,9 +15,9 @@ const NOTIFICATIONS = [
     created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
   {
-    id: 3, icon: 'notebook-pen', color: 'purple', tag: 'Journal', read: false,
+    id: 3, icon: 'notebook-pen', color: 'purple', tag: 'Journal', read: false, access: 'journals',
     title: 'Journal window closing soon',
-    desc: 'Submit your weekly Values Education reflection before Friday, 11:59 PM.',
+    desc: 'Submit your weekly reflection before Friday, 11:59 PM.',
     link: { page: 'journal' },
     created_at: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
   },
@@ -36,7 +36,7 @@ const NOTIFICATIONS = [
     created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   },
   {
-    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true,
+    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true, access: 'journals',
     title: 'Journal window reminder',
     desc: 'Weekly journal entries close Friday, 11:59 PM.',
     link: { page: 'journal' },
@@ -57,6 +57,15 @@ function setReadIds(ids) {
 function applyReadState() {
   const readIds = getReadIds();
   NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
+}
+
+function studentCanAccess(feature) {
+  return feature !== 'journals'
+    || window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false;
+}
+
+function getStudentVisibleNotifications() {
+  return NOTIFICATIONS.filter(notification => !notification.access || studentCanAccess(notification.access));
 }
 
 /* ── TIME HELPERS ── */
@@ -81,11 +90,12 @@ function renderTopbarNotifs() {
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
 
-  const top5 = [...NOTIFICATIONS]
+  const visibleNotifications = getStudentVisibleNotifications();
+  const top5 = [...visibleNotifications]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5);
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
-  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+  const unreadCount = visibleNotifications.filter(n => !n.read).length;
   if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   if (!top5.length) {
@@ -116,7 +126,7 @@ function renderTopbarNotifs() {
     </a>
   `).join('');
 
-  const hasUnread = NOTIFICATIONS.some(n => !n.read);
+  const hasUnread = visibleNotifications.some(n => !n.read);
   if (dot) dot.style.display = hasUnread ? 'block' : 'none';
 
   if (window.lucide) lucide.createIcons();
@@ -142,6 +152,7 @@ function navigate(page) {
   } else if (page === 'materials') {
     window.location.href = './edugnay-student-materials.html';
   } else if (page === 'journal') {
+    if (!studentCanAccess('journals')) return;
     window.location.href = './edugnay-student-journal.html';
   } else if (page === 'announcements') {
     window.location.href = './edugnay-student-announcements.html';
@@ -152,9 +163,28 @@ function navigate(page) {
   }
 }
 
+function applyStudentJournalAccess() {
+  const enabled = studentCanAccess('journals');
+  document.querySelectorAll(
+    'a[href*="edugnay-student-journal.html"], [data-student-access="journals"], .journal-feature'
+  ).forEach(item => {
+    item.hidden = !enabled;
+    if (!enabled) item.setAttribute('aria-hidden', 'true');
+    else item.removeAttribute('aria-hidden');
+  });
+
+  const page = window.location.pathname.split('/').pop().toLowerCase();
+  if (!enabled && page === 'edugnay-student-journal.html') {
+    window.location.replace('./edugnay-student-dashboard.html');
+  }
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { toggleDrawer(false); closeEntryModal(); }
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', renderTopbarNotifs);
+document.addEventListener('DOMContentLoaded', () => {
+  applyStudentJournalAccess();
+  renderTopbarNotifs();
+});

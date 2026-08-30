@@ -28,7 +28,7 @@
   EJS CONVERSION MAP — student-journal.html
   ─────────────────────────────────────────
   CONDITIONAL: this entire page should 404 / redirect server-side if
-  !student.hasValuesSubject — don't rely on hiding the sidebar link alone.
+  !school.journalsEnabled — don't rely on hiding the sidebar link alone.
 
   - journalWindow    → active journal config (mirrors admin "Journal Settings"):
                        { weekLabel, dateRange, prompt, isOpen, deadline, minWords,
@@ -83,7 +83,7 @@
           <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Learning Materials</span>
         </a>
-        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
+        <!-- Journal nav item: hidden when the school disables Journals -->
         <a href="edugnay-student-journal.html" class="nav-item active">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Journal Entries</span>
@@ -271,6 +271,9 @@
 
   <script>
     lucide.createIcons();
+    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
+    const promptEyebrow = document.querySelector('.prompt-eyebrow');
+    if (promptEyebrow) promptEyebrow.textContent = `${journalSubjectName} · Weekly Journal`;
 
     /*
       EJS NOTE: these two objects are client-side placeholders. On conversion:

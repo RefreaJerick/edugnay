@@ -44,6 +44,17 @@
 
   const PLATFORM_NOTIFICATIONS = [
     {
+      id: 'platform-notif-manghi-registration',
+      icon: 'building-2',
+      color: 'gold',
+      title: 'Manghi school account awaiting review',
+      desc: 'Mangaldan National High School submitted a new registration.',
+      createdAt: '2026-08-30T09:15:00',
+      time: '9:15 AM',
+      link: 'edugnay-platform-school-accounts.html',
+      read: false
+    },
+    {
       id: 'platform-notif-school-ready',
       icon: 'building-2',
       color: 'green',
@@ -96,6 +107,9 @@
     const schools = window.EDUGNAY_CONFIG?.getSchools?.() || [];
     return schools.map(school => ({
       ...school,
+      typeLabel: Array.isArray(school.schoolLevels)
+        ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
+        : (school.typeLabel || school.schoolType || 'School'),
       status: school.platformStatus || 'active',
       administrator: school.initialAdministrator?.name || 'School administrator',
       administratorEmail: school.initialAdministrator?.email || school.email || ''

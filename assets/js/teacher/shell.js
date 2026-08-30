@@ -7,16 +7,26 @@
 
 /* ── NOTIFICATIONS DATA ── */
 // Replace this local object with the signed-in teacher's access payload later.
+// Subject IDs match the shared subject catalog so school settings can choose
+// any configured journal subject without another name-matching rule.
 const TEACHER_PORTAL_ACCESS = {
-  subjects: ['Values Education', 'Math', 'Science'],
+  subjects: ['values-education', 'mathematics', 'science'],
   isAdviser: true
 };
 
 window.EDUGNAY_TEACHER_ACCESS = TEACHER_PORTAL_ACCESS;
 
 function teacherCanAccess(feature) {
-  if (feature === 'journals') return TEACHER_PORTAL_ACCESS.subjects.includes('Values Education');
-  if (feature === 'reports') return TEACHER_PORTAL_ACCESS.isAdviser;
+  if (feature === 'journals') {
+    const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
+    return window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false
+      && Boolean(journalSubject)
+      && TEACHER_PORTAL_ACCESS.subjects.includes(journalSubject.id);
+  }
+  if (feature === 'reports') {
+    return TEACHER_PORTAL_ACCESS.isAdviser
+      && window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
+  }
   return true;
 }
 

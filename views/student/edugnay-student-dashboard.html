@@ -37,11 +37,11 @@
     - summary stats (attendanceRate,
       materialsCount, journalWeeksCount)   → aggregate queries
     - announcements[]                      → announcements table, filtered to student's grade level
-    - journalPrompt (if hasValuesSubject)  → active journal window config
+    - journalPrompt (if the school enables Journals)  → active journal window config
     - materials[]                          → learning materials, filtered to enrolled sections
 
   CONDITIONAL RENDERING:
-    - Journal panel only renders if student.hasValuesSubject === true
+    - Journal panel only renders if the school enables Journals
     - Notification dot only renders if unreadCount > 0
     - Greeting avatar: <% if (student.avatarUrl) { %><img src="<%= student.avatarUrl %>"><% } else { %>initials<% } %>
 
@@ -89,7 +89,7 @@
           <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Learning Materials</span>
         </a>
-        <!-- Journal nav item: only rendered if student.hasValuesSubject -->
+        <!-- Journal nav item: hidden when the school disables Journals -->
         <a href="edugnay-student-journal.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Journal Entries</span>
@@ -217,8 +217,8 @@
             </div>
           </div>
 
-          <!-- Weekly journal — Values Education only, separate from learning materials -->
-          <!-- if (student.hasValuesSubject) { -->
+          <!-- Weekly journal — configured school subject, separate from learning materials -->
+          <!-- if (school.journalsEnabled) { -->
           <section class="journal-feature" id="student-journal-feature" aria-labelledby="weeklyJournalTitle">
             <div class="journal-card" id="student-journal-card">
               <div class="journal-icon-chip">
@@ -318,7 +318,7 @@
                 </div>
               </div>
 
-              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
+              <div class="ann-item" data-student-access="journals" onclick="location.href='edugnay-student-announcements.html'">
                 <div class="ann-item-head">
                   <span class="ann-item-title">Values Journal — Window Open</span>
                   <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Reminder</span>
@@ -346,8 +346,9 @@
     lucide.createIcons();
 
     // Page data boundary: replace these arrays with fetch results during EJS conversion.
+    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
     const JOURNAL = [{
-      subject: 'Values Education',
+      subject: journalSubjectName,
       title: "This Week's Journal",
       prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?',
       status: 'Window open',
@@ -357,6 +358,10 @@
     function renderStudentJournal() {
       const card = document.getElementById('student-journal-card');
       if (!card) return;
+      if (!studentCanAccess('journals')) {
+        card.closest('.journal-feature')?.setAttribute('hidden', '');
+        return;
+      }
       const journal = JOURNAL[0];
       if (!journal) {
         card.classList.add('is-empty');
@@ -378,7 +383,7 @@
     const ANNOUNCEMENTS = [
       { title: 'Foundation Day - June 20', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Today, 8:00 AM', author: 'Admin' },
       { title: 'Intramurals Sign-up Open', tag: 'Event', tagClass: 'badge-gold', body: 'Visit the Student Affairs table during recess to join a sports team.', time: 'Yesterday, 1:30 PM', author: 'Admin' },
-      { title: 'Values Journal - Window Open', tag: 'Reminder', tagClass: 'badge-blue', body: 'Submit your weekly reflection before 11:59 PM Friday.', time: '2 days ago', author: 'Ms. Reyes' }
+      { title: 'Weekly Journal - Window Open', tag: 'Reminder', tagClass: 'badge-blue', body: 'Submit your weekly reflection before 11:59 PM Friday.', time: '2 days ago', author: 'Ms. Reyes', access: 'journals' }
     ];
 
     const UPCOMING_ASSIGNMENTS = [
@@ -466,7 +471,8 @@
 
       const announcements = document.getElementById('student-announcements-list');
       if (announcements) {
-        announcements.innerHTML = ANNOUNCEMENTS.length ? ANNOUNCEMENTS.map(item => `
+        const visibleAnnouncements = ANNOUNCEMENTS.filter(item => !item.access || studentCanAccess(item.access));
+        announcements.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
           <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
             <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
             <div class="ann-item-body">${item.body}</div>

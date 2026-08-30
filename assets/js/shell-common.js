@@ -36,6 +36,7 @@
     { id: 'english', name: 'English', code: 'ENG', levels: ['elementary', 'jhs', 'shs'] },
     { id: 'mathematics', name: 'Mathematics', code: 'MAT', levels: ['elementary', 'jhs', 'shs'] },
     { id: 'science', name: 'Science', code: 'SCI', levels: ['elementary', 'jhs', 'shs'] },
+    { id: 'values-education', name: 'Values Education', code: 'VE', levels: ['elementary', 'jhs', 'shs'] },
     { id: 'araling-panlipunan', name: 'Araling Panlipunan', code: 'AP', levels: ['elementary', 'jhs'] },
     { id: 'mapeh', name: 'MAPEH', code: 'MAPEH', levels: ['elementary', 'jhs'] },
     { id: 'tle', name: 'Technology and Livelihood Education', code: 'TLE', levels: ['jhs'] },
@@ -104,6 +105,29 @@
     };
   }
 
+  function getSchoolLevelLabel(level) {
+    return GRADE_CATALOG.find(item => item.key === level)?.label || level;
+  }
+
+  function getSchoolTypeInfo(levels) {
+    const selected = GRADE_CATALOG
+      .map(item => item.key)
+      .filter(level => Array.isArray(levels) && levels.includes(level));
+
+    if (selected.length === 1) {
+      return { value: selected[0], label: getSchoolLevelLabel(selected[0]) };
+    }
+
+    if (selected.length === GRADE_CATALOG.length) {
+      return { value: 'k12', label: 'K-12 School' };
+    }
+
+    return {
+      value: 'multi-level',
+      label: selected.length ? selected.map(getSchoolLevelLabel).join(' + ') : 'School'
+    };
+  }
+
   const DEFAULT_SCHOOLS = [
     {
       id: 'scc',
@@ -117,6 +141,7 @@
       email: 'info@stcolumban.edu.ph',
       website: 'stcolumban.edu.ph',
       logoUrl: '../../assets/images/st-columban-logo.png',
+      platformStatus: 'active',
       photos: [
         '../../assets/images/scc-pic-1.jpg',
         '../../assets/images/scc-pic-2.jpg',
@@ -128,6 +153,12 @@
       // School-wide portal policy. Replace this local setting with the
       // authenticated school's settings response during backend integration.
       gradesPageEnabled: true,
+      // AI-assisted narrative reports are a school-wide portal policy. Replace
+      // this local setting with the authenticated school's settings response
+      // during backend integration.
+      narrativeReportsEnabled: true,
+      journalsEnabled: true,
+      journalSubjectId: 'values-education',
       attendanceRules: makeAttendanceRules(),
       activeDivision: 'jhs',
       schoolLevels: ['elementary', 'jhs', 'shs'],
@@ -184,6 +215,49 @@
         { id: 'pt', label: 'Performance Task', weight: 50 },
         { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
       ]
+    },
+    {
+      id: 'manghi',
+      name: 'Mangaldan National High School',
+      shortName: 'MANGHI',
+      schoolType: 'multi-level',
+      typeLabel: 'Junior High School + Senior High School',
+      schoolId: '',
+      address: '',
+      phone: '',
+      email: '',
+      website: '',
+      logoUrl: '../../assets/images/manghi-logo.jpg',
+      photos: [],
+      schoolYear: '2025-2026',
+      academicPeriod: 'Quarter 1',
+      platformStatus: 'pending',
+      submittedAt: '2026-08-30T09:00:00',
+      gradesPageEnabled: true,
+      narrativeReportsEnabled: true,
+      journalsEnabled: true,
+      journalSubjectId: 'values-education',
+      attendanceRules: makeAttendanceRules(),
+      activeDivision: 'jhs',
+      schoolLevels: ['jhs', 'shs'],
+      divisions: {
+        jhs: makeDivision('jhs'),
+        shs: makeDivision('shs')
+      },
+      enabledGrades: [...(GRADE_CATALOG.find(item => item.key === 'jhs')?.grades || [])],
+      subjects: SUBJECT_CATALOG.filter(subject => subject.levels.includes('jhs')).map(subject => subject.id),
+      sections: [],
+      gradingRules: [
+        { id: 'ww', label: 'Written Work', weight: 30 },
+        { id: 'pt', label: 'Performance Task', weight: 50 },
+        { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
+      ],
+      passingGradeThreshold: 75,
+      gradeRounding: 'round',
+      initialAdministrator: {
+        name: 'Pending administrator',
+        email: ''
+      }
     }
   ];
 
@@ -294,7 +368,10 @@
       gradingRules: active.gradingRules,
       passingGradeThreshold: active.passingGradeThreshold,
       gradeRounding: active.gradeRounding,
-      attendanceRules: makeAttendanceRules(first.attendanceRules)
+      attendanceRules: makeAttendanceRules(first.attendanceRules),
+      narrativeReportsEnabled: first.narrativeReportsEnabled !== false,
+      journalsEnabled: first.journalsEnabled !== false,
+      journalSubjectId: first.journalSubjectId || 'values-education'
     };
     const result = [merged, ...schools.filter(school => !LEGACY_SCHOOL_IDS.has(school?.id))];
     writeJson(STORAGE_KEYS.schools, result);
@@ -306,9 +383,58 @@
 
   function getSchools() {
     const saved = readJson(STORAGE_KEYS.schools, null);
-    return Array.isArray(saved) && saved.length
-      ? migrateLegacySchools(saved)
-      : clone(DEFAULT_SCHOOLS);
+    if (!Array.isArray(saved) || !saved.length) return clone(DEFAULT_SCHOOLS);
+
+    const migratedSchools = migrateLegacySchools(saved);
+    let settingsUpdated = false;
+    const schools = migratedSchools.map(school => {
+      const needsNarrativeDefault = school.narrativeReportsEnabled === undefined;
+      const needsJournalDefault = school.journalsEnabled === undefined;
+      const needsJournalSubject = school.journalSubjectId === undefined;
+      if (!needsNarrativeDefault && !needsJournalDefault && !needsJournalSubject) return school;
+      settingsUpdated = true;
+      return {
+        ...school,
+        narrativeReportsEnabled: needsNarrativeDefault ? true : school.narrativeReportsEnabled,
+        journalsEnabled: needsJournalDefault ? true : school.journalsEnabled,
+        journalSubjectId: needsJournalSubject ? 'values-education' : school.journalSubjectId
+      };
+    });
+    if (settingsUpdated) writeJson(STORAGE_KEYS.schools, schools);
+    const manghiDefault = DEFAULT_SCHOOLS.find(school => school.id === 'manghi');
+    let manghiUpdated = false;
+    const syncedSchools = schools.map(school => {
+      const hasShs = Array.isArray(school?.schoolLevels)
+        && school.schoolLevels.includes('shs')
+        && school.divisions?.shs;
+      if (school?.id !== 'manghi' || !manghiDefault || (
+        school.schoolType === manghiDefault.schoolType
+        && school.typeLabel === manghiDefault.typeLabel
+        && hasShs
+      )) return school;
+
+      manghiUpdated = true;
+      return {
+        ...school,
+        schoolType: manghiDefault.schoolType,
+        typeLabel: manghiDefault.typeLabel,
+        schoolLevels: [...manghiDefault.schoolLevels],
+        activeDivision: ['jhs', 'shs'].includes(school.activeDivision) ? school.activeDivision : 'jhs',
+        divisions: { ...clone(manghiDefault.divisions), ...(school.divisions || {}) }
+      };
+    });
+    if (manghiUpdated) writeJson(STORAGE_KEYS.schools, syncedSchools);
+
+    const existingIds = new Set(syncedSchools.map(school => school?.id));
+    // Seed newly introduced demo schools without re-adding the original
+    // default school to accounts that already have their own saved records.
+    const missingDefaults = DEFAULT_SCHOOLS
+      .filter(school => school.id === 'manghi' && !existingIds.has(school.id));
+    if (!missingDefaults.length) return syncedSchools;
+
+    const merged = [...syncedSchools, ...clone(missingDefaults)];
+    writeJson(STORAGE_KEYS.schools, merged);
+    return merged;
   }
 
   function saveSchools(schools) {
@@ -331,6 +457,30 @@
   // this setting was added.
   function isGradesPageEnabled(school = getActiveSchool()) {
     return school?.gradesPageEnabled !== false;
+  }
+
+  // Narrative reports are generated from verified school records and remain a
+  // school-level policy. A missing value keeps the feature enabled for older
+  // saved school records created before this setting existed.
+  function isNarrativeReportsEnabled(school = getActiveSchool()) {
+    return school?.narrativeReportsEnabled !== false;
+  }
+
+  function getConfiguredSubjects(school = getActiveSchool()) {
+    const ids = new Set();
+    if (Array.isArray(school?.subjects)) school.subjects.forEach(id => ids.add(id));
+    Object.values(school?.divisions || {}).forEach(division => {
+      if (Array.isArray(division?.subjects)) division.subjects.forEach(id => ids.add(id));
+    });
+    return SUBJECT_CATALOG.filter(subject => ids.has(subject.id));
+  }
+
+  function getJournalSubject(school = getActiveSchool()) {
+    return getConfiguredSubjects(school).find(subject => subject.id === school?.journalSubjectId) || null;
+  }
+
+  function isJournalsEnabled(school = getActiveSchool()) {
+    return school?.journalsEnabled !== false && Boolean(getJournalSubject(school));
   }
 
   function slug(value) {
@@ -668,7 +818,13 @@
     saveSchools,
     getActiveSchool,
     setActiveSchool,
+    getSchoolLevelLabel,
+    getSchoolTypeInfo,
     isGradesPageEnabled,
+    isNarrativeReportsEnabled,
+    getConfiguredSubjects,
+    getJournalSubject,
+    isJournalsEnabled,
     getAssignmentSections,
     getHolidays,
     saveHolidays,
@@ -1042,6 +1198,9 @@ function applyActiveSchoolToShell() {
 
   const school = window.EDUGNAY_CONFIG?.getActiveSchool?.();
   if (!school) return;
+  const typeLabel = Array.isArray(school.schoolLevels) && school.schoolLevels.length
+    ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
+    : (school.typeLabel || school.schoolType || 'School');
 
   document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => {
     element.textContent = school.shortName || school.name;
@@ -1052,13 +1211,13 @@ function applyActiveSchoolToShell() {
   /* The body stores the active school type as metadata. Exclude it from
      content replacement so refreshing the context never wipes the page. */
   document.querySelectorAll('[data-school-type]:not(body)').forEach(element => {
-    element.textContent = school.typeLabel || school.schoolType;
+    element.textContent = typeLabel;
   });
   document.querySelectorAll('[data-school-year]').forEach(element => {
     element.textContent = school.schoolYear || '';
   });
   document.querySelectorAll('.topbar-context-copy span, .admin-topbar-context-copy span').forEach(element => {
-    element.textContent = `${school.typeLabel || school.schoolType} · ${school.schoolYear || ''}`;
+    element.textContent = `${typeLabel} · ${school.schoolYear || ''}`;
   });
   /* Set shell metadata last so the body itself is not included in the
      data-school-type content selector above. */

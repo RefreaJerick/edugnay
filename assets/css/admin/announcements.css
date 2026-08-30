@@ -635,14 +635,6 @@
   color: var(--purple) !important;
 }
 
-.aud-opt input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--blue-mid);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
 .aud-opt-icon {
   width: 24px;
   height: 24px;

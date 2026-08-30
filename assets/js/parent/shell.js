@@ -8,7 +8,7 @@
 /* ── NOTIFICATIONS DATA ── */
 const NOTIFICATIONS = [
   {
-    id: 5, icon: 'sparkles', color: 'purple', tag: 'Report', read: false,
+    id: 5, icon: 'sparkles', color: 'purple', tag: 'Report', read: false, access: 'reports',
     title: 'Weekly report sent',
     desc: 'Juan\'s weekly report for June 9–14 is now available.',
     link: { page: 'reports' },
@@ -29,7 +29,7 @@ const NOTIFICATIONS = [
     created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
   },
   {
-    id: 1, icon: 'file-text', color: 'blue', tag: 'Report', read: true,
+    id: 1, icon: 'file-text', color: 'blue', tag: 'Report', read: true, access: 'reports',
     title: 'Narrative report confirmed',
     desc: 'Q2 narrative reports are now viewable on your dashboard.',
     link: { page: 'reports' },
@@ -59,6 +59,11 @@ function applyReadState() {
   NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
 }
 
+function getParentVisibleNotifications() {
+  const reportsEnabled = window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
+  return NOTIFICATIONS.filter(notification => !notification.access || reportsEnabled);
+}
+
 /* ── TIME HELPERS ── */
 function formatRelativeTime(dateStr) {
   const date = new Date(dateStr);
@@ -81,11 +86,12 @@ function renderTopbarNotifs() {
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
 
-  const top5 = [...NOTIFICATIONS]
+  const visibleNotifications = getParentVisibleNotifications();
+  const top5 = [...visibleNotifications]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5);
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
-  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+  const unreadCount = visibleNotifications.filter(n => !n.read).length;
   if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   if (!top5.length) {
@@ -116,7 +122,7 @@ function renderTopbarNotifs() {
     </a>
   `).join('');
 
-  const hasUnread = NOTIFICATIONS.some(n => !n.read);
+  const hasUnread = visibleNotifications.some(n => !n.read);
   if (dot) dot.style.display = hasUnread ? 'block' : 'none';
 
   if (window.lucide) lucide.createIcons();
@@ -140,6 +146,10 @@ function navigate(page) {
     }
     window.location.href = './edugnay-parent-grades.html';
   } else if (page === 'reports') {
+    if (window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() === false) {
+      window.location.href = './edugnay-parent-dashboard.html';
+      return;
+    }
     window.location.href = './edugnay-parent-reports.html';
   } else if (page === 'attendance') {
     window.location.href = './edugnay-parent-attendance.html';
@@ -152,9 +162,31 @@ function navigate(page) {
   }
 }
 
+function applyParentReportAccess() {
+  const enabled = window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
+  document.querySelectorAll('a[href*="edugnay-parent-reports.html"]').forEach(link => {
+    link.hidden = !enabled;
+    link.setAttribute('aria-hidden', String(!enabled));
+    if (!enabled) link.setAttribute('tabindex', '-1');
+    else link.removeAttribute('tabindex');
+  });
+
+  document.querySelectorAll('.report-hero, .report-hero-link').forEach(item => {
+    item.hidden = !enabled;
+  });
+
+  const page = window.location.pathname.split('/').pop().toLowerCase();
+  if (!enabled && page === 'edugnay-parent-reports.html') {
+    window.location.replace('./edugnay-parent-dashboard.html');
+  }
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { toggleDrawer(false); }
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', renderTopbarNotifs);
+document.addEventListener('DOMContentLoaded', () => {
+  applyParentReportAccess();
+  renderTopbarNotifs();
+});

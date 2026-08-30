@@ -187,7 +187,15 @@
       schoolAccountState.selectedSchoolId = school.id;
       const status = getSchoolStatus(school);
       const type = school.typeLabel || school.schoolType || 'School';
-      const levels = Array.isArray(school.schoolLevels) && school.schoolLevels.length ? school.schoolLevels.map(level => ({ elementary: 'Elementary', jhs: 'Junior High School', shs: 'Senior High School' }[level] || level)).join(', ') : 'Not set';
+      const levels = Array.isArray(school.schoolLevels) && school.schoolLevels.length
+        ? (window.EDUGNAY_CONFIG.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.schoolLevels.join(' + '))
+        : 'Not set';
+      const journalSubject = window.EDUGNAY_CONFIG.getJournalSubject(school);
+      const portalFeatures = [
+        { label: 'Grades page', enabled: school.gradesPageEnabled !== false },
+        { label: 'AI Reports', enabled: school.narrativeReportsEnabled !== false },
+        { label: 'Journals', enabled: window.EDUGNAY_CONFIG.isJournalsEnabled(school) }
+      ];
 
       document.getElementById('schoolAccountModalBody').innerHTML = `
         <div class="account-review-profile">${schoolLogoMarkup(school, 'account-review-logo')}<div><div class="account-review-name">${escapeHtml(school.name)}</div><div class="account-review-type">${escapeHtml(type)}</div></div></div>
@@ -198,11 +206,26 @@
           <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorEmail || 'Not set')}</dd></div>
           <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>
           <div><dt>School email</dt><dd>${escapeHtml(school.email || 'Not set')}</dd></div>
-        </dl>`;
+        </dl>
+        <section class="account-review-section" aria-labelledby="account-review-portal-title">
+          <div class="account-review-section-head">
+            <span class="account-review-section-icon" aria-hidden="true"><i data-lucide="sliders-horizontal"></i></span>
+            <div>
+              <div class="account-review-section-title" id="account-review-portal-title">Portal configuration</div>
+              <div class="account-review-section-sub">Current feature access for this school.</div>
+            </div>
+          </div>
+          <div class="account-review-feature-list">
+            ${portalFeatures.map(feature => `<div class="account-review-feature-row"><span class="account-review-feature-label">${feature.label}</span><span class="account-review-feature-status ${feature.enabled ? 'enabled' : 'disabled'}"><i data-lucide="${feature.enabled ? 'circle-check' : 'circle-off'}" aria-hidden="true"></i>${feature.enabled ? 'Enabled' : 'Disabled'}</span></div>`).join('')}
+            <div class="account-review-feature-row"><span class="account-review-feature-label">Journal subject</span><span class="account-review-feature-value">${escapeHtml(journalSubject?.name || 'Not configured')}</span></div>
+          </div>
+        </section>`;
 
       const action = status === 'active'
         ? '<button class="btn btn-save school-account-suspend" type="button" data-school-status="suspended">Suspend school</button>'
-        : '<button class="btn btn-save" type="button" data-school-status="active">Activate school</button>';
+        : status === 'pending'
+          ? '<button class="btn btn-save" type="button" data-school-status="active">Approve registration</button>'
+          : '<button class="btn btn-save" type="button" data-school-status="active">Reactivate school</button>';
       document.getElementById('schoolAccountModalActions').innerHTML = action;
       document.querySelector('[data-school-status]').addEventListener('click', () => updateSchoolAccountStatus(document.querySelector('[data-school-status]').dataset.schoolStatus));
 

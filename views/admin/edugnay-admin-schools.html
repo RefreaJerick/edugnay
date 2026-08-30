@@ -180,7 +180,8 @@
               type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic"
               type="button">Academic Structure</button><button class="school-tab" data-school-tab="grading"
               type="button">Grading Rules</button><button class="school-tab" data-school-tab="attendance"
-              type="button">Attendance Rules</button></div>
+              type="button">Attendance Rules</button><button class="school-tab" data-school-tab="portal"
+              type="button">Portal Features</button></div>
           <div class="school-settings-body" id="schoolSettingsBody"></div>
         </section>
         <section class="school-calendar-panel" aria-labelledby="calendar-panel-title">
@@ -201,14 +202,13 @@
 
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
-    const SCHOOL_TYPES = [{ value: 'k12', label: 'K-12 School' }, ...SCHOOL_LEVELS];
     const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
     const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '', photoData: [] };
 
     function esc(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
     function activeSchool() { return state.school; }
-    function typeLabel(type) { return SCHOOL_TYPES.find(item => item.value === type)?.label || type; }
     function levelLabel(level) { return SCHOOL_LEVELS.find(item => item.value === level)?.label || level; }
+    function schoolTypeInfo(levels) { return window.EDUGNAY_CONFIG.getSchoolTypeInfo(levels); }
     function schoolLevels(school) {
       if (Array.isArray(school?.schoolLevels) && school.schoolLevels.length) return school.schoolLevels;
       if (school?.schoolType === 'k12') return SCHOOL_LEVELS.map(level => level.value);
@@ -304,8 +304,9 @@
       document.getElementById('settingsTitle').textContent = school?.name || 'New school profile';
       document.getElementById('settingsSubtitle').textContent = school?.typeLabel || 'Configure school details and branding.';
       const photos = Array.isArray(school?.photos) ? school.photos : [];
-      document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-profile-pane active"><form id="schoolProfileForm"><div class="school-form-grid"><div class="school-field"><label for="profileName">School name</label><input id="profileName" name="name" required value="${esc(school?.name)}"></div><div class="school-field"><label for="profileType">School type</label><select id="profileType" name="schoolType">${SCHOOL_TYPES.map(type => `<option value="${type.value}" ${type.value === school?.schoolType ? 'selected' : ''}>${esc(type.label)}</option>`).join('')}</select></div><div class="school-field"><label for="profileId">School ID</label><input id="profileId" name="schoolId" value="${esc(school?.schoolId)}"></div><div class="school-field"><label for="profileAddress">Address</label><input id="profileAddress" name="address" value="${esc(school?.address)}"></div><div class="school-field"><label for="profilePhone">Contact number</label><input id="profilePhone" name="phone" value="${esc(school?.phone)}"></div><div class="school-field"><label for="profileEmail">School email</label><input id="profileEmail" name="email" type="email" value="${esc(school?.email)}"></div><div class="school-field"><label for="profileWebsite">Website</label><input id="profileWebsite" name="website" value="${esc(school?.website)}"></div><div class="school-field school-branding-field"><label for="profileLogo">Logo or branding</label><div class="school-logo-preview" id="profileLogoPreview"><span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span><img id="profileLogoImage" src="${school?.logoUrl ? esc(school.logoUrl) : ''}" alt="${esc(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}><div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div></div><small>The school logo is used across the school profile and portal shell.</small></div><div class="school-field school-photos-field full"><label for="profilePhotos">School photos</label><input id="profilePhotos" name="photos" type="file" accept="image/*" multiple><div class="school-photo-list" id="profilePhotosPreview">${photos.length ? photos.map((photo, index) => `<img src="${esc(photo)}" alt="School photo ${index + 1}">`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'images', title: 'No school photos yet', text: 'Upload photos to use them in the school login slideshow.' })}</div><small>These photos appear in the slideshow on the school login page.</small></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button></div></form></div>`;
-      document.getElementById('schoolProfileForm').addEventListener('submit', saveProfile);
+      document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-profile-pane active"><form id="schoolProfileForm"><div class="school-form-grid"><div class="school-field"><label for="profileName">School name</label><input id="profileName" name="name" required value="${esc(school?.name)}"></div><div class="school-field"><label>School levels served</label><div class="school-level-options" role="group" aria-label="School levels served">${SCHOOL_LEVELS.map(level => `<label class="school-level-option"><input type="checkbox" name="schoolLevels" value="${esc(level.value)}" ${schoolLevels(school).includes(level.value) ? 'checked' : ''}><span>${esc(level.label)}</span></label>`).join('')}</div><small>Select every level offered by the school.</small></div><div class="school-field"><label for="profileId">School ID</label><input id="profileId" name="schoolId" value="${esc(school?.schoolId)}"></div><div class="school-field"><label for="profileAddress">Address</label><input id="profileAddress" name="address" value="${esc(school?.address)}"></div><div class="school-field"><label for="profilePhone">Contact number</label><input id="profilePhone" name="phone" value="${esc(school?.phone)}"></div><div class="school-field"><label for="profileEmail">School email</label><input id="profileEmail" name="email" type="email" value="${esc(school?.email)}"></div><div class="school-field"><label for="profileWebsite">Website</label><input id="profileWebsite" name="website" value="${esc(school?.website)}"></div><div class="school-field school-branding-field"><label for="profileLogo">Logo or branding</label><div class="school-logo-preview" id="profileLogoPreview"><span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span><img id="profileLogoImage" src="${school?.logoUrl ? esc(school.logoUrl) : ''}" alt="${esc(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}><div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div></div><small>The school logo is used across the school profile and portal shell.</small></div><div class="school-field school-photos-field full"><label for="profilePhotos">School photos</label><input id="profilePhotos" name="photos" type="file" accept="image/*" multiple><div class="school-photo-list" id="profilePhotosPreview">${photos.length ? photos.map((photo, index) => `<img src="${esc(photo)}" alt="School photo ${index + 1}">`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'images', title: 'No school photos yet', text: 'Upload photos to use them in the school login slideshow.' })}</div><small>These photos appear in the slideshow on the school login page.</small></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button></div></form></div>`;
+      const form = document.getElementById('schoolProfileForm');
+      form.addEventListener('submit', saveProfile);
       document.getElementById('profileLogo').addEventListener('change', readLogo);
       document.getElementById('profilePhotos').addEventListener('change', readPhotos);
       if (window.lucide) lucide.createIcons();
@@ -356,22 +357,10 @@
       const rules = data.gradingRules || [];
       const passingGradeThreshold = Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : 75;
       const gradeRounding = data.gradeRounding || 'round';
-      const gradesPageEnabled = school?.gradesPageEnabled !== false;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolGradingForm">
-            <div class="school-section-block school-grading-access-block">
-              <div class="school-section-block-head">
-                <div>
-                  <div class="school-section-block-title">Grade portal access</div>
-                  <div class="school-section-block-sub">Control grade visibility for student and parent portals.</div>
-                </div>
-              </div>
-              <div class="school-toggle-list">
-                <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Allow students and parents to view grades</strong><small>When disabled, the Grades page and its navigation are hidden from student and parent portals.</small></span><input class="school-toggle-input" type="checkbox" name="gradesPageEnabled" ${gradesPageEnabled ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
-              </div>
-            </div>
             <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${esc(rule.id)}">${esc(rule.label)}</label><input id="weight-${esc(rule.id)}" type="number" min="0" max="100" step="1" name="${esc(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
             <div class="weight-total" id="weightTotal"></div>
             <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
@@ -381,6 +370,77 @@
       const form = document.getElementById('schoolGradingForm');
       const updateTotal = () => { const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0); document.getElementById('weightTotal').textContent = `Total weight: ${total}%${total === 100 ? ' | Ready to use' : ' | Adjust to reach 100%'}`; };
       form.addEventListener('input', updateTotal); form.addEventListener('submit', saveGrading); updateTotal(); bindDivisionSwitcher(); if (window.lucide) lucide.createIcons();
+    }
+
+    function renderPortalFeaturesPane() {
+      const school = activeSchool();
+      const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
+      const journalSubjectId = school?.journalSubjectId || subjects[0]?.id || '';
+      const hasJournalSubject = subjects.some(subject => subject.id === journalSubjectId);
+      const gradesPageEnabled = school?.gradesPageEnabled !== false;
+      const narrativeReportsEnabled = school?.narrativeReportsEnabled !== false;
+      const journalsEnabled = school?.journalsEnabled !== false && hasJournalSubject;
+      document.getElementById('schoolSettingsBody').innerHTML = `
+        <div class="school-pane school-portal-pane active">
+          <form id="schoolPortalForm">
+            <div class="school-section-block school-portal-access-block">
+              <div class="school-section-block-head">
+                <div>
+                  <div class="school-section-block-title">Portal access</div>
+                  <div class="school-section-block-sub">Control optional features that appear in the student, parent, and teacher portals.</div>
+                </div>
+              </div>
+              <div class="school-toggle-list">
+                <label class="school-toggle-row">
+                  <span class="school-toggle-copy"><strong>Allow students and parents to view grades</strong><small>When disabled, the Grades page and its navigation are hidden from student and parent portals.</small></span>
+                  <input class="school-toggle-input" type="checkbox" name="gradesPageEnabled" ${gradesPageEnabled ? 'checked' : ''}>
+                  <span class="school-toggle-control" aria-hidden="true"></span>
+                </label>
+                <label class="school-toggle-row">
+                  <span class="school-toggle-copy"><strong>Enable AI-assisted Narrative Reports</strong><small>Advisers review summaries built from verified attendance, journal, assignment, and progress records before parents can view them.</small></span>
+                  <input class="school-toggle-input" type="checkbox" name="narrativeReportsEnabled" ${narrativeReportsEnabled ? 'checked' : ''}>
+                  <span class="school-toggle-control" aria-hidden="true"></span>
+                </label>
+                <label class="school-toggle-row">
+                  <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow students to submit reflections and teachers to review them for the configured journal subject.</small></span>
+                  <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${subjects.length ? '' : 'disabled'}>
+                  <span class="school-toggle-control" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+            <div class="school-section-block school-journal-settings-block" id="journalSubjectBlock" ${journalsEnabled ? '' : 'hidden'}>
+              <div class="school-section-block-head">
+                <div>
+                  <div class="school-section-block-title">Journal subject</div>
+                  <div class="school-section-block-sub">Choose one subject already configured for this school.</div>
+                </div>
+              </div>
+              <div class="school-form-grid">
+                <div class="school-field">
+                  <label for="journalSubjectId">Subject used for Journals</label>
+                  <select id="journalSubjectId" name="journalSubjectId" ${subjects.length && journalsEnabled ? '' : 'disabled'}>
+                    <option value="">Select a configured subject</option>
+                    ${subjects.map(subject => `<option value="${esc(subject.id)}" ${subject.id === journalSubjectId ? 'selected' : ''}>${esc(subject.name)}</option>`).join('')}
+                  </select>
+                  <small>${subjects.length ? 'Students and teachers will see this subject wherever Journal is shown.' : 'Add a subject in Class Management before enabling Journals.'}</small>
+                </div>
+              </div>
+            </div>
+            <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save portal features</button></div>
+          </form>
+        </div>`;
+      document.getElementById('schoolPortalForm').addEventListener('submit', savePortalFeatures);
+      const journalToggle = document.querySelector('#schoolPortalForm [name="journalsEnabled"]');
+      const journalSubjectBlock = document.getElementById('journalSubjectBlock');
+      const journalSubjectSelect = document.getElementById('journalSubjectId');
+      const syncJournalSubject = () => {
+        const enabled = journalToggle?.checked === true;
+        if (journalSubjectBlock) journalSubjectBlock.hidden = !enabled;
+        if (journalSubjectSelect) journalSubjectSelect.disabled = !enabled || !subjects.length;
+      };
+      journalToggle?.addEventListener('change', syncJournalSubject);
+      syncJournalSubject();
+      if (window.lucide) lucide.createIcons();
     }
 
     function renderAttendancePane() {
@@ -420,7 +480,7 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else renderProfilePane(); }
+    function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else if (state.tab === 'portal') renderPortalFeaturesPane(); else renderProfilePane(); }
     function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
     function renderLogoPreview(logoUrl) {
       const image = document.getElementById('profileLogoImage');
@@ -487,7 +547,13 @@
       const form = event.currentTarget;
       const school = activeSchool();
       const values = Object.fromEntries(new FormData(form).entries());
-      const type = SCHOOL_TYPES.find(item => item.value === values.schoolType) || SCHOOL_TYPES[0];
+      const selected = new Set(new FormData(form).getAll('schoolLevels'));
+      const selectedLevels = SCHOOL_LEVELS.map(level => level.value).filter(level => selected.has(level));
+      if (!selectedLevels.length) {
+        notify('Select at least one school level before saving.');
+        return;
+      }
+      const type = schoolTypeInfo(selectedLevels);
       Object.assign(school, {
         name: values.name.trim(),
         shortName: values.name.trim().toUpperCase(),
@@ -499,16 +565,14 @@
         email: values.email.trim(),
         website: values.website.trim()
       });
-      if (type.value === 'k12') {
-        school.schoolLevels = school.schoolLevels?.length === SCHOOL_LEVELS.length ? school.schoolLevels : SCHOOL_LEVELS.map(level => level.value);
-        school.activeDivision = school.activeDivision || 'jhs';
-        school.schoolLevels.forEach(level => ensureDivision(school, level));
-        state.division = currentDivisionKey(school);
-        syncSchoolCompatibility(school, state.division);
-      } else {
-        school.schoolLevels = [type.value];
-        state.division = type.value;
-      }
+      school.schoolLevels = selectedLevels;
+      school.activeDivision = selectedLevels.includes(state.division)
+        ? state.division
+        : (selectedLevels.includes('jhs') ? 'jhs' : selectedLevels[0]);
+      school.divisions ||= {};
+      selectedLevels.forEach(level => ensureDivision(school, level));
+      state.division = currentDivisionKey(school);
+      syncSchoolCompatibility(school, state.division);
       if (state.logoData) school.logoUrl = state.logoData;
       if (state.photoData.length) school.photos = state.photoData;
       persistSchool();
@@ -552,14 +616,34 @@
       const rules = target.gradingRules || [];
       const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
       if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
-      school.gradesPageEnabled = form.elements.gradesPageEnabled?.checked !== false;
       target.gradingRules = rules.map(rule => ({ ...rule, weight: Number(form.elements[rule.id].value || 0) }));
       target.passingGradeThreshold = Math.max(0, Math.min(100, Number(form.elements.passingGradeThreshold?.value || 75)));
       target.gradeRounding = form.elements.gradeRounding?.value || 'round';
       if (school.schoolType === 'k12' || school.divisions) syncSchoolCompatibility(school, level);
       persistSchool();
       window.refreshEdUgnayShellContext?.();
-      notify(`${levelLabel(level)} grading rules and portal access saved.`);
+      notify(`${levelLabel(level)} grading rules saved.`);
+    }
+    function savePortalFeatures(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const school = activeSchool();
+      const journalSubjectId = String(form.elements.journalSubjectId?.value || '');
+      const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
+      const journalSubjectIsConfigured = subjects.some(subject => subject.id === journalSubjectId);
+      if (form.elements.journalsEnabled?.checked && !journalSubjectIsConfigured) {
+        notify('Select a configured subject before enabling Journals.');
+        form.elements.journalSubjectId?.focus();
+        return;
+      }
+      school.gradesPageEnabled = form.elements.gradesPageEnabled?.checked !== false;
+      school.narrativeReportsEnabled = form.elements.narrativeReportsEnabled?.checked !== false;
+      school.journalsEnabled = form.elements.journalsEnabled?.checked !== false;
+      school.journalSubjectId = journalSubjectId;
+      persistSchool();
+      window.refreshEdUgnayShellContext?.();
+      renderAll();
+      notify('Portal features saved.');
     }
     function saveAttendance(event) {
       event.preventDefault();

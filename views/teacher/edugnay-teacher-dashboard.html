@@ -70,7 +70,7 @@
 
         </div>
 
-        <!-- Advisers review reports; Values Education teachers manage journals. -->
+        <!-- Advisers review reports; the configured journal-subject teacher manages journals. -->
         <div class="nav-section" id="reports-nav">
           <div class="nav-section-label">Reports</div>
           <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
@@ -543,8 +543,9 @@
 
     // Page data boundary: replace this array with the teacher dashboard API later.
     // Advisership and a subject assignment stay separate, so subject can be blank.
+    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Values Education';
     const TEACHER_SECTIONS = [
-      { grade: '7', id: '7-matthew', sourceSectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subject: 'Values Education', isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '7', id: '7-matthew', sourceSectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subject: journalSubjectName, isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
       { grade: '8', id: '8-luke', sourceSectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
       { grade: '8', id: '8-john', sourceSectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subject: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
       { grade: '9', id: '9-peter', sourceSectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
@@ -587,6 +588,7 @@
     ];
 
     const TEACHER_IS_ADVISER = window.EDUGNAY_TEACHER_ACCESS.isAdviser;
+    const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
     const TEACHER_SUMMARY_CARDS = [
       {
@@ -603,7 +605,7 @@
         sub: 'Assigned for the current term',
         records: TEACHER_SECTIONS,
       },
-      TEACHER_IS_ADVISER
+      TEACHER_CAN_REVIEW_REPORTS
         ? {
             tone: 'gold',
             icon: 'hourglass',
@@ -627,7 +629,7 @@
     ];
 
     const PENDING_TASKS = [
-      ...(TEACHER_IS_ADVISER ? [{ title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
+      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
       { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
       { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
     ];

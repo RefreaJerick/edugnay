@@ -68,7 +68,7 @@
 
       </div>
 
-      <!-- Advisers review reports; Values Education teachers manage journals. -->
+      <!-- Advisers review reports; the configured journal-subject teacher manages journals. -->
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
         <a class="nav-item active" data-teacher-access="reports" onclick="navigate('reports')">
@@ -388,7 +388,7 @@
             </div>
             <div>
               <div class="ds-val" id="rm-journal">1 entry submitted</div>
-              <div class="ds-label">Journal · Values Education</div>
+              <div class="ds-label" id="rm-journal-label">Journal</div>
             </div>
           </div>
         </div>
@@ -460,7 +460,7 @@
     <div class="gen-progress-wrap" id="gen-confirm-view">
       <p style="font-size:13px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;text-align:left;">
         This will pull <strong>attendance and assignment completion</strong> across all subjects,
-        plus <strong>journal reflections from Values Education</strong>,
+        plus <strong>journal reflections from <span id="generation-journal-subject">Values Education</span></strong>,
         for the week of <strong>June 9–14, 2025</strong>,
         then generate a narrative report for each student in your section.
         Students flagged as at-risk will also have their academic records included.
@@ -513,10 +513,13 @@
   ───────────────────────────────────────────────────── */
 
   // EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
+  const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Values Education';
   const SYSTEM_CONFIG = {
     atRiskAbsenceThreshold: 3,
-    journalSubject: 'Values Education' // subject the journal entries are logged under — may differ from the adviser's own subject
+    journalSubject: journalSubjectName // subject the journal entries are logged under — may differ from the adviser's own subject
   };
+  const generationJournalSubject = document.getElementById('generation-journal-subject');
+  if (generationJournalSubject) generationJournalSubject.textContent = journalSubjectName;
 
   // EJS: const REPORTS = <%- JSON.stringify(reports) %>;
   const REPORTS = [
@@ -648,7 +651,7 @@
     { icon: 'user-check', label: 'Attendance', sub: 'All subjects' },
     { icon: 'clipboard-check', label: 'Assignments', sub: 'All subjects' },
     { icon: 'bar-chart-2', label: 'Academic', sub: 'At-risk only' },
-    { icon: 'notebook-pen', label: 'Journal', sub: 'Values Ed' },
+    { icon: 'notebook-pen', label: 'Journal', sub: journalSubjectName },
     { icon: 'sparkles', label: 'AI Synthesis', sub: 'Welfare check', className: 'ai' },
     { icon: 'send', label: 'To Parent', sub: 'After confirm', className: 'final' }
   ];
@@ -839,6 +842,7 @@
     document.getElementById('rm-journal').textContent = r.journal === 0
       ? `No entry submitted (${SYSTEM_CONFIG.journalSubject})`
       : `${r.journal} entr${r.journal === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
+    document.getElementById('rm-journal-label').textContent = `Journal · ${SYSTEM_CONFIG.journalSubject}`;
     document.getElementById('rm-report-text').value       = r.report;
 
     const riskBanner   = document.getElementById('rm-at-risk-banner');

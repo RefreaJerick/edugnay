@@ -178,13 +178,14 @@
   }
 
   function markAllRead() {
-    NOTIFICATIONS.forEach(n => n.read = true);
-    setReadIds(NOTIFICATIONS.map(n => n.id));
+    const visibleNotifications = getParentVisibleNotifications();
+    visibleNotifications.forEach(n => n.read = true);
+    setReadIds(visibleNotifications.map(n => n.id));
     renderNotifList();
   }
 
   function getFilteredNotifs() {
-    return NOTIFICATIONS
+    return getParentVisibleNotifications()
       .filter(n => activeNotifFilter === 'unread' ? !n.read : true)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
@@ -203,7 +204,7 @@
 
     if (!filtered.length) {
       container.innerHTML = '';
-      const isUnreadEmpty = activeNotifFilter === 'unread' && NOTIFICATIONS.length;
+      const isUnreadEmpty = activeNotifFilter === 'unread' && getParentVisibleNotifications().length;
       emptyState.hidden = false;
       emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
         icon: 'bell-off',

@@ -63,8 +63,10 @@
                 <input id="schoolId" name="schoolId" type="text" placeholder="Optional DepEd school ID" />
               </div>
               <div class="onboarding-field">
-                <label for="schoolType">School type</label>
-                <select id="schoolType" name="schoolType" required></select>
+                <label>School levels served</label>
+                <div class="onboarding-level-options" id="schoolLevelOptions" role="group" aria-label="School levels served"></div>
+                <small>Select every level offered by the school.</small>
+                <div class="onboarding-level-error" id="schoolLevelsError" role="alert" hidden>Select at least one school level.</div>
               </div>
               <div class="onboarding-field">
                 <label for="schoolAddress">Address</label>
@@ -131,6 +133,10 @@
                 <small>Use at least 8 characters. This can be changed after account activation.</small>
               </div>
             </div>
+            <div class="onboarding-settings-note" role="note">
+              <span class="onboarding-settings-note-icon" aria-hidden="true"><i data-lucide="settings-2"></i></span>
+              <span>Portal features and other school options can be adjusted later in School Settings.</span>
+            </div>
           </section>
 
           <div class="onboarding-actions">
@@ -143,16 +149,23 @@
   </main>
 
   <script>
-    const SCHOOL_TYPES = [
-      { value: 'k12', label: 'K-12 School' },
-      { value: 'elementary', label: 'Elementary' },
-      { value: 'jhs', label: 'Junior High School' },
-      { value: 'shs', label: 'Senior High School' }
-    ];
+    const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
 
-    function populateSchoolTypes() {
-      const select = document.getElementById('schoolType');
-      select.innerHTML = SCHOOL_TYPES.map(type => `<option value="${type.value}">${type.label}</option>`).join('');
+    function populateSchoolLevels() {
+      const options = document.getElementById('schoolLevelOptions');
+      options.innerHTML = SCHOOL_LEVELS.map(level => `
+        <label class="onboarding-level-option">
+          <input type="checkbox" name="schoolLevels" value="${level.value}">
+          <span>${level.label}</span>
+        </label>`).join('');
+      options.addEventListener('change', () => {
+        document.getElementById('schoolLevelsError').hidden = options.querySelectorAll('input:checked').length > 0;
+      });
+    }
+
+    function selectedSchoolLevels() {
+      const selected = new Set(Array.from(document.querySelectorAll('#schoolLevelOptions input:checked')).map(input => input.value));
+      return SCHOOL_LEVELS.map(level => level.value).filter(level => selected.has(level));
     }
 
     function slugify(value) {
@@ -194,8 +207,13 @@
       event.preventDefault();
       const form = event.currentTarget;
       const values = Object.fromEntries(new FormData(form).entries());
-      const type = SCHOOL_TYPES.find(item => item.value === values.schoolType) || SCHOOL_TYPES[0];
-      const schoolLevels = type.value === 'k12' ? ['elementary', 'jhs', 'shs'] : [type.value];
+      const schoolLevels = selectedSchoolLevels();
+      if (!schoolLevels.length) {
+        document.getElementById('schoolLevelsError').hidden = false;
+        document.querySelector('#schoolLevelOptions input')?.focus();
+        return;
+      }
+      const type = window.EDUGNAY_CONFIG.getSchoolTypeInfo(schoolLevels);
       const school = {
         id: `${slugify(values.schoolName)}-${Date.now()}`,
         name: values.schoolName.trim(),
@@ -211,11 +229,15 @@
         photos: [],
         schoolYear: '2025-2026',
         academicPeriod: type.value === 'shs' ? '1st Semester' : 'Quarter 1',
-        // Grade visibility is enabled by default and can be changed later in
-        // School Settings > Grading Rules.
         gradesPageEnabled: true,
+        narrativeReportsEnabled: true,
+        journalsEnabled: true,
+        journalSubjectId: 'values-education',
         platformStatus: 'pending',
         schoolLevels,
+        subjects: [...new Set(schoolLevels.flatMap(level => window.EDUGNAY_CONFIG.subjects
+          .filter(subject => subject.levels.includes(level))
+          .map(subject => subject.id)))],
         sections: [],
         gradingRules: [
           { id: 'ww', label: 'Written Work', weight: 30 },
@@ -227,10 +249,8 @@
           email: values.adminEmail.trim()
         }
       };
-      if (type.value === 'k12') {
-        school.activeDivision = 'jhs';
-        school.divisions = Object.fromEntries(schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)]));
-      }
+      school.activeDivision = schoolLevels.includes('jhs') ? 'jhs' : schoolLevels[0];
+      school.divisions = Object.fromEntries(schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)]));
 
       const logoInput = document.getElementById('schoolLogo');
       const saveSchool = logoData => {
@@ -263,7 +283,7 @@
       }
     }
 
-    populateSchoolTypes();
+    populateSchoolLevels();
     document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
     if (window.lucide) lucide.createIcons();
   </script>

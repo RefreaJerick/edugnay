@@ -249,7 +249,7 @@
 
       </div>
 
-      <!-- Advisers review reports; Values Education teachers manage journals. -->
+      <!-- Advisers review reports; the configured journal-subject teacher manages journals. -->
       <div class="nav-section" id="reports-nav">
         <div class="nav-section-label">Reports</div>
         <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
@@ -398,7 +398,7 @@
           <div class="panel-title" id="panel-title">Journal Entries: Grade 7 – St. Matthew</div>
         </div>
         <div class="panel-head-right">
-          <!-- EJS: render only if teacher.subjects.includes('Values Education') -->
+          <!-- EJS: render only when this teacher teaches the configured journal subject -->
           <button class="settings-trigger" onclick="openSettingsDrawer()" title="Journal Settings">
             <i data-lucide="settings-2" style="width:14px;height:14px;"></i>
             <span>Journal Settings</span>

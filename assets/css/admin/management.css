@@ -795,13 +795,6 @@ tbody tr:hover {
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.grade-check-item input {
-  flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
-  accent-color: var(--blue-mid);
-}
-
 .grade-check-item:has(input:checked) {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);

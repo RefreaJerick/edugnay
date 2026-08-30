@@ -457,6 +457,15 @@ body.drawer-open .sidebar {
   display: none !important;
 }
 
+/* School-level Journal access can hide nav links and dashboard surfaces. */
+.sidebar a[href*="edugnay-student-journal.html"][hidden],
+[data-student-access][hidden],
+.journal-feature[hidden],
+.report-hero[hidden],
+.report-hero-link[hidden] {
+  display: none !important;
+}
+
 .nav-item:hover {
   background: rgba(255,255,255,0.07);
 }
@@ -1549,12 +1558,6 @@ body.drawer-open .sidebar {
   color: var(--gray-600);
   cursor: pointer;
   user-select: none;
-}
-
-.remember input[type="checkbox"] {
-  width: 15px; height: 15px;
-  accent-color: var(--blue-mid);
-  cursor: pointer;
 }
 
 .forgot {
@@ -2734,7 +2737,7 @@ body.drawer-open .sidebar {
   }
 }
 
-/* Shared native checkbox treatment. Custom switch controls are excluded. */
+/* Shared checkbox treatment. Custom switch controls are excluded. */
 input[type="checkbox"]:not(.school-toggle-input) {
   appearance: none;
   -webkit-appearance: none;
@@ -2742,7 +2745,9 @@ input[type="checkbox"]:not(.school-toggle-input) {
   flex: 0 0 16px;
   width: 16px !important;
   height: 16px !important;
+  min-height: 16px !important;
   margin: 0;
+  padding: 0 !important;
   place-content: center;
   border: 1.5px solid var(--gray-300);
   border-radius: 5px;
@@ -2781,4 +2786,146 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   border-color: var(--gray-200);
   cursor: not-allowed;
   opacity: .7;
+}
+
+/* Shared toggle treatment used by school settings and onboarding. Keeping
+   this control in the shared stylesheet prevents each page from drifting. */
+.school-toggle-list {
+  display: grid;
+  margin-top: 12px;
+  border-top: 1px solid var(--gray-100);
+}
+
+.school-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--gray-100);
+  cursor: pointer;
+}
+
+.school-toggle-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.school-toggle-copy {
+  min-width: 0;
+}
+
+.school-toggle-copy strong,
+.school-toggle-copy small {
+  display: block;
+}
+
+.school-toggle-copy strong {
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.school-toggle-copy small {
+  margin-top: 2px;
+  color: var(--gray-400);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.school-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.school-toggle-control {
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 22px;
+  border: 1px solid var(--gray-300);
+  border-radius: 999px;
+  background: var(--gray-200);
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.school-toggle-control::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  content: '';
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 1px 3px rgba(11, 31, 58, .18);
+  transition: transform .16s ease;
+}
+
+.school-toggle-input:checked + .school-toggle-control {
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+}
+
+.school-toggle-input:checked + .school-toggle-control::after {
+  transform: translateX(16px);
+}
+
+.school-toggle-input:focus-visible + .school-toggle-control {
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+/* Shared school-level choice layout. The checkbox itself uses the global
+   treatment above so every standard checkbox stays visually consistent. */
+.onboarding-level-options,
+.school-level-options {
+  display: grid;
+  gap: 7px;
+}
+
+.onboarding-field .onboarding-level-option,
+.school-field .school-level-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--button-radius);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+  text-transform: none;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.onboarding-field .onboarding-level-option:hover,
+.school-field .school-level-option:hover {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.onboarding-field .onboarding-level-option:has(input:checked),
+.school-field .school-level-option:has(input:checked) {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.onboarding-field .onboarding-level-option span,
+.school-field .school-level-option span {
+  min-width: 0;
 }

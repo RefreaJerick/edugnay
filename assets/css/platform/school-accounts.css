@@ -383,6 +383,114 @@
   line-height: 1.45;
 }
 
+.platform-school-accounts .account-review-section {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--gray-100);
+}
+
+.platform-school-accounts .account-review-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.platform-school-accounts .account-review-section-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.platform-school-accounts .account-review-section-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.platform-school-accounts .account-review-section-title {
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.platform-school-accounts .account-review-section-sub {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.platform-school-accounts .account-review-feature-list {
+  border-top: 1px solid var(--gray-100);
+}
+
+.platform-school-accounts .account-review-feature-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 40px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.platform-school-accounts .account-review-feature-row:last-child {
+  border-bottom: 0;
+}
+
+.platform-school-accounts .account-review-feature-label {
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.platform-school-accounts .account-review-feature-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  background: var(--gray-50);
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.platform-school-accounts .account-review-feature-status.enabled {
+  border-color: var(--green-pale);
+  background: var(--green-pale);
+  color: var(--green-dark);
+}
+
+.platform-school-accounts .account-review-feature-status.disabled {
+  border-color: var(--gray-200);
+  background: var(--gray-50);
+  color: var(--gray-500);
+}
+
+.platform-school-accounts .account-review-feature-status svg {
+  width: 12px;
+  height: 12px;
+}
+
+.platform-school-accounts .account-review-feature-value {
+  max-width: 60%;
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: right;
+}
+
 .platform-school-accounts .platform-account-modal .modal-foot {
   justify-content: space-between;
 }

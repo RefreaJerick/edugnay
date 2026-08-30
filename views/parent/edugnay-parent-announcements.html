@@ -524,7 +524,7 @@
     // Page data boundary: replace this array with the parent's announcements query later.
     const ANNOUNCEMENTS = [
       { id: 'ANN-001', priority: 'high', read: false, pinned: true, title: 'Foundation Day - June 20, 2025', time: 'Today, 8:00 AM', author: 'Admin', icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Parents are welcome to attend the closing program at 4:00 PM.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users' },
-      { id: 'ANN-002', priority: 'normal', read: false, title: 'Q2 Narrative Reports Now Available', time: 'Yesterday, 9:00 AM', author: 'Admin', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent dashboard. Visit the Narrative Reports tab to view your child\'s teacher-written weekly summaries.', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'users' },
+      { id: 'ANN-002', priority: 'normal', read: false, title: 'Q2 Narrative Reports Now Available', time: 'Yesterday, 9:00 AM', author: 'Admin', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent dashboard. Visit the Narrative Reports tab to view your child\'s teacher-written weekly summaries.', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'users', access: 'reports' },
       { id: 'ANN-003', priority: 'event', read: true, title: 'Parent-Teacher Conference Schedule', time: '2 days ago', author: 'Admin', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', tagClass: 'badge-gold', body: 'Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child\'s adviser for a specific time slot. Attendance is strongly encouraged.', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'users' },
       { id: 'ANN-004', priority: 'low', read: true, title: 'End of Quarter Reminder - Q2 Closing', time: 'May 22, 4:30 PM', author: 'Admin', icon: 'info', iconClass: 'icon-low', tag: 'General', tagClass: 'badge-gray', body: 'As Q2 draws to a close, please make sure your child\'s outstanding requirements are submitted. Coordinate with subject teachers or the adviser regarding any incomplete requirements before grades are finalized.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users' }
     ];
@@ -532,7 +532,8 @@
     function renderParentAnnouncements() {
       const list = document.getElementById('annList');
       if (!list) return;
-      list.innerHTML = ANNOUNCEMENTS.map((ann, index) => `
+      const visibleAnnouncements = ANNOUNCEMENTS.filter(ann => !ann.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false);
+      list.innerHTML = visibleAnnouncements.map((ann, index) => `
         <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-read="${ann.read}" onclick="openAnnModal(this)">
           ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
           <div class="ann-body">
