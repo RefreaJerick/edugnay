@@ -1799,7 +1799,7 @@ function formatRelativeTime(dateValue) {
     saveAssignments,
     createAssignment,
     setAssignmentCompletion,
-    grades: GRADE_DIRECTORY,
+    gradeRecords: GRADE_DIRECTORY,
     getGradesForStudent,
     journals: JOURNAL_DIRECTORY,
     getJournals,
