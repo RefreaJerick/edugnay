@@ -7,7 +7,7 @@
   const PLATFORM_ACCOUNT = {
     id: 'platform-admin-001',
     schoolId: null,
-    email: 'platform.admin@edugnay.local',
+    email: 'platform.admin@academix.local',
     role: 'platform_admin',
     status: 'active',
     createdAt: '2025-01-01T00:00:00.000Z'
