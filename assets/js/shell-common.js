@@ -724,7 +724,7 @@ function formatRelativeTime(dateValue) {
     { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', initials: 'CM', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', initials: 'LR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', initials: 'RC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', initials: 'JC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
+    { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', initials: 'JC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke', lrn: '100-201-0001' },
     { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', initials: 'ET', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
     { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', initials: 'ML', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
     { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', initials: 'BG', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
@@ -732,7 +732,7 @@ function formatRelativeTime(dateValue) {
     { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', initials: 'KS', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
     { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', initials: 'PN', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
     { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', initials: 'DO', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
-    { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', initials: 'MT', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
+    { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', initials: 'MT', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew', lrn: '100-201-0002' },
     { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', initials: 'SC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', initials: 'GB', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', initials: 'NA', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
@@ -786,7 +786,7 @@ function formatRelativeTime(dateValue) {
     { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', initials: 'NB', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
     { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', initials: 'IM', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
     { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', initials: 'MF', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
-  ].map(record => ({ ...record, schoolId: 'scc' }));
+  ].map(record => ({ ...record, lrn: record.lrn || null, schoolId: 'scc' }));
 
   const ACTIVE_SCHOOL_ID = getActiveSchoolId();
 
@@ -1283,7 +1283,7 @@ function formatRelativeTime(dateValue) {
       lastName: names.lastName,
       displayName: student.name,
       initials: student.initials || getInitials(student.name),
-      lrn: sourceUsers.find(record => String(record.id) === account?.id)?.lrn || null,
+      lrn: student.lrn || sourceUsers.find(record => String(record.id) === account?.id)?.lrn || null,
       schoolLevel: student.level || null,
       gradeLevel: formatAccountGrade(student.grade),
       strand: student.strand || null,
@@ -1295,6 +1295,13 @@ function formatRelativeTime(dateValue) {
   const TEACHER_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.teacherProfiles, defaultTeacherProfiles);
   const STUDENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.studentProfiles, defaultStudentProfiles);
   const PARENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.parentProfiles, defaultParentProfiles);
+
+  // Backfill newly added default fields for existing local student profiles.
+  STUDENT_PROFILE_DIRECTORY.forEach(profile => {
+    if (profile.lrn) return;
+    const student = DEFAULT_STUDENT_DIRECTORY.find(record => String(record.id) === String(profile.id));
+    if (student?.lrn) profile.lrn = student.lrn;
+  });
 
   const legacyStudentIds = { 'STU-J-LIM': 'jd-004', 'STU-M-CRUZ': 'mt-012' };
   const legacyParentStudentLinks = sourceUsers

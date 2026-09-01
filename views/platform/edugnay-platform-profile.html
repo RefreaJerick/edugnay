@@ -121,9 +121,9 @@
     const PLATFORM = window.EDUGNAY_PLATFORM;
 
     const PLATFORM_PROFILE_FIELDS = [
-      { label: 'Full Name', getValue: admin => admin.name },
+      { label: 'Full Name', getValue: admin => admin.displayName },
       { label: 'Account Email', getValue: admin => admin.email },
-      { label: 'Role', getValue: admin => admin.roleLabel }
+      { label: 'Role', getValue: admin => admin.role === 'platform_admin' ? 'Platform Administrator' : admin.role }
     ];
 
     const PLATFORM_ACCESS_DETAILS = [
@@ -134,8 +134,9 @@
 
     function renderPlatformProfile() {
       const admin = PLATFORM.admin;
-      document.getElementById('profileInitials').textContent = admin.initials;
-      document.getElementById('profile-header-name').textContent = admin.name;
+      const displayName = admin.displayName || [admin.firstName, admin.lastName].filter(Boolean).join(' ') || 'Platform Admin';
+      document.getElementById('profileInitials').textContent = getInitials(displayName);
+      document.getElementById('profile-header-name').textContent = displayName;
       document.getElementById('profileEmail').textContent = admin.email;
       document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.length ? PLATFORM_PROFILE_FIELDS.map(field => `
         <div class="form-group">
