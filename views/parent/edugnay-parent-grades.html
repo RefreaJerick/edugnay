@@ -184,6 +184,7 @@
     // Each child's periods come from the shared grade source. Replace the
     // getter with GET /parent/grades?child=:id later.
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
     const PARENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
     const PARENT_GRADE_RECORDS = PARENT_CHILDREN.map(child => ({
       studentId: child.studentId,
@@ -195,7 +196,8 @@
     let activeQuarterId = 'q2';
 
     function getActiveChild() {
-      return PARENT_CHILDREN.find(child => child.studentId === activeChildId);
+      const link = PARENT_CHILDREN.find(child => child.studentId === activeChildId);
+      return link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null;
     }
 
     function getActiveGradeRecord() {
@@ -218,14 +220,19 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('parentGradeChildSwitcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(child => `
-        <div class="child-card ${child.studentId === activeChildId ? 'active' : ''}" data-student-id="${escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${child.studentId === activeChildId}">
-          <div class="child-avatar">${escapeHtml(child.initials)}</div>
+      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student || student.role !== 'student') return '';
+        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+        return `
+        <div class="child-card ${student.id === activeChildId ? 'active' : ''}" data-student-id="${escapeHtml(student.id)}" role="button" tabindex="0" aria-pressed="${student.id === activeChildId}">
+          <div class="child-avatar">${escapeHtml(student.initials)}</div>
           <div class="child-info">
-            <div class="child-name">${escapeHtml(child.name)}</div>
-            <div class="child-section">${escapeHtml(child.gradeLevel)} – ${escapeHtml(child.sectionName)}</div>
+            <div class="child-name">${escapeHtml(student.displayName)}</div>
+            <div class="child-section">${escapeHtml(student.gradeLevel || 'Unassigned')} – ${escapeHtml(section?.name || 'Unassigned')}</div>
           </div>
-        </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+        </div>`;
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       switcher.querySelectorAll('[data-student-id]').forEach(card => {
         const selectChild = () => switchChild(card.dataset.studentId);
         card.addEventListener('click', selectChild);
@@ -275,7 +282,7 @@
     function renderSubjectGrades(child, quarter) {
       const subjects = Array.isArray(quarter?.subjects) ? quarter.subjects : [];
       const list = document.getElementById('parentGradeSubjectList');
-      document.getElementById('parentSubjectGradesSub').textContent = `${child.name}'s marks by subject`;
+      document.getElementById('parentSubjectGradesSub').textContent = `${child.displayName}'s marks by subject`;
 
       if (!subjects.length) {
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
@@ -325,7 +332,7 @@
       }
       renderQuarterTabs(gradeRecord);
       renderSubjectGrades(child, quarter);
-      const firstName = child.name.split(' ')[0];
+      const firstName = child.displayName.split(' ')[0];
       note.innerHTML = quarter.status === 'final'
         ? `<strong>Final quarter grades.</strong> Contact the subject teacher if ${escapeHtml(firstName)}'s record needs correction.`
         : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the quarter is released.';

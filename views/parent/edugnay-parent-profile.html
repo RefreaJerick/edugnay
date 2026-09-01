@@ -413,6 +413,7 @@
     lucide.createIcons();
 
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
 
     function renderLinkedChildren() {
       const list = document.getElementById('linked-children-list');
@@ -422,7 +423,15 @@
         lucide.createIcons();
         return;
       }
-      list.innerHTML = PARENT_CHILDREN.map(child => `<div class="child-record-card"><div class="child-record-avatar">${child.initials}</div><div class="child-record-info"><div class="child-record-name">${child.name}</div><div class="child-record-section">${child.gradeLevel} – ${child.sectionName} · Adviser: ${child.adviserName}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${child.lrn || 'Not available'}</div></div><span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> ${child.relationship}</span></div>`).join('');
+      list.innerHTML = PARENT_CHILDREN.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student || student.role !== 'student') return '';
+        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+        const adviser = section?.adviserId
+          ? window.EDUGNAY_CONFIG.getUserById(section.adviserId)
+          : null;
+        return `<div class="child-record-card"><div class="child-record-avatar">${student.initials}</div><div class="child-record-info"><div class="child-record-name">${student.displayName}</div><div class="child-record-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'} · Adviser: ${adviser?.displayName || 'Not assigned'}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${student.lrn || 'Not available'}</div></div><span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> Parent</span></div>`;
+      }).join('');
       lucide.createIcons();
     }
 

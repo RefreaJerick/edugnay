@@ -261,6 +261,7 @@
       server should return only confirmed reports for the linked child.
     */
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
 
     function getReportRecord(studentId) {
       const reports = window.EDUGNAY_CONFIG.getReportsForStudent(studentId, true);
@@ -274,9 +275,12 @@
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
       switcher.innerHTML = PARENT_CHILDREN.length
-        ? PARENT_CHILDREN.map(child => {
-          const reportRecord = getReportRecord(child.studentId);
-          return `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.gradeLevel} – ${child.sectionName}</div></div><span class="child-report-badge">${reportRecord?.reports.length || 0}</span></div>`;
+        ? PARENT_CHILDREN.map(link => {
+          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          if (!student || student.role !== 'student') return '';
+          const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+          const reportRecord = getReportRecord(student.id);
+          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div><span class="child-report-badge">${reportRecord?.reports.length || 0}</span></div>`;
         }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();
@@ -293,7 +297,7 @@
     }
 
     function renderLatest() {
-      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
       const reportRecord = getReportRecord(currentChild);
       const wrap = document.getElementById('latest-report-wrap');
       if (!child || !reportRecord) {
@@ -305,7 +309,7 @@
 
       // EJS: <% if (latestReport) { %>
       if (!latest) {
-        const firstName = child.name.split(' ')[0];
+        const firstName = child.displayName.split(' ')[0];
         wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'notebook-pen',
           title: 'Weekly report not ready yet',
@@ -342,7 +346,7 @@
     }
 
     function renderTimeline() {
-      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
       const reportRecord = getReportRecord(currentChild);
       const query = document.getElementById('search-input').value.toLowerCase();
       const riskFilter = document.getElementById('risk-filter').value;
@@ -366,7 +370,7 @@
           icon: 'notebook-pen',
           title: 'No past reports to show',
           text: reportRecord.reports.length <= 1
-            ? 'This is the first confirmed report for ' + child.name.split(' ')[0] + '.'
+            ? 'This is the first confirmed report for ' + child.displayName.split(' ')[0] + '.'
             : 'Try adjusting your search or filter.'
         })}</div>`;
         if (window.lucide) lucide.createIcons();
@@ -405,14 +409,15 @@
     }
 
     function openReportModal(id) {
-      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
       const reportRecord = getReportRecord(currentChild);
       const r = reportRecord?.reports.find(report => report.id === String(id));
       if (!child || !r) return;
       activeReportId = String(id);
 
       document.getElementById('rm-week').textContent = r.weekLabel;
-      document.getElementById('rm-child').textContent = `${child.name} · ${child.gradeLevel} – ${child.sectionName}`;
+      const section = PARENT_SECTIONS.find(record => record.id === child.sectionId);
+      document.getElementById('rm-child').textContent = `${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       document.getElementById('rm-text').textContent = r.text;
       document.getElementById('rm-foot-avatar').textContent = r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName);
       document.getElementById('rm-foot-meta-text').textContent = `Sent by ${r.teacherName} · ${r.confirmedAtLabel}`;

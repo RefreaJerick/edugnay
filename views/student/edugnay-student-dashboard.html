@@ -319,11 +319,28 @@
       lucide.createIcons();
     }
 
-    const MATERIALS = window.EDUGNAY_CONFIG.withActiveSchool([
-      { title: 'Lesson 2 - Equations Slides', subject: 'Mathematics', posted: 'Posted June 12, 2025', icon: 'presentation', tone: 'blue' },
-      { title: 'Solving for X - Video Lesson', subject: 'Mathematics', posted: 'Posted June 10, 2025', icon: 'video', tone: 'green' },
-      { title: 'Quiz 1 Answer Key', subject: 'Mathematics', posted: 'Posted June 9, 2025', icon: 'file-check', tone: 'gold' }
-    ]);
+    const MATERIAL_TYPE_DISPLAY = {
+      pdf: { icon: 'file-text', tone: 'gold' },
+      pptx: { icon: 'presentation', tone: 'blue' },
+      video: { icon: 'video', tone: 'green' },
+      docx: { icon: 'file-text', tone: 'blue' }
+    };
+    const MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent('jd-004')
+      .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
+      .slice(0, 3)
+      .map(material => {
+        const display = MATERIAL_TYPE_DISPLAY[material.type] || MATERIAL_TYPE_DISPLAY.pdf;
+        const postedDate = new Date(material.postedAt);
+        return {
+          ...material,
+          subject: material.subjectName || 'Subject',
+          posted: Number.isNaN(postedDate.getTime())
+            ? 'Date unavailable'
+            : `Posted ${postedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+          icon: display.icon,
+          tone: display.tone
+        };
+      });
 
     const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
     const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent('jd-004').slice(0, 3);

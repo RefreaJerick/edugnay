@@ -118,14 +118,11 @@ function formatRelativeTime(dateValue) {
     schools: 'edugnay_schools',
     activeSchool: 'edugnay_active_school',
     holidays: 'edugnay_holidays',
-    accounts: 'edugnay_accounts',
-    students: 'edugnay_students',
-    adminProfiles: 'edugnay_admin_profiles',
-    teacherProfiles: 'edugnay_teacher_profiles',
-    studentProfiles: 'edugnay_student_profiles',
-    parentProfiles: 'edugnay_parent_profiles',
+    users: 'edugnay_users',
     parentStudentLinks: 'edugnay_parent_student_links',
+    attendance: 'edugnay_attendance',
     assignments: 'edugnay_assignments',
+    materials: 'edugnay_learning_materials',
     announcements: 'edugnay_announcements',
     grades: 'edugnay_grades',
     journals: 'edugnay_journals',
@@ -490,7 +487,7 @@ function formatRelativeTime(dateValue) {
 
   function assignmentWithLabels(record, studentId = null) {
     const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
-    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    const teacher = getUserById(record.teacherId);
     const completion = Array.isArray(record.completion) ? record.completion : [];
     const completed = studentId == null
       ? null
@@ -516,8 +513,8 @@ function formatRelativeTime(dateValue) {
   }
 
   function getAssignmentsForStudent(studentId) {
-    const student = STUDENT_DIRECTORY.find(record => record.id === String(studentId));
-    if (!student) return [];
+    const student = getUserById(studentId);
+    if (!student || student.role !== RECORD_VALUES.roles.STUDENT) return [];
     return ASSIGNMENT_DIRECTORY
       .filter(record => record.schoolId === getActiveSchoolId() && record.sectionId === student.sectionId)
       .map(record => assignmentWithLabels(record, student.id));
@@ -555,23 +552,63 @@ function formatRelativeTime(dateValue) {
     return assignment;
   }
 
+  function learningMaterialWithLabels(record) {
+    const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
+    const teacher = getUserById(record.teacherId);
+    return {
+      ...record,
+      subjectName: subject?.name || '',
+      teacherName: teacher?.displayName || ''
+    };
+  }
+
+  function getLearningMaterials(filters = {}) {
+    return LEARNING_MATERIAL_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId())
+      .filter(record => !filters.sectionId || record.sectionId === String(filters.sectionId))
+      .filter(record => !filters.subjectId || record.subjectId === String(filters.subjectId))
+      .filter(record => !filters.teacherId || record.teacherId === String(filters.teacherId))
+      .filter(record => !filters.status || record.status === String(filters.status))
+      .filter(record => filters.visibleToStudents === undefined || record.visibleToStudents === Boolean(filters.visibleToStudents))
+      .map(learningMaterialWithLabels);
+  }
+
+  function getLearningMaterialsForSection(sectionId, subjectId = null) {
+    return getLearningMaterials({ sectionId, ...(subjectId ? { subjectId } : {}) });
+  }
+
+  function getLearningMaterialsForStudent(studentId, subjectId = null) {
+    const student = getUserById(studentId);
+    if (!student || student.role !== RECORD_VALUES.roles.STUDENT || !student.sectionId) return [];
+    return getLearningMaterials({
+      sectionId: student.sectionId,
+      ...(subjectId ? { subjectId } : {}),
+      status: 'published',
+      visibleToStudents: true
+    });
+  }
+
+  function saveLearningMaterials(records = LEARNING_MATERIAL_DIRECTORY) {
+    writeJson(schoolStorageKey(STORAGE_KEYS.materials), Array.isArray(records) ? records : []);
+  }
+
   function gradeWithLabels(record) {
     const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
-    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    const teacher = getUserById(record.teacherId);
     return {
       ...record,
       name: subject?.name || record.subjectName || '',
-      teacher: teacher?.displayName || record.teacherName || ''
+      teacher: teacher?.displayName || ''
     };
   }
 
   function getGradesForStudent(studentId, schoolYear = null) {
-    const student = STUDENT_DIRECTORY.find(record => record.id === String(studentId));
-    if (!student) return [];
+    const student = getUserById(studentId);
+    if (!student || student.role !== RECORD_VALUES.roles.STUDENT) return [];
 
-    const periodLabels = PERIOD_CATALOG[student.level] || PERIOD_CATALOG.jhs;
+    const periodLabels = PERIOD_CATALOG[student.schoolLevel] || PERIOD_CATALOG.jhs;
     const periods = periodLabels.map((label, index) => ({
-      id: student.level === 'shs' ? `semester-${index + 1}` : `q${index + 1}`,
+      id: student.schoolLevel === 'shs' ? `semester-${index + 1}` : `q${index + 1}`,
       label,
       status: 'not-started',
       subjects: []
@@ -623,7 +660,7 @@ function formatRelativeTime(dateValue) {
       status: record.status === 'draft' ? 'Draft' : 'Active',
       draft: record.status === 'draft',
       seen: record.seenCount ? `Seen by ${record.seenCount} users` : (record.status === 'draft' ? 'Not yet published' : 'Not yet viewed'),
-      image: record.imageUrl || record.image || null
+      image: record.imageUrl || null
     };
   }
 
@@ -691,104 +728,232 @@ function formatRelativeTime(dateValue) {
     return announcement;
   }
 
-  // Shared non-student accounts.
-  const CORE_ACCOUNT_DIRECTORY = [
-    { id: '1', schoolId: 'scc', email: 'admin.adm@stcolumban.edu.ph', role: RECORD_VALUES.roles.SCHOOL_ADMIN, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-01-06T00:00:00.000Z' },
-    { id: '2', schoolId: 'scc', email: 'm.reyes.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    { id: '3', schoolId: 'scc', email: 'p.tan.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-05-20T00:00:00.000Z' },
-    { id: '11', schoolId: 'scc', email: 'c.dizon.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    { id: '12', schoolId: 'scc', email: 'r.santos.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    { id: '13', schoolId: 'scc', email: 'j.mendez.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    { id: '14', schoolId: 'scc', email: 'a.garcia.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    { id: '7', schoolId: 'scc', email: 'r.lim.parents@stcolumban.edu.ph', role: RECORD_VALUES.roles.PARENT, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-05T00:00:00.000Z' },
-    { id: '8', schoolId: 'scc', email: 'e.cruz.parents@stcolumban.edu.ph', role: RECORD_VALUES.roles.PARENT, status: RECORD_VALUES.statuses.INACTIVE, createdAt: '2025-05-24T00:00:00.000Z' },
-    { id: '9', schoolId: 'scc', email: 'l.villanueva.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' }
+  // One direct user source for every school administrator, teacher, student, and parent.
+  // Replace this local array with the users API response during backend integration.
+  const DEFAULT_USERS = [
+    { id: "admin-1", schoolId: "scc", role: "school_admin", email: "admin.adm@stcolumban.edu.ph", status: "active", createdAt: "2025-01-06T00:00:00.000Z", honorific: null, firstName: "Sr.", lastName: "Admin", displayName: "Sr. Admin", initials: "SA", employeeNo: "ADM-2016-0001", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-2", schoolId: "scc", role: "teacher", email: "m.reyes.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Maria", lastName: "Reyes", displayName: "Ms. Maria Reyes", initials: "MR", employeeNo: "FAC-2019-0042", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-3", schoolId: "scc", role: "teacher", email: "p.tan.fac@stcolumban.edu.ph", status: "active", createdAt: "2025-05-20T00:00:00.000Z", honorific: "Mr.", firstName: "Paolo", lastName: "Tan", displayName: "Mr. Paolo Tan", initials: "PT", employeeNo: "FAC-2021-0017", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-carla-dizon", schoolId: "scc", role: "teacher", email: "c.dizon.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Carla", lastName: "Dizon", displayName: "Ms. Carla Dizon", initials: "CD", employeeNo: "FAC-2020-0028", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-rico-santos", schoolId: "scc", role: "teacher", email: "r.santos.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Mr.", firstName: "Rico", lastName: "Santos", displayName: "Mr. Rico Santos", initials: "RS", employeeNo: "FAC-2019-0064", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-jana-mendez", schoolId: "scc", role: "teacher", email: "j.mendez.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Jana", lastName: "Mendez", displayName: "Ms. Jana Mendez", initials: "JM", employeeNo: "FAC-2022-0013", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-ana-garcia", schoolId: "scc", role: "teacher", email: "a.garcia.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Ana", lastName: "Garcia", displayName: "Ms. Ana Garcia", initials: "AG", employeeNo: "FAC-2021-0049", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-7", schoolId: "scc", role: "parent", email: "r.lim.parents@stcolumban.edu.ph", status: "active", createdAt: "2024-06-05T00:00:00.000Z", honorific: null, firstName: "Rosa", lastName: "Lim", displayName: "Rosa Lim", initials: "RL", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-8", schoolId: "scc", role: "parent", email: "e.cruz.parents@stcolumban.edu.ph", status: "inactive", createdAt: "2025-05-24T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Cruz", displayName: "Elena Cruz", initials: "EC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-9", schoolId: "scc", role: "teacher", email: "l.villanueva.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Lara", lastName: "Villanueva", displayName: "Ms. Lara Villanueva", initials: "LV", employeeNo: "FAC-2018-0031", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "cm-001", schoolId: "scc", role: "student", email: "c.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Carlo", lastName: "Mendoza", displayName: "Carlo Mendoza", initials: "CM", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "lr-002", schoolId: "scc", role: "student", email: "l.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liza", lastName: "Reyes", displayName: "Liza Reyes", initials: "LR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "rc-003", schoolId: "scc", role: "student", email: "r.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rico", lastName: "Cruz", displayName: "Rico Cruz", initials: "RC", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "jd-004", schoolId: "scc", role: "student", email: "j.delacruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Juan", lastName: "Dela Cruz", displayName: "Juan Dela Cruz", initials: "JC", employeeNo: null, lrn: "100-201-0001", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "et-005", schoolId: "scc", role: "student", email: "e.tan.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ella", lastName: "Tan", displayName: "Ella Tan", initials: "ET", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "ml-006", schoolId: "scc", role: "student", email: "m.lopez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Lopez", displayName: "Maria Lopez", initials: "ML", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "bg-007", schoolId: "scc", role: "student", email: "b.garcia.stud@stcolumban.edu.ph", status: "inactive", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Ben", lastName: "Garcia", displayName: "Ben Garcia", initials: "BG", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "as-008", schoolId: "scc", role: "student", email: "a.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-05-26T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Santos", displayName: "Ana Santos", initials: "AS", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "ks-009", schoolId: "scc", role: "student", email: "k.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Karl", lastName: "Santiago", displayName: "Karl Santiago", initials: "KS", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "pn-010", schoolId: "scc", role: "student", email: "p.nieves.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paula", lastName: "Nieves", displayName: "Paula Nieves", initials: "PN", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "do-011", schoolId: "scc", role: "student", email: "d.ocampo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Dan", lastName: "Ocampo", displayName: "Dan Ocampo", initials: "DO", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "mt-012", schoolId: "scc", role: "student", email: "m.torres.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maya", lastName: "Torres", displayName: "Maya Torres", initials: "MT", employeeNo: null, lrn: "100-201-0002", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "sc-013", schoolId: "scc", role: "student", email: "s.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Sofia", lastName: "Cruz", displayName: "Sofia Cruz", initials: "SC", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "gb-014", schoolId: "scc", role: "student", email: "g.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Gabriel", lastName: "Bautista", displayName: "Gabriel Bautista", initials: "GB", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "na-015", schoolId: "scc", role: "student", email: "n.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nicole", lastName: "Aquino", displayName: "Nicole Aquino", initials: "NA", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "pr-016", schoolId: "scc", role: "student", email: "p.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paolo", lastName: "Rivera", displayName: "Paolo Rivera", initials: "PR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "av-017", schoolId: "scc", role: "student", email: "a.villanueva.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Aira", lastName: "Villanueva", displayName: "Aira Villanueva", initials: "AV", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "ld-018", schoolId: "scc", role: "student", email: "l.dizon.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lucas", lastName: "Dizon", displayName: "Lucas Dizon", initials: "LD", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "br-019", schoolId: "scc", role: "student", email: "b.ramos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Beatrice", lastName: "Ramos", displayName: "Beatrice Ramos", initials: "BR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "mg-020", schoolId: "scc", role: "student", email: "m.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Miguel", lastName: "Garcia", displayName: "Miguel Garcia", initials: "MG", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "ac-021", schoolId: "scc", role: "student", email: "a.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Andrea", lastName: "Castillo", displayName: "Andrea Castillo", initials: "AC", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "eb-022", schoolId: "scc", role: "student", email: "e.bernardo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Bernardo", displayName: "Ethan Bernardo", initials: "EB", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "ch-023", schoolId: "scc", role: "student", email: "c.hernandez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Hernandez", displayName: "Chloe Hernandez", initials: "CH", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "nr-024", schoolId: "scc", role: "student", email: "n.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nathan", lastName: "Reyes", displayName: "Nathan Reyes", initials: "NR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "is-025", schoolId: "scc", role: "student", email: "i.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Isabella", lastName: "Santos", displayName: "Isabella Santos", initials: "IS", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "lm-026", schoolId: "scc", role: "student", email: "l.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liam", lastName: "Mercado", displayName: "Liam Mercado", initials: "LM", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "gr-027", schoolId: "scc", role: "student", email: "g.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Grace", lastName: "Rivera", displayName: "Grace Rivera", initials: "GR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "ds-028", schoolId: "scc", role: "student", email: "d.salazar.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Salazar", displayName: "Daniel Salazar", initials: "DS", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "cb-029", schoolId: "scc", role: "student", email: "c.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Camille", lastName: "Bautista", displayName: "Camille Bautista", initials: "CB", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "jr-030", schoolId: "scc", role: "student", email: "j.ramos2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Joshua", lastName: "Ramos", displayName: "Joshua Ramos", initials: "JR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "rr-031", schoolId: "scc", role: "student", email: "r.robles.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Reina", lastName: "Robles", displayName: "Reina Robles", initials: "RR", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "mp-032", schoolId: "scc", role: "student", email: "m.perez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Marcus", lastName: "Perez", displayName: "Marcus Perez", initials: "MP", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "al-033", schoolId: "scc", role: "student", email: "a.lim.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Alyssa", lastName: "Lim", displayName: "Alyssa Lim", initials: "AL", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "ad-034", schoolId: "scc", role: "student", email: "a.domingo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Adrian", lastName: "Domingo", displayName: "Adrian Domingo", initials: "AD", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "td-035", schoolId: "scc", role: "student", email: "t.david.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Trisha", lastName: "David", displayName: "Trisha David", initials: "TD", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "vp-036", schoolId: "scc", role: "student", email: "v.padilla.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Vincent", lastName: "Padilla", displayName: "Vincent Padilla", initials: "VP", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "hc-037", schoolId: "scc", role: "student", email: "h.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Helena", lastName: "Cruz", displayName: "Helena Cruz", initials: "HC", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "sa-038", schoolId: "scc", role: "student", email: "s.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Samuel", lastName: "Aquino", displayName: "Samuel Aquino", initials: "SA", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "pm-039", schoolId: "scc", role: "student", email: "p.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Patricia", lastName: "Mendoza", displayName: "Patricia Mendoza", initials: "PM", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "ov-040", schoolId: "scc", role: "student", email: "o.valdez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Oliver", lastName: "Valdez", displayName: "Oliver Valdez", initials: "OV", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "bb-041", schoolId: "scc", role: "student", email: "b.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bianca", lastName: "Bautista", displayName: "Bianca Bautista", initials: "BB", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "mm-042", schoolId: "scc", role: "student", email: "m.morales.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Matteo", lastName: "Morales", displayName: "Matteo Morales", initials: "MM", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "cc-043", schoolId: "scc", role: "student", email: "c.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Clarisse", lastName: "Castillo", displayName: "Clarisse Castillo", initials: "CC", employeeNo: null, lrn: null, schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "em-044", schoolId: "scc", role: "student", email: "e.manalo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elijah", lastName: "Manalo", displayName: "Elijah Manalo", initials: "EM", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
+    { id: "rs-045", schoolId: "scc", role: "student", email: "r.soriano.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rina", lastName: "Soriano", displayName: "Rina Soriano", initials: "RS", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
+    { id: "ja-046", schoolId: "scc", role: "student", email: "j.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Janelle", lastName: "Aquino", displayName: "Janelle Aquino", initials: "JA", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
+    { id: "cp-047", schoolId: "scc", role: "student", email: "c.pascual.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Caleb", lastName: "Pascual", displayName: "Caleb Pascual", initials: "CP", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
+    { id: "ls-048", schoolId: "scc", role: "student", email: "l.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lara", lastName: "Santiago", displayName: "Lara Santiago", initials: "LS", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
+    { id: "km-049", schoolId: "scc", role: "student", email: "k.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Kyle", lastName: "Mendoza", displayName: "Kyle Mendoza", initials: "KM", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
+    { id: "hc-050", schoolId: "scc", role: "student", email: "h.cabrera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Hannah", lastName: "Cabrera", displayName: "Hannah Cabrera", initials: "HC", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
+    { id: "dv-051", schoolId: "scc", role: "student", email: "d.villarama.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Diego", lastName: "Villarama", displayName: "Diego Villarama", initials: "DV", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
+    { id: "ab-052", schoolId: "scc", role: "student", email: "a.bautista2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Amara", lastName: "Bautista", displayName: "Amara Bautista", initials: "AB", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
+    { id: "rg-053", schoolId: "scc", role: "student", email: "r.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rafael", lastName: "Garcia", displayName: "Rafael Garcia", initials: "RG", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
+    { id: "tm-054", schoolId: "scc", role: "student", email: "t.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Talia", lastName: "Mercado", displayName: "Talia Mercado", initials: "TM", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
+    { id: "jn-055", schoolId: "scc", role: "student", email: "j.navarro.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Jonas", lastName: "Navarro", displayName: "Jonas Navarro", initials: "JN", employeeNo: null, lrn: null, schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
+    { id: "ar-056", schoolId: "scc", role: "student", email: "a.ramos.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Arielle", lastName: "Ramos", displayName: "Arielle Ramos", initials: "AR", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
+    { id: "dm-057", schoolId: "scc", role: "student", email: "d.morales.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Morales", displayName: "Daniel Morales", initials: "DM", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
+    { id: "cv-058", schoolId: "scc", role: "student", email: "c.villanueva.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Villanueva", displayName: "Chloe Villanueva", initials: "CV", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
+    { id: "er-059", schoolId: "scc", role: "student", email: "e.reyes.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Reyes", displayName: "Ethan Reyes", initials: "ER", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
+    { id: "bs-060", schoolId: "scc", role: "student", email: "b.santos.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bea", lastName: "Santos", displayName: "Bea Santos", initials: "BS", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
+    { id: "lc-061", schoolId: "scc", role: "student", email: "l.cruz.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lorenzo", lastName: "Cruz", displayName: "Lorenzo Cruz", initials: "LC", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
+    { id: "fg-062", schoolId: "scc", role: "student", email: "f.garcia.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Faith", lastName: "Garcia", displayName: "Faith Garcia", initials: "FG", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
+    { id: "nb-063", schoolId: "scc", role: "student", email: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
+    { id: "im-064", schoolId: "scc", role: "student", email: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
+    { id: "mf-065", schoolId: "scc", role: "student", email: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: null, schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
   ];
 
-  const CORE_PROFILE_DIRECTORY = [
-    { id: 'admin-1', accountId: '1', role: RECORD_VALUES.roles.SCHOOL_ADMIN, honorific: null, firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', employeeNo: 'ADM-2016-0001' },
-    { id: 'teacher-2', accountId: '2', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', employeeNo: 'FAC-2019-0042' },
-    { id: 'teacher-3', accountId: '3', role: RECORD_VALUES.roles.TEACHER, honorific: 'Mr.', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', employeeNo: 'FAC-2021-0017' },
-    { id: 'teacher-carla-dizon', accountId: '11', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Carla', lastName: 'Dizon', displayName: 'Ms. Carla Dizon', employeeNo: 'FAC-2020-0028' },
-    { id: 'teacher-rico-santos', accountId: '12', role: RECORD_VALUES.roles.TEACHER, honorific: 'Mr.', firstName: 'Rico', lastName: 'Santos', displayName: 'Mr. Rico Santos', employeeNo: 'FAC-2019-0064' },
-    { id: 'teacher-jana-mendez', accountId: '13', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Jana', lastName: 'Mendez', displayName: 'Ms. Jana Mendez', employeeNo: 'FAC-2022-0013' },
-    { id: 'teacher-ana-garcia', accountId: '14', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Ana', lastName: 'Garcia', displayName: 'Ms. Ana Garcia', employeeNo: 'FAC-2021-0049' },
-    { id: 'parent-7', accountId: '7', role: RECORD_VALUES.roles.PARENT, honorific: null, firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim' },
-    { id: 'parent-8', accountId: '8', role: RECORD_VALUES.roles.PARENT, honorific: null, firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz' },
-    { id: 'teacher-9', accountId: '9', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', employeeNo: 'FAC-2018-0031' }
-  ].map(profile => ({ ...profile, schoolId: 'scc' }));
-
-  // Shared K-12 student collection. Replace this local array with the
-  // school's student API response while keeping its record shape unchanged.
-  const DEFAULT_STUDENT_DIRECTORY = [
-    { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', initials: 'CM', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
-    { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', initials: 'LR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
-    { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', initials: 'RC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'jd-004', name: 'Juan Dela Cruz', email: 'j.delacruz.stud@stcolumban.edu.ph', initials: 'JC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke', lrn: '100-201-0001' },
-    { id: 'et-005', name: 'Ella Tan', email: 'e.tan.stud@stcolumban.edu.ph', initials: 'ET', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
-    { id: 'ml-006', name: 'Maria Lopez', email: 'm.lopez.stud@stcolumban.edu.ph', initials: 'ML', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
-    { id: 'bg-007', name: 'Ben Garcia', email: 'b.garcia.stud@stcolumban.edu.ph', initials: 'BG', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
-    { id: 'as-008', name: 'Ana Santos', email: 'a.santos.stud@stcolumban.edu.ph', initials: 'AS', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
-    { id: 'ks-009', name: 'Karl Santiago', email: 'k.santiago.stud@stcolumban.edu.ph', initials: 'KS', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
-    { id: 'pn-010', name: 'Paula Nieves', email: 'p.nieves.stud@stcolumban.edu.ph', initials: 'PN', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
-    { id: 'do-011', name: 'Dan Ocampo', email: 'd.ocampo.stud@stcolumban.edu.ph', initials: 'DO', level: 'jhs', grade: '', strand: '', section: 'Unassigned' },
-    { id: 'mt-012', name: 'Maya Torres', email: 'm.torres.stud@stcolumban.edu.ph', initials: 'MT', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew', lrn: '100-201-0002' },
-    { id: 'sc-013', name: 'Sofia Cruz', email: 's.cruz.stud@stcolumban.edu.ph', initials: 'SC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
-    { id: 'gb-014', name: 'Gabriel Bautista', email: 'g.bautista.stud@stcolumban.edu.ph', initials: 'GB', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
-    { id: 'na-015', name: 'Nicole Aquino', email: 'n.aquino.stud@stcolumban.edu.ph', initials: 'NA', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
-    { id: 'pr-016', name: 'Paolo Rivera', email: 'p.rivera.stud@stcolumban.edu.ph', initials: 'PR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'av-017', name: 'Aira Villanueva', email: 'a.villanueva.stud@stcolumban.edu.ph', initials: 'AV', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'ld-018', name: 'Lucas Dizon', email: 'l.dizon.stud@stcolumban.edu.ph', initials: 'LD', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'br-019', name: 'Beatrice Ramos', email: 'b.ramos.stud@stcolumban.edu.ph', initials: 'BR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
-    { id: 'mg-020', name: 'Miguel Garcia', email: 'm.garcia.stud@stcolumban.edu.ph', initials: 'MG', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
-    { id: 'ac-021', name: 'Andrea Castillo', email: 'a.castillo.stud@stcolumban.edu.ph', initials: 'AC', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
-    { id: 'eb-022', name: 'Ethan Bernardo', email: 'e.bernardo.stud@stcolumban.edu.ph', initials: 'EB', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
-    { id: 'ch-023', name: 'Chloe Hernandez', email: 'c.hernandez.stud@stcolumban.edu.ph', initials: 'CH', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. Luke' },
-    { id: 'nr-024', name: 'Nathan Reyes', email: 'n.reyes.stud@stcolumban.edu.ph', initials: 'NR', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
-    { id: 'is-025', name: 'Isabella Santos', email: 'i.santos.stud@stcolumban.edu.ph', initials: 'IS', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
-    { id: 'lm-026', name: 'Liam Mercado', email: 'l.mercado.stud@stcolumban.edu.ph', initials: 'LM', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
-    { id: 'gr-027', name: 'Grace Rivera', email: 'g.rivera.stud@stcolumban.edu.ph', initials: 'GR', level: 'jhs', grade: 'Grade 8', strand: '', section: 'Grade 8 / St. John' },
-    { id: 'ds-028', name: 'Daniel Salazar', email: 'd.salazar.stud@stcolumban.edu.ph', initials: 'DS', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
-    { id: 'cb-029', name: 'Camille Bautista', email: 'c.bautista.stud@stcolumban.edu.ph', initials: 'CB', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
-    { id: 'jr-030', name: 'Joshua Ramos', email: 'j.ramos2.stud@stcolumban.edu.ph', initials: 'JR', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
-    { id: 'rr-031', name: 'Reina Robles', email: 'r.robles.stud@stcolumban.edu.ph', initials: 'RR', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Peter' },
-    { id: 'mp-032', name: 'Marcus Perez', email: 'm.perez.stud@stcolumban.edu.ph', initials: 'MP', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
-    { id: 'al-033', name: 'Alyssa Lim', email: 'a.lim.stud@stcolumban.edu.ph', initials: 'AL', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
-    { id: 'ad-034', name: 'Adrian Domingo', email: 'a.domingo.stud@stcolumban.edu.ph', initials: 'AD', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
-    { id: 'td-035', name: 'Trisha David', email: 't.david.stud@stcolumban.edu.ph', initials: 'TD', level: 'jhs', grade: 'Grade 9', strand: '', section: 'Grade 9 / St. Paul' },
-    { id: 'vp-036', name: 'Vincent Padilla', email: 'v.padilla.stud@stcolumban.edu.ph', initials: 'VP', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
-    { id: 'hc-037', name: 'Helena Cruz', email: 'h.cruz.stud@stcolumban.edu.ph', initials: 'HC', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
-    { id: 'sa-038', name: 'Samuel Aquino', email: 's.aquino.stud@stcolumban.edu.ph', initials: 'SA', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
-    { id: 'pm-039', name: 'Patricia Mendoza', email: 'p.mendoza.stud@stcolumban.edu.ph', initials: 'PM', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. James' },
-    { id: 'ov-040', name: 'Oliver Valdez', email: 'o.valdez.stud@stcolumban.edu.ph', initials: 'OV', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
-    { id: 'bb-041', name: 'Bianca Bautista', email: 'b.bautista.stud@stcolumban.edu.ph', initials: 'BB', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
-    { id: 'mm-042', name: 'Matteo Morales', email: 'm.morales.stud@stcolumban.edu.ph', initials: 'MM', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
-    { id: 'cc-043', name: 'Clarisse Castillo', email: 'c.castillo.stud@stcolumban.edu.ph', initials: 'CC', level: 'jhs', grade: 'Grade 10', strand: '', section: 'Grade 10 / St. Thomas' },
-    { id: 'em-044', name: 'Elijah Manalo', email: 'e.manalo.stud@stcolumban.edu.ph', initials: 'EM', level: 'elementary', grade: 'Grade 4', strand: '', section: 'Grade 4 / St. Luke' },
-    { id: 'rs-045', name: 'Rina Soriano', email: 'r.soriano.stud@stcolumban.edu.ph', initials: 'RS', level: 'elementary', grade: 'Grade 4', strand: '', section: 'Grade 4 / St. Luke' },
-    { id: 'ja-046', name: 'Janelle Aquino', email: 'j.aquino.stud@stcolumban.edu.ph', initials: 'JA', level: 'elementary', grade: 'Grade 5', strand: '', section: 'Grade 5 / St. Mark' },
-    { id: 'cp-047', name: 'Caleb Pascual', email: 'c.pascual.stud@stcolumban.edu.ph', initials: 'CP', level: 'elementary', grade: 'Grade 5', strand: '', section: 'Grade 5 / St. Mark' },
-    { id: 'ls-048', name: 'Lara Santiago', email: 'l.santiago.stud@stcolumban.edu.ph', initials: 'LS', level: 'shs', grade: 'Grade 11', strand: 'STEM', section: 'Grade 11 / STEM A' },
-    { id: 'km-049', name: 'Kyle Mendoza', email: 'k.mendoza.stud@stcolumban.edu.ph', initials: 'KM', level: 'shs', grade: 'Grade 11', strand: 'STEM', section: 'Grade 11 / STEM A' },
-    { id: 'hc-050', name: 'Hannah Cabrera', email: 'h.cabrera.stud@stcolumban.edu.ph', initials: 'HC', level: 'shs', grade: 'Grade 11', strand: 'HUMSS', section: 'Grade 11 / HUMSS A' },
-    { id: 'dv-051', name: 'Diego Villarama', email: 'd.villarama.stud@stcolumban.edu.ph', initials: 'DV', level: 'shs', grade: 'Grade 11', strand: 'HUMSS', section: 'Grade 11 / HUMSS A' },
-    { id: 'ab-052', name: 'Amara Bautista', email: 'a.bautista2.stud@stcolumban.edu.ph', initials: 'AB', level: 'shs', grade: 'Grade 12', strand: 'ABM', section: 'Grade 12 / ABM A' },
-    { id: 'rg-053', name: 'Rafael Garcia', email: 'r.garcia.stud@stcolumban.edu.ph', initials: 'RG', level: 'shs', grade: 'Grade 12', strand: 'ABM', section: 'Grade 12 / ABM A' },
-    { id: 'tm-054', name: 'Talia Mercado', email: 't.mercado.stud@stcolumban.edu.ph', initials: 'TM', level: 'shs', grade: 'Grade 12', strand: 'TVL', section: 'Grade 12 / TVL A' },
-    { id: 'jn-055', name: 'Jonas Navarro', email: 'j.navarro.stud@stcolumban.edu.ph', initials: 'JN', level: 'shs', grade: 'Grade 12', strand: 'TVL', section: 'Grade 12 / TVL A' },
-    { id: 'ar-056', name: 'Arielle Ramos', email: 'a.ramos.kinder@stcolumban.edu.ph', initials: 'AR', level: 'elementary', grade: 'Kindergarten', strand: '', section: 'Unassigned' },
-    { id: 'dm-057', name: 'Daniel Morales', email: 'd.morales.kinder@stcolumban.edu.ph', initials: 'DM', level: 'elementary', grade: 'Kindergarten', strand: '', section: 'Unassigned' },
-    { id: 'cv-058', name: 'Chloe Villanueva', email: 'c.villanueva.g1@stcolumban.edu.ph', initials: 'CV', level: 'elementary', grade: 'Grade 1', strand: '', section: 'Unassigned' },
-    { id: 'er-059', name: 'Ethan Reyes', email: 'e.reyes.g1@stcolumban.edu.ph', initials: 'ER', level: 'elementary', grade: 'Grade 1', strand: '', section: 'Unassigned' },
-    { id: 'bs-060', name: 'Bea Santos', email: 'b.santos.g2@stcolumban.edu.ph', initials: 'BS', level: 'elementary', grade: 'Grade 2', strand: '', section: 'Unassigned' },
-    { id: 'lc-061', name: 'Lorenzo Cruz', email: 'l.cruz.g2@stcolumban.edu.ph', initials: 'LC', level: 'elementary', grade: 'Grade 2', strand: '', section: 'Unassigned' },
-    { id: 'fg-062', name: 'Faith Garcia', email: 'f.garcia.g3@stcolumban.edu.ph', initials: 'FG', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
-    { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', initials: 'NB', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
-    { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', initials: 'IM', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
-    { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', initials: 'MF', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
-  ].map(record => ({ ...record, lrn: record.lrn || null, schoolId: 'scc' }));
-
   const ACTIVE_SCHOOL_ID = getActiveSchoolId();
+
+  // Shared attendance rows. Each record represents one student's status for
+  // one school day, section, and (when available) subject. Replace this local
+  // collection with the attendance API response during backend integration.
+  const DEFAULT_ATTENDANCE_DIRECTORY = [
+    { id: 'attendance-jd-004-2025-06-02-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-02-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-02-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-03-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-03-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-03-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-04-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-04', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-04-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-04', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-04-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-04', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-05-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-05-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-05-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-06-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-06-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-06-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-09-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-09-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-09-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-10-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-10-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-10-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-11-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-11', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-11-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-11', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-11-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-11', status: 'absent', remark: null },
+    { id: 'attendance-jd-004-2025-06-12-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-12', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-12-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-12', status: 'late', remark: null },
+    { id: 'attendance-jd-004-2025-06-12-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-12', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-13-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-06-13', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-13-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', date: '2025-06-13', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-13-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', date: '2025-06-13', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-06-13-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', date: '2025-06-13', status: 'pending', remark: null },
+    { id: 'attendance-jd-004-2025-05-26-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-05-26', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-05-27-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-05-27', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-05-28-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-05-28', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-05-29-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-05-29', status: 'present', remark: null },
+    { id: 'attendance-jd-004-2025-05-30-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', date: '2025-05-30', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-02-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-03-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-04-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-04', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-05-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-06-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-09-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-10-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-11-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-11', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-12-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-12', status: 'absent', remark: null },
+    { id: 'attendance-mt-012-2025-06-13-all', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: null, date: '2025-06-13', status: 'absent', remark: null },
+    { id: 'attendance-cm-001-2025-06-02-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-02-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-02-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-02', status: 'absent', remark: null },
+    { id: 'attendance-sc-013-2025-06-02-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-02', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-02-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-02', status: 'late', remark: null },
+    { id: 'attendance-cm-001-2025-06-03-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-03-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-03-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-03', status: 'absent', remark: null },
+    { id: 'attendance-sc-013-2025-06-03-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-03', status: 'excused', remark: null },
+    { id: 'attendance-gb-014-2025-06-03-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-03', status: 'present', remark: null },
+    { id: 'attendance-cm-001-2025-06-04-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-04', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-04-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-04', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-04-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-04', status: 'absent', remark: null },
+    { id: 'attendance-sc-013-2025-06-04-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-04', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-04-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-04', status: 'absent', remark: null },
+    { id: 'attendance-cm-001-2025-06-05-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-05-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-05-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-sc-013-2025-06-05-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-05-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-05', status: 'present', remark: null },
+    { id: 'attendance-cm-001-2025-06-06-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-06-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-06-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-06', status: 'absent', remark: null },
+    { id: 'attendance-sc-013-2025-06-06-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-06-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-06', status: 'present', remark: null },
+    { id: 'attendance-cm-001-2025-06-09-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-09', status: 'late', remark: null },
+    { id: 'attendance-lr-002-2025-06-09-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-09-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-09', status: 'absent', remark: null },
+    { id: 'attendance-sc-013-2025-06-09-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-09-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-09', status: 'present', remark: null },
+    { id: 'attendance-cm-001-2025-06-10-values-education', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-lr-002-2025-06-10-values-education', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-mt-012-2025-06-10-values-education', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-10', status: 'absent', remark: '4th consecutive absence' },
+    { id: 'attendance-sc-013-2025-06-10-values-education', schoolId: 'scc', studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-10', status: 'present', remark: null },
+    { id: 'attendance-gb-014-2025-06-10-values-education', schoolId: 'scc', studentId: 'gb-014', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', date: '2025-06-10', status: 'late', remark: 'arrived 15 minutes late' }
+  ];
+  const savedAttendance = readJson(schoolStorageKey(STORAGE_KEYS.attendance, ACTIVE_SCHOOL_ID), null);
+  const attendanceSeed = Array.isArray(savedAttendance)
+    ? savedAttendance
+    : clone(scopeToActiveSchool(DEFAULT_ATTENDANCE_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const ATTENDANCE_DIRECTORY = attendanceSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      ...record,
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      studentId: String(record.studentId || ''),
+      sectionId: record.sectionId || null,
+      subjectId: record.subjectId || null,
+      date: record.date || null,
+      status: record.status || 'pending',
+      remark: record.remark || null
+    }));
+
+  function getAttendanceRecords(filters = {}) {
+    return ATTENDANCE_DIRECTORY.filter(record =>
+      record.schoolId === getActiveSchoolId() &&
+      (!filters.studentId || record.studentId === String(filters.studentId)) &&
+      (!filters.sectionId || record.sectionId === String(filters.sectionId)) &&
+      (!filters.subjectId || record.subjectId === String(filters.subjectId)) &&
+      (!filters.date || record.date === String(filters.date))
+    );
+  }
+
+  function getAttendanceForStudent(studentId) {
+    return getAttendanceRecords({ studentId });
+  }
+
+  function saveAttendanceRecords(records = ATTENDANCE_DIRECTORY) {
+    writeJson(schoolStorageKey(STORAGE_KEYS.attendance), Array.isArray(records) ? records : []);
+  }
+
+  function upsertAttendanceRecord(values = {}) {
+    const record = {
+      id: String(values.id || `attendance-${values.studentId}-${values.date}-${values.subjectId || 'all'}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
+      studentId: String(values.studentId || ''),
+      sectionId: values.sectionId || null,
+      subjectId: values.subjectId || null,
+      date: values.date || null,
+      status: values.status || 'pending',
+      remark: values.remark || null
+    };
+    const existing = ATTENDANCE_DIRECTORY.find(item =>
+      item.schoolId === record.schoolId &&
+      item.studentId === record.studentId &&
+      item.sectionId === record.sectionId &&
+      item.subjectId === record.subjectId &&
+      item.date === record.date
+    );
+    if (existing) Object.assign(existing, record, { id: existing.id });
+    else ATTENDANCE_DIRECTORY.push(record);
+    saveAttendanceRecords();
+    return existing || record;
+  }
 
   // Shared assignment records for Teacher, Student, and Parent portals.
   // Completion is an array of plain objects so it can be saved as JSON and
@@ -853,7 +1018,64 @@ function formatRelativeTime(dateValue) {
       completion: Array.isArray(record.completion) ? record.completion : []
     }));
 
+  // Shared learning-material records for Teacher and Student portals. Every
+  // record uses IDs for school, section, subject, and teacher so this array
+  // can later be replaced by a learning-materials API response.
+  const DEFAULT_LEARNING_MATERIAL_DIRECTORY = [
+    { id: 'material-math-001', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Lesson 1: Algebra Basics', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-002', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Activity Sheet 1', type: 'docx', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-003', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Lesson 2 Slides: Equations', type: 'pptx', academicPeriodId: 'q1', postedAt: '2025-06-10T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Quiz 1 Answer Key', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-12T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-005', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Solving for X: Video Lesson', type: 'video', academicPeriodId: 'q2', postedAt: '2025-06-12T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-006', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Lesson 3: Linear Inequalities', type: 'pdf', academicPeriodId: 'q2', postedAt: '2025-06-13T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-math-007', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', title: 'Seatwork 2: Variables', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-14T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-english-001', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-3', title: 'Reading List: Short Stories', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-english-002', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-3', title: 'Grammar Review Slides', type: 'pptx', academicPeriodId: 'q1', postedAt: '2025-06-11T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-english-003', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-3', title: 'Essay Writing Guide', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-13T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-english-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-3', title: 'Vocabulary List: Week 3', type: 'pdf', academicPeriodId: 'q2', postedAt: '2025-06-14T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-science-001', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-9', title: 'Cell Structure Diagram', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-science-002', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-9', title: 'Lab Safety Video', type: 'video', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-science-003', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-9', title: 'Lesson 2 Slides: Ecosystems', type: 'pptx', academicPeriodId: 'q2', postedAt: '2025-06-11T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-science-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-9', title: 'Worksheet: Food Chains', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-12T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-science-005', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-9', title: 'Quiz 1 Review Notes', type: 'pdf', academicPeriodId: 'q2', postedAt: '2025-06-13T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-filipino-001', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: 'teacher-3', title: 'Aralin 1: Pagbasa', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-09T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-filipino-002', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: 'teacher-3', title: 'Gawaing Pagsulat', type: 'docx', academicPeriodId: 'q1', postedAt: '2025-06-11T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-filipino-003', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: 'teacher-3', title: 'Presentasyon: Tula', type: 'pptx', academicPeriodId: 'q2', postedAt: '2025-06-13T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-values-001', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Module 2: Empathy and Respect', type: 'pdf', academicPeriodId: 'q1', postedAt: '2025-06-11T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-values-002', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Reflection Guide', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-13T00:00:00+08:00', fileSize: null, status: 'published', visibleToStudents: true, views: 0 },
+    { id: 'material-section-values-001', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Module 3 - Respect and Kindness.pdf', type: 'pdf', academicPeriodId: 'q2', postedAt: '2025-06-03T00:00:00+08:00', fileSize: '2.4 MB', status: 'published', visibleToStudents: true, views: 32 },
+    { id: 'material-section-values-002', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Q2 Lesson 4 - Good Citizenship.pptx', type: 'pptx', academicPeriodId: 'q2', postedAt: '2025-05-28T00:00:00+08:00', fileSize: '5.1 MB', status: 'published', visibleToStudents: true, views: 28 },
+    { id: 'material-section-values-003', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Activity Sheet 3 - Reflection Exercises.xlsx', type: 'xlsx', academicPeriodId: 'q2', postedAt: '2025-05-22T00:00:00+08:00', fileSize: '0.8 MB', status: 'published', visibleToStudents: true, views: 25 },
+    { id: 'material-section-values-004', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Reference - Values Education Guide.pdf', type: 'pdf', academicPeriodId: 'q2', postedAt: '2025-05-15T00:00:00+08:00', fileSize: '1.2 MB', status: 'published', visibleToStudents: true, views: 38 },
+    { id: 'material-section-values-005', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Values Poster Visual Aid.png', type: 'png', academicPeriodId: 'q2', postedAt: '2025-05-10T00:00:00+08:00', fileSize: '0.4 MB', status: 'published', visibleToStudents: true, views: 19 },
+    { id: 'material-section-values-006', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Q2 Study Guide.docx', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-08T00:00:00+08:00', fileSize: '0.6 MB', status: 'draft', visibleToStudents: false, views: 0 }
+  ];
+  const savedLearningMaterials = readJson(schoolStorageKey(STORAGE_KEYS.materials, ACTIVE_SCHOOL_ID), null);
+  const learningMaterialSeed = Array.isArray(savedLearningMaterials)
+    ? savedLearningMaterials
+    : clone(scopeToActiveSchool(DEFAULT_LEARNING_MATERIAL_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const LEARNING_MATERIAL_DIRECTORY = learningMaterialSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      id: String(record.id || `material-${Date.now()}`),
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      sectionId: record.sectionId || null,
+      subjectId: record.subjectId || null,
+      teacherId: record.teacherId || null,
+      title: String(record.title || ''),
+      type: String(record.type || 'file'),
+      schoolYear: record.schoolYear || '2025-2026',
+      academicPeriodId: record.academicPeriodId || null,
+      postedAt: record.postedAt || null,
+      fileSize: record.fileSize || null,
+      fileUrl: record.fileUrl || null,
+      status: record.status || 'published',
+      visibleToStudents: record.visibleToStudents !== false,
+      views: Number(record.views) || 0
+    }));
+
   // Shared published/draft announcement records for every school portal.
+  // Optional fields are always present: imageUrl/access use null, pinned uses false.
   // Portal pages read this collection with an audience key; Admin can read
   // all records, including drafts, for management.
   const DEFAULT_ANNOUNCEMENT_DIRECTORY = [
@@ -862,55 +1084,63 @@ function formatRelativeTime(dateValue) {
       body: 'All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.',
       priority: 'high', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-06-14T08:00:00+08:00',
       status: 'published', pinned: true, icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', read: false, seenCount: 284,
-      imageUrl: '../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png'
+      imageUrl: '../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png', access: null
     },
     {
       id: 'ANN-002', schoolId: 'scc', title: 'Journal Submission Window: This Friday',
       body: 'The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.',
       priority: 'normal', audience: ['teachers'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-06-13T15:00:00+08:00',
-      status: 'published', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: false, access: 'journals', seenCount: 24
+      status: 'published', pinned: false, icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: false, seenCount: 24,
+      imageUrl: null, access: 'journals'
     },
     {
       id: 'ANN-003', schoolId: 'scc', title: 'Foundation Day: June 20, 2025',
       body: 'St. Columban\'s College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All students are encouraged to participate in the school activities.',
       priority: 'event', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-30T10:00:00+08:00',
-      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 312
+      status: 'published', pinned: false, icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 312,
+      imageUrl: null, access: null
     },
     {
       id: 'ANN-004', schoolId: 'scc', title: 'Q2 Narrative Reports Now Available',
       body: 'Q2 narrative reports have been confirmed by section teachers and are now available to view in the portal. Please review the summaries for your assigned sections or linked children.',
       priority: 'normal', audience: ['teachers', 'parents'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-28T09:00:00+08:00',
-      status: 'published', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', read: true, access: 'reports', seenCount: 198
+      status: 'published', pinned: false, icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', read: true, seenCount: 198,
+      imageUrl: null, access: 'reports'
     },
     {
       id: 'ANN-005', schoolId: 'scc', title: 'Weekly Journal is Now Open for Submission',
       body: 'This week\'s journal submission is now open. Please write about your week, your experiences, feelings, and anything you want to share. Submissions close <strong>Friday at 11:59 PM</strong>.',
       priority: 'normal', audience: ['students'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-24T07:00:00+08:00',
-      status: 'published', icon: 'pencil', iconClass: 'icon-normal', tag: 'Normal', read: true, access: 'journals', seenCount: 253
+      status: 'published', pinned: false, icon: 'pencil', iconClass: 'icon-normal', tag: 'Normal', read: true, seenCount: 253,
+      imageUrl: null, access: 'journals'
     },
     {
       id: 'ANN-006', schoolId: 'scc', title: 'End of Quarter Reminder: Q2 Closing',
       body: 'This announcement is saved as a draft and is not yet visible to any users. Click Edit to review and publish it.',
       priority: 'low', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-22T16:30:00+08:00',
-      status: 'draft', icon: 'file-edit', iconClass: 'icon-low', tag: 'Draft', read: true, seenCount: 0
+      status: 'draft', pinned: false, icon: 'file-edit', iconClass: 'icon-low', tag: 'Draft', read: true, seenCount: 0,
+      imageUrl: null, access: null
     },
     {
       id: 'ANN-007', schoolId: 'scc', title: 'Intramurals Sign-up Open',
       body: 'Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>.',
       priority: 'event', audience: ['students'], authorId: 'admin-1', authorName: 'Admin', createdAt: '2025-06-12T13:30:00+08:00',
-      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 0
+      status: 'published', pinned: false, icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 0,
+      imageUrl: null, access: null
     },
     {
       id: 'ANN-008', schoolId: 'scc', title: 'Library Resources Updated',
       body: 'New reference materials are now available in the student library corner.',
       priority: 'normal', audience: ['students'], authorId: 'admin-1', authorName: 'Library', createdAt: '2025-06-10T10:00:00+08:00',
-      status: 'published', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: true, seenCount: 0
+      status: 'published', pinned: false, icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: true, seenCount: 0,
+      imageUrl: null, access: null
     },
     {
       id: 'ANN-009', schoolId: 'scc', title: 'Parent-Teacher Conference Schedule',
       body: 'Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child\'s adviser for a specific time slot.',
       priority: 'event', audience: ['parents'], authorId: 'admin-1', authorName: 'Admin', createdAt: '2025-06-11T09:00:00+08:00',
-      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: true, seenCount: 0
+      status: 'published', pinned: false, icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: true, seenCount: 0,
+      imageUrl: null, access: null
     }
   ];
   const savedAnnouncements = readJson(schoolStorageKey(STORAGE_KEYS.announcements, ACTIVE_SCHOOL_ID), null);
@@ -923,34 +1153,37 @@ function formatRelativeTime(dateValue) {
       ...record,
       schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
       audience: Array.isArray(record.audience) ? record.audience : [record.audience || 'all'],
-      status: record.status || 'published'
+      status: record.status || 'published',
+      pinned: record.pinned === true,
+      imageUrl: record.imageUrl || null,
+      access: record.access || null
     }));
 
   // Shared final grade records for Student and Parent portals. Each row uses
   // stable IDs so the local source can later be replaced by a grades API.
   const DEFAULT_GRADE_DIRECTORY = [
-    { id: 'grade-jd-004-q1-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: null, teacherName: 'Mr. Paolo Santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: null, teacherName: 'Mrs. Liza Ramos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: null, teacherName: 'Mr. Andres Cruz', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q1-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q1-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: null, teacherName: 'Mrs. Carmen Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: null, teacherName: 'Mr. Jun Bautista', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q2-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92.5, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: null, teacherName: 'Mr. Paolo Santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: null, teacherName: 'Mrs. Liza Ramos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 88.5, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q2-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: null, teacherName: 'Mr. Andres Cruz', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 94, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: null, teacherName: 'Mrs. Carmen Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
-    { id: 'grade-jd-004-q2-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: null, teacherName: 'Mr. Jun Bautista', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
-    { id: 'grade-mt-012-q1-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q1-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
-    { id: 'grade-mt-012-q1-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: null, teacherName: 'Mr. Noel Garcia', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q1-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: null, teacherName: 'Ms. Ana Ramos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: null, teacherName: 'Mr. Noel Garcia', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: null, teacherName: 'Ms. Ana Ramos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 93, remark: 'Outstanding' }
+    { id: 'grade-jd-004-q1-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: 'teacher-carla-dizon', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q1-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q1-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: 'teacher-3', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: 'teacher-jana-mendez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q2-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92.5, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 88.5, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q2-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: 'teacher-carla-dizon', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 94, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: 'teacher-3', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
+    { id: 'grade-jd-004-q2-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: 'teacher-jana-mendez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
+    { id: 'grade-mt-012-q1-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q1-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
+    { id: 'grade-mt-012-q1-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q1-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: 'teacher-carla-dizon', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: 'teacher-carla-dizon', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 93, remark: 'Outstanding' }
   ];
   const savedGrades = readJson(schoolStorageKey(STORAGE_KEYS.grades, ACTIVE_SCHOOL_ID), null);
   const gradeSeed = Array.isArray(savedGrades)
@@ -1151,468 +1384,151 @@ function formatRelativeTime(dateValue) {
       confirmedAt: record.confirmedAt || null
     }));
 
-  const savedStudents = readJson(
-    schoolStorageKey(STORAGE_KEYS.students, ACTIVE_SCHOOL_ID),
-    ACTIVE_SCHOOL_ID === 'scc' ? readJson(STORAGE_KEYS.students, null) : null
-  );
-  const STUDENT_SEED_DIRECTORY = Array.isArray(savedStudents)
-    ? savedStudents
-    : clone(scopeToActiveSchool(DEFAULT_STUDENT_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const savedUsers = readJson(schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID), null);
+  const USERS = Array.isArray(savedUsers) && savedUsers.length
+    ? savedUsers
+    : clone(DEFAULT_USERS.filter(user => user.schoolId === ACTIVE_SCHOOL_ID));
+  const USER_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID);
 
-  // Legacy saved learner records may contain a section label. Convert it once
-  // to the same sectionId used by new frontend records and future API data.
-  const assignmentSections = getAssignmentSections(getActiveSchool());
-  STUDENT_SEED_DIRECTORY.forEach(student => {
-    student.id = String(student.id);
-    student.schoolId = ACTIVE_SCHOOL_ID;
-    student.grade ||= null;
-    student.strand ||= null;
-    if (!student.sectionId && student.section && !/^unassigned$/i.test(student.section)) {
-      const section = assignmentSections.find(record => `${record.grade} / ${record.name}` === student.section);
-      student.sectionId = section?.id || null;
-    }
-    student.sectionId ||= null;
-    delete student.section;
-  });
-
-  const STUDENT_ACCOUNT_OVERRIDES = {
-    'j.delacruz.stud@stcolumban.edu.ph': { id: '4', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    'a.santos.stud@stcolumban.edu.ph': { id: '5', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-05-26T00:00:00.000Z' },
-    'b.garcia.stud@stcolumban.edu.ph': { id: '6', status: RECORD_VALUES.statuses.INACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
-    'c.mendoza.stud@stcolumban.edu.ph': { id: '10', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' }
-  };
-
-  function splitAccountName(name) {
-    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    return { firstName: parts.shift() || '', lastName: parts.join(' ') };
-  }
-
-  function formatAccountGrade(value) {
-    const grade = String(value || '').trim();
-    return grade && !/^unassigned$/i.test(grade) ? grade : null;
-  }
-
-  // Every person who can use the portal has one account. Student accounts are
-  // built from the shared learner directory so the Users page, Dashboard, and
-  // Class Management all begin with the same source of truth.
-  const DEFAULT_ACCOUNT_DIRECTORY = [
-    ...scopeToActiveSchool(CORE_ACCOUNT_DIRECTORY, ACTIVE_SCHOOL_ID),
-    ...STUDENT_SEED_DIRECTORY.map(student => {
-      const override = STUDENT_ACCOUNT_OVERRIDES[student.email] || {};
-      return {
-        id: override.id || `student-${student.id}`,
-        schoolId: ACTIVE_SCHOOL_ID,
-        email: student.email,
-        role: RECORD_VALUES.roles.STUDENT,
-        status: override.status || RECORD_VALUES.statuses.ACTIVE,
-        createdAt: override.createdAt || '2025-06-10T00:00:00.000Z'
-      };
-    })
+  const DEFAULT_PARENT_STUDENT_LINKS = [
+    { id: 'parent-student-parent-7-jd-004', schoolId: 'scc', parentId: 'parent-7', studentId: 'jd-004' },
+    { id: 'parent-student-parent-8-mt-012', schoolId: 'scc', parentId: 'parent-8', studentId: 'mt-012' }
   ];
+  const savedParentStudentLinks = readJson(
+    schoolStorageKey(STORAGE_KEYS.parentStudentLinks, ACTIVE_SCHOOL_ID),
+    null
+  );
+  const PARENT_STUDENT_LINKS = Array.isArray(savedParentStudentLinks)
+    ? savedParentStudentLinks
+    : clone(DEFAULT_PARENT_STUDENT_LINKS);
 
-  const LEGACY_ACCOUNT_ROLES = {
+  const ROLE_ALIASES = {
     admin: RECORD_VALUES.roles.SCHOOL_ADMIN,
+    adm: RECORD_VALUES.roles.SCHOOL_ADMIN,
     fac: RECORD_VALUES.roles.TEACHER,
     stud: RECORD_VALUES.roles.STUDENT,
-    par: RECORD_VALUES.roles.PARENT
+    par: RECORD_VALUES.roles.PARENT,
+    parents: RECORD_VALUES.roles.PARENT
   };
-  const savedAccounts = readJson(
-    schoolStorageKey(STORAGE_KEYS.accounts, ACTIVE_SCHOOL_ID),
-    ACTIVE_SCHOOL_ID === 'scc' ? readJson(STORAGE_KEYS.accounts, null) : null
-  );
-  const sourceUsers = Array.isArray(savedAccounts)
-    ? [
-      ...savedAccounts,
-      ...DEFAULT_ACCOUNT_DIRECTORY.filter(defaultAccount => (
-        defaultAccount.role === RECORD_VALUES.roles.TEACHER
-        && !savedAccounts.some(account => String(account.id) === String(defaultAccount.id))
-      ))
-    ]
-    : clone(DEFAULT_ACCOUNT_DIRECTORY);
-
-  // Accounts contain login and access fields only. Role-specific information
-  // lives in the profile collections below.
-  const ACCOUNT_DIRECTORY = sourceUsers.map(record => ({
-    id: String(record.id),
-    schoolId: ACTIVE_SCHOOL_ID,
-    email: record.email || '',
-    role: LEGACY_ACCOUNT_ROLES[record.role] || record.role,
-    status: record.status || RECORD_VALUES.statuses.ACTIVE,
-    createdAt: record.createdAt || (record.dateAdded ? new Date(record.dateAdded).toISOString() : null)
-  }));
-
-  function storedProfiles(key, defaults) {
-    const saved = readJson(schoolStorageKey(key, ACTIVE_SCHOOL_ID), null);
-    if (!Array.isArray(saved)) return defaults;
-    return [
-      ...saved,
-      ...defaults.filter(profile => !saved.some(item => String(item.accountId) === String(profile.accountId)))
-    ];
-  }
-
-  const defaultAdminProfiles = ACCOUNT_DIRECTORY
-    .filter(account => account.role === RECORD_VALUES.roles.SCHOOL_ADMIN)
-    .map(account => {
-      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
-      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
-      return { id: seed.id || `admin-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' '), employeeNo: source.employeeNo || null };
-    });
-  const defaultTeacherProfiles = ACCOUNT_DIRECTORY
-    .filter(account => account.role === RECORD_VALUES.roles.TEACHER)
-    .map(account => {
-      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
-      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
-      return { id: seed.id || `teacher-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' '), employeeNo: source.employeeNo || null };
-    });
-  const defaultParentProfiles = ACCOUNT_DIRECTORY
-    .filter(account => account.role === RECORD_VALUES.roles.PARENT)
-    .map(account => {
-      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
-      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
-      return { id: seed.id || `parent-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' ') };
-    });
-  const defaultStudentProfiles = STUDENT_SEED_DIRECTORY.map(student => {
-    const account = ACCOUNT_DIRECTORY.find(record => record.email === student.email);
-    const names = splitAccountName(student.name);
-    return {
-      id: String(student.id),
-      schoolId: ACTIVE_SCHOOL_ID,
-      accountId: account?.id || null,
-      honorific: null,
-      firstName: names.firstName,
-      lastName: names.lastName,
-      displayName: student.name,
-      initials: student.initials || getInitials(student.name),
-      lrn: student.lrn || sourceUsers.find(record => String(record.id) === account?.id)?.lrn || null,
-      schoolLevel: student.level || null,
-      gradeLevel: formatAccountGrade(student.grade),
-      strand: student.strand || null,
-      sectionId: student.sectionId || null
-    };
-  });
-
-  const ADMIN_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.adminProfiles, defaultAdminProfiles);
-  const TEACHER_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.teacherProfiles, defaultTeacherProfiles);
-  const STUDENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.studentProfiles, defaultStudentProfiles);
-  const PARENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.parentProfiles, defaultParentProfiles);
-
-  // Backfill newly added default fields for existing local student profiles.
-  STUDENT_PROFILE_DIRECTORY.forEach(profile => {
-    if (profile.lrn) return;
-    const student = DEFAULT_STUDENT_DIRECTORY.find(record => String(record.id) === String(profile.id));
-    if (student?.lrn) profile.lrn = student.lrn;
-  });
-
-  const legacyStudentIds = { 'STU-J-LIM': 'jd-004', 'STU-M-CRUZ': 'mt-012' };
-  const legacyParentStudentLinks = sourceUsers
-    .filter(record => (LEGACY_ACCOUNT_ROLES[record.role] || record.role) === RECORD_VALUES.roles.PARENT)
-    .flatMap(record => {
-      const parent = PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === String(record.id));
-      return (record.linkedStudents || []).map(link => {
-        const studentId = legacyStudentIds[link.studentId || link.id] || String(link.studentId || link.id);
-        return { id: `parent-student-${parent?.id}-${studentId}`, schoolId: ACTIVE_SCHOOL_ID, parentId: parent?.id || null, studentId };
-      });
-    });
-  const defaultParentStudentLinks = legacyParentStudentLinks.length ? legacyParentStudentLinks : [
-    { id: 'parent-student-parent-7-jd-004', schoolId: ACTIVE_SCHOOL_ID, parentId: 'parent-7', studentId: 'jd-004' },
-    { id: 'parent-student-parent-8-mt-012', schoolId: ACTIVE_SCHOOL_ID, parentId: 'parent-8', studentId: 'mt-012' }
-  ].filter(link => PARENT_PROFILE_DIRECTORY.some(parent => parent.id === link.parentId));
-  const PARENT_STUDENT_LINKS = storedProfiles(STORAGE_KEYS.parentStudentLinks, defaultParentStudentLinks);
-
-  const USER_DIRECTORY = [];
-  const STUDENT_DIRECTORY = [];
-
-  function profileForAccount(account) {
-    if (account.role === RECORD_VALUES.roles.SCHOOL_ADMIN) return ADMIN_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
-    if (account.role === RECORD_VALUES.roles.TEACHER) return TEACHER_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
-    if (account.role === RECORD_VALUES.roles.STUDENT) return STUDENT_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
-    if (account.role === RECORD_VALUES.roles.PARENT) return PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
-    return null;
-  }
-
-  function refreshUserDirectories() {
-    const sections = getAssignmentSections(getActiveSchool());
-    const students = STUDENT_PROFILE_DIRECTORY.map(profile => {
-      const account = ACCOUNT_DIRECTORY.find(record => record.id === profile.accountId);
-      const section = sections.find(record => record.id === profile.sectionId);
-      return {
-        id: profile.id,
-        studentId: profile.id,
-        accountId: profile.accountId,
-        schoolId: profile.schoolId,
-        name: profile.displayName,
-        displayName: profile.displayName,
-        email: account?.email || '',
-        initials: profile.initials,
-        level: profile.schoolLevel,
-        schoolLevel: profile.schoolLevel,
-        grade: profile.gradeLevel,
-        gradeLevel: profile.gradeLevel,
-        strand: profile.strand,
-        sectionId: profile.sectionId,
-        section: section ? `${section.grade} / ${section.name}` : null,
-        lrn: profile.lrn
-      };
-    });
-    STUDENT_DIRECTORY.splice(0, STUDENT_DIRECTORY.length, ...students);
-
-    const users = ACCOUNT_DIRECTORY.map(account => {
-      const profile = profileForAccount(account) || {};
-      const student = STUDENT_DIRECTORY.find(record => record.accountId === account.id);
-      const parentLinks = account.role === RECORD_VALUES.roles.PARENT
-        ? PARENT_STUDENT_LINKS.filter(link => link.parentId === profile.id)
-        : [];
-      return {
-        ...account,
-        accountId: account.id,
-        profileId: profile.id || null,
-        honorific: profile.honorific || null,
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        displayName: profile.displayName || account.email,
-        employeeNo: profile.employeeNo || null,
-        studentId: student?.id || null,
-        lrn: student?.lrn || null,
-        sectionId: student?.sectionId || null,
-        section: student?.section || null,
-        gradeLevel: student?.gradeLevel || null,
-        linkedStudents: parentLinks.map(link => {
-          const linked = STUDENT_DIRECTORY.find(record => record.id === link.studentId);
-          return { studentId: link.studentId, name: linked?.name || 'Student', section: linked?.section || null, gradeLevel: linked?.gradeLevel || null };
-        })
-      };
-    });
-    USER_DIRECTORY.splice(0, USER_DIRECTORY.length, ...users);
-  }
-
-  function profileDirectory(role) {
-    if (role === RECORD_VALUES.roles.SCHOOL_ADMIN) return ADMIN_PROFILE_DIRECTORY;
-    if (role === RECORD_VALUES.roles.TEACHER) return TEACHER_PROFILE_DIRECTORY;
-    if (role === RECORD_VALUES.roles.STUDENT) return STUDENT_PROFILE_DIRECTORY;
-    if (role === RECORD_VALUES.roles.PARENT) return PARENT_PROFILE_DIRECTORY;
-    return null;
-  }
-
-  function removeUserProfile(accountId, role) {
-    const directory = profileDirectory(role);
-    if (!directory) return;
-    const index = directory.findIndex(profile => profile.accountId === String(accountId));
-    if (index >= 0) {
-      const [profile] = directory.splice(index, 1);
-      if (role === RECORD_VALUES.roles.PARENT) {
-        for (let linkIndex = PARENT_STUDENT_LINKS.length - 1; linkIndex >= 0; linkIndex -= 1) {
-          if (PARENT_STUDENT_LINKS[linkIndex].parentId === profile.id) PARENT_STUDENT_LINKS.splice(linkIndex, 1);
-        }
-      }
-      if (role === RECORD_VALUES.roles.STUDENT) {
-        for (let linkIndex = PARENT_STUDENT_LINKS.length - 1; linkIndex >= 0; linkIndex -= 1) {
-          if (PARENT_STUDENT_LINKS[linkIndex].studentId === profile.id) PARENT_STUDENT_LINKS.splice(linkIndex, 1);
-        }
-      }
-    }
-    refreshUserDirectories();
-  }
-
-  function upsertUserProfile(account, values = {}) {
-    if (!account) return null;
-    if (account.role === RECORD_VALUES.roles.STUDENT) return upsertStudentProfile(account, values);
-    const directory = profileDirectory(account.role);
-    if (!directory) return null;
-    const index = directory.findIndex(profile => profile.accountId === account.id);
-    const current = index >= 0 ? directory[index] : {};
-    const firstName = values.firstName ?? current.firstName ?? '';
-    const lastName = values.lastName ?? current.lastName ?? '';
-    const honorific = values.honorific ?? current.honorific ?? null;
-    const profilePrefix = account.role === RECORD_VALUES.roles.SCHOOL_ADMIN ? 'admin' : account.role;
-    const profile = {
-      ...current,
-      id: current.id || `${profilePrefix}-${account.id}`,
-      schoolId: account.schoolId,
-      accountId: account.id,
-      honorific,
-      firstName,
-      lastName,
-      displayName: values.displayName || [honorific, firstName, lastName].filter(Boolean).join(' ')
-    };
-    if (account.role === RECORD_VALUES.roles.SCHOOL_ADMIN || account.role === RECORD_VALUES.roles.TEACHER) {
-      profile.employeeNo = values.employeeNo ?? current.employeeNo ?? null;
-    }
-    if (index >= 0) directory[index] = profile;
-    else directory.push(profile);
-    refreshUserDirectories();
-    return profile;
-  }
-
-  function upsertStudentProfile(account, values = {}) {
-    if (!account || account.role !== RECORD_VALUES.roles.STUDENT) return null;
-    const index = STUDENT_PROFILE_DIRECTORY.findIndex(profile => profile.accountId === account.id);
-    const current = index >= 0 ? STUDENT_PROFILE_DIRECTORY[index] : {};
-    const firstName = values.firstName ?? current.firstName ?? '';
-    const lastName = values.lastName ?? current.lastName ?? '';
-    const displayName = values.displayName || values.name || current.displayName || [firstName, lastName].filter(Boolean).join(' ');
-    const profile = {
-      ...current,
-      id: current.id || values.studentId || `student-${account.id}`,
-      schoolId: account.schoolId,
-      accountId: account.id,
-      honorific: null,
-      firstName,
-      lastName,
-      displayName,
-      initials: values.initials || current.initials || getInitials(displayName),
-      lrn: values.lrn ?? current.lrn ?? null,
-      schoolLevel: values.schoolLevel ?? values.level ?? current.schoolLevel ?? null,
-      gradeLevel: formatAccountGrade(values.gradeLevel ?? values.grade ?? current.gradeLevel),
-      strand: values.strand ?? current.strand ?? null,
-      sectionId: Object.hasOwn(values, 'sectionId') ? values.sectionId : current.sectionId ?? null
-    };
-    if (index >= 0) STUDENT_PROFILE_DIRECTORY[index] = profile;
-    else STUDENT_PROFILE_DIRECTORY.push(profile);
-    refreshUserDirectories();
-    return profile;
-  }
-
-  function removeStudentProfile(account) {
-    if (!account) return;
-    removeUserProfile(account.id, RECORD_VALUES.roles.STUDENT);
-  }
-
-  function setParentStudentLinks(parentAccountId, studentIds = []) {
-    const parent = PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === String(parentAccountId));
-    if (!parent) return;
-    for (let index = PARENT_STUDENT_LINKS.length - 1; index >= 0; index -= 1) {
-      if (PARENT_STUDENT_LINKS[index].parentId === parent.id) PARENT_STUDENT_LINKS.splice(index, 1);
-    }
-    studentIds
-      .map(String)
-      .filter(studentId => STUDENT_PROFILE_DIRECTORY.some(student => student.id === studentId))
-      .forEach(studentId => PARENT_STUDENT_LINKS.push({
-        id: `parent-student-${parent.id}-${studentId}`,
-        schoolId: ACTIVE_SCHOOL_ID,
-        parentId: parent.id,
-        studentId
-      }));
-    refreshUserDirectories();
-  }
-
-  function updateStudentPlacement(studentId, values = {}) {
-    const profile = STUDENT_PROFILE_DIRECTORY.find(record => record.id === String(studentId));
-    if (!profile) return null;
-    profile.schoolLevel = values.schoolLevel ?? values.level ?? profile.schoolLevel;
-    profile.gradeLevel = formatAccountGrade(values.gradeLevel ?? values.grade ?? profile.gradeLevel);
-    profile.strand = values.strand ?? profile.strand;
-    if (Object.hasOwn(values, 'sectionId')) profile.sectionId = values.sectionId;
-    refreshUserDirectories();
-    return STUDENT_DIRECTORY.find(record => record.id === profile.id) || null;
-  }
-
-  // Persist authentication, profiles, and relationships separately. Each
-  // collection can later map directly to its own API endpoint and table.
-  function saveAccounts() {
-    writeJson(schoolStorageKey(STORAGE_KEYS.accounts), ACCOUNT_DIRECTORY);
-    writeJson(schoolStorageKey(STORAGE_KEYS.adminProfiles), ADMIN_PROFILE_DIRECTORY);
-    writeJson(schoolStorageKey(STORAGE_KEYS.teacherProfiles), TEACHER_PROFILE_DIRECTORY);
-    writeJson(schoolStorageKey(STORAGE_KEYS.studentProfiles), STUDENT_PROFILE_DIRECTORY);
-    writeJson(schoolStorageKey(STORAGE_KEYS.parentProfiles), PARENT_PROFILE_DIRECTORY);
-    writeJson(schoolStorageKey(STORAGE_KEYS.parentStudentLinks), PARENT_STUDENT_LINKS);
-  }
-
-  // Small frontend data-service layer. Pages read and change account data
-  // through these functions so the local arrays can later be replaced with
-  // API calls without changing each page's rendering code.
-  function getAccounts() {
-    return ACCOUNT_DIRECTORY;
-  }
 
   function getUsers() {
-    return USER_DIRECTORY;
+    return USERS;
+  }
+
+  function getUsersByRole(role) {
+    return USERS.filter(user => user.role === String(role));
   }
 
   function getStudents() {
-    return STUDENT_DIRECTORY;
+    return getUsersByRole(RECORD_VALUES.roles.STUDENT);
   }
 
-  function getProfiles(role) {
-    return profileDirectory(role) || [];
+  function getUserById(userId) {
+    return USERS.find(user => user.id === String(userId)) || null;
+  }
+
+  function saveUsers() {
+    writeJson(USER_STORAGE_KEY, USERS);
   }
 
   function getParentStudentLinks() {
-    return PARENT_STUDENT_LINKS;
+    return PARENT_STUDENT_LINKS.filter(link => link.schoolId === getActiveSchoolId());
   }
 
-  function createAccount(values = {}) {
-    const account = {
-      id: String(values.id || `local-${Date.now()}`),
-      schoolId: values.schoolId || getActiveSchoolId(),
-      email: String(values.email || '').trim(),
-      role: LEGACY_ACCOUNT_ROLES[values.role] || values.role || RECORD_VALUES.roles.STUDENT,
-      status: values.status || RECORD_VALUES.statuses.ACTIVE,
-      createdAt: values.createdAt || new Date().toISOString()
-    };
-    ACCOUNT_DIRECTORY.push(account);
-    refreshUserDirectories();
-    return account;
+  function setParentStudentLinks(parentId, studentIds = []) {
+    const parent = getUserById(parentId);
+    if (!parent || parent.role !== RECORD_VALUES.roles.PARENT) return [];
+
+    for (let index = PARENT_STUDENT_LINKS.length - 1; index >= 0; index -= 1) {
+      if (PARENT_STUDENT_LINKS[index].parentId === parent.id) PARENT_STUDENT_LINKS.splice(index, 1);
+    }
+
+    studentIds
+      .map(String)
+      .filter(studentId => USERS.some(user => user.id === studentId && user.role === RECORD_VALUES.roles.STUDENT))
+      .forEach(studentId => PARENT_STUDENT_LINKS.push({
+        id: `parent-student-${parent.id}-${studentId}`,
+        schoolId: getActiveSchoolId(),
+        parentId: parent.id,
+        studentId
+      }));
+
+    writeJson(schoolStorageKey(STORAGE_KEYS.parentStudentLinks), PARENT_STUDENT_LINKS);
+    return getParentStudentLinks();
   }
 
-  // Create an account and its role-specific profile through one path. Pages
-  // can pass the same fields whether the record came from a form or CSV.
-  function createUserAccount(values = {}) {
-    const role = LEGACY_ACCOUNT_ROLES[values.role] || values.role || RECORD_VALUES.roles.STUDENT;
+  function createUser(values = {}) {
+    const role = ROLE_ALIASES[values.role] || values.role || RECORD_VALUES.roles.STUDENT;
     const firstName = String(values.firstName || '').trim();
     const lastName = String(values.lastName || '').trim();
-    const account = createAccount({
-      id: values.id,
-      schoolId: values.schoolId,
-      email: values.email,
+    const displayName = String(values.displayName || values.name || [values.honorific, firstName, lastName].filter(Boolean).join(' ')).trim();
+    const isStudent = role === RECORD_VALUES.roles.STUDENT;
+    const isStaff = role === RECORD_VALUES.roles.SCHOOL_ADMIN || role === RECORD_VALUES.roles.TEACHER;
+    const user = {
+      id: String(values.studentId || values.id || `${role}-${Date.now()}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
       role,
-      status: values.status,
-      createdAt: values.createdAt
-    });
-    const profileValues = {
+      email: String(values.email || '').trim(),
+      status: values.status || RECORD_VALUES.statuses.ACTIVE,
+      createdAt: values.createdAt || new Date().toISOString(),
+      honorific: isStaff ? values.honorific ?? null : null,
       firstName,
       lastName,
-      displayName: values.displayName || [firstName, lastName].filter(Boolean).join(' '),
-      employeeNo: values.employeeNo ?? null,
-      lrn: values.lrn ?? null,
-      schoolLevel: values.schoolLevel ?? values.level ?? null,
-      gradeLevel: values.gradeLevel ?? values.grade ?? null,
-      strand: values.strand ?? null,
-      sectionId: values.sectionId ?? null,
-      studentId: values.studentId
+      displayName,
+      initials: values.initials || getInitials(displayName),
+      employeeNo: isStaff
+        ? values.employeeNo ?? null
+        : null,
+      lrn: isStudent ? values.lrn ?? null : null,
+      schoolLevel: isStudent ? values.schoolLevel ?? values.level ?? null : null,
+      gradeLevel: isStudent ? values.gradeLevel ?? values.grade ?? null : null,
+      strand: isStudent ? values.strand ?? null : null,
+      sectionId: isStudent ? values.sectionId ?? null : null
     };
 
-    if (role === RECORD_VALUES.roles.STUDENT) upsertStudentProfile(account, profileValues);
-    else upsertUserProfile(account, profileValues);
-    if (role === RECORD_VALUES.roles.PARENT) setParentStudentLinks(account.id, values.linkedStudentIds || []);
-    return account;
+    USERS.push(user);
+    saveUsers();
+    return user;
   }
 
-  function updateAccount(accountId, values = {}) {
-    const account = ACCOUNT_DIRECTORY.find(record => record.id === String(accountId));
-    if (!account) return null;
+  function updateUser(userId, values = {}) {
+    const user = getUserById(userId);
+    if (!user) return null;
 
-    if (values.email !== undefined) account.email = String(values.email || '').trim();
-    if (values.role !== undefined) account.role = LEGACY_ACCOUNT_ROLES[values.role] || values.role;
-    if (values.status !== undefined) account.status = values.status;
+    const fields = [
+      'role', 'email', 'status', 'honorific', 'firstName', 'lastName',
+      'displayName', 'initials', 'employeeNo', 'lrn', 'schoolLevel',
+      'gradeLevel', 'strand', 'sectionId'
+    ];
+    fields.forEach(field => {
+      if (!Object.hasOwn(values, field)) return;
+      if (field === 'role') user.role = ROLE_ALIASES[values.role] || values.role;
+      else if (field === 'email') user.email = String(values.email || '').trim();
+      else user[field] = values[field];
+    });
 
-    refreshUserDirectories();
-    return account;
+    const isStudent = user.role === RECORD_VALUES.roles.STUDENT;
+    const isStaff = user.role === RECORD_VALUES.roles.SCHOOL_ADMIN || user.role === RECORD_VALUES.roles.TEACHER;
+    user.honorific = isStaff ? user.honorific ?? null : null;
+    user.employeeNo = isStaff ? user.employeeNo ?? null : null;
+    user.lrn = isStudent ? user.lrn ?? null : null;
+    user.schoolLevel = isStudent ? user.schoolLevel ?? null : null;
+    user.gradeLevel = isStudent ? user.gradeLevel ?? null : null;
+    user.strand = isStudent ? user.strand ?? null : null;
+    user.sectionId = isStudent ? user.sectionId ?? null : null;
+
+    saveUsers();
+    return user;
   }
 
-  function setAccountStatus(accountId, status) {
-    return updateAccount(accountId, { status });
-  }
-
-  function deleteAccount(accountId) {
-    const index = ACCOUNT_DIRECTORY.findIndex(record => record.id === String(accountId));
+  function deleteUser(userId) {
+    const index = USERS.findIndex(user => user.id === String(userId));
     if (index < 0) return null;
 
-    const [account] = ACCOUNT_DIRECTORY.splice(index, 1);
-    removeUserProfile(account.id, account.role);
-    return account;
+    const [user] = USERS.splice(index, 1);
+    saveUsers();
+    return user;
   }
-
-  refreshUserDirectories();
 
   function formatDateTime(value) {
     const date = new Date(value);
@@ -1651,13 +1567,13 @@ function formatRelativeTime(dateValue) {
   }
 
   function reportWithLabels(record) {
-    const student = STUDENT_DIRECTORY.find(item => item.id === String(record.studentId));
-    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    const student = getUserById(record.studentId);
+    const teacher = getUserById(record.teacherId);
     const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
-    const teacherName = record.teacherName || teacher?.displayName || '';
+    const teacherName = teacher?.displayName || '';
     return {
       ...record,
-      studentName: record.studentName || student?.name || '',
+      studentName: student?.displayName || '',
       sectionLabel: section ? `${section.grade} - ${section.name}` : '',
       teacherName,
       teacherInitials: record.teacherInitials || getInitials(teacherName),
@@ -1760,34 +1676,24 @@ function formatRelativeTime(dateValue) {
     grades: GRADE_CATALOG,
     createDivision,
     subjects: SUBJECT_CATALOG,
-    accounts: ACCOUNT_DIRECTORY,
-    users: USER_DIRECTORY,
-    adminProfiles: ADMIN_PROFILE_DIRECTORY,
-    teacherProfiles: TEACHER_PROFILE_DIRECTORY,
-    studentProfiles: STUDENT_PROFILE_DIRECTORY,
-    parentProfiles: PARENT_PROFILE_DIRECTORY,
     parentStudentLinks: PARENT_STUDENT_LINKS,
-    students: STUDENT_DIRECTORY,
-    getAccounts,
     getUsers,
+    getUsersByRole,
     getStudents,
-    getProfiles,
+    getUserById,
     getParentStudentLinks,
-    createAccount,
-    createUserAccount,
-    updateAccount,
-    setAccountStatus,
-    deleteAccount,
-    saveAccounts,
-    upsertUserProfile,
-    removeUserProfile,
-    upsertStudentProfile,
-    removeStudentProfile,
+    createUser,
+    updateUser,
+    deleteUser,
+    saveUsers,
     setParentStudentLinks,
-    refreshUserDirectories,
-    updateStudentPlacement,
     periods: PERIOD_CATALOG,
     attendanceDefaults: makeAttendanceRules(),
+    attendance: ATTENDANCE_DIRECTORY,
+    getAttendanceRecords,
+    getAttendanceForStudent,
+    saveAttendanceRecords,
+    upsertAttendanceRecord,
     getSchools,
     saveSchools,
     getActiveSchool,
@@ -1806,6 +1712,11 @@ function formatRelativeTime(dateValue) {
     saveAssignments,
     createAssignment,
     setAssignmentCompletion,
+    learningMaterials: LEARNING_MATERIAL_DIRECTORY,
+    getLearningMaterials,
+    getLearningMaterialsForSection,
+    getLearningMaterialsForStudent,
+    saveLearningMaterials,
     gradeRecords: GRADE_DIRECTORY,
     getGradesForStudent,
     journals: JOURNAL_DIRECTORY,

@@ -852,48 +852,46 @@
   const LOCK_PREVIOUS_QUARTERS = true;
   // A teaching assignment and an advisership are separate records. A teacher
   // can advise this section even when they have no subject assignment in it.
+  const CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+  const CURRENT_SECTION_ID = 'jhs-grade7-matthew';
+  const CURRENT_SECTION_RECORD = window.EDUGNAY_CONFIG.getAssignmentSections().find(section => section.id === CURRENT_SECTION_ID);
   const CURRENT_TEACHER_ASSIGNMENT = {
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    teacherId: 'teacher-2',
-    sectionId: 'jhs-grade7-matthew',
+    teacherId: CURRENT_TEACHER_ID,
+    sectionId: CURRENT_SECTION_ID,
     subjectId: 'values-education',
-    isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser
+    adviserId: CURRENT_SECTION_RECORD?.adviserId || null,
+    isAdviser: CURRENT_SECTION_RECORD?.adviserId === CURRENT_TEACHER_ID
   };
-  const CURRENT_SECTION_RECORD = window.EDUGNAY_CONFIG.getAssignmentSections().find(section => section.id === CURRENT_TEACHER_ASSIGNMENT.sectionId);
   const CURRENT_SUBJECT_RECORD = window.EDUGNAY_CONFIG.subjects.find(subject => subject.id === CURRENT_TEACHER_ASSIGNMENT.subjectId);
-  const CURRENT_TEACHER_ID = CURRENT_TEACHER_ASSIGNMENT.teacherId;
   const CURRENT_SECTION = CURRENT_SECTION_RECORD ? `${CURRENT_SECTION_RECORD.grade} – ${CURRENT_SECTION_RECORD.name}` : 'Section';
-  const CURRENT_SECTION_ID = CURRENT_TEACHER_ASSIGNMENT.sectionId;
   const CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
   const CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
   document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
 
-  // Local collection boundaries for the history and materials panels. Replace
-  // these arrays with endpoint responses later without changing their markup.
-  const TEACHER_ATTENDANCE_HISTORY_DATES = ['2025-06-02', '2025-06-03', '2025-06-04', '2025-06-05', '2025-06-06', '2025-06-09', '2025-06-10'];
-  const TEACHER_MATERIALS = window.EDUGNAY_CONFIG.withActiveSchool([
-    { name: 'Module 3 - Respect and Kindness.pdf', type: 'PDF', icon: 'file-text', iconBg: 'var(--red-pale)', iconColor: 'var(--red)', size: '2.4 MB', uploaded: 'June 3, 2025', views: '32 views', status: 'Visible to students', statusColor: 'var(--green)' },
-    { name: 'Q2 Lesson 4 - Good Citizenship.pptx', type: 'PowerPoint', icon: 'presentation', iconBg: 'var(--blue-xpale)', iconColor: 'var(--blue-mid)', size: '5.1 MB', uploaded: 'May 28, 2025', views: '28 views', status: 'Visible to students', statusColor: 'var(--green)' },
-    { name: 'Activity Sheet 3 - Reflection Exercises.xlsx', type: 'Excel', icon: 'table', iconBg: 'var(--green-pale)', iconColor: 'var(--green)', size: '0.8 MB', uploaded: 'May 22, 2025', views: '25 views', status: 'Visible to students', statusColor: 'var(--green)' },
-    { name: 'Reference - Values Education Guide.pdf', type: 'PDF', icon: 'file-text', iconBg: 'var(--red-pale)', iconColor: 'var(--red)', size: '1.2 MB', uploaded: 'May 15, 2025', views: '38 views', status: 'Visible to students', statusColor: 'var(--green)' },
-    { name: 'Values Poster Visual Aid.png', type: 'Image', icon: 'image', iconBg: 'var(--gold-pale)', iconColor: 'var(--gold-dark)', size: '0.4 MB', uploaded: 'May 10, 2025', views: '19 views', status: 'Visible to students', statusColor: 'var(--green)' },
-    { name: 'Q2 Study Guide.docx', type: 'Word', icon: 'file-text', iconBg: 'var(--purple-pale)', iconColor: 'var(--purple)', size: '0.6 MB', uploaded: 'June 8, 2025', views: 'Draft', status: 'Draft - Hidden from students', statusColor: 'var(--orange-dark)', draft: true }
-  ]);
+  // Attendance rows come from the shared attendance source. Replace its
+  // getter with an API request later without changing the table markup.
+  const ATTENDANCE_STATUS_BY_CODE = { P: 'present', A: 'absent', L: 'late', E: 'excused' };
+  const ATTENDANCE_CODE_BY_STATUS = { present: 'P', absent: 'A', late: 'L', excused: 'E' };
+  function getTeacherAttendanceRecords(date = '') {
+    return window.EDUGNAY_CONFIG.getAttendanceRecords({
+      sectionId: CURRENT_SECTION_ID,
+      subjectId: CURRENT_SUBJECT_ID,
+      ...(date ? { date } : {})
+    });
+  }
 
-  // Shared learner identities. Scores and attendance remain page-specific;
-  // assignment records come from the shared assignment source in shell-common.
+  const TEACHER_MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForSection(
+    CURRENT_SECTION_ID,
+    CURRENT_SUBJECT_ID
+  );
+
+  // Shared learner identities. Score data remains page-specific; attendance
+  // records come from the shared attendance source in shell-common.
   const CURRENT_SECTION_STUDENT_IDS = ['cm-001', 'lr-002', 'mt-012', 'sc-013', 'gb-014'];
   const STUDENTS = CURRENT_SECTION_STUDENT_IDS
-    .map(id => window.EDUGNAY_CONFIG.getStudents().find(student => student.id === id))
-    .filter(Boolean)
-    .map((student, index) => ({
-      id: student.id,
-      schoolId: student.schoolId,
-      name: student.name,
-      email: student.email,
-      av: `av-${String.fromCharCode(97 + index)}`,
-      init: student.initials
-    }));
+    .map(id => window.EDUGNAY_CONFIG.getUserById(id))
+    .filter(student => student?.role === 'student');
   const STUDENTS_BY_ID = Object.fromEntries(STUDENTS.map(s => [s.id, s]));
 
   const STUDENT_PROGRESS = window.EDUGNAY_CONFIG.withActiveSchool([
@@ -902,7 +900,13 @@
     { studentId: 'mt-012', attendanceRate: '72%', grade: 71, status: 'Failing', tone: 'red' },
     { studentId: 'sc-013', attendanceRate: '94%', grade: 85, status: 'Passing', tone: 'green' },
     { studentId: 'gb-014', attendanceRate: '80%', grade: 76, status: 'Near Failing', tone: 'orange' }
-  ]);
+  ]).map(progress => {
+    const records = getTeacherAttendanceRecords().filter(record => record.studentId === progress.studentId);
+    const attended = records.filter(record => ['present', 'late', 'excused'].includes(record.status)).length;
+    return records.length
+      ? { ...progress, attendanceRate: Math.round((attended / records.length) * 100) + '%' }
+      : progress;
+  });
 
   function renderTeacherStudentList() {
     const tbody = document.getElementById('studentTbody');
@@ -915,7 +919,7 @@
       return `
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
-          <td><div class="student-cell"><div class="student-av ${student.av}">${student.init}</div><div><div class="student-name">${student.name}</div></div></div></td>
+          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${student.initials}</div><div><div class="student-name">${student.displayName}</div></div></div></td>
           <td style="font-size:12px;color:var(--gray-400);">${student.email}</td>
           <td><span class="badge badge-${progress.tone}">${progress.attendanceRate}</span></td>
           <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.tone] || 'var(--gray-400)'};">${progress.grade}</span></td>
@@ -929,27 +933,22 @@
     document.getElementById('studentListFooter').textContent = `Showing ${count} students`;
   }
 
-  const ATTENDANCE_REMARKS = {
-    'mt-012': '4th consecutive absence',
-    'gb-014': 'arrived 15 minutes late'
-  };
-
   function renderTeacherAttendanceRows() {
     const tbody = document.getElementById('attTbody');
     if (!tbody) return;
-    const record = ATTENDANCE_RECORDS[APP_TODAY] || {};
+    const recordByStudent = Object.fromEntries(getTeacherAttendanceRecords(APP_TODAY).map(record => [record.studentId, record]));
 
     tbody.innerHTML = STUDENTS.length ? STUDENTS.map((student, index) => {
-      const status = record[student.id] || 'P';
+      const status = ATTENDANCE_CODE_BY_STATUS[recordByStudent[student.id]?.status] || 'P';
       const buttons = ['P', 'A', 'L', 'E'].map(code => (
         `<button class="att-btn ${code} ${status === code ? 'selected' : ''}" onclick="setAtt(this,'${code}')">${code}</button>`
       )).join('');
       return `
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
-          <td><div class="student-cell"><div class="student-av ${student.av}" style="width:28px;height:28px;font-size:10px;">${student.init}</div><div class="student-name">${student.name}</div></div></td>
+          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${student.initials}</div><div class="student-name">${student.displayName}</div></div></td>
           <td class="center"><div class="att-btn-group" style="justify-content:center;">${buttons}</div></td>
-          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" placeholder="${ATTENDANCE_REMARKS[student.id] || ''}"></td>
+          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" data-attendance-remark></td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance roster', text: 'Students assigned to this section will appear here for attendance.' })}</td></tr>`;
     document.getElementById('attendanceListFooter').textContent = `Showing ${STUDENTS.length} students`;
@@ -958,19 +957,21 @@
   function renderAttendanceHistory() {
     const tbody = document.getElementById('attendanceHistoryTbody');
     if (!tbody) return;
-    const dates = TEACHER_ATTENDANCE_HISTORY_DATES.filter(date => ATTENDANCE_RECORDS[date] && typeof ATTENDANCE_RECORDS[date] === 'object');
+    const attendanceRecords = getTeacherAttendanceRecords();
+    const dates = [...new Set(attendanceRecords.map(record => record.date))].sort();
+    const recordsByStudentDate = Object.fromEntries(attendanceRecords.map(record => [record.studentId + '|' + record.date, record]));
     if (!STUDENTS.length || !dates.length) {
       tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="9">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No attendance history', text: 'Saved attendance records will appear here for this section.' })}</td></tr>`;
       lucide.createIcons();
       return;
     }
 
-    tbody.innerHTML = STUDENTS.map(student => {
-      const statuses = dates.map(date => ATTENDANCE_RECORDS[date][student.id] || '');
+    tbody.innerHTML = STUDENTS.map((student, index) => {
+      const statuses = dates.map(date => ATTENDANCE_CODE_BY_STATUS[recordsByStudentDate[student.id + '|' + date]?.status] || '');
       const absences = statuses.filter(status => status === 'A').length;
       const absenceTone = absences > 2 ? 'badge-red' : absences > 0 ? 'badge-orange' : 'badge-green';
       return `<tr>
-        <td class="sticky-col"><div class="student-name" style="font-size:12px;">${student.name}</div></td>
+        <td class="sticky-col"><div class="student-name" style="font-size:12px;">${student.displayName}</div></td>
         ${statuses.map(status => `<td class="center"><span class="att-record-cell ${status ? `att-${status}` : 'att-empty'}">${status || '-'}</span></td>`).join('')}
         <td class="center"><span class="badge ${absenceTone}">${absences}</span></td>
       </tr>`;
@@ -1210,15 +1211,16 @@
 
     tbody.innerHTML = '';
     Object.keys(data.scores || {}).forEach((studentId, idx) => {
-      const student = STUDENTS_BY_ID[studentId] || { av: 'av-a', init: '??', name: 'Unknown' };
+      const student = STUDENTS_BY_ID[studentId];
+      if (!student) return;
       const scores = data.scores[studentId];
 
       let cellsHtml =
         '<td class="sticky-col">' +
           '<div class="student-cell">' +
-            '<div class="student-av ' + student.av + '" style="width:26px;height:26px;font-size:10px;">' + student.init + '</div>' +
+            '<div class="student-av av-' + String.fromCharCode(97 + (idx % 7)) + '" style="width:26px;height:26px;font-size:10px;">' + student.initials + '</div>' +
             '<div>' +
-              '<div class="student-name" style="font-size:12px;">' + student.name + '</div>' +
+              '<div class="student-name" style="font-size:12px;">' + student.displayName + '</div>' +
               '<div class="student-num">#' + (idx + 1) + '</div>' +
             '</div>' +
           '</div>' +
@@ -1328,17 +1330,6 @@
   const APP_TODAY = '2025-06-10';
   const ALLOW_EDIT_PAST_ATTENDANCE = true; // flip to test the lock
 
-  // Built from the Attendance History table below — stand-in until a real per-day store exists
-  const ATTENDANCE_RECORDS = {
-    '2025-06-02': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'L' },
-    '2025-06-03': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'E','gb-014':'P' },
-    '2025-06-04': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'A' },
-    '2025-06-05': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'P','sc-013':'P','gb-014':'P' },
-    '2025-06-06': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'P' },
-    '2025-06-09': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'L','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'P' },
-    '2025-06-10': { schoolId: TEACHER_SECTION_SCHOOL_ID, 'cm-001':'P','lr-002':'P','mt-012':'A','sc-013':'P','gb-014':'L' },
-  };
-
   function formatAttDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -1359,13 +1350,13 @@
     const locked = isPast && !ALLOW_EDIT_PAST_ATTENDANCE;
     document.getElementById('attLockBanner').style.display = locked ? 'flex' : 'none';
 
-    const record = ATTENDANCE_RECORDS[dateStr]; // undefined = no saved record for that day
+    const recordByStudent = Object.fromEntries(getTeacherAttendanceRecords(dateStr).map(record => [record.studentId, record]));
 
     document.querySelectorAll('#attTbody tr').forEach(row => {
       const studentId = row.dataset.studentId;
       const group = row.querySelector('.att-btn-group');
       const remarksInput = row.querySelector('td:last-child input');
-      const status = record ? record[studentId] : 'P';
+      const status = ATTENDANCE_CODE_BY_STATUS[recordByStudent[studentId]?.status] || 'P';
 
       group.querySelectorAll('.att-btn').forEach(b => {
         b.classList.remove('selected');
@@ -1374,7 +1365,7 @@
       const match = group.querySelector('.att-btn.' + status);
       if (match) match.classList.add('selected');
 
-      remarksInput.value = (dateStr === APP_TODAY) ? remarksInput.defaultValue : '';
+      remarksInput.value = recordByStudent[studentId]?.remark || '';
       remarksInput.disabled = locked;
     });
 
@@ -1414,16 +1405,22 @@
   function saveAttendance() {
     const date = document.getElementById('attDate').value;
 
-    const records = { schoolId: TEACHER_SECTION_SCHOOL_ID };
     document.querySelectorAll('#attTbody tr').forEach(row => {
       const studentId = row.dataset.studentId;
       const selectedBtn = row.querySelector('.att-btn.selected');
-      const status = selectedBtn ? ['P','A','L','E'].find(s => selectedBtn.classList.contains(s)) : null;
-      records[studentId] = status;
+      const code = selectedBtn ? ['P', 'A', 'L', 'E'].find(status => selectedBtn.classList.contains(status)) : null;
+      window.EDUGNAY_CONFIG.upsertAttendanceRecord({
+        schoolId: TEACHER_SECTION_SCHOOL_ID,
+        studentId,
+        sectionId: CURRENT_SECTION_ID,
+        subjectId: CURRENT_SUBJECT_ID,
+        date,
+        status: ATTENDANCE_STATUS_BY_CODE[code] || 'pending',
+        remark: row.querySelector('[data-attendance-remark]')?.value.trim() || null
+      });
     });
 
-    ATTENDANCE_RECORDS[date] = records;
-
+    renderAttendanceHistory();
     const btn = document.querySelector('#content-attendance .top-btn.primary');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Saved';
@@ -1481,28 +1478,52 @@
     lucide.createIcons();
   }
 
+  const TEACHER_MATERIAL_TYPE_META = {
+    pdf: { label: 'PDF', icon: 'file-text', bg: 'var(--red-pale)', color: 'var(--red)' },
+    pptx: { label: 'PowerPoint', icon: 'presentation', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)' },
+    xlsx: { label: 'Excel', icon: 'table', bg: 'var(--green-pale)', color: 'var(--green)' },
+    png: { label: 'Image', icon: 'image', bg: 'var(--gold-pale)', color: 'var(--gold-dark)' },
+    docx: { label: 'Word', icon: 'file-text', bg: 'var(--purple-pale)', color: 'var(--purple)' }
+  };
+
+  function formatTeacherMaterialDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? 'Date unavailable'
+      : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   function renderTeacherMaterials() {
     const list = document.getElementById('teacherMaterialsList');
     if (!list) return;
-    list.innerHTML = TEACHER_MATERIALS.length ? TEACHER_MATERIALS.map(material => `
+    const panelSub = document.querySelector('#content-materials .panel-sub');
+    if (panelSub) panelSub.textContent = `${CURRENT_SECTION} · ${CURRENT_SUBJECT} · ${TEACHER_MATERIALS.length} files uploaded`;
+    const tabCount = document.querySelector('#tab-materials .tab-count');
+    if (tabCount) tabCount.textContent = String(TEACHER_MATERIALS.length);
+    list.innerHTML = TEACHER_MATERIALS.length ? TEACHER_MATERIALS.map(material => {
+      const meta = TEACHER_MATERIAL_TYPE_META[material.type] || TEACHER_MATERIAL_TYPE_META.pdf;
+      const isDraft = material.status === 'draft';
+      const status = isDraft ? 'Draft - Hidden from students' : 'Visible to students';
+      return `
       <div class="material-item">
-        <div class="material-icon" style="background:${material.iconBg};">
-          <i data-lucide="${material.icon}" style="width:18px;height:18px;color:${material.iconColor};"></i>
+        <div class="material-icon" style="background:${meta.bg};">
+          <i data-lucide="${meta.icon}" style="width:18px;height:18px;color:${meta.color};"></i>
         </div>
         <div class="material-info">
-          <div class="material-name">${material.name}</div>
-          <div class="material-meta">${material.type} · ${material.size} · Uploaded ${material.uploaded} · <span style="color:${material.statusColor};font-weight:600;">${material.status}</span></div>
+          <div class="material-name">${window.EDUGNAY_CONFIG.escapeHtml(material.title)}</div>
+          <div class="material-meta">${meta.label} · ${window.EDUGNAY_CONFIG.escapeHtml(material.fileSize || 'Size unavailable')} · Uploaded ${formatTeacherMaterialDate(material.postedAt)} · <span style="color:${isDraft ? 'var(--orange-dark)' : 'var(--green)'};font-weight:600;">${status}</span></div>
         </div>
         <div class="material-actions">
-          <span class="badge ${material.draft ? 'badge-gray' : 'badge-green'}" style="font-size:10px;">${material.views}</span>
+          <span class="badge ${isDraft ? 'badge-gray' : 'badge-green'}" style="font-size:10px;">${Number(material.views) || 0} views</span>
           <button class="row-btn edit" type="button">
-            <i data-lucide="${material.draft ? 'send' : 'eye'}" style="width:11px;height:11px;"></i> ${material.draft ? 'Publish' : 'Preview'}
+            <i data-lucide="${isDraft ? 'send' : 'eye'}" style="width:11px;height:11px;"></i> ${isDraft ? 'Publish' : 'Preview'}
           </button>
-          <button class="row-btn danger" type="button" aria-label="Remove ${material.name}">
+          <button class="row-btn danger" type="button" aria-label="Remove ${window.EDUGNAY_CONFIG.escapeHtml(material.title)}">
             <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
           </button>
         </div>
-      </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials', text: 'Files uploaded for this section will appear here.' });
+      </div>`;
+    }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials', text: 'Files uploaded for this section will appear here.' });
     lucide.createIcons();
   }
 
@@ -1536,11 +1557,11 @@
     document.getElementById('completionModalTitle').textContent = 'Mark Completion — ' + a.title;
 
     const tbody = document.getElementById('completionTbody');
-    tbody.innerHTML = STUDENTS.length ? STUDENTS.map(s => {
+    tbody.innerHTML = STUDENTS.length ? STUDENTS.map((s, index) => {
       const isDone = Array.isArray(a.completion) && a.completion.some(item => String(item.studentId) === String(s.id));
       return `
         <tr>
-          <td><div class="student-cell"><div class="student-av ${s.av}" style="width:28px;height:28px;font-size:10px;">${s.init}</div><div class="student-name">${s.name}</div></div></td>
+          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${s.initials}</div><div class="student-name">${s.displayName}</div></div></td>
           <td class="center" style="width:90px;">
             <div class="comp-btn-group">
               <button class="comp-btn done ${isDone ? 'selected' : ''}" onclick="setCompletion('${s.id}', true, this)" title="Done">

@@ -488,10 +488,11 @@
     return false;
   }
 
-  // Profile data is separate from the sign-in account. Replace this lookup
-  // with the authenticated administrator profile returned by the API later.
+  // The school administrator is a canonical user record. Replace this lookup
+  // with the authenticated administrator returned by the API later.
   function renderAdminEmployeeNumber() {
-const profile = window.EDUGNAY_CONFIG?.getProfiles?.('school_admin')?.[0];
+    const profile = window.EDUGNAY_CONFIG?.getUsers?.()
+      ?.find(user => user.role === 'school_admin');
     const input = document.getElementById('adminEmployeeNoInput');
     if (input) input.value = profile?.employeeNo || 'Not assigned';
   }

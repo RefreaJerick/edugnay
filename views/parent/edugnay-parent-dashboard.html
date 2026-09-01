@@ -332,67 +332,48 @@
     ];
 
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
 
-    // Dashboard-only records. Child identity comes from PARENT_CHILDREN.
-    const CHILD_DASHBOARD_RECORDS = window.EDUGNAY_CONFIG.withActiveSchool([
-      {
-        studentId: 'jd-004',
-        attendance: {
-          mon: {
-            status: 'present', subjects: [
-              { name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' },
-              { name: 'English', status: 'present', color: 'var(--purple)' },
-              { name: 'Science', status: 'present', color: '#16a34a' },
-            ]
-          },
-          tue: {
-            status: 'present', subjects: [
-              { name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' },
-              { name: 'English', status: 'present', color: 'var(--purple)' },
-              { name: 'Science', status: 'present', color: '#16a34a' },
-            ]
-          },
-          wed: {
-            status: 'absent', subjects: [
-              { name: 'Mathematics', status: 'absent', color: 'var(--blue-mid)' },
-              { name: 'English', status: 'absent', color: 'var(--purple)' },
-              { name: 'Science', status: 'absent', color: '#16a34a' },
-            ]
-          },
-          thu: {
-            status: 'present', subjects: [
-              { name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' },
-              { name: 'English', status: 'late', color: 'var(--purple)' },
-              { name: 'Science', status: 'present', color: '#16a34a' },
-            ]
-          },
-          fri: {
-            status: 'present', subjects: [
-              { name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' },
-              { name: 'English', status: 'present', color: 'var(--purple)' },
-              { name: 'Science', status: 'present', color: '#16a34a' },
-              { name: 'Filipino', status: 'present', color: 'var(--gold)' },
-            ]
-          },
-        },
-      },
-      {
-        studentId: 'mt-012',
-        attendance: {
-          mon: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-          tue: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-          wed: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-          thu: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
-          fri: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
-        },
-      }
-    ]);
+    const ATTENDANCE_SUBJECT_META = {
+      mathematics: { name: 'Mathematics', color: 'var(--blue-mid)' },
+      english: { name: 'English', color: 'var(--purple)' },
+      science: { name: 'Science', color: 'var(--green)' },
+      filipino: { name: 'Filipino', color: 'var(--gold)' }
+    };
+
+    function getDashboardAttendance(studentId, date) {
+      const records = window.EDUGNAY_CONFIG.getAttendanceRecords({ studentId, date });
+      if (!records.length) return null;
+
+      const dailyRecords = records.some(record => !record.subjectId)
+        ? records.filter(record => !record.subjectId)
+        : records;
+      const subjects = dailyRecords.map(record => {
+        const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: 'All Subjects', color: 'var(--blue-mid)' };
+        return { name: subject.name, status: record.status, color: subject.color };
+      });
+      const statuses = subjects.map(subject => subject.status);
+      const status = statuses.includes('absent') ? 'absent'
+        : statuses.includes('late') ? 'late'
+        : statuses.some(value => value === 'present' || value === 'excused') ? 'present'
+        : 'pending';
+      return { status, subjects };
+    }
+
+    const CHILD_DASHBOARD_RECORDS = PARENT_CHILDREN.map(child => ({
+      studentId: child.studentId,
+      attendance: Object.fromEntries(DAYS.map(day => [
+        day.key,
+        getDashboardAttendance(child.studentId, '2025-06-' + String(day.date).padStart(2, '0'))
+      ]))
+    }));
 
     let currentChild = PARENT_CHILDREN[0]?.studentId || null;
     let currentDay = 'fri';
 
     function getCurrentChild() {
-      return PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const link = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      return link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null;
     }
 
     function getCurrentDashboardRecord() {
@@ -402,9 +383,12 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(child => {
-        const section = `${child.gradeLevel} – ${child.sectionName}`;
-        return `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${section}</div></div>${child.studentId === 'mt-012' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
+      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student || student.role !== 'student') return '';
+        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+        const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
+        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${sectionLabel}</div></div>${student.id === 'mt-012' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       if (window.lucide) lucide.createIcons();
     }
@@ -425,7 +409,8 @@
         return;
       }
       const report = window.EDUGNAY_CONFIG.getReportsForStudent(currentChild, true)[0] || null;
-      document.getElementById('banner-child-context').textContent = `Viewing: ${child.name} · ${child.gradeLevel} – ${child.sectionName}`;
+      const section = PARENT_SECTIONS.find(record => record.id === child.sectionId);
+      document.getElementById('banner-child-context').textContent = `Viewing: ${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       if (!report || !String(report.text || '').trim()) {
         showEmptyReport('No weekly report yet', 'A weekly report will appear here when it is confirmed and sent.');
         return;
@@ -498,8 +483,8 @@
       const bannerIcon = att.status === 'present' ? 'check-circle' : 'circle-x';
       const bannerTitle = att.status === 'present' ? 'Present' : 'Absent';
       const bannerSub = att.status === 'present'
-        ? `${child.name} attended school on this day.`
-        : `${child.name} was marked absent for this day. Contact the adviser if this seems incorrect.`;
+        ? `${child.displayName} attended school on this day.`
+        : `${child.displayName} was marked absent for this day. Contact the adviser if this seems incorrect.`;
       const subjects = Array.isArray(att.subjects) ? att.subjects : [];
 
       container.innerHTML = `

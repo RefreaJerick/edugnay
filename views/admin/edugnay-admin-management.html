@@ -938,8 +938,7 @@ function closeSectionAddModal() { document.getElementById('sectionAddModalBackdr
 document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
 
 function teacherAccounts() {
-  const teacherRole = window.EDUGNAY_CONFIG.values?.roles?.TEACHER || 'teacher';
-  return window.EDUGNAY_CONFIG.getUsers().filter(user => user.role === teacherRole);
+  return window.EDUGNAY_CONFIG.getUsersByRole('teacher');
 }
 
 function teacherInitials(teacher) {
@@ -960,8 +959,8 @@ function renderTeacherOptions() {
     const selected = select.value;
     select.innerHTML = '';
     select.appendChild(new Option('Select faculty', ''));
-    teachers.forEach(teacher => select.appendChild(new Option(teacher.displayName, teacher.profileId || teacher.id)));
-    select.value = teachers.some(teacher => (teacher.profileId || teacher.id) === selected) ? selected : '';
+    teachers.forEach(teacher => select.appendChild(new Option(teacher.displayName, teacher.id)));
+    select.value = teachers.some(teacher => teacher.id === selected) ? selected : '';
   });
 
   const select = document.getElementById('teacherSelect');
@@ -970,13 +969,13 @@ function renderTeacherOptions() {
   select.innerHTML = '';
   select.appendChild(new Option('Select a teacher', ''));
   teachers.forEach(teacher => {
-    const option = new Option(`${teacher.displayName} · ${teacher.email}`, teacher.profileId || teacher.id);
+    const option = new Option(`${teacher.displayName} \u00b7 ${teacher.email}`, teacher.id);
     option.dataset.name = teacher.displayName || '';
     option.dataset.email = teacher.email || '';
     option.dataset.initials = teacherInitials(teacher);
     select.appendChild(option);
   });
-  select.value = teachers.some(teacher => (teacher.profileId || teacher.id) === selected) ? selected : '';
+  select.value = teachers.some(teacher => teacher.id === selected) ? selected : '';
   window.syncSearchableSelect?.(select);
 }
 
@@ -987,7 +986,6 @@ function saveManagementSchool(school) {
   if (index < 0) return false;
   schools[index] = school;
   window.EDUGNAY_CONFIG.saveSchools(schools);
-  window.EDUGNAY_CONFIG.refreshUserDirectories?.();
   return true;
 }
 
@@ -1147,41 +1145,15 @@ const TEACHER_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.withActiveSchool(
   }))
 );
 
-// Keep the management table in step with the shared student directory.
-// Later, replace this source with the student API response in the same shape.
-function managementStudentSectionId(student) {
-  if (student.sectionId) return student.sectionId;
-  const sectionLabel = String(student.section || '').trim();
-  if (!sectionLabel || sectionLabel === 'Unassigned') return null;
-
-  const grade = managementGradeKey(student.grade);
-  const name = sectionLabel.split('/').pop().trim().toLowerCase();
-  const configuredSections = window.EDUGNAY_CONFIG
-    .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
-  const matchingSection = configuredSections.find(section => (
-    managementGradeKey(section.grade) === grade
-    && String(section.name || '').trim().toLowerCase() === name
-  ));
-
-  return matchingSection ? matchingSection.id : null;
-}
-
-const STUDENTS_DATA = [];
+// Keep the management table on the canonical user records. The service
+// refreshes this reference after a placement or import mutation.
+let STUDENTS_DATA = window.EDUGNAY_CONFIG.getStudents();
+let MANAGEMENT_ASSIGNMENT_STUDENTS = STUDENTS_DATA;
 
 function syncManagementStudentRecords() {
-  const records = window.EDUGNAY_CONFIG.getStudents().map(student => ({
-    id: student.id,
-    name: student.name,
-    email: student.email,
-    section: managementStudentSectionId(student),
-    grade: managementGradeKey(student.grade),
-    level: student.level,
-    strand: student.strand || '',
-  }));
-  STUDENTS_DATA.splice(0, STUDENTS_DATA.length, ...records);
+  STUDENTS_DATA = window.EDUGNAY_CONFIG.getStudents();
+  MANAGEMENT_ASSIGNMENT_STUDENTS = STUDENTS_DATA;
 }
-
-syncManagementStudentRecords();
 
 /* ══════════════════════════════════════════════
    RENDER FUNCTIONS
@@ -1353,7 +1325,8 @@ function getManagementTeacherSlots() {
 
 function teacherRecordById(teacherId) {
   if (!teacherId) return null;
-  return teacherAccounts().find(teacher => (teacher.profileId || teacher.id) === teacherId) || null;
+  const teacher = window.EDUGNAY_CONFIG.getUserById(teacherId);
+  return teacher?.role === 'teacher' ? teacher : null;
 }
 
 function teacherAssignmentsForSection(section) {
@@ -1516,13 +1489,13 @@ function renderStudentGradeTabs() {
   const tabs = document.getElementById('studentGradeTabs');
   if (!tabs) return;
   const records = managementSectionRecords();
-  const assigned = STUDENTS_DATA.filter(student => student.section);
+  const assigned = STUDENTS_DATA.filter(student => student.sectionId);
   const countFor = key => key === 'unassigned'
     ? STUDENTS_DATA.length - assigned.length
     : key === 'all'
       ? assigned.length
       : assigned.filter(student => {
-        const section = managementSectionById(student.section);
+        const section = managementSectionById(student.sectionId);
         return section && managementFilterMatches(key, [managementSectionFilterKey(section)]);
       }).length;
   const levels = managementSchoolLevels();
@@ -1563,17 +1536,17 @@ function renderStudentGradeSubTabs(level) {
 
   if (activeStudentGrade !== level && !activeStudentGrade.startsWith(`${level}:`)) activeStudentGrade = level;
   tabs.classList.remove('is-empty');
-  const assigned = STUDENTS_DATA.filter(student => student.section);
+  const assigned = STUDENTS_DATA.filter(student => student.sectionId);
   const levelLabel = managementLevelLabel(level);
   const grades = managementGradeOptions(level);
   studentTabTitles[level] = { title: `${levelLabel} Students`, meta: `Showing students enrolled across ${levelLabel} grades` };
   tabs.innerHTML = [
-    `<div class="filter-tab grade-filter-tab ${activeStudentGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchStudentGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${assigned.filter(student => { const section = managementSectionById(student.section); return section && managementFilterMatches(level, [managementSectionFilterKey(section)]); }).length}</span></div>`,
+    `<div class="filter-tab grade-filter-tab ${activeStudentGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchStudentGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${assigned.filter(student => { const section = managementSectionById(student.sectionId); return section && managementFilterMatches(level, [managementSectionFilterKey(section)]); }).length}</span></div>`,
     ...grades.map(grade => {
       const key = `${level}:${managementGradeKey(grade)}`;
       studentTabTitles[key] = { title: `${levelLabel} · ${grade} Students`, meta: `Showing students enrolled in ${grade}` };
       const count = assigned.filter(student => {
-        const section = managementSectionById(student.section);
+        const section = managementSectionById(student.sectionId);
         return section && managementSectionFilterKey(section) === key;
       }).length;
       return `<div class="filter-tab grade-filter-tab ${activeStudentGrade === key ? 'active' : ''}" data-grade="${key}" onclick="switchStudentGradeTab('${key}', this)">${grade} <span class="tab-count">${count}</span></div>`;
@@ -1584,20 +1557,20 @@ function renderStudentGradeSubTabs(level) {
 function renderEnrolledTable() {
   const tbody = document.getElementById('enrolledBody');
   tbody.innerHTML = STUDENTS_DATA.map(student => {
-    const initials = student.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase();
-    const section = student.section ? managementSectionById(student.section) : null;
+    const initials = student.initials || window.EDUGNAY_CONFIG.getInitials(student.displayName);
+    const section = student.sectionId ? managementSectionById(student.sectionId) : null;
     if (section) {
       return `
       <tr data-grade="${managementSectionFilterKey(section)}" data-section="${section.id}" data-assigned="true" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.name}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.email}</div></div></div></td>
         <td><span class="enrolled-section-name">${section.name}</span><div class="table-secondary">${managementSectionContext(section)}</div></td>
         <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${section.grade}</span></td>
-        <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${student.name}', '${student.id}', '${section.id}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${student.name}', '${section.name}', '${student.id}', this)">Remove</button></div></td>
+        <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${student.displayName}', '${student.id}', '${section.id}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', this)">Remove</button></div></td>
       </tr>`;
     }
     return `
       <tr data-grade="unassigned" data-section="none" data-assigned="false" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.name}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.email}</div></div></div></td>
         <td><span class="table-warning">Unassigned</span></td>
         <td><span class="badge badge-gray">Not set</span></td>
         <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.id}')">+ Assign</button></td>
@@ -1630,7 +1603,7 @@ function renderSectionOverviewCards() {
 
 function renderStudentsTab() {
   const records = managementSectionRecords();
-  const assigned = STUDENTS_DATA.filter(student => student.section).length;
+  const assigned = STUDENTS_DATA.filter(student => student.sectionId).length;
   renderManagementStatCards('students-summary-cards', [
     { tone: 'green', icon: 'graduation-cap', value: STUDENTS_DATA.length, label: 'Total Students', sub: 'Registered in the system' },
     { tone: 'green', icon: 'check-circle', value: assigned, label: 'Assigned', sub: 'Placed in a section' },
@@ -1673,12 +1646,7 @@ function openSectionEditModal(card) {
 function openSectionStudentsModal(card) {
   const section = managementSectionById(card.dataset.id);
   if (!section) return;
-  const assigned = STUDENTS_DATA.filter(student => student.section === section.id).map(student => ({
-    name: student.name,
-    email: student.email,
-    status: 'Active',
-    id: student.id
-  }));
+  const assigned = STUDENTS_DATA.filter(student => student.sectionId === section.id);
   document.getElementById('sectionStudentsModalTitle').textContent = `${section.name}: Students`;
   document.getElementById('sectionStudentsModalSub').textContent = `${managementSectionPlacement(section)} · ${section.students} enrolled`;
   const tbody = document.getElementById('sectionStudentsTableBody');
@@ -1686,10 +1654,10 @@ function openSectionStudentsModal(card) {
     ? assigned.map((student, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td><strong>${student.name}</strong></td>
+          <td><strong>${student.displayName}</strong></td>
           <td>${student.email || ''}</td>
           <td><span class="badge ${student.status === 'Active' ? 'badge-green' : 'badge-orange'}">${student.status || 'Active'}</span></td>
-          <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.name}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
+          <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
         </tr>`).join('')
     : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
   document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
@@ -2082,7 +2050,6 @@ function filterTeacherBlocks() {
 /* ══════════════════════════════════════════════
    ASSIGN STUDENTS TAB
 ══════════════════════════════════════════════ */
-const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
 const managementAssignState = { student: null, level: '', grade: '', strand: '', section: '' };
 const managementMoveState = { student: null, level: '', grade: '', strand: '', section: '', excludedSection: '' };
 
@@ -2120,7 +2087,7 @@ function managementDivision(level) {
 function managementSectionStudentCount(sectionId) {
   /* STUDENTS_DATA is derived from the shared directory above. Replace its source with the student API later. */
   const records = Array.isArray(STUDENTS_DATA) ? STUDENTS_DATA : [];
-  return records.filter(student => (student.sectionId || student.section) === sectionId).length;
+  return records.filter(student => student.sectionId === sectionId).length;
 }
 
 function managementSectionRecords() {
@@ -2132,7 +2099,7 @@ function managementSectionRecords() {
     const subjects = Number(section.subjects) > 0 ? Number(section.subjects) : configuredSubjectCount;
     const students = managementSectionStudentCount(section.id);
     const adviserId = section.adviserId || null;
-    const adviserProfile = window.EDUGNAY_CONFIG.getUsers().find(user => user.profileId === adviserId);
+    const adviserProfile = window.EDUGNAY_CONFIG.getUserById(adviserId);
     const adviser = adviserProfile?.displayName || null;
     return {
       ...section,
@@ -2215,7 +2182,7 @@ function renderManagementTabPills() {
   const teacherPill = document.getElementById('teacherTabPill');
   const studentPill = document.getElementById('studentTabPill');
   if (teacherPill) teacherPill.textContent = `${getTeacherAssignmentStats().unassigned} open`;
-  if (studentPill) studentPill.textContent = `${STUDENTS_DATA.filter(student => !student.section).length} open`;
+  if (studentPill) studentPill.textContent = `${STUDENTS_DATA.filter(student => !student.sectionId).length} open`;
 }
 
 function managementSetOptions(select, options, placeholder, selectedValue) {
@@ -2257,26 +2224,14 @@ function managementSectionLabel(section) {
 }
 
 function managementStudentMeta(studentId) {
-  const directoryStudent = MANAGEMENT_ASSIGNMENT_STUDENTS.find(student => student.id === studentId);
-  if (directoryStudent) return directoryStudent;
-  const localStudent = STUDENTS_DATA.find(student => student.id === studentId);
-  if (!localStudent) return null;
-  const section = managementSectionById(localStudent.section);
-  return {
-    id: localStudent.id,
-    name: localStudent.name,
-    email: localStudent.email,
-    initials: localStudent.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase(),
-    level: localStudent.level || 'jhs',
-    grade: localStudent.grade ? `Grade ${localStudent.grade}` : section ? `Grade ${section.grade}` : '',
-    strand: localStudent.strand || ''
-  };
+  const student = window.EDUGNAY_CONFIG.getUserById(studentId);
+  return student?.role === 'student' ? student : null;
 }
 
 function managementRenderStudentOptions(selectedId = '') {
   managementSetOptions(
     document.getElementById('studentSelect'),
-    MANAGEMENT_ASSIGNMENT_STUDENTS.map(student => ({ value: student.id, label: `${student.name} · ${student.email}` })),
+    MANAGEMENT_ASSIGNMENT_STUDENTS.map(student => ({ value: student.id, label: `${student.displayName} · ${student.email}` })),
     'Select a student',
     selectedId
   );
@@ -2287,7 +2242,7 @@ function managementRenderFields(state, ids, excludeSection = '') {
   const gradeSelect = document.getElementById(ids.grade);
   const strandSelect = document.getElementById(ids.strand);
   const sectionSelect = document.getElementById(ids.section);
-  const level = state.student?.level || levelSelect?.value || state.level || managementDefaultLevel();
+  const level = state.student?.schoolLevel || levelSelect?.value || state.level || managementDefaultLevel();
   state.level = level;
   managementSetOptions(levelSelect, managementSchoolLevels().map(item => ({ value: item, label: managementLevelLabel(item) })), 'Select a school level', level);
   if (levelSelect) {
@@ -2296,7 +2251,7 @@ function managementRenderFields(state, ids, excludeSection = '') {
   }
 
   const grades = managementGradeOptions(level);
-  const requestedGrade = state.student?.grade || gradeSelect?.value || state.grade;
+  const requestedGrade = state.student?.gradeLevel || gradeSelect?.value || state.grade;
   const grade = grades.find(item => managementGradeKey(item) === managementGradeKey(requestedGrade)) || grades[0] || '';
   state.grade = grade;
   managementSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
@@ -2349,7 +2304,7 @@ function updateManagementAssignmentContext() {
   if (!context) return;
   const student = managementAssignState.student;
   const placement = [managementLevelLabel(managementAssignState.level), managementAssignState.grade, managementAssignState.strand].filter(Boolean).join(' · ');
-  context.textContent = section ? `${student?.name || 'Student not selected'} · ${placement} · ${section.name}` : `${student?.name || 'Select a student'} · ${placement}`;
+  context.textContent = section ? `${student?.displayName || 'Student not selected'} · ${placement} · ${section.name}` : `${student?.displayName || 'Select a student'} · ${placement}`;
 }
 
 function updateManagementMoveContext() {
@@ -2374,8 +2329,8 @@ function updateManagementMoveFields() {
 function handleManagementStudentChange(studentId) {
   const student = managementStudentMeta(studentId);
   managementAssignState.student = student;
-  managementAssignState.level = student?.level || managementDefaultLevel() || '';
-  managementAssignState.grade = student?.grade || '';
+  managementAssignState.level = student?.schoolLevel || managementDefaultLevel() || '';
+  managementAssignState.grade = student?.gradeLevel || '';
   managementAssignState.strand = student?.strand || '';
   managementAssignState.section = '';
   const preview = document.getElementById('studentPreview');
@@ -2383,7 +2338,7 @@ function handleManagementStudentChange(studentId) {
     preview?.classList.remove('visible');
   } else {
     document.getElementById('spAv').textContent = student.initials;
-    document.getElementById('spName').textContent = student.name;
+    document.getElementById('spName').textContent = student.displayName;
     document.getElementById('spDetail').textContent = student.email;
     preview?.classList.add('visible');
   }
@@ -2394,7 +2349,7 @@ function handleManagementStudentChange(studentId) {
 function openStudentAssignModal(studentId = '') {
   const matchedStudent = managementStudentMeta(studentId);
   const isQuickAssign = Boolean(matchedStudent);
-  document.getElementById('studentModalTitle').textContent = matchedStudent ? `Assign: ${matchedStudent.name}` : 'Assign Student';
+  document.getElementById('studentModalTitle').textContent = matchedStudent ? `Assign: ${matchedStudent.displayName}` : 'Assign Student';
   document.getElementById('studentModalSub').textContent = 'Choose the student and class placement.';
   managementAssignState.student = null;
   managementAssignState.level = managementDefaultLevel() || '';
@@ -2414,12 +2369,12 @@ function openStudentAssignModal(studentId = '') {
 
   if (matchedStudent) {
     managementAssignState.student = matchedStudent;
-    managementAssignState.level = matchedStudent.level || managementAssignState.level;
-    managementAssignState.grade = matchedStudent.grade || '';
+    managementAssignState.level = matchedStudent.schoolLevel || managementAssignState.level;
+    managementAssignState.grade = matchedStudent.gradeLevel || '';
     managementAssignState.strand = matchedStudent.strand || '';
     document.getElementById('studentSelect').value = matchedStudent.id;
     document.getElementById('spAv').textContent = matchedStudent.initials;
-    document.getElementById('spName').textContent = matchedStudent.name;
+    document.getElementById('spName').textContent = matchedStudent.displayName;
     document.getElementById('spDetail').textContent = matchedStudent.email;
     document.getElementById('studentPreview').classList.add('visible');
   }
@@ -2432,14 +2387,15 @@ function closeStudentAssignModal() { document.getElementById('studentAssignModal
 document.getElementById('studentAssignModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeStudentAssignModal(); });
 
 function openMoveStudentModal(studentName, studentId, currentSection) {
-  document.getElementById('studentModalTitle').textContent = `Move: ${studentName}`;
+  const student = managementStudentMeta(studentId);
+  if (!student) return;
+  document.getElementById('studentModalTitle').textContent = `Move: ${student.displayName || studentName}`;
   document.getElementById('studentModalSub').textContent = 'Choose a new class placement.';
   document.getElementById('moveStudentId').value = studentId;
 
-  const student = managementStudentMeta(studentId) || { id: studentId, name: studentName, level: 'jhs', grade: '', strand: '' };
   managementMoveState.student = student;
-  managementMoveState.level = student.level || 'jhs';
-  managementMoveState.grade = student.grade || '';
+  managementMoveState.level = student.schoolLevel || 'jhs';
+  managementMoveState.grade = student.gradeLevel || '';
   managementMoveState.strand = student.strand || '';
   managementMoveState.section = '';
   managementMoveState.excludedSection = currentSection || '';
@@ -2587,14 +2543,13 @@ document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', 
 
 function saveManagementStudentPlacement(studentId, section) {
   if (!studentId || !section) return null;
-  const student = window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
-    level: section.level,
-    grade: section.grade,
+  const student = window.EDUGNAY_CONFIG.updateUser(studentId, {
+    schoolLevel: section.level,
+    gradeLevel: section.grade,
     strand: section.strand || '',
     sectionId: section.id
   });
   if (student) {
-    window.EDUGNAY_CONFIG.saveAccounts();
     syncManagementStudentRecords();
   }
   return student;
@@ -2688,13 +2643,12 @@ document.getElementById('removeStudentForm').addEventListener('submit', function
   }
 
   const studentId = document.getElementById('removeStudentId').value || targetId;
-  const student = window.EDUGNAY_CONFIG.getStudents().find(record => record.id === studentId);
+  const student = window.EDUGNAY_CONFIG.getUserById(studentId);
   if (!student) { closeConfirmRemoveModal(); return; }
 
-  window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
+  window.EDUGNAY_CONFIG.updateUser(student.id, {
     sectionId: null
   });
-  window.EDUGNAY_CONFIG.saveAccounts();
   syncManagementStudentRecords();
   closeConfirmRemoveModal();
   closeSectionStudentsModal();
@@ -2771,11 +2725,11 @@ function createImportedStudentAccount(record, level, grade, strand, section) {
   const lastName = String(record.lastName || '').trim();
   const name = `${firstName} ${lastName}`.trim() || 'Unnamed Student';
   const email = String(record.email || '').trim();
-  let account = email && config.getAccounts().find(item => item.email === email);
+  let user = email && config.getUsers().find(item => item.email === email);
 
-  if (!account) {
+  if (!user) {
     const recordId = `stu-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    account = config.createUserAccount({
+    user = config.createUser({
       id: `student-${recordId}`,
       schoolId: config.getActiveSchoolId(),
       email,
@@ -2785,26 +2739,24 @@ function createImportedStudentAccount(record, level, grade, strand, section) {
       firstName,
       lastName,
       displayName: name,
-      studentId: `stu-${recordId}`,
       lrn: String(record.lrn || '').trim(),
       schoolLevel: level,
       gradeLevel: grade,
       strand: strand || null,
       sectionId: section.id
     });
-    return account;
+    return user;
   }
 
-  config.updateAccount(account.id, { role: 'student', email: email || account.email });
-
-  return config.upsertStudentProfile(account, {
-    studentId: `stu-${account.id}`,
+  return config.updateUser(user.id, {
+    role: 'student',
+    email: email || user.email,
     firstName,
     lastName,
     displayName: name,
     lrn: String(record.lrn || '').trim(),
-    level,
-    grade,
+    schoolLevel: level,
+    gradeLevel: grade,
     strand: strand || null,
     sectionId: section.id
   });
@@ -2864,7 +2816,6 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
       sectionIdx = (sectionIdx + 1) % gradeSections.length;
     });
 
-    window.EDUGNAY_CONFIG.saveAccounts();
     syncManagementStudentRecords();
     closeImportStudentsModal();
     renderManagementStudentChanges();

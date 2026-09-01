@@ -27,11 +27,10 @@
   <!--
   EJS CONVERSION MAP — student-materials.html
   ─────────────────────────────────────────
-  - subjects[]      → student's enrolled subjects for active quarter, each with a materialsCount
-                       { id, label, dotColor, materialsCount }
-  - materials[]      → learning materials for the SELECTED subject, filtered to student's
-                       enrolled section, grouped by week:
-                       { id, title, type ('pdf'|'pptx'|'video'|'docx'|'image'), week, postedDate, fileUrl }
+  - learningMaterials[] → shared records filtered to the student's enrolled section:
+                       { id, schoolId, sectionId, subjectId, teacherId, title, type,
+                         schoolYear, academicPeriodId, postedAt, fileSize, fileUrl,
+                         status, visibleToStudents, views }
                        This is read-only for students — no upload/delete actions render here
                        (those exist only on the teacher portal's Learning Materials tab).
   - File download/view → route through GET /student/materials/:id/download (or signed URL),
@@ -195,30 +194,8 @@
         </div>
       </section>
 
-      <!-- subjects[]: loop -->
-      <div class="subject-tab-bar" id="subject-tabs">
-        <button class="subject-tab active" data-subject="math">
-          Mathematics
-          <span class="tab-count">7</span>
-        </button>
-        <button class="subject-tab" data-subject="english">
-          English
-          <span class="tab-count">4</span>
-        </button>
-        <button class="subject-tab" data-subject="science">
-          Science
-          <span class="tab-count">5</span>
-        </button>
-        <button class="subject-tab" data-subject="filipino">
-          Filipino
-          <span class="tab-count">3</span>
-        </button>
-        <button class="subject-tab" data-subject="values">
-          Values Ed
-          <span class="tab-count">2</span>
-        </button>
-      </div>
-      <!-- end subjects[] loop -->
+      <!-- Subject tabs are rendered from the shared learning-material records. -->
+      <div class="subject-tab-bar" id="subject-tabs"></div>
 
       <section class="panel materials-panel">
         <div class="panel-head">
@@ -255,67 +232,21 @@
   <script>
     lucide.createIcons();
 
-    /*
-      EJS NOTE: MATERIALS_BY_SUBJECT is a client-side placeholder for what becomes
-      server-fetched data. On conversion, switching subjects should ideally hit
-      GET /student/materials?subject=:id rather than preloading every subject's
-      full material list — especially once classes accumulate many files per term.
-    */
-    const MATERIALS_BY_SUBJECT = {
-      math: {
-        teacher: 'Ms. Maria Reyes',
-        items: [
-          { id: '1', title: 'Lesson 1: Algebra Basics', type: 'pdf', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '2', title: 'Activity Sheet 1', type: 'docx', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '3', title: 'Lesson 2 Slides: Equations', type: 'pptx', quarter: '1st Quarter', date: 'June 10, 2025' },
-          { id: '4', title: 'Quiz 1 Answer Key', type: 'pdf', quarter: '1st Quarter', date: 'June 12, 2025' },
-          { id: '5', title: 'Solving for X: Video Lesson', type: 'video', quarter: '2nd Quarter', date: 'June 12, 2025' },
-          { id: '6', title: 'Lesson 3: Linear Inequalities', type: 'pdf', quarter: '2nd Quarter', date: 'June 13, 2025' },
-          { id: '7', title: 'Seatwork 2: Variables', type: 'docx', quarter: '2nd Quarter', date: 'June 14, 2025' },
-        ]
-      },
-      english: {
-        teacher: 'Mr. Paolo Santos',
-        items: [
-          { id: '8', title: 'Reading List: Short Stories', type: 'pdf', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '9', title: 'Grammar Review Slides', type: 'pptx', quarter: '1st Quarter', date: 'June 11, 2025' },
-          { id: '10', title: 'Essay Writing Guide', type: 'docx', quarter: '2nd Quarter', date: 'June 13, 2025' },
-          { id: '11', title: 'Vocabulary List: Week 3', type: 'pdf', quarter: '2nd Quarter', date: 'June 14, 2025' },
-        ]
-      },
-      science: {
-        teacher: 'Mrs. Liza Ramos',
-        items: [
-          { id: '12', title: 'Cell Structure Diagram', type: 'pdf', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '13', title: 'Lab Safety Video', type: 'video', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '14', title: 'Lesson 2 Slides: Ecosystems', type: 'pptx', quarter: '2nd Quarter', date: 'June 11, 2025' },
-          { id: '15', title: 'Worksheet: Food Chains', type: 'docx', quarter: '2nd Quarter', date: 'June 12, 2025' },
-          { id: '16', title: 'Quiz 1 Review Notes', type: 'pdf', quarter: '2nd Quarter', date: 'June 13, 2025' },
-        ]
-      },
-      filipino: {
-        teacher: 'Mr. Andres Cruz',
-        items: [
-          { id: '17', title: 'Aralin 1: Pagbasa', type: 'pdf', quarter: '1st Quarter', date: 'June 9, 2025' },
-          { id: '18', title: 'Gawaing Pagsulat', type: 'docx', quarter: '1st Quarter', date: 'June 11, 2025' },
-          { id: '19', title: 'Presentasyon: Tula', type: 'pptx', quarter: '2nd Quarter', date: 'June 13, 2025' },
-        ]
-      },
-      values: {
-        teacher: 'Ms. Maria Reyes',
-        items: [
-          { id: '20', title: 'Module 2: Empathy and Respect', type: 'pdf', quarter: '1st Quarter', date: 'June 11, 2025' },
-          { id: '21', title: 'Reflection Guide', type: 'docx', quarter: '2nd Quarter', date: 'June 13, 2025' },
-        ]
-      },
-    };
-
-    Object.values(MATERIALS_BY_SUBJECT).forEach(subject => {
-      subject.schoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
-      subject.items = window.EDUGNAY_CONFIG.withActiveSchool(subject.items);
+    // The shared getter can later request only the selected subject from the API.
+    const MATERIAL_RECORDS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent('jd-004');
+    const MATERIALS_BY_SUBJECT = {};
+    MATERIAL_RECORDS.forEach(material => {
+      if (!MATERIALS_BY_SUBJECT[material.subjectId]) {
+        MATERIALS_BY_SUBJECT[material.subjectId] = {
+          label: material.subjectName || 'Subject',
+          teacher: material.teacherName || 'Subject teacher',
+          items: []
+        };
+      }
+      MATERIALS_BY_SUBJECT[material.subjectId].items.push(material);
     });
 
-    let currentSubject = 'math';
+    let currentSubject = Object.keys(MATERIALS_BY_SUBJECT)[0] || '';
 
     const TYPE_META = {
       pdf: { icon: 'file-text', bg: 'var(--red-pale)', color: 'var(--red)', label: 'PDF' },
@@ -324,14 +255,46 @@
       docx: { icon: 'file-text', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)', label: 'Document' },
     };
 
+    const PERIOD_LABELS = {
+      q1: '1st Quarter',
+      q2: '2nd Quarter',
+      q3: '3rd Quarter',
+      q4: '4th Quarter',
+      'semester-1': '1st Semester',
+      'semester-2': '2nd Semester'
+    };
+
+    function formatMaterialDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? 'Date unavailable'
+        : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderSubjectTabs() {
+      const tabs = document.getElementById('subject-tabs');
+      if (!tabs) return;
+      tabs.innerHTML = Object.entries(MATERIALS_BY_SUBJECT).map(([subjectId, data]) => `
+        <button class="subject-tab${subjectId === currentSubject ? ' active' : ''}" data-subject="${window.EDUGNAY_CONFIG.escapeHtml(subjectId)}">
+          ${window.EDUGNAY_CONFIG.escapeHtml(data.label)}
+          <span class="tab-count">${data.items.length}</span>
+        </button>`).join('');
+      tabs.querySelectorAll('.subject-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchSubject(tab.dataset.subject, tab));
+      });
+      const firstTab = tabs.querySelector('.subject-tab');
+      if (firstTab) switchSubject(currentSubject, firstTab);
+      else renderMaterials();
+    }
+
     function switchSubject(subjectKey, btn) {
       currentSubject = subjectKey;
       document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
+      btn?.classList.add('active');
 
       const data = MATERIALS_BY_SUBJECT[subjectKey];
-      const labelMap = { math: 'Mathematics', english: 'English', science: 'Science', filipino: 'Filipino', values: 'Values Education' };
-      document.getElementById('panel-title').textContent = `${labelMap[subjectKey]} Materials`;
+      if (!data) return;
+      document.getElementById('panel-title').textContent = `${data.label} Materials`;
       document.getElementById('panel-sub').textContent = `${data.teacher} · ${data.items.length} files`;
 
       document.getElementById('search-input').value = '';
@@ -341,9 +304,17 @@
 
     function renderMaterials() {
       const data = MATERIALS_BY_SUBJECT[currentSubject];
+      const container = document.getElementById('materials-container');
+      if (!data) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'folder-open',
+          title: 'No learning materials yet',
+          text: 'Materials shared by your teachers will appear here.'
+        });
+        return;
+      }
       const query = document.getElementById('search-input').value.toLowerCase();
       const typeFilter = document.getElementById('type-filter').value;
-      const container = document.getElementById('materials-container');
 
       const filtered = data.items.filter(m => {
         if (query && !m.title.toLowerCase().includes(query)) return false;
@@ -361,12 +332,13 @@
         return;
       }
 
-      // Group by quarter
+      // Group by academic period for the existing list layout.
       const quarters = [];
       const grouped = {};
       filtered.forEach(m => {
-        if (!grouped[m.quarter]) { grouped[m.quarter] = []; quarters.push(m.quarter); }
-        grouped[m.quarter].push(m);
+        const period = PERIOD_LABELS[m.academicPeriodId] || 'Academic Period';
+        if (!grouped[period]) { grouped[period] = []; quarters.push(period); }
+        grouped[period].push(m);
       });
 
       container.innerHTML = quarters.map(quarter => `
@@ -374,7 +346,7 @@
     ${grouped[quarter].map(m => {
         const meta = TYPE_META[m.type];
         return `
-        <div class="material-row" onclick="downloadMaterial(${m.id})">
+        <div class="material-row" onclick="downloadMaterial('${window.EDUGNAY_CONFIG.escapeHtml(m.id)}')">
           <div class="material-icon" style="background:${meta.bg};">
             <i data-lucide="${meta.icon}" style="width:19px;height:19px;color:${meta.color};"></i>
           </div>
@@ -383,10 +355,10 @@
             <div class="material-meta">
               <span class="badge badge-blue">${meta.label}</span>
               <span class="material-meta-dot"></span>
-              <span>Posted ${m.date}</span>
+              <span>Posted ${formatMaterialDate(m.postedAt)}</span>
             </div>
           </div>
-          <button class="material-action" onclick="event.stopPropagation();downloadMaterial(${m.id})" aria-label="Open material">
+          <button class="material-action" onclick="event.stopPropagation();downloadMaterial('${window.EDUGNAY_CONFIG.escapeHtml(m.id)}')" aria-label="Open material">
             <i data-lucide="${m.type === 'video' ? 'play' : 'download'}" style="width:16px;height:16px;"></i>
           </button>
         </div>`;
@@ -401,12 +373,8 @@
       console.log('Open material', id);
     }
 
-    document.querySelectorAll('.subject-tab').forEach(tab => {
-      tab.addEventListener('click', () => switchSubject(tab.dataset.subject, tab));
-    });
-
     document.addEventListener('DOMContentLoaded', async () => {
-      renderMaterials();
+      renderSubjectTabs();
     });
 
   </script>

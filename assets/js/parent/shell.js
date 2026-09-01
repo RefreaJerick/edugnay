@@ -8,36 +8,14 @@
 /* ── LINKED CHILDREN DATA ── */
 const PARENT_CONFIG = window.EDUGNAY_CONFIG;
 const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
-const PARENT_STUDENTS = PARENT_CONFIG.getStudents();
-const PARENT_SECTIONS = PARENT_CONFIG.getAssignmentSections();
-const PARENT_USERS = PARENT_CONFIG.getUsers();
 
-// The demo parent uses the shared relationship records for this school.
-// Replace this list with GET /parent/children later; the page contracts stay the same.
+// Parent-child links stay as relationship records. Pages resolve the student
+// with getUserById(link.studentId) when they need display details.
 const PARENT_CHILD_DIRECTORY = PARENT_CONFIG.getParentStudentLinks()
-  .filter(link => (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID)
-  .map(link => {
-    const student = PARENT_STUDENTS.find(record => record.id === link.studentId);
-    if (!student) return null;
-
-    const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-    const adviser = PARENT_USERS.find(record => record.profileId === section?.adviserId);
-    return {
-      studentId: student.id,
-      lrn: student.lrn || null,
-      name: student.name,
-      initials: student.initials,
-      schoolLevel: student.schoolLevel || student.level,
-      gradeLevel: student.gradeLevel || student.grade,
-      sectionId: student.sectionId || null,
-      sectionName: section?.name || 'Unassigned',
-      adviserId: section?.adviserId || null,
-      adviserName: adviser?.displayName || 'Not assigned',
-      relationship: 'Parent',
-      schoolId: student.schoolId || PARENT_SCHOOL_ID
-    };
-  })
-  .filter(Boolean);
+  .filter(link => (
+    (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID
+    && PARENT_CONFIG.getUserById(link.studentId)?.role === 'student'
+  ));
 
 window.EDUGNAY_PARENT = {
   children: PARENT_CHILD_DIRECTORY

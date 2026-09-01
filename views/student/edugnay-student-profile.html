@@ -511,22 +511,26 @@
 lucide.createIcons();
 
 /* ── AVATAR UPLOAD ── */
-// Page data boundary: replace this array with the enrolled-subjects endpoint later.
+// Subject assignment relationships use canonical subject and teacher IDs.
+// Replace this array with the enrolled-subjects endpoint later.
 const STUDENT_SUBJECTS = window.EDUGNAY_CONFIG.withActiveSchool([
-  { name: 'Mathematics', teacher: 'Ms. Maria Reyes', adviser: true },
-  { name: 'English', teacher: 'Mr. Paolo Santos' },
-  { name: 'Science', teacher: 'Mrs. Liza Ramos' },
-  { name: 'Filipino', teacher: 'Mr. Andres Cruz' },
-  { name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes' },
-  { name: 'Values Education', teacher: 'Ms. Maria Reyes' },
-  { name: 'MAPEH', teacher: 'Mr. Jun Bautista' }
+  { subjectId: 'mathematics', teacherId: 'teacher-2', adviserId: 'teacher-2' },
+  { subjectId: 'english', teacherId: 'teacher-3' },
+  { subjectId: 'science', teacherId: 'teacher-rico-santos' },
+  { subjectId: 'filipino', teacherId: 'teacher-carla-dizon' },
+  { subjectId: 'araling-panlipunan', teacherId: 'teacher-9' },
+  { subjectId: 'values-education', teacherId: 'teacher-2' },
+  { subjectId: 'mapeh', teacherId: 'teacher-jana-mendez' }
 ]);
 
 function renderStudentSubjects() {
   const list = document.getElementById('student-subject-list');
   if (!list) return;
-  list.innerHTML = STUDENT_SUBJECTS.length ? STUDENT_SUBJECTS.map(subject => `
-    <div class="subject-row"><div class="subject-info"><div class="subject-name">${subject.name}</div><div class="subject-teacher">${subject.teacher}</div></div>${subject.adviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
+  list.innerHTML = STUDENT_SUBJECTS.length ? STUDENT_SUBJECTS.map(assignment => {
+    const subject = window.EDUGNAY_CONFIG.subjects.find(record => record.id === assignment.subjectId);
+    const teacher = window.EDUGNAY_CONFIG.getUserById(assignment.teacherId);
+    return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${subject?.name || 'Subject'}</div><div class="subject-teacher">${teacher?.displayName || 'Teacher not assigned'}</div></div>${assignment.adviserId === assignment.teacherId ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;
+  }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
   lucide.createIcons();
 }
 

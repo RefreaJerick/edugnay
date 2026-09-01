@@ -463,24 +463,6 @@ const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
 const JOURNAL_ENTRY_STATE = window.EDUGNAY_CONFIG.getJournalsForTeacher(TEACHER_ID)
   .filter(record => record.isCurrent);
 
-function buildJournalStudents(states) {
-  return states
-    .map((state, index) => {
-      const student = window.EDUGNAY_CONFIG.getStudents().find(record => record.id === state.studentId);
-      if (!student) return null;
-      return {
-        ...state,
-        id: student.id,
-        journalId: state.id,
-        entry: state.entryText,
-        name: student.name,
-        av: student.initials,
-        avClass: `av-${String.fromCharCode(97 + (index % 6))}`
-      };
-    })
-    .filter(Boolean);
-}
-
 const SECTIONS = {
   '7-matthew': {
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
@@ -488,7 +470,7 @@ const SECTIONS = {
     label: 'Grade 7 – St. Matthew',
     hasPrompt: true,
     prompt: JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade7-matthew')?.prompt || '',
-    students: buildJournalStudents(JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade7-matthew'))
+    students: JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade7-matthew')
   },
   '8-luke': {
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
@@ -496,7 +478,7 @@ const SECTIONS = {
     label: 'Grade 8 – St. Luke',
     hasPrompt: Boolean(JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade8-luke')),
     prompt: JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade8-luke')?.prompt || '',
-    students: buildJournalStudents(JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade8-luke' && record.isCurrent))
+    students: JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade8-luke' && record.isCurrent)
   },
   '9-peter': {
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
@@ -654,7 +636,9 @@ function renderTable() {
   const statusFilter = document.getElementById('status-filter').value;
 
   const filtered = sec.students.filter(s => {
-    if (query && !s.name.toLowerCase().includes(query)) return false;
+    const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+    if (!student) return false;
+    if (query && !student.displayName.toLowerCase().includes(query)) return false;
     if (statusFilter === 'submitted' && !s.submitted) return false;
     if (statusFilter === 'not_submitted' && s.submitted) return false;
     if (statusFilter === 'reviewed' && !s.reviewed) return false;
@@ -663,7 +647,7 @@ function renderTable() {
     return true;
   });
 
-  activeStudentIds = filtered.map(s => s.id);
+  activeStudentIds = filtered.map(s => s.studentId);
 
   const tbody = document.getElementById('journal-tbody');
 
@@ -674,7 +658,9 @@ function renderTable() {
   }
 
   tbody.innerHTML = filtered.map((s, i) => {
-    const excerpt = s.submitted && s.entry ? s.entry.slice(0, 90) + (s.entry.length > 90 ? '…' : '') : '—';
+    const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+    if (!student) return '';
+    const excerpt = s.submitted && s.entryText ? s.entryText.slice(0, 90) + (s.entryText.length > 90 ? '…' : '') : '—';
 
     let scoreCellHtml;
     if (!s.submitted) {
@@ -696,13 +682,13 @@ function renderTable() {
     }
 
     return `
-      <tr class="${s.reviewed ? 'reviewed' : ''}" onclick="openEntry('${s.id}')">
+      <tr class="${s.reviewed ? 'reviewed' : ''}" onclick="openEntry('${s.studentId}')">
         <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
         <td>
           <div class="student-cell">
-            <div class="student-av ${s.avClass}">${s.av}</div>
+            <div class="student-av av-${String.fromCharCode(97 + (i % 6))}">${student.initials}</div>
             <div>
-              <div class="student-name">${s.name}</div>
+              <div class="student-name">${student.displayName}</div>
             </div>
           </div>
         </td>
@@ -717,7 +703,7 @@ function renderTable() {
         <td class="center">${scoreCellHtml}</td>
         <td class="center">${statusBadge}</td>
         <td>
-          <button class="row-btn primary" onclick="event.stopPropagation();openEntry('${s.id}')">
+          <button class="row-btn primary" onclick="event.stopPropagation();openEntry('${s.studentId}')">
             <i data-lucide="eye" style="width:11px;height:11px;"></i> Review
           </button>
         </td>
@@ -735,7 +721,7 @@ function renderTable() {
 /* ══════ OPEN ENTRY MODAL ══════ */
 function openEntry(studentId) {
   const sec = SECTIONS[currentSection];
-  const s = sec.students.find(x => x.id === studentId);
+  const s = sec.students.find(x => x.studentId === studentId);
   if (!s) return;
 
   activeStudentIndex = activeStudentIds.indexOf(studentId);
@@ -745,16 +731,18 @@ function openEntry(studentId) {
 
 function populateModal(s) {
   const sec = SECTIONS[currentSection];
+  const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+  if (!student) return;
 
-  document.getElementById('modal-avatar').textContent = s.av;
-  document.getElementById('modal-avatar').className = `modal-avatar ${s.avClass}`;
-  document.getElementById('modal-student-name').textContent = s.name;
+  document.getElementById('modal-avatar').textContent = student.initials;
+  document.getElementById('modal-avatar').className = 'modal-avatar av-a';
+  document.getElementById('modal-student-name').textContent = student.displayName;
   document.getElementById('modal-meta').textContent = `${sec.label} · Week 3 · June 9–14, 2025`;
   document.getElementById('modal-prompt').textContent = sec.prompt;
 
   const entryEl = document.getElementById('modal-entry-body');
-  if (s.submitted && s.entry) {
-    entryEl.textContent = s.entry;
+  if (s.submitted && s.entryText) {
+    entryEl.textContent = s.entryText;
     entryEl.classList.remove('no-entry');
   } else {
     entryEl.textContent = 'No journal entry submitted for this week.';
@@ -788,7 +776,7 @@ function navigateEntry(dir) {
   if (newIdx < 0 || newIdx >= activeStudentIds.length) return;
   activeStudentIndex = newIdx;
   const sec = SECTIONS[currentSection];
-  const s = sec.students.find(x => x.id === activeStudentIds[activeStudentIndex]);
+  const s = sec.students.find(x => x.studentId === activeStudentIds[activeStudentIndex]);
   if (s) populateModal(s);
 }
 
@@ -796,7 +784,7 @@ function navigateEntry(dir) {
 function markReviewed() {
   const sec = SECTIONS[currentSection];
   const studentId = activeStudentIds[activeStudentIndex];
-  const s = sec.students.find(x => x.id === studentId);
+  const s = sec.students.find(x => x.studentId === studentId);
   if (!s) return;
 
   const scoreInput = document.getElementById('modal-score-input');
@@ -815,7 +803,7 @@ function markReviewed() {
     s.score = Math.min(50, Math.max(0, scoreVal));
   }
   s.reviewed = true;
-  window.EDUGNAY_CONFIG.updateJournalEntry(s.journalId, {
+  window.EDUGNAY_CONFIG.updateJournalEntry(s.id, {
     score: s.score,
     reviewed: true
   });
@@ -823,7 +811,8 @@ function markReviewed() {
   renderTable();
   renderJournalSummary();
   populateModal(s);
-  showToast(`${s.name} · marked as reviewed`, 'success');
+  const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+  showToast(`${student?.displayName || 'Student'} · marked as reviewed`, 'success');
 }
 
 /* ══════ MODAL HELPERS ══════ */

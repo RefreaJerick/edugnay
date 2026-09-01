@@ -19,7 +19,7 @@ function getReopenRequests() {
 }
 
 function getReopenRequestDetails(request) {
-  const teacher = window.EDUGNAY_CONFIG.getUsers().find(user => user.profileId === request.teacherId);
+  const teacher = window.EDUGNAY_CONFIG.getUserById(request.teacherId);
   const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === request.sectionId);
   const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === request.subjectId);
   return {

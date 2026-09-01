@@ -632,7 +632,6 @@
 
     // Shared account and user read services. Replace the service internals
     // with fetch('/api/users') later without changing this page's rendering.
-    const ACCOUNTS = window.EDUGNAY_CONFIG.getAccounts();
     const USERS = window.EDUGNAY_CONFIG.getUsers();
     let nextUserId = USERS.reduce((highestId, user) => {
       const numericId = parseInt(user.id, 10);
@@ -650,24 +649,29 @@
 
     function getStudentGradeLevels(user) {
       if (user.role !== 'student') return [];
-
-      const values = Array.isArray(user.gradeLevels) && user.gradeLevels.length
-        ? user.gradeLevels
-        : [user.gradeLevel, user.grade, user.section];
-
-      return [...new Set(values.map(formatGradeLevel).filter(Boolean))];
+      return [formatGradeLevel(user.gradeLevel)].filter(Boolean);
     }
 
-    function getLinkedStudentGrade(student) {
-      return formatGradeLevel(student.gradeLevel || student.grade || student.section);
+    function getLinkedStudentGrade(link) {
+      const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+      return formatGradeLevel(student?.gradeLevel);
+    }
+
+    function getLinkedStudents(user) {
+      if (user?.role !== 'parent') return [];
+      return window.EDUGNAY_CONFIG.getParentStudentLinks()
+        .filter(link => link.parentId === user.id);
     }
 
     function getGradeLinkDisplay(user) {
       if (user.role === 'parent') {
-        if (!user.linkedStudents.length) return 'No linked students';
-        return 'Linked: ' + user.linkedStudents.map(student => {
-          const gradeLevel = getLinkedStudentGrade(student);
-          return student.name + (gradeLevel ? ` (${gradeLevel})` : '');
+        const linkedStudents = getLinkedStudents(user);
+        if (!linkedStudents.length) return 'No linked students';
+        return 'Linked: ' + linkedStudents.map(link => {
+          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          if (!student) return 'Student';
+          const gradeLevel = getLinkedStudentGrade(link);
+          return student.displayName + (gradeLevel ? ` (${gradeLevel})` : '');
         }).join(', ');
       }
 
@@ -685,11 +689,21 @@
 
     function getSectionDisplay(user) {
       if (user.role === 'parent') {
-        if (!user.linkedStudents.length) return 'No linked students';
-        return 'Linked: ' + user.linkedStudents.map(s => s.name + (s.section ? ' (' + s.section + ')' : '')).join(', ');
+        const linkedStudents = getLinkedStudents(user);
+        if (!linkedStudents.length) return 'No linked students';
+        const sections = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+        return 'Linked: ' + linkedStudents.map(link => {
+          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          const section = sections.find(record => record.id === student?.sectionId);
+          return (student?.displayName || 'Student') + (section ? ` (${section.grade} / ${section.name})` : '');
+        }).join(', ');
       }
       if (user.role === 'school_admin') return '—';
-      return user.section || 'Unassigned';
+      if (user.role !== 'student') return '—';
+      const section = window.EDUGNAY_CONFIG
+        .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+        .find(record => record.id === user.sectionId);
+      return section ? `${section.grade} / ${section.name}` : 'Unassigned';
     }
 
     function renderSectionFilterOptions() {
@@ -726,9 +740,7 @@
 
       const currentValue = select.value;
       const gradeLevels = [...new Set(
-        USERS
-          .filter(user => user.role === 'student')
-          .flatMap(getStudentGradeLevels)
+        window.EDUGNAY_CONFIG.getStudents().flatMap(getStudentGradeLevels)
       )].sort((a, b) => gradeLevelSortValue(a) - gradeLevelSortValue(b) || a.localeCompare(b));
 
       select.innerHTML = '<option value="all">All Grade Levels</option>' +
@@ -915,21 +927,37 @@
 
       // --- SYNC (current, GitHub Pages friendly) ---
       if (userId) {
-        const user = USERS.find(u => u.id === userId);
-        const account = ACCOUNTS.find(record => record.id === user?.accountId);
-        if (user && account) {
-          const previousRole = account.role;
-          if (previousRole !== role) window.EDUGNAY_CONFIG.removeUserProfile(account.id, previousRole);
-          window.EDUGNAY_CONFIG.updateAccount(account.id, { email, role });
+        const user = window.EDUGNAY_CONFIG.getUserById(userId);
+        if (user) {
+          const previousRole = user.role;
+          const updates = {
+            email,
+            role,
+            firstName,
+            lastName,
+            displayName: `${firstName} ${lastName}`
+          };
+
           if (role === 'student') {
-            window.EDUGNAY_CONFIG.upsertStudentProfile(account, { firstName, lastName, displayName: `${firstName} ${lastName}`, lrn, gradeLevel: user.gradeLevel, sectionId: user.sectionId });
+            updates.lrn = lrn;
+            updates.schoolLevel = user.schoolLevel;
+            updates.gradeLevel = user.gradeLevel;
+            updates.strand = user.strand;
+            updates.sectionId = user.sectionId;
           } else {
-            window.EDUGNAY_CONFIG.upsertUserProfile(account, { firstName, lastName, displayName: `${firstName} ${lastName}`, employeeNo: isStaff ? employeeNo : null });
+            updates.employeeNo = isStaff ? employeeNo : null;
           }
-          if (role === 'parent') window.EDUGNAY_CONFIG.setParentStudentLinks(account.id, linkedStudents.map(link => link.studentId));
+
+          if (previousRole === 'parent' && role !== 'parent') {
+            window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, []);
+          }
+          window.EDUGNAY_CONFIG.updateUser(user.id, updates);
+          if (role === 'parent') {
+            window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, linkedStudents.map(link => link.studentId));
+          }
         }
       } else {
-        window.EDUGNAY_CONFIG.createUserAccount({
+        const user = window.EDUGNAY_CONFIG.createUser({
           id: String(nextUserId++),
           schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
           email, role,
@@ -938,12 +966,13 @@
           firstName,
           lastName,
           employeeNo: isStaff ? employeeNo : null,
-          lrn: role === 'student' ? lrn : null,
-          linkedStudentIds: role === 'parent' ? linkedStudents.map(link => link.studentId) : []
+          lrn: role === 'student' ? lrn : null
         });
+        if (user && role === 'parent') {
+          window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, linkedStudents.map(link => link.studentId));
+        }
       }
 
-      window.EDUGNAY_CONFIG.saveAccounts();
       closeAccountModal();
       renderUsers();
     });
@@ -953,10 +982,9 @@
 
       const userId = document.getElementById('deactivateUserId').value;
       const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
-      const account = ACCOUNTS.find(record => record.id === userId);
-      if (account) window.EDUGNAY_CONFIG.setAccountStatus(account.id, action === 'deactivate' ? 'inactive' : 'active');
+      const user = window.EDUGNAY_CONFIG.getUserById(userId);
+      if (user) window.EDUGNAY_CONFIG.updateUser(user.id, { status: action === 'deactivate' ? 'inactive' : 'active' });
 
-      window.EDUGNAY_CONFIG.saveAccounts();
       closeDeactivateModal();
       renderUsers();
 
@@ -966,9 +994,23 @@
       e.preventDefault();
 
       const userId = document.getElementById('deleteUserId').value;
-      window.EDUGNAY_CONFIG.deleteAccount(userId);
+      const user = window.EDUGNAY_CONFIG.getUserById(userId);
+      if (user) {
+        const links = window.EDUGNAY_CONFIG.getParentStudentLinks();
+        const parentIds = [...new Set(links
+          .filter(link => link.studentId === user.id)
+          .map(link => link.parentId))];
 
-      window.EDUGNAY_CONFIG.saveAccounts();
+        if (user.role === 'parent') window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, []);
+        window.EDUGNAY_CONFIG.deleteUser(user.id);
+
+        parentIds.forEach(parentId => {
+          const remainingStudentIds = window.EDUGNAY_CONFIG.getParentStudentLinks()
+            .filter(link => link.parentId === parentId && link.studentId !== user.id)
+            .map(link => link.studentId);
+          window.EDUGNAY_CONFIG.setParentStudentLinks(parentId, remainingStudentIds);
+        });
+      }
       closeDeleteModal();
       renderUsers();
 
@@ -1042,7 +1084,7 @@
         }
 
         records.forEach(record => {
-          window.EDUGNAY_CONFIG.createUserAccount({
+          window.EDUGNAY_CONFIG.createUser({
             id: String(nextUserId++),
             schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
             email: record.personalEmail || record.email || '',
@@ -1060,7 +1102,6 @@
           });
         });
 
-        window.EDUGNAY_CONFIG.saveAccounts();
         closeImportModal();
         renderUsers();
         alert(`${rows.length} account(s) added.`);
@@ -1095,7 +1136,7 @@
 
     function openEditModal(row) {
       const userId = row.dataset.userId;
-      const user = USERS.find(u => u.id === userId);
+      const user = window.EDUGNAY_CONFIG.getUserById(userId);
       if (!user) return;
 
       const form = document.getElementById('accountForm');
@@ -1121,7 +1162,7 @@
       if (selectedOpt) selectedOpt.classList.add('selected');
 
       document.getElementById('accountLRN').value = user.lrn || '';
-      linkedStudents = user.linkedStudents ? [...user.linkedStudents] : [];
+      linkedStudents = getLinkedStudents(user);
       renderLinkedStudents();
       updateAccountModalFields();
 
@@ -1349,26 +1390,16 @@
 
     /* ── STUDENT LIVE SEARCH PICKER ── */
 
-    // The picker reads the same local student account collection as the table.
-    // Replace this derived collection with a fetch('/api/students?q=...') later.
-    const MOCK_STUDENTS = () => USERS
-      .filter(user => user.role === 'student')
-      .map(user => ({
-        studentId: user.studentId,
-        name: user.displayName,
-        section: getSectionDisplay(user),
-        gradeLevel: getStudentGradeLevels(user)[0] || '',
-      }));
-
-    let linkedStudents = []; // [{ studentId, name, section, gradeLevel }]
+    // Parent links store IDs only; display details come from canonical users.
+    let linkedStudents = []; // [{ studentId }]
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
       if (!query.trim()) { dropdown.style.display = 'none'; return; }
 
-      const results = MOCK_STUDENTS().filter(s =>
-        s.name.toLowerCase().includes(query.toLowerCase()) &&
-        !linkedStudents.find(link => link.studentId === s.studentId)
+      const results = window.EDUGNAY_CONFIG.getStudents().filter(student =>
+        student.displayName.toLowerCase().includes(query.toLowerCase()) &&
+        !linkedStudents.find(link => link.studentId === student.id)
       );
 
       if (!results.length) {
@@ -1377,24 +1408,25 @@
         return;
       }
 
-      dropdown.innerHTML = results.map(s => `
+      dropdown.innerHTML = results.map(student => `
       <div
-        onclick="addLinkedStudent('${s.studentId}', '${s.name}', '${s.section}', '${s.gradeLevel}')"
+        onclick="addLinkedStudent('${student.id}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
         onmouseenter="this.style.background='var(--gray-50)'"
         onmouseleave="this.style.background=''"
       >
-        <div style="font-weight:500;color:var(--gray-800);">${s.name}</div>
-        <div style="font-size:12px;color:var(--gray-400);">${s.section}</div>
+        <div style="font-weight:500;color:var(--gray-800);">${student.displayName}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${getSectionDisplay(student)}</div>
       </div>
     `).join('');
 
       dropdown.style.display = '';
     }
 
-    function addLinkedStudent(studentId, name, section, gradeLevel = '') {
+    function addLinkedStudent(studentId) {
       if (linkedStudents.find(link => link.studentId === studentId)) return;
-      linkedStudents.push({ studentId, name, section, gradeLevel: formatGradeLevel(gradeLevel) });
+      if (!window.EDUGNAY_CONFIG.getUserById(studentId)) return;
+      linkedStudents.push({ studentId });
       renderLinkedStudents();
 
       document.getElementById('studentSearchInput').value = '';
@@ -1419,17 +1451,21 @@
       const tags = document.getElementById('linkedStudentTags');
       const inputs = document.getElementById('linkedStudentInputs');
 
-      tags.innerHTML = linkedStudents.map(s => `
+      tags.innerHTML = linkedStudents.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student) return '';
+        return `
       <div style="
         display:inline-flex;align-items:center;gap:6px;
         background:var(--blue-xpale);color:var(--blue-mid);
         border:1px solid var(--blue-mid);
         border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
       ">
-        ${s.name}
-        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.studentId}')">&times;</span>
+        ${student.displayName}
+        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${student.id}')">&times;</span>
       </div>
-    `).join('');
+    `;
+      }).join('');
 
       inputs.innerHTML = linkedStudents.map(s =>
         `<input type="hidden" name="linkedStudents[]" value="${s.studentId}"/>`

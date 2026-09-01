@@ -598,9 +598,7 @@
   <script>
     // Shared frontend data services. Replace their internals with fetched data
     // later, then call renderAdminDashboard().
-    const ADMIN_ACCOUNTS = window.EDUGNAY_CONFIG.getAccounts();
-    const ADMIN_USERS = window.EDUGNAY_CONFIG.getUsers();
-    const ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
+    let ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
 
     const ADMIN_SUMMARY_CARDS = [
       {
@@ -621,8 +619,7 @@
         trend: '— 0%',
         label: 'Faculty',
         sub: 'Active teachers this quarter',
-        records: ADMIN_ACCOUNTS,
-        accountRole: 'teacher',
+        records: window.EDUGNAY_CONFIG.getUsersByRole('teacher'),
       },
       {
         id: 'parents',
@@ -632,12 +629,11 @@
         trend: '— 0%',
         label: 'Parents',
         sub: 'Linked to student accounts',
-        records: ADMIN_ACCOUNTS,
-        accountRole: 'parent',
+        records: window.EDUGNAY_CONFIG.getUsersByRole('parent'),
       },
     ];
 
-    const DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS;
+    let DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS;
     const dashboardAssignmentState = {
       student: null,
       level: '',
@@ -723,7 +719,7 @@
       if (!select) return;
       dashboardSetOptions(select, DASHBOARD_ASSIGNMENT_STUDENTS.map(student => ({
         value: student.id,
-        label: `${student.name} · ${student.email}`
+        label: `${student.displayName} \u00b7 ${student.email}`
       })), 'Select a student', selectedId);
     }
 
@@ -758,7 +754,7 @@
         return;
       }
       const student = dashboardAssignmentState.student;
-      const studentLabel = student ? student.name : 'Student not selected';
+      const studentLabel = student ? student.displayName : 'Student not selected';
       const placement = [dashboardLevelLabel(dashboardAssignmentState.level), dashboardAssignmentState.grade, dashboardAssignmentState.strand].filter(Boolean).join(' · ');
       context.textContent = selectedSection
         ? `${studentLabel} · ${placement} · ${selectedSection.name}`
@@ -769,7 +765,7 @@
       const levelSelect = document.getElementById('modalSchoolLevel');
       const gradeSelect = document.getElementById('modalGradeLevel');
       const strandSelect = document.getElementById('modalStrand');
-      const level = dashboardAssignmentState.student?.level || levelSelect?.value || dashboardAssignmentState.level || dashboardDefaultLevel();
+      const level = dashboardAssignmentState.student?.schoolLevel || levelSelect?.value || dashboardAssignmentState.level || dashboardDefaultLevel();
       dashboardAssignmentState.level = level;
       dashboardSetOptions(levelSelect, dashboardSchoolLevels().map(item => ({ value: item, label: dashboardLevelLabel(item) })), 'Select a school level', level);
       if (levelSelect) {
@@ -778,7 +774,7 @@
       }
 
       const grades = dashboardGradeOptions(level);
-      const studentGrade = dashboardAssignmentState.student?.grade || gradeSelect?.value || dashboardAssignmentState.grade;
+      const studentGrade = dashboardAssignmentState.student?.gradeLevel || gradeSelect?.value || dashboardAssignmentState.grade;
       const grade = grades.find(item => dashboardGradeKey(item) === dashboardGradeKey(studentGrade)) || grades[0] || '';
       dashboardAssignmentState.grade = grade;
       dashboardSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
@@ -815,8 +811,8 @@
     function handleDashboardStudentChange(studentId) {
       const student = DASHBOARD_ASSIGNMENT_STUDENTS.find(item => item.id === studentId) || null;
       dashboardAssignmentState.student = student;
-      dashboardAssignmentState.level = student?.level || dashboardDefaultLevel() || '';
-      dashboardAssignmentState.grade = student?.grade || '';
+      dashboardAssignmentState.level = student?.schoolLevel || dashboardDefaultLevel() || '';
+      dashboardAssignmentState.grade = student?.gradeLevel || '';
       dashboardAssignmentState.strand = student?.strand || '';
       dashboardAssignmentState.section = '';
       const preview = document.getElementById('studentPreview');
@@ -824,7 +820,7 @@
         preview?.classList.remove('visible');
       } else {
         document.getElementById('spAv').textContent = student.initials;
-        document.getElementById('spName').textContent = student.name;
+        document.getElementById('spName').textContent = student.displayName;
         document.getElementById('spDetail').textContent = student.email;
         preview?.classList.add('visible');
       }
@@ -838,18 +834,16 @@
       { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
     ];
 
-    function getAdminSummaryRecords(card) {
-      return card.accountRole
-        ? card.records.filter(account => account.role === card.accountRole)
-        : card.records;
-    }
-
     function renderAdminDashboard() {
+      ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
+      DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS;
+      ADMIN_SUMMARY_CARDS[0].records = ADMIN_STUDENTS;
+      ADMIN_SUMMARY_CARDS[1].records = window.EDUGNAY_CONFIG.getUsersByRole('teacher');
+      ADMIN_SUMMARY_CARDS[2].records = window.EDUGNAY_CONFIG.getUsersByRole('parent');
       const cards = document.getElementById('admin-summary-cards');
       if (cards) {
         cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => {
-          const records = getAdminSummaryRecords(card);
-          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`;
+          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`;
         }).join('');
       }
       const actions = document.getElementById('admin-quick-actions');
@@ -957,23 +951,17 @@
 
     /* ── STUDENT LIVE SEARCH PICKER ── */
 
-    // The same student directory powers the assignment modal and parent link picker.
-    // Replace it with a student API response later.
-    const MOCK_STUDENTS = () => ADMIN_STUDENTS.map(student => ({
-      studentId: student.id,
-      name: student.name,
-      section: student.section || 'Unassigned'
-    }));
-
-    let linkedStudents = []; // [{ studentId, name, section }]
+    // Parent links store IDs only. Display details come from the canonical
+    // user records when the picker is rendered.
+    let linkedStudents = []; // [{ studentId }]
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
       if (!query.trim()) { dropdown.style.display = 'none'; return; }
 
-      const results = MOCK_STUDENTS().filter(s =>
-        s.name.toLowerCase().includes(query.toLowerCase()) &&
-        !linkedStudents.find(l => l.studentId === s.studentId)
+      const results = ADMIN_STUDENTS.filter(student =>
+        student.displayName.toLowerCase().includes(query.toLowerCase()) &&
+        !linkedStudents.find(link => link.studentId === student.id)
       );
 
       if (!results.length) {
@@ -982,24 +970,29 @@
         return;
       }
 
-      dropdown.innerHTML = results.map(s => `
+      dropdown.innerHTML = results.map(student => {
+        const section = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+          .find(item => item.id === student.sectionId);
+        return `
       <div
-        onclick="addLinkedStudent('${s.studentId}', '${s.name}', '${s.section}')"
+        onclick="addLinkedStudent('${student.id}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
         onmouseenter="this.style.background='var(--gray-50)'"
         onmouseleave="this.style.background=''"
       >
-        <div style="font-weight:500;color:var(--gray-800);">${s.name}</div>
-        <div style="font-size:12px;color:var(--gray-400);">${s.section}</div>
+        <div style="font-weight:500;color:var(--gray-800);">${student.displayName}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${section?.name || 'Unassigned'}</div>
       </div>
-    `).join('');
+    `;
+      }).join('');
 
       dropdown.style.display = '';
     }
 
-    function addLinkedStudent(studentId, name, section) {
+    function addLinkedStudent(studentId) {
       if (linkedStudents.find(student => student.studentId === studentId)) return;
-      linkedStudents.push({ studentId, name, section });
+      if (!window.EDUGNAY_CONFIG.getUserById(studentId)) return;
+      linkedStudents.push({ studentId });
       renderLinkedStudents();
 
       document.getElementById('studentSearchInput').value = '';
@@ -1042,7 +1035,7 @@
           : 'Please provide the student LRN.');
         return;
       }
-      if (isStaff && ADMIN_USERS.some(user => (
+      if (isStaff && window.EDUGNAY_CONFIG.getUsers().some(user => (
         (user.role === 'school_admin' || user.role === 'teacher')
         && String(user.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
       ))) {
@@ -1050,7 +1043,7 @@
         return;
       }
 
-      window.EDUGNAY_CONFIG.createUserAccount({
+      const user = window.EDUGNAY_CONFIG.createUser({
         id: `local-${Date.now()}`,
         schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
         email,
@@ -1060,10 +1053,11 @@
         firstName,
         lastName,
         employeeNo: isStaff ? employeeNo : null,
-        lrn: role === 'student' ? lrn : null,
-        linkedStudentIds: role === 'parent' ? linkedStudents.map(link => link.studentId) : []
+        lrn: role === 'student' ? lrn : null
       });
-      window.EDUGNAY_CONFIG.saveAccounts();
+      if (user && role === 'parent') {
+        window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, linkedStudents.map(link => link.studentId));
+      }
 
       closeAccountModal();
       renderDashboardStudentOptions();
@@ -1074,17 +1068,21 @@
       const tags = document.getElementById('linkedStudentTags');
       const inputs = document.getElementById('linkedStudentInputs');
 
-      tags.innerHTML = linkedStudents.map(s => `
+      tags.innerHTML = linkedStudents.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student) return '';
+        return `
       <div style="
         display:inline-flex;align-items:center;gap:6px;
         background:var(--blue-xpale);color:var(--blue-mid);
         border:1px solid var(--blue-mid);
         border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
       ">
-        ${s.name}
-        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.studentId}')">&times;</span>
+        ${student.displayName}
+        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${student.id}')">&times;</span>
       </div>
-    `).join('');
+    `;
+      }).join('');
 
       inputs.innerHTML = linkedStudents.map(s =>
         `<input type="hidden" name="linkedStudents[]" value="${s.studentId}"/>`
@@ -1131,13 +1129,12 @@
         return;
       }
 
-      window.EDUGNAY_CONFIG.updateStudentPlacement(student.id, {
-        level: section.level,
-        grade: section.grade,
+      window.EDUGNAY_CONFIG.updateUser(student.id, {
+        schoolLevel: section.level,
+        gradeLevel: section.grade,
         strand: section.strand || '',
         sectionId: section.id
       });
-      window.EDUGNAY_CONFIG.saveAccounts();
 
       closeStudentModal();
       renderDashboardStudentOptions(student.id);

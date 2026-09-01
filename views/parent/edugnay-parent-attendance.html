@@ -310,91 +310,61 @@
   <script>
     lucide.createIcons();
 
-    /*
-      EJS NOTE: PARENT_ATTENDANCE_RECORDS is a client-side placeholder for the prototype,
-      keyed by child then by 'YYYY-MM' month string. On conversion, fetch one month
-      at a time via GET /parent/attendance?studentId=:id&month=:m&year=:y rather than
-      holding multiple months in memory.
-    
-      School days are Mon–Fri only (5-col grid) — weekends are not school days and
-      are simply absent from this data structure entirely, not represented as
-      empty/null entries.
-    */
     const TODAY_ISO = '2025-06-13';
 
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
 
-    // Attendance records link to the shared student profile by studentId.
-    const PARENT_ATTENDANCE_RECORDS = window.EDUGNAY_CONFIG.withActiveSchool([
-      {
-        studentId: 'jd-004',
-        months: {
-          '2025-06': {
-            label: 'June 2025',
-            // Mon=1 first school day of grid; days map: date -> { status, subjects }
-            firstWeekdayOffset: 0, // June 2, 2025 is a Monday — grid starts clean
-            days: {
-              2: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              3: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              4: { status: 'absent', subjects: [{ name: 'Mathematics', status: 'absent', color: 'var(--blue-mid)' }, { name: 'English', status: 'absent', color: 'var(--purple)' }, { name: 'Science', status: 'absent', color: '#16a34a' }] },
-              5: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              6: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              9: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              10: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              11: { status: 'absent', subjects: [{ name: 'Mathematics', status: 'absent', color: 'var(--blue-mid)' }, { name: 'English', status: 'absent', color: 'var(--purple)' }, { name: 'Science', status: 'absent', color: '#16a34a' }] },
-              12: { status: 'late', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'late', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }] },
-              13: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }, { name: 'English', status: 'present', color: 'var(--purple)' }, { name: 'Science', status: 'present', color: '#16a34a' }, { name: 'Filipino', status: 'pending', color: 'var(--gold)' }] },
-            }
-          },
-          '2025-05': {
-            label: 'May 2025',
-            firstWeekdayOffset: 0,
-            days: {
-              26: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }] },
-              27: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }] },
-              28: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }] },
-              29: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }] },
-              30: { status: 'present', subjects: [{ name: 'Mathematics', status: 'present', color: 'var(--blue-mid)' }] },
-            }
-          }
-        }
-      },
-      {
-        studentId: 'mt-012',
-        months: {
-          '2025-06': {
-            label: 'June 2025',
-            firstWeekdayOffset: 0,
-            days: {
-              2: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              3: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              4: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              5: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              6: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              9: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              10: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              11: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
-              12: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
-              13: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
-            }
-          }
-        }
-      }
-    ]);
+    // The shared flat attendance records are grouped only for this calendar UI.
+    function getAttendanceRecord(studentId) {
+      const months = {};
+      const subjectMeta = {
+        mathematics: { name: 'Mathematics', color: 'var(--blue-mid)' },
+        english: { name: 'English', color: 'var(--purple)' },
+        science: { name: 'Science', color: 'var(--green)' },
+        filipino: { name: 'Filipino', color: 'var(--gold)' }
+      };
+
+      window.EDUGNAY_CONFIG.getAttendanceForStudent(studentId).forEach(record => {
+        const date = String(record.date || '');
+        const monthKey = date.slice(0, 7);
+        const dayNumber = Number(date.slice(-2));
+        if (!monthKey || !dayNumber) return;
+
+        const month = months[monthKey] || (months[monthKey] = {
+          label: new Date(monthKey + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          firstWeekdayOffset: 0,
+          days: {}
+        });
+        const day = month.days[dayNumber] || (month.days[dayNumber] = { status: 'pending', subjects: [] });
+        const subject = subjectMeta[record.subjectId] || { name: 'All Subjects', color: 'var(--blue-mid)' };
+        const status = record.status || 'pending';
+        day.subjects.push({ name: subject.name, status, color: subject.color });
+        const statuses = day.subjects.map(item => item.status);
+        day.status = statuses.includes('absent') ? 'absent'
+          : statuses.includes('late') ? 'late'
+          : statuses.some(item => item === 'present' || item === 'excused') ? 'present'
+          : 'pending';
+      });
+
+      return { studentId, months };
+    }
+
 
     let currentChild = PARENT_CHILDREN[0]?.studentId || null;
     let currentMonthKey = '2025-06';
     let selectedDate = null;
 
-    function getAttendanceRecord(studentId) {
-      return PARENT_ATTENDANCE_RECORDS.find(record => record.studentId === studentId);
-    }
-
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
       switcher.innerHTML = PARENT_CHILDREN.length
-        ? PARENT_CHILDREN.map(child => `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.gradeLevel} – ${child.sectionName}</div></div></div>`).join('')
+        ? PARENT_CHILDREN.map(link => {
+          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          if (!student || student.role !== 'student') return '';
+          const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div></div>`;
+        }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();
     }
@@ -554,7 +524,7 @@
 
     function renderDayDetail() {
       const child = getAttendanceRecord(currentChild);
-      const childProfile = PARENT_CHILDREN.find(record => record.studentId === currentChild);
+      const childProfile = window.EDUGNAY_CONFIG.getUserById(currentChild);
       const month = child?.months?.[currentMonthKey];
       if (!child || !childProfile || !month || !selectedDate || !month.days?.[selectedDate]) return;
 
@@ -569,9 +539,9 @@
       const entry = month.days[selectedDate];
       const subjects = Array.isArray(entry.subjects) ? entry.subjects : [];
       const bannerMap = {
-        present: { cls: 'present', icon: 'check-circle', title: 'Present', sub: `${childProfile.name.split(' ')[0]} attended school on this day.`, bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
-        absent: { cls: 'absent', icon: 'circle-x', title: 'Absent', sub: `${childProfile.name.split(' ')[0]} was marked absent. Contact the adviser if this seems incorrect.`, bg: 'rgba(239,68,68,0.12)', color: 'var(--red)' },
-        late: { cls: 'late', icon: 'clock', title: 'Late Arrival', sub: `${childProfile.name.split(' ')[0]} arrived late to one or more classes.`, bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
+        present: { cls: 'present', icon: 'check-circle', title: 'Present', sub: `${childProfile.displayName.split(' ')[0]} attended school on this day.`, bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
+        absent: { cls: 'absent', icon: 'circle-x', title: 'Absent', sub: `${childProfile.displayName.split(' ')[0]} was marked absent. Contact the adviser if this seems incorrect.`, bg: 'rgba(239,68,68,0.12)', color: 'var(--red)' },
+        late: { cls: 'late', icon: 'clock', title: 'Late Arrival', sub: `${childProfile.displayName.split(' ')[0]} arrived late to one or more classes.`, bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
       };
       const b = bannerMap[entry.status];
 
@@ -615,7 +585,7 @@
 
     function renderFlaggedDays() {
       const child = getAttendanceRecord(currentChild);
-      const childProfile = PARENT_CHILDREN.find(record => record.studentId === currentChild);
+      const childProfile = window.EDUGNAY_CONFIG.getUserById(currentChild);
       const container = document.getElementById('flagged-list');
       const month = child?.months?.[currentMonthKey];
       if (!child || !childProfile || !month) {
@@ -632,7 +602,7 @@
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'calendar-check',
           title: 'No absences this month',
-          text: childProfile.name.split(' ')[0] + ' has a clean attendance record so far.'
+          text: childProfile.displayName.split(' ')[0] + ' has a clean attendance record so far.'
         });
         if (window.lucide) lucide.createIcons();
         return;

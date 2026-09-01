@@ -463,72 +463,14 @@
               <div class="panel-title">Flagged Students</div>
               <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
                 <option value="all">All My Sections</option>
-                <option value="7-matthew">Grade 7 – St. Matthew</option>
-                <option value="8-luke">Grade 8 – St. Luke</option>
-                <option value="8-john">Grade 8 – St. John</option>
-                <option value="9-peter">Grade 9 – St. Peter</option>
-                <option value="9-paul">Grade 9 – St. Paul</option>
+                <option value="jhs-grade7-matthew">Grade 7 – St. Matthew</option>
+                <option value="jhs-grade8-luke">Grade 8 – St. Luke</option>
+                <option value="jhs-grade8-john">Grade 8 – St. John</option>
+                <option value="jhs-grade9-peter">Grade 9 – St. Peter</option>
+                <option value="jhs-grade9-paul">Grade 9 – St. Paul</option>
               </select>
             </div>
-            <div class="flag-grid-single" id="flagGridSingle">
-
-              <div class="flag-card flag-attendance" data-section="9-peter">
-                <div class="flag-card-top">
-                  <div class="flag-av" style="background:var(--red);">BG</div>
-                  <div class="flag-info">
-                    <div class="flag-name">Ben Garcia</div>
-                    <div class="flag-detail">Grade 9 – St. Peter</div>
-                  </div>
-                </div>
-                <div class="flag-reason-row">
-                  <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i>
-                    4 absences</span>
-                </div>
-              </div>
-
-              <div class="flag-card flag-academic" data-section="8-luke">
-                <div class="flag-card-top">
-                  <div class="flag-av" style="background:#7c3aed;">SC</div>
-                  <div class="flag-info">
-                    <div class="flag-name">Sofia Cruz</div>
-                    <div class="flag-detail">Grade 8 – St. Luke</div>
-                  </div>
-                </div>
-                <div class="flag-reason-row">
-                  <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                    Math: 73</span>
-                </div>
-              </div>
-
-              <div class="flag-card flag-attendance" data-section="9-john">
-                <div class="flag-card-top">
-                  <div class="flag-av" style="background:#0d9488;">NP</div>
-                  <div class="flag-info">
-                    <div class="flag-name">Noel Pascual</div>
-                    <div class="flag-detail">Grade 9 – St. John</div>
-                  </div>
-                </div>
-                <div class="flag-reason-row">
-                  <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i>
-                    3 absences</span>
-                </div>
-              </div>
-
-              <div class="flag-card flag-academic" data-section="7-matthew">
-                <div class="flag-card-top">
-                  <div class="flag-av" style="background:#be185d;">UR</div>
-                  <div class="flag-info">
-                    <div class="flag-name">Uma Reyes</div>
-                    <div class="flag-detail">Grade 7 – St. Matthew</div>
-                  </div>
-                </div>
-                <div class="flag-reason-row">
-                  <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                    Science: 70</span>
-                </div>
-              </div>
-
-            </div>
+            <div class="flag-grid-single" id="flagGridSingle"></div>
           </div>
 
         </div>
@@ -547,13 +489,32 @@
     const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
     const journalSubjectName = journalSubject?.name || 'Values Education';
     const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+    const TEACHER_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections();
     const TEACHER_SECTIONS = window.EDUGNAY_CONFIG.withActiveSchool([
-      { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName, isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '8', id: '8-luke', sectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '8', id: '8-john', sectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subjectId: 'science', subjectName: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '9', id: '9-peter', sectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '9', id: '9-paul', sectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subjectId: 'science', subjectName: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
+      { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName },
+      { grade: '8', id: '8-luke', sectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false },
+      { grade: '8', id: '8-john', sectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subjectId: 'science', subjectName: 'Science', isAdviser: false },
+      { grade: '9', id: '9-peter', sectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false },
+      { grade: '9', id: '9-paul', sectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subjectId: 'science', subjectName: 'Science', isAdviser: false }
     ]);
+
+    TEACHER_SECTIONS.forEach(section => {
+      const record = TEACHER_SECTION_RECORDS.find(item => item.id === section.sectionId);
+      section.isAdviser = record?.adviserId === TEACHER_ID;
+    });
+
+    function getTeacherSectionAttendance(section) {
+      const records = window.EDUGNAY_CONFIG.getAttendanceRecords({
+        sectionId: section.sectionId,
+        ...(section.subjectId ? { subjectId: section.subjectId } : {}),
+        date: '2025-06-10'
+      });
+      return records.length
+        ? { attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
+        : { attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' };
+    }
+
+    TEACHER_SECTIONS.forEach(section => Object.assign(section, getTeacherSectionAttendance(section)));
 
     function getTeacherSectionSub(section) {
       return [section.isAdviser ? 'Class Adviser' : '', section.subjectName || '']
@@ -565,11 +526,7 @@
     // used by Admin Users and Class Management. An API response can replace this
     // filtered array later without changing the card or section renderers.
     const TEACHER_STUDENT_RECORDS = window.EDUGNAY_CONFIG.getStudents()
-      .filter(student => TEACHER_SECTIONS.some(section => section.sectionId === student.sectionId))
-      .map(student => ({
-        ...student,
-        sectionId: student.sectionId
-      }));
+      .filter(student => TEACHER_SECTIONS.some(section => section.sectionId === student.sectionId));
 
     function getTeacherSectionStudentCount(sectionId) {
       return TEACHER_STUDENT_RECORDS.filter(student => student.sectionId === sectionId).length;
@@ -578,10 +535,10 @@
     const TEACHER_REPORTS_TO_CONFIRM = window.EDUGNAY_CONFIG.getReportsForTeacher(TEACHER_ID, '2025-W23');
 
     const FLAGGED_STUDENTS = window.EDUGNAY_CONFIG.withActiveSchool([
-      { name: 'Ben Garcia', initials: 'BG', section: '9-peter', detail: 'Grade 9 - St. Peter', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
-      { name: 'Sofia Cruz', initials: 'SC', section: '8-luke', detail: 'Grade 8 - St. Luke', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
-      { name: 'Noel Pascual', initials: 'NP', section: '9-paul', detail: 'Grade 9 - St. Paul', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
-      { name: 'Uma Reyes', initials: 'UR', section: '7-matthew', detail: 'Grade 7 - St. Matthew', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
+      { studentId: 'bg-007', sectionId: 'jhs-grade9-paul', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
+      { studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
+      { studentId: 'ml-006', sectionId: 'jhs-grade9-peter', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
+      { studentId: 'as-008', sectionId: 'jhs-grade10-james', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
     ]);
 
     const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
@@ -676,8 +633,14 @@
 
       const flagList = document.getElementById('flagGridSingle');
       if (flagList) {
-        flagList.innerHTML = FLAGGED_STUDENTS.map(student => `
-          <div class="flag-card flag-${student.kind}" data-section="${student.section}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${student.initials}</div><div class="flag-info"><div class="flag-name">${student.name}</div><div class="flag-detail">${student.detail}</div></div></div><div class="flag-reason-row"><span class="flag-tag flag-${student.kind === 'attendance' ? 'absences' : 'grades'}"><i data-lucide="${student.icon}" style="width:10px;height:10px;"></i> ${student.reason}</span></div></div>`).join('');
+        flagList.innerHTML = FLAGGED_STUDENTS.map(flag => {
+          const student = window.EDUGNAY_CONFIG.getUserById(flag.studentId);
+          if (!student) return '';
+          const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === flag.sectionId);
+          const detail = section ? `${section.grade} – ${section.name}` : 'Section not assigned';
+          return `
+          <div class="flag-card flag-${flag.kind}" data-section="${flag.sectionId}"><div class="flag-card-top"><div class="flag-av" style="background:${flag.color};">${student.initials}</div><div class="flag-info"><div class="flag-name">${student.displayName}</div><div class="flag-detail">${detail}</div></div></div><div class="flag-reason-row"><span class="flag-tag flag-${flag.kind === 'attendance' ? 'absences' : 'grades'}"><i data-lucide="${flag.icon}" style="width:10px;height:10px;"></i> ${flag.reason}</span></div></div>`;
+        }).join('');
         if (!FLAGGED_STUDENTS.length) flagList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-search', title: 'No students need attention', text: 'Students flagged by attendance or progress rules will appear here.' });
       }
       lucide.createIcons();

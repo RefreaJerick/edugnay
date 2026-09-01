@@ -630,71 +630,7 @@
 
         <!-- Scrollable card grid — caps height once the list grows -->
         <div class="flag-grid-scroll">
-          <div class="flag-grid" id="flagGrid" data-render-source="REPORTS_DATA.flaggedStudents">
-
-            <div class="flag-card" data-grade="9" data-reason="absences grades" data-name="ben garcia">
-              <div class="flag-card-top">
-                <div class="flag-av" style="background:var(--red);">BG</div>
-                <div class="flag-info">
-                  <div class="flag-name">Ben Garcia</div>
-                  <div class="flag-detail">Grade 9 – St. Paul · Mr. Santos</div>
-                </div>
-              </div>
-              <div class="flag-reason-row">
-                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 4
-                  absences</span>
-                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                  Math: 72</span>
-              </div>
-            </div>
-
-            <div class="flag-card" data-grade="8" data-reason="grades" data-name="sofia cruz">
-              <div class="flag-card-top">
-                <div class="flag-av" style="background:#7c3aed;">SC</div>
-                <div class="flag-info">
-                  <div class="flag-name">Sofia Cruz</div>
-                  <div class="flag-detail">Grade 8 – St. Luke · Ms. Villanueva</div>
-                </div>
-              </div>
-              <div class="flag-reason-row">
-                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                  Science: 70</span>
-                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                  Math: 73</span>
-              </div>
-            </div>
-
-            <div class="flag-card" data-grade="10" data-reason="absences grades" data-name="uma reyes">
-              <div class="flag-card-top">
-                <div class="flag-av" style="background:#be185d;">UR</div>
-                <div class="flag-info">
-                  <div class="flag-name">Uma Reyes</div>
-                  <div class="flag-detail">Grade 10 – St. Thomas · Ms. Garcia</div>
-                </div>
-              </div>
-              <div class="flag-reason-row">
-                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 6
-                  absences</span>
-                <span class="flag-tag flag-grades"><i data-lucide="trending-down" style="width:10px;height:10px;"></i>
-                  English: 74</span>
-              </div>
-            </div>
-
-            <div class="flag-card" data-grade="8" data-reason="absences" data-name="noel pascual">
-              <div class="flag-card-top">
-                <div class="flag-av" style="background:#0d9488;">NP</div>
-                <div class="flag-info">
-                  <div class="flag-name">Noel Pascual</div>
-                  <div class="flag-detail">Grade 8 – St. John · Unassigned</div>
-                </div>
-              </div>
-              <div class="flag-reason-row">
-                <span class="flag-tag flag-absences"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i> 3
-                  absences</span>
-              </div>
-            </div>
-
-          </div>
+          <div class="flag-grid" id="flagGrid" data-render-source="REPORTS_DATA.flaggedStudents"></div>
 
           <!-- Empty state, hidden by default, shown when a filter matches nothing -->
           <div class="panel-empty-slot" id="flagEmpty" hidden aria-live="polite"></div>
@@ -711,6 +647,70 @@
       page is connected to the backend. The render functions below can remain
       unchanged because they only depend on this shape.
     */
+    function buildAttendanceReportData() {
+      const source = window.EDUGNAY_CONFIG.getAttendanceRecords()
+        .filter(record => record.status !== 'pending');
+      const dailyRecords = new Map();
+
+      source.forEach(record => {
+        const key = [record.sectionId, record.studentId, record.date].join('|');
+        const current = dailyRecords.get(key);
+        if (!current || (!current.subjectId && record.subjectId)) dailyRecords.set(key, record);
+      });
+
+      const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
+      const sectionGroups = {};
+      const statusCounts = { present: 0, late: 0, absent: 0, excused: 0 };
+      const absenceCounts = {};
+      const lateStudents = new Set();
+
+      dailyRecords.forEach(record => {
+        const section = sections.find(item => item.id === record.sectionId);
+        if (!section) return;
+
+        const group = sectionGroups[section.id] || (sectionGroups[section.id] = {
+          grade: section.grade,
+          section: section.name,
+          total: 0,
+          attended: 0
+        });
+        group.total += 1;
+        if (record.status === 'present' || record.status === 'late' || record.status === 'excused') group.attended += 1;
+        statusCounts[record.status] = (statusCounts[record.status] || 0) + 1;
+        if (record.status === 'absent') absenceCounts[record.studentId] = (absenceCounts[record.studentId] || 0) + 1;
+        if (record.status === 'late') lateStudents.add(record.studentId);
+      });
+
+      const attendanceByGrade = [];
+      Object.values(sectionGroups).forEach(group => {
+        const row = {
+          section: group.section,
+          rate: group.total ? Math.round((group.attended / group.total) * 100) : 0
+        };
+        const gradeGroup = attendanceByGrade.find(item => item.grade === group.grade);
+        if (gradeGroup) gradeGroup.rows.push(row);
+        else attendanceByGrade.push({ grade: group.grade, rows: [row] });
+      });
+
+      const total = Object.values(statusCounts).reduce((sum, value) => sum + value, 0);
+      const present = statusCounts.present + statusCounts.excused;
+      const presentRate = total ? Math.round((present / total) * 100) : 0;
+      const lateRate = total ? Math.round((statusCounts.late / total) * 100) : 0;
+      return {
+        attendanceByGrade,
+        attendanceBreakdown: total ? [
+          { label: 'Present', value: presentRate, color: 'var(--green)' },
+          { label: 'Late / Tardy', value: lateRate, color: 'var(--orange)' },
+          { label: 'Absent', value: Math.max(0, 100 - presentRate - lateRate), color: 'var(--red)' }
+        ] : [],
+        absenceTriggers: [
+          { label: 'Students with 3+ absences', value: Object.values(absenceCounts).filter(count => count >= 3).length, tone: 'red' },
+          { label: 'Students with late records', value: lateStudents.size, tone: 'orange' }
+        ]
+      };
+    }
+
+    const ATTENDANCE_REPORT_DATA = buildAttendanceReportData();
     const REPORTS_DATA = {
       schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
       subjectPerformance: [
@@ -720,19 +720,12 @@
         { grade: 'Grade 10', rows: [{ subject: 'MAPEH', score: 91, tone: 'high' }, { subject: 'Araling Panlipunan', score: 87, tone: 'mid' }, { subject: 'English', score: 86, tone: 'mid' }, { subject: 'Science', score: 81, tone: 'mid' }, { subject: 'Mathematics', score: 79, tone: 'low' }] }
       ],
       gradeOutcome: { passing: 255, failing: 29, total: 284, distribution: [{ label: '90 to 100', value: 79, percent: 28, color: '#16a34a' }, { label: '80 to 89', value: 120, percent: 42, color: 'var(--blue-mid)' }, { label: '75 to 79', value: 56, percent: 20, color: 'var(--orange)' }, { label: 'Below 75', value: 29, percent: 10, color: 'var(--red)' }] },
-      attendanceByGrade: [
-        { grade: 'Grade 7', rows: [{ section: 'St. Matthew', rate: 96 }, { section: 'St. Mark', rate: 91 }] },
-        { grade: 'Grade 8', rows: [{ section: 'St. Luke', rate: 94 }, { section: 'St. John', rate: 88 }] },
-        { grade: 'Grade 9', rows: [{ section: 'St. Peter', rate: 93 }, { section: 'St. Paul', rate: 90 }] },
-        { grade: 'Grade 10', rows: [{ section: 'St. James', rate: 95 }, { section: 'St. Thomas', rate: 87 }] }
-      ],
-      attendanceBreakdown: [{ label: 'Present', value: 92, color: 'var(--green)' }, { label: 'Late / Tardy', value: 5, color: 'var(--orange)' }, { label: 'Absent', value: 3, color: 'var(--red)' }],
-      absenceTriggers: [{ label: '3+ Consecutive Absences', value: 12, tone: 'red' }, { label: 'Parent Notified', value: 12, tone: 'orange' }],
+      ...ATTENDANCE_REPORT_DATA,
       flaggedStudents: [
-        { name: 'Ben Garcia', initials: 'BG', color: 'var(--red)', grade: '9', detail: 'Grade 9 · St. Paul · Mr. Santos', reasons: [{ type: 'absences', icon: 'calendar-x', label: '4 absences' }, { type: 'grades', icon: 'trending-down', label: 'Math: 72' }] },
-        { name: 'Sofia Cruz', initials: 'SC', color: '#7c3aed', grade: '8', detail: 'Grade 8 · St. Luke · Ms. Villanueva', reasons: [{ type: 'grades', icon: 'trending-down', label: 'Science: 70' }, { type: 'grades', icon: 'trending-down', label: 'Math: 73' }] },
-        { name: 'Uma Reyes', initials: 'UR', color: '#be185d', grade: '10', detail: 'Grade 10 · St. Thomas · Ms. Garcia', reasons: [{ type: 'absences', icon: 'calendar-x', label: '6 absences' }, { type: 'grades', icon: 'trending-down', label: 'English: 74' }] },
-        { name: 'Noel Pascual', initials: 'NP', color: '#0d9488', grade: '8', detail: 'Grade 8 · St. John · Unassigned', reasons: [{ type: 'absences', icon: 'calendar-x', label: '3 absences' }] }
+        { studentId: 'bg-007', color: 'var(--red)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '4 absences' }, { type: 'grades', icon: 'trending-down', label: 'Math: 72' }] },
+        { studentId: 'sc-013', color: 'var(--purple)', reasons: [{ type: 'grades', icon: 'trending-down', label: 'Science: 70' }, { type: 'grades', icon: 'trending-down', label: 'Math: 73' }] },
+        { studentId: 'as-008', color: 'var(--magenta)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '6 absences' }, { type: 'grades', icon: 'trending-down', label: 'English: 74' }] },
+        { studentId: 'ml-006', color: 'var(--teal)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '3 absences' }] }
       ]
     };
 
@@ -805,7 +798,18 @@
 
   function renderFlaggedStudents(data = REPORTS_DATA) {
     const students = Array.isArray(data.flaggedStudents) ? data.flaggedStudents : [];
-    document.getElementById('flagGrid').innerHTML = students.map(student => `<div class="flag-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(student.grade)}" data-reason="${(student.reasons || []).map(reason => window.EDUGNAY_CONFIG.escapeHtml(reason.type)).join(' ')}" data-name="${window.EDUGNAY_CONFIG.escapeHtml(student.name.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${student.color};">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${window.EDUGNAY_CONFIG.escapeHtml(student.name)}</div><div class="flag-detail">${window.EDUGNAY_CONFIG.escapeHtml(student.detail)}</div></div></div><div class="flag-reason-row">${(student.reasons || []).map(reason => `<span class="flag-tag flag-${window.EDUGNAY_CONFIG.escapeHtml(reason.type)}"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(reason.label)}</span>`).join('')}</div></div>`).join('');
+    const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
+    document.getElementById('flagGrid').innerHTML = students.map(record => {
+      const student = window.EDUGNAY_CONFIG.getUserById(record.studentId);
+      if (!student || student.role !== 'student') return '';
+      const section = sections.find(item => item.id === student.sectionId);
+      const adviser = section?.adviserId ? window.EDUGNAY_CONFIG.getUserById(section.adviserId) : null;
+      const grade = String(student.gradeLevel || '').replace(/^Grade\s*/i, '');
+      const detail = section
+        ? `${student.gradeLevel} · ${section.name} · ${adviser?.displayName || 'Unassigned'}`
+        : `${student.gradeLevel || 'Unassigned'} · Unassigned`;
+      return `<div class="flag-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" data-reason="${(record.reasons || []).map(reason => window.EDUGNAY_CONFIG.escapeHtml(reason.type)).join(' ')}" data-name="${window.EDUGNAY_CONFIG.escapeHtml(student.displayName.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${record.color};">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="flag-detail">${window.EDUGNAY_CONFIG.escapeHtml(detail)}</div></div></div><div class="flag-reason-row">${(record.reasons || []).map(reason => `<span class="flag-tag flag-${window.EDUGNAY_CONFIG.escapeHtml(reason.type)}"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(reason.label)}</span>`).join('')}</div></div>`;
+    }).join('');
   }
 
     function renderReportPanels(data = REPORTS_DATA) { renderReportSummary(data); renderSubjectPerformance(data); renderGradeOutcome(data); renderAttendance(data); renderFlaggedStudents(data); }

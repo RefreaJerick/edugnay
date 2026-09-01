@@ -4,22 +4,25 @@
  * integration. School-specific data remains scoped by schoolId on the server.
  */
 (function initializePlatformAdmin() {
-  const PLATFORM_ACCOUNT = {
+  const PLATFORM_ADMIN = {
     id: 'platform-admin-001',
     schoolId: null,
-    email: 'platform.admin@academix.local',
     role: 'platform_admin',
+    email: 'platform.admin@academix.local',
     status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  };
-  const PLATFORM_PROFILE = {
-    id: 'platform-profile-001',
-    accountId: PLATFORM_ACCOUNT.id,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    honorific: null,
     firstName: 'Platform',
     lastName: 'Admin',
-    displayName: 'Platform Admin'
+    displayName: 'Platform Admin',
+    initials: 'PA',
+    employeeNo: null,
+    lrn: null,
+    schoolLevel: null,
+    gradeLevel: null,
+    strand: null,
+    sectionId: null
   };
-  const PLATFORM_ADMIN = { ...PLATFORM_ACCOUNT, ...PLATFORM_PROFILE, id: PLATFORM_ACCOUNT.id, profileId: PLATFORM_PROFILE.id };
 
   const PLATFORM_ACTIVITY = [
     {
@@ -207,8 +210,8 @@
 
   window.EDUGNAY_PLATFORM = {
     admin: PLATFORM_ADMIN,
-    account: PLATFORM_ACCOUNT,
-    profile: PLATFORM_PROFILE,
+    account: PLATFORM_ADMIN,
+    profile: PLATFORM_ADMIN,
     activities: PLATFORM_ACTIVITY,
     notifications: PLATFORM_NOTIFICATIONS,
     markPlatformNotificationRead,
