@@ -100,7 +100,6 @@
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-          <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
         </button>
 
         <div class="tb-notif-panel" id="tbNotifPanel">
@@ -244,19 +243,6 @@
                 <div class="toggle" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
               </div>
 
-              <!-- <div class="trigger-row">
-                <div class="trigger-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="alert-circle" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Welfare Concern Detected</div>
-                  <div class="trigger-desc">Notify parent when AI flags a journal entry as emotionally concerning.</div>
-                </div>
-                <div class="trigger-input-wrap" style="visibility:hidden;">
-                  <input class="trigger-input" type="number" value="1"/>
-                  <span class="trigger-unit"></span>
-                </div>
-                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div> -->
-
               <div class="trigger-row">
                 <div class="trigger-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
                 <div class="trigger-info">
@@ -303,13 +289,13 @@
 </div>
 
 <script>
-  const NOTIFICATION_TRIGGERS = [
+  const NOTIFICATION_TRIGGERS = window.EDUGNAY_CONFIG.withActiveSchool([
     { icon: 'trending-down', iconBackground: 'var(--red-pale)', iconColor: 'var(--red)', label: 'Grade Falls Below Threshold', description: "Notify parent when a student's final encoded grade for the quarter drops below the set value.", enabled: true },
     { icon: 'calendar-x', iconBackground: 'var(--orange-pale)', iconColor: '#d97706', label: 'Consecutive Absences', description: 'Notify parent when a student has this many absences in a row.', enabled: true },
     { icon: 'clipboard-check', iconBackground: 'var(--green-pale)', iconColor: '#16a34a', label: 'Assignment Not Completed', description: 'Notify parent when a student fails to submit this many consecutive assignments.', enabled: false, inputValue: 2, unit: 'tasks' },
     { icon: 'file-text', iconBackground: 'var(--gold-pale)', iconColor: '#92400e', label: 'Narrative Report Released', description: 'Notify parent when a teacher confirms and releases a narrative report.', enabled: true },
     { icon: 'notebook-pen', iconBackground: 'var(--gray-100)', iconColor: 'var(--gray-500)', label: 'Journal Not Submitted', description: 'Notify parent when a student misses this many consecutive journal submissions.', enabled: false, inputValue: 2, unit: 'weeks' }
-  ];
+  ]);
 
   function renderNotificationTriggers() {
     const list = document.getElementById('notification-trigger-list');
@@ -319,8 +305,6 @@
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bell-off', title: 'No notification triggers configured', text: 'Add notification rules when the school defines its communication preferences.' });
     lucide.createIcons();
   }
-
-  renderNotificationTriggers();
 
   // Config nav highlight on click
   document.querySelectorAll('.config-nav-item').forEach(item => {
@@ -372,6 +356,7 @@
     }
 
     listEl.innerHTML = pending.map(r => {
+      const details = getReopenRequestDetails(r);
       const dateLabel = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       return `
         <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--gray-100);">
@@ -379,8 +364,8 @@
             <i data-lucide="unlock" style="width:16px;height:16px;"></i>
           </div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;color:var(--gray-800);">Q${r.quarter.slice(1)} · ${r.section} · ${r.subject}</div>
-            <div style="font-size:12px;color:var(--gray-500);margin:2px 0 6px;">Requested by ${r.teacher} · ${dateLabel}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--gray-800);">Q${r.quarter.slice(1)} · ${details.section} · ${details.subject}</div>
+            <div style="font-size:12px;color:var(--gray-500);margin:2px 0 6px;">Requested by ${details.teacher} · ${dateLabel}</div>
             <div style="font-size:12px;color:var(--gray-700);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:7px;padding:8px 10px;">${r.reason}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -417,9 +402,11 @@
     renderReopenRequests();
   }
 
-  renderReopenRequests();
-
-  lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderNotificationTriggers();
+    renderReopenRequests();
+    lucide.createIcons();
+  });
 </script>
 
 </body>

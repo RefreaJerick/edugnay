@@ -14,7 +14,6 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/parent/dashboard.css">
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
@@ -41,12 +40,11 @@
     - dailyAttendance[selectedChild]     → per-subject attendance for the SELECTED
         day (default: today), live/un-gated data:
         { date, subjects: [{ name, status: 'present'|'absent'|'late', color }] }
-    - dailyAssignments[selectedChild]    → per-subject assignment completion for
-        the SELECTED day, live/un-gated:
-        { subject, taskTitle, completed: bool }
+    - assignments[]                     → shared school assignment records,
+        filtered by selected child and day in the page renderer
     - weeklyReport[selectedChild]        → ONLY rendered if status === 'confirmed'
         for the current week. Query MUST filter at DB level:
-        WHERE status = 'confirmed' AND studentId = :childId AND weekOf = :currentWeek
+        WHERE status = 'confirmed' AND studentId = :studentId AND weekOf = :currentWeek
         If no confirmed report exists, render the is-waiting state — never expose
         whether a pending one exists.
         Shape: { weekLabel, text, atRisk, confirmedAt }
@@ -202,7 +200,7 @@
           <div class="grading-banner">
             <div class="grading-welcome">
               <div class="grading-welcome-name" id="greeting-time-label">Welcome back, Rosario!</div>
-              <div class="grading-welcome-date" id="banner-child-context">Viewing: Juan Alcantara · Grade 7</div>
+              <div class="grading-welcome-date" id="banner-child-context"></div>
             </div>
             <div class="grading-period-card">
               <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i>
@@ -216,23 +214,7 @@
 
           <!-- Child switcher (student selection) -->
           <!-- children[]: loop -->
-          <div class="child-switcher" id="child-switcher">
-            <div class="child-card active" data-child="juan" onclick="switchChild('juan', this)">
-              <div class="child-avatar">JA</div>
-              <div class="child-info">
-                <div class="child-name">Juan Alcantara</div>
-                <div class="child-section">Grade 7 – St. Matthew</div>
-              </div>
-            </div>
-            <div class="child-card" data-child="maya" onclick="switchChild('maya', this)">
-              <div class="child-avatar">MA</div>
-              <div class="child-info">
-                <div class="child-name">Maya Alcantara</div>
-                <div class="child-section">Grade 4 – St. Clare</div>
-              </div>
-              <span class="child-alert-dot" title="Needs attention"></span>
-            </div>
-          </div>
+          <div class="child-switcher" id="child-switcher"></div>
           <!-- end children[] loop -->
 
           <!-- Weekly Report — confirmed only, fully invisible if not yet confirmed -->
@@ -244,39 +226,22 @@
               </div>
               <div class="report-hero-title-wrap">
                 <div class="report-hero-kicker" id="weeklyReportTitle">Weekly Report</div>
-                <div class="report-hero-sub">Week of June 9–14, 2025</div>
+                <div class="report-hero-sub"></div>
               </div>
             </div>
             <div class="report-hero-quote-mark">"</div>
-            <div class="report-hero-text" id="report-hero-text">
-              Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked
-              assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment
-              in group activities. No concerns to report this week — keep up the encouragement at home!
-            </div>
+            <div class="report-hero-text" id="report-hero-text"></div>
             <div class="report-hero-foot">
               <div class="report-hero-meta-wrap">
-                <span class="report-hero-avatar" aria-hidden="true">MR</span>
-                <span class="report-hero-meta">Sent by Ms. Maria Reyes · June 14, 8:02 AM</span>
+                <span class="report-hero-avatar" aria-hidden="true"></span>
+                <span class="report-hero-meta"></span>
               </div>
               <a href="edugnay-parent-reports.html" class="report-hero-link">
                 View all reports <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
               </a>
             </div>
           </section>
-          <!-- EJS: <% } else { %> -->
-          <!--
-      <div class="report-hero is-waiting">
-        <div class="report-hero-head">
-          <div class="report-hero-title-wrap">
-            <div>
-              <div class="report-waiting-title">This week's report isn't ready yet</div>
-              <div class="report-waiting-sub">Your child's teacher is still preparing this week's report. You'll be notified as soon as it's sent.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      -->
-          <!-- EJS: <% } %> -->
+          <!-- Empty report state is shown by renderWeeklyReport() when no confirmed report exists. -->
 
           <!-- Daily attendance & assignments — LIVE, not report-gated -->
           <section class="panel panel-daily-activity" aria-labelledby="dailyActivityTitle">
@@ -332,36 +297,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list" id="parent-dashboard-announcements">
-              <!-- announcements[]: loop, filtered to audience IN ('all','parents') -->
-              <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
-                <div class="ann-item-head">
-                  <span class="ann-item-title">Q2 Narrative Reports Now Available</span>
-                  <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Normal</span>
-                </div>
-                <div class="ann-item-body">Confirmed narrative reports are now viewable in your EdUgnay parent
-                  dashboard.</div>
-                <div class="ann-item-meta">
-                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 9:00 AM
-                  <span>·</span>
-                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                </div>
-              </div>
-
-              <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
-                <div class="ann-item-head">
-                  <span class="ann-item-title">Foundation Day — June 20</span>
-                  <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
-                </div>
-                <div class="ann-item-body">Classes are suspended. Students must wear their House color shirt.</div>
-                <div class="ann-item-meta">
-                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 10:00 AM
-                  <span>·</span>
-                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                </div>
-              </div>
-              <!-- end announcements[] loop -->
-            </div>
+            <div class="ann-list" id="parent-dashboard-announcements"></div>
           </div>
 
         </div>
@@ -372,13 +308,7 @@
 
 
   <script>
-    lucide.createIcons();
-
-    // Page data boundary: replace this array with the parent announcements endpoint later.
-    const DASHBOARD_ANNOUNCEMENTS = [
-      { title: 'Q2 Narrative Reports Now Available', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports are now viewable in your EdUgnay parent dashboard.', time: 'Today, 9:00 AM', author: 'Admin', access: 'reports' },
-      { title: 'Foundation Day - June 20', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Yesterday, 10:00 AM', author: 'Admin' }
-    ];
+    const DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
 
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
@@ -393,8 +323,6 @@
       lucide.createIcons();
     }
 
-    renderDashboardAnnouncements();
-
     const DAYS = [
       { key: 'mon', label: 'Mon', date: 9 },
       { key: 'tue', label: 'Tue', date: 10 },
@@ -403,14 +331,12 @@
       { key: 'fri', label: 'Fri', date: 13, active: true },
     ];
 
-    const CHILDREN_DATA = {
-      juan: {
-        name: 'Juan Alcantara',
-        report: {
-          text: 'Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!',
-          sentBy: 'Ms. Maria Reyes · June 14, 8:02 AM'
-        },
-        section: 'Grade 7 – St. Matthew',
+    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+
+    // Dashboard-only records. Child identity comes from PARENT_CHILDREN.
+    const CHILD_DASHBOARD_RECORDS = window.EDUGNAY_CONFIG.withActiveSchool([
+      {
+        studentId: 'jd-004',
         attendance: {
           mon: {
             status: 'present', subjects: [
@@ -449,39 +375,9 @@
             ]
           },
         },
-        assignments: {
-          mon: [
-            { subject: 'Mathematics', task: 'Seatwork 1 – Variables', dueDate: '2025-06-09', completedAt: '2025-06-09' },
-            { subject: 'English', task: 'Reading Response', dueDate: '2025-06-09', completedAt: '2025-06-09' },
-          ],
-          tue: [
-            { subject: 'Science', task: 'Lab Worksheet', dueDate: '2025-06-10', completedAt: '2025-06-10' },
-          ],
-          wed: [
-            { subject: 'Mathematics', task: 'Quiz 1 Review', dueDate: '2025-06-11', completedAt: null },
-          ],
-          thu: [
-            { subject: 'English', task: 'Vocabulary Exercise', dueDate: '2025-06-12', completedAt: '2025-06-12' },
-            { subject: 'Science', task: 'Ecosystem Diagram', dueDate: '2025-06-12', completedAt: null },
-          ],
-          fri: [
-            { subject: 'Filipino', task: 'Pagsusulit sa Aralin 2', dueDate: '2025-06-13', completedAt: null },
-            { subject: 'Mathematics', task: 'Activity 1 – Problem Solving', dueDate: '2025-06-13', completedAt: '2025-06-13' },
-            { subject: 'English', task: 'Essay Draft', dueDate: '2025-06-13', completedAt: '2025-06-13' },
-            { subject: 'Science', task: 'Quiz Review Notes', dueDate: '2025-06-13', completedAt: '2025-06-13' },
-            { subject: 'Filipino', task: 'Gawaing Pagsulat', dueDate: '2025-06-13', completedAt: '2025-06-13' },
-            { subject: 'Values Education', task: 'Journal Entry', dueDate: '2025-06-13', completedAt: '2025-06-13' },
-            { subject: 'MAPEH', task: 'Skills Checklist', dueDate: '2025-06-20', completedAt: null },
-          ],
-        },
       },
-      maya: {
-        name: 'Maya Alcantara',
-        report: {
-          text: 'Maya had a positive week in class and participated well in her learning activities. Continue encouraging her to complete each task and share what she learned at home.',
-          sentBy: 'Ms. Maria Reyes · June 14, 8:05 AM'
-        },
-        section: 'Grade 4 – St. Clare',
+      {
+        studentId: 'mt-012',
         attendance: {
           mon: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
           tue: { status: 'present', subjects: [{ name: 'All Subjects', status: 'present', color: 'var(--blue-mid)' }] },
@@ -489,31 +385,33 @@
           thu: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
           fri: { status: 'absent', subjects: [{ name: 'All Subjects', status: 'absent', color: 'var(--blue-mid)' }] },
         },
-        assignments: {
-          mon: [{ subject: 'Mathematics', task: 'Addition Worksheet', dueDate: '2025-06-09', completedAt: '2025-06-09' }],
-          tue: [{ subject: 'English', task: 'Spelling Words', dueDate: '2025-06-10', completedAt: '2025-06-10' }],
-          wed: [{ subject: 'Science', task: 'Plant Drawing', dueDate: '2025-06-11', completedAt: '2025-06-11' }],
-          thu: [{ subject: 'Mathematics', task: 'Subtraction Drill', dueDate: '2025-06-12', completedAt: null }],
-          fri: [{ subject: 'English', task: 'Reading Log', dueDate: '2025-06-20', completedAt: null }],
-        },
-      },
-    };
+      }
+    ]);
 
-    let currentChild = 'juan';
+    let currentChild = PARENT_CHILDREN[0]?.studentId || null;
     let currentDay = 'fri';
+
+    function getCurrentChild() {
+      return PARENT_CHILDREN.find(child => child.studentId === currentChild);
+    }
+
+    function getCurrentDashboardRecord() {
+      return CHILD_DASHBOARD_RECORDS.find(record => record.studentId === currentChild);
+    }
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = Object.entries(CHILDREN_DATA).length ? Object.entries(CHILDREN_DATA).map(([key, data]) => {
-        const initials = data.name.split(' ').map(part => part[0]).slice(0, 2).join('');
-        return `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${initials}</div><div class="child-info"><div class="child-name">${data.name}</div><div class="child-section">${data.section}</div></div>${key === 'maya' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
+      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(child => {
+        const section = `${child.gradeLevel} – ${child.sectionName}`;
+        return `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${section}</div></div>${child.studentId === 'mt-012' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       if (window.lucide) lucide.createIcons();
     }
 
     function updateChildContext() {
-      const data = CHILDREN_DATA[currentChild];
+      const child = getCurrentChild();
+      const data = getCurrentDashboardRecord();
       const hero = document.querySelector('.report-hero');
       const showEmptyReport = (title, text) => {
         if (!hero) return;
@@ -521,21 +419,22 @@
         hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title, text });
         if (window.lucide) lucide.createIcons();
       };
-      if (!data) {
+      if (!child || !data) {
         document.getElementById('banner-child-context').textContent = 'No linked children';
         showEmptyReport('No weekly report yet', 'A weekly report will appear here when a child account is linked.');
         return;
       }
-      const report = data.report;
-      document.getElementById('banner-child-context').textContent = `Viewing: ${data.name} · ${data.section}`;
+      const report = window.EDUGNAY_CONFIG.getReportsForStudent(currentChild, true)[0] || null;
+      document.getElementById('banner-child-context').textContent = `Viewing: ${child.name} · ${child.gradeLevel} – ${child.sectionName}`;
       if (!report || !String(report.text || '').trim()) {
         showEmptyReport('No weekly report yet', 'A weekly report will appear here when it is confirmed and sent.');
         return;
       }
       hero?.classList.remove('is-empty');
-      document.querySelector('.report-hero-sub').textContent = 'Week of June 9–14, 2025';
+      document.querySelector('.report-hero-sub').textContent = report.weekLabel;
       document.getElementById('report-hero-text').textContent = report.text;
-      document.querySelector('.report-hero-meta').textContent = `Sent by ${report.sentBy}`;
+      document.querySelector('.report-hero-avatar').textContent = report.teacherInitials || report.teacherName;
+      document.querySelector('.report-hero-meta').textContent = `Sent by ${report.teacherName} · ${report.confirmedAtLabel}`;
     }
 
     function switchChild(childKey, el) {
@@ -551,7 +450,7 @@
 
     function renderDayStrip() {
       const strip = document.getElementById('day-strip');
-      const data = CHILDREN_DATA[currentChild];
+      const data = getCurrentDashboardRecord();
       if (!data) {
         strip.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No child schedule', text: 'A child schedule will appear here when a child account is linked.' });
         lucide.createIcons();
@@ -580,8 +479,9 @@
 
     function renderAttendanceDetail() {
       const container = document.getElementById('attendance-detail');
-      const data = CHILDREN_DATA[currentChild];
-      if (!data) {
+      const child = getCurrentChild();
+      const data = getCurrentDashboardRecord();
+      if (!child || !data) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Attendance will appear here when a child account is linked.' });
         lucide.createIcons();
         return;
@@ -598,8 +498,8 @@
       const bannerIcon = att.status === 'present' ? 'check-circle' : 'circle-x';
       const bannerTitle = att.status === 'present' ? 'Present' : 'Absent';
       const bannerSub = att.status === 'present'
-        ? `${data.name} attended school on this day.`
-        : `${data.name} was marked absent for this day. Contact the adviser if this seems incorrect.`;
+        ? `${child.name} attended school on this day.`
+        : `${child.name} was marked absent for this day. Contact the adviser if this seems incorrect.`;
       const subjects = Array.isArray(att.subjects) ? att.subjects : [];
 
       container.innerHTML = `
@@ -639,15 +539,29 @@
       return 'awaiting';
     }
 
+    function getParentAssignments(studentId, dayKey) {
+      const day = DAYS.find(item => item.key === dayKey);
+      if (!day) return [];
+      const assignedDate = `2025-06-${String(day.date).padStart(2, '0')}`;
+      return window.EDUGNAY_CONFIG.getAssignmentsForStudent(studentId)
+        .filter(assignment => assignment.assignedDate === assignedDate)
+        .map(assignment => ({
+          subject: assignment.subject,
+          task: assignment.title,
+          dueDate: assignment.dueDate,
+          completedAt: assignment.completedAt
+        }));
+    }
+
     function renderAssignmentsDetail() {
       const container = document.getElementById('assignments-detail');
-      const data = CHILDREN_DATA[currentChild];
+      const data = getCurrentDashboardRecord();
       if (!data) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignment data', text: 'Assignments will appear here when a child account is linked.' });
         lucide.createIcons();
         return;
       }
-      const tasks = data.assignments?.[currentDay] || [];
+      const tasks = getParentAssignments(currentChild, currentDay);
 
       if (tasks.length === 0) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No tasks recorded', text: 'No assignments were recorded for this day.' });
@@ -749,12 +663,16 @@
     }
 
     /* ── INIT — runs once on page load, selects Juan and renders everything ── */
-    renderChildSwitcher();
-    updateChildContext();
-    renderDayStrip();
-    renderAttendanceDetail();
-    renderAssignmentsDetail();
-    renderWeekCalendar();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderDashboardAnnouncements();
+      renderChildSwitcher();
+      updateChildContext();
+      renderDayStrip();
+      renderAttendanceDetail();
+      renderAssignmentsDetail();
+      renderWeekCalendar();
+      lucide.createIcons();
+    });
 
   </script>
 

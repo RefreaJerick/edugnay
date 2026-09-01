@@ -158,20 +158,6 @@
 
   let activeNotifFilter = 'all';
 
-  function formatDateGroup(dateStr) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-  }
-
-  function formatTime(dateStr) {
-    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }
-
   function setNotifFilter(mode, btn) {
     document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -181,27 +167,24 @@
 
   function markAllRead() {
     const visible = getStudentVisibleNotifications();
-    visible.forEach(n => n.read = true);
-    const readIds = new Set(getReadIds());
-    visible.forEach(n => readIds.add(n.id));
-    setReadIds([...readIds]);
+    window.EDUGNAY_CONFIG.markAllNotificationsRead(STUDENT_READ_STORE_KEY, visible);
+    renderTopbarNotifs();
     renderNotifList();
   }
 
   function getFilteredNotifs() {
     return getStudentVisibleNotifications()
       .filter(n => activeNotifFilter === 'unread' ? !n.read : true)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
   function goToNotif(link, id) {
-    const ids = getReadIds();
-    if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
+    window.EDUGNAY_CONFIG.markNotificationRead(STUDENT_READ_STORE_KEY, id, NOTIFICATIONS);
     navigate(link.page);
   }
 
   function renderNotifList() {
-    applyReadState();
+    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();
@@ -225,20 +208,20 @@
     let lastGroup = null;
 
     filtered.forEach(n => {
-      const group = formatDateGroup(n.created_at);
+      const group = formatDateGroup(n.createdAt);
       if (group !== lastGroup) {
         html += `<div class="notif-group-label">${group}</div>`;
         lastGroup = group;
       }
       html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${n.id})'>
-          <div class="nt-icon ${n.color}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
+          <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
             <div class="nt-text"><strong>${n.title}</strong></div>
-            <div class="nt-desc">${n.desc}</div>
-            <div class="nt-time">${formatTime(n.created_at)}</div>
+            <div class="nt-desc">${n.message}</div>
+            <div class="nt-time">${formatTime(n.createdAt)}</div>
           </div>
-          <span class="nt-tag">${n.tag}</span>
+          <span class="nt-tag">${n.type}</span>
         </div>
       `;
     });
@@ -247,7 +230,9 @@
     lucide.createIcons();
   }
 
-  renderNotifList();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderNotifList();
+  });
 </script>
 </body>
 </html>

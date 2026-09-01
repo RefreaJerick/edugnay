@@ -4,63 +4,85 @@
  * integration. School-specific data remains scoped by schoolId on the server.
  */
 (function initializePlatformAdmin() {
-  const PLATFORM_ADMIN = {
+  const PLATFORM_ACCOUNT = {
     id: 'platform-admin-001',
-    name: 'Platform Admin',
+    schoolId: null,
     email: 'platform.admin@edugnay.local',
-    role: 'Platform Administrator',
-    initials: 'PA'
+    role: 'platform_admin',
+    status: 'active',
+    createdAt: '2025-01-01T00:00:00.000Z'
   };
+  const PLATFORM_PROFILE = {
+    id: 'platform-profile-001',
+    accountId: PLATFORM_ACCOUNT.id,
+    firstName: 'Platform',
+    lastName: 'Admin',
+    displayName: 'Platform Admin'
+  };
+  const PLATFORM_ADMIN = { ...PLATFORM_ACCOUNT, ...PLATFORM_PROFILE, id: PLATFORM_ACCOUNT.id, profileId: PLATFORM_PROFILE.id };
 
   const PLATFORM_ACTIVITY = [
     {
-      id: 'activity-school-ready',
+      id: 'platform-activity-school-ready',
+      schoolId: 'scc',
+      actor: 'Platform',
+      title: "marked St. Columban's College active",
+      detail: 'School profile and academic structure are configured.',
       icon: 'circle-check-big',
       tone: 'green',
-      title: "St. Columban's College is active",
-      detail: 'School profile and academic structure are configured.',
-      createdAt: '2026-08-25T09:20:00',
-      type: 'School account'
+      createdAt: '2026-08-25T09:20:00.000Z',
+      type: 'School account',
+      link: { page: 'school-accounts' }
     },
     {
-      id: 'activity-account-created',
+      id: 'platform-activity-account-created',
+      schoolId: 'scc',
+      actor: 'Platform',
+      title: 'created the initial administrator account',
+      detail: 'The school administrator can now manage their portal.',
       icon: 'user-plus',
       tone: 'blue',
-      title: 'Initial administrator account created',
-      detail: 'The school administrator can now manage their portal.',
-      createdAt: '2026-08-24T15:45:00',
-      type: 'Access'
+      createdAt: '2026-08-24T15:45:00.000Z',
+      type: 'Access',
+      link: { page: 'school-accounts' }
     },
     {
-      id: 'activity-template-updated',
+      id: 'platform-activity-template-updated',
+      schoolId: 'scc',
+      actor: 'Platform',
+      title: 'updated an SF template configuration',
+      detail: 'A template mapping was saved for review.',
       icon: 'file-cog',
       tone: 'gold',
-      title: 'SF template configuration updated',
-      detail: 'A template mapping was saved for review.',
-      createdAt: '2026-08-22T11:10:00',
-      type: 'Configuration'
+      createdAt: '2026-08-22T11:10:00.000Z',
+      type: 'Configuration',
+      link: { page: 'school-accounts' }
     }
   ];
 
   const PLATFORM_NOTIFICATIONS = [
     {
       id: 'platform-notif-manghi-registration',
+      schoolId: null,
       icon: 'building-2',
-      color: 'gold',
+      tone: 'gold',
+      type: 'School account',
       title: 'Manghi school account awaiting review',
-      desc: 'Mangaldan National High School submitted a new registration.',
-      createdAt: '2026-08-30T09:15:00',
-      time: '9:15 AM',
-      link: 'edugnay-platform-school-accounts.html',
+      message: 'Mangaldan National High School submitted a new registration.',
+      createdAt: '2026-08-30T09:15:00.000Z',
+      link: { page: 'school-accounts' },
       read: false
     },
     {
       id: 'platform-notif-school-ready',
+      schoolId: null,
       icon: 'building-2',
-      color: 'green',
+      tone: 'green',
+      type: 'School account',
       title: 'School account ready for review',
-      desc: "St. Columban's College completed its initial setup.",
-      time: '9:20 AM',
+      message: "St. Columban's College completed its initial setup.",
+      createdAt: '2026-08-25T09:20:00.000Z',
+      link: { page: 'school-accounts' },
       read: false
     }
   ];
@@ -68,30 +90,16 @@
   /* ── READ STATE (localStorage; replace with a backend read flag later) ── */
   const PLATFORM_READ_STORE_KEY = 'edugnay_platform_notif_read';
 
-  function getPlatformReadIds() {
-    try { return JSON.parse(localStorage.getItem(PLATFORM_READ_STORE_KEY)) || []; }
-    catch { return []; }
-  }
-
-  function setPlatformReadIds(ids) {
-    localStorage.setItem(PLATFORM_READ_STORE_KEY, JSON.stringify(ids));
-  }
-
   function applyPlatformReadState() {
-    const readIds = getPlatformReadIds();
-    PLATFORM_NOTIFICATIONS.forEach(notification => {
-      if (readIds.includes(notification.id)) notification.read = true;
-    });
+    window.EDUGNAY_CONFIG.applyNotificationReadState(PLATFORM_NOTIFICATIONS, PLATFORM_READ_STORE_KEY);
   }
 
   function markPlatformNotificationRead(id) {
-    const readIds = getPlatformReadIds();
-    if (!readIds.includes(id)) {
-      readIds.push(id);
-      setPlatformReadIds(readIds);
-    }
-    const notification = PLATFORM_NOTIFICATIONS.find(item => item.id === id);
-    if (notification) notification.read = true;
+    return window.EDUGNAY_CONFIG.markNotificationRead(
+      PLATFORM_READ_STORE_KEY,
+      id,
+      PLATFORM_NOTIFICATIONS
+    );
   }
 
   const PLATFORM_QUICK_ACTIONS = [
@@ -159,12 +167,12 @@
 
     list.innerHTML = PLATFORM_NOTIFICATIONS.length
       ? PLATFORM_NOTIFICATIONS.map(item => `
-        <a href="edugnay-platform-school-accounts.html" class="tb-notif-item ${item.read ? '' : 'unread'}" data-platform-notification="${item.id}">
-          <div class="tb-notif-icon ${item.color}" aria-hidden="true"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+        <a href="#" class="tb-notif-item ${item.read ? '' : 'unread'}" data-platform-notification="${item.id}">
+          <div class="tb-notif-icon ${item.tone}" aria-hidden="true"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
           <div class="tb-notif-body">
             <div class="tb-notif-head"><div class="tb-notif-title">${item.title}</div></div>
-            <div class="tb-notif-desc">${item.desc}</div>
-            <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${item.time}</span></div>
+            <div class="tb-notif-desc">${item.message}</div>
+            <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatTime(item.createdAt)}</span></div>
           </div>
         </a>`).join('')
       : `<div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div>`;
@@ -172,25 +180,40 @@
     list.querySelectorAll('[data-platform-notification]').forEach(button => {
       button.addEventListener('click', event => {
         event.preventDefault();
+        const notification = PLATFORM_NOTIFICATIONS.find(item => item.id === button.dataset.platformNotification);
         markPlatformNotificationRead(button.dataset.platformNotification);
-        renderTopbarNotifs();
+        navigatePlatform(notification?.link);
       });
     });
     if (window.lucide) window.lucide.createIcons();
   }
 
   function markAllPlatformNotificationsRead() {
-    setPlatformReadIds(PLATFORM_NOTIFICATIONS.map(notification => notification.id));
-    PLATFORM_NOTIFICATIONS.forEach(item => { item.read = true; });
+    window.EDUGNAY_CONFIG.markAllNotificationsRead(PLATFORM_READ_STORE_KEY, PLATFORM_NOTIFICATIONS);
     renderTopbarNotifs();
+  }
+
+  function navigatePlatform(link) {
+    const pages = {
+      dashboard: 'edugnay-platform-dashboard.html',
+      'school-accounts': 'edugnay-platform-school-accounts.html',
+      activity: 'edugnay-platform-activity.html',
+      notifications: 'edugnay-platform-notifications.html',
+      profile: 'edugnay-platform-profile.html'
+    };
+    const target = pages[link?.page] || 'edugnay-platform-dashboard.html';
+    window.location.href = target;
   }
 
   window.EDUGNAY_PLATFORM = {
     admin: PLATFORM_ADMIN,
+    account: PLATFORM_ACCOUNT,
+    profile: PLATFORM_PROFILE,
     activities: PLATFORM_ACTIVITY,
     notifications: PLATFORM_NOTIFICATIONS,
     markPlatformNotificationRead,
     quickActions: PLATFORM_QUICK_ACTIONS,
+    notificationStorageKey: PLATFORM_READ_STORE_KEY,
     getSchoolRecords,
     getDashboardSummary,
     renderTopbarNotifs,
@@ -199,4 +222,10 @@
 
   window.renderTopbarNotifs = renderTopbarNotifs;
   window.markAllPlatformNotificationsRead = markAllPlatformNotificationsRead;
+  window.navigatePlatform = navigatePlatform;
+  window.EDUGNAY_NOTIFICATION_CONTEXT = {
+    storageKey: PLATFORM_READ_STORE_KEY,
+    records: PLATFORM_NOTIFICATIONS,
+    getItems: () => PLATFORM_NOTIFICATIONS
+  };
 })();

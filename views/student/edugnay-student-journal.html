@@ -282,48 +282,35 @@
       - PAST_ENTRIES likewise renders server-side as a simple loop; the only
         remaining client-side JS should be the minimum-word helper on the composer.
     */
+    // The current student and all journal entries come from the shared source.
+    // Replace the getter with the student journal API response later.
+    const STUDENT_ID = 'jd-004';
+    const JOURNAL_RECORDS = window.EDUGNAY_CONFIG.getJournalsForStudent(STUDENT_ID);
+    const currentJournal = JOURNAL_RECORDS.find(record => record.isCurrent);
     const JOURNAL_WINDOW = {
-      isOpen: true,
-      minWords: 50,
+      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+      isOpen: currentJournal?.isOpen === true,
+      minWords: Number(currentJournal?.minWords) || 50,
     };
-
-    // null = student has not submitted yet this week
-    const CURRENT_ENTRY = null;
-
-    /*
-      EJS/BACKEND NOTE:
-      - PAST_ENTRIES → student's journal_entries rows (all WEEKS before current),
-        fetched server-side: GET /student/journal/entries?exclude=current
-        Each row needs: id, week_label, date_range, prompt_snapshot (store the
-        prompt text AT SUBMISSION TIME, not a live join to journal_windows —
-        prompts change weekly and past entries must show what was actually asked),
-        entry_text, submitted_at, score (nullable until teacher reviews).
-      - Render PAST_ENTRIES server-side via EJS loop (same as materials[]/
-        announcements[] elsewhere in this app) instead of a client array.
-      - openEntryModal(id) can stay client-side: embed all entries' full text
-        in the initial render and look up by id in JS — fine since entry count
-        per student is small (one per week). Matches how the rest of this page
-        already works.
-    */
-
-    const PAST_ENTRIES = [
-      {
-        id: 2, week: 'Week 2', dateRange: 'June 2 to 7, 2025',
-        prompt: '"Talk about a challenge you faced this week and how you tried to overcome it."',
-        excerpt: 'I found the quiz on linear inequalities confusing because of the direction of the inequality...',
-        text: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
-        submittedAt: 'June 6, 2025 · 9:42 PM',
-        score: 50, reviewed: true
-      },
-      {
-        id: 1, week: 'Week 1', dateRange: 'May 26 to 31, 2025',
-        prompt: '"Describe a moment this week when you helped a classmate or a classmate helped you."',
-        excerpt: 'This week I had a hard time understanding how to solve equations with variables on both sides...',
-        text: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
-        submittedAt: 'May 30, 2025 · 7:15 PM',
-        score: 45, reviewed: true
-      },
-    ];
+    const CURRENT_ENTRY = currentJournal?.submitted
+      ? { ...currentJournal, text: currentJournal.entryText, submittedAt: window.EDUGNAY_CONFIG.formatDateTime(currentJournal.submittedAt) }
+      : null;
+    const PAST_ENTRIES = JOURNAL_RECORDS
+      .filter(record => !record.isCurrent && record.submitted)
+      .map(record => ({
+        ...record,
+        text: record.entryText,
+        excerpt: record.entryText.slice(0, 90) + (record.entryText.length > 90 ? '…' : ''),
+        submittedAt: window.EDUGNAY_CONFIG.formatDateTime(record.submittedAt)
+      }));
+    if (currentJournal) {
+      const promptPeriod = document.querySelector('.prompt-period');
+      const promptText = document.querySelector('.prompt-text');
+      const promptDeadline = document.querySelector('.prompt-deadline strong');
+      if (promptPeriod) promptPeriod.textContent = `${currentJournal.week} · ${currentJournal.dateRange}`;
+      if (promptText) promptText.textContent = `"${currentJournal.prompt}"`;
+      if (promptDeadline) promptDeadline.textContent = 'Friday, 11:59 PM';
+    }
 
     function wordCount(text) {
       return text.trim().split(/\s+/).filter(Boolean).length;
@@ -416,9 +403,14 @@
     }
 
     function submitEntry() {
-      // EJS NOTE: replace with POST /student/journal/submit { text }
       const textarea = document.getElementById('entry-textarea');
-      console.log('Submitting entry:', textarea.value);
+      if (!currentJournal) return;
+      window.EDUGNAY_CONFIG.updateJournalEntry(currentJournal.id, {
+        entryText: textarea.value.trim(),
+        submitted: true,
+        isOpen: false,
+        submittedAt: new Date().toISOString()
+      });
       showToast('Journal entry submitted!', 'success');
       setTimeout(() => location.reload(), 900);
     }
@@ -437,7 +429,7 @@
           ? `<span class="badge badge-green"><i data-lucide="star" style="width:9px;height:9px;"></i> ${e.score}/50</span>`
           : `<span class="badge badge-orange">Pending</span>`;
         return `
-      <div class="history-row" onclick="openEntryModal(${e.id})">
+      <div class="history-row" onclick="openEntryModal('${e.id}')">
         <div class="history-icon"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
         <div class="history-info">
           <div class="history-week">${e.week} · ${e.dateRange}</div>
@@ -458,7 +450,7 @@
     }
 
     function openEntryModal(id) {
-      const e = PAST_ENTRIES.find(entry => entry.id === id);
+      const e = PAST_ENTRIES.find(entry => entry.id === String(id));
       if (!e) return;
       document.getElementById('entryModalWeek').textContent = e.week;
       document.getElementById('entryModalDate').textContent = e.dateRange;
@@ -479,8 +471,10 @@
       document.getElementById('entryModalBackdrop').classList.remove('open');
     }
 
-    renderCurrentWeekPanel();
-    renderHistory();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderCurrentWeekPanel();
+      renderHistory();
+    });
 
   </script>
 

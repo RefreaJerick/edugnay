@@ -1272,138 +1272,134 @@ body.drawer-open .sidebar {
   min-height: 100vh;
 }
 
-/* ── LEFT — PHOTO PANEL ── */
-.photo-panel {
+/* Universal E-Ugnay identity */
+.login-brand-panel {
   position: relative;
   overflow: hidden;
+  background: var(--navy);
 }
 
-.photo-panel::before {
-  content: '';
+.login-brand-watermark {
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to right, rgba(11,31,58,0.55) 0%, rgba(11,31,58,0.3) 100%),
-    linear-gradient(to top,   rgba(11,31,58,0.85) 0%, transparent 55%);
+  right: -9%;
+  bottom: -4%;
+  width: min(68%, 520px);
+  opacity: .045;
   pointer-events: none;
-  z-index: 1;
+  user-select: none;
 }
 
-.photo-panel .photo-slideshow {
+.login-network-pattern {
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  inset: 10% -14% auto auto;
+  width: min(94%, 720px);
+  height: 72%;
+  color: color-mix(in srgb, var(--blue-light) 20%, transparent);
+  pointer-events: none;
 }
 
-.photo-panel .photo-slideshow .slide {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0;
-  transition: opacity 1.2s ease;
+.login-network-pattern path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
 }
 
-.photo-panel .photo-slideshow .slide.active {
-  opacity: 1;
+.login-network-pattern circle {
+  fill: currentColor;
 }
 
-.photo-panel .photo-content {
+.login-brand-content {
   position: relative;
-  z-index: 2;
-  height: 100%;
+  z-index: 1;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 44px 52px;
+  padding: clamp(32px, 5vw, 68px);
 }
 
-/* School logo top-left */
-.school-mark {
+.system-mark,
+.login-mobile-brand {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.school-crest {
-  width: 56px; height: 56px;
+.system-crest {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  border: 1px solid color-mix(in srgb, var(--white) 36%, transparent);
 }
 
-.school-crest img {
+.system-crest img,
+.login-mobile-brand img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
-.school-info {}
-
-.school-name {
-  font-size: 15px;
-  font-weight: 700;
+.system-name {
   color: var(--white);
-  letter-spacing: 0.2px;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
   line-height: 1.2;
 }
 
-/* Bottom text */
-.photo-heading {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: clamp(32px, 3.5vw, 52px);
-  font-weight: 800;
-  color: var(--white);
-  line-height: 1.1;
-  letter-spacing: -0.5px;
-  margin-bottom: 16px;
-}
-
-.photo-heading em {
-  font-style: italic;
+.login-brand-kicker {
+  margin-bottom: 14px;
   color: var(--gold-light);
-}
-
-/* Stat strip */
-.stat-strip {
-  display: flex;
-  gap: 0;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 12px;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-  background: rgba(255,255,255,0.05);
-  width: fit-content;
-}
-
-.stat-block {
-  padding: 14px 24px;
-  border-right: 1px solid rgba(255,255,255,0.1);
-  text-align: center;
-}
-
-.stat-block:last-child { border-right: none; }
-
-.stat-val {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--white);
-  line-height: 1;
-}
-
-.stat-val span { color: var(--gold-light); }
-
-.stat-key {
-  font-size: 10px;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
+}
+
+.login-brand-copy {
+  width: min(100%, 560px);
+  margin: auto 0;
+  padding: 0;
+}
+
+.login-brand-heading {
+  max-width: 540px;
+  margin: 0;
+  color: var(--white);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(34px, 4vw, 56px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.login-brand-heading em {
+  color: var(--gold-light);
+  font-style: normal;
+}
+
+.login-brand-description {
+  max-width: 570px;
+  margin: 22px 0 0;
+  color: var(--gray-300);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.login-mobile-brand {
+  display: none;
+  width: 100%;
+  max-width: 370px;
+  margin-bottom: 34px;
+}
+
+.login-mobile-brand img {
+  width: 40px;
+  height: 40px;
 }
 
 /* ── RIGHT — LOGIN PANEL ── */
@@ -1773,7 +1769,8 @@ body.drawer-open .sidebar {
 
 @media (max-width: 860px) {
   .page { grid-template-columns: 1fr; }
-  .photo-panel { display: none; }
+  .login-brand-panel { display: none; }
+  .login-mobile-brand { display: flex; }
   .login-panel { padding: 40px 28px; }
 }
 
@@ -2691,7 +2688,7 @@ body.drawer-open .sidebar {
 
 /* Configuration collections have useful max-widths while populated, but an
    empty message should use the full panel width like every other collection. */
-.shell .main :is(.weight-list, .school-photo-list, .school-attendance-code-grid, .grade-grid, .track-options):has(> .panel-empty-state) {
+.shell .main :is(.weight-list, .school-attendance-code-grid, .grade-grid, .track-options):has(> .panel-empty-state) {
   max-width: none;
   gap: 0;
   margin-top: 0;

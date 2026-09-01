@@ -288,7 +288,7 @@
                 <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
               </div>
               <div class="image-preview-wrap" id="composePreview" style="display:none;">
-                <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview" />
+                <img class="image-preview" src="https://placehold.co/600x300" alt="Preview" />
                 <button type="button" class="remove-image-btn"
                   onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
                   <i data-lucide="x" style="width:12px;height:12px;"></i>
@@ -308,85 +308,6 @@
       </div>
     </div>
   </div>
-
-  <!-- ASSIGN TEACHER MODAL -->
-  <!-- <div class="modal-backdrop" id="assignTeacherModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="assignTeacherTitle">Assign Teacher to Section</div>
-        <div class="modal-sub" id="assignTeacherSub">Step 1 of 2: Select section and subject</div>
-      </div>
-      <button class="modal-close" type="button" onclick="closeAssignTeacherModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <form id="assignTeacherForm" method="post" action="/assignments/create"> -->
-  <!-- STEP 1: Section & Subject Selection -->
-  <!-- <div id="step1">
-          <div class="form-group">
-            <label class="form-label">Section</label>
-            <select class="form-select" id="sectionSelect" name="section" onchange="updateSubjects()">
-              <option value="">— Select a section —</option>
-              <option value="grade7-matthew">Grade 7 – St. Matthew</option>
-              <option value="grade7-mark">Grade 7 – St. Mark</option>
-              <option value="grade8-luke">Grade 8 – St. Luke</option>
-              <option value="grade8-john">Grade 8 – St. John</option>
-              <option value="grade9-peter">Grade 9 – St. Peter</option>
-              <option value="grade9-paul">Grade 9 – St. Paul</option>
-              <option value="grade10-james">Grade 10 – St. James</option>
-              <option value="grade10-thomas">Grade 10 – St. Thomas</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Subject</label>
-            <select class="form-select" id="subjectSelect" name="subject">
-              <option value="">— Select a subject —</option>
-            </select>
-          </div>
-        </div> -->
-
-  <!-- STEP 2: Teacher Selection -->
-  <!-- <div id="step2" style="display: none;">
-          <div class="modal-context">
-            <div class="ctx-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
-            <div>
-              <div class="ctx-label">Assigning to</div>
-              <div class="ctx-val" id="assignmentContextVal">Grade 7 – St. Matthew · Mathematics</div>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Faculty Member</label>
-            <select class="form-select" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
-              <option value="">— Select a teacher —</option>
-              <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes</option>
-              <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva</option>
-              <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan</option>
-              <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos</option>
-              <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon</option>
-              <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez</option>
-              <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia</option>
-            </select>
-            <div class="teacher-preview" id="teacherPreview">
-              <div class="tp-av" id="tpAv">MR</div>
-              <div>
-                <div class="tp-name" id="tpName">Ms. Maria Reyes</div>
-                <div class="tp-detail" id="tpDetail">m.reyes.fac@stcolumban.edu.ph</div>
-              </div>
-              <div class="tp-check"><i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-foot">
-          <button type="button" id="backBtn" class="btn btn-cancel" onclick="goToStep1()" style="display: none;">← Back</button>
-          <button type="button" class="btn btn-cancel" onclick="closeAssignTeacherModal()">Cancel</button>
-          <button type="button" id="nextBtn" class="btn btn-save" onclick="goToStep2()">Next →</button>
-          <button type="submit" id="submitBtn" class="btn btn-save" style="display: none;">Assign Teacher</button>
-        </div>
-      </form> -->
-  <!-- </div>
-  </div>
-</div> -->
 
   <div class="shell">
     <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
@@ -516,7 +437,6 @@
         <div class="tb-notif">
           <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
             <i data-lucide="bell" style="width:20px;height:20px;"></i>
-            <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
             <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
           </button>
 
@@ -676,10 +596,11 @@
   </div>
 
   <script>
-    // Local arrays for the static frontend. Replace these with fetched data
+    // Shared frontend data services. Replace their internals with fetched data
     // later, then call renderAdminDashboard().
-    const ADMIN_ACCOUNTS = window.EDUGNAY_CONFIG.accounts;
-    const ADMIN_STUDENTS = window.EDUGNAY_CONFIG.students;
+    const ADMIN_ACCOUNTS = window.EDUGNAY_CONFIG.getAccounts();
+    const ADMIN_USERS = window.EDUGNAY_CONFIG.getUsers();
+    const ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
 
     const ADMIN_SUMMARY_CARDS = [
       {
@@ -701,7 +622,7 @@
         label: 'Faculty',
         sub: 'Active teachers this quarter',
         records: ADMIN_ACCOUNTS,
-        accountRole: 'fac',
+        accountRole: 'teacher',
       },
       {
         id: 'parents',
@@ -712,7 +633,7 @@
         label: 'Parents',
         sub: 'Linked to student accounts',
         records: ADMIN_ACCOUNTS,
-        accountRole: 'par',
+        accountRole: 'parent',
       },
     ];
 
@@ -749,7 +670,7 @@
 
     function dashboardDivision(level) {
       const school = window.EDUGNAY_CONFIG.getActiveSchool();
-      return school?.divisions?.[level] || (school?.schoolType === level ? school : {}) || {};
+      return school?.divisions?.[level] || {};
     }
 
     function dashboardAssignmentSections() {
@@ -941,16 +862,19 @@
       lucide.createIcons();
     }
 
-    renderAdminDashboard();
-    renderDashboardStudentOptions();
-    window.initSearchableSelect?.(document.getElementById('modalStudent'), {
-      placeholder: 'Select a student',
-      searchPlaceholder: 'Search students...',
-      emptyText: 'No matching students',
-      ariaLabel: 'Student'
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderAdminDashboard();
+      renderDashboardStudentOptions();
+      window.initSearchableSelect?.(document.getElementById('modalStudent'), {
+        placeholder: 'Select a student',
+        searchPlaceholder: 'Search students...',
+        emptyText: 'No matching students',
+        ariaLabel: 'Student'
+      });
+      dashboardAssignmentState.level = dashboardDefaultLevel() || '';
+      updateDashboardAssignmentFields();
+      renderWeekCalendar();
     });
-    dashboardAssignmentState.level = dashboardDefaultLevel() || '';
-    updateDashboardAssignmentFields();
 
     function renderWeekCalendar() {
       const grid = document.getElementById('weekCalendarGrid');
@@ -987,8 +911,6 @@
         rangeLabel.parentElement.dataset.currentDate = rangeLabel.dataset.currentDate;
       }
     }
-    renderWeekCalendar();
-
     function openAccountModal() {
       const form = document.getElementById('createAccountForm');
       form.reset();
@@ -1038,12 +960,12 @@
     // The same student directory powers the assignment modal and parent link picker.
     // Replace it with a student API response later.
     const MOCK_STUDENTS = () => ADMIN_STUDENTS.map(student => ({
-      id: student.id,
+      studentId: student.id,
       name: student.name,
       section: student.section || 'Unassigned'
     }));
 
-    let linkedStudents = []; // [{ id, name, section }]
+    let linkedStudents = []; // [{ studentId, name, section }]
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
@@ -1051,7 +973,7 @@
 
       const results = MOCK_STUDENTS().filter(s =>
         s.name.toLowerCase().includes(query.toLowerCase()) &&
-        !linkedStudents.find(l => l.id === s.id)
+        !linkedStudents.find(l => l.studentId === s.studentId)
       );
 
       if (!results.length) {
@@ -1062,30 +984,30 @@
 
       dropdown.innerHTML = results.map(s => `
       <div
-        onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}')"
+        onclick="addLinkedStudent('${s.studentId}', '${s.name}', '${s.section}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
         onmouseenter="this.style.background='var(--gray-50)'"
         onmouseleave="this.style.background=''"
       >
         <div style="font-weight:500;color:var(--gray-800);">${s.name}</div>
-        <div style="font-size:12px;color:var(--gray-400);">${s.section} · ${s.id}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${s.section}</div>
       </div>
     `).join('');
 
       dropdown.style.display = '';
     }
 
-    function addLinkedStudent(id, name, section) {
-      if (linkedStudents.find(s => s.id === id)) return;
-      linkedStudents.push({ id, name, section });
+    function addLinkedStudent(studentId, name, section) {
+      if (linkedStudents.find(student => student.studentId === studentId)) return;
+      linkedStudents.push({ studentId, name, section });
       renderLinkedStudents();
 
       document.getElementById('studentSearchInput').value = '';
       document.getElementById('studentDropdown').style.display = 'none';
     }
 
-    function removeLinkedStudent(id) {
-      linkedStudents = linkedStudents.filter(s => s.id !== id);
+    function removeLinkedStudent(studentId) {
+      linkedStudents = linkedStudents.filter(student => student.studentId !== studentId);
       renderLinkedStudents();
     }
 
@@ -1098,7 +1020,7 @@
       if (dd) dd.style.display = 'none';
     }
 
-    const DASHBOARD_ROLE_MAP = { adm: 'admin', fac: 'fac', stud: 'stud', parents: 'par' };
+    const DASHBOARD_ROLE_MAP = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
 
     document.getElementById('createAccountForm').addEventListener('submit', function (event) {
       event.preventDefault();
@@ -1113,40 +1035,35 @@
         alert('Please complete the name, school email, and role.');
         return;
       }
-      const isStaff = role === 'admin' || role === 'fac';
-      if ((isStaff && !employeeNo) || (role === 'stud' && !lrn)) {
+      const isStaff = role === 'school_admin' || role === 'teacher';
+      if ((isStaff && !employeeNo) || (role === 'student' && !lrn)) {
         alert(isStaff
           ? 'Please provide the employee number.'
           : 'Please provide the student LRN.');
         return;
       }
-      if (isStaff && ADMIN_ACCOUNTS.some(account => (
-        (account.role === 'admin' || account.role === 'fac')
-        && String(account.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
+      if (isStaff && ADMIN_USERS.some(user => (
+        (user.role === 'school_admin' || user.role === 'teacher')
+        && String(user.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
       ))) {
         alert('That employee number is already assigned to another staff account.');
         return;
       }
 
-      const account = {
+      window.EDUGNAY_CONFIG.createUserAccount({
         id: `local-${Date.now()}`,
-        firstName,
-        lastName,
-        displayName: `${firstName} ${lastName}`,
+        schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
         email,
         role,
-        section: role === 'stud' || role === 'fac' ? 'Unassigned' : '',
-        sectionId: null,
-        gradeLevel: '',
         status: 'active',
-        dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        employeeNo: isStaff ? employeeNo : '',
-        lrn: role === 'stud' ? lrn : '',
-        linkedStudents: role === 'par' ? [...linkedStudents] : []
-      };
-
-      ADMIN_ACCOUNTS.push(account);
-      if (role === 'stud') window.EDUGNAY_CONFIG.upsertStudentProfile(account);
+        createdAt: new Date().toISOString(),
+        firstName,
+        lastName,
+        employeeNo: isStaff ? employeeNo : null,
+        lrn: role === 'student' ? lrn : null,
+        linkedStudentIds: role === 'parent' ? linkedStudents.map(link => link.studentId) : []
+      });
+      window.EDUGNAY_CONFIG.saveAccounts();
 
       closeAccountModal();
       renderDashboardStudentOptions();
@@ -1165,12 +1082,12 @@
         border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
       ">
         ${s.name}
-        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.id}')">&times;</span>
+        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.studentId}')">&times;</span>
       </div>
     `).join('');
 
       inputs.innerHTML = linkedStudents.map(s =>
-        `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
+        `<input type="hidden" name="linkedStudents[]" value="${s.studentId}"/>`
       ).join('');
     }
 
@@ -1183,23 +1100,17 @@
       }
     });
 
-    function openStudentModal(studentName) {
+    function openStudentModal() {
       const title = document.getElementById('studentModalTitle');
-      title.textContent = studentName ? `Assign: ${studentName}` : 'Assign Student';
+      title.textContent = 'Assign Student';
       dashboardAssignmentState.student = null;
       dashboardAssignmentState.level = dashboardDefaultLevel() || '';
       dashboardAssignmentState.grade = '';
       dashboardAssignmentState.strand = '';
       dashboardAssignmentState.section = '';
       renderDashboardStudentOptions();
-      const matchedStudent = DASHBOARD_ASSIGNMENT_STUDENTS.find(student => student.name.toLowerCase() === String(studentName || '').toLowerCase());
-      if (matchedStudent) {
-        document.getElementById('modalStudent').value = matchedStudent.id;
-        handleDashboardStudentChange(matchedStudent.id);
-      } else {
-        document.getElementById('studentPreview').classList.remove('visible');
-        updateDashboardAssignmentFields();
-      }
+      document.getElementById('studentPreview').classList.remove('visible');
+      updateDashboardAssignmentFields();
       document.getElementById('studentModalBackdrop').classList.add('open');
     }
 
@@ -1224,9 +1135,9 @@
         level: section.level,
         grade: section.grade,
         strand: section.strand || '',
-        section: `${section.grade} / ${section.name}`,
         sectionId: section.id
       });
+      window.EDUGNAY_CONFIG.saveAccounts();
 
       closeStudentModal();
       renderDashboardStudentOptions(student.id);
@@ -1283,12 +1194,6 @@
       });
     });
 
-    function selectRole(el, value) {
-      document.querySelectorAll('.account-modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
-      el.classList.add('selected');
-      document.getElementById('roleValue').value = value;
-    }
-
     function handleImagePreview(input, previewWrapId, placeholderId) {
       const file = input.files[0];
       if (!file) return;
@@ -1330,7 +1235,7 @@
      Shared records come from assets/js/admin/shell.js. The dashboard shows
      the latest four; the activity page uses the same source for its full log.
      Columns to match later in Postgres:
-     id | actor | action | icon | color | tag | created_at
+      id | schoolId | actor | title | detail | icon | tone | type | link | createdAt
      (date_group and time-of-day are computed, not stored) */
     const RECENT_ACTIVITY = Array.isArray(window.EDUGNAY_ADMIN?.activities)
       ? window.EDUGNAY_ADMIN.activities
@@ -1339,26 +1244,26 @@
     function renderActivityList() {
       const container = document.getElementById('activityList');
       const sorted = [...RECENT_ACTIVITY]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 4);
 
       let html = '';
       let lastGroup = null;
 
       sorted.forEach(item => {
-        const group = formatDateGroup(item.created_at);
+        const group = formatDateGroup(item.createdAt);
         if (group !== lastGroup) {
           html += `<div class="activity-group-label">${group}</div>`;
           lastGroup = group;
         }
         html += `
         <div class="activity-item">
-          <div class="act-icon ${item.color}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
-          <div class="act-body">
-            <div class="act-text"><strong>${item.actor}</strong> ${item.action}</div>
-            <div class="act-time">${formatTime(item.created_at)}</div>
-          </div>
-          <span class="act-tag">${item.tag}</span>
+        <div class="act-icon ${item.tone}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+        <div class="act-body">
+          <div class="act-text"><strong>${item.actor}</strong> ${item.title} ${item.detail || ''}</div>
+          <div class="act-time">${formatTime(item.createdAt)}</div>
+        </div>
+        <span class="act-tag">${item.type}</span>
         </div>
       `;
       });

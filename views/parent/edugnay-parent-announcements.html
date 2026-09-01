@@ -260,201 +260,7 @@
         <!-- LEFT: Announcement cards -->
         <div>
           <!-- EJS: <% announcements.forEach(function(ann) { %> -->
-          <div class="ann-list" id="annList">
-
-            <!-- ─── CARD 1: Pinned + Urgent ─── -->
-            <!-- EJS: data-id="<%= ann._id %>" data-priority="<%= ann.priority %>" data-read="<%= ann.readBy.includes(currentUser._id) ? 'true' : 'false' %>" -->
-            <div class="ann-card priority-high" data-priority="high" data-read="false" onclick="openAnnModal(this)">
-              <div class="pinned-strip">
-                <i data-lucide="pin" style="width:12px;height:12px;"></i>
-                Pinned Announcement
-              </div>
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-high">
-                      <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <!-- EJS: <%= ann.title %> -->
-                      <div class="ann-title">Foundation Day — June 20, 2025</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- EJS: <%= ann.content %> -->
-                <div class="ann-content"
-                  data-full="Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Parents are welcome to attend the closing program at 4:00 PM.">
-                  Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color
-                  shirt and report to the covered court by 7:30 AM…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <!-- EJS: audience tag rendered per ann.audience -->
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 2: Normal (Parents only) ─── -->
-            <div class="ann-card priority-normal" data-priority="normal" data-read="false" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-normal">
-                      <i data-lucide="file-text" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Q2 Narrative Reports Now Available</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 9:00 AM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent dashboard. Visit the Narrative Reports tab to view your child's teacher-written weekly summaries.">
-                  Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent
-                  dashboard. Visit the Narrative Reports tab…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-parent">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> Parents
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 3: Event ─── -->
-            <div class="ann-card priority-event" data-priority="event" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-event">
-                      <i data-lucide="calendar" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Parent-Teacher Conference Schedule</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="edugnay-parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child's adviser for a specific time slot. Attendance is strongly encouraged.">
-                  Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to
-                  4:00 PM. Please coordinate with your child's adviser…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-parent">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> Parents
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 4: Low / General ─── -->
-            <div class="ann-card priority-low" data-priority="low" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-low">
-                      <i data-lucide="info" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="As Q2 draws to a close, please make sure your child's outstanding requirements are submitted. Coordinate with subject teachers or the adviser regarding any incomplete requirements before grades are finalized.">
-                  As Q2 draws to a close, please make sure your child's outstanding requirements are submitted.
-                  Coordinate with subject teachers…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <div class="ann-list" id="annList"></div>
           <div class="panel-empty-slot" id="annEmpty" hidden aria-live="polite"></div>
           <!-- EJS: <% }); %> -->
         </div>
@@ -468,33 +274,7 @@
               <div class="rail-title">Upcoming Deadlines</div>
               <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
             </div>
-            <div class="rail-body" id="parent-deadlines">
-              <!-- EJS: deadlines rendered from backend, scoped to this parent's children -->
-              <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--blue-mid);"></div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Parent-Teacher Conference</div>
-                  <div class="deadline-date">June 27, 2025</div>
-                </div>
-                <span class="deadline-badge badge badge-blue">Soon</span>
-              </div>
-              <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--gold);"></div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Foundation Day</div>
-                  <div class="deadline-date">June 20, 2025</div>
-                </div>
-                <span class="deadline-badge badge badge-gold">Event</span>
-              </div>
-              <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--red);box-shadow:0 0 5px rgba(239,68,68,0.4);"></div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Q2 Requirements Deadline</div>
-                  <div class="deadline-date">Before grades finalize</div>
-                </div>
-                <span class="deadline-badge badge badge-red">Urgent</span>
-              </div>
-            </div>
+            <div class="rail-body" id="parent-deadlines"></div>
           </div>
 
           <!-- Posted by info -->
@@ -519,15 +299,9 @@
 
 
   <script>
-    lucide.createIcons();
-
-    // Page data boundary: replace this array with the parent's announcements query later.
-    const ANNOUNCEMENTS = [
-      { id: 'ANN-001', priority: 'high', read: false, pinned: true, title: 'Foundation Day - June 20, 2025', time: 'Today, 8:00 AM', author: 'Admin', icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are <strong>suspended</strong> for Foundation Day. Students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Parents are welcome to attend the closing program at 4:00 PM.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users' },
-      { id: 'ANN-002', priority: 'normal', read: false, title: 'Q2 Narrative Reports Now Available', time: 'Yesterday, 9:00 AM', author: 'Admin', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'Confirmed narrative reports for the second quarter are now viewable on your EdUgnay parent dashboard. Visit the Narrative Reports tab to view your child\'s teacher-written weekly summaries.', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'users', access: 'reports' },
-      { id: 'ANN-003', priority: 'event', read: true, title: 'Parent-Teacher Conference Schedule', time: '2 days ago', author: 'Admin', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', tagClass: 'badge-gold', body: 'Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child\'s adviser for a specific time slot. Attendance is strongly encouraged.', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'users' },
-      { id: 'ANN-004', priority: 'low', read: true, title: 'End of Quarter Reminder - Q2 Closing', time: 'May 22, 4:30 PM', author: 'Admin', icon: 'info', iconClass: 'icon-low', tag: 'General', tagClass: 'badge-gray', body: 'As Q2 draws to a close, please make sure your child\'s outstanding requirements are submitted. Coordinate with subject teachers or the adviser regarding any incomplete requirements before grades are finalized.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users' }
-    ];
+    // Read the shared school announcement source; replace the getter with the
+    // parent's announcements query later without changing this page's renderer.
+    const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
 
     function renderParentAnnouncements() {
       const list = document.getElementById('annList');
@@ -546,13 +320,11 @@
       lucide.createIcons();
     }
 
-    renderParentAnnouncements();
-
-    const UPCOMING_DEADLINES = [
+    const UPCOMING_DEADLINES = window.EDUGNAY_CONFIG.withActiveSchool([
       { title: 'Parent-Teacher Conference', date: 'June 27, 2025', tag: 'Soon', tagClass: 'badge-blue', color: 'var(--blue-mid)' },
       { title: 'Foundation Day', date: 'June 20, 2025', tag: 'Event', tagClass: 'badge-gold', color: 'var(--gold)' },
       { title: 'Q2 Requirements Deadline', date: 'Before grades finalize', tag: 'Urgent', tagClass: 'badge-red', color: 'var(--red)', shadow: 'box-shadow:0 0 5px rgba(239,68,68,0.4);' }
-    ];
+    ]);
 
     function renderParentDeadlines() {
       const rail = document.getElementById('parent-deadlines');
@@ -561,8 +333,6 @@
         ? UPCOMING_DEADLINES.map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-clock', title: 'No upcoming deadlines', text: 'Upcoming events and due dates will appear here.' });
     }
-
-    renderParentDeadlines();
 
     /* ── FILTER ── */
     function filterCards() {
@@ -671,7 +441,11 @@
       // fetch(`/parent/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
     }
 
-    filterCards();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderParentAnnouncements();
+      renderParentDeadlines();
+      filterCards();
+    });
   </script>
 
 </body>

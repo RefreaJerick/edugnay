@@ -204,20 +204,6 @@
     return typeof getAdminNotifItems === 'function' ? getAdminNotifItems() : [];
   }
 
-  function formatDateGroup(dateStr) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-  }
-
-  function formatTime(dateStr) {
-    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }
-
   function setNotifFilter(mode, btn) {
     document.querySelectorAll('.notif-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -227,24 +213,17 @@
 
   function markAllRead() {
     const notifications = getNotifItems();
-    if (typeof NOTIFICATIONS !== 'undefined' && Array.isArray(NOTIFICATIONS)) {
-      NOTIFICATIONS.forEach(notification => { notification.read = true; });
-    }
-    setReadIds(notifications.map(notification => notification.id));
+    window.EDUGNAY_CONFIG.markAllNotificationsRead(ADMIN_READ_STORE_KEY, notifications);
     renderTopbarNotifs();
     renderNotifList();
   }
 
   function markRead(id) {
-    const ids = getReadIds();
-    if (!ids.includes(id)) {
-      ids.push(id);
-      setReadIds(ids);
-    }
+    window.EDUGNAY_CONFIG.markNotificationRead(ADMIN_READ_STORE_KEY, id, NOTIFICATIONS);
   }
 
   function goToNotif(link) {
-    window.location.href = link || 'edugnay-admin-system-config.html#reopen-requests';
+    navigate(link?.page, link?.hash);
   }
 
   function renderNotifList() {
@@ -273,18 +252,18 @@
     let lastGroup = null;
 
     filtered.forEach(n => {
-      const group = formatDateGroup(n.created_at);
+      const group = formatDateGroup(n.createdAt);
       if (group !== lastGroup) {
         html += `<div class="notif-group-label">${group}</div>`;
         lastGroup = group;
       }
       html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='markRead(${JSON.stringify(n.id)}); goToNotif(${JSON.stringify(n.link || 'edugnay-admin-system-config.html#reopen-requests')});'>
-          <div class="nt-icon ${n.color}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='markRead(${JSON.stringify(n.id)}); goToNotif(${JSON.stringify(n.link)});'>
+          <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
             <div class="nt-text"><strong>${n.title}</strong></div>
-            <div class="nt-desc">${n.desc}</div>
-            <div class="nt-time">${formatTime(n.created_at)}</div>
+            <div class="nt-desc">${n.message}</div>
+            <div class="nt-time">${formatTime(n.createdAt)}</div>
           </div>
         </div>
       `;
@@ -294,7 +273,9 @@
     lucide.createIcons();
   }
 
-  renderNotifList();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderNotifList();
+  });
 </script>
 
 </body>

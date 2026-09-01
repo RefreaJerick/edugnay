@@ -71,7 +71,7 @@
           </div>
           <!-- EJS later: set src="<%= announcement.imageUrl %>" and start this wrap visible (display:block) if an image already exists, hide #editPlaceholder instead -->
           <div class="image-preview-wrap" id="editPreview" style="display:none;">
-            <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
+            <img class="image-preview" src="https://placehold.co/600x300" alt="Preview"/>
             <button type="button" class="remove-image-btn" onclick="removeImage(event, 'editImageInput', 'editPreview', 'editPlaceholder')">
               <i data-lucide="x" style="width:12px;height:12px;"></i>
             </button>
@@ -300,220 +300,7 @@
         </div>
 
         <!-- Announcement cards -->
-        <div class="announcements-list" id="annList">
-
-          <!-- Pinned + High Priority -->
-          <div class="ann-card priority-high" data-priority="high" data-audience="all-users">
-            <div class="pinned-strip">
-              <i data-lucide="pin" style="width:12px;height:12px;"></i>
-              Pinned Announcement
-            </div>
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-high"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Q2 Grade Encoding Deadline: June 14</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-green">Active</span>
-                </div>
-              </div>
-              <div class="ann-content">All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.</div>
-              <!-- Attached image (optional — only render if announcement has imageUrl) -->
-              <div class="ann-image-wrap">
-                <img class="ann-image" src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png" alt="Announcement image"/>
-              </div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-all"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 284 users</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn pin" onclick="unpinCard(this)"><i data-lucide="pin-off" style="width:11px;height:11px;"></i> Unpin</button>
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Normal -->
-          <div class="ann-card priority-normal" data-priority="normal" data-audience="teachers">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-normal"><i data-lucide="book-open" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Journal Submission Window: This Friday</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 3:00 PM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-green">Active</span>
-                </div>
-              </div>
-              <div class="ann-content">The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.</div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-teacher"><i data-lucide="book-open" style="width:10px;height:10px;"></i> Teachers</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 24 teachers</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Event -->
-          <div class="ann-card priority-event" data-priority="event" data-audience="all-users">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-event"><i data-lucide="calendar" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Foundation Day: June 20, 2025</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 30, 10:00 AM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-green">Active</span>
-                </div>
-              </div>
-              <div class="ann-content">St. Columban's College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All students are encouraged to participate in the school activities. More details to follow.</div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-all"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 312 users</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Parents only -->
-          <div class="ann-card priority-normal" data-priority="normal" data-audience="parents">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-normal"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Q2 Narrative Reports Now Available</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 28, 9:00 AM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-green">Active</span>
-                </div>
-              </div>
-              <div class="ann-content">Q2 narrative reports have been confirmed by your child's teachers and are now available to view in your EdUgnay parent dashboard. Please log in to review the reports and the attached welfare summary.</div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-parent"><i data-lucide="heart-handshake" style="width:10px;height:10px;"></i> Parents</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 198 parents</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Students only -->
-          <div class="ann-card priority-normal" data-priority="normal" data-audience="students">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-normal"><i data-lucide="pencil" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">Weekly Journal is Now Open for Submission</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 24, 7:00 AM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-green">Active</span>
-                </div>
-              </div>
-              <div class="ann-content">This week's journal submission is now open. Please write about your week: your experiences, feelings, and anything you want to share. Submissions close <strong>Friday at 11:59 PM</strong>.</div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-student"><i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left"><i data-lucide="eye" style="width:12px;height:12px;"></i> Seen by 253 students</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn pin" onclick="pinCard(this)"><i data-lucide="pin" style="width:11px;height:11px;"></i> Pin</button>
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Draft -->
-          <div class="ann-card priority-low" data-priority="low" data-audience="all-users">
-            <div class="ann-body">
-              <div class="ann-head">
-                <div class="ann-head-left">
-                  <div class="ann-type-icon icon-low"><i data-lucide="file-edit" style="width:16px;height:16px;"></i></div>
-                  <div class="ann-title-wrap">
-                    <div class="ann-title">End of Quarter Reminder: Q2 Closing</div>
-                    <div class="ann-meta">
-                      <span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM</span>
-                      <span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> Sr. Admin</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-badges">
-                  <span class="badge badge-gray"><i data-lucide="file" style="width:10px;height:10px;"></i> Draft</span>
-                </div>
-              </div>
-              <div class="ann-content" style="color:var(--gray-400);font-style:italic;">This announcement is saved as a draft and is not yet visible to any users. Click Edit to review and publish it.</div>
-              <div class="ann-audience">
-                <span class="aud-label">To:</span>
-                <span class="aud-tag aud-all" style="opacity:0.5;"><i data-lucide="users" style="width:10px;height:10px;"></i> All Users</span>
-              </div>
-            </div>
-            <div class="ann-footer">
-              <div class="ann-footer-left" style="color:var(--orange);"><i data-lucide="eye-off" style="width:12px;height:12px;"></i> Not yet published</div>
-              <div class="ann-footer-right">
-                <button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit & Publish</button>
-                <button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-
-        </div>
+        <div class="announcements-list" id="annList"></div>
         <div class="panel-empty-slot" id="adminAnnEmpty" hidden aria-live="polite"></div>
       </div>
 
@@ -599,7 +386,7 @@
                     <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
                   </div>
                   <div class="image-preview-wrap" id="composePreview" style="display:none;">
-                    <img class="image-preview" id="composePreviewImg" src="https://placehold.co/600x300" alt="Preview"/>
+                    <img class="image-preview" src="https://placehold.co/600x300" alt="Preview"/>
                     <button type="button" class="remove-image-btn" onclick="removeImage(event, 'composeImageInput', 'composePreview', 'composePlaceholder')">
                       <i data-lucide="x" style="width:12px;height:12px;"></i>
                     </button>
@@ -631,10 +418,6 @@
   function closeModal() { document.getElementById('editModal').classList.remove('open'); }
   document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function scrollToCompose() {
-    document.getElementById('composePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 
   function selectPriority(el, value) {
     document.querySelectorAll('.priority-opt').forEach(o => o.classList.remove('selected'));
@@ -668,21 +451,13 @@
     });
   });
 
-  // Page data boundary: replace this array with the admin announcements query later.
-  const ANNOUNCEMENTS = [
-    { id: 'ANN-001', priority: 'high', audienceKey: 'all-users', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users', title: 'Q2 Grade Encoding Deadline: June 14', time: 'Today, 8:00 AM', author: 'Sr. Admin', icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', tagClass: 'badge-red', status: 'Active', seen: 'Seen by 284 users', body: 'All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.', pinned: true, image: '../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png' },
-    { id: 'ANN-002', priority: 'normal', audienceKey: 'teachers', audience: 'Teachers', audienceClass: 'aud-teacher', audienceIcon: 'book-open', title: 'Journal Submission Window: This Friday', time: 'Yesterday, 3:00 PM', author: 'Sr. Admin', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', status: 'Active', seen: 'Seen by 24 teachers', body: 'The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.' },
-    { id: 'ANN-003', priority: 'event', audienceKey: 'all-users', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users', title: 'Foundation Day: June 20, 2025', time: 'May 30, 10:00 AM', author: 'Sr. Admin', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', tagClass: 'badge-gold', status: 'Active', seen: 'Seen by 312 users', body: 'St. Columban\'s College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All students are encouraged to participate in the school activities.' },
-    { id: 'ANN-004', priority: 'normal', audienceKey: 'parents', audience: 'Parents', audienceClass: 'aud-parent', audienceIcon: 'heart-handshake', title: 'Q2 Narrative Reports Now Available', time: 'May 28, 9:00 AM', author: 'Sr. Admin', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', status: 'Active', seen: 'Seen by 198 parents', body: 'Q2 narrative reports have been confirmed by your child\'s teachers and are now available to view in your EdUgnay parent dashboard. Please log in to review the reports and welfare summary.' },
-    { id: 'ANN-005', priority: 'normal', audienceKey: 'students', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap', title: 'Weekly Journal is Now Open for Submission', time: 'May 24, 7:00 AM', author: 'Sr. Admin', icon: 'pencil', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', status: 'Active', seen: 'Seen by 253 students', body: 'This week\'s journal submission is now open. Please write about your week, your experiences, feelings, and anything you want to share. Submissions close <strong>Friday at 11:59 PM</strong>.' },
-    { id: 'ANN-006', priority: 'low', audienceKey: 'all-users', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users', title: 'End of Quarter Reminder: Q2 Closing', time: 'May 22, 4:30 PM', author: 'Sr. Admin', icon: 'file-edit', iconClass: 'icon-low', tag: 'Draft', tagClass: 'badge-gray', status: 'Draft', seen: 'Not yet published', body: 'This announcement is saved as a draft and is not yet visible to any users. Click Edit to review and publish it.', draft: true }
-  ];
+  const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
 
   function renderAdminAnnouncements() {
     const list = document.getElementById('annList');
     if (!list) return;
     list.innerHTML = ANNOUNCEMENTS.map(ann => `
-      <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-audience="${ann.audienceKey}">
+      <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-audience="${ann.audienceKeys.join(',')}">
         ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
         <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div><div class="ann-badges">${ann.draft ? '<span class="badge badge-gray">Draft</span>' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${ann.body}</div>${ann.image ? `<div class="ann-image-wrap"><img class="ann-image" src="${ann.image}" alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div>
         <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.seen}</div><div class="ann-footer-right">${ann.draft ? '' : `<button class="footer-btn pin" onclick="${ann.pinned ? 'unpinCard' : 'pinCard'}(this)"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>`}<button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.draft ? 'Edit & Publish' : 'Edit'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
@@ -690,8 +465,6 @@
     lucide.createIcons();
     filterAnnouncements();
   }
-
-  renderAdminAnnouncements();
 
   function filterAnnouncements() {
     const search   = document.getElementById('searchInput').value.toLowerCase();
@@ -702,11 +475,12 @@
     document.querySelectorAll('.ann-card').forEach(card => {
       const title    = card.querySelector('.ann-title').textContent.toLowerCase();
       const content  = card.querySelector('.ann-content').textContent.toLowerCase();
-      const aud      = card.dataset.audience;
+      const aud      = card.dataset.audience.split(',');
       const pri      = card.dataset.priority;
 
       const matchSearch   = title.includes(search) || content.includes(search);
-      const matchAudience = audience === 'all' || aud === audience;
+      const audienceKey = audience === 'all-users' ? 'all' : audience;
+      const matchAudience = audience === 'all' || aud.includes(audienceKey);
       const matchPriority = priority === 'all' || pri === priority;
 
       const visible = matchSearch && matchAudience && matchPriority;
@@ -818,10 +592,12 @@
     });
   }
 
-  setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
-  setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');
-
-  lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderAdminAnnouncements();
+    setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
+    setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');
+    lucide.createIcons();
+  });
 </script>
 
 </body>

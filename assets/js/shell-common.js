@@ -1,5 +1,114 @@
 /* Shared shell behavior for every portal role. */
 
+/* Small rendering helpers shared by pages that build HTML from local records. */
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[character]));
+}
+
+function isRecorded(score) {
+  return score !== null && score !== undefined && score !== '' && Number.isFinite(Number(score));
+}
+
+function getInitials(name) {
+  const value = String(name || '').trim();
+  if (!value) return '';
+  if (value.includes(',')) {
+    const [last, first] = value.split(',', 2).map(part => part.trim());
+    return `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase();
+  }
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/* Small notification helpers shared by every portal shell and notification page. */
+function getNotificationReadIds(storageKey) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKey));
+    return Array.isArray(stored) ? [...new Set(stored.map(String))] : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveNotificationReadIds(storageKey, ids) {
+  const values = Array.isArray(ids) ? ids : [];
+  const uniqueIds = [...new Set(values.map(String))];
+  localStorage.setItem(storageKey, JSON.stringify(uniqueIds));
+  return uniqueIds;
+}
+
+function applyNotificationReadState(records, storageKey) {
+  const readIds = new Set(getNotificationReadIds(storageKey));
+  const values = Array.isArray(records) ? records : [];
+  values.forEach(record => {
+    record.read = Boolean(record.read || readIds.has(String(record.id)));
+  });
+  return values;
+}
+
+function markNotificationRead(storageKey, id, records = []) {
+  const notificationId = String(id);
+  const readIds = getNotificationReadIds(storageKey);
+  if (!readIds.includes(notificationId)) readIds.push(notificationId);
+  saveNotificationReadIds(storageKey, readIds);
+  const record = (Array.isArray(records) ? records : [])
+    .find(item => String(item.id) === notificationId);
+  if (record) record.read = true;
+  return record || null;
+}
+
+function markAllNotificationsRead(storageKey, records = []) {
+  const values = Array.isArray(records) ? records : [];
+  const readIds = new Set(getNotificationReadIds(storageKey));
+  values.forEach(record => {
+    readIds.add(String(record.id));
+    record.read = true;
+  });
+  saveNotificationReadIds(storageKey, [...readIds]);
+  return values;
+}
+
+function formatDateGroup(dateValue) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const startOfDay = value => new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+function formatTime(dateValue) {
+  const date = new Date(dateValue);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatRelativeTime(dateValue) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diffHours = Math.floor((now - date) / 3600000);
+  if (diffHours < 1) return 'Just now';
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  const group = formatDateGroup(date);
+  if (group === 'Yesterday') return `Yesterday, ${formatTime(date)}`;
+  return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${formatTime(date)}`;
+}
+
 /*
  * Frontend configuration store.
  * Replace the localStorage reads/writes with API calls during backend integration.
@@ -8,7 +117,36 @@
   const STORAGE_KEYS = {
     schools: 'edugnay_schools',
     activeSchool: 'edugnay_active_school',
-    holidays: 'edugnay_holidays'
+    holidays: 'edugnay_holidays',
+    accounts: 'edugnay_accounts',
+    students: 'edugnay_students',
+    adminProfiles: 'edugnay_admin_profiles',
+    teacherProfiles: 'edugnay_teacher_profiles',
+    studentProfiles: 'edugnay_student_profiles',
+    parentProfiles: 'edugnay_parent_profiles',
+    parentStudentLinks: 'edugnay_parent_student_links',
+    assignments: 'edugnay_assignments',
+    announcements: 'edugnay_announcements',
+    grades: 'edugnay_grades',
+    journals: 'edugnay_journals',
+    reports: 'edugnay_reports'
+  };
+
+  // Canonical values used by frontend records and future API responses.
+  const RECORD_VALUES = {
+    roles: {
+      PLATFORM_ADMIN: 'platform_admin',
+      SCHOOL_ADMIN: 'school_admin',
+      TEACHER: 'teacher',
+      STUDENT: 'student',
+      PARENT: 'parent'
+    },
+    statuses: {
+      ACTIVE: 'active',
+      INACTIVE: 'inactive',
+      PENDING: 'pending',
+      SUSPENDED: 'suspended'
+    }
   };
 
   const GRADE_CATALOG = [
@@ -72,7 +210,7 @@
     };
   }
 
-  function makeDivision(level, values = {}) {
+  function createDivision(level, values = {}) {
     const catalog = GRADE_CATALOG.find(item => item.key === level);
     const defaultRules = level === 'shs'
       ? [
@@ -88,7 +226,6 @@
     return {
       key: level,
       label: catalog?.label || level,
-      schoolYear: values.schoolYear || '2025-2026',
       academicPeriod: values.academicPeriod || PERIOD_CATALOG[level]?.[0] || 'Quarter 1',
       periodStartDate: values.periodStartDate || '2025-05-05',
       periodEndDate: values.periodEndDate || '2025-07-18',
@@ -141,15 +278,9 @@
       email: 'info@stcolumban.edu.ph',
       website: 'stcolumban.edu.ph',
       logoUrl: '../../assets/images/st-columban-logo.png',
-      platformStatus: 'active',
-      photos: [
-        '../../assets/images/scc-pic-1.jpg',
-        '../../assets/images/scc-pic-2.jpg',
-        '../../assets/images/scc-pic-3.jpg',
-        '../../assets/images/scc-pic-4.jpg'
-      ],
       schoolYear: '2025-2026',
-      academicPeriod: 'Quarter 2',
+      platformStatus: RECORD_VALUES.statuses.ACTIVE,
+      submittedAt: null,
       // School-wide portal policy. Replace this local setting with the
       // authenticated school's settings response during backend integration.
       gradesPageEnabled: true,
@@ -163,7 +294,7 @@
       activeDivision: 'jhs',
       schoolLevels: ['elementary', 'jhs', 'shs'],
       divisions: {
-        elementary: makeDivision('elementary', {
+        elementary: createDivision('elementary', {
           academicPeriod: 'Quarter 2',
           sections: [
             { id: 'elem-grade4-luke', name: 'St. Luke', grade: 'Grade 4', capacity: 40, enrolled: 32 },
@@ -175,17 +306,17 @@
             { id: 'qa', label: 'Quarterly Assessment', weight: 30 }
           ]
         }),
-        jhs: makeDivision('jhs', {
+        jhs: createDivision('jhs', {
           academicPeriod: 'Quarter 2',
           sections: [
-            { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviser: 'Ms. Maria Reyes', adviserInitials: 'MR' },
-            { id: 'jhs-grade7-mark', name: 'St. Mark', grade: 'Grade 7', capacity: 40, enrolled: 34 },
-            { id: 'jhs-grade8-luke', name: 'St. Luke', grade: 'Grade 8', capacity: 40, enrolled: 36 },
+            { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviserId: 'teacher-2' },
+            { id: 'jhs-grade7-mark', name: 'St. Mark', grade: 'Grade 7', capacity: 40, enrolled: 34, adviserId: 'teacher-carla-dizon' },
+            { id: 'jhs-grade8-luke', name: 'St. Luke', grade: 'Grade 8', capacity: 40, enrolled: 36, adviserId: 'teacher-9' },
             { id: 'jhs-grade8-john', name: 'St. John', grade: 'Grade 8', capacity: 40, enrolled: 34 },
-            { id: 'jhs-grade9-peter', name: 'St. Peter', grade: 'Grade 9', capacity: 40, enrolled: 37 },
-            { id: 'jhs-grade9-paul', name: 'St. Paul', grade: 'Grade 9', capacity: 40, enrolled: 37 },
-            { id: 'jhs-grade10-james', name: 'St. James', grade: 'Grade 10', capacity: 40, enrolled: 35 },
-            { id: 'jhs-grade10-thomas', name: 'St. Thomas', grade: 'Grade 10', capacity: 40, enrolled: 33 }
+            { id: 'jhs-grade9-peter', name: 'St. Peter', grade: 'Grade 9', capacity: 40, enrolled: 37, adviserId: 'teacher-rico-santos' },
+            { id: 'jhs-grade9-paul', name: 'St. Paul', grade: 'Grade 9', capacity: 40, enrolled: 37, adviserId: 'teacher-jana-mendez' },
+            { id: 'jhs-grade10-james', name: 'St. James', grade: 'Grade 10', capacity: 40, enrolled: 35, adviserId: 'teacher-3' },
+            { id: 'jhs-grade10-thomas', name: 'St. Thomas', grade: 'Grade 10', capacity: 40, enrolled: 33, adviserId: 'teacher-ana-garcia' }
           ],
           gradingRules: [
             { id: 'ww', label: 'Written Work', weight: 30 },
@@ -193,7 +324,7 @@
             { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
           ]
         }),
-        shs: makeDivision('shs', {
+        shs: createDivision('shs', {
           academicPeriod: '1st Semester',
           sections: [
             { id: 'shs-grade11-stem-a', name: 'STEM A', grade: 'Grade 11', strand: 'STEM', capacity: 40, enrolled: 28 },
@@ -203,18 +334,11 @@
           ]
         })
       },
-      enabledGrades: GRADE_CATALOG.find(item => item.key === 'jhs').grades,
-      subjects: SUBJECT_CATALOG.filter(subject => subject.levels.includes('jhs')).map(subject => subject.id),
-      sections: [
-        { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviser: 'Ms. Maria Reyes', adviserInitials: 'MR' },
-        { id: 'jhs-grade8-luke', name: 'St. Luke', grade: 'Grade 8', capacity: 40, enrolled: 36 },
-        { id: 'jhs-grade9-peter', name: 'St. Peter', grade: 'Grade 9', capacity: 40, enrolled: 37 }
-      ],
-      gradingRules: [
-        { id: 'ww', label: 'Written Work', weight: 30 },
-        { id: 'pt', label: 'Performance Task', weight: 50 },
-        { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
-      ]
+      initialAdministrator: {
+        schoolId: 'scc',
+        name: 'Sr. Admin',
+        email: 'admin.adm@stcolumban.edu.ph'
+      }
     },
     {
       id: 'manghi',
@@ -222,17 +346,15 @@
       shortName: 'MANGHI',
       schoolType: 'multi-level',
       typeLabel: 'Junior High School + Senior High School',
-      schoolId: '',
-      address: '',
-      phone: '',
-      email: '',
-      website: '',
+      schoolId: null,
+      address: null,
+      phone: null,
+      email: null,
+      website: null,
       logoUrl: '../../assets/images/manghi-logo.jpg',
-      photos: [],
       schoolYear: '2025-2026',
-      academicPeriod: 'Quarter 1',
-      platformStatus: 'pending',
-      submittedAt: '2026-08-30T09:00:00',
+      platformStatus: RECORD_VALUES.statuses.PENDING,
+      submittedAt: '2026-08-30T09:00:00.000Z',
       gradesPageEnabled: true,
       narrativeReportsEnabled: true,
       journalsEnabled: true,
@@ -241,22 +363,13 @@
       activeDivision: 'jhs',
       schoolLevels: ['jhs', 'shs'],
       divisions: {
-        jhs: makeDivision('jhs'),
-        shs: makeDivision('shs')
+        jhs: createDivision('jhs'),
+        shs: createDivision('shs')
       },
-      enabledGrades: [...(GRADE_CATALOG.find(item => item.key === 'jhs')?.grades || [])],
-      subjects: SUBJECT_CATALOG.filter(subject => subject.levels.includes('jhs')).map(subject => subject.id),
-      sections: [],
-      gradingRules: [
-        { id: 'ww', label: 'Written Work', weight: 30 },
-        { id: 'pt', label: 'Performance Task', weight: 50 },
-        { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
-      ],
-      passingGradeThreshold: 75,
-      gradeRounding: 'round',
       initialAdministrator: {
+        schoolId: 'manghi',
         name: 'Pending administrator',
-        email: ''
+        email: null
       }
     }
   ];
@@ -278,7 +391,7 @@
       type: 'holiday',
       appliesTo: 'all'
     }
-  ];
+  ].map(record => ({ ...record, schoolId: 'scc' }));
 
   function readJson(key, fallback) {
     try {
@@ -299,142 +412,9 @@
       : JSON.parse(JSON.stringify(value));
   }
 
-  const LEGACY_SCHOOL_IDS = new Set(['scc-jhs', 'scc-elementary', 'scc-shs']);
-  const LEGACY_LEVEL_BY_ID = {
-    'scc-elementary': 'elementary',
-    'scc-jhs': 'jhs',
-    'scc-shs': 'shs'
-  };
-
-  function divisionFromSchool(source, level) {
-    const fallback = DEFAULT_SCHOOLS[0].divisions[level];
-    const catalog = GRADE_CATALOG.find(item => item.key === level);
-    return {
-      ...clone(fallback),
-      key: level,
-      label: catalog?.label || level,
-      schoolYear: source?.schoolYear || fallback.schoolYear,
-      academicPeriod: source?.academicPeriod || fallback.academicPeriod,
-      periodStartDate: source?.periodStartDate || fallback.periodStartDate,
-      periodEndDate: source?.periodEndDate || fallback.periodEndDate,
-      gradeEncodingOpen: source?.gradeEncodingOpen !== false,
-      lockPreviousPeriods: source?.lockPreviousPeriods !== false,
-      enabledGrades: source?.enabledGrades || source?.grades || fallback.enabledGrades,
-      tracks: source?.tracks || fallback.tracks,
-      strands: source?.strands || fallback.strands,
-      subjects: source?.subjects || fallback.subjects,
-      sections: source?.sections || fallback.sections,
-      gradingRules: source?.gradingRules || fallback.gradingRules,
-      passingGradeThreshold: Number.isFinite(Number(source?.passingGradeThreshold)) ? Number(source.passingGradeThreshold) : fallback.passingGradeThreshold,
-      gradeRounding: source?.gradeRounding || fallback.gradeRounding
-    };
-  }
-
-  function migrateLegacySchools(schools) {
-    const legacy = schools.filter(school => LEGACY_SCHOOL_IDS.has(school?.id));
-    if (!legacy.length) return schools;
-
-    const byLevel = Object.fromEntries(legacy.map(school => [LEGACY_LEVEL_BY_ID[school.id], school]));
-    const levels = ['elementary', 'jhs', 'shs'];
-    const divisions = Object.fromEntries(levels.map(level => [level, divisionFromSchool(byLevel[level], level)]));
-    const activeDivision = byLevel.jhs ? 'jhs' : levels.find(level => byLevel[level]) || 'jhs';
-    const active = divisions[activeDivision];
-    const first = byLevel.jhs || legacy[0];
-    const photos = [...new Set(legacy.flatMap(school => Array.isArray(school.photos) ? school.photos : []))];
-    const merged = {
-      ...first,
-      id: 'scc',
-      name: "St. Columban's College",
-      shortName: "ST. COLUMBAN'S COLLEGE",
-      schoolType: 'k12',
-      typeLabel: 'K-12 School',
-      schoolId: first.schoolId || '305614',
-      email: first.email || 'info@stcolumban.edu.ph',
-      photos: photos.length ? photos : clone(DEFAULT_SCHOOLS[0].photos),
-      schoolLevels: levels,
-      activeDivision,
-      divisions,
-      schoolYear: active.schoolYear,
-      academicPeriod: active.academicPeriod,
-      gradesPageEnabled: first.gradesPageEnabled !== false,
-      periodStartDate: active.periodStartDate,
-      periodEndDate: active.periodEndDate,
-      gradeEncodingOpen: active.gradeEncodingOpen,
-      lockPreviousPeriods: active.lockPreviousPeriods,
-      enabledGrades: active.enabledGrades,
-      tracks: active.tracks,
-      subjects: active.subjects,
-      sections: active.sections,
-      gradingRules: active.gradingRules,
-      passingGradeThreshold: active.passingGradeThreshold,
-      gradeRounding: active.gradeRounding,
-      attendanceRules: makeAttendanceRules(first.attendanceRules),
-      narrativeReportsEnabled: first.narrativeReportsEnabled !== false,
-      journalsEnabled: first.journalsEnabled !== false,
-      journalSubjectId: first.journalSubjectId || 'values-education'
-    };
-    const result = [merged, ...schools.filter(school => !LEGACY_SCHOOL_IDS.has(school?.id))];
-    writeJson(STORAGE_KEYS.schools, result);
-
-    const activeId = localStorage.getItem(STORAGE_KEYS.activeSchool);
-    if (LEGACY_SCHOOL_IDS.has(activeId)) localStorage.setItem(STORAGE_KEYS.activeSchool, merged.id);
-    return result;
-  }
-
   function getSchools() {
     const saved = readJson(STORAGE_KEYS.schools, null);
-    if (!Array.isArray(saved) || !saved.length) return clone(DEFAULT_SCHOOLS);
-
-    const migratedSchools = migrateLegacySchools(saved);
-    let settingsUpdated = false;
-    const schools = migratedSchools.map(school => {
-      const needsNarrativeDefault = school.narrativeReportsEnabled === undefined;
-      const needsJournalDefault = school.journalsEnabled === undefined;
-      const needsJournalSubject = school.journalSubjectId === undefined;
-      if (!needsNarrativeDefault && !needsJournalDefault && !needsJournalSubject) return school;
-      settingsUpdated = true;
-      return {
-        ...school,
-        narrativeReportsEnabled: needsNarrativeDefault ? true : school.narrativeReportsEnabled,
-        journalsEnabled: needsJournalDefault ? true : school.journalsEnabled,
-        journalSubjectId: needsJournalSubject ? 'values-education' : school.journalSubjectId
-      };
-    });
-    if (settingsUpdated) writeJson(STORAGE_KEYS.schools, schools);
-    const manghiDefault = DEFAULT_SCHOOLS.find(school => school.id === 'manghi');
-    let manghiUpdated = false;
-    const syncedSchools = schools.map(school => {
-      const hasShs = Array.isArray(school?.schoolLevels)
-        && school.schoolLevels.includes('shs')
-        && school.divisions?.shs;
-      if (school?.id !== 'manghi' || !manghiDefault || (
-        school.schoolType === manghiDefault.schoolType
-        && school.typeLabel === manghiDefault.typeLabel
-        && hasShs
-      )) return school;
-
-      manghiUpdated = true;
-      return {
-        ...school,
-        schoolType: manghiDefault.schoolType,
-        typeLabel: manghiDefault.typeLabel,
-        schoolLevels: [...manghiDefault.schoolLevels],
-        activeDivision: ['jhs', 'shs'].includes(school.activeDivision) ? school.activeDivision : 'jhs',
-        divisions: { ...clone(manghiDefault.divisions), ...(school.divisions || {}) }
-      };
-    });
-    if (manghiUpdated) writeJson(STORAGE_KEYS.schools, syncedSchools);
-
-    const existingIds = new Set(syncedSchools.map(school => school?.id));
-    // Seed newly introduced demo schools without re-adding the original
-    // default school to accounts that already have their own saved records.
-    const missingDefaults = DEFAULT_SCHOOLS
-      .filter(school => school.id === 'manghi' && !existingIds.has(school.id));
-    if (!missingDefaults.length) return syncedSchools;
-
-    const merged = [...syncedSchools, ...clone(missingDefaults)];
-    writeJson(STORAGE_KEYS.schools, merged);
-    return merged;
+    return Array.isArray(saved) && saved.length ? saved : clone(DEFAULT_SCHOOLS);
   }
 
   function saveSchools(schools) {
@@ -444,31 +424,46 @@
   function getActiveSchool() {
     const schools = getSchools();
     const activeId = localStorage.getItem(STORAGE_KEYS.activeSchool) || schools[0]?.id;
-    return schools.find(school => school.id === activeId) || schools[0] || DEFAULT_SCHOOLS[0];
+    return schools.find(school => school.id === activeId) || schools[0];
   }
 
   function setActiveSchool(schoolId) {
     localStorage.setItem(STORAGE_KEYS.activeSchool, schoolId);
-    return getActiveSchool();
   }
 
-  // Student and parent grade visibility is a school-level policy. Keeping the
-  // fallback enabled preserves existing saved school records created before
-  // this setting was added.
+  function getActiveSchoolId() {
+    return getActiveSchool()?.id || null;
+  }
+
+  function scopeToActiveSchool(records, schoolId = getActiveSchoolId()) {
+    return Array.isArray(records)
+      ? records.filter(record => record.schoolId === schoolId)
+      : [];
+  }
+
+  function withActiveSchool(records, ownerSchoolId = 'scc') {
+    if (!Array.isArray(records)) return [];
+    const ownedRecords = records.map(record => ({
+      ...record,
+      schoolId: record.schoolId || ownerSchoolId
+    }));
+    return scopeToActiveSchool(ownedRecords);
+  }
+
+  function schoolStorageKey(key, schoolId = getActiveSchoolId()) {
+    return `${key}:${schoolId}`;
+  }
+
   function isGradesPageEnabled(school = getActiveSchool()) {
-    return school?.gradesPageEnabled !== false;
+    return Boolean(school?.gradesPageEnabled);
   }
 
-  // Narrative reports are generated from verified school records and remain a
-  // school-level policy. A missing value keeps the feature enabled for older
-  // saved school records created before this setting existed.
   function isNarrativeReportsEnabled(school = getActiveSchool()) {
-    return school?.narrativeReportsEnabled !== false;
+    return Boolean(school?.narrativeReportsEnabled);
   }
 
   function getConfiguredSubjects(school = getActiveSchool()) {
     const ids = new Set();
-    if (Array.isArray(school?.subjects)) school.subjects.forEach(id => ids.add(id));
     Object.values(school?.divisions || {}).forEach(division => {
       if (Array.isArray(division?.subjects)) division.subjects.forEach(id => ids.add(id));
     });
@@ -480,82 +475,252 @@
   }
 
   function isJournalsEnabled(school = getActiveSchool()) {
-    return school?.journalsEnabled !== false && Boolean(getJournalSubject(school));
-  }
-
-  function slug(value) {
-    return String(value || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
-
-  function gradeLabel(value, fallback = '') {
-    const text = String(value || fallback).trim();
-    if (!text) return '';
-    if (/^kindergarten$/i.test(text)) return 'Kindergarten';
-    return /^grade\s+/i.test(text) ? text.replace(/^grade\s+/i, 'Grade ') : `Grade ${text}`;
-  }
-
-  function normalizeSectionRecord(source, level, index = 0) {
-    const catalog = GRADE_CATALOG.find(item => item.key === level) || {};
-    const value = typeof source === 'string' ? { label: source } : (source || {});
-    const rawLabel = String(value.label || value.name || `Section ${index + 1}`).trim();
-    const rawGrade = value.grade || rawLabel.match(/^(Kindergarten|Grade\s*\d+)/i)?.[1] || catalog.grades?.[0] || '';
-    const grade = gradeLabel(rawGrade);
-    const withoutGrade = rawLabel.replace(/^(Kindergarten|Grade\s*\d+)\s*(?:[-:]|\u2013|\u2014)?\s*/i, '').trim();
-    const name = String(value.name || withoutGrade || rawLabel).trim();
-    const configuredStrands = [
-      ...(Array.isArray(catalog.strands) ? catalog.strands : []),
-      ...(Array.isArray(catalog.tracks) ? catalog.tracks : []),
-      ...(value.strand ? [value.strand] : []),
-      ...(value.track ? [value.track] : [])
-    ].filter(Boolean);
-    const strand = String(value.strand || value.track || configuredStrands.find(option => new RegExp(`\\b${String(option).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\b`, 'i').test(rawLabel)) || '').trim();
-    const capacity = Number(value.capacity ?? value.maxCapacity);
-    const enrolled = Number(value.enrolled ?? value.students ?? 0);
-
-    return {
-      id: value.id || `${level}-${slug(grade)}-${slug(name) || index + 1}`,
-      level,
-      grade,
-      name,
-      strand,
-      track: strand,
-      capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : 40,
-      enrolled: Number.isFinite(enrolled) && enrolled >= 0 ? enrolled : 0,
-      label: rawLabel,
-      adviser: value.adviser || '',
-      adviserInitials: value.adviserInitials || '',
-      subjects: Number(value.subjects ?? value.subjectCount ?? 0)
-    };
+    return Boolean(school?.journalsEnabled && getJournalSubject(school));
   }
 
   function getAssignmentSections(school = getActiveSchool()) {
-    const levels = Array.isArray(school?.schoolLevels) && school.schoolLevels.length
-      ? school.schoolLevels
-      : (school?.schoolType === 'k12' ? GRADE_CATALOG.map(item => item.key) : [school?.schoolType || 'jhs']);
+    return (school?.schoolLevels || []).flatMap(level =>
+      (school.divisions?.[level]?.sections || []).map(section => ({
+        ...section,
+        schoolId: school.id,
+        level
+      }))
+    );
+  }
 
-    return levels.flatMap(level => {
-      const division = school?.divisions?.[level] || (school?.schoolType === level ? school : null) || {};
-      const records = Array.isArray(division.sections) ? division.sections : [];
-      return records.map((record, index) => normalizeSectionRecord(record, level, index));
-    });
+  function assignmentWithLabels(record, studentId = null) {
+    const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
+    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    const completion = Array.isArray(record.completion) ? record.completion : [];
+    const completed = studentId == null
+      ? null
+      : completion.find(item => String(item.studentId) === String(studentId));
+    return {
+      ...record,
+      subject: subject?.name || '',
+      subjectName: subject?.name || '',
+      teacher: teacher?.displayName || '',
+      status: completed ? 'completed' : 'pending',
+      completedAt: completed?.completedAt || null
+    };
+  }
+
+  function getAssignments() {
+    return ASSIGNMENT_DIRECTORY;
+  }
+
+  function getAssignmentsForSection(sectionId) {
+    return ASSIGNMENT_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId() && record.sectionId === String(sectionId))
+      .map(record => assignmentWithLabels(record));
+  }
+
+  function getAssignmentsForStudent(studentId) {
+    const student = STUDENT_DIRECTORY.find(record => record.id === String(studentId));
+    if (!student) return [];
+    return ASSIGNMENT_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId() && record.sectionId === student.sectionId)
+      .map(record => assignmentWithLabels(record, student.id));
+  }
+
+  function saveAssignments(records = ASSIGNMENT_DIRECTORY) {
+    const values = Array.isArray(records) ? records : [];
+    writeJson(schoolStorageKey(STORAGE_KEYS.assignments), values);
+  }
+
+  function createAssignment(values = {}) {
+    const assignment = {
+      id: String(values.id || `assignment-${Date.now()}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
+      sectionId: values.sectionId || null,
+      subjectId: values.subjectId || null,
+      teacherId: values.teacherId || null,
+      title: String(values.title || '').trim(),
+      assignedDate: values.assignedDate || values.dueDate || null,
+      dueDate: values.dueDate || null,
+      completion: Array.isArray(values.completion) ? values.completion : []
+    };
+    ASSIGNMENT_DIRECTORY.push(assignment);
+    saveAssignments();
+    return assignment;
+  }
+
+  function setAssignmentCompletion(assignmentId, studentId, completed) {
+    const assignment = ASSIGNMENT_DIRECTORY.find(record => record.id === String(assignmentId));
+    if (!assignment) return null;
+    assignment.completion = Array.isArray(assignment.completion) ? assignment.completion : [];
+    assignment.completion = assignment.completion.filter(item => String(item.studentId) !== String(studentId));
+    if (completed) assignment.completion.push({ studentId: String(studentId), completedAt: new Date().toISOString() });
+    saveAssignments();
+    return assignment;
+  }
+
+  function gradeWithLabels(record) {
+    const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
+    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    return {
+      ...record,
+      name: subject?.name || record.subjectName || '',
+      teacher: teacher?.displayName || record.teacherName || ''
+    };
+  }
+
+  function getGradesForStudent(studentId, schoolYear = null) {
+    const student = STUDENT_DIRECTORY.find(record => record.id === String(studentId));
+    if (!student) return [];
+
+    const periodLabels = PERIOD_CATALOG[student.level] || PERIOD_CATALOG.jhs;
+    const periods = periodLabels.map((label, index) => ({
+      id: student.level === 'shs' ? `semester-${index + 1}` : `q${index + 1}`,
+      label,
+      status: 'not-started',
+      subjects: []
+    }));
+
+    GRADE_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId())
+      .filter(record => record.studentId === student.id)
+      .filter(record => !schoolYear || record.schoolYear === schoolYear)
+      .forEach(record => {
+        const period = periods.find(item => item.id === record.academicPeriodId);
+        if (!period) return;
+        period.label = record.academicPeriodLabel || period.label;
+        period.status = record.academicPeriodStatus || 'final';
+        period.subjects.push(gradeWithLabels(record));
+      });
+
+    return periods;
+  }
+
+  const ANNOUNCEMENT_AUDIENCE_META = {
+    all: { label: 'All Users', className: 'aud-all', icon: 'users' },
+    teachers: { label: 'Teachers', className: 'aud-teacher', icon: 'book-open' },
+    students: { label: 'Students', className: 'aud-student', icon: 'graduation-cap' },
+    parents: { label: 'Parents', className: 'aud-parent', icon: 'heart-handshake' }
+  };
+
+  function formatAnnouncementTime(createdAt) {
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+      date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function announcementView(record) {
+    const audienceKeys = Array.isArray(record.audience) ? record.audience : ['all'];
+    const primaryAudience = audienceKeys.includes('all') ? 'all' : audienceKeys[0];
+    const audienceMeta = ANNOUNCEMENT_AUDIENCE_META[primaryAudience] || ANNOUNCEMENT_AUDIENCE_META.all;
+    return {
+      ...record,
+      audienceKeys,
+      audienceKey: audienceKeys.join('-'),
+      audience: audienceKeys.map(key => ANNOUNCEMENT_AUDIENCE_META[key]?.label || key).join(' & '),
+      audienceClass: audienceMeta.className,
+      audienceIcon: audienceMeta.icon,
+      author: record.authorName || record.author || '',
+      time: record.time || formatAnnouncementTime(record.createdAt),
+      tagClass: record.tagClass || (record.priority === 'high' ? 'badge-red' : record.priority === 'event' ? 'badge-gold' : 'badge-blue'),
+      status: record.status === 'draft' ? 'Draft' : 'Active',
+      draft: record.status === 'draft',
+      seen: record.seenCount ? `Seen by ${record.seenCount} users` : (record.status === 'draft' ? 'Not yet published' : 'Not yet viewed'),
+      image: record.imageUrl || record.image || null
+    };
+  }
+
+  function getAnnouncements(audience) {
+    const key = String(audience || '').toLowerCase();
+    return ANNOUNCEMENT_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId() && record.status !== 'draft')
+      .filter(record => !key || (Array.isArray(record.audience) && (record.audience.includes('all') || record.audience.includes(key))))
+      .map(announcementView);
+  }
+
+  function getAllAnnouncements() {
+    return ANNOUNCEMENT_DIRECTORY
+      .filter(record => record.schoolId === getActiveSchoolId())
+      .map(announcementView);
+  }
+
+  function saveAnnouncements(records = ANNOUNCEMENT_DIRECTORY) {
+    const values = Array.isArray(records) ? records : [];
+    writeJson(schoolStorageKey(STORAGE_KEYS.announcements), values);
+  }
+
+  function createAnnouncement(values = {}) {
+    const audiences = Array.isArray(values.audience)
+      ? values.audience
+      : [values.audience || 'all'];
+    const announcement = {
+      id: String(values.id || `announcement-${Date.now()}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
+      title: String(values.title || '').trim(),
+      body: String(values.body || values.content || '').trim(),
+      priority: values.priority || 'normal',
+      audience: audiences,
+      authorId: values.authorId || null,
+      authorName: values.authorName || '',
+      createdAt: values.createdAt || new Date().toISOString(),
+      status: values.status || 'published',
+      pinned: Boolean(values.pinned),
+      icon: values.icon || 'megaphone',
+      iconClass: values.iconClass || 'icon-normal',
+      tag: values.tag || 'Normal',
+      read: false,
+      seenCount: 0,
+      imageUrl: values.imageUrl || null,
+      access: values.access || null
+    };
+    ANNOUNCEMENT_DIRECTORY.push(announcement);
+    saveAnnouncements();
+    return announcement;
+  }
+
+  function updateAnnouncement(announcementId, values = {}) {
+    const announcement = ANNOUNCEMENT_DIRECTORY.find(record => record.id === String(announcementId));
+    if (!announcement) return null;
+    Object.assign(announcement, values);
+    saveAnnouncements();
+    return announcement;
+  }
+
+  function deleteAnnouncement(announcementId) {
+    const index = ANNOUNCEMENT_DIRECTORY.findIndex(record => record.id === String(announcementId));
+    if (index < 0) return null;
+    const [announcement] = ANNOUNCEMENT_DIRECTORY.splice(index, 1);
+    saveAnnouncements();
+    return announcement;
   }
 
   // Shared non-student accounts.
   const CORE_ACCOUNT_DIRECTORY = [
-    { id: '1', firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', email: 'admin.adm@stcolumban.edu.ph', role: 'admin', employeeNo: 'ADM-2016-0001', section: '—', status: 'active', dateAdded: 'Jan 6, 2025', lrn: '', linkedStudents: [] },
-    { id: '2', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', email: 'm.reyes.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2019-0042', section: 'Grade 7 / St. Matthew', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
-    { id: '3', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', email: 'p.tan.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2021-0017', section: 'Unassigned', status: 'active', dateAdded: 'May 20, 2025', lrn: '', linkedStudents: [] },
-    { id: '7', firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim', email: 'r.lim.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'active', dateAdded: 'Jun 5, 2024', lrn: '', linkedStudents: [{ id: 'STU-J-LIM', name: 'J. Lim', section: 'Gr. 9' }] },
-    { id: '8', firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz', email: 'e.cruz.parents@stcolumban.edu.ph', role: 'par', section: '', status: 'inactive', dateAdded: 'May 24, 2025', lrn: '', linkedStudents: [{ id: 'STU-M-CRUZ', name: 'M. Cruz', section: 'Gr. 7' }] },
-    { id: '9', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', email: 'l.villanueva.fac@stcolumban.edu.ph', role: 'fac', employeeNo: 'FAC-2018-0031', section: 'Grade 9 / St. Peter', status: 'active', dateAdded: 'Jun 3, 2024', lrn: '', linkedStudents: [] },
+    { id: '1', schoolId: 'scc', email: 'admin.adm@stcolumban.edu.ph', role: RECORD_VALUES.roles.SCHOOL_ADMIN, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-01-06T00:00:00.000Z' },
+    { id: '2', schoolId: 'scc', email: 'm.reyes.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    { id: '3', schoolId: 'scc', email: 'p.tan.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-05-20T00:00:00.000Z' },
+    { id: '11', schoolId: 'scc', email: 'c.dizon.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    { id: '12', schoolId: 'scc', email: 'r.santos.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    { id: '13', schoolId: 'scc', email: 'j.mendez.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    { id: '14', schoolId: 'scc', email: 'a.garcia.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    { id: '7', schoolId: 'scc', email: 'r.lim.parents@stcolumban.edu.ph', role: RECORD_VALUES.roles.PARENT, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-05T00:00:00.000Z' },
+    { id: '8', schoolId: 'scc', email: 'e.cruz.parents@stcolumban.edu.ph', role: RECORD_VALUES.roles.PARENT, status: RECORD_VALUES.statuses.INACTIVE, createdAt: '2025-05-24T00:00:00.000Z' },
+    { id: '9', schoolId: 'scc', email: 'l.villanueva.fac@stcolumban.edu.ph', role: RECORD_VALUES.roles.TEACHER, status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' }
   ];
+
+  const CORE_PROFILE_DIRECTORY = [
+    { id: 'admin-1', accountId: '1', role: RECORD_VALUES.roles.SCHOOL_ADMIN, honorific: null, firstName: 'Sr.', lastName: 'Admin', displayName: 'Sr. Admin', employeeNo: 'ADM-2016-0001' },
+    { id: 'teacher-2', accountId: '2', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Maria', lastName: 'Reyes', displayName: 'Ms. Maria Reyes', employeeNo: 'FAC-2019-0042' },
+    { id: 'teacher-3', accountId: '3', role: RECORD_VALUES.roles.TEACHER, honorific: 'Mr.', firstName: 'Paolo', lastName: 'Tan', displayName: 'Mr. Paolo Tan', employeeNo: 'FAC-2021-0017' },
+    { id: 'teacher-carla-dizon', accountId: '11', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Carla', lastName: 'Dizon', displayName: 'Ms. Carla Dizon', employeeNo: 'FAC-2020-0028' },
+    { id: 'teacher-rico-santos', accountId: '12', role: RECORD_VALUES.roles.TEACHER, honorific: 'Mr.', firstName: 'Rico', lastName: 'Santos', displayName: 'Mr. Rico Santos', employeeNo: 'FAC-2019-0064' },
+    { id: 'teacher-jana-mendez', accountId: '13', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Jana', lastName: 'Mendez', displayName: 'Ms. Jana Mendez', employeeNo: 'FAC-2022-0013' },
+    { id: 'teacher-ana-garcia', accountId: '14', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Ana', lastName: 'Garcia', displayName: 'Ms. Ana Garcia', employeeNo: 'FAC-2021-0049' },
+    { id: 'parent-7', accountId: '7', role: RECORD_VALUES.roles.PARENT, honorific: null, firstName: 'Rosa', lastName: 'Lim', displayName: 'Rosa Lim' },
+    { id: 'parent-8', accountId: '8', role: RECORD_VALUES.roles.PARENT, honorific: null, firstName: 'Elena', lastName: 'Cruz', displayName: 'Elena Cruz' },
+    { id: 'teacher-9', accountId: '9', role: RECORD_VALUES.roles.TEACHER, honorific: 'Ms.', firstName: 'Lara', lastName: 'Villanueva', displayName: 'Ms. Lara Villanueva', employeeNo: 'FAC-2018-0031' }
+  ].map(profile => ({ ...profile, schoolId: 'scc' }));
 
   // Shared K-12 student collection. Replace this local array with the
   // school's student API response while keeping its record shape unchanged.
-  const STUDENT_DIRECTORY = [
+  const DEFAULT_STUDENT_DIRECTORY = [
     { id: 'cm-001', name: 'Carlo Mendoza', email: 'c.mendoza.stud@stcolumban.edu.ph', initials: 'CM', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'lr-002', name: 'Liza Reyes', email: 'l.reyes.stud@stcolumban.edu.ph', initials: 'LR', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Matthew' },
     { id: 'rc-003', name: 'Rico Cruz', email: 'r.cruz.stud@stcolumban.edu.ph', initials: 'RC', level: 'jhs', grade: 'Grade 7', strand: '', section: 'Grade 7 / St. Mark' },
@@ -621,32 +786,400 @@
     { id: 'nb-063', name: 'Noah Bautista', email: 'n.bautista.g3@stcolumban.edu.ph', initials: 'NB', level: 'elementary', grade: 'Grade 3', strand: '', section: 'Unassigned' },
     { id: 'im-064', name: 'Ivy Mercado', email: 'i.mercado.g6@stcolumban.edu.ph', initials: 'IM', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
     { id: 'mf-065', name: 'Mateo Flores', email: 'm.flores.g6@stcolumban.edu.ph', initials: 'MF', level: 'elementary', grade: 'Grade 6', strand: '', section: 'Unassigned' },
+  ].map(record => ({ ...record, schoolId: 'scc' }));
+
+  const ACTIVE_SCHOOL_ID = getActiveSchoolId();
+
+  // Shared assignment records for Teacher, Student, and Parent portals.
+  // Completion is an array of plain objects so it can be saved as JSON and
+  // replaced by an assignments API response later.
+  const DEFAULT_ASSIGNMENT_DIRECTORY = [
+    {
+      id: 'assignment-001', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Seatwork 1: Kindness and Respect', assignedDate: '2025-06-09', dueDate: '2025-06-09',
+      completion: [
+        { studentId: 'cm-001', completedAt: '2025-06-09' },
+        { studentId: 'lr-002', completedAt: '2025-06-09' },
+        { studentId: 'sc-013', completedAt: '2025-06-09' },
+        { studentId: 'gb-014', completedAt: '2025-06-09' }
+      ]
+    },
+    {
+      id: 'assignment-002', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Quiz 1 Review: Core Values', assignedDate: '2025-06-11', dueDate: '2025-06-11',
+      completion: [{ studentId: 'lr-002', completedAt: '2025-06-11' }]
+    },
+    {
+      id: 'assignment-003', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Activity 1: Good Citizenship', assignedDate: '2025-06-13', dueDate: '2025-06-13',
+      completion: [
+        { studentId: 'cm-001', completedAt: '2025-06-13' },
+        { studentId: 'lr-002', completedAt: '2025-06-13' },
+        { studentId: 'sc-013', completedAt: '2025-06-13' }
+      ]
+    },
+    {
+      id: 'assignment-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Seatwork 1: Kindness and Respect', assignedDate: '2025-06-09', dueDate: '2025-06-09',
+      completion: [{ studentId: 'jd-004', completedAt: '2025-06-09' }]
+    },
+    {
+      id: 'assignment-005', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Quiz 1 Review: Core Values', assignedDate: '2025-06-11', dueDate: '2025-06-11', completion: []
+    },
+    {
+      id: 'assignment-006', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
+      title: 'Activity 1: Good Citizenship', assignedDate: '2025-06-13', dueDate: '2025-06-13',
+      completion: [{ studentId: 'jd-004', completedAt: '2025-06-13' }]
+    },
+    {
+      id: 'assignment-007', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-3',
+      title: 'Linear Equations Practice', assignedDate: '2025-06-12', dueDate: '2025-06-12', completion: []
+    },
+    {
+      id: 'assignment-008', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-2',
+      title: 'Reading Response: Short Stories', assignedDate: '2025-06-10', dueDate: '2025-06-10', completion: []
+    }
   ];
+  const savedAssignments = readJson(schoolStorageKey(STORAGE_KEYS.assignments, ACTIVE_SCHOOL_ID), null);
+  const assignmentSeed = Array.isArray(savedAssignments)
+    ? savedAssignments
+    : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const ASSIGNMENT_DIRECTORY = assignmentSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      ...record,
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      completion: Array.isArray(record.completion) ? record.completion : []
+    }));
 
-  function resolveStudentSectionId(student) {
-    const sectionLabel = String(student?.section || '').trim();
-    const grade = String(student?.grade || '').trim().toLowerCase();
-    const name = sectionLabel.split('/').pop().trim().toLowerCase();
-    if (!sectionLabel || /^unassigned$/i.test(sectionLabel)) return null;
+  // Shared published/draft announcement records for every school portal.
+  // Portal pages read this collection with an audience key; Admin can read
+  // all records, including drafts, for management.
+  const DEFAULT_ANNOUNCEMENT_DIRECTORY = [
+    {
+      id: 'ANN-001', schoolId: 'scc', title: 'Q2 Grade Encoding Deadline: June 14',
+      body: 'All subject teachers are required to complete encoding of Q2 grades no later than <strong>June 14, 2025</strong>. Please coordinate with your section adviser for any discrepancies before the deadline.',
+      priority: 'high', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-06-14T08:00:00+08:00',
+      status: 'published', pinned: true, icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', read: false, seenCount: 284,
+      imageUrl: '../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png'
+    },
+    {
+      id: 'ANN-002', schoolId: 'scc', title: 'Journal Submission Window: This Friday',
+      body: 'The weekly journal submission window will open this <strong>Friday, June 7</strong>. Please remind your students to submit their entries before 11:59 PM. Late submissions will not be accepted for this week.',
+      priority: 'normal', audience: ['teachers'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-06-13T15:00:00+08:00',
+      status: 'published', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: false, access: 'journals', seenCount: 24
+    },
+    {
+      id: 'ANN-003', schoolId: 'scc', title: 'Foundation Day: June 20, 2025',
+      body: 'St. Columban\'s College will celebrate its <strong>Foundation Day on June 20, 2025</strong>. Classes will be suspended for the day. All students are encouraged to participate in the school activities.',
+      priority: 'event', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-30T10:00:00+08:00',
+      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 312
+    },
+    {
+      id: 'ANN-004', schoolId: 'scc', title: 'Q2 Narrative Reports Now Available',
+      body: 'Q2 narrative reports have been confirmed by section teachers and are now available to view in the portal. Please review the summaries for your assigned sections or linked children.',
+      priority: 'normal', audience: ['teachers', 'parents'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-28T09:00:00+08:00',
+      status: 'published', icon: 'file-text', iconClass: 'icon-normal', tag: 'Normal', read: true, access: 'reports', seenCount: 198
+    },
+    {
+      id: 'ANN-005', schoolId: 'scc', title: 'Weekly Journal is Now Open for Submission',
+      body: 'This week\'s journal submission is now open. Please write about your week, your experiences, feelings, and anything you want to share. Submissions close <strong>Friday at 11:59 PM</strong>.',
+      priority: 'normal', audience: ['students'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-24T07:00:00+08:00',
+      status: 'published', icon: 'pencil', iconClass: 'icon-normal', tag: 'Normal', read: true, access: 'journals', seenCount: 253
+    },
+    {
+      id: 'ANN-006', schoolId: 'scc', title: 'End of Quarter Reminder: Q2 Closing',
+      body: 'This announcement is saved as a draft and is not yet visible to any users. Click Edit to review and publish it.',
+      priority: 'low', audience: ['all'], authorId: 'admin-1', authorName: 'Sr. Admin', createdAt: '2025-05-22T16:30:00+08:00',
+      status: 'draft', icon: 'file-edit', iconClass: 'icon-low', tag: 'Draft', read: true, seenCount: 0
+    },
+    {
+      id: 'ANN-007', schoolId: 'scc', title: 'Intramurals Sign-up Open',
+      body: 'Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>.',
+      priority: 'event', audience: ['students'], authorId: 'admin-1', authorName: 'Admin', createdAt: '2025-06-12T13:30:00+08:00',
+      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: false, seenCount: 0
+    },
+    {
+      id: 'ANN-008', schoolId: 'scc', title: 'Library Resources Updated',
+      body: 'New reference materials are now available in the student library corner.',
+      priority: 'normal', audience: ['students'], authorId: 'admin-1', authorName: 'Library', createdAt: '2025-06-10T10:00:00+08:00',
+      status: 'published', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', read: true, seenCount: 0
+    },
+    {
+      id: 'ANN-009', schoolId: 'scc', title: 'Parent-Teacher Conference Schedule',
+      body: 'Parent-Teacher Conferences for Q2 are scheduled for <strong>June 27, 2025</strong>, 8:00 AM to 4:00 PM. Please coordinate with your child\'s adviser for a specific time slot.',
+      priority: 'event', audience: ['parents'], authorId: 'admin-1', authorName: 'Admin', createdAt: '2025-06-11T09:00:00+08:00',
+      status: 'published', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', read: true, seenCount: 0
+    }
+  ];
+  const savedAnnouncements = readJson(schoolStorageKey(STORAGE_KEYS.announcements, ACTIVE_SCHOOL_ID), null);
+  const announcementSeed = Array.isArray(savedAnnouncements)
+    ? savedAnnouncements
+    : clone(scopeToActiveSchool(DEFAULT_ANNOUNCEMENT_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const ANNOUNCEMENT_DIRECTORY = announcementSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      ...record,
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      audience: Array.isArray(record.audience) ? record.audience : [record.audience || 'all'],
+      status: record.status || 'published'
+    }));
 
-    const section = getAssignmentSections(getActiveSchool()).find(record => (
-      String(record.grade || '').trim().toLowerCase() === grade
-      && String(record.name || '').trim().toLowerCase() === name
-    ));
-    return section?.id || null;
-  }
+  // Shared final grade records for Student and Parent portals. Each row uses
+  // stable IDs so the local source can later be replaced by a grades API.
+  const DEFAULT_GRADE_DIRECTORY = [
+    { id: 'grade-jd-004-q1-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: null, teacherName: 'Mr. Paolo Santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: null, teacherName: 'Mrs. Liza Ramos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: null, teacherName: 'Mr. Andres Cruz', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q1-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q1-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: null, teacherName: 'Mrs. Carmen Reyes', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q1-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: null, teacherName: 'Mr. Jun Bautista', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q2-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92.5, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: null, teacherName: 'Mr. Paolo Santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: null, teacherName: 'Mrs. Liza Ramos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 88.5, remark: 'Very Satisfactory' },
+    { id: 'grade-jd-004-q2-filipino', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'filipino', teacherId: null, teacherName: 'Mr. Andres Cruz', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', teacherName: 'Ms. Maria Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 94, remark: 'Outstanding' },
+    { id: 'grade-jd-004-q2-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: null, teacherName: 'Mrs. Carmen Reyes', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
+    { id: 'grade-jd-004-q2-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: null, teacherName: 'Mr. Jun Bautista', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
+    { id: 'grade-mt-012-q1-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q1-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
+    { id: 'grade-mt-012-q1-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: null, teacherName: 'Mr. Noel Garcia', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q1-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: null, teacherName: 'Ms. Ana Ramos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: null, teacherName: 'Mrs. Joy Fernandez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: null, teacherName: 'Mr. Noel Garcia', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
+    { id: 'grade-mt-012-q2-filipino', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'filipino', teacherId: null, teacherName: 'Ms. Ana Ramos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 93, remark: 'Outstanding' }
+  ];
+  const savedGrades = readJson(schoolStorageKey(STORAGE_KEYS.grades, ACTIVE_SCHOOL_ID), null);
+  const gradeSeed = Array.isArray(savedGrades)
+    ? savedGrades
+    : clone(scopeToActiveSchool(DEFAULT_GRADE_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const GRADE_DIRECTORY = gradeSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({ ...record, schoolId: record.schoolId || ACTIVE_SCHOOL_ID }));
 
-  // Keep the display label for the current UI and the relational ID needed by
-  // management pages. An API student record can provide this sectionId directly.
-  STUDENT_DIRECTORY.forEach(student => {
-    student.sectionId = resolveStudentSectionId(student);
+  // Shared journal records for Student and Teacher portals. Each row belongs
+  // to one student, section, teacher, subject, and journal week. The local
+  // collection can later be replaced with the journal API response.
+  const DEFAULT_JOURNAL_DIRECTORY = [
+    {
+      id: 'journal-cm-001-2025-w23', schoolId: 'scc', studentId: 'cm-001', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: true, late: false, reviewed: true, score: 40,
+      entryText: 'This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.',
+      submittedAt: '2025-06-13T13:00:00+08:00'
+    },
+    {
+      id: 'journal-lr-002-2025-w23', schoolId: 'scc', studentId: 'lr-002', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: true, late: false, reviewed: true, score: 45,
+      entryText: 'I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.',
+      submittedAt: '2025-06-13T14:00:00+08:00'
+    },
+    {
+      id: 'journal-mt-012-2025-w23', schoolId: 'scc', studentId: 'mt-012', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
+    },
+    {
+      id: 'journal-sc-013-2025-w23', schoolId: 'scc', studentId: 'sc-013', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: true, late: true, reviewed: false, score: null,
+      entryText: 'The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item, and I managed to finish before the bell. I will keep practicing this.',
+      submittedAt: '2025-06-14T09:00:00+08:00'
+    },
+    {
+      id: 'journal-gb-014-2025-w23', schoolId: 'scc', studentId: 'gb-014', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
+    },
+    {
+      id: 'journal-na-015-2025-w23', schoolId: 'scc', studentId: 'na-015', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: true, late: false, reviewed: true, score: 50,
+      entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and now I understand when to flip the sign and when not to.',
+      submittedAt: '2025-06-13T15:00:00+08:00'
+    },
+    {
+      id: 'journal-jd-004-2025-w23', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
+      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
+      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
+    },
+    {
+      id: 'journal-jd-004-2025-w22', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
+      weekId: '2025-W22', week: 'Week 2', dateRange: 'June 2 to 7, 2025',
+      prompt: 'Talk about a challenge you faced this week and how you tried to overcome it.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
+      submitted: true, late: false, reviewed: true, score: 50,
+      entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
+      submittedAt: '2025-06-06T21:42:00+08:00'
+    },
+    {
+      id: 'journal-jd-004-2025-w21', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
+      weekId: '2025-W21', week: 'Week 1', dateRange: 'May 26 to 31, 2025',
+      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
+      submitted: true, late: false, reviewed: true, score: 45,
+      entryText: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
+      submittedAt: '2025-05-30T19:15:00+08:00'
+    }
+  ];
+  const savedJournals = readJson(schoolStorageKey(STORAGE_KEYS.journals, ACTIVE_SCHOOL_ID), null);
+  const journalSeed = Array.isArray(savedJournals)
+    ? savedJournals
+    : clone(scopeToActiveSchool(DEFAULT_JOURNAL_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const JOURNAL_DIRECTORY = journalSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      ...record,
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      submitted: Boolean(record.submitted),
+      reviewed: Boolean(record.reviewed),
+      late: Boolean(record.late),
+      score: record.score ?? null,
+      entryText: String(record.entryText || record.entry || '')
+    }));
+
+  // Shared AI report records for Adviser and Parent portals. The text is a
+  // mock generated summary; source metrics remain structured fields so a
+  // future report-generation endpoint can replace this collection directly.
+  const DEFAULT_REPORT_DIRECTORY = [
+    {
+      id: 'report-cm-001-2025-w23', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Carlo had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress and noted enjoyment in group activities. No concerns to report this week - keep up the encouragement at home.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
+    },
+    {
+      id: 'report-lr-002-2025-w23', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Liza continues to show consistent effort this week. She was present for all sessions and submitted all assignments on schedule. Her journal entry mentioned feeling more confident after a recent quiz. No concerns at this time.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: '2025-06-14T08:02:00+08:00'
+    },
+    {
+      id: 'report-jd-004-2025-w23', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: '2025-06-14T08:02:00+08:00'
+    },
+    {
+      id: 'report-et-005-2025-w23', schoolId: 'scc', studentId: 'et-005', sectionId: 'jhs-grade8-john', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '3/4', missing: ['Technology and Livelihood Education'] }, journalEntryCount: 1,
+      text: 'Ella had a solid week overall. She attended every session and completed 3 of 4 assignments, with one pending. Her journal reflection showed good self-awareness about time management. A gentle reminder about the missing task would be helpful.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
+    },
+    {
+      id: 'report-ml-006-2025-w23', schoolId: 'scc', studentId: 'ml-006', sectionId: 'jhs-grade9-peter', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: true,
+      attendance: { total: '12/30', absences: [
+        { subject: 'Mathematics', day: 'Tue' }, { subject: 'Mathematics', day: 'Wed' }, { subject: 'Mathematics', day: 'Thu' },
+        { subject: 'Science', day: 'Tue' }, { subject: 'Science', day: 'Wed' }, { subject: 'Science', day: 'Thu' },
+        { subject: 'English', day: 'Tue' }, { subject: 'English', day: 'Thu' }
+      ] }, assignments: { total: '1/4', missing: ['Mathematics', 'Science', 'English'] }, journalEntryCount: 0,
+      text: 'Maria is flagged as at-risk this week with multiple absences across subjects and only 1 of 4 assignments completed. Academic records show scores trending below the passing threshold. No journal entry was submitted. We strongly recommend reaching out to discuss what may be affecting her attendance and engagement.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
+    },
+    {
+      id: 'report-bg-007-2025-w23', schoolId: 'scc', studentId: 'bg-007', sectionId: 'jhs-grade9-peter', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: true,
+      attendance: { total: '26/30', absences: [{ subject: 'Mathematics', day: 'Wed' }, { subject: 'Science', day: 'Wed' }, { subject: 'English', day: 'Wed' }] },
+      assignments: { total: '2/4', missing: ['Mathematics', 'English'] }, journalEntryCount: 1,
+      text: 'Ben is flagged as at-risk this week. He was absent in several subjects on Wednesday and completed only 2 of 4 assignments, continuing a pattern from prior weeks. His journal described feeling overwhelmed. We recommend a supportive conversation at home about pacing.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
+    },
+    {
+      id: 'report-as-008-2025-w23', schoolId: 'scc', studentId: 'as-008', sectionId: 'jhs-grade10-james', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: false,
+      attendance: { total: '29/30', absences: [{ subject: 'Science', day: 'Mon' }] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Ana had a good week with one absence in Science on Monday but completed all assignments regardless. Her journal entry mentioned working through a difficult topic with help from peers. No concerns at this time.',
+      generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
+    },
+    {
+      id: 'report-mt-012-2025-w23', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
+      weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Maya had a wonderful week. She participated actively in class discussions and completed all her assignments ahead of schedule. Her teacher noted she helped a classmate with a Math problem during group work. It was a lovely display of kindness.',
+      generatedAt: '2025-06-14T09:15:00+08:00', confirmedAt: '2025-06-14T09:15:00+08:00'
+    },
+    {
+      id: 'report-jd-004-2025-w22', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-2',
+      weekId: '2025-W22', weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', status: 'confirmed', atRisk: true,
+      attendance: { total: '28/30', absences: [{ subject: 'All subjects', day: 'Tue' }, { subject: 'All subjects', day: 'Thu' }] }, assignments: { total: '2/4', missing: ['Science', 'Filipino'] }, journalEntryCount: 1,
+      text: 'Juan is flagged as at-risk this week. He was absent on Tuesday and Thursday and completed only 2 of 4 assignments. We recommend a check-in at home regarding his recent attendance and a brief conversation about any challenges he may be facing.',
+      generatedAt: '2025-06-07T07:45:00+08:00', confirmedAt: '2025-06-07T07:45:00+08:00'
+    },
+    {
+      id: 'report-jd-004-2025-w21', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-2',
+      weekId: '2025-W21', weekLabel: 'Week of May 26 to 31, 2025', dateRange: 'May 26 to May 31', status: 'confirmed', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '3/4', missing: ['Science'] }, journalEntryCount: 1,
+      text: 'Juan had a solid week overall. He attended every class day and completed 3 of his 4 assignments, with one activity still pending. His journal reflection was thoughtful and showed good self-awareness about managing his time.',
+      generatedAt: '2025-05-31T08:10:00+08:00', confirmedAt: '2025-05-31T08:10:00+08:00'
+    },
+    {
+      id: 'report-mt-012-2025-w22', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
+      weekId: '2025-W22', weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', status: 'confirmed', atRisk: false,
+      attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      text: 'Maya continues to do well this week. She was present every day and submitted all her work on time. No concerns at this time. She remains one of the more engaged students in class.',
+      generatedAt: '2025-06-07T08:30:00+08:00', confirmedAt: '2025-06-07T08:30:00+08:00'
+    }
+  ];
+  const savedReports = readJson(schoolStorageKey(STORAGE_KEYS.reports, ACTIVE_SCHOOL_ID), null);
+  const reportSeed = Array.isArray(savedReports)
+    ? savedReports
+    : clone(scopeToActiveSchool(DEFAULT_REPORT_DIRECTORY, ACTIVE_SCHOOL_ID));
+  const REPORT_DIRECTORY = reportSeed
+    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+    .map(record => ({
+      ...record,
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      studentId: String(record.studentId || ''),
+      status: record.status || 'pending',
+      atRisk: Boolean(record.atRisk),
+      journalEntryCount: Number(record.journalEntryCount || 0),
+      text: String(record.text || ''),
+      confirmedAt: record.confirmedAt || null
+    }));
+
+  const savedStudents = readJson(
+    schoolStorageKey(STORAGE_KEYS.students, ACTIVE_SCHOOL_ID),
+    ACTIVE_SCHOOL_ID === 'scc' ? readJson(STORAGE_KEYS.students, null) : null
+  );
+  const STUDENT_SEED_DIRECTORY = Array.isArray(savedStudents)
+    ? savedStudents
+    : clone(scopeToActiveSchool(DEFAULT_STUDENT_DIRECTORY, ACTIVE_SCHOOL_ID));
+
+  // Legacy saved learner records may contain a section label. Convert it once
+  // to the same sectionId used by new frontend records and future API data.
+  const assignmentSections = getAssignmentSections(getActiveSchool());
+  STUDENT_SEED_DIRECTORY.forEach(student => {
+    student.id = String(student.id);
+    student.schoolId = ACTIVE_SCHOOL_ID;
+    student.grade ||= null;
+    student.strand ||= null;
+    if (!student.sectionId && student.section && !/^unassigned$/i.test(student.section)) {
+      const section = assignmentSections.find(record => `${record.grade} / ${record.name}` === student.section);
+      student.sectionId = section?.id || null;
+    }
+    student.sectionId ||= null;
+    delete student.section;
   });
 
   const STUDENT_ACCOUNT_OVERRIDES = {
-    'j.delacruz.stud@stcolumban.edu.ph': { id: '4', status: 'active', dateAdded: 'Jun 3, 2024' },
-    'a.santos.stud@stcolumban.edu.ph': { id: '5', status: 'active', dateAdded: 'May 26, 2025' },
-    'b.garcia.stud@stcolumban.edu.ph': { id: '6', status: 'inactive', dateAdded: 'Jun 3, 2024' },
-    'c.mendoza.stud@stcolumban.edu.ph': { id: '10', status: 'active', dateAdded: 'Jun 3, 2024' }
+    'j.delacruz.stud@stcolumban.edu.ph': { id: '4', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    'a.santos.stud@stcolumban.edu.ph': { id: '5', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2025-05-26T00:00:00.000Z' },
+    'b.garcia.stud@stcolumban.edu.ph': { id: '6', status: RECORD_VALUES.statuses.INACTIVE, createdAt: '2024-06-03T00:00:00.000Z' },
+    'c.mendoza.stud@stcolumban.edu.ph': { id: '10', status: RECORD_VALUES.statuses.ACTIVE, createdAt: '2024-06-03T00:00:00.000Z' }
   };
 
   function splitAccountName(name) {
@@ -656,117 +1189,536 @@
 
   function formatAccountGrade(value) {
     const grade = String(value || '').trim();
-    return grade && !/^unassigned$/i.test(grade) ? grade : '';
-  }
-
-  function getInitials(name) {
-    return String(name || '')
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(part => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
+    return grade && !/^unassigned$/i.test(grade) ? grade : null;
   }
 
   // Every person who can use the portal has one account. Student accounts are
   // built from the shared learner directory so the Users page, Dashboard, and
   // Class Management all begin with the same source of truth.
-  const ACCOUNT_DIRECTORY = [
-    ...CORE_ACCOUNT_DIRECTORY,
-    ...STUDENT_DIRECTORY.map(student => {
+  const DEFAULT_ACCOUNT_DIRECTORY = [
+    ...scopeToActiveSchool(CORE_ACCOUNT_DIRECTORY, ACTIVE_SCHOOL_ID),
+    ...STUDENT_SEED_DIRECTORY.map(student => {
       const override = STUDENT_ACCOUNT_OVERRIDES[student.email] || {};
       return {
         id: override.id || `student-${student.id}`,
-        ...splitAccountName(student.name),
-        displayName: student.name,
+        schoolId: ACTIVE_SCHOOL_ID,
         email: student.email,
-        role: 'stud',
-        studentId: student.id,
-        section: student.section,
-        sectionId: student.sectionId,
-        gradeLevel: formatAccountGrade(student.grade),
-        status: override.status || 'active',
-        dateAdded: override.dateAdded || 'Jun 10, 2025',
-        lrn: '',
-        linkedStudents: []
+        role: RECORD_VALUES.roles.STUDENT,
+        status: override.status || RECORD_VALUES.statuses.ACTIVE,
+        createdAt: override.createdAt || '2025-06-10T00:00:00.000Z'
       };
     })
   ];
 
-  function upsertStudentProfile(account, values = {}) {
-    if (!account || account.role !== 'stud') return null;
+  const LEGACY_ACCOUNT_ROLES = {
+    admin: RECORD_VALUES.roles.SCHOOL_ADMIN,
+    fac: RECORD_VALUES.roles.TEACHER,
+    stud: RECORD_VALUES.roles.STUDENT,
+    par: RECORD_VALUES.roles.PARENT
+  };
+  const savedAccounts = readJson(
+    schoolStorageKey(STORAGE_KEYS.accounts, ACTIVE_SCHOOL_ID),
+    ACTIVE_SCHOOL_ID === 'scc' ? readJson(STORAGE_KEYS.accounts, null) : null
+  );
+  const sourceUsers = Array.isArray(savedAccounts)
+    ? [
+      ...savedAccounts,
+      ...DEFAULT_ACCOUNT_DIRECTORY.filter(defaultAccount => (
+        defaultAccount.role === RECORD_VALUES.roles.TEACHER
+        && !savedAccounts.some(account => String(account.id) === String(defaultAccount.id))
+      ))
+    ]
+    : clone(DEFAULT_ACCOUNT_DIRECTORY);
 
-    const index = STUDENT_DIRECTORY.findIndex(student => (
-      student.id === account.studentId || student.email === account.email
-    ));
-    const current = index >= 0 ? STUDENT_DIRECTORY[index] : {};
-    const name = values.name || account.displayName || [account.firstName, account.lastName].filter(Boolean).join(' ');
-    const section = values.section ?? account.section ?? current.section ?? 'Unassigned';
-    const grade = values.grade ?? account.gradeLevel ?? current.grade ?? '';
-    const record = {
-      ...current,
-      id: current.id || account.studentId || `student-${account.id}`,
-      name,
-      email: values.email ?? account.email ?? current.email ?? '',
-      initials: values.initials || current.initials || getInitials(name),
-      level: values.level ?? current.level ?? '',
-      grade,
-      strand: values.strand ?? current.strand ?? '',
-      section,
-      sectionId: values.sectionId ?? account.sectionId ?? current.sectionId ?? null
+  // Accounts contain login and access fields only. Role-specific information
+  // lives in the profile collections below.
+  const ACCOUNT_DIRECTORY = sourceUsers.map(record => ({
+    id: String(record.id),
+    schoolId: ACTIVE_SCHOOL_ID,
+    email: record.email || '',
+    role: LEGACY_ACCOUNT_ROLES[record.role] || record.role,
+    status: record.status || RECORD_VALUES.statuses.ACTIVE,
+    createdAt: record.createdAt || (record.dateAdded ? new Date(record.dateAdded).toISOString() : null)
+  }));
+
+  function storedProfiles(key, defaults) {
+    const saved = readJson(schoolStorageKey(key, ACTIVE_SCHOOL_ID), null);
+    if (!Array.isArray(saved)) return defaults;
+    return [
+      ...saved,
+      ...defaults.filter(profile => !saved.some(item => String(item.accountId) === String(profile.accountId)))
+    ];
+  }
+
+  const defaultAdminProfiles = ACCOUNT_DIRECTORY
+    .filter(account => account.role === RECORD_VALUES.roles.SCHOOL_ADMIN)
+    .map(account => {
+      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
+      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
+      return { id: seed.id || `admin-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' '), employeeNo: source.employeeNo || null };
+    });
+  const defaultTeacherProfiles = ACCOUNT_DIRECTORY
+    .filter(account => account.role === RECORD_VALUES.roles.TEACHER)
+    .map(account => {
+      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
+      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
+      return { id: seed.id || `teacher-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' '), employeeNo: source.employeeNo || null };
+    });
+  const defaultParentProfiles = ACCOUNT_DIRECTORY
+    .filter(account => account.role === RECORD_VALUES.roles.PARENT)
+    .map(account => {
+      const seed = CORE_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id) || {};
+      const source = { ...seed, ...(sourceUsers.find(record => String(record.id) === account.id) || {}) };
+      return { id: seed.id || `parent-${account.id}`, schoolId: ACTIVE_SCHOOL_ID, accountId: account.id, honorific: source.honorific || null, firstName: source.firstName || '', lastName: source.lastName || '', displayName: source.displayName || [source.honorific, source.firstName, source.lastName].filter(Boolean).join(' ') };
+    });
+  const defaultStudentProfiles = STUDENT_SEED_DIRECTORY.map(student => {
+    const account = ACCOUNT_DIRECTORY.find(record => record.email === student.email);
+    const names = splitAccountName(student.name);
+    return {
+      id: String(student.id),
+      schoolId: ACTIVE_SCHOOL_ID,
+      accountId: account?.id || null,
+      honorific: null,
+      firstName: names.firstName,
+      lastName: names.lastName,
+      displayName: student.name,
+      initials: student.initials || getInitials(student.name),
+      lrn: sourceUsers.find(record => String(record.id) === account?.id)?.lrn || null,
+      schoolLevel: student.level || null,
+      gradeLevel: formatAccountGrade(student.grade),
+      strand: student.strand || null,
+      sectionId: student.sectionId || null
     };
+  });
 
-    if (index >= 0) STUDENT_DIRECTORY[index] = record;
-    else STUDENT_DIRECTORY.push(record);
+  const ADMIN_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.adminProfiles, defaultAdminProfiles);
+  const TEACHER_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.teacherProfiles, defaultTeacherProfiles);
+  const STUDENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.studentProfiles, defaultStudentProfiles);
+  const PARENT_PROFILE_DIRECTORY = storedProfiles(STORAGE_KEYS.parentProfiles, defaultParentProfiles);
 
-    account.studentId = record.id;
-    account.section = record.section;
-    account.sectionId = record.sectionId;
-    account.gradeLevel = formatAccountGrade(record.grade);
-    return record;
+  const legacyStudentIds = { 'STU-J-LIM': 'jd-004', 'STU-M-CRUZ': 'mt-012' };
+  const legacyParentStudentLinks = sourceUsers
+    .filter(record => (LEGACY_ACCOUNT_ROLES[record.role] || record.role) === RECORD_VALUES.roles.PARENT)
+    .flatMap(record => {
+      const parent = PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === String(record.id));
+      return (record.linkedStudents || []).map(link => {
+        const studentId = legacyStudentIds[link.studentId || link.id] || String(link.studentId || link.id);
+        return { id: `parent-student-${parent?.id}-${studentId}`, schoolId: ACTIVE_SCHOOL_ID, parentId: parent?.id || null, studentId };
+      });
+    });
+  const defaultParentStudentLinks = legacyParentStudentLinks.length ? legacyParentStudentLinks : [
+    { id: 'parent-student-parent-7-jd-004', schoolId: ACTIVE_SCHOOL_ID, parentId: 'parent-7', studentId: 'jd-004' },
+    { id: 'parent-student-parent-8-mt-012', schoolId: ACTIVE_SCHOOL_ID, parentId: 'parent-8', studentId: 'mt-012' }
+  ].filter(link => PARENT_PROFILE_DIRECTORY.some(parent => parent.id === link.parentId));
+  const PARENT_STUDENT_LINKS = storedProfiles(STORAGE_KEYS.parentStudentLinks, defaultParentStudentLinks);
+
+  const USER_DIRECTORY = [];
+  const STUDENT_DIRECTORY = [];
+
+  function profileForAccount(account) {
+    if (account.role === RECORD_VALUES.roles.SCHOOL_ADMIN) return ADMIN_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
+    if (account.role === RECORD_VALUES.roles.TEACHER) return TEACHER_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
+    if (account.role === RECORD_VALUES.roles.STUDENT) return STUDENT_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
+    if (account.role === RECORD_VALUES.roles.PARENT) return PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === account.id);
+    return null;
+  }
+
+  function refreshUserDirectories() {
+    const sections = getAssignmentSections(getActiveSchool());
+    const students = STUDENT_PROFILE_DIRECTORY.map(profile => {
+      const account = ACCOUNT_DIRECTORY.find(record => record.id === profile.accountId);
+      const section = sections.find(record => record.id === profile.sectionId);
+      return {
+        id: profile.id,
+        studentId: profile.id,
+        accountId: profile.accountId,
+        schoolId: profile.schoolId,
+        name: profile.displayName,
+        displayName: profile.displayName,
+        email: account?.email || '',
+        initials: profile.initials,
+        level: profile.schoolLevel,
+        schoolLevel: profile.schoolLevel,
+        grade: profile.gradeLevel,
+        gradeLevel: profile.gradeLevel,
+        strand: profile.strand,
+        sectionId: profile.sectionId,
+        section: section ? `${section.grade} / ${section.name}` : null,
+        lrn: profile.lrn
+      };
+    });
+    STUDENT_DIRECTORY.splice(0, STUDENT_DIRECTORY.length, ...students);
+
+    const users = ACCOUNT_DIRECTORY.map(account => {
+      const profile = profileForAccount(account) || {};
+      const student = STUDENT_DIRECTORY.find(record => record.accountId === account.id);
+      const parentLinks = account.role === RECORD_VALUES.roles.PARENT
+        ? PARENT_STUDENT_LINKS.filter(link => link.parentId === profile.id)
+        : [];
+      return {
+        ...account,
+        accountId: account.id,
+        profileId: profile.id || null,
+        honorific: profile.honorific || null,
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        displayName: profile.displayName || account.email,
+        employeeNo: profile.employeeNo || null,
+        studentId: student?.id || null,
+        lrn: student?.lrn || null,
+        sectionId: student?.sectionId || null,
+        section: student?.section || null,
+        gradeLevel: student?.gradeLevel || null,
+        linkedStudents: parentLinks.map(link => {
+          const linked = STUDENT_DIRECTORY.find(record => record.id === link.studentId);
+          return { studentId: link.studentId, name: linked?.name || 'Student', section: linked?.section || null, gradeLevel: linked?.gradeLevel || null };
+        })
+      };
+    });
+    USER_DIRECTORY.splice(0, USER_DIRECTORY.length, ...users);
+  }
+
+  function profileDirectory(role) {
+    if (role === RECORD_VALUES.roles.SCHOOL_ADMIN) return ADMIN_PROFILE_DIRECTORY;
+    if (role === RECORD_VALUES.roles.TEACHER) return TEACHER_PROFILE_DIRECTORY;
+    if (role === RECORD_VALUES.roles.STUDENT) return STUDENT_PROFILE_DIRECTORY;
+    if (role === RECORD_VALUES.roles.PARENT) return PARENT_PROFILE_DIRECTORY;
+    return null;
+  }
+
+  function removeUserProfile(accountId, role) {
+    const directory = profileDirectory(role);
+    if (!directory) return;
+    const index = directory.findIndex(profile => profile.accountId === String(accountId));
+    if (index >= 0) {
+      const [profile] = directory.splice(index, 1);
+      if (role === RECORD_VALUES.roles.PARENT) {
+        for (let linkIndex = PARENT_STUDENT_LINKS.length - 1; linkIndex >= 0; linkIndex -= 1) {
+          if (PARENT_STUDENT_LINKS[linkIndex].parentId === profile.id) PARENT_STUDENT_LINKS.splice(linkIndex, 1);
+        }
+      }
+      if (role === RECORD_VALUES.roles.STUDENT) {
+        for (let linkIndex = PARENT_STUDENT_LINKS.length - 1; linkIndex >= 0; linkIndex -= 1) {
+          if (PARENT_STUDENT_LINKS[linkIndex].studentId === profile.id) PARENT_STUDENT_LINKS.splice(linkIndex, 1);
+        }
+      }
+    }
+    refreshUserDirectories();
+  }
+
+  function upsertUserProfile(account, values = {}) {
+    if (!account) return null;
+    if (account.role === RECORD_VALUES.roles.STUDENT) return upsertStudentProfile(account, values);
+    const directory = profileDirectory(account.role);
+    if (!directory) return null;
+    const index = directory.findIndex(profile => profile.accountId === account.id);
+    const current = index >= 0 ? directory[index] : {};
+    const firstName = values.firstName ?? current.firstName ?? '';
+    const lastName = values.lastName ?? current.lastName ?? '';
+    const honorific = values.honorific ?? current.honorific ?? null;
+    const profilePrefix = account.role === RECORD_VALUES.roles.SCHOOL_ADMIN ? 'admin' : account.role;
+    const profile = {
+      ...current,
+      id: current.id || `${profilePrefix}-${account.id}`,
+      schoolId: account.schoolId,
+      accountId: account.id,
+      honorific,
+      firstName,
+      lastName,
+      displayName: values.displayName || [honorific, firstName, lastName].filter(Boolean).join(' ')
+    };
+    if (account.role === RECORD_VALUES.roles.SCHOOL_ADMIN || account.role === RECORD_VALUES.roles.TEACHER) {
+      profile.employeeNo = values.employeeNo ?? current.employeeNo ?? null;
+    }
+    if (index >= 0) directory[index] = profile;
+    else directory.push(profile);
+    refreshUserDirectories();
+    return profile;
+  }
+
+  function upsertStudentProfile(account, values = {}) {
+    if (!account || account.role !== RECORD_VALUES.roles.STUDENT) return null;
+    const index = STUDENT_PROFILE_DIRECTORY.findIndex(profile => profile.accountId === account.id);
+    const current = index >= 0 ? STUDENT_PROFILE_DIRECTORY[index] : {};
+    const firstName = values.firstName ?? current.firstName ?? '';
+    const lastName = values.lastName ?? current.lastName ?? '';
+    const displayName = values.displayName || values.name || current.displayName || [firstName, lastName].filter(Boolean).join(' ');
+    const profile = {
+      ...current,
+      id: current.id || values.studentId || `student-${account.id}`,
+      schoolId: account.schoolId,
+      accountId: account.id,
+      honorific: null,
+      firstName,
+      lastName,
+      displayName,
+      initials: values.initials || current.initials || getInitials(displayName),
+      lrn: values.lrn ?? current.lrn ?? null,
+      schoolLevel: values.schoolLevel ?? values.level ?? current.schoolLevel ?? null,
+      gradeLevel: formatAccountGrade(values.gradeLevel ?? values.grade ?? current.gradeLevel),
+      strand: values.strand ?? current.strand ?? null,
+      sectionId: Object.hasOwn(values, 'sectionId') ? values.sectionId : current.sectionId ?? null
+    };
+    if (index >= 0) STUDENT_PROFILE_DIRECTORY[index] = profile;
+    else STUDENT_PROFILE_DIRECTORY.push(profile);
+    refreshUserDirectories();
+    return profile;
   }
 
   function removeStudentProfile(account) {
     if (!account) return;
-    const index = STUDENT_DIRECTORY.findIndex(student => (
-      student.id === account.studentId || student.email === account.email
-    ));
-    if (index >= 0) STUDENT_DIRECTORY.splice(index, 1);
+    removeUserProfile(account.id, RECORD_VALUES.roles.STUDENT);
+  }
+
+  function setParentStudentLinks(parentAccountId, studentIds = []) {
+    const parent = PARENT_PROFILE_DIRECTORY.find(profile => profile.accountId === String(parentAccountId));
+    if (!parent) return;
+    for (let index = PARENT_STUDENT_LINKS.length - 1; index >= 0; index -= 1) {
+      if (PARENT_STUDENT_LINKS[index].parentId === parent.id) PARENT_STUDENT_LINKS.splice(index, 1);
+    }
+    studentIds
+      .map(String)
+      .filter(studentId => STUDENT_PROFILE_DIRECTORY.some(student => student.id === studentId))
+      .forEach(studentId => PARENT_STUDENT_LINKS.push({
+        id: `parent-student-${parent.id}-${studentId}`,
+        schoolId: ACTIVE_SCHOOL_ID,
+        parentId: parent.id,
+        studentId
+      }));
+    refreshUserDirectories();
   }
 
   function updateStudentPlacement(studentId, values = {}) {
-    const student = STUDENT_DIRECTORY.find(record => record.id === studentId);
-    if (!student) return null;
-
-    Object.assign(student, values);
-    const account = ACCOUNT_DIRECTORY.find(record => record.studentId === student.id || record.email === student.email);
-    if (account) {
-      account.section = student.section || 'Unassigned';
-      account.sectionId = student.sectionId || null;
-      account.gradeLevel = formatAccountGrade(student.grade);
-    }
-    return student;
+    const profile = STUDENT_PROFILE_DIRECTORY.find(record => record.id === String(studentId));
+    if (!profile) return null;
+    profile.schoolLevel = values.schoolLevel ?? values.level ?? profile.schoolLevel;
+    profile.gradeLevel = formatAccountGrade(values.gradeLevel ?? values.grade ?? profile.gradeLevel);
+    profile.strand = values.strand ?? profile.strand;
+    if (Object.hasOwn(values, 'sectionId')) profile.sectionId = values.sectionId;
+    refreshUserDirectories();
+    return STUDENT_DIRECTORY.find(record => record.id === profile.id) || null;
   }
 
-  function getHolidays() {
-    const saved = readJson(STORAGE_KEYS.holidays, null);
-    return Array.isArray(saved) ? saved : clone(DEFAULT_HOLIDAYS);
+  // Persist authentication, profiles, and relationships separately. Each
+  // collection can later map directly to its own API endpoint and table.
+  function saveAccounts() {
+    writeJson(schoolStorageKey(STORAGE_KEYS.accounts), ACCOUNT_DIRECTORY);
+    writeJson(schoolStorageKey(STORAGE_KEYS.adminProfiles), ADMIN_PROFILE_DIRECTORY);
+    writeJson(schoolStorageKey(STORAGE_KEYS.teacherProfiles), TEACHER_PROFILE_DIRECTORY);
+    writeJson(schoolStorageKey(STORAGE_KEYS.studentProfiles), STUDENT_PROFILE_DIRECTORY);
+    writeJson(schoolStorageKey(STORAGE_KEYS.parentProfiles), PARENT_PROFILE_DIRECTORY);
+    writeJson(schoolStorageKey(STORAGE_KEYS.parentStudentLinks), PARENT_STUDENT_LINKS);
   }
 
-  function saveHolidays(holidays) {
-    writeJson(STORAGE_KEYS.holidays, holidays);
+  // Small frontend data-service layer. Pages read and change account data
+  // through these functions so the local arrays can later be replaced with
+  // API calls without changing each page's rendering code.
+  function getAccounts() {
+    return ACCOUNT_DIRECTORY;
   }
 
-  function getLocalDateISO(date = new Date()) {
+  function getUsers() {
+    return USER_DIRECTORY;
+  }
+
+  function getStudents() {
+    return STUDENT_DIRECTORY;
+  }
+
+  function getProfiles(role) {
+    return profileDirectory(role) || [];
+  }
+
+  function getParentStudentLinks() {
+    return PARENT_STUDENT_LINKS;
+  }
+
+  function createAccount(values = {}) {
+    const account = {
+      id: String(values.id || `local-${Date.now()}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
+      email: String(values.email || '').trim(),
+      role: LEGACY_ACCOUNT_ROLES[values.role] || values.role || RECORD_VALUES.roles.STUDENT,
+      status: values.status || RECORD_VALUES.statuses.ACTIVE,
+      createdAt: values.createdAt || new Date().toISOString()
+    };
+    ACCOUNT_DIRECTORY.push(account);
+    refreshUserDirectories();
+    return account;
+  }
+
+  // Create an account and its role-specific profile through one path. Pages
+  // can pass the same fields whether the record came from a form or CSV.
+  function createUserAccount(values = {}) {
+    const role = LEGACY_ACCOUNT_ROLES[values.role] || values.role || RECORD_VALUES.roles.STUDENT;
+    const firstName = String(values.firstName || '').trim();
+    const lastName = String(values.lastName || '').trim();
+    const account = createAccount({
+      id: values.id,
+      schoolId: values.schoolId,
+      email: values.email,
+      role,
+      status: values.status,
+      createdAt: values.createdAt
+    });
+    const profileValues = {
+      firstName,
+      lastName,
+      displayName: values.displayName || [firstName, lastName].filter(Boolean).join(' '),
+      employeeNo: values.employeeNo ?? null,
+      lrn: values.lrn ?? null,
+      schoolLevel: values.schoolLevel ?? values.level ?? null,
+      gradeLevel: values.gradeLevel ?? values.grade ?? null,
+      strand: values.strand ?? null,
+      sectionId: values.sectionId ?? null,
+      studentId: values.studentId
+    };
+
+    if (role === RECORD_VALUES.roles.STUDENT) upsertStudentProfile(account, profileValues);
+    else upsertUserProfile(account, profileValues);
+    if (role === RECORD_VALUES.roles.PARENT) setParentStudentLinks(account.id, values.linkedStudentIds || []);
+    return account;
+  }
+
+  function updateAccount(accountId, values = {}) {
+    const account = ACCOUNT_DIRECTORY.find(record => record.id === String(accountId));
+    if (!account) return null;
+
+    if (values.email !== undefined) account.email = String(values.email || '').trim();
+    if (values.role !== undefined) account.role = LEGACY_ACCOUNT_ROLES[values.role] || values.role;
+    if (values.status !== undefined) account.status = values.status;
+
+    refreshUserDirectories();
+    return account;
+  }
+
+  function setAccountStatus(accountId, status) {
+    return updateAccount(accountId, { status });
+  }
+
+  function deleteAccount(accountId) {
+    const index = ACCOUNT_DIRECTORY.findIndex(record => record.id === String(accountId));
+    if (index < 0) return null;
+
+    const [account] = ACCOUNT_DIRECTORY.splice(index, 1);
+    removeUserProfile(account.id, account.role);
+    return account;
+  }
+
+  refreshUserDirectories();
+
+  function formatDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value || '');
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' +
+      date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function getJournals() {
+    return JOURNAL_DIRECTORY;
+  }
+
+  function getJournalsForStudent(studentId) {
+    return JOURNAL_DIRECTORY
+      .filter(record => record.studentId === String(studentId))
+      .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
+  }
+
+  function getJournalsForTeacher(teacherId, sectionId = null) {
+    return JOURNAL_DIRECTORY.filter(record =>
+      record.teacherId === String(teacherId) &&
+      (!sectionId || record.sectionId === String(sectionId))
+    );
+  }
+
+  function saveJournals(records = JOURNAL_DIRECTORY) {
+    writeJson(schoolStorageKey(STORAGE_KEYS.journals), Array.isArray(records) ? records : []);
+  }
+
+  function updateJournalEntry(entryId, values = {}) {
+    const entry = JOURNAL_DIRECTORY.find(record => record.id === String(entryId));
+    if (!entry) return null;
+    Object.assign(entry, values);
+    saveJournals();
+    return entry;
+  }
+
+  function reportWithLabels(record) {
+    const student = STUDENT_DIRECTORY.find(item => item.id === String(record.studentId));
+    const teacher = USER_DIRECTORY.find(item => item.profileId === record.teacherId);
+    const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
+    const teacherName = record.teacherName || teacher?.displayName || '';
+    return {
+      ...record,
+      studentName: record.studentName || student?.name || '',
+      sectionLabel: section ? `${section.grade} - ${section.name}` : '',
+      teacherName,
+      teacherInitials: record.teacherInitials || getInitials(teacherName),
+      generatedAtLabel: formatDateTime(record.generatedAt),
+      confirmedAtLabel: record.confirmedAt ? formatDateTime(record.confirmedAt) : ''
+    };
+  }
+
+  function getReports() {
+    return REPORT_DIRECTORY;
+  }
+
+  function getReportsForTeacher(teacherId, weekId = null) {
+    return REPORT_DIRECTORY
+      .filter(record => record.teacherId === String(teacherId) && (!weekId || record.weekId === weekId))
+      .sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0))
+      .map(reportWithLabels);
+  }
+
+  function getReportsForStudent(studentId, confirmedOnly = false) {
+    return REPORT_DIRECTORY
+      .filter(record => record.studentId === String(studentId) && (!confirmedOnly || record.status === 'confirmed'))
+      .sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0))
+      .map(reportWithLabels);
+  }
+
+  function saveReports(records = REPORT_DIRECTORY) {
+    writeJson(schoolStorageKey(STORAGE_KEYS.reports), Array.isArray(records) ? records : []);
+  }
+
+  function updateReport(reportId, values = {}) {
+    const report = REPORT_DIRECTORY.find(record => record.id === String(reportId));
+    if (!report) return null;
+    Object.assign(report, values);
+    saveReports();
+    return report;
+  }
+
+  function getHolidays(school = getActiveSchool()) {
+    const schoolId = school?.id;
+    if (!schoolId) return [];
+
+    const saved = readJson(schoolStorageKey(STORAGE_KEYS.holidays, schoolId), null);
+    const legacy = schoolId === 'scc' ? readJson(STORAGE_KEYS.holidays, null) : null;
+    const source = Array.isArray(saved)
+      ? saved
+      : (Array.isArray(legacy) ? legacy : DEFAULT_HOLIDAYS);
+
+    return source
+      .map(record => ({ ...record, schoolId: record.schoolId || schoolId }))
+      .filter(record => record.schoolId === schoolId);
+  }
+
+  function saveHolidays(holidays, school = getActiveSchool()) {
+    const schoolId = school?.id;
+    if (!schoolId) return;
+    const records = Array.isArray(holidays)
+      ? holidays.map(record => ({ ...record, schoolId }))
+      : [];
+    writeJson(schoolStorageKey(STORAGE_KEYS.holidays, schoolId), records);
+  }
+
+  function getNoClassDay(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  function getNoClassDay(date = getLocalDateISO()) {
-    return getHolidays().find(day => day.date === date) || null;
+    const localDate = `${year}-${month}-${day}`;
+    return getHolidays().find(holiday => holiday.date === localDate) || null;
   }
 
   let panelEmptyIconRenderQueued = false;
@@ -788,37 +1740,51 @@
     const icon = String(options.icon || 'inbox').replace(/[^a-z0-9-]/gi, '');
     const title = String(options.title || 'Nothing to show yet');
     const text = String(options.text || 'Records will appear here when they are available.');
-    const escape = value => value.replace(/[&<>"']/g, character => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[character]));
 
     queuePanelEmptyIconRender();
-    return `<div class="panel-empty-state" role="status"><div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="${icon}"></i></div><div class="panel-empty-state-title">${escape(title)}</div><div class="panel-empty-state-text">${escape(text)}</div></div>`;
+    return `<div class="panel-empty-state" role="status"><div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="${icon}"></i></div><div class="panel-empty-state-title">${escapeHtml(title)}</div><div class="panel-empty-state-text">${escapeHtml(text)}</div></div>`;
   }
 
   window.EDUGNAY_CONFIG = {
-    storageKeys: STORAGE_KEYS,
-    schools: DEFAULT_SCHOOLS,
+    values: RECORD_VALUES,
+    getActiveSchoolId,
+    scopeToActiveSchool,
+    withActiveSchool,
     grades: GRADE_CATALOG,
-    createDivision: makeDivision,
+    createDivision,
     subjects: SUBJECT_CATALOG,
     accounts: ACCOUNT_DIRECTORY,
+    users: USER_DIRECTORY,
+    adminProfiles: ADMIN_PROFILE_DIRECTORY,
+    teacherProfiles: TEACHER_PROFILE_DIRECTORY,
+    studentProfiles: STUDENT_PROFILE_DIRECTORY,
+    parentProfiles: PARENT_PROFILE_DIRECTORY,
+    parentStudentLinks: PARENT_STUDENT_LINKS,
     students: STUDENT_DIRECTORY,
+    getAccounts,
+    getUsers,
+    getStudents,
+    getProfiles,
+    getParentStudentLinks,
+    createAccount,
+    createUserAccount,
+    updateAccount,
+    setAccountStatus,
+    deleteAccount,
+    saveAccounts,
+    upsertUserProfile,
+    removeUserProfile,
     upsertStudentProfile,
     removeStudentProfile,
+    setParentStudentLinks,
+    refreshUserDirectories,
     updateStudentPlacement,
     periods: PERIOD_CATALOG,
     attendanceDefaults: makeAttendanceRules(),
-    holidays: DEFAULT_HOLIDAYS,
     getSchools,
     saveSchools,
     getActiveSchool,
     setActiveSchool,
-    getSchoolLevelLabel,
     getSchoolTypeInfo,
     isGradesPageEnabled,
     isNarrativeReportsEnabled,
@@ -826,10 +1792,49 @@
     getJournalSubject,
     isJournalsEnabled,
     getAssignmentSections,
+    assignments: ASSIGNMENT_DIRECTORY,
+    getAssignments,
+    getAssignmentsForSection,
+    getAssignmentsForStudent,
+    saveAssignments,
+    createAssignment,
+    setAssignmentCompletion,
+    grades: GRADE_DIRECTORY,
+    getGradesForStudent,
+    journals: JOURNAL_DIRECTORY,
+    getJournals,
+    getJournalsForStudent,
+    getJournalsForTeacher,
+    saveJournals,
+    updateJournalEntry,
+    reports: REPORT_DIRECTORY,
+    getReports,
+    getReportsForTeacher,
+    getReportsForStudent,
+    saveReports,
+    updateReport,
+    formatDateTime,
+    getNotificationReadIds,
+    saveNotificationReadIds,
+    applyNotificationReadState,
+    markNotificationRead,
+    markAllNotificationsRead,
+    formatDateGroup,
+    formatTime,
+    formatRelativeTime,
+    announcements: ANNOUNCEMENT_DIRECTORY,
+    getAnnouncements,
+    getAllAnnouncements,
+    saveAnnouncements,
+    createAnnouncement,
+    updateAnnouncement,
+    deleteAnnouncement,
     getHolidays,
     saveHolidays,
-    getLocalDateISO,
     getNoClassDay,
+    escapeHtml,
+    isRecorded,
+    getInitials,
     renderPanelEmptyState
   };
 })();
@@ -868,12 +1873,8 @@
     };
   }
 
-  function selectedRecord(state) {
-    return getOptionRecords(state).find(option => option.value === state.select.value) || null;
-  }
-
   function syncInput(state) {
-    const selected = selectedRecord(state);
+    const selected = getOptionRecords(state).find(option => option.value === state.select.value);
     state.input.disabled = state.select.disabled;
     state.input.required = state.required;
     state.input.setAttribute('aria-required', String(state.required));
@@ -1125,23 +2126,19 @@ function toggleNotifDropdown() {
 }
 
 function markAllNotifRead() {
-  const adminItems = typeof getAdminNotifItems === 'function' ? getAdminNotifItems() : [];
-  const roleItems = typeof NOTIFICATIONS !== 'undefined' && Array.isArray(NOTIFICATIONS)
-    ? NOTIFICATIONS
-    : [];
-  const items = adminItems.length ? adminItems : roleItems;
-
-  if (typeof NOTIFICATIONS !== 'undefined' && Array.isArray(NOTIFICATIONS)) {
-    NOTIFICATIONS.forEach(item => { item.read = true; });
-  }
-  if (typeof setReadIds === 'function') setReadIds(items.map(item => item.id));
+  const context = window.EDUGNAY_NOTIFICATION_CONTEXT;
+  if (!context) return;
+  const items = typeof context.getItems === 'function'
+    ? context.getItems()
+    : (Array.isArray(context.records) ? context.records : []);
+  markAllNotificationsRead(context.storageKey, items);
   if (typeof renderTopbarNotifs === 'function') renderTopbarNotifs();
 }
 
 function getProfileControls() {
   return {
-    trigger: document.getElementById('tbProfileTrigger') || document.getElementById('profileTrigger'),
-    dropdown: document.getElementById('tbProfileDropdown') || document.getElementById('profileDropdown')
+    trigger: document.getElementById('tbProfileTrigger'),
+    dropdown: document.getElementById('tbProfileDropdown')
   };
 }
 
@@ -1156,29 +2153,14 @@ function toggleProfileDropdown(forceState) {
   trigger.setAttribute('aria-expanded', String(isOpen));
 }
 
-function toggleProfileMenu(forceState) {
-  toggleProfileDropdown(forceState);
-}
-
-function closeProfileMenu() {
-  toggleProfileDropdown(false);
-}
-
 function toggleDrawer(open) {
   const isOpen = open === undefined
     ? !document.body.classList.contains('drawer-open')
     : open;
   document.body.classList.toggle('drawer-open', isOpen);
-  const overlay = document.getElementById('overlay') || document.querySelector('.sidebar-overlay');
+  const overlay = document.querySelector('.sidebar-overlay');
   if (overlay) overlay.classList.toggle('open', isOpen);
-  if (typeof window.refreshSidebarScrollbars === 'function') window.refreshSidebarScrollbars();
-}
-
-function toggleGroup(id) {
-  const group = document.getElementById(id);
-  if (!group) return;
-  group.classList.toggle('open');
-  if (window.lucide) lucide.createIcons();
+  refreshSidebarScrollbars();
 }
 
 function confirmLogout() {
@@ -1192,18 +2174,15 @@ function confirmLogout() {
 }
 
 function applyActiveSchoolToShell() {
-  /* Platform pages operate across every registered school, so they must keep
-     their platform context instead of inheriting the active school label. */
   if (document.body?.dataset.platformPortal === 'true') return;
 
-  const school = window.EDUGNAY_CONFIG?.getActiveSchool?.();
+  const config = window.EDUGNAY_CONFIG;
+  const school = config.getActiveSchool();
   if (!school) return;
-  const typeLabel = Array.isArray(school.schoolLevels) && school.schoolLevels.length
-    ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
-    : (school.typeLabel || school.schoolType || 'School');
+  const typeLabel = config.getSchoolTypeInfo(school.schoolLevels).label;
 
   document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => {
-    element.textContent = school.shortName || school.name;
+    element.textContent = school.shortName;
   });
   document.querySelectorAll('[data-school-name]').forEach(element => {
     element.textContent = school.name;
@@ -1214,18 +2193,14 @@ function applyActiveSchoolToShell() {
     element.textContent = typeLabel;
   });
   document.querySelectorAll('[data-school-year]').forEach(element => {
-    element.textContent = school.schoolYear || '';
+    element.textContent = school.schoolYear;
   });
   document.querySelectorAll('.topbar-context-copy span, .admin-topbar-context-copy span').forEach(element => {
-    element.textContent = `${typeLabel} · ${school.schoolYear || ''}`;
+    element.textContent = `${typeLabel} · ${school.schoolYear}`;
   });
-  /* Set shell metadata last so the body itself is not included in the
-     data-school-type content selector above. */
   document.body.dataset.activeSchool = school.id;
   document.body.dataset.schoolType = school.schoolType;
-  document.body.dataset.gradesPageEnabled = String(
-    window.EDUGNAY_CONFIG?.isGradesPageEnabled?.(school) !== false
-  );
+  document.body.dataset.gradesPageEnabled = String(config.isGradesPageEnabled(school));
 }
 
 /* Keep the grade portal policy in one place so every student and parent page
@@ -1239,7 +2214,7 @@ function applyGradePortalAccess() {
   const isStudentOrParentPage = /edugnay-(student|parent)-/.test(pageName);
   if (!isStudentOrParentPage) return;
 
-  const enabled = window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() !== false;
+  const enabled = window.EDUGNAY_CONFIG.isGradesPageEnabled();
   const gradeLinks = document.querySelectorAll(
     'a[href*="edugnay-student-grades.html"], a[href*="edugnay-parent-grades.html"]'
   );
@@ -1266,10 +2241,9 @@ function renderNoClassNotice() {
   if (!/(dashboard|notifications)\.html$/.test(pageName)) return;
 
   const main = document.querySelector('.main');
-  const config = window.EDUGNAY_CONFIG;
-  if (!main || !config?.getNoClassDay || main.querySelector('[data-system-day-banner]')) return;
+  if (!main || main.querySelector('[data-system-day-banner]')) return;
 
-  const noClassDay = config.getNoClassDay();
+  const noClassDay = window.EDUGNAY_CONFIG.getNoClassDay();
   if (!noClassDay) return;
 
   const banner = document.createElement('div');
@@ -1310,7 +2284,7 @@ function applyPageTitleToTopbar() {
 }
 
 /* Initialize the shared right-edge fade for every horizontally scrollable tab bar. */
-window.initScrollFades = function initScrollFades() {
+function initScrollFades() {
   const selector = [
     '.child-switcher',
     '.subject-tab-bar',
@@ -1353,16 +2327,20 @@ window.initScrollFades = function initScrollFades() {
       window.addEventListener('resize', updateFade);
     }
   });
-};
+}
 
 /* Use a custom sidebar thumb so native track and arrow controls never appear. */
-window.initSidebarScrollbars = function initSidebarScrollbars() {
+const sidebarScrollbarRefreshers = [];
+
+function refreshSidebarScrollbars() {
+  sidebarScrollbarRefreshers.forEach(refresh => refresh());
+}
+
+function initSidebarScrollbars() {
   const sidebars = Array.from(document.querySelectorAll('.sidebar'));
   if (!sidebars.length) return;
 
-  const refreshers = [];
-
-  sidebars.forEach((sidebar, index) => {
+  sidebars.forEach(sidebar => {
     if (sidebar.dataset.customScrollbarReady === 'true') return;
     sidebar.dataset.customScrollbarReady = 'true';
 
@@ -1475,12 +2453,10 @@ window.initSidebarScrollbars = function initSidebarScrollbars() {
       });
     }
 
-    refreshers.push(scheduleUpdate);
+    sidebarScrollbarRefreshers.push(scheduleUpdate);
     scheduleUpdate();
   });
-
-  window.refreshSidebarScrollbars = () => refreshers.forEach(refresh => refresh());
-};
+}
 
 document.addEventListener('click', event => {
   const { trigger, dropdown } = getProfileControls();
@@ -1495,11 +2471,11 @@ document.addEventListener('click', event => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyActiveSchoolToShell();
   applyGradePortalAccess();
   renderNoClassNotice();
   applyPageTitleToTopbar();
-  window.initScrollFades();
-  window.initSidebarScrollbars();
+  initScrollFades();
+  initSidebarScrollbars();
 });

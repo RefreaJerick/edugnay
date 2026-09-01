@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
@@ -373,9 +372,9 @@
 </div>
 
 <script>
-  const EMPLOYMENT_DETAILS = [{
+  const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([{
     sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
-  }];
+  }]);
 
   function renderEmploymentDetails() {
     const panel = document.getElementById('teacher-employment-details');
@@ -386,9 +385,10 @@
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
   }
 
-  renderEmploymentDetails();
-
-  lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderEmploymentDetails();
+    lucide.createIcons();
+  });
 
   function openModal(id)  { document.getElementById(id).classList.add('open'); }
   function closeModal(id) {
@@ -418,7 +418,6 @@
     if (e.key === 'Escape') { toggleDrawer(false); document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open')); }
   });
 
-  /* ── AVATAR UPLOAD ── */
   /* ── AVATAR UPLOAD ── */
   function handleAvatarUpload(event) {
     const file = event.target.files[0];

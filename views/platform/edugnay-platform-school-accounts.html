@@ -100,10 +100,6 @@
       { id: 'suspended', label: 'Suspended' }
     ];
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-    }
-
     function getSchoolStatus(school) {
       return ['active', 'pending', 'suspended'].includes(school.status) ? school.status : 'active';
     }
@@ -261,7 +257,7 @@
       if (event.target.id === 'schoolAccountModal') closeSchoolAccountModal();
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       PLATFORM.renderTopbarNotifs();
       renderSchoolAccounts();
       if (window.lucide) window.lucide.createIcons();

@@ -505,7 +505,7 @@
           </div>
           <div class="rs-caption">All school accounts</div>
         </div>
-        <div class="rs-card admin" onclick="filterRole('admin', this)">
+        <div class="rs-card admin" onclick="filterRole('school_admin', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div><span class="rs-badge">System access</span></div>
           <div class="rs-info">
             <div class="rs-num"></div>
@@ -513,7 +513,7 @@
           </div>
           <div class="rs-caption">System access accounts</div>
         </div>
-        <div class="rs-card fac" onclick="filterRole('fac', this)">
+        <div class="rs-card fac" onclick="filterRole('teacher', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Teaching staff</span></div>
           <div class="rs-info">
             <div class="rs-num"></div>
@@ -521,7 +521,7 @@
           </div>
           <div class="rs-caption">Teaching staff accounts</div>
         </div>
-        <div class="rs-card stud" onclick="filterRole('stud', this)">
+        <div class="rs-card stud" onclick="filterRole('student', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Learners</span></div>
           <div class="rs-info">
             <div class="rs-num"></div>
@@ -529,7 +529,7 @@
           </div>
           <div class="rs-caption">Learner accounts</div>
         </div>
-        <div class="rs-card par" onclick="filterRole('par', this)">
+        <div class="rs-card par" onclick="filterRole('parent', this)">
           <div class="rs-card-top"><div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div><span class="rs-badge">Family accounts</span></div>
           <div class="rs-info">
             <div class="rs-num"></div>
@@ -552,11 +552,11 @@
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <select class="filter-select" id="sectionFilter" onchange="filterTable()">
-            <option value="all">All Sections</option>
-          </select>
           <select class="filter-select" id="gradeLevelFilter" onchange="filterTable()" hidden aria-label="Filter students by grade level">
             <option value="all">All Grade Levels</option>
+          </select>
+          <select class="filter-select" id="sectionFilter" onchange="filterTable()">
+            <option value="all">All Sections</option>
           </select>
         </div>
         <div class="toolbar-actions">
@@ -616,25 +616,28 @@
   <script>
     /* ══════════════ USER DATA + RENDER ══════════════ */
 
-    let nextUserId = 11; // next id to assign — bump this once real ids come from a database
-
     const PAGE_SIZE = 10;
     let currentPage = 1;
 
     const ROLE_META = {
-      admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
-      fac: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open', avatarClass: 'av-blue' },
-      stud: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap', avatarClass: 'av-green' },
-      par: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake', avatarClass: 'av-orange' },
+      school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
+      teacher: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open', avatarClass: 'av-blue' },
+      student: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap', avatarClass: 'av-green' },
+      parent: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake', avatarClass: 'av-orange' },
     };
 
-    // role-opt modal values ('adm'/'fac'/'stud'/'parents') <-> table dataset values ('admin'/'fac'/'stud'/'par')
-    const ROLE_OPT_TO_TABLE = { adm: 'admin', fac: 'fac', stud: 'stud', parents: 'par' };
-    const TABLE_TO_ROLE_OPT = { admin: 'adm', fac: 'fac', stud: 'stud', par: 'parents' };
+    // Modal option values map to the canonical account-role values.
+    const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
+    const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
 
-    // One shared account source for Admin Users and dashboard role counts.
-    // Replace it with fetch('/api/users') once the backend exists.
-    const USERS = window.EDUGNAY_CONFIG.accounts;
+    // Shared account and user read services. Replace the service internals
+    // with fetch('/api/users') later without changing this page's rendering.
+    const ACCOUNTS = window.EDUGNAY_CONFIG.getAccounts();
+    const USERS = window.EDUGNAY_CONFIG.getUsers();
+    let nextUserId = USERS.reduce((highestId, user) => {
+      const numericId = parseInt(user.id, 10);
+      return numericId > highestId ? numericId : highestId;
+    }, 0) + 1;
 
     function formatGradeLevel(value) {
       const raw = String(value || '').trim();
@@ -645,26 +648,8 @@
       return match ? `Grade ${match[1]}` : '';
     }
 
-    // Normalize linked child display data while the frontend uses local arrays.
-    // API account records can provide gradeLevel directly later.
-    USERS.forEach(user => {
-      user.linkedStudents = (user.linkedStudents || []).map(student => ({
-        ...student,
-        gradeLevel: formatGradeLevel(student.gradeLevel || student.grade || student.section)
-      }));
-    });
-
-    function syncStudentProfile(user) {
-      if (user.role !== 'stud') return null;
-      return window.EDUGNAY_CONFIG.upsertStudentProfile(user, {
-        grade: user.gradeLevel || '',
-        section: user.section || 'Unassigned',
-        sectionId: user.sectionId || null
-      });
-    }
-
     function getStudentGradeLevels(user) {
-      if (user.role !== 'stud') return [];
+      if (user.role !== 'student') return [];
 
       const values = Array.isArray(user.gradeLevels) && user.gradeLevels.length
         ? user.gradeLevels
@@ -678,7 +663,7 @@
     }
 
     function getGradeLinkDisplay(user) {
-      if (user.role === 'par') {
+      if (user.role === 'parent') {
         if (!user.linkedStudents.length) return 'No linked students';
         return 'Linked: ' + user.linkedStudents.map(student => {
           const gradeLevel = getLinkedStudentGrade(student);
@@ -686,7 +671,7 @@
         }).join(', ');
       }
 
-      if (user.role === 'stud') {
+      if (user.role === 'student') {
         return getStudentGradeLevels(user).join(', ') || 'Unassigned';
       }
 
@@ -699,42 +684,38 @@
     }
 
     function getSectionDisplay(user) {
-      if (user.role === 'par') {
+      if (user.role === 'parent') {
         if (!user.linkedStudents.length) return 'No linked students';
         return 'Linked: ' + user.linkedStudents.map(s => s.name + (s.section ? ' (' + s.section + ')' : '')).join(', ');
       }
-      if (user.role === 'admin') return '—';
+      if (user.role === 'school_admin') return '—';
       return user.section || 'Unassigned';
     }
 
     function renderSectionFilterOptions() {
       const select = document.getElementById('sectionFilter');
-      if (!select) return;
+      const selectedGrade = document.getElementById('gradeLevelFilter').value;
 
       const currentValue = select.value;
-      const sections = [...new Set(
-        USERS
-          .filter(user => user.role === 'stud' || user.role === 'fac')
-          .map(getSectionDisplay)
-          .filter(section => section && section !== 'Unassigned')
-      )];
+      const sections = window.EDUGNAY_CONFIG
+        .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+        .filter(section => selectedGrade === 'all' || section.grade === selectedGrade)
+        .sort((a, b) => (
+          gradeLevelSortValue(a.grade) - gradeLevelSortValue(b.grade)
+          || a.name.localeCompare(b.name)
+        ));
 
-      sections.sort((a, b) => {
-        const gradeA = Number((a.match(/Grade\s+(\d+)/i) || [])[1] || 99);
-        const gradeB = Number((b.match(/Grade\s+(\d+)/i) || [])[1] || 99);
-        return gradeA - gradeB || a.localeCompare(b);
-      });
-
-      select.innerHTML = '<option value="all">All Sections</option>' +
-        sections.map(section => `<option value="${section}">${section}</option>`).join('');
-      select.value = sections.includes(currentValue) ? currentValue : 'all';
+      const options = [new Option('All Sections', 'all')];
+      sections.forEach(section => options.push(new Option(section.name, section.id)));
+      select.replaceChildren(...options);
+      select.value = sections.some(section => section.id === currentValue) ? currentValue : 'all';
     }
 
     function updateGradeLevelFilter() {
       const select = document.getElementById('gradeLevelFilter');
       if (!select) return;
 
-      const isStudentView = activeRole === 'stud';
+      const isStudentView = activeRole === 'student';
       select.hidden = !isStudentView;
       select.disabled = !isStudentView;
 
@@ -746,7 +727,7 @@
       const currentValue = select.value;
       const gradeLevels = [...new Set(
         USERS
-          .filter(user => user.role === 'stud')
+          .filter(user => user.role === 'student')
           .flatMap(getStudentGradeLevels)
       )].sort((a, b) => gradeLevelSortValue(a) - gradeLevelSortValue(b) || a.localeCompare(b));
 
@@ -758,31 +739,38 @@
     function getFilteredUsers() {
       const search = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('statusFilter').value;
-      const section = document.getElementById('sectionFilter').value;
+      const sectionId = document.getElementById('sectionFilter').value;
       const gradeLevel = document.getElementById('gradeLevelFilter').value;
 
       return USERS.filter(u => {
-        const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase();
+        const displayName = String(u.displayName || '').toLowerCase();
         const email = u.email.toLowerCase();
         const employeeNo = String(u.employeeNo || '').toLowerCase();
-        const sectionDisplay = getSectionDisplay(u);
-
         const matchSearch = displayName.includes(search) || email.includes(search) || employeeNo.includes(search);
         const matchRole = activeRole === 'all' || u.role === activeRole;
         const matchStatus = status === 'all' || u.status === status;
-        const matchSection = section === 'all' || sectionDisplay === section;
+        const matchSection = sectionId === 'all' || u.sectionId === sectionId;
         const matchGradeLevel = gradeLevel === 'all' || getStudentGradeLevels(u).includes(gradeLevel);
 
         return matchSearch && matchRole && matchStatus && matchSection && matchGradeLevel;
       });
     }
 
+    function formatAccountDate(value) {
+      if (!value) return 'Not available';
+      return new Date(value).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
     function renderUsers() {
-      renderSectionFilterOptions();
       updateGradeLevelFilter();
+      renderSectionFilterOptions();
       const tbody = document.getElementById('tableBody');
       const filtered = getFilteredUsers();
-      const showGradeLinkColumn = !['admin', 'fac'].includes(activeRole);
+      const showGradeLinkColumn = !['school_admin', 'teacher'].includes(activeRole);
       document.getElementById('gradeLinkHeading').hidden = !showGradeLinkColumn;
 
       const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -793,14 +781,14 @@
 
       tbody.innerHTML = pageUsers.length ? pageUsers.map(u => {
         const meta = ROLE_META[u.role];
-        const displayName = [u.honorific, u.firstName, u.lastName].filter(Boolean).join(' ');
+        const displayName = u.displayName;
         const initials = ((u.firstName || '?').charAt(0) + (u.lastName || '?').charAt(0)).toUpperCase();
         const statusBadge = u.status === 'active'
           ? '<span class="badge badge-green">● Active</span>'
           : '<span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span>';
 
         let actionButtons = '<button class="row-btn edit">Edit</button>';
-        if (u.role !== 'admin') {
+        if (u.role !== 'school_admin') {
           actionButtons += u.status === 'active'
             ? '<button class="row-btn deactivate">Deactivate</button>'
             : '<button class="row-btn reactivate">Reactivate</button>';
@@ -821,7 +809,7 @@
         <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
         ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${getGradeLinkDisplay(u)}</span></td>` : ''}
         <td class="account-status-cell">${statusBadge}</td>
-        <td class="date-cell account-date-cell">${u.dateAdded}</td>
+        <td class="date-cell account-date-cell">${formatAccountDate(u.createdAt)}</td>
         <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
       </tr>`;
       }).join('') : `<tr class="panel-empty-row"><td colspan="${showGradeLinkColumn ? 6 : 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No user accounts found', text: 'Try adjusting the role, status, grade level, or search filters.' })}</td></tr>`;
@@ -882,13 +870,13 @@
     }
 
     function updateRoleSummary() {
-      const counts = { all: USERS.length, admin: 0, fac: 0, stud: 0, par: 0 };
+      const counts = { all: USERS.length, school_admin: 0, teacher: 0, student: 0, parent: 0 };
       USERS.forEach(u => counts[u.role] !== undefined && counts[u.role]++);
       document.querySelector('.rs-card.all .rs-num').textContent = counts.all;
-      document.querySelector('.rs-card.admin .rs-num').textContent = counts.admin;
-      document.querySelector('.rs-card.fac .rs-num').textContent = counts.fac;
-      document.querySelector('.rs-card.stud .rs-num').textContent = counts.stud;
-      document.querySelector('.rs-card.par .rs-num').textContent = counts.par;
+      document.querySelector('.rs-card.admin .rs-num').textContent = counts.school_admin;
+      document.querySelector('.rs-card.fac .rs-num').textContent = counts.teacher;
+      document.querySelector('.rs-card.stud .rs-num').textContent = counts.student;
+      document.querySelector('.rs-card.par .rs-num').textContent = counts.parent;
     }
 
     /* ══════════════ FORM SUBMIT INTERCEPTORS (sync for now) ══════════════ */
@@ -909,8 +897,8 @@
         alert('Please fill in all required fields, including a role.');
         return;
       }
-      const isStaff = role === 'admin' || role === 'fac';
-      if ((isStaff && !employeeNo) || (role === 'stud' && !lrn)) {
+      const isStaff = role === 'school_admin' || role === 'teacher';
+      if ((isStaff && !employeeNo) || (role === 'student' && !lrn)) {
         alert(isStaff
           ? 'Please provide the employee number.'
           : 'Please provide the student LRN.');
@@ -918,7 +906,7 @@
       }
       if (isStaff && USERS.some(user => (
         user.id !== userId
-        && (user.role === 'admin' || user.role === 'fac')
+        && (user.role === 'school_admin' || user.role === 'teacher')
         && String(user.employeeNo || '').trim().toLowerCase() === employeeNo.toLowerCase()
       ))) {
         alert('That employee number is already assigned to another staff account.');
@@ -928,48 +916,36 @@
       // --- SYNC (current, GitHub Pages friendly) ---
       if (userId) {
         const user = USERS.find(u => u.id === userId);
-        if (user) {
-          const wasStudent = user.role === 'stud';
-          user.firstName = firstName;
-          user.lastName = lastName;
-          user.displayName = `${firstName} ${lastName}`;
-          user.email = email;
-          user.role = role;
-          user.employeeNo = isStaff ? employeeNo : '';
-          user.lrn = role === 'stud' ? lrn : '';
-          if (role !== 'stud') user.gradeLevel = '';
-          user.linkedStudents = role === 'par' ? [...linkedStudents] : [];
-          if (wasStudent && role !== 'stud') window.EDUGNAY_CONFIG.removeStudentProfile(user);
-          if (role === 'stud') syncStudentProfile(user);
+        const account = ACCOUNTS.find(record => record.id === user?.accountId);
+        if (user && account) {
+          const previousRole = account.role;
+          if (previousRole !== role) window.EDUGNAY_CONFIG.removeUserProfile(account.id, previousRole);
+          window.EDUGNAY_CONFIG.updateAccount(account.id, { email, role });
+          if (role === 'student') {
+            window.EDUGNAY_CONFIG.upsertStudentProfile(account, { firstName, lastName, displayName: `${firstName} ${lastName}`, lrn, gradeLevel: user.gradeLevel, sectionId: user.sectionId });
+          } else {
+            window.EDUGNAY_CONFIG.upsertUserProfile(account, { firstName, lastName, displayName: `${firstName} ${lastName}`, employeeNo: isStaff ? employeeNo : null });
+          }
+          if (role === 'parent') window.EDUGNAY_CONFIG.setParentStudentLinks(account.id, linkedStudents.map(link => link.studentId));
         }
       } else {
-        const user = {
+        window.EDUGNAY_CONFIG.createUserAccount({
           id: String(nextUserId++),
-          firstName, lastName,
-          displayName: `${firstName} ${lastName}`,
+          schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
           email, role,
-          employeeNo: isStaff ? employeeNo : '',
-          section: (role === 'stud' || role === 'fac') ? 'Unassigned' : '',
-          gradeLevel: '',
           status: 'active',
-          dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          lrn: role === 'stud' ? lrn : '',
-          linkedStudents: role === 'par' ? [...linkedStudents] : [],
-        };
-        USERS.push(user);
-        syncStudentProfile(user);
+          createdAt: new Date().toISOString(),
+          firstName,
+          lastName,
+          employeeNo: isStaff ? employeeNo : null,
+          lrn: role === 'student' ? lrn : null,
+          linkedStudentIds: role === 'parent' ? linkedStudents.map(link => link.studentId) : []
+        });
       }
 
+      window.EDUGNAY_CONFIG.saveAccounts();
       closeAccountModal();
       renderUsers();
-
-      // --- ASYNC (swap in later, once backend exists) ---
-      // async function submitAccountForm(form) {
-      //   const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
-      //   if (!res.ok) { alert('Could not save account.'); return; }
-      //   const saved = await res.json(); // expect a user object back
-      //   // merge `saved` into USERS the same way as the sync block above, then renderUsers()
-      // }
     });
 
     document.getElementById('deactivateForm').addEventListener('submit', function (e) {
@@ -977,31 +953,25 @@
 
       const userId = document.getElementById('deactivateUserId').value;
       const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
-      const user = USERS.find(u => u.id === userId);
-      if (user) user.status = action === 'deactivate' ? 'inactive' : 'active';
+      const account = ACCOUNTS.find(record => record.id === userId);
+      if (account) window.EDUGNAY_CONFIG.setAccountStatus(account.id, action === 'deactivate' ? 'inactive' : 'active');
 
+      window.EDUGNAY_CONFIG.saveAccounts();
       closeDeactivateModal();
       renderUsers();
 
-      // --- ASYNC (later) ---
-      // await fetch(this.action, { method: 'POST', body: new FormData(this) });
     });
 
     document.getElementById('deleteForm').addEventListener('submit', function (e) {
       e.preventDefault();
 
       const userId = document.getElementById('deleteUserId').value;
-      const index = USERS.findIndex(user => user.id === userId);
-      if (index >= 0) {
-        const [user] = USERS.splice(index, 1);
-        if (user.role === 'stud') window.EDUGNAY_CONFIG.removeStudentProfile(user);
-      }
+      window.EDUGNAY_CONFIG.deleteAccount(userId);
 
+      window.EDUGNAY_CONFIG.saveAccounts();
       closeDeleteModal();
       renderUsers();
 
-      // --- ASYNC (later) ---
-      // await fetch(this.action, { method: 'POST', body: new FormData(this) });
     });
 
     document.getElementById('importUsersForm').addEventListener('submit', function (e) {
@@ -1023,14 +993,14 @@
         const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
 
         const tableRole = ROLE_OPT_TO_TABLE[role] || role;
-        const identityColumns = tableRole === 'admin' || tableRole === 'fac'
+        const identityColumns = tableRole === 'school_admin' || tableRole === 'teacher'
           ? ['employeeNo', 'employeeNumber']
-          : tableRole === 'stud'
+          : tableRole === 'student'
             ? ['lrn']
             : [];
 
         if (identityColumns.length && !identityColumns.some(column => headers.includes(column))) {
-          alert(tableRole === 'admin' || tableRole === 'fac'
+          alert(tableRole === 'school_admin' || tableRole === 'teacher'
             ? 'Admin and teacher CSV files must include an employeeNo column.'
             : 'Student CSV files must include an lrn column.');
           return;
@@ -1042,20 +1012,20 @@
           return record;
         });
         const invalidIdentityIndex = records.findIndex(record => (
-          ((tableRole === 'admin' || tableRole === 'fac') && !(record.employeeNo || record.employeeNumber || '').trim())
-          || (tableRole === 'stud' && !(record.lrn || '').trim())
+          ((tableRole === 'school_admin' || tableRole === 'teacher') && !(record.employeeNo || record.employeeNumber || '').trim())
+          || (tableRole === 'student' && !(record.lrn || '').trim())
         ));
 
         if (invalidIdentityIndex >= 0) {
-          alert(tableRole === 'admin' || tableRole === 'fac'
+          alert(tableRole === 'school_admin' || tableRole === 'teacher'
             ? `Staff row ${invalidIdentityIndex + 2} is missing an employee number.`
             : `Student row ${invalidIdentityIndex + 2} is missing an LRN.`);
           return;
         }
 
-        if (tableRole === 'admin' || tableRole === 'fac') {
+        if (tableRole === 'school_admin' || tableRole === 'teacher') {
           const existingEmployeeNumbers = new Set(USERS
-            .filter(user => user.role === 'admin' || user.role === 'fac')
+            .filter(user => user.role === 'school_admin' || user.role === 'teacher')
             .map(user => String(user.employeeNo || '').trim().toLowerCase())
             .filter(Boolean));
           const importedEmployeeNumbers = new Set();
@@ -1072,38 +1042,31 @@
         }
 
         records.forEach(record => {
-          const user = {
+          window.EDUGNAY_CONFIG.createUserAccount({
             id: String(nextUserId++),
+            schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+            email: record.personalEmail || record.email || '',
+            role: tableRole,
+            status: 'active',
+            createdAt: new Date().toISOString(),
             firstName: record.firstName || '',
             lastName: record.lastName || '',
             displayName: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
-            email: record.personalEmail || record.email || '',
-            role: tableRole,
-            section: 'Unassigned',
-            gradeLevel: tableRole === 'stud'
-              ? formatGradeLevel(record.gradeLevel || record.grade)
-              : '',
-            status: 'active',
-            dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            employeeNo: tableRole === 'admin' || tableRole === 'fac'
+            employeeNo: tableRole === 'school_admin' || tableRole === 'teacher'
               ? String(record.employeeNo || record.employeeNumber || '').trim()
-              : '',
-            lrn: tableRole === 'stud' ? String(record.lrn || '').trim() : '',
-            linkedStudents: [],
-          };
-          USERS.push(user);
-          syncStudentProfile(user);
+              : null,
+            lrn: tableRole === 'student' ? String(record.lrn || '').trim() : null,
+            gradeLevel: tableRole === 'student' ? formatGradeLevel(record.gradeLevel || record.grade) : null
+          });
         });
 
+        window.EDUGNAY_CONFIG.saveAccounts();
         closeImportModal();
         renderUsers();
         alert(`${rows.length} account(s) added.`);
       };
       reader.readAsText(file);
 
-      // --- ASYNC (later) ---
-      // const res = await fetch(this.action, { method: 'POST', body: new FormData(this) });
-      // if (res.ok) { const created = await res.json(); /* merge into USERS */ renderUsers(); }
     });
 
 
@@ -1178,12 +1141,6 @@
     document.getElementById('accountModalBackdrop').addEventListener('click', function (e) {
       if (e.target === this) closeAccountModal();
     });
-
-    // function selectAccountRole(el, value) {
-    //   document.querySelectorAll('#accountRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-    //   el.classList.add('selected');
-    //   document.getElementById('accountRole').value = value;
-    // }
 
     /* ── DEACTIVATE MODAL ── */
     function openDeactivateModal(row) {
@@ -1274,8 +1231,8 @@
       this.textContent = `Date Added ${dateSortOrder === 'asc' ? '↑' : '↓'}`;
 
       USERS.sort((a, b) => {
-        const aDate = new Date(a.dateAdded);
-        const bDate = new Date(b.dateAdded);
+        const aDate = new Date(a.createdAt);
+        const bDate = new Date(b.createdAt);
         return dateSortOrder === 'asc' ? aDate - bDate : bDate - aDate;
       });
 
@@ -1309,12 +1266,6 @@
       }
     });
 
-    function selectRole(el, value) {
-      document.querySelectorAll('.modal-backdrop .role-opt').forEach(o => o.classList.remove('selected'));
-      el.classList.add('selected');
-      document.getElementById('roleValue').value = value;
-    }
-
     /* ── IMPORT USERS MODAL ── */
     function openImportModal() {
       document.getElementById('importUsersForm').reset();
@@ -1336,12 +1287,6 @@
     document.getElementById('importModalBackdrop').addEventListener('click', function (e) {
       if (e.target === this) closeImportModal();
     });
-
-    function selectImportRole(el, value) {
-      document.querySelectorAll('#importRoleOpts .role-opt').forEach(o => o.classList.remove('selected'));
-      el.classList.add('selected');
-      document.getElementById('importUserRole').value = value;
-    }
 
     function previewImportCSV(input) {
       const file = input.files[0];
@@ -1407,15 +1352,15 @@
     // The picker reads the same local student account collection as the table.
     // Replace this derived collection with a fetch('/api/students?q=...') later.
     const MOCK_STUDENTS = () => USERS
-      .filter(user => user.role === 'stud')
+      .filter(user => user.role === 'student')
       .map(user => ({
-        id: user.studentId || user.id,
-        name: [user.honorific, user.firstName, user.lastName].filter(Boolean).join(' '),
+        studentId: user.studentId,
+        name: user.displayName,
         section: getSectionDisplay(user),
         gradeLevel: getStudentGradeLevels(user)[0] || '',
       }));
 
-    let linkedStudents = []; // [{ id, name, section, gradeLevel }]
+    let linkedStudents = []; // [{ studentId, name, section, gradeLevel }]
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
@@ -1423,7 +1368,7 @@
 
       const results = MOCK_STUDENTS().filter(s =>
         s.name.toLowerCase().includes(query.toLowerCase()) &&
-        !linkedStudents.find(l => l.id === s.id)
+        !linkedStudents.find(link => link.studentId === s.studentId)
       );
 
       if (!results.length) {
@@ -1434,30 +1379,30 @@
 
       dropdown.innerHTML = results.map(s => `
       <div
-        onclick="addLinkedStudent('${s.id}', '${s.name}', '${s.section}', '${s.gradeLevel}')"
+        onclick="addLinkedStudent('${s.studentId}', '${s.name}', '${s.section}', '${s.gradeLevel}')"
         style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray-100);"
         onmouseenter="this.style.background='var(--gray-50)'"
         onmouseleave="this.style.background=''"
       >
         <div style="font-weight:500;color:var(--gray-800);">${s.name}</div>
-        <div style="font-size:12px;color:var(--gray-400);">${s.section} · ${s.id}</div>
+        <div style="font-size:12px;color:var(--gray-400);">${s.section}</div>
       </div>
     `).join('');
 
       dropdown.style.display = '';
     }
 
-    function addLinkedStudent(id, name, section, gradeLevel = '') {
-      if (linkedStudents.find(s => s.id === id)) return;
-      linkedStudents.push({ id, name, section, gradeLevel: formatGradeLevel(gradeLevel) });
+    function addLinkedStudent(studentId, name, section, gradeLevel = '') {
+      if (linkedStudents.find(link => link.studentId === studentId)) return;
+      linkedStudents.push({ studentId, name, section, gradeLevel: formatGradeLevel(gradeLevel) });
       renderLinkedStudents();
 
       document.getElementById('studentSearchInput').value = '';
       document.getElementById('studentDropdown').style.display = 'none';
     }
 
-    function removeLinkedStudent(id) {
-      linkedStudents = linkedStudents.filter(s => s.id !== id);
+    function removeLinkedStudent(studentId) {
+      linkedStudents = linkedStudents.filter(link => link.studentId !== studentId);
       renderLinkedStudents();
     }
 
@@ -1482,12 +1427,12 @@
         border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
       ">
         ${s.name}
-        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.id}')">&times;</span>
+        <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${s.studentId}')">&times;</span>
       </div>
     `).join('');
 
       inputs.innerHTML = linkedStudents.map(s =>
-        `<input type="hidden" name="linkedStudents[]" value="${s.id}"/>`
+        `<input type="hidden" name="linkedStudents[]" value="${s.studentId}"/>`
       ).join('');
     }
 
@@ -1523,7 +1468,9 @@
     }
 
 
-    renderUsers();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderUsers();
+    });
   </script>
 
 </body>

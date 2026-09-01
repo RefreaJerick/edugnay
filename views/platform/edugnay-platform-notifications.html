@@ -119,33 +119,6 @@
     const PLATFORM_NOTIFICATIONS = Array.isArray(PLATFORM?.notifications) ? PLATFORM.notifications : [];
     let activeNotifFilter = 'all';
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-    }
-
-    function formatDateGroup(value) {
-      const date = new Date(value);
-      const today = new Date();
-      const dayStart = item => new Date(item.getFullYear(), item.getMonth(), item.getDate());
-      const daysApart = Math.round((dayStart(today) - dayStart(date)) / 86400000);
-      if (daysApart === 0) return 'Today';
-      if (daysApart === 1) return 'Yesterday';
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    }
-
-    function notificationTimestamp(notification) {
-      return notification.createdAt || notification.created_at || '';
-    }
-
-    function formatTime(value) {
-      return new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
-    function notificationTime(notification) {
-      const timestamp = notificationTimestamp(notification);
-      return timestamp ? formatTime(timestamp) : String(notification.time || '');
-    }
-
     function setNotifFilter(mode, button) {
       document.querySelectorAll('#notifTypeFilters .notif-filter-btn').forEach(item => item.classList.remove('active'));
       button.classList.add('active');
@@ -154,12 +127,7 @@
     }
 
     function markRead(id) {
-      if (typeof PLATFORM.markPlatformNotificationRead === 'function') {
-        PLATFORM.markPlatformNotificationRead(id);
-      } else {
-        const notification = PLATFORM_NOTIFICATIONS.find(item => String(item.id) === String(id));
-        if (notification) notification.read = true;
-      }
+      PLATFORM.markPlatformNotificationRead(id);
       PLATFORM.renderTopbarNotifs();
     }
 
@@ -167,16 +135,11 @@
       const notification = PLATFORM_NOTIFICATIONS.find(item => String(item.id) === String(id));
       markRead(id);
       renderNotifList();
-      if (notification?.link) window.location.href = notification.link;
+      if (notification?.link) window.navigatePlatform(notification.link);
     }
 
     function markAllRead() {
-      if (typeof PLATFORM.markAllPlatformNotificationsRead === 'function') {
-        PLATFORM.markAllPlatformNotificationsRead();
-      } else {
-        PLATFORM_NOTIFICATIONS.forEach(notification => { notification.read = true; });
-        PLATFORM.renderTopbarNotifs();
-      }
+      PLATFORM.markAllPlatformNotificationsRead();
       renderNotifList();
     }
 
@@ -184,9 +147,7 @@
       const container = document.getElementById('notifList');
       const emptyState = document.getElementById('notifEmptyState');
       const all = PLATFORM_NOTIFICATIONS.slice().sort((first, second) => {
-        const firstDate = notificationTimestamp(first);
-        const secondDate = notificationTimestamp(second);
-        return (secondDate ? new Date(secondDate) : 0) - (firstDate ? new Date(firstDate) : 0);
+        return new Date(second.createdAt) - new Date(first.createdAt);
       });
       const filtered = activeNotifFilter === 'unread' ? all.filter(notification => !notification.read) : all;
 
@@ -207,17 +168,16 @@
       emptyState.innerHTML = '';
       let lastGroup = '';
       container.innerHTML = filtered.map(notification => {
-        const timestamp = notificationTimestamp(notification);
-        const group = timestamp ? formatDateGroup(timestamp) : '';
-        const groupHtml = group && group !== lastGroup ? `<div class="notif-group-label">${escapeHtml(group)}</div>` : '';
-        lastGroup = group || lastGroup;
+        const group = formatDateGroup(notification.createdAt);
+        const groupHtml = group !== lastGroup ? `<div class="notif-group-label">${escapeHtml(group)}</div>` : '';
+        lastGroup = group;
         return `${groupHtml}
           <div class="notif-item ${notification.read ? '' : 'unread'}" role="button" tabindex="0" data-platform-notification="${escapeHtml(notification.id)}">
-            <div class="nt-icon ${escapeHtml(notification.color || 'blue')}"><i data-lucide="${escapeHtml(notification.icon || 'bell')}" style="width:15px;height:15px;"></i></div>
+            <div class="nt-icon ${escapeHtml(notification.tone || 'blue')}"><i data-lucide="${escapeHtml(notification.icon || 'bell')}" style="width:15px;height:15px;"></i></div>
             <div class="nt-body">
               <div class="nt-text"><strong>${escapeHtml(notification.title || 'Platform notification')}</strong></div>
-              <div class="nt-desc">${escapeHtml(notification.desc || notification.detail || '')}</div>
-              <div class="nt-time">${escapeHtml(notificationTime(notification))}</div>
+              <div class="nt-desc">${escapeHtml(notification.message || '')}</div>
+              <div class="nt-time">${escapeHtml(formatTime(notification.createdAt))}</div>
             </div>
           </div>`;
       }).join('');
@@ -235,7 +195,7 @@
       if (window.lucide) window.lucide.createIcons();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       PLATFORM.renderTopbarNotifs();
       renderNotifList();
       if (window.lucide) window.lucide.createIcons();

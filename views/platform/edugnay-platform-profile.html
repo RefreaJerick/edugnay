@@ -120,14 +120,10 @@
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-    }
-
     const PLATFORM_PROFILE_FIELDS = [
       { label: 'Full Name', getValue: admin => admin.name },
       { label: 'Account Email', getValue: admin => admin.email },
-      { label: 'Role', getValue: admin => admin.role }
+      { label: 'Role', getValue: admin => admin.roleLabel }
     ];
 
     const PLATFORM_ACCESS_DETAILS = [
@@ -151,7 +147,7 @@
       if (window.lucide) window.lucide.createIcons();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       renderPlatformProfile();
       PLATFORM.renderTopbarNotifs();
     });

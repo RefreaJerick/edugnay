@@ -203,9 +203,8 @@
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
     const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
-    const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '', photoData: [] };
+    const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '' };
 
-    function esc(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
     function activeSchool() { return state.school; }
     function levelLabel(level) { return SCHOOL_LEVELS.find(item => item.value === level)?.label || level; }
     function schoolTypeInfo(levels) { return window.EDUGNAY_CONFIG.getSchoolTypeInfo(levels); }
@@ -218,57 +217,14 @@
       const levels = schoolLevels(school);
       return levels.includes(state.division) ? state.division : (levels.includes(school?.activeDivision) ? school.activeDivision : levels[0]);
     }
-    function divisionDefaults(level, school) {
-      const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || window.EDUGNAY_CONFIG.grades[0];
-      const isShs = level === 'shs';
-      return {
-        key: level,
-        label: catalog.label,
-        schoolYear: school?.schoolYear || '2025-2026',
-        academicPeriod: window.EDUGNAY_CONFIG.periods[level]?.[0] || 'Quarter 1',
-        periodStartDate: '2025-05-05',
-        periodEndDate: '2025-07-18',
-        gradeEncodingOpen: true,
-        lockPreviousPeriods: true,
-        enabledGrades: [...catalog.grades],
-        tracks: [...(catalog.tracks || [])],
-        strands: [...(catalog.strands || [])],
-        subjects: window.EDUGNAY_CONFIG.subjects.filter(subject => subject.levels.includes(level)).map(subject => subject.id),
-        sections: [],
-        gradingRules: isShs
-          ? [{ id: 'performance', label: 'Written and Performance Work', weight: 60 }, { id: 'assessment', label: 'Quarterly Assessment', weight: 40 }]
-          : [{ id: 'ww', label: 'Written Work', weight: 30 }, { id: 'pt', label: 'Performance Task', weight: level === 'elementary' ? 40 : 50 }, { id: 'qa', label: 'Quarterly Assessment', weight: level === 'elementary' ? 30 : 20 }],
-        passingGradeThreshold: 75,
-        gradeRounding: 'round'
-      };
-    }
     function ensureDivision(school, level) {
       if (!school.divisions) school.divisions = {};
-      if (!school.divisions[level]) school.divisions[level] = divisionDefaults(level, school);
+      if (!school.divisions[level]) school.divisions[level] = window.EDUGNAY_CONFIG.createDivision(level);
       return school.divisions[level];
     }
     function activeDivision(school) {
       const level = currentDivisionKey(school);
-      return { level, data: school?.schoolType === 'k12' || school?.divisions ? ensureDivision(school, level) : school };
-    }
-    function syncSchoolCompatibility(school, level) {
-      const division = school?.divisions?.[level];
-      if (!division) return;
-      school.activeDivision = level;
-      school.schoolYear = division.schoolYear;
-      school.academicPeriod = division.academicPeriod;
-      school.periodStartDate = division.periodStartDate;
-      school.periodEndDate = division.periodEndDate;
-      school.gradeEncodingOpen = division.gradeEncodingOpen;
-      school.lockPreviousPeriods = division.lockPreviousPeriods;
-      school.enabledGrades = division.enabledGrades;
-      school.tracks = division.tracks;
-      school.strands = division.strands;
-      school.subjects = division.subjects;
-      school.sections = division.sections;
-      school.gradingRules = division.gradingRules;
-      school.passingGradeThreshold = division.passingGradeThreshold;
-      school.gradeRounding = division.gradeRounding;
+      return { level, data: ensureDivision(school, level) };
     }
     function getAttendanceRules(school) {
       const fallback = window.EDUGNAY_CONFIG.attendanceDefaults || {};
@@ -285,7 +241,7 @@
       const levels = schoolLevels(school);
       if (levels.length < 2) return '';
       const current = currentDivisionKey(school);
-      return `<div class="school-division-switcher" role="tablist" aria-label="School levels">${levels.map(level => `<button class="school-division-tab ${level === current ? 'active' : ''}" type="button" role="tab" aria-selected="${level === current}" data-school-division="${esc(level)}">${esc(levelLabel(level))}</button>`).join('')}</div>`;
+      return `<div class="school-division-switcher" role="tablist" aria-label="School levels">${levels.map(level => `<button class="school-division-tab ${level === current ? 'active' : ''}" type="button" role="tab" aria-selected="${level === current}" data-school-division="${window.EDUGNAY_CONFIG.escapeHtml(level)}">${window.EDUGNAY_CONFIG.escapeHtml(levelLabel(level))}</button>`).join('')}</div>`;
     }
     function bindDivisionSwitcher() {
       document.querySelectorAll('[data-school-division]').forEach(button => button.addEventListener('click', () => { state.division = button.dataset.schoolDivision; renderPane(); }));
@@ -303,12 +259,59 @@
       const school = activeSchool();
       document.getElementById('settingsTitle').textContent = school?.name || 'New school profile';
       document.getElementById('settingsSubtitle').textContent = school?.typeLabel || 'Configure school details and branding.';
-      const photos = Array.isArray(school?.photos) ? school.photos : [];
-      document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-profile-pane active"><form id="schoolProfileForm"><div class="school-form-grid"><div class="school-field"><label for="profileName">School name</label><input id="profileName" name="name" required value="${esc(school?.name)}"></div><div class="school-field"><label>School levels served</label><div class="school-level-options" role="group" aria-label="School levels served">${SCHOOL_LEVELS.map(level => `<label class="school-level-option"><input type="checkbox" name="schoolLevels" value="${esc(level.value)}" ${schoolLevels(school).includes(level.value) ? 'checked' : ''}><span>${esc(level.label)}</span></label>`).join('')}</div><small>Select every level offered by the school.</small></div><div class="school-field"><label for="profileId">School ID</label><input id="profileId" name="schoolId" value="${esc(school?.schoolId)}"></div><div class="school-field"><label for="profileAddress">Address</label><input id="profileAddress" name="address" value="${esc(school?.address)}"></div><div class="school-field"><label for="profilePhone">Contact number</label><input id="profilePhone" name="phone" value="${esc(school?.phone)}"></div><div class="school-field"><label for="profileEmail">School email</label><input id="profileEmail" name="email" type="email" value="${esc(school?.email)}"></div><div class="school-field"><label for="profileWebsite">Website</label><input id="profileWebsite" name="website" value="${esc(school?.website)}"></div><div class="school-field school-branding-field"><label for="profileLogo">Logo or branding</label><div class="school-logo-preview" id="profileLogoPreview"><span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span><img id="profileLogoImage" src="${school?.logoUrl ? esc(school.logoUrl) : ''}" alt="${esc(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}><div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div></div><small>The school logo is used across the school profile and portal shell.</small></div><div class="school-field school-photos-field full"><label for="profilePhotos">School photos</label><input id="profilePhotos" name="photos" type="file" accept="image/*" multiple><div class="school-photo-list" id="profilePhotosPreview">${photos.length ? photos.map((photo, index) => `<img src="${esc(photo)}" alt="School photo ${index + 1}">`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'images', title: 'No school photos yet', text: 'Upload photos to use them in the school login slideshow.' })}</div><small>These photos appear in the slideshow on the school login page.</small></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button></div></form></div>`;
+      document.getElementById('schoolSettingsBody').innerHTML = `
+        <div class="school-pane school-profile-pane active">
+          <form id="schoolProfileForm">
+            <div class="school-form-grid">
+              <div class="school-field">
+                <label for="profileName">School name</label>
+                <input id="profileName" name="name" required value="${window.EDUGNAY_CONFIG.escapeHtml(school?.name)}">
+              </div>
+              <div class="school-field">
+                <label>School levels served</label>
+                <div class="school-level-options" role="group" aria-label="School levels served">
+                  ${SCHOOL_LEVELS.map(level => `<label class="school-level-option"><input type="checkbox" name="schoolLevels" value="${window.EDUGNAY_CONFIG.escapeHtml(level.value)}" ${schoolLevels(school).includes(level.value) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(level.label)}</span></label>`).join('')}
+                </div>
+                <small>Select every level offered by the school.</small>
+              </div>
+              <div class="school-field">
+                <label for="profileId">School ID</label>
+                <input id="profileId" name="schoolId" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolId)}">
+              </div>
+              <div class="school-field">
+                <label for="profileAddress">Address</label>
+                <input id="profileAddress" name="address" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.address)}">
+              </div>
+              <div class="school-field">
+                <label for="profilePhone">Contact number</label>
+                <input id="profilePhone" name="phone" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.phone)}">
+              </div>
+              <div class="school-field">
+                <label for="profileEmail">School email</label>
+                <input id="profileEmail" name="email" type="email" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.email)}">
+              </div>
+              <div class="school-field">
+                <label for="profileWebsite">Website</label>
+                <input id="profileWebsite" name="website" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.website)}">
+              </div>
+              <div class="school-field school-branding-field">
+                <label for="profileLogo">Logo or branding</label>
+                <div class="school-logo-preview" id="profileLogoPreview">
+                  <span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span>
+                  <img id="profileLogoImage" src="${school?.logoUrl ? window.EDUGNAY_CONFIG.escapeHtml(school.logoUrl) : ''}" alt="${window.EDUGNAY_CONFIG.escapeHtml(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}>
+                  <div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div>
+                </div>
+                <small>The school logo is used across the school profile and portal shell.</small>
+              </div>
+            </div>
+            <div class="school-form-footer">
+              <button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save school profile</button>
+            </div>
+          </form>
+        </div>`;
       const form = document.getElementById('schoolProfileForm');
       form.addEventListener('submit', saveProfile);
       document.getElementById('profileLogo').addEventListener('change', readLogo);
-      document.getElementById('profilePhotos').addEventListener('change', readPhotos);
       if (window.lucide) lucide.createIcons();
     }
 
@@ -316,11 +319,12 @@
       const school = activeSchool();
       const { level, data } = activeDivision(school);
       const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || window.EDUGNAY_CONFIG.grades[0] || { label: levelLabel(level), grades: [] };
+      const defaults = window.EDUGNAY_CONFIG.createDivision(level);
       const gradeOptions = Array.isArray(catalog.grades) ? catalog.grades : [];
       const trackOptions = Array.isArray(catalog.tracks) ? catalog.tracks : [];
       const enabledGrades = Array.isArray(data.enabledGrades) ? data.enabledGrades : gradeOptions;
-      const periodStartDate = data.periodStartDate || school.periodStartDate || '2025-05-05';
-      const periodEndDate = data.periodEndDate || school.periodEndDate || '2025-07-18';
+      const periodStartDate = data.periodStartDate || defaults.periodStartDate;
+      const periodEndDate = data.periodEndDate || defaults.periodEndDate;
       const gradeEncodingOpen = data.gradeEncodingOpen !== false;
       const lockPreviousPeriods = data.lockPreviousPeriods !== false;
       document.getElementById('schoolSettingsBody').innerHTML = `
@@ -328,20 +332,20 @@
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
             <div class="school-form-grid">
-              <div class="school-field"><label for="academicLevel">School level</label><select id="academicLevel" name="schoolLevel">${schoolLevels(school).map(item => `<option value="${esc(item)}" ${item === level ? 'selected' : ''}>${esc(levelLabel(item))}</option>`).join('')}</select></div>
-              <div class="school-field"><label for="academicYear">School year</label><input id="academicYear" name="schoolYear" value="${esc(school.schoolYear || data.schoolYear || '2025-2026')}"></div>
-              <div class="school-field"><label for="academicPeriod">Academic period</label><select id="academicPeriod" name="academicPeriod">${(window.EDUGNAY_CONFIG.periods[level] || []).map(period => `<option ${period === (data.academicPeriod || school.academicPeriod) ? 'selected' : ''}>${esc(period)}</option>`).join('')}</select></div>
-              <div class="school-field"><label for="periodStartDate">Period start date</label><input id="periodStartDate" name="periodStartDate" type="date" value="${esc(periodStartDate)}"></div>
-              <div class="school-field"><label for="periodEndDate">Period end date</label><input id="periodEndDate" name="periodEndDate" type="date" value="${esc(periodEndDate)}"></div>
+              <div class="school-field"><label for="academicLevel">School level</label><select id="academicLevel" name="schoolLevel">${schoolLevels(school).map(item => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(item)}" ${item === level ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(levelLabel(item))}</option>`).join('')}</select></div>
+              <div class="school-field"><label for="academicYear">School year</label><input id="academicYear" name="schoolYear" value="${window.EDUGNAY_CONFIG.escapeHtml(school.schoolYear || '2025-2026')}"></div>
+              <div class="school-field"><label for="academicPeriod">Academic period</label><select id="academicPeriod" name="academicPeriod">${(window.EDUGNAY_CONFIG.periods[level] || []).map(period => `<option ${period === data.academicPeriod ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(period)}</option>`).join('')}</select></div>
+              <div class="school-field"><label for="periodStartDate">Period start date</label><input id="periodStartDate" name="periodStartDate" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(periodStartDate)}"></div>
+              <div class="school-field"><label for="periodEndDate">Period end date</label><input id="periodEndDate" name="periodEndDate" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(periodEndDate)}"></div>
             </div>
             <div class="school-section-block">
-              <div class="school-section-block-head"><div class="school-section-block-title">Academic access</div><span class="school-type-chip">${esc(catalog.label)}</span></div>
+              <div class="school-section-block-head"><div class="school-section-block-title">Academic access</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>
               <div class="school-toggle-list">
                 <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Grade encoding open</strong><small>Allow teachers to encode and update grades for the active academic period.</small></span><input class="school-toggle-input" type="checkbox" name="gradeEncodingOpen" ${gradeEncodingOpen ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
                 <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Lock previous periods</strong><small>Prevent changes to grades from completed grading periods.</small></span><input class="school-toggle-input" type="checkbox" name="lockPreviousPeriods" ${lockPreviousPeriods ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
               </div>
             </div>
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${esc(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<div class="check-item"><input type="checkbox" id="grade-${esc(grade.replace(/\W/g, ''))}" name="grades" value="${esc(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><label for="grade-${esc(grade.replace(/\W/g, ''))}">${esc(grade)}</label></div>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS track options</div><div class="track-options">${trackOptions.map(track => `<div class="check-item"><input type="checkbox" name="tracks" value="${esc(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><label>${esc(track)}</label></div>`).join('')}</div>` : ''}</div>
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<div class="check-item"><input type="checkbox" id="grade-${window.EDUGNAY_CONFIG.escapeHtml(grade.replace(/\W/g, ''))}" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><label for="grade-${window.EDUGNAY_CONFIG.escapeHtml(grade.replace(/\W/g, ''))}">${window.EDUGNAY_CONFIG.escapeHtml(grade)}</label></div>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS track options</div><div class="track-options">${trackOptions.map(track => `<div class="check-item"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><label>${window.EDUGNAY_CONFIG.escapeHtml(track)}</label></div>`).join('')}</div>` : ''}</div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
@@ -354,14 +358,15 @@
     function renderGradingPane() {
       const school = activeSchool();
       const { level, data } = activeDivision(school);
-      const rules = data.gradingRules || [];
-      const passingGradeThreshold = Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : 75;
-      const gradeRounding = data.gradeRounding || 'round';
+      const defaults = window.EDUGNAY_CONFIG.createDivision(level);
+      const rules = Array.isArray(data.gradingRules) ? data.gradingRules : defaults.gradingRules;
+      const passingGradeThreshold = Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : defaults.passingGradeThreshold;
+      const gradeRounding = data.gradeRounding || defaults.gradeRounding;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolGradingForm">
-            <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${esc(rule.id)}">${esc(rule.label)}</label><input id="weight-${esc(rule.id)}" type="number" min="0" max="100" step="1" name="${esc(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
+            <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)}</label><input id="weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
             <div class="weight-total" id="weightTotal"></div>
             <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save grading rules</button></div>
@@ -420,7 +425,7 @@
                   <label for="journalSubjectId">Subject used for Journals</label>
                   <select id="journalSubjectId" name="journalSubjectId" ${subjects.length && journalsEnabled ? '' : 'disabled'}>
                     <option value="">Select a configured subject</option>
-                    ${subjects.map(subject => `<option value="${esc(subject.id)}" ${subject.id === journalSubjectId ? 'selected' : ''}>${esc(subject.name)}</option>`).join('')}
+                    ${subjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${subject.id === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</option>`).join('')}
                   </select>
                   <small>${subjects.length ? 'Students and teachers will see this subject wherever Journal is shown.' : 'Add a subject in Class Management before enabling Journals.'}</small>
                 </div>
@@ -452,7 +457,7 @@
           <form id="schoolAttendanceForm">
             <div class="school-section-block school-attendance-codes-block">
               <div class="school-section-block-title">Attendance status codes</div>
-              <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${esc(code.tone || code.id)}"><span class="school-attendance-code-mark">${esc(code.key)}</span><span><strong>${esc(code.name)}</strong><small>${esc(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No attendance codes configured', text: 'Attendance statuses will appear here when the school sets them.' })}</div>
+              <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${window.EDUGNAY_CONFIG.escapeHtml(code.tone || code.id)}"><span class="school-attendance-code-mark">${window.EDUGNAY_CONFIG.escapeHtml(code.key)}</span><span><strong>${window.EDUGNAY_CONFIG.escapeHtml(code.name)}</strong><small>${window.EDUGNAY_CONFIG.escapeHtml(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No attendance codes configured', text: 'Attendance statuses will appear here when the school sets them.' })}</div>
             </div>
             <div class="school-section-block">
               <div class="school-section-block-title">Absence thresholds</div>
@@ -474,7 +479,7 @@
 
     function renderCalendarPane() {
       const holidays = window.EDUGNAY_CONFIG.getHolidays();
-      document.getElementById('schoolCalendarBody').innerHTML = `<form id="holidayForm"><div class="school-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today."></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="plus"></i> Add calendar notice</button></div></form><div class="calendar-list"><div class="calendar-list-title">Saved notices</div>${holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${esc(day.date)}</div><div><div class="holiday-title">${esc(day.title)}</div><div class="holiday-detail">${esc(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${esc(day.id)}" title="Remove notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
+      document.getElementById('schoolCalendarBody').innerHTML = `<form id="holidayForm"><div class="school-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today."></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="plus"></i> Add calendar notice</button></div></form><div class="calendar-list"><div class="calendar-list-title">Saved notices</div>${holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
       document.getElementById('holidayForm').addEventListener('submit', addHoliday);
       document.querySelectorAll('[data-remove-holiday]').forEach(button => button.addEventListener('click', () => removeHoliday(button.dataset.removeHoliday)));
       if (window.lucide) lucide.createIcons();
@@ -498,15 +503,6 @@
       }
       if (window.lucide) lucide.createIcons();
     }
-    function renderPhotoPreview(photos) {
-      const list = document.getElementById('profilePhotosPreview');
-      if (!list) return;
-      const items = Array.isArray(photos) ? photos : [];
-      list.innerHTML = items.length
-        ? items.map((photo, index) => `<img src="${esc(photo)}" alt="School photo preview ${index + 1}">`).join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'images', title: 'No school photos yet', text: 'Upload photos to use them in the school login slideshow.' });
-      if (window.lucide) window.lucide.createIcons();
-    }
     function readLogo(event) {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -522,25 +518,6 @@
       };
       reader.onerror = () => notify('The logo could not be previewed. Please try another image.');
       reader.readAsDataURL(file);
-    }
-    function readPhotos(event) {
-      const files = [...(event.target.files || [])];
-      if (!files.length) return;
-      const imageFiles = files.filter(file => file.type.startsWith('image/'));
-      if (!imageFiles.length) {
-        event.target.value = '';
-        notify('Choose one or more image files for the school slideshow.');
-        return;
-      }
-      Promise.all(imageFiles.map(file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      }))).then(data => {
-        state.photoData = data;
-        renderPhotoPreview(data);
-      }).catch(() => notify('The photos could not be previewed. Please try again.'));
     }
     function saveProfile(event) {
       event.preventDefault();
@@ -559,11 +536,11 @@
         shortName: values.name.trim().toUpperCase(),
         schoolType: type.value,
         typeLabel: type.label,
-        schoolId: values.schoolId.trim(),
+        schoolId: values.schoolId.trim() || null,
         address: values.address.trim(),
-        phone: values.phone.trim(),
+        phone: values.phone.trim() || null,
         email: values.email.trim(),
-        website: values.website.trim()
+        website: values.website.trim() || null
       });
       school.schoolLevels = selectedLevels;
       school.activeDivision = selectedLevels.includes(state.division)
@@ -571,10 +548,11 @@
         : (selectedLevels.includes('jhs') ? 'jhs' : selectedLevels[0]);
       school.divisions ||= {};
       selectedLevels.forEach(level => ensureDivision(school, level));
+      Object.keys(school.divisions).forEach(level => {
+        if (!selectedLevels.includes(level)) delete school.divisions[level];
+      });
       state.division = currentDivisionKey(school);
-      syncSchoolCompatibility(school, state.division);
       if (state.logoData) school.logoUrl = state.logoData;
-      if (state.photoData.length) school.photos = state.photoData;
       persistSchool();
       window.refreshEdUgnayShellContext?.();
       renderAll();
@@ -586,14 +564,12 @@
       const school = activeSchool();
       const values = new FormData(form);
       const level = values.get('schoolLevel') || currentDivisionKey(school);
-      const target = school.schoolType === 'k12' || school.divisions ? ensureDivision(school, level) : school;
+      const target = ensureDivision(school, level);
       const periodStartDate = values.get('periodStartDate');
       const periodEndDate = values.get('periodEndDate');
       if (periodStartDate && periodEndDate && periodEndDate < periodStartDate) { notify('The period end date must be after the start date.'); return; }
       const schoolYear = values.get('schoolYear');
       school.schoolYear = schoolYear;
-      if (school.divisions) Object.values(school.divisions).forEach(division => { division.schoolYear = schoolYear; });
-      target.schoolYear = schoolYear;
       target.academicPeriod = values.get('academicPeriod');
       target.periodStartDate = periodStartDate;
       target.periodEndDate = periodEndDate;
@@ -602,7 +578,7 @@
       target.enabledGrades = values.getAll('grades');
       target.tracks = values.getAll('tracks');
       state.division = level;
-      if (school.schoolType === 'k12' || school.divisions) syncSchoolCompatibility(school, level);
+      school.activeDivision = level;
       persistSchool();
       renderAll();
       notify(`${levelLabel(level)} academic structure saved.`);
@@ -612,14 +588,14 @@
       const school = activeSchool();
       const form = event.currentTarget;
       const { level, data } = activeDivision(school);
-      const target = school.schoolType === 'k12' || school.divisions ? ensureDivision(school, level) : data;
+      const target = data;
       const rules = target.gradingRules || [];
       const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
       if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
       target.gradingRules = rules.map(rule => ({ ...rule, weight: Number(form.elements[rule.id].value || 0) }));
       target.passingGradeThreshold = Math.max(0, Math.min(100, Number(form.elements.passingGradeThreshold?.value || 75)));
       target.gradeRounding = form.elements.gradeRounding?.value || 'round';
-      if (school.schoolType === 'k12' || school.divisions) syncSchoolCompatibility(school, level);
+      school.activeDivision = level;
       persistSchool();
       window.refreshEdUgnayShellContext?.();
       notify(`${levelLabel(level)} grading rules saved.`);
@@ -667,7 +643,9 @@
     function removeHoliday(id) { window.EDUGNAY_CONFIG.saveHolidays(window.EDUGNAY_CONFIG.getHolidays().filter(day => day.id !== id)); renderCalendarPane(); notify('Calendar notice removed.'); }
 
     document.querySelectorAll('[data-school-tab]').forEach(tab => tab.addEventListener('click', () => { state.tab = tab.dataset.schoolTab; document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item === tab)); renderPane(); }));
-    renderAll();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderAll();
+    });
   </script>
 </body>
 

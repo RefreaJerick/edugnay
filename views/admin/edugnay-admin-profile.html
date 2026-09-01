@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
@@ -377,10 +376,10 @@
 </div>
 
 <script>
-  const EMPLOYMENT_DETAILS = [
+  const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([
     { label: 'Position', value: 'System Administrator' },
     { label: 'Access Level', value: 'Full System Access' }
-  ];
+  ]);
 
   function renderEmploymentDetails() {
     const panel = document.getElementById('admin-employment-details');
@@ -389,8 +388,6 @@
       ? EMPLOYMENT_DETAILS.map(item => `<div class="profile-detail-row"><span class="profile-detail-label">${item.label}</span><span class="profile-detail-value">${item.value}</span></div>`).join('')
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'briefcase-business', title: 'No employment details', text: 'Employment information will appear here when it is configured.' });
   }
-
-  renderEmploymentDetails();
 
   function openModal() { document.getElementById('changePasswordModal').classList.add('open'); }
   function closeModal() {
@@ -491,20 +488,23 @@
     return false;
   }
 
-  // The account directory is the frontend source for now. Replace this lookup
-  // with the authenticated admin returned by the backend later.
+  // Profile data is separate from the sign-in account. Replace this lookup
+  // with the authenticated administrator profile returned by the API later.
   function renderAdminEmployeeNumber() {
-    const account = window.EDUGNAY_CONFIG?.accounts?.find(record => record.role === 'admin');
+const profile = window.EDUGNAY_CONFIG?.getProfiles?.('school_admin')?.[0];
     const input = document.getElementById('adminEmployeeNoInput');
-    if (input) input.value = account?.employeeNo || 'Not assigned';
+    if (input) input.value = profile?.employeeNo || 'Not assigned';
   }
 
   function resetProfile() {
     document.getElementById('contactNumberInput').value = '0917 555 2210';
   }
 
-  renderAdminEmployeeNumber();
-  lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderEmploymentDetails();
+    renderAdminEmployeeNumber();
+    lucide.createIcons();
+  });
 </script>
 
 </body>

@@ -463,8 +463,10 @@
 </div>
 
 <script>
-  const archiveData = {
+  const ARCHIVE_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
+  const archiveData = ARCHIVE_SCHOOL_ID === 'scc' ? {
     '2024-2025': {
+      schoolId: 'scc',
       archivedOn: 'June 28, 2025', latest: true,
       passRate: '92%', attendance: '89%', teachers: 22, sections: 8, students: 271,
       quarters: [
@@ -485,6 +487,7 @@
       ],
     },
     '2023-2024': {
+      schoolId: 'scc',
       archivedOn: 'July 5, 2024',
       passRate: '89%', attendance: '87%', teachers: 20, sections: 8, students: 258,
       quarters: [
@@ -505,6 +508,7 @@
       ],
     },
     '2022-2023': {
+      schoolId: 'scc',
       archivedOn: 'June 30, 2023', oldest: true,
       passRate: '86%', attendance: '85%', teachers: 18, sections: 7, students: 214,
       quarters: [
@@ -523,7 +527,7 @@
         { name: 'St. James', grade: 'Grade 10', students: 32, passRate: 90 },
       ],
     },
-  };
+  } : {};
 
   function buildArchiveSummaryCards(data = archiveData) {
     const years = Object.keys(data).sort();
@@ -584,10 +588,6 @@
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'list-checks', title: 'No archive checks', text: 'Archive requirements will appear here when they are configured.' });
     if (window.lucide) lucide.createIcons();
   }
-
-  renderArchiveSummary();
-  renderArchiveYears();
-  renderArchiveChecklist();
 
   let currentConfirmYear = '';
 
@@ -668,7 +668,12 @@
     btn.disabled = !isOn;
   }
 
-  lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderArchiveSummary();
+    renderArchiveYears();
+    renderArchiveChecklist();
+    lucide.createIcons();
+  });
 </script>
 
 </body>

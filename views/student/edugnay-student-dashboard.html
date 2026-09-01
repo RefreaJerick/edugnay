@@ -220,23 +220,7 @@
           <!-- Weekly journal — configured school subject, separate from learning materials -->
           <!-- if (school.journalsEnabled) { -->
           <section class="journal-feature" id="student-journal-feature" aria-labelledby="weeklyJournalTitle">
-            <div class="journal-card" id="student-journal-card">
-              <div class="journal-icon-chip">
-                <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
-              </div>
-              <div class="journal-body">
-                <div class="journal-eyebrow" id="weeklyJournalTitle">Values Education · This Week's Journal</div>
-                <div class="journal-prompt">"Describe a moment this week when you helped a classmate or a classmate
-                  helped you. What did you learn from that experience?"</div>
-                <div class="journal-foot">
-                  <span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> Window open
-                    · due Friday</span>
-                  <a href="edugnay-student-journal.html" class="journal-cta">
-                    Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
-                  </a>
-                </div>
-              </div>
-            </div>
+            <div class="journal-card" id="student-journal-card"></div>
           </section>
           <!-- } end conditional -->
 
@@ -290,48 +274,7 @@
                 View all <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
               </a>
             </div>
-            <div class="ann-list" id="student-announcements-list">
-              <!-- announcements[]: loop -->
-              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-                <div class="ann-item-head">
-                  <span class="ann-item-title">Foundation Day — June 20</span>
-                  <span class="badge badge-red" style="font-size:10px;padding:2px 7px;">Urgent</span>
-                </div>
-                <div class="ann-item-body">Classes are suspended. Students must wear their House color shirt.</div>
-                <div class="ann-item-meta">
-                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
-                  <span>·</span>
-                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                </div>
-              </div>
-
-              <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-                <div class="ann-item-head">
-                  <span class="ann-item-title">Intramurals Sign-up Open</span>
-                  <span class="badge badge-gold" style="font-size:10px;padding:2px 7px;">Event</span>
-                </div>
-                <div class="ann-item-body">Visit the Student Affairs table during recess to join a sports team.</div>
-                <div class="ann-item-meta">
-                  <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
-                  <span>·</span>
-                  <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                </div>
-              </div>
-
-              <div class="ann-item" data-student-access="journals" onclick="location.href='edugnay-student-announcements.html'">
-                <div class="ann-item-head">
-                  <span class="ann-item-title">Values Journal — Window Open</span>
-                  <span class="badge badge-blue" style="font-size:10px;padding:2px 7px;">Reminder</span>
-                </div>
-                <div class="ann-item-body">Submit your weekly reflection before 11:59 PM Friday.</div>
-                <div class="ann-item-meta">
-                  <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-                  <span>·</span>
-                  <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
-                </div>
-              </div>
-              <!-- end announcements[] loop -->
-            </div>
+            <div class="ann-list" id="student-announcements-list"></div>
           </div>
 
         </div>
@@ -345,15 +288,17 @@
   <script>
     lucide.createIcons();
 
-    // Page data boundary: replace these arrays with fetch results during EJS conversion.
+    // The journal prompt comes from the same shared journal source used by the
+    // student journal and teacher review pages.
     const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
-    const JOURNAL = [{
+    const currentJournal = window.EDUGNAY_CONFIG.getJournalsForStudent('jd-004').find(record => record.isCurrent);
+    const JOURNAL = currentJournal ? [{
       subject: journalSubjectName,
       title: "This Week's Journal",
-      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?',
-      status: 'Window open',
-      due: 'due Friday'
-    }];
+      prompt: currentJournal.prompt,
+      status: currentJournal.submitted ? 'Submitted' : 'Window open',
+      due: currentJournal.dueLabel || 'due Friday'
+    }] : [];
 
     function renderStudentJournal() {
       const card = document.getElementById('student-journal-card');
@@ -374,34 +319,19 @@
       lucide.createIcons();
     }
 
-    const MATERIALS = [
+    const MATERIALS = window.EDUGNAY_CONFIG.withActiveSchool([
       { title: 'Lesson 2 - Equations Slides', subject: 'Mathematics', posted: 'Posted June 12, 2025', icon: 'presentation', tone: 'blue' },
       { title: 'Solving for X - Video Lesson', subject: 'Mathematics', posted: 'Posted June 10, 2025', icon: 'video', tone: 'green' },
       { title: 'Quiz 1 Answer Key', subject: 'Mathematics', posted: 'Posted June 9, 2025', icon: 'file-check', tone: 'gold' }
-    ];
+    ]);
 
-    const ANNOUNCEMENTS = [
-      { title: 'Foundation Day - June 20', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are suspended. Students must wear their House color shirt.', time: 'Today, 8:00 AM', author: 'Admin' },
-      { title: 'Intramurals Sign-up Open', tag: 'Event', tagClass: 'badge-gold', body: 'Visit the Student Affairs table during recess to join a sports team.', time: 'Yesterday, 1:30 PM', author: 'Admin' },
-      { title: 'Weekly Journal - Window Open', tag: 'Reminder', tagClass: 'badge-blue', body: 'Submit your weekly reflection before 11:59 PM Friday.', time: '2 days ago', author: 'Ms. Reyes', access: 'journals' }
-    ];
-
-    const UPCOMING_ASSIGNMENTS = [
-      { id: 2, title: 'Quiz 1 Review: Core Values', subject: 'Values Education', dueDate: '2025-06-11', status: 'pending' },
-      { id: 4, title: 'Linear Equations Practice', subject: 'Mathematics', dueDate: '2025-06-12', status: 'pending' },
-      { id: 5, title: 'Reading Response: Short Stories', subject: 'English', dueDate: '2025-06-10', status: 'completed' }
-    ];
+    const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
+    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent('jd-004').slice(0, 3);
 
     const DASHBOARD_ASSIGNMENT_STATUS = {
       pending: { label: 'Pending', icon: 'clock-3' },
       completed: { label: 'Completed', icon: 'circle-check' }
     };
-
-    function escapeDashboardHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-      })[character]);
-    }
 
     function getAssignmentDateMeta(value) {
       const date = new Date(`${value}T00:00:00`);
@@ -428,16 +358,16 @@
       container.innerHTML = UPCOMING_ASSIGNMENTS.map(item => {
         const status = DASHBOARD_ASSIGNMENT_STATUS[item.status] || DASHBOARD_ASSIGNMENT_STATUS.pending;
         const date = getAssignmentDateMeta(item.dueDate);
-        const title = escapeDashboardHtml(item.title);
-        const subject = escapeDashboardHtml(item.subject);
+        const title = window.EDUGNAY_CONFIG.escapeHtml(item.title);
+        const subject = window.EDUGNAY_CONFIG.escapeHtml(item.subject);
         const statusClass = item.status === 'completed' ? 'completed' : 'pending';
 
         return `
           <a class="assignment-preview-row ${statusClass}" href="edugnay-student-assignments.html"
-            aria-label="${title}, ${status.label}, due ${escapeDashboardHtml(date.label)}">
+            aria-label="${title}, ${status.label}, due ${window.EDUGNAY_CONFIG.escapeHtml(date.label)}">
             <span class="assignment-preview-date" aria-hidden="true">
-              <span class="assignment-preview-month">${escapeDashboardHtml(date.month)}</span>
-              <span class="assignment-preview-day">${escapeDashboardHtml(date.day)}</span>
+              <span class="assignment-preview-month">${window.EDUGNAY_CONFIG.escapeHtml(date.month)}</span>
+              <span class="assignment-preview-day">${window.EDUGNAY_CONFIG.escapeHtml(date.day)}</span>
             </span>
             <span class="assignment-preview-copy">
               <span class="assignment-preview-subject">${subject}</span>
@@ -483,8 +413,11 @@
       lucide.createIcons();
     }
 
-    renderStudentJournal();
-    renderStudentDashboardLists();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderStudentJournal();
+      renderStudentDashboardLists();
+      renderWeekCalendar();
+    });
 
     /*
       EJS NOTE: this entire greeting block is a client-side placeholder.
@@ -529,10 +462,8 @@
         rangeLabel.parentElement.dataset.currentDate = rangeLabel.dataset.currentDate;
       }
     }
-    renderWeekCalendar();
-
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { toggleDrawer(false); closeProfileMenu(); }
+      if (e.key === 'Escape') { toggleDrawer(false); toggleProfileDropdown(false); }
     });
 
   </script>

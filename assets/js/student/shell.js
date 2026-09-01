@@ -6,58 +6,48 @@
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
+const STUDENT_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 const NOTIFICATIONS = [
   {
-    id: 4, icon: 'folder-open', color: 'blue', tag: 'Materials', read: false,
+    id: 'student-notif-materials-001', icon: 'folder-open', tone: 'blue', type: 'Materials', read: false,
     title: 'New learning material posted',
-    desc: '"Solving for X — Video Lesson" was added to Mathematics.',
+    message: '"Solving for X — Video Lesson" was added to Mathematics.',
     link: { page: 'materials' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
   {
-    id: 3, icon: 'notebook-pen', color: 'purple', tag: 'Journal', read: false, access: 'journals',
+    id: 'student-notif-journal-001', icon: 'notebook-pen', tone: 'purple', type: 'Journal', read: false, access: 'journals',
     title: 'Journal window closing soon',
-    desc: 'Submit your weekly reflection before Friday, 11:59 PM.',
+    message: 'Submit your weekly reflection before Friday, 11:59 PM.',
     link: { page: 'journal' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
   },
   {
-    id: 2, icon: 'megaphone', color: 'gold', tag: 'Announcement', read: true,
+    id: 'student-notif-announcement-001', icon: 'megaphone', tone: 'gold', type: 'Announcement', read: true,
     title: 'New announcement',
-    desc: 'Foundation Day — June 20. Classes suspended.',
+    message: 'Foundation Day — June 20. Classes suspended.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
+    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
   },
   {
-    id: 1, icon: 'calendar-clock', color: 'blue', tag: 'Event', read: true,
+    id: 'student-notif-event-001', icon: 'calendar-clock', tone: 'blue', type: 'Event', read: true,
     title: 'Upcoming event',
-    desc: 'Intramurals sign-up is open at the Student Affairs table.',
+    message: 'Intramurals sign-up is open at the Student Affairs table.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   },
   {
-    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true, access: 'journals',
+    id: 'student-notif-journal-002', icon: 'notebook-pen', tone: 'gray', type: 'Reminder', read: true, access: 'journals',
     title: 'Journal window reminder',
-    desc: 'Weekly journal entries close Friday, 11:59 PM.',
+    message: 'Weekly journal entries close Friday, 11:59 PM.',
     link: { page: 'journal' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
-];
+]
+  .map(record => ({ ...record, schoolId: 'scc' }))
+  .filter(record => record.schoolId === STUDENT_SCHOOL_ID);
 
-/* ── READ STATE (localStorage; swap for DB column later) ── */
-const STUDENT_READ_STORE_KEY = 'edugnay_student_notif_read';
-
-function getReadIds() {
-  try { return JSON.parse(localStorage.getItem(STUDENT_READ_STORE_KEY)) || []; }
-  catch { return []; }
-}
-function setReadIds(ids) {
-  localStorage.setItem(STUDENT_READ_STORE_KEY, JSON.stringify(ids));
-}
-function applyReadState() {
-  const readIds = getReadIds();
-  NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
-}
+const STUDENT_READ_STORE_KEY = `edugnay_student_notif_read:${STUDENT_SCHOOL_ID}`;
 
 function studentCanAccess(feature) {
   return feature !== 'journals'
@@ -68,31 +58,16 @@ function getStudentVisibleNotifications() {
   return NOTIFICATIONS.filter(notification => !notification.access || studentCanAccess(notification.access));
 }
 
-/* ── TIME HELPERS ── */
-function formatRelativeTime(dateStr) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHrs = Math.floor(diffMs / 3600000);
-  if (diffHrs < 1) return 'Just now';
-  if (diffHrs < 24) return `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`;
-  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-  if (diffDays === 1) return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
-         date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  applyReadState();
+  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
 
   const visibleNotifications = getStudentVisibleNotifications();
   const top5 = [...visibleNotifications]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
   const unreadCount = visibleNotifications.filter(n => !n.read).length;
@@ -112,16 +87,16 @@ function renderTopbarNotifs() {
   }
 
   container.innerHTML = top5.map(n => `
-    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${n.id})'>
-      <div class="tb-notif-icon ${n.color}">
+    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
+      <div class="tb-notif-icon ${n.tone}">
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-head">
           <div class="tb-notif-title">${n.title}</div>
         </div>
-        <div class="tb-notif-desc">${n.desc}</div>
-        <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>
+        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
   `).join('');
@@ -133,10 +108,15 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  const ids = getReadIds();
-  if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
+  window.EDUGNAY_CONFIG.markNotificationRead(STUDENT_READ_STORE_KEY, id, NOTIFICATIONS);
   navigate(link.page);
 }
+
+window.EDUGNAY_NOTIFICATION_CONTEXT = {
+  storageKey: STUDENT_READ_STORE_KEY,
+  records: NOTIFICATIONS,
+  getItems: getStudentVisibleNotifications
+};
 
 
 /* ── NAVIGATION ── */
@@ -184,7 +164,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyStudentJournalAccess();
   renderTopbarNotifs();
 });

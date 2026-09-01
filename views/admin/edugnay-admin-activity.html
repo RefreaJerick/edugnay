@@ -251,10 +251,10 @@
   let activeTypeFilter = 'all';
   let visibleCount = PAGE_SIZE;
 
-  function setActivityTypeFilter(el, tag) {
+  function setActivityTypeFilter(el, type) {
     document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
-    activeTypeFilter = tag;
+    activeTypeFilter = type;
     visibleCount = PAGE_SIZE;
     applyActivityFilters();
   }
@@ -265,19 +265,22 @@
     const now = new Date();
 
     return RECENT_ACTIVITY
-      .filter(item => activeTypeFilter === 'all' || item.tag === activeTypeFilter)
+      .filter(item => activeTypeFilter === 'all' || item.type === activeTypeFilter)
       .filter(item => {
         if (!query) return true;
-        return item.actor.toLowerCase().includes(query) || item.action.toLowerCase().includes(query);
+        return [item.actor, item.title, item.detail, item.type]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
       })
       .filter(item => {
         if (dateFilter === 'all') return true;
-        const created = new Date(item.created_at);
-        if (dateFilter === 'today') return formatDateGroup(item.created_at) === 'Today';
+        const created = new Date(item.createdAt);
+        if (dateFilter === 'today') return formatDateGroup(item.createdAt) === 'Today';
         const days = parseInt(dateFilter, 10);
         return (now - created) / 86400000 <= days;
       })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
   function applyActivityFilters() {
@@ -319,19 +322,19 @@
     let lastGroup = null;
 
     slice.forEach(item => {
-      const group = formatDateGroup(item.created_at);
+      const group = formatDateGroup(item.createdAt);
       if (group !== lastGroup) {
         html += `<div class="activity-group-label">${group}</div>`;
         lastGroup = group;
       }
       html += `
         <div class="activity-item">
-          <div class="act-icon ${item.color}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
-          <div class="act-body">
-            <div class="act-text"><strong>${item.actor}</strong> ${item.action}</div>
-            <div class="act-time">${formatTime(item.created_at)}</div>
-          </div>
-          <span class="act-tag">${item.tag}</span>
+        <div class="act-icon ${item.tone}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+        <div class="act-body">
+          <div class="act-text"><strong>${item.actor}</strong> ${item.title} ${item.detail || ''}</div>
+          <div class="act-time">${formatTime(item.createdAt)}</div>
+        </div>
+        <span class="act-tag">${item.type}</span>
         </div>
       `;
     });
@@ -341,7 +344,9 @@
     lucide.createIcons();
   }
 
-  renderActivityList();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderActivityList();
+  });
 </script>
 
 </body>

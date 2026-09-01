@@ -17,7 +17,6 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
@@ -205,22 +204,7 @@
       </section>
 
       <!-- children[]: loop -->
-      <div class="child-switcher" id="child-switcher">
-        <div class="child-card active" data-child="juan" onclick="switchChild('juan', this)">
-          <div class="child-avatar">JA</div>
-          <div class="child-info">
-            <div class="child-name">Juan Alcantara</div>
-            <div class="child-section">Grade 7 – St. Matthew</div>
-          </div>
-        </div>
-        <div class="child-card" data-child="maya" onclick="switchChild('maya', this)">
-          <div class="child-avatar">MA</div>
-          <div class="child-info">
-            <div class="child-name">Maya Alcantara</div>
-            <div class="child-section">Grade 4 – St. Clare</div>
-          </div>
-        </div>
-      </div>
+      <div class="child-switcher" id="child-switcher"></div>
       <!-- end children[] loop -->
 
       <!-- Stat strip — recomputed per month, per child -->
@@ -327,9 +311,9 @@
     lucide.createIcons();
 
     /*
-      EJS NOTE: ATTENDANCE_BY_CHILD is a client-side placeholder for the prototype,
+      EJS NOTE: PARENT_ATTENDANCE_RECORDS is a client-side placeholder for the prototype,
       keyed by child then by 'YYYY-MM' month string. On conversion, fetch one month
-      at a time via GET /parent/attendance?child=:id&month=:m&year=:y rather than
+      at a time via GET /parent/attendance?studentId=:id&month=:m&year=:y rather than
       holding multiple months in memory.
     
       School days are Mon–Fri only (5-col grid) — weekends are not school days and
@@ -338,10 +322,12 @@
     */
     const TODAY_ISO = '2025-06-13';
 
-    const ATTENDANCE_BY_CHILD = {
-      juan: {
-        name: 'Juan Alcantara',
-        section: 'Grade 7 – St. Matthew',
+    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+
+    // Attendance records link to the shared student profile by studentId.
+    const PARENT_ATTENDANCE_RECORDS = window.EDUGNAY_CONFIG.withActiveSchool([
+      {
+        studentId: 'jd-004',
         months: {
           '2025-06': {
             label: 'June 2025',
@@ -373,9 +359,8 @@
           }
         }
       },
-      maya: {
-        name: 'Maya Alcantara',
-        section: 'Grade 4 – St. Clare',
+      {
+        studentId: 'mt-012',
         months: {
           '2025-06': {
             label: 'June 2025',
@@ -394,25 +379,28 @@
             }
           }
         }
-      },
-    };
+      }
+    ]);
 
-    let currentChild = 'juan';
+    let currentChild = PARENT_CHILDREN[0]?.studentId || null;
     let currentMonthKey = '2025-06';
     let selectedDate = null;
+
+    function getAttendanceRecord(studentId) {
+      return PARENT_ATTENDANCE_RECORDS.find(record => record.studentId === studentId);
+    }
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      const children = Object.entries(ATTENDANCE_BY_CHILD);
-      switcher.innerHTML = children.length
-        ? children.map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${child.name.split(' ').map(part => part[0]).slice(0, 2).join('')}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div></div>`).join('')
+      switcher.innerHTML = PARENT_CHILDREN.length
+        ? PARENT_CHILDREN.map(child => `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.gradeLevel} – ${child.sectionName}</div></div></div>`).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();
     }
 
     function switchChild(childKey, el) {
-      const child = ATTENDANCE_BY_CHILD[childKey];
+      const child = getAttendanceRecord(childKey);
       if (!child) return;
       currentChild = childKey;
       document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
@@ -432,7 +420,7 @@
     }
 
     function changeMonth(direction) {
-      const child = ATTENDANCE_BY_CHILD[currentChild];
+      const child = getAttendanceRecord(currentChild);
       const months = Object.keys(child?.months || {}).sort();
       if (!child || !months.length) return;
       const idx = months.indexOf(currentMonthKey);
@@ -450,7 +438,7 @@
     }
 
     function renderSummaryStrip() {
-      const child = ATTENDANCE_BY_CHILD[currentChild];
+      const child = getAttendanceRecord(currentChild);
       const month = child?.months?.[currentMonthKey];
       const summary = document.getElementById('summary-strip');
       if (!child || !month) {
@@ -496,7 +484,7 @@
     }
 
     function renderCalendar() {
-      const child = ATTENDANCE_BY_CHILD[currentChild];
+      const child = getAttendanceRecord(currentChild);
       const months = Object.keys(child?.months || {}).sort();
       const month = child?.months?.[currentMonthKey];
       const grid = document.getElementById('cal-grid');
@@ -565,9 +553,10 @@
     }
 
     function renderDayDetail() {
-      const child = ATTENDANCE_BY_CHILD[currentChild];
+      const child = getAttendanceRecord(currentChild);
+      const childProfile = PARENT_CHILDREN.find(record => record.studentId === currentChild);
       const month = child?.months?.[currentMonthKey];
-      if (!child || !month || !selectedDate || !month.days?.[selectedDate]) return;
+      if (!child || !childProfile || !month || !selectedDate || !month.days?.[selectedDate]) return;
 
       const titleEl = document.getElementById('dayDetailModalTitle');
       const container = document.getElementById('day-detail-modal-content');
@@ -580,9 +569,9 @@
       const entry = month.days[selectedDate];
       const subjects = Array.isArray(entry.subjects) ? entry.subjects : [];
       const bannerMap = {
-        present: { cls: 'present', icon: 'check-circle', title: 'Present', sub: `${child.name.split(' ')[0]} attended school on this day.`, bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
-        absent: { cls: 'absent', icon: 'circle-x', title: 'Absent', sub: `${child.name.split(' ')[0]} was marked absent. Contact the adviser if this seems incorrect.`, bg: 'rgba(239,68,68,0.12)', color: 'var(--red)' },
-        late: { cls: 'late', icon: 'clock', title: 'Late Arrival', sub: `${child.name.split(' ')[0]} arrived late to one or more classes.`, bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
+        present: { cls: 'present', icon: 'check-circle', title: 'Present', sub: `${childProfile.name.split(' ')[0]} attended school on this day.`, bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
+        absent: { cls: 'absent', icon: 'circle-x', title: 'Absent', sub: `${childProfile.name.split(' ')[0]} was marked absent. Contact the adviser if this seems incorrect.`, bg: 'rgba(239,68,68,0.12)', color: 'var(--red)' },
+        late: { cls: 'late', icon: 'clock', title: 'Late Arrival', sub: `${childProfile.name.split(' ')[0]} arrived late to one or more classes.`, bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
       };
       const b = bannerMap[entry.status];
 
@@ -625,10 +614,11 @@
     });
 
     function renderFlaggedDays() {
-      const child = ATTENDANCE_BY_CHILD[currentChild];
+      const child = getAttendanceRecord(currentChild);
+      const childProfile = PARENT_CHILDREN.find(record => record.studentId === currentChild);
       const container = document.getElementById('flagged-list');
       const month = child?.months?.[currentMonthKey];
-      if (!child || !month) {
+      if (!child || !childProfile || !month) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No flagged days', text: 'Absence details will appear here when a child account is linked.' });
         lucide.createIcons();
         return;
@@ -642,7 +632,7 @@
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'calendar-check',
           title: 'No absences this month',
-          text: child.name.split(' ')[0] + ' has a clean attendance record so far.'
+          text: childProfile.name.split(' ')[0] + ' has a clean attendance record so far.'
         });
         if (window.lucide) lucide.createIcons();
         return;
@@ -678,11 +668,13 @@
       });
     });
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { toggleDrawer(false); closeDayDetailModal(); closeProfileMenu(); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { toggleDrawer(false); closeDayDetailModal(); toggleProfileDropdown(false); } });
 
     /* ── INIT ── */
-    renderChildSwitcher();
-    renderAll();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderChildSwitcher();
+      renderAll();
+    });
   </script>
 
 </body>

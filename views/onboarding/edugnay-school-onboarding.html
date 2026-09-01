@@ -16,15 +16,40 @@
 <body>
   <main class="onboarding-page">
     <section class="onboarding-brand" aria-label="E-Ugnay organization onboarding">
-      <div class="onboarding-brand-mark">
-        <img src="../../assets/images/edUgnay-logo-circle.png" alt="E-Ugnay" />
-      </div>
-      <div class="onboarding-brand-copy">
-        <h1>Bring your school community into one clear view.</h1>
+      <img class="login-brand-watermark" src="../../assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
+      <svg class="login-network-pattern" viewBox="0 0 700 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <path d="M42 132 L214 72 L332 196 L510 116 L658 226" />
+        <path d="M92 432 L236 312 L390 392 L566 294 L676 432" />
+        <path d="M214 72 L236 312 M332 196 L390 392 M510 116 L566 294" />
+        <circle cx="42" cy="132" r="6" />
+        <circle cx="214" cy="72" r="7" />
+        <circle cx="332" cy="196" r="6" />
+        <circle cx="510" cy="116" r="7" />
+        <circle cx="658" cy="226" r="6" />
+        <circle cx="92" cy="432" r="6" />
+        <circle cx="236" cy="312" r="7" />
+        <circle cx="390" cy="392" r="6" />
+        <circle cx="566" cy="294" r="7" />
+        <circle cx="676" cy="432" r="6" />
+      </svg>
+      <div class="login-brand-content">
+        <div class="system-mark">
+          <div class="system-crest">
+            <img src="../../assets/images/edUgnay-logo-circle.png" alt="E-Ugnay logo" />
+          </div>
+          <div class="system-name">E-Ugnay</div>
+        </div>
+        <div class="login-brand-copy">
+          <div class="login-brand-kicker">School onboarding</div>
+          <h1 class="login-brand-heading">Bring your school community into one clear view.</h1>
+        </div>
       </div>
     </section>
 
     <section class="onboarding-form-area">
+      <div class="login-mobile-brand onboarding-mobile-brand" aria-label="E-Ugnay">
+        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" />
+      </div>
       <div class="onboarding-card">
           <div class="onboarding-form-head">
             <div class="onboarding-form-heading">
@@ -56,7 +81,7 @@
             <div class="onboarding-grid">
               <div class="onboarding-field">
                 <label for="schoolName">School or organization name</label>
-                <input id="schoolName" name="schoolName" type="text" placeholder="St. Columban's College" required />
+                <input id="schoolName" name="schoolName" type="text" placeholder="Your school name" required />
               </div>
               <div class="onboarding-field">
                 <label for="schoolId">School ID</label>
@@ -214,43 +239,40 @@
         return;
       }
       const type = window.EDUGNAY_CONFIG.getSchoolTypeInfo(schoolLevels);
+      const activeDivision = schoolLevels.includes('jhs') ? 'jhs' : schoolLevels[0];
+      const schoolRecordId = `${slugify(values.schoolName)}-${Date.now()}`;
+      const divisions = Object.fromEntries(
+        schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)])
+      );
       const school = {
-        id: `${slugify(values.schoolName)}-${Date.now()}`,
+        id: schoolRecordId,
         name: values.schoolName.trim(),
         shortName: values.schoolName.trim().toUpperCase(),
         schoolType: type.value,
         typeLabel: type.label,
-        schoolId: values.schoolId.trim(),
+        schoolId: values.schoolId.trim() || null,
         address: values.schoolAddress.trim(),
-        phone: values.schoolPhone.trim(),
+        phone: values.schoolPhone.trim() || null,
         email: values.schoolEmail.trim(),
-        website: values.schoolWebsite.trim(),
-        logoUrl: '',
-        photos: [],
+        website: values.schoolWebsite.trim() || null,
+        logoUrl: null,
         schoolYear: '2025-2026',
-        academicPeriod: type.value === 'shs' ? '1st Semester' : 'Quarter 1',
+        platformStatus: 'pending',
+        submittedAt: new Date().toISOString(),
         gradesPageEnabled: true,
         narrativeReportsEnabled: true,
         journalsEnabled: true,
         journalSubjectId: 'values-education',
-        platformStatus: 'pending',
+        attendanceRules: window.EDUGNAY_CONFIG.attendanceDefaults,
+        activeDivision,
         schoolLevels,
-        subjects: [...new Set(schoolLevels.flatMap(level => window.EDUGNAY_CONFIG.subjects
-          .filter(subject => subject.levels.includes(level))
-          .map(subject => subject.id)))],
-        sections: [],
-        gradingRules: [
-          { id: 'ww', label: 'Written Work', weight: 30 },
-          { id: 'pt', label: 'Performance Task', weight: 50 },
-          { id: 'qa', label: 'Quarterly Assessment', weight: 20 }
-        ],
+        divisions,
         initialAdministrator: {
+          schoolId: schoolRecordId,
           name: values.adminName.trim(),
           email: values.adminEmail.trim()
         }
       };
-      school.activeDivision = schoolLevels.includes('jhs') ? 'jhs' : schoolLevels[0];
-      school.divisions = Object.fromEntries(schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)]));
 
       const logoInput = document.getElementById('schoolLogo');
       const saveSchool = logoData => {
@@ -259,7 +281,7 @@
         schools.push(school);
         window.EDUGNAY_CONFIG?.saveSchools?.(schools);
         window.EDUGNAY_CONFIG?.setActiveSchool?.(school.id);
-        localStorage.setItem('edugnay_onboarding_admin', JSON.stringify(school.initialAdministrator));
+        localStorage.setItem(`edugnay_onboarding_admin:${school.id}`, JSON.stringify(school.initialAdministrator));
         const message = document.getElementById('onboardingMessage');
         message.textContent = `${school.name} is ready. Configure grades, sections, subjects, grading rules, and calendar settings in `;
         const adminLink = document.createElement('a');
@@ -283,9 +305,11 @@
       }
     }
 
-    populateSchoolLevels();
-    document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
-    if (window.lucide) lucide.createIcons();
+    document.addEventListener('DOMContentLoaded', async () => {
+      populateSchoolLevels();
+      document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
+      if (window.lucide) lucide.createIcons();
+    });
   </script>
 </body>
 </html>

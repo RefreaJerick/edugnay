@@ -145,24 +145,6 @@
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-    }
-
-    function platformDateGroup(value) {
-      const date = new Date(value);
-      const today = new Date();
-      const dayStart = item => new Date(item.getFullYear(), item.getMonth(), item.getDate());
-      const daysApart = Math.round((dayStart(today) - dayStart(date)) / 86400000);
-      if (daysApart === 0) return 'Today';
-      if (daysApart === 1) return 'Yesterday';
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    }
-
-    function platformTime(value) {
-      return new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
     function renderPlatformWeek() {
       const grid = document.getElementById('weekCalendarGrid');
       const rangeLabel = document.getElementById('weekRangeLabel');
@@ -198,12 +180,12 @@
       let activityHtml = '';
 
       activities.forEach(activity => {
-        const group = platformDateGroup(activity.createdAt);
+        const group = formatDateGroup(activity.createdAt);
         if (group !== lastGroup) {
           activityHtml += `<div class="activity-group-label">${group}</div>`;
           lastGroup = group;
         }
-        activityHtml += `<div class="activity-item"><div class="act-icon ${activity.tone}"><i data-lucide="${activity.icon}" style="width:15px;height:15px;"></i></div><div class="act-body"><div class="act-text"><strong>${escapeHtml(activity.title)}</strong> ${escapeHtml(activity.detail)}</div><div class="act-time">${platformTime(activity.createdAt)}</div></div><span class="act-tag">${escapeHtml(activity.type)}</span></div>`;
+        activityHtml += `<div class="activity-item"><div class="act-icon ${activity.tone}"><i data-lucide="${activity.icon}" style="width:15px;height:15px;"></i></div><div class="act-body"><div class="act-text"><strong>${escapeHtml(activity.actor)}</strong> ${escapeHtml(activity.title)} ${escapeHtml(activity.detail || '')}</div><div class="act-time">${formatTime(activity.createdAt)}</div></div><span class="act-tag">${escapeHtml(activity.type)}</span></div>`;
       });
       activityList.innerHTML = activities.length
         ? activityHtml
@@ -245,7 +227,7 @@
       if (window.lucide) window.lucide.createIcons();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       renderPlatformDashboard();
       renderPlatformWeek();
       PLATFORM.renderTopbarNotifs();

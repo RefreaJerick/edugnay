@@ -541,19 +541,22 @@
   <script>
     lucide.createIcons();
 
-    // Page data boundary: replace this array with the teacher dashboard API later.
+    // Dashboard-only records stay local for now; replace this data source with
+    // the teacher dashboard API later without changing the rendering markup.
     // Advisership and a subject assignment stay separate, so subject can be blank.
-    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Values Education';
-    const TEACHER_SECTIONS = [
-      { grade: '7', id: '7-matthew', sourceSectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subject: journalSubjectName, isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '8', id: '8-luke', sourceSectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '8', id: '8-john', sourceSectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subject: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
-      { grade: '9', id: '9-peter', sourceSectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subject: 'Math', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
-      { grade: '9', id: '9-paul', sourceSectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subject: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
-    ];
+    const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
+    const journalSubjectName = journalSubject?.name || 'Values Education';
+    const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+    const TEACHER_SECTIONS = window.EDUGNAY_CONFIG.withActiveSchool([
+      { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName, isAdviser: window.EDUGNAY_TEACHER_ACCESS.isAdviser, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '8', id: '8-luke', sectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '8', id: '8-john', sectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subjectId: 'science', subjectName: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' },
+      { grade: '9', id: '9-peter', sectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false, attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' },
+      { grade: '9', id: '9-paul', sectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subjectId: 'science', subjectName: 'Science', isAdviser: false, attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
+    ]);
 
     function getTeacherSectionSub(section) {
-      return [section.isAdviser ? 'Class Adviser' : '', section.subject || '']
+      return [section.isAdviser ? 'Class Adviser' : '', section.subjectName || '']
         .filter(Boolean)
         .join(' · ');
     }
@@ -561,33 +564,26 @@
     // The dashboard derives its roster from the same shared student directory
     // used by Admin Users and Class Management. An API response can replace this
     // filtered array later without changing the card or section renderers.
-    const TEACHER_STUDENT_RECORDS = window.EDUGNAY_CONFIG.students
-      .filter(student => TEACHER_SECTIONS.some(section => section.sourceSectionId === student.sectionId))
+    const TEACHER_STUDENT_RECORDS = window.EDUGNAY_CONFIG.getStudents()
+      .filter(student => TEACHER_SECTIONS.some(section => section.sectionId === student.sectionId))
       .map(student => ({
         ...student,
-        teacherSectionId: TEACHER_SECTIONS.find(section => section.sourceSectionId === student.sectionId).id
+        sectionId: student.sectionId
       }));
 
     function getTeacherSectionStudentCount(sectionId) {
-      return TEACHER_STUDENT_RECORDS.filter(student => student.teacherSectionId === sectionId).length;
+      return TEACHER_STUDENT_RECORDS.filter(student => student.sectionId === sectionId).length;
     }
 
-    const TEACHER_REPORTS_TO_CONFIRM = [
-      { id: 3, studentName: 'Cruz, Ramon D.', status: 'pending' },
-      { id: 4, studentName: 'Dela Torre, Ana F.', status: 'pending' },
-      { id: 5, studentName: 'Estrada, Jose G.', status: 'pending' },
-      { id: 7, studentName: 'Hernandez, Carlo I.', status: 'pending' },
-      { id: 8, studentName: 'Ibarra, Rosa J.', status: 'pending' }
-    ];
+    const TEACHER_REPORTS_TO_CONFIRM = window.EDUGNAY_CONFIG.getReportsForTeacher(TEACHER_ID, '2025-W23');
 
-    const FLAGGED_STUDENTS = [
+    const FLAGGED_STUDENTS = window.EDUGNAY_CONFIG.withActiveSchool([
       { name: 'Ben Garcia', initials: 'BG', section: '9-peter', detail: 'Grade 9 - St. Peter', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
       { name: 'Sofia Cruz', initials: 'SC', section: '8-luke', detail: 'Grade 8 - St. Luke', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
       { name: 'Noel Pascual', initials: 'NP', section: '9-paul', detail: 'Grade 9 - St. Paul', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
       { name: 'Uma Reyes', initials: 'UR', section: '7-matthew', detail: 'Grade 7 - St. Matthew', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
-    ];
+    ]);
 
-    const TEACHER_IS_ADVISER = window.EDUGNAY_TEACHER_ACCESS.isAdviser;
     const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
     const TEACHER_SUMMARY_CARDS = [
@@ -622,17 +618,13 @@
           }
     ];
 
-    const TEACHER_DASHBOARD_ANNOUNCEMENTS = [
-      { title: 'Q2 Grade Encoding Deadline: June 14', tag: 'Urgent', tagClass: 'badge-red', body: 'All subject teachers must complete Q2 grade encoding no later than June 14, 2025.', time: 'Today, 8:00 AM', author: 'Admin' },
-      { title: 'Foundation Day: June 20, 2025', tag: 'Event', tagClass: 'badge-gold', body: 'Classes are suspended. All faculty are expected to attend the program.', time: 'May 30, 10:00 AM', author: 'Admin' },
-      { title: 'Journal Window Open: Friday', tag: 'Normal', tagClass: 'badge-blue', body: 'Remind students to submit weekly journal entries before 11:59 PM Friday.', time: 'Yesterday, 3:00 PM', author: 'Admin', access: 'journals' }
-    ];
+    const TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
 
-    const PENDING_TASKS = [
+    const PENDING_TASKS = window.EDUGNAY_CONFIG.withActiveSchool([
       ...(TEACHER_CAN_REVIEW_REPORTS ? [{ title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
       { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
       { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
-    ];
+    ]);
 
     function renderTeacherDashboardData() {
       const summaryList = document.getElementById('teacher-summary-cards');
@@ -655,7 +647,7 @@
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
             <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${getTeacherSectionSub(section)}</div></div></div>
             <div class="section-card-divider"></div>
-            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.id)}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
+            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.sectionId)}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
           </div>`).join('') + `<div id="teacherSectionsEmpty" class="panel-empty-slot" hidden></div>`;
         const sectionEmpty = document.getElementById('teacherSectionsEmpty');
         if (sectionEmpty && !TEACHER_SECTIONS.length) {
@@ -691,8 +683,6 @@
       lucide.createIcons();
     }
 
-    renderTeacherDashboardData();
-
     const MAX_SECTION_CARDS = 6;
     let currentSectionFilter = 'all';
 
@@ -724,8 +714,6 @@
       }
       lucide.createIcons();
     }
-
-    applySectionFilter();
 
     function renderWeekCalendar() {
       const grid = document.getElementById('weekCalendarGrid');
@@ -762,17 +750,21 @@
         rangeLabel.parentElement.dataset.currentDate = rangeLabel.dataset.currentDate;
       }
     }
-    renderWeekCalendar();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderTeacherDashboardData();
+      applySectionFilter();
+      renderWeekCalendar();
 
-    const currentDate = document.getElementById('currentDate');
-    if (currentDate) {
-      currentDate.textContent = new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    }
+      const currentDate = document.getElementById('currentDate');
+      if (currentDate) {
+        currentDate.textContent = new Date().toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+    });
 
     function filterFlaggedStudents() {
       const selected = document.getElementById('flagSectionFilter').value;

@@ -11,7 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/grades.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
@@ -23,13 +22,12 @@
   <!--
     EJS CONVERSION MAP
     student                    -> authenticated student record
-    gradeRecords[]             -> grades for the active student and school year
+    gradeRecords[]             -> shared records grouped by academic period
     gradeRecords[].subjects[]  -> structured subject marks from the gradebook
 
-    The arrays below are local frontend data for the prototype. Replace them
-    with the student grades response later and keep the render functions as the
-    view layer. Grade visibility can later be guarded by the school's portal
-    access setting on both the server and the client.
+    The page reads the shared local source for now. Replace that getter with
+    the student grades response later and keep these render functions as the
+    view layer. Grade visibility must still be enforced by the server.
   -->
 
   <div class="shell">
@@ -185,56 +183,13 @@
   <script>
     lucide.createIcons();
 
-    const STUDENT_RECORD = {
-      id: 'STU-001',
-      name: 'Juan Dela Cruz',
-      section: 'Grade 7 - St. Matthew',
-      schoolYear: '2025-2026'
-    };
-
-    // Replace this local array with GET /student/grades?schoolYear=... later.
-    const STUDENT_GRADE_RECORDS = [
-      {
-        id: 'q1', label: 'Quarter 1', status: 'final',
-        subjects: [
-          { id: 'math-q1', subjectId: 'math', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 89, remark: 'Very Satisfactory' },
-          { id: 'eng-q1', subjectId: 'english', name: 'English', teacher: 'Mr. Paolo Santos', score: 87, remark: 'Very Satisfactory' },
-          { id: 'sci-q1', subjectId: 'science', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88, remark: 'Very Satisfactory' },
-          { id: 'fil-q1', subjectId: 'filipino', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 90, remark: 'Outstanding' },
-          { id: 've-q1', subjectId: 'values-education', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 91, remark: 'Outstanding' },
-          { id: 'ap-q1', subjectId: 'araling-panlipunan', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: 87, remark: 'Very Satisfactory' },
-          { id: 'mapeh-q1', subjectId: 'mapeh', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: 89, remark: 'Very Satisfactory' }
-        ]
-      },
-      {
-        id: 'q2', label: 'Quarter 2', status: 'final',
-        subjects: [
-          { id: 'math-q2', subjectId: 'math', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 92.5, remark: 'Outstanding' },
-          { id: 'eng-q2', subjectId: 'english', name: 'English', teacher: 'Mr. Paolo Santos', score: 90, remark: 'Outstanding' },
-          { id: 'sci-q2', subjectId: 'science', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88.5, remark: 'Very Satisfactory' },
-          { id: 'fil-q2', subjectId: 'filipino', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 91, remark: 'Outstanding' },
-          { id: 've-q2', subjectId: 'values-education', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 94, remark: 'Outstanding' },
-          { id: 'ap-q2', subjectId: 'araling-panlipunan', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: null, remark: 'Pending release' },
-          { id: 'mapeh-q2', subjectId: 'mapeh', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: null, remark: 'Pending release' }
-        ]
-      },
-      { id: 'q3', label: 'Quarter 3', status: 'not-started', subjects: [] },
-      {
-        id: 'q4', label: 'Quarter 4', status: 'not-started', subjects: []
-      }
-    ];
+    // Replace the shared getter with GET /student/grades later without
+    // changing the grade tabs or subject-row renderer.
+    const STUDENT_ID = 'jd-004';
+    const STUDENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
+    const STUDENT_GRADE_RECORDS = window.EDUGNAY_CONFIG.getGradesForStudent(STUDENT_ID, STUDENT_SCHOOL_YEAR);
 
     let activeQuarterId = 'q2';
-
-    function escapeHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character];
-      });
-    }
-
-    function isRecorded(score) {
-      return score !== null && score !== undefined && score !== '' && Number.isFinite(Number(score));
-    }
 
     function getActiveQuarter() {
       return STUDENT_GRADE_RECORDS.find(record => record.id === activeQuarterId) || STUDENT_GRADE_RECORDS[0];
@@ -309,7 +264,9 @@
       lucide.createIcons();
     }
 
-    renderGrades();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderGrades();
+    });
   </script>
 </body>
 

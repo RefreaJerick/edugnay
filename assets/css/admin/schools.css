@@ -391,22 +391,6 @@
   background: var(--gray-50);
 }
 
-.school-photo-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.school-photo-list img {
-  width: 112px;
-  height: 72px;
-  border: 1px solid var(--gray-200);
-  border-radius: 10px;
-  object-fit: cover;
-  background: var(--gray-50);
-}
-
 .school-section-block {
   margin-top: 24px;
   padding-top: 20px;

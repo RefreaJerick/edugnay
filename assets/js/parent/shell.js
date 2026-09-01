@@ -5,90 +5,102 @@
    data from GET /parent/notifications
    ══════════════════════════════════════════ */
 
+/* ── LINKED CHILDREN DATA ── */
+const PARENT_CONFIG = window.EDUGNAY_CONFIG;
+const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
+const PARENT_STUDENTS = PARENT_CONFIG.getStudents();
+const PARENT_SECTIONS = PARENT_CONFIG.getAssignmentSections();
+const PARENT_USERS = PARENT_CONFIG.getUsers();
+
+// The demo parent uses the shared relationship records for this school.
+// Replace this list with GET /parent/children later; the page contracts stay the same.
+const PARENT_CHILD_DIRECTORY = PARENT_CONFIG.getParentStudentLinks()
+  .filter(link => (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID)
+  .map(link => {
+    const student = PARENT_STUDENTS.find(record => record.id === link.studentId);
+    if (!student) return null;
+
+    const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+    const adviser = PARENT_USERS.find(record => record.profileId === section?.adviserId);
+    return {
+      studentId: student.id,
+      lrn: student.lrn || null,
+      name: student.name,
+      initials: student.initials,
+      schoolLevel: student.schoolLevel || student.level,
+      gradeLevel: student.gradeLevel || student.grade,
+      sectionId: student.sectionId || null,
+      sectionName: section?.name || 'Unassigned',
+      adviserId: section?.adviserId || null,
+      adviserName: adviser?.displayName || 'Not assigned',
+      relationship: 'Parent',
+      schoolId: student.schoolId || PARENT_SCHOOL_ID
+    };
+  })
+  .filter(Boolean);
+
+window.EDUGNAY_PARENT = {
+  children: PARENT_CHILD_DIRECTORY
+};
+
 /* ── NOTIFICATIONS DATA ── */
 const NOTIFICATIONS = [
   {
-    id: 5, icon: 'sparkles', color: 'purple', tag: 'Report', read: false, access: 'reports',
+    id: 'parent-notif-report-001', icon: 'sparkles', tone: 'purple', type: 'Report', read: false, access: 'reports',
     title: 'Weekly report sent',
-    desc: 'Juan\'s weekly report for June 9–14 is now available.',
+    message: 'Juan\'s weekly report for June 9–14 is now available.',
     link: { page: 'reports' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
   },
   {
-    id: 4, icon: 'circle-alert', color: 'red', tag: 'Attendance', read: false,
+    id: 'parent-notif-attendance-001', icon: 'circle-alert', tone: 'red', type: 'Attendance', read: false,
     title: 'Absence recorded',
-    desc: 'Maya was marked absent today. Contact the adviser if this seems incorrect.',
+    message: 'Maya was marked absent today. Contact the adviser if this seems incorrect.',
     link: { page: 'attendance' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
   {
-    id: 2, icon: 'megaphone', color: 'gold', tag: 'Announcement', read: true,
+    id: 'parent-notif-announcement-001', icon: 'megaphone', tone: 'gold', type: 'Announcement', read: true,
     title: 'New announcement',
-    desc: 'Foundation Day — June 20. Classes suspended.',
+    message: 'Foundation Day — June 20. Classes suspended.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
+    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
   },
   {
-    id: 1, icon: 'file-text', color: 'blue', tag: 'Report', read: true, access: 'reports',
+    id: 'parent-notif-report-002', icon: 'file-text', tone: 'blue', type: 'Report', read: true, access: 'reports',
     title: 'Narrative report confirmed',
-    desc: 'Q2 narrative reports are now viewable on your dashboard.',
+    message: 'Q2 narrative reports are now viewable on your dashboard.',
     link: { page: 'reports' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   },
   {
-    id: 0, icon: 'calendar-clock', color: 'gray', tag: 'Reminder', read: true,
+    id: 'parent-notif-event-001', icon: 'calendar-clock', tone: 'gray', type: 'Reminder', read: true,
     title: 'Upcoming event',
-    desc: 'Intramurals sign-up is open at the Student Affairs table.',
+    message: 'Intramurals sign-up is open at the Student Affairs table.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
-];
+]
+  .map(record => ({ ...record, schoolId: 'scc' }))
+  .filter(record => record.schoolId === PARENT_SCHOOL_ID);
 
-/* ── READ STATE (localStorage; swap for DB column later) ── */
-const PARENT_READ_STORE_KEY = 'edugnay_parent_notif_read';
-
-function getReadIds() {
-  try { return JSON.parse(localStorage.getItem(PARENT_READ_STORE_KEY)) || []; }
-  catch { return []; }
-}
-function setReadIds(ids) {
-  localStorage.setItem(PARENT_READ_STORE_KEY, JSON.stringify(ids));
-}
-function applyReadState() {
-  const readIds = getReadIds();
-  NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
-}
+const PARENT_READ_STORE_KEY = `edugnay_parent_notif_read:${PARENT_SCHOOL_ID}`;
 
 function getParentVisibleNotifications() {
   const reportsEnabled = window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
   return NOTIFICATIONS.filter(notification => !notification.access || reportsEnabled);
 }
 
-/* ── TIME HELPERS ── */
-function formatRelativeTime(dateStr) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHrs = Math.floor(diffMs / 3600000);
-  if (diffHrs < 1) return 'Just now';
-  if (diffHrs < 24) return `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`;
-  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-  if (diffDays === 1) return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
-         date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  applyReadState();
+  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, PARENT_READ_STORE_KEY);
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
 
   const visibleNotifications = getParentVisibleNotifications();
   const top5 = [...visibleNotifications]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
   const unreadLabel = document.querySelector('.tb-notif-unread-count');
   const unreadCount = visibleNotifications.filter(n => !n.read).length;
@@ -108,16 +120,16 @@ function renderTopbarNotifs() {
   }
 
   container.innerHTML = top5.map(n => `
-    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${n.id})'>
-      <div class="tb-notif-icon ${n.color}">
+    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
+      <div class="tb-notif-icon ${n.tone}">
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-head">
           <div class="tb-notif-title">${n.title}</div>
         </div>
-        <div class="tb-notif-desc">${n.desc}</div>
-        <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>
+        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
   `).join('');
@@ -129,10 +141,15 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  const ids = getReadIds();
-  if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
+  window.EDUGNAY_CONFIG.markNotificationRead(PARENT_READ_STORE_KEY, id, NOTIFICATIONS);
   navigate(link.page);
 }
+
+window.EDUGNAY_NOTIFICATION_CONTEXT = {
+  storageKey: PARENT_READ_STORE_KEY,
+  records: NOTIFICATIONS,
+  getItems: getParentVisibleNotifications
+};
 
 
 /* ── NAVIGATION ── */
@@ -186,7 +203,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyParentReportAccess();
   renderTopbarNotifs();
 });

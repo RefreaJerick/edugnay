@@ -137,24 +137,6 @@
     let activeTypeFilter = 'all';
     let visibleCount = PAGE_SIZE;
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-    }
-
-    function formatDateGroup(value) {
-      const date = new Date(value);
-      const today = new Date();
-      const dayStart = item => new Date(item.getFullYear(), item.getMonth(), item.getDate());
-      const daysApart = Math.round((dayStart(today) - dayStart(date)) / 86400000);
-      if (daysApart === 0) return 'Today';
-      if (daysApart === 1) return 'Yesterday';
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    }
-
-    function formatTime(value) {
-      return new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
     function setActivityTypeFilter(element, type) {
       document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(chip => chip.classList.remove('active'));
       element.classList.add('active');
@@ -172,7 +154,7 @@
         .filter(activity => activeTypeFilter === 'all' || activity.type === activeTypeFilter)
         .filter(activity => {
           if (!query) return true;
-          return [activity.title, activity.detail, activity.type].join(' ').toLowerCase().includes(query);
+          return [activity.actor, activity.title, activity.detail, activity.type].join(' ').toLowerCase().includes(query);
         })
         .filter(activity => {
           if (dateFilter === 'all') return true;
@@ -227,7 +209,7 @@
           <div class="activity-item">
             <div class="act-icon ${escapeHtml(activity.tone)}"><i data-lucide="${escapeHtml(activity.icon)}" style="width:15px;height:15px;"></i></div>
             <div class="act-body">
-              <div class="act-text"><strong>${escapeHtml(activity.title)}</strong> ${escapeHtml(activity.detail)}</div>
+              <div class="act-text"><strong>${escapeHtml(activity.actor)}</strong> ${escapeHtml(activity.title)} ${escapeHtml(activity.detail || '')}</div>
               <div class="act-time">${escapeHtml(formatTime(activity.createdAt))}</div>
             </div>
             <span class="act-tag">${escapeHtml(activity.type)}</span>
@@ -239,7 +221,7 @@
       if (window.lucide) window.lucide.createIcons();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       renderActivityList();
       PLATFORM.renderTopbarNotifs();
       if (window.lucide) window.lucide.createIcons();

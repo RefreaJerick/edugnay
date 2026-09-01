@@ -17,7 +17,6 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
@@ -25,8 +24,8 @@
 
   <!--
     EJS CONVERSION MAP
-    parentGradeRecords[] is the local prototype source for the selected
-    children's grade records. Replace it with GET /parent/grades?child=:id
+    parentGradeRecords[] is grouped from the shared school grade source for
+    the selected children. Replace its getter with GET /parent/grades?studentId=:id
     later. Keep the render functions as the view layer and enforce the
     school's grade visibility setting on the server during conversion.
   -->
@@ -138,7 +137,7 @@
               <i data-lucide="user" style="width:15px;height:15px;"></i> My Profile
             </a>
             <div class="tb-dropdown-divider"></div>
-            <button class="tb-dropdown-item danger" type="button" onclick="closeProfileMenu(); confirmLogout();">
+            <button class="tb-dropdown-item danger" type="button" onclick="toggleProfileDropdown(false); confirmLogout();">
               <i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out
             </button>
           </div>
@@ -182,97 +181,30 @@
   <script>
     lucide.createIcons();
 
-    // Replace this local array with GET /parent/grades?child=:id later.
-    // Each record mirrors the structured grade response the parent can view.
-    const PARENT_GRADE_RECORDS = [
-      {
-        childId: 'juan',
-        name: 'Juan Alcantara',
-        section: 'Grade 7 - St. Matthew',
-        schoolYear: '2025-2026',
-        quarters: [
-          {
-            id: 'q1', label: 'Quarter 1', status: 'final',
-            subjects: [
-              { id: 'juan-math-q1', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 89, remark: 'Very Satisfactory' },
-              { id: 'juan-eng-q1', name: 'English', teacher: 'Mr. Paolo Santos', score: 87, remark: 'Very Satisfactory' },
-              { id: 'juan-sci-q1', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88, remark: 'Very Satisfactory' },
-              { id: 'juan-fil-q1', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 90, remark: 'Outstanding' },
-              { id: 'juan-ve-q1', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 91, remark: 'Outstanding' },
-              { id: 'juan-ap-q1', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: 87, remark: 'Very Satisfactory' },
-              { id: 'juan-mapeh-q1', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: 89, remark: 'Very Satisfactory' }
-            ]
-          },
-          {
-            id: 'q2', label: 'Quarter 2', status: 'final',
-            subjects: [
-              { id: 'juan-math-q2', name: 'Mathematics', teacher: 'Ms. Maria Reyes', score: 92.5, remark: 'Outstanding' },
-              { id: 'juan-eng-q2', name: 'English', teacher: 'Mr. Paolo Santos', score: 90, remark: 'Outstanding' },
-              { id: 'juan-sci-q2', name: 'Science', teacher: 'Mrs. Liza Ramos', score: 88.5, remark: 'Very Satisfactory' },
-              { id: 'juan-fil-q2', name: 'Filipino', teacher: 'Mr. Andres Cruz', score: 91, remark: 'Outstanding' },
-              { id: 'juan-ve-q2', name: 'Values Education', teacher: 'Ms. Maria Reyes', score: 94, remark: 'Outstanding' },
-              { id: 'juan-ap-q2', name: 'Araling Panlipunan', teacher: 'Mrs. Carmen Reyes', score: null, remark: 'Pending release' },
-              { id: 'juan-mapeh-q2', name: 'MAPEH', teacher: 'Mr. Jun Bautista', score: null, remark: 'Pending release' }
-            ]
-          },
-          { id: 'q3', label: 'Quarter 3', status: 'not-started', subjects: [] },
-          { id: 'q4', label: 'Quarter 4', status: 'not-started', subjects: [] }
-        ]
-      },
-      {
-        childId: 'maya',
-        name: 'Maya Alcantara',
-        section: 'Grade 4 - St. Clare',
-        schoolYear: '2025-2026',
-        quarters: [
-          {
-            id: 'q1', label: 'Quarter 1', status: 'final',
-            subjects: [
-              { id: 'maya-math-q1', name: 'Mathematics', teacher: 'Mrs. Joy Fernandez', score: 90, remark: 'Outstanding' },
-              { id: 'maya-eng-q1', name: 'English', teacher: 'Mrs. Joy Fernandez', score: 88, remark: 'Very Satisfactory' },
-              { id: 'maya-sci-q1', name: 'Science', teacher: 'Mr. Noel Garcia', score: 90, remark: 'Outstanding' },
-              { id: 'maya-fil-q1', name: 'Filipino', teacher: 'Ms. Ana Ramos', score: 90, remark: 'Outstanding' }
-            ]
-          },
-          {
-            id: 'q2', label: 'Quarter 2', status: 'final',
-            subjects: [
-              { id: 'maya-math-q2', name: 'Mathematics', teacher: 'Mrs. Joy Fernandez', score: 92, remark: 'Outstanding' },
-              { id: 'maya-eng-q2', name: 'English', teacher: 'Mrs. Joy Fernandez', score: 90, remark: 'Outstanding' },
-              { id: 'maya-sci-q2', name: 'Science', teacher: 'Mr. Noel Garcia', score: 91, remark: 'Outstanding' },
-              { id: 'maya-fil-q2', name: 'Filipino', teacher: 'Ms. Ana Ramos', score: 93, remark: 'Outstanding' }
-            ]
-          },
-          { id: 'q3', label: 'Quarter 3', status: 'not-started', subjects: [] },
-          { id: 'q4', label: 'Quarter 4', status: 'not-started', subjects: [] }
-        ]
-      }
-    ];
+    // Each child's periods come from the shared grade source. Replace the
+    // getter with GET /parent/grades?child=:id later.
+    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    const PARENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
+    const PARENT_GRADE_RECORDS = PARENT_CHILDREN.map(child => ({
+      studentId: child.studentId,
+      schoolYear: PARENT_SCHOOL_YEAR,
+      quarters: window.EDUGNAY_CONFIG.getGradesForStudent(child.studentId, PARENT_SCHOOL_YEAR)
+    }));
 
-    let activeChildId = 'juan';
+    let activeChildId = PARENT_CHILDREN[0]?.studentId || null;
     let activeQuarterId = 'q2';
 
-    function escapeHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character];
-      });
-    }
-
-    function getInitials(name) {
-      return String(name || '').split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
-    }
-
-    function isRecorded(score) {
-      return score !== null && score !== undefined && score !== '' && Number.isFinite(Number(score));
-    }
-
     function getActiveChild() {
-      return PARENT_GRADE_RECORDS.find(child => child.childId === activeChildId) || PARENT_GRADE_RECORDS[0];
+      return PARENT_CHILDREN.find(child => child.studentId === activeChildId);
+    }
+
+    function getActiveGradeRecord() {
+      return PARENT_GRADE_RECORDS.find(record => record.studentId === activeChildId);
     }
 
     function getActiveQuarter() {
-      const child = getActiveChild();
-      const quarters = Array.isArray(child?.quarters) ? child.quarters : [];
+      const gradeRecord = getActiveGradeRecord();
+      const quarters = Array.isArray(gradeRecord?.quarters) ? gradeRecord.quarters : [];
       return quarters.find(quarter => quarter.id === activeQuarterId) || quarters[0];
     }
 
@@ -286,16 +218,16 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('parentGradeChildSwitcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_GRADE_RECORDS.length ? PARENT_GRADE_RECORDS.map(child => `
-        <div class="child-card ${child.childId === activeChildId ? 'active' : ''}" data-child-id="${escapeHtml(child.childId)}" role="button" tabindex="0" aria-pressed="${child.childId === activeChildId}">
-          <div class="child-avatar">${escapeHtml(getInitials(child.name))}</div>
+      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(child => `
+        <div class="child-card ${child.studentId === activeChildId ? 'active' : ''}" data-student-id="${escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${child.studentId === activeChildId}">
+          <div class="child-avatar">${escapeHtml(child.initials)}</div>
           <div class="child-info">
             <div class="child-name">${escapeHtml(child.name)}</div>
-            <div class="child-section">${escapeHtml(child.section)}</div>
+            <div class="child-section">${escapeHtml(child.gradeLevel)} – ${escapeHtml(child.sectionName)}</div>
           </div>
         </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
-      switcher.querySelectorAll('[data-child-id]').forEach(card => {
-        const selectChild = () => switchChild(card.dataset.childId);
+      switcher.querySelectorAll('[data-student-id]').forEach(card => {
+        const selectChild = () => switchChild(card.dataset.studentId);
         card.addEventListener('click', selectChild);
         card.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -309,18 +241,18 @@
     function updateChildSwitcherState() {
       const switcher = document.getElementById('parentGradeChildSwitcher');
       if (!switcher) return;
-      switcher.querySelectorAll('[data-child-id]').forEach(card => {
-        const isActive = card.dataset.childId === activeChildId;
+      switcher.querySelectorAll('[data-student-id]').forEach(card => {
+        const isActive = card.dataset.studentId === activeChildId;
         card.classList.toggle('active', isActive);
         card.setAttribute('aria-pressed', String(isActive));
       });
     }
 
-    function switchChild(childId) {
-      const child = PARENT_GRADE_RECORDS.find(record => record.childId === childId);
-      if (!child) return;
-      activeChildId = childId;
-      if (!child.quarters.some(quarter => quarter.id === activeQuarterId)) activeQuarterId = 'q2';
+    function switchChild(studentId) {
+      const gradeRecord = PARENT_GRADE_RECORDS.find(record => record.studentId === studentId);
+      if (!gradeRecord) return;
+      activeChildId = studentId;
+      if (!gradeRecord.quarters.some(quarter => quarter.id === activeQuarterId)) activeQuarterId = 'q2';
       updateChildSwitcherState();
       renderGrades();
     }
@@ -372,11 +304,12 @@
 
     function renderGrades() {
       const child = getActiveChild();
+      const gradeRecord = getActiveGradeRecord();
       const quarter = getActiveQuarter();
       const tabs = document.getElementById('parentGradeTabs');
       const list = document.getElementById('parentGradeSubjectList');
       const note = document.getElementById('parentGradesNoteCopy');
-      if (!child) {
+      if (!child || !gradeRecord) {
         tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Grades will appear here when a child account is linked.' });
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a child account is linked.' });
         note.textContent = '';
@@ -384,13 +317,13 @@
         return;
       }
       if (!quarter) {
-        renderQuarterTabs(child);
+        renderQuarterTabs(gradeRecord);
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a grading period is released.' });
         note.textContent = '';
         lucide.createIcons();
         return;
       }
-      renderQuarterTabs(child);
+      renderQuarterTabs(gradeRecord);
       renderSubjectGrades(child, quarter);
       const firstName = child.name.split(' ')[0];
       note.innerHTML = quarter.status === 'final'
@@ -399,8 +332,10 @@
       lucide.createIcons();
     }
 
-    renderChildSwitcher();
-    renderGrades();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderChildSwitcher();
+      renderGrades();
+    });
   </script>
 </body>
 

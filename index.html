@@ -14,44 +14,18 @@
     /* Login page layout */
     html, body { background: var(--white); }
     .page {
-      grid-template-columns: minmax(0, 1fr) minmax(420px, 500px);
+      grid-template-columns: minmax(390px, 44%) minmax(0, 1fr);
       min-height: 100dvh;
       gap: 0;
       padding: 0;
       background: var(--white);
     }
-    .photo-panel {
+    .login-brand-panel {
       min-height: 100dvh;
       border-radius: 0;
       box-shadow: none;
       border-right: 1px solid var(--gray-200);
     }
-    .photo-panel::before {
-      background:
-        linear-gradient(90deg, color-mix(in srgb, var(--navy) 76%, transparent), color-mix(in srgb, var(--navy) 22%, transparent)),
-        linear-gradient(0deg, color-mix(in srgb, var(--navy) 90%, transparent), transparent 64%);
-    }
-    .photo-panel .photo-content { padding: clamp(32px, 5vw, 68px); }
-    .school-crest {
-      box-shadow: none;
-      border: 1px solid color-mix(in srgb, var(--white) 36%, transparent);
-    }
-    .photo-bottom {
-      max-width: 680px;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      box-shadow: none;
-      backdrop-filter: none;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-    .photo-heading { max-width: 620px; font-size: clamp(34px, 4vw, 56px); letter-spacing: -1px; margin: 0; }
-    .stat-strip { border: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
-    .stat-block { min-width: 112px; padding: 0 20px; }
-    .stat-block:first-child { padding-left: 0; }
-    .stat-block:not(:last-child) { border-right-color: color-mix(in srgb, var(--white) 22%, transparent); }
     .login-panel {
       margin: 0;
       border-radius: 0;
@@ -163,14 +137,12 @@
     }
 
     @media (max-width: 1100px) and (min-width: 861px) {
-      .page { grid-template-columns: minmax(0, 1fr) 440px; }
-      .photo-panel { min-height: 100dvh; }
-      .photo-panel .photo-content { padding: 34px; }
+      .login-brand-panel { min-height: 100dvh; }
       .login-panel { padding: 44px 36px; }
     }
     @media (max-width: 860px) {
       .page { display: block; min-height: 100dvh; padding: 0; }
-      .photo-panel { display: none; }
+      .login-brand-panel { display: none; }
       .login-panel {
         min-height: 100dvh;
         padding: 38px clamp(24px, 8vw, 48px);
@@ -208,53 +180,49 @@
 
 <div class="page">
 
-  <!-- ── LEFT: PHOTO PANEL ── -->
-  <div class="photo-panel">
-    <div class="photo-slideshow" aria-hidden="true">
-      <div class="slide"></div>
-      <div class="slide"></div>
-    </div>
-    <div class="photo-content">
-
-      <!-- Top: school branding -->
-      <div class="school-mark">
-        <div class="school-crest">
-          <img src="./assets/images/st-columban-logo.png" alt="St. Columban's College logo" />
+  <div class="login-brand-panel" aria-label="E-Ugnay">
+    <img class="login-brand-watermark" src="./assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
+    <svg class="login-network-pattern" viewBox="0 0 700 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d="M42 132 L214 72 L332 196 L510 116 L658 226" />
+      <path d="M92 432 L236 312 L390 392 L566 294 L676 432" />
+      <path d="M214 72 L236 312 M332 196 L390 392 M510 116 L566 294" />
+      <circle cx="42" cy="132" r="6" />
+      <circle cx="214" cy="72" r="7" />
+      <circle cx="332" cy="196" r="6" />
+      <circle cx="510" cy="116" r="7" />
+      <circle cx="658" cy="226" r="6" />
+      <circle cx="92" cy="432" r="6" />
+      <circle cx="236" cy="312" r="7" />
+      <circle cx="390" cy="392" r="6" />
+      <circle cx="566" cy="294" r="7" />
+      <circle cx="676" cy="432" r="6" />
+    </svg>
+    <div class="login-brand-content">
+      <div class="system-mark">
+        <div class="system-crest">
+          <img src="./assets/images/edUgnay-logo-circle.png" alt="E-Ugnay logo" />
         </div>
-        <div class="school-info">
-          <div class="school-name">St. Columban's College</div>
+        <div class="system-info">
+          <div class="system-name">E-Ugnay</div>
         </div>
       </div>
 
-      <!-- Bottom: headline and stats -->
-      <div class="photo-bottom">
-        <h2 class="photo-heading">
+      <div class="login-brand-copy">
+        <div class="login-brand-kicker">One connected school community</div>
+        <h2 class="login-brand-heading">
           Where every student<br/>
           <em>is seen, heard,</em><br/>
           and supported.
         </h2>
-
-        <div class="stat-strip">
-          <div class="stat-block">
-            <div class="stat-val">4</div>
-            <div class="stat-key">User Roles</div>
-          </div>
-          <div class="stat-block">
-            <div class="stat-val">AI<span>✦</span></div>
-            <div class="stat-key">Reports</div>
-          </div>
-          <div class="stat-block">
-            <div class="stat-val">24<span>/7</span></div>
-            <div class="stat-key">Parent Access</div>
-          </div>
-        </div>
+        <p class="login-brand-description">Bring academic monitoring, parent engagement, and school operations into one clear view.</p>
       </div>
-
     </div>
   </div>
 
-  <!-- ── RIGHT: LOGIN PANEL ── -->
   <div class="login-panel">
+    <div class="login-mobile-brand" aria-label="E-Ugnay">
+      <img src="./assets/images/edUgnay-logo-circle.png" alt="" />
+    </div>
     <section class="auth-view active" id="signInView" data-auth-view="signin" aria-labelledby="signInTitle">
     <div class="login-top">
       <div class="login-eyebrow">E-Ugnay Portal</div>
@@ -271,7 +239,7 @@
           type="email"
           id="emailInput"
           name="email"
-          placeholder="firstname.lastname.fac@stcolumban.edu.ph"
+          placeholder="name@school.edu.ph"
           autocomplete="email"
           required
         />
@@ -291,7 +259,6 @@
           autocomplete="current-password"
           required
         />
-        <!-- <span class="input-icon" id="togglePw" style="cursor:pointer;pointer-events:all;" onclick="togglePassword()">👁️</span> -->
       </div>
     </div>
 
@@ -302,8 +269,6 @@
       <button type="button" class="forgot" onclick="openForgotPassword()">Forgot password?</button>
     </div>
 
-    <!-- <button class="btn-login" type="submit">Sign In</button> -->
-
     <button class="btn-login" type="submit">
       Sign In
     </button>
@@ -312,8 +277,6 @@
 
     <div class="login-footer">
       <p>
-        <!-- <strong>Role-based access</strong> is determined automatically<br/>
-        from your school email address.<br/> -->
         Contact your administrator if you cannot log in.
       </p>
       <a class="school-onboarding-link" href="./views/onboarding/edugnay-school-onboarding.html">
@@ -341,7 +304,7 @@
               type="email"
               id="resetEmailInput"
               name="email"
-              placeholder="firstname.lastname.fac@stcolumban.edu.ph"
+              placeholder="name@school.edu.ph"
               autocomplete="email"
               required
             />
@@ -595,46 +558,7 @@
     window.location.href = account.dashboard;
   }
 
-  function togglePassword() {
-    const pw = document.getElementById('passwordInput')
-    pw.type = pw.type === 'password' ? 'text' : 'password'
-  }
-
-  function initPhotoSlideshow() {
-    const images = [
-      './assets/images/scc-pic-1.jpg',
-      './assets/images/scc-pic-3.jpg',
-      './assets/images/scc-pic-2.jpg',
-      './assets/images/scc-pic-4.jpg',
-    ];
-    const slides = Array.from(document.querySelectorAll('.photo-panel .slide'));
-    if (slides.length < 2 || images.length === 0) return;
-
-    let activeSlide = 0;
-    let imageIndex = 0;
-
-    function setBackground(slide, index) {
-      slide.style.backgroundImage = `url('${images[index]}')`;
-    }
-
-    setBackground(slides[0], 0);
-    setBackground(slides[1], 1 % images.length);
-    slides[0].classList.add('active');
-    imageIndex = 1 % images.length;
-
-    setInterval(() => {
-      const nextImageIndex = (imageIndex + 1) % images.length;
-      const nextSlide = slides[1 - activeSlide];
-      setBackground(nextSlide, nextImageIndex);
-      slides[activeSlide].classList.remove('active');
-      nextSlide.classList.add('active');
-      activeSlide = 1 - activeSlide;
-      imageIndex = nextImageIndex;
-    }, 6000);
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
-    initPhotoSlideshow();
     document.getElementById('resetFlowButton').hidden = !AUTH_CONFIG.frontendOnly;
     if (AUTH_STATE.resetToken) showAuthView('reset');
   });

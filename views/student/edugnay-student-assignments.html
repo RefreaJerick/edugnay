@@ -11,7 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/assignments.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
@@ -22,10 +21,8 @@
 
   <!--
     EJS CONVERSION MAP
-    assignments[] should come from the student's enrolled sections for the
-    active quarter. Keep the shared teacher fields (id, title, subject, dueDate)
-    and add the student's physical completion status from the assignment record.
-    The local array below is only mock data for the static prototype.
+    assignments[] comes from the shared school assignment source. The page
+    only adds the current student's completion status to each record.
   -->
 
   <div class="shell">
@@ -181,52 +178,9 @@
   <script>
     lucide.createIcons();
 
-    // Replace this array with the GET /student/assignments response later.
-    // These records mirror the teacher assignment fields. The status only
-    // tracks physical completion, so no submission, prompt, or feedback data
-    // is needed here.
-    const ASSIGNMENTS = [
-      {
-        id: 1,
-        title: 'Seatwork 1: Kindness and Respect',
-        subject: 'Values Education',
-        teacher: 'Ms. Maria Reyes',
-        dueDate: '2025-06-09',
-        status: 'completed'
-      },
-      {
-        id: 2,
-        title: 'Quiz 1 Review: Core Values',
-        subject: 'Values Education',
-        teacher: 'Ms. Maria Reyes',
-        dueDate: '2025-06-11',
-        status: 'pending'
-      },
-      {
-        id: 3,
-        title: 'Activity 1: Good Citizenship',
-        subject: 'Values Education',
-        teacher: 'Ms. Maria Reyes',
-        dueDate: '2025-06-13',
-        status: 'completed'
-      },
-      {
-        id: 4,
-        title: 'Linear Equations Practice',
-        subject: 'Mathematics',
-        teacher: 'Ms. Maria Reyes',
-        dueDate: '2025-06-12',
-        status: 'pending'
-      },
-      {
-        id: 5,
-        title: 'Reading Response: Short Stories',
-        subject: 'English',
-        teacher: 'Mr. Paolo Santos',
-        dueDate: '2025-06-10',
-        status: 'pending'
-      }
-    ];
+    // The authenticated student's ID will come from the session later.
+    const STUDENT_ID = 'jd-004';
+    const ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
 
     const ASSIGNMENT_FILTERS = [
       { key: 'all', label: 'All' },
@@ -240,12 +194,6 @@
     };
 
     let currentFilter = 'all';
-
-    function escapeHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character];
-      });
-    }
 
     function formatDate(isoDate) {
       return new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', {
@@ -323,9 +271,11 @@
         }).join('');
     }
 
-    populateSubjectFilter();
-    renderFilterTabs();
-    renderAssignments();
+    document.addEventListener('DOMContentLoaded', async () => {
+      populateSubjectFilter();
+      renderFilterTabs();
+      renderAssignments();
+    });
   </script>
 </body>
 

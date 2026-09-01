@@ -6,15 +6,25 @@
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
+const TEACHER_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 // Replace this local object with the signed-in teacher's access payload later.
 // Subject IDs match the shared subject catalog so school settings can choose
 // any configured journal subject without another name-matching rule.
 const TEACHER_PORTAL_ACCESS = {
+  schoolId: TEACHER_SCHOOL_ID,
+  teacherId: 'teacher-2',
   subjects: ['values-education', 'mathematics', 'science'],
   isAdviser: true
 };
 
 window.EDUGNAY_TEACHER_ACCESS = TEACHER_PORTAL_ACCESS;
+
+function toggleGroup(id) {
+  const group = document.getElementById(id);
+  if (!group) return;
+  group.classList.toggle('open');
+  if (window.lucide) lucide.createIcons();
+}
 
 function teacherCanAccess(feature) {
   if (feature === 'journals') {
@@ -32,86 +42,61 @@ function teacherCanAccess(feature) {
 
 const NOTIFICATIONS = [
   {
-    id: 5, icon: 'file-text', color: 'orange', tag: 'Report', read: false, access: 'reports',
+    id: 'teacher-notif-report-001', icon: 'file-text', tone: 'orange', type: 'Report', read: false, access: 'reports',
     title: '5 reports awaiting confirmation',
-    desc: 'Gr. 7 – St. Matthew narrative reports are ready for your review.',
+    message: 'Gr. 7 – St. Matthew narrative reports are ready for your review.',
     link: { page: 'reports' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
   },
   {
-    id: 4, icon: 'clipboard-pen', color: 'red', tag: 'Grades', read: false,
+    id: 'teacher-notif-grades-001', icon: 'clipboard-pen', tone: 'red', type: 'Grades', read: false,
     title: 'Grade encoding incomplete',
-    desc: '10 students in Gr. 8 – St. Luke still have no Q2 grades.',
+    message: '10 students in Gr. 8 – St. Luke still have no Q2 grades.',
     link: { page: 'section', section: '8-luke', tab: 'scores' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
   {
-    id: 3, icon: 'user-check', color: 'red', tag: 'Attendance', read: false,
+    id: 'teacher-notif-attendance-001', icon: 'user-check', tone: 'red', type: 'Attendance', read: false,
     title: 'Attendance not taken',
-    desc: "Today's attendance for Gr. 9 – St. Peter has not been logged.",
+    message: "Today's attendance for Gr. 9 – St. Peter has not been logged.",
     link: { page: 'section', section: '9-peter', tab: 'attendance' },
-    created_at: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
   },
   {
-    id: 2, icon: 'megaphone', color: 'gold', tag: 'Announcement', read: true,
+    id: 'teacher-notif-announcement-001', icon: 'megaphone', tone: 'gold', type: 'Announcement', read: true,
     title: 'New announcement',
-    desc: 'Q2 grade encoding deadline: June 14.',
+    message: 'Q2 grade encoding deadline: June 14.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
+    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
   },
   {
-    id: 1, icon: 'calendar-clock', color: 'blue', tag: 'Event', read: true,
+    id: 'teacher-notif-event-001', icon: 'calendar-clock', tone: 'blue', type: 'Event', read: true,
     title: 'Upcoming event',
-    desc: 'Foundation Day, June 20. Classes suspended.',
+    message: 'Foundation Day, June 20. Classes suspended.',
     link: { page: 'announcements' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   },
   {
-    id: 0, icon: 'notebook-pen', color: 'gray', tag: 'Reminder', read: true, access: 'journals',
+    id: 'teacher-notif-journal-001', icon: 'notebook-pen', tone: 'gray', type: 'Reminder', read: true, access: 'journals',
     title: 'Journal window reminder',
-    desc: 'Weekly journal entries close Friday, 11:59 PM.',
+    message: 'Weekly journal entries close Friday, 11:59 PM.',
     link: { page: 'journals' },
-    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
-];
+]
+  .map(record => ({ ...record, schoolId: 'scc' }))
+  .filter(record => record.schoolId === TEACHER_SCHOOL_ID);
 
 /* ── READ STATE (localStorage; swap for DB column later) ── */
-const TEACHER_READ_STORE_KEY = 'edugnay_teacher_notif_read';
-
-function getReadIds() {
-  try { return JSON.parse(localStorage.getItem(TEACHER_READ_STORE_KEY)) || []; }
-  catch { return []; }
-}
-function setReadIds(ids) {
-  localStorage.setItem(TEACHER_READ_STORE_KEY, JSON.stringify(ids));
-}
-function applyReadState() {
-  const readIds = getReadIds();
-  NOTIFICATIONS.forEach(n => { if (readIds.includes(n.id)) n.read = true; });
-}
+const TEACHER_READ_STORE_KEY = `edugnay_teacher_notif_read:${TEACHER_SCHOOL_ID}`;
 
 function getTeacherVisibleNotifications() {
   return NOTIFICATIONS.filter(notification => !notification.access || teacherCanAccess(notification.access));
 }
 
-/* ── TIME HELPERS ── */
-function formatRelativeTime(dateStr) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHrs = Math.floor(diffMs / 3600000);
-  if (diffHrs < 1) return 'Just now';
-  if (diffHrs < 24) return `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`;
-  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
-  if (diffDays === 1) return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
-         date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  applyReadState();
+  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -122,7 +107,7 @@ function renderTopbarNotifs() {
   if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   const top5 = [...visibleNotifications]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
 
   if (!top5.length) {
@@ -139,14 +124,14 @@ function renderTopbarNotifs() {
   }
 
   container.innerHTML = top5.map(n => `
-    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${n.id})'>
-      <div class="tb-notif-icon ${n.color}">
+    <a class="tb-notif-item ${n.read ? '' : 'unread'}" onclick='goToTopbarNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
+      <div class="tb-notif-icon ${n.tone}">
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-title">${n.title}</div>
-        <div class="tb-notif-desc">${n.desc}</div>
-        ${teacherDashboardPanel ? `<div class="teacher-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>` : `<div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.created_at)}</span></div>`}
+        <div class="tb-notif-desc">${n.message}</div>
+        <div class="${teacherDashboardPanel ? 'teacher-notif-time' : 'tb-notif-time'}"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
   `).join('');
@@ -158,10 +143,15 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  const ids = getReadIds();
-  if (!ids.includes(id)) { ids.push(id); setReadIds(ids); }
+  window.EDUGNAY_CONFIG.markNotificationRead(TEACHER_READ_STORE_KEY, id, NOTIFICATIONS);
   navigate(link.page, link.section, link.tab);
 }
+
+window.EDUGNAY_NOTIFICATION_CONTEXT = {
+  storageKey: TEACHER_READ_STORE_KEY,
+  records: NOTIFICATIONS,
+  getItems: getTeacherVisibleNotifications
+};
 
 
 /* ── NAVIGATION ── */
@@ -215,7 +205,7 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 if (!guardTeacherPageAccess()) {
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     applyTeacherAccess();
     renderTopbarNotifs();
   });

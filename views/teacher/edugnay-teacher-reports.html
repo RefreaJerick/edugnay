@@ -314,11 +314,8 @@
 
 <!-- ══════ REVIEW MODAL ══════ -->
 <!--
-  EJS note: this modal is populated via JS from the REPORTS array.
-  In production, consider either:
-  (a) keeping this client-side pattern and fetching report data via AJAX/fetch
-  (b) rendering a hidden JSON data block: <script>const REPORTS = <%- JSON.stringify(reports) %>;</script>
-  Option (b) is easiest to integrate with the current JS.
+  The modal is populated from the shared REPORTS view. During backend
+  integration, the same view can be returned by the adviser reports endpoint.
 -->
 <div class="modal-backdrop" id="review-modal">
   <div class="review-modal modal">
@@ -497,142 +494,27 @@
 </div>
 
 <script>
-  lucide.createIcons();
-
   /* ─────────────────────────────────────────────────────
      REPORT DATA
-     In production, replace this with:
-       const REPORTS = <%- JSON.stringify(reports) %>;
-     where `reports` is the array passed from your Express route.
-     Each report object should have:
-       id, studentName, studentId (LRN or school ID),
-       attendance (e.g. "5/5"), attendanceDetail,
-       assignments (e.g. "4/4"), journal (count),
-       atRisk (bool), status ("pending" | "confirmed"),
-       report (string), generatedAt (ISO string)
+     The page reads the shared report records through getReportsForTeacher().
+     During backend integration, replace that getter with the adviser reports
+     endpoint; keep the same studentId, sectionId, teacherId, status, metrics,
+     text, and timestamp fields.
   ───────────────────────────────────────────────────── */
 
   // EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
   const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Values Education';
   const SYSTEM_CONFIG = {
+    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
     atRiskAbsenceThreshold: 3,
     journalSubject: journalSubjectName // subject the journal entries are logged under — may differ from the adviser's own subject
   };
   const generationJournalSubject = document.getElementById('generation-journal-subject');
   if (generationJournalSubject) generationJournalSubject.textContent = journalSubjectName;
 
-  // EJS: const REPORTS = <%- JSON.stringify(reports) %>;
-  const REPORTS = [
-    {
-      id: 1, studentName: 'Alcantara, Juan B.', studentId: '2025-0001',
-      atRisk: false,
-      attendance: {
-        total: '30/30',
-        absences: [], // { subject, day } e.g. { subject: 'Math', day: 'Tue' }
-      },
-      assignments: { total: '4/4', missing: [] }, journal: 1,
-      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
-      report: `Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week — keep up the encouragement at home!`
-    },
-    {
-      id: 2, studentName: 'Bautista, Maria C.', studentId: '2025-0002',
-      atRisk: false,
-      attendance: {
-        total: '30/30',
-        absences: [],
-      },
-      assignments: { total: '4/4', missing: [] }, journal: 1,
-      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
-      report: `Maria continues to show consistent effort this week. She was present for all sessions and submitted all assignments on schedule. Her journal entry mentioned feeling more confident after a recent quiz. No concerns at this time.`
-    },
-    {
-      id: 3, studentName: 'Cruz, Ramon D.', studentId: '2025-0003',
-      atRisk: true,
-      attendance: {
-        total: '18/30',
-        absences: [
-          { subject: 'Math',     day: 'Tue' }, { subject: 'Math',     day: 'Thu' },
-          { subject: 'Science',  day: 'Tue' }, { subject: 'Science',  day: 'Thu' },
-          { subject: 'Filipino', day: 'Tue' }, { subject: 'Filipino', day: 'Thu' },
-          { subject: 'English',  day: 'Tue' }, { subject: 'English',  day: 'Thu' },
-          { subject: 'MAPEH',    day: 'Tue' }, { subject: 'MAPEH',    day: 'Thu' },
-          { subject: 'TLE',      day: 'Tue' }, { subject: 'TLE',      day: 'Thu' },
-        ],
-      },
-      assignments: { total: '2/4', missing: ['Science', 'Filipino'] }, journal: 0,
-      status: 'pending', generatedAt: 'June 14, 8:02 AM',
-      report: `Ramon is flagged as at-risk this week. He was absent on Tuesday and Thursday across all subjects and completed only 2 of 4 assignments. Academic records show scores below 75 in two subjects. No journal entry was submitted. A check-in at home would be helpful.`
-    },
-    {
-      id: 4, studentName: 'Dela Torre, Ana F.', studentId: '2025-0004',
-      atRisk: false,
-      attendance: {
-        total: '30/30',
-        absences: [],
-      },
-      assignments: { total: '3/4', missing: ['TLE'] }, journal: 1,
-      status: 'pending', generatedAt: 'June 14, 8:02 AM',
-      report: `Ana had a solid week overall. She attended every session and completed 3 of 4 assignments, with one pending. Her journal reflection showed good self-awareness about time management. A gentle reminder about the missing task would be helpful.`
-    },
-    {
-      id: 5, studentName: 'Estrada, Jose G.', studentId: '2025-0005',
-      atRisk: true,
-      attendance: {
-        total: '12/30',
-        absences: [
-          { subject: 'Math',     day: 'Tue' }, { subject: 'Math',     day: 'Wed' }, { subject: 'Math',     day: 'Thu' },
-          { subject: 'Science',  day: 'Tue' }, { subject: 'Science',  day: 'Wed' }, { subject: 'Science',  day: 'Thu' },
-          { subject: 'Filipino', day: 'Tue' }, { subject: 'Filipino', day: 'Thu' },
-          { subject: 'English',  day: 'Tue' }, { subject: 'English',  day: 'Wed' }, { subject: 'English',  day: 'Thu' },
-          { subject: 'MAPEH',    day: 'Tue' }, { subject: 'MAPEH',    day: 'Wed' },
-          { subject: 'TLE',      day: 'Tue' }, { subject: 'TLE',      day: 'Wed' }, { subject: 'TLE',      day: 'Thu' },
-        ],
-      },
-      assignments: { total: '1/4', missing: ['Math', 'Science', 'English'] }, journal: 0,
-      status: 'pending', generatedAt: 'June 14, 8:02 AM',
-      report: `Jose is flagged as at-risk this week with multiple absences across subjects and only 1 of 4 assignments completed. Academic records show scores trending below the passing threshold. No journal entry was submitted. We strongly recommend reaching out to discuss what may be affecting his attendance and engagement.`
-    },
-    {
-      id: 6, studentName: 'Garcia, Luisa H.', studentId: '2025-0006',
-      atRisk: false,
-      attendance: {
-        total: '30/30',
-        absences: [],
-      },
-      assignments: { total: '4/4', missing: [] }, journal: 1,
-      status: 'confirmed', generatedAt: 'June 14, 8:02 AM',
-      report: `Luisa had an excellent week — perfect attendance across all sessions and all assignments submitted. Her journal entry expressed enthusiasm about an upcoming group project. No concerns to report.`
-    },
-    {
-      id: 7, studentName: 'Hernandez, Carlo I.', studentId: '2025-0007',
-      atRisk: false,
-      attendance: {
-        total: '29/30',
-        absences: [
-          { subject: 'Science', day: 'Mon' },
-        ],
-      },
-      assignments: { total: '4/4', missing: [] }, journal: 1,
-      status: 'pending', generatedAt: 'June 14, 8:02 AM',
-      report: `Carlo had a good week with one absence in Science on Monday but completed all assignments regardless. His journal entry mentioned working through a difficult topic with help from peers. No concerns at this time.`
-    },
-    {
-      id: 8, studentName: 'Ibarra, Rosa J.', studentId: '2025-0008',
-      atRisk: true,
-      attendance: {
-        total: '26/30',
-        absences: [
-          { subject: 'Math',    day: 'Wed' },
-          { subject: 'Science', day: 'Wed' },
-          { subject: 'English', day: 'Wed' },
-          { subject: 'TLE',     day: 'Wed' },
-        ],
-      },
-      assignments: { total: '2/4', missing: ['Math', 'English'] }, journal: 1,
-      status: 'pending', generatedAt: 'June 14, 8:02 AM',
-      report: `Rosa is flagged as at-risk this week. She was absent in Math, Science, English, and TLE on Wednesday and completed only 2 of 4 assignments, continuing a pattern from prior weeks. Her journal described feeling overwhelmed. We recommend a supportive conversation at home about pacing.`
-    },
-  ];
+  const REPORT_WEEK_ID = '2025-W23';
+  const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+  const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(TEACHER_ID, REPORT_WEEK_ID);
 
   function buildTeacherReportSummaryCards() {
     const pendingReports = REPORTS.filter(report => report.status === 'pending');
@@ -669,20 +551,9 @@
     flow.innerHTML = PIPELINE_STEPS.map((step, index) => `${index ? '<i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>' : ''}<div class="flow-step ${step.className || ''}"><div class="flow-step-icon"><i data-lucide="${step.icon}" style="width:16px;height:16px;"></i></div><div class="flow-step-label">${step.label}</div><div class="flow-step-sub">${step.sub}</div></div>`).join('');
   }
 
-  renderTeacherReportSummary();
-  renderPipelineSteps();
-  lucide.createIcons();
-
   let activeReportId = null;
 
   /* ── HELPERS ── */
-  function getInitials(name) {
-    const parts = name.split(',');
-    const last  = parts[0].trim();
-    const first = (parts[1] || '').trim();
-    return (first[0] || '') + (last[0] || '');
-  }
-
   function attClass(r) {
     const absentCount = r.attendance.absences.length;
     if (absentCount === 0) return 'good';
@@ -762,18 +633,18 @@
       const absentCount = r.attendance.absences.length;
       const attDetail = formatAbsences(r.attendance.absences);
       const sc = asnClass(r);
-      const jc = r.journal === 0 ? 'bad' : 'good';
-      const excerpt = r.report.slice(0, 120) + (r.report.length > 120 ? '…' : '');
+      const jc = r.journalEntryCount === 0 ? 'bad' : 'good';
+      const excerpt = r.text.slice(0, 120) + (r.text.length > 120 ? '…' : '');
       const isPending = r.status === 'pending';
 
       return `
         <div class="report-card${r.atRisk ? ' at-risk' : ''}">
 
           <div class="report-card-head">
-            <div class="report-avatar">${getInitials(r.studentName)}</div>
+            <div class="report-avatar">${window.EDUGNAY_CONFIG.getInitials(r.studentName)}</div>
             <div style="flex:1;min-width:0;">
               <div class="report-card-name">${r.studentName}</div>
-              <div class="report-card-meta">${r.studentId} · Grade 7 – St. Matthew</div>
+              <div class="report-card-meta">${r.studentId} · ${r.sectionLabel || 'Section not assigned'}</div>
             </div>
             ${r.atRisk ? `<div class="at-risk-flag"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> At-Risk</div>` : ''}
           </div>
@@ -792,7 +663,7 @@
               <div class="rc-metric-label">Assignments</div>
             </div>
             <div class="rc-metric ${jc}">
-              <div class="rc-metric-val">${r.journal}</div>
+              <div class="rc-metric-val">${r.journalEntryCount}</div>
               <div class="rc-metric-label">Journal</div>
             </div>
           </div>
@@ -802,7 +673,7 @@
               <i data-lucide="sparkles" style="width:10px;height:10px;"></i>
               AI Summary
             </div>
-            <div class="excerpt-text${!r.report ? ' pending' : ''}">${r.report ? excerpt : 'No report generated yet.'}</div>
+            <div class="excerpt-text${!r.text ? ' pending' : ''}">${r.text ? excerpt : 'No report generated yet.'}</div>
           </div>
 
           <div class="report-card-foot">
@@ -811,7 +682,7 @@
               ${isPending ? 'Awaiting Review' : 'Confirmed'}
             </span>
             <div class="report-card-actions">
-              <button class="btn-sm ghost" onclick="openReview(${r.id})">
+              <button class="btn-sm ghost" onclick="openReview('${r.id}')">
                 <i data-lucide="eye" style="width:11px;height:11px;"></i>
                 Review
               </button>
@@ -827,23 +698,23 @@
 
   /* ── REVIEW MODAL ── */
   function openReview(id) {
-    const r = REPORTS.find(x => x.id === id);
+    const r = REPORTS.find(x => x.id === String(id));
     if (!r) return;
-    activeReportId = id;
+    activeReportId = String(id);
 
-    document.getElementById('rm-avatar').textContent = getInitials(r.studentName);
+    document.getElementById('rm-avatar').textContent = window.EDUGNAY_CONFIG.getInitials(r.studentName);
     document.getElementById('rm-name').textContent   = r.studentName;
-    document.getElementById('rm-sub').textContent    = `Grade 7 – St. Matthew · Week of June 9–14, 2025`;
+    document.getElementById('rm-sub').textContent    = `${r.sectionLabel || 'Section not assigned'} · ${r.weekLabel}`;
 
     document.getElementById('rm-attendance').textContent = r.attendance.total + ' sessions';
     document.getElementById('rm-attendance-detail').innerHTML = formatAbsencesBySubject(r.attendance.absences);
     document.getElementById('rm-assignments').textContent = `${r.assignments.total} completed`;
     document.getElementById('rm-assignments-detail').innerHTML = formatAssignmentGaps(r.assignments.missing);
-    document.getElementById('rm-journal').textContent = r.journal === 0
+    document.getElementById('rm-journal').textContent = r.journalEntryCount === 0
       ? `No entry submitted (${SYSTEM_CONFIG.journalSubject})`
-      : `${r.journal} entr${r.journal === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
+      : `${r.journalEntryCount} entr${r.journalEntryCount === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
     document.getElementById('rm-journal-label').textContent = `Journal · ${SYSTEM_CONFIG.journalSubject}`;
-    document.getElementById('rm-report-text').value       = r.report;
+    document.getElementById('rm-report-text').value       = r.text;
 
     const riskBanner   = document.getElementById('rm-at-risk-banner');
     const academicCard = document.getElementById('rm-academic-card');
@@ -863,8 +734,8 @@
     }
 
     document.getElementById('rm-status-note').textContent = r.status === 'confirmed'
-      ? `Generated ${r.generatedAt} · Confirmed and sent to parent`
-      : `Generated ${r.generatedAt} · Not yet confirmed`;
+      ? `Generated ${r.generatedAtLabel} · Confirmed and sent to parent`
+      : `Generated ${r.generatedAtLabel} · Not yet confirmed`;
 
     lucide.createIcons();
     openModal('review-modal');
@@ -875,10 +746,10 @@
     textarea.value    = 'Regenerating…';
     textarea.disabled = true;
     /* TODO: replace setTimeout with actual API call:
-       POST /adviser/reports/:id/regenerate → returns { report: '...' } */
+       POST /adviser/reports/:id/regenerate → returns { text: '...' } */
     setTimeout(() => {
       const r = REPORTS.find(x => x.id === activeReportId);
-      textarea.value    = r.report;
+      textarea.value    = r.text;
       textarea.disabled = false;
       showToast('Report regenerated', 'success');
     }, 1100);
@@ -889,8 +760,14 @@
        On success: update local REPORTS array and re-render */
     const r = REPORTS.find(x => x.id === activeReportId);
     if (r) {
+      const reportText = document.getElementById('rm-report-text').value;
+      window.EDUGNAY_CONFIG.updateReport(r.id, {
+        status: 'confirmed',
+        text: reportText,
+        confirmedAt: new Date().toISOString()
+      });
       r.status = 'confirmed';
-      r.report = document.getElementById('rm-report-text').value;
+      r.text = reportText;
     }
     closeModal('review-modal');
     renderReports();
@@ -943,11 +820,6 @@
     }, 500);
   }
 
-  function exportReports() {
-    /* TODO: GET /adviser/reports/export?week=...&section=... */
-    showToast('Export feature coming soon', 'info');
-  }
-
   /* ── MODAL / DRAWER HELPERS ── */
   function openModal(id)  { document.getElementById(id).classList.add('open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -975,7 +847,12 @@
   });
 
   /* ── INIT ── */
-  renderReports();
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderTeacherReportSummary();
+    renderPipelineSteps();
+    renderReports();
+    lucide.createIcons();
+  });
 </script>
 </body>
 </html>

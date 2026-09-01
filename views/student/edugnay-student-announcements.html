@@ -267,254 +267,7 @@
         <!-- LEFT: Announcement cards -->
         <div>
           <!-- EJS: <% announcements.forEach(function(ann) { %> -->
-          <div class="ann-list" id="annList">
-
-            <!-- ─── CARD 1: Pinned + Urgent ─── -->
-            <!-- EJS: data-id="<%= ann._id %>" data-priority="<%= ann.priority %>" data-read="<%= ann.readBy.includes(currentUser._id) ? 'true' : 'false' %>" -->
-            <div class="ann-card priority-high" data-priority="high" data-read="false" onclick="openAnnModal(this)">
-              <div class="pinned-strip">
-                <i data-lucide="pin" style="width:12px;height:12px;"></i>
-                Pinned Announcement
-              </div>
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-high">
-                      <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <!-- EJS: <%= ann.title %> -->
-                      <div class="ann-title">Foundation Day — June 20, 2025</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Today, 8:00 AM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- EJS: <%= ann.content %> -->
-                <div class="ann-content"
-                  data-full="Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program. Late arrivals will not be allowed to join the procession.">
-                  Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color
-                  shirt and report to the covered court by 7:30 AM…
-                </div>
-                <!-- EJS: <% if (ann.imageUrl) { %> -->
-                <div class="ann-image-wrap">
-                  <img class="ann-image"
-                    src="../../assets/uploads/announcements/ChatGPT Image Jun 13, 2026, 10_21_57 PM.png"
-                    alt="Announcement image" onerror="this.closest('.ann-image-wrap').style.display='none'" />
-                </div>
-                <!-- EJS: <% } %> -->
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <!-- EJS: audience tag rendered per ann.audience -->
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 2: Event ─── -->
-            <div class="ann-card priority-event" data-priority="event" data-read="false" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-event">
-                      <i data-lucide="calendar" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Intramurals Sign-up Open</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> Yesterday, 1:30 PM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>. Teams will be announced the following Monday.">
-                  Visit the Student Affairs table during recess this week to join a sports team for the upcoming
-                  intramurals. Sign-ups close <strong>Friday</strong>…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-student">
-                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 3: Normal (students only) ─── -->
-            <div class="ann-card priority-normal" data-student-access="journals" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-normal">
-                      <i data-lucide="notebook-pen" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Weekly Journal is Now Open for Submission</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 2 days ago
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Ms. Reyes
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="This week's journal submission is now open. Please write about your week honestly — your experiences, feelings, and anything you'd like to share. Submissions close <strong>Friday at 11:59 PM</strong>.">
-                  This week's journal submission is now open. Please write about your week honestly
-                  — your experiences, feelings…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-student">
-                    <i data-lucide="graduation-cap" style="width:10px;height:10px;"></i> Students
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Ms. Reyes
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 4: Normal (All users) ─── -->
-            <div class="ann-card priority-normal" data-priority="normal" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-normal">
-                      <i data-lucide="file-text" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">Q2 Quarterly Exam Schedule Released</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> 4 days ago
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam dates and rooms. Bring your own writing materials and arrive 15 minutes before each exam.">
-                  The Q2 quarterly exam schedule has been posted. Please check with your adviser for your specific exam
-                  dates and rooms…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ─── CARD 5: Low / General ─── -->
-            <div class="ann-card priority-low" data-priority="low" data-read="true" onclick="openAnnModal(this)">
-              <div class="ann-body">
-                <div class="ann-head">
-                  <div class="ann-head-left">
-                    <div class="ann-type-icon icon-low">
-                      <i data-lucide="info" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div class="ann-title-wrap">
-                      <div class="ann-title">End of Quarter Reminder — Q2 Closing</div>
-                      <div class="ann-meta">
-                        <span class="ann-meta-item">
-                          <i data-lucide="clock" style="width:11px;height:11px;"></i> May 22, 4:30 PM
-                        </span>
-                        <span class="ann-meta-item">
-                          <i data-lucide="user" style="width:11px;height:11px;"></i> Admin
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ann-content"
-                  data-full="As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal entries, and clearance forms. Coordinate with your subject teachers if you have incomplete requirements.">
-                  As Q2 draws to a close, make sure all your requirements are submitted — pending activities, journal
-                  entries, and clearance forms…
-                </div>
-                <div class="ann-audience">
-                  <span class="aud-label">To:</span>
-                  <span class="aud-tag aud-all">
-                    <i data-lucide="users" style="width:10px;height:10px;"></i> All Users
-                  </span>
-                </div>
-              </div>
-              <div class="ann-footer">
-                <div class="ann-footer-left">
-                  <i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by Admin
-                </div>
-                <div class="ann-footer-right">
-                  <button class="footer-btn read"
-                    onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))">
-                    <i data-lucide="eye" style="width:11px;height:11px;"></i> Read
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <div class="ann-list" id="annList"></div>
           <div class="panel-empty-slot" id="annEmpty" hidden aria-live="polite"></div>
           <!-- EJS: <% }); %> -->
         </div>
@@ -528,34 +281,7 @@
               <div class="rail-title">Upcoming Deadlines</div>
               <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
             </div>
-            <div class="rail-body" id="student-deadlines">
-              <!-- EJS: deadlines rendered from backend, scoped to this student -->
-              <div class="deadline-item" data-student-access="journals">
-                <div class="deadline-dot" style="background:var(--purple);box-shadow:0 0 5px rgba(124,58,237,0.4);">
-                </div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Values Journal Entry</div>
-                  <div class="deadline-date">Friday · 11:59 PM</div>
-                </div>
-                <span class="deadline-badge badge badge-purple">Soon</span>
-              </div>
-              <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--gold);"></div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Foundation Day</div>
-                  <div class="deadline-date">June 20, 2025</div>
-                </div>
-                <span class="deadline-badge badge badge-gold">Event</span>
-              </div>
-              <div class="deadline-item">
-                <div class="deadline-dot" style="background:var(--blue-mid);"></div>
-                <div class="deadline-info" style="flex:1;">
-                  <div class="deadline-title">Intramurals Sign-up</div>
-                  <div class="deadline-date">Closes Friday</div>
-                </div>
-                <span class="deadline-badge badge badge-blue">Soon</span>
-              </div>
-            </div>
+            <div class="rail-body" id="student-deadlines"></div>
           </div>
 
           <!-- Posted by info -->
@@ -580,17 +306,10 @@
 
 
   <script>
-    lucide.createIcons();
-
     /* ── FILTER ── */
-    // Page data boundary: replace this array with the announcements endpoint later.
-    const ANNOUNCEMENTS = [
-      { id: 1, priority: 'high', read: false, title: 'Foundation Day - June 20, 2025', time: 'Today, 8:00 AM', author: 'Admin', icon: 'alert-triangle', iconClass: 'icon-high', tag: 'Urgent', tagClass: 'badge-red', body: 'Classes are <strong>suspended</strong> for Foundation Day. All students must wear their House color shirt and report to the covered court by 7:30 AM for the opening program.', audience: 'All Users', audienceClass: 'aud-all', audienceIcon: 'users', pinned: true },
-      { id: 2, priority: 'event', read: false, title: 'Intramurals Sign-up Open', time: 'Yesterday, 1:30 PM', author: 'Admin', icon: 'calendar', iconClass: 'icon-event', tag: 'Event', tagClass: 'badge-gold', body: 'Visit the Student Affairs table during recess this week to join a sports team for the upcoming intramurals. Sign-ups close <strong>Friday</strong>.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' },
-      { id: 3, priority: 'normal', read: true, title: 'Weekly Journal is Now Open for Submission', time: '2 days ago', author: 'Ms. Reyes', icon: 'notebook-pen', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'This week\'s journal submission is now open. Please write about your week honestly. Submissions close <strong>Friday at 11:59 PM</strong>.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap', access: 'journals' },
-      { id: 4, priority: 'normal', read: true, title: 'Library Resources Updated', time: '3 days ago', author: 'Library', icon: 'book-open', iconClass: 'icon-normal', tag: 'Normal', tagClass: 'badge-blue', body: 'New reference materials are now available in the student library corner.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' },
-      { id: 5, priority: 'low', read: true, title: 'Student Council Meeting', time: 'June 5, 2025', author: 'Student Affairs', icon: 'users', iconClass: 'icon-low', tag: 'General', tagClass: 'badge-gray', body: 'Student Council representatives should check the posted schedule for the next meeting.', audience: 'Students', audienceClass: 'aud-student', audienceIcon: 'graduation-cap' }
-    ];
+    // Read the shared school announcement source; replace the getter with the
+    // announcements endpoint later without changing this page's renderer.
+    const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
 
     function renderStudentAnnouncements() {
       const list = document.getElementById('annList');
@@ -604,13 +323,11 @@
       lucide.createIcons();
     }
 
-    renderStudentAnnouncements();
-
-    const UPCOMING_DEADLINES = [
+    const UPCOMING_DEADLINES = window.EDUGNAY_CONFIG.withActiveSchool([
       { title: 'Values Journal Entry', date: 'Friday · 11:59 PM', tag: 'Soon', tagClass: 'badge-purple', color: 'var(--purple)', shadow: 'box-shadow:0 0 5px rgba(124,58,237,0.4);', access: 'journals' },
       { title: 'Foundation Day', date: 'June 20, 2025', tag: 'Event', tagClass: 'badge-gold', color: 'var(--gold)' },
       { title: 'Intramurals Sign-up', date: 'Closes Friday', tag: 'Soon', tagClass: 'badge-blue', color: 'var(--blue-mid)' }
-    ];
+    ]);
 
     function renderStudentDeadlines() {
       const rail = document.getElementById('student-deadlines');
@@ -620,8 +337,6 @@
         ? visibleDeadlines.map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-clock', title: 'No upcoming deadlines', text: 'Upcoming events and due dates will appear here.' });
     }
-
-    renderStudentDeadlines();
 
     function filterCards() {
       const query = document.getElementById('searchInput').value.toLowerCase();
@@ -729,7 +444,11 @@
       // fetch(`/student/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
     }
 
-    filterCards();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderStudentAnnouncements();
+      renderStudentDeadlines();
+      filterCards();
+    });
 
   </script>
 

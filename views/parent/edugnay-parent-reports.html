@@ -17,7 +17,6 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
-  <script src="../../assets/js/scroll-fades.js" defer></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
@@ -157,7 +156,7 @@
           </div>
         </div>
         <div class="tb-profile" id="topbarProfile">
-          <button class="tb-profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()" aria-haspopup="true"
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()" aria-haspopup="true"
             aria-expanded="false">
             <div class="tb-avatar parent">RA</div>
             <div class="tb-profile-info">
@@ -166,11 +165,11 @@
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
           </button>
-          <div class="tb-dropdown" id="profileDropdown">
+          <div class="tb-dropdown" id="tbProfileDropdown">
             <a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user"
                 style="width:15px;height:15px;"></i>My Profile</a>
             <div class="tb-dropdown-divider"></div>
-            <button class="tb-dropdown-item danger" type="button" onclick="closeProfileMenu(); confirmLogout();"><i
+            <button class="tb-dropdown-item danger" type="button" onclick="toggleProfileDropdown(false); confirmLogout();"><i
                 data-lucide="log-out" style="width:15px;height:15px;"></i>Sign Out</button>
           </div>
         </div>
@@ -188,24 +187,7 @@
       </section>
 
       <!-- children[]: loop -->
-      <div class="child-switcher" id="child-switcher">
-        <div class="child-card active" data-child="juan" onclick="switchChild('juan', this)">
-          <div class="child-avatar">JA</div>
-          <div class="child-info">
-            <div class="child-name">Juan Alcantara</div>
-            <div class="child-section">Grade 7, St. Matthew</div>
-          </div>
-          <span class="child-report-badge">3</span>
-        </div>
-        <div class="child-card" data-child="maya" onclick="switchChild('maya', this)">
-          <div class="child-avatar">MA</div>
-          <div class="child-info">
-            <div class="child-name">Maya Alcantara</div>
-            <div class="child-section">Grade 4, St. Clare</div>
-          </div>
-          <span class="child-report-badge">2</span>
-        </div>
-      </div>
+      <div class="child-switcher" id="child-switcher"></div>
       <!-- end children[] loop -->
 
       <!-- Latest report hero — the centerpiece. Renders only if a confirmed report exists for this week -->
@@ -242,7 +224,7 @@
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-text"></i></div>
           <div class="modal-heading-copy">
             <div class="modal-title">Weekly Narrative Report</div>
-            <div class="modal-sub"><span id="rm-week">Week of June 9 to 14, 2025</span> · <span id="rm-child">Juan Alcantara · Grade 7, St. Matthew</span></div>
+            <div class="modal-sub"><span id="rm-week">Week of June 9 to 14, 2025</span> · <span id="rm-child"></span></div>
           </div>
         </div>
         <button class="modal-close" type="button" aria-label="Close report" onclick="closeReportModal()">
@@ -274,67 +256,30 @@
     lucide.createIcons();
 
     /*
-      EJS NOTE: REPORTS_BY_CHILD is a client-side placeholder for the prototype.
-      On conversion, fetch via GET /parent/reports?child=:id — server returns ONLY
-      confirmed reports for that child, ordered newest first. The "is the most
-      recent week confirmed yet" check (latestReport) should also happen server-side,
-      not be inferred client-side from array position.
+      Reports are read from the shared school-scoped report source. On conversion,
+      replace getReportsForStudent() with GET /parent/reports?studentId=:id; the
+      server should return only confirmed reports for the linked child.
     */
-    const REPORTS_BY_CHILD = {
-      juan: {
-        name: 'Juan Alcantara',
-        section: 'Grade 7, St. Matthew',
-        reports: [
-          {
-            id: 1, weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', atRisk: false,
-            teacherName: 'Ms. Maria Reyes', confirmedAt: 'June 14, 8:02 AM',
-            text: `Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!`
-          },
-          {
-            id: 2, weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', atRisk: true,
-            teacherName: 'Ms. Maria Reyes', confirmedAt: 'June 7, 7:45 AM',
-            text: `Juan is flagged as at-risk this week. He was absent on Tuesday and Thursday and completed only 2 of 4 assignments. We recommend a check-in at home regarding his recent attendance and a brief conversation about any challenges he may be facing.`
-          },
-          {
-            id: 3, weekLabel: 'Week of May 26 to 31, 2025', dateRange: 'May 26 to May 31', atRisk: false,
-            teacherName: 'Ms. Maria Reyes', confirmedAt: 'May 31, 8:10 AM',
-            text: `Juan had a solid week overall. He attended every class day and completed 3 of his 4 assignments, with one activity still pending. His journal reflection was thoughtful and showed good self-awareness about managing his time.`
-          },
-        ]
-      },
-      maya: {
-        name: 'Maya Alcantara',
-        section: 'Grade 4, St. Clare',
-        reports: [
-          {
-            id: 4, weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', atRisk: false,
-            teacherName: 'Mrs. Joy Fernandez', confirmedAt: 'June 14, 9:15 AM',
-            text: `Maya had a wonderful week. She participated actively in class discussions and completed all her assignments ahead of schedule. Her teacher noted she helped a classmate with a Math problem during group work. It was a lovely display of kindness.`
-          },
-          {
-            id: 5, weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', atRisk: false,
-            teacherName: 'Mrs. Joy Fernandez', confirmedAt: 'June 7, 8:30 AM',
-            text: `Maya continues to do well this week. She was present every day and submitted all her work on time. No concerns at this time. She remains one of the more engaged students in class.`
-          },
-        ]
-      },
-    };
+    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
 
-    let currentChild = 'juan';
+    function getReportRecord(studentId) {
+      const reports = window.EDUGNAY_CONFIG.getReportsForStudent(studentId, true);
+      return reports.length ? { studentId, reports } : null;
+    }
+
+    let currentChild = PARENT_CHILDREN[0]?.studentId || null;
     let activeReportId = null;
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      const children = Object.entries(REPORTS_BY_CHILD);
-      switcher.innerHTML = children.length
-        ? children.map(([key, child]) => `<div class="child-card ${key === currentChild ? 'active' : ''}" data-child="${key}" onclick="switchChild('${key}', this)"><div class="child-avatar">${getInitials(child.name)}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.section}</div></div><span class="child-report-badge">${child.reports.length}</span></div>`).join('')
+      switcher.innerHTML = PARENT_CHILDREN.length
+        ? PARENT_CHILDREN.map(child => {
+          const reportRecord = getReportRecord(child.studentId);
+          return `<div class="child-card ${child.studentId === currentChild ? 'active' : ''}" data-child="${child.studentId}" onclick="switchChild('${child.studentId}', this)"><div class="child-avatar">${child.initials}</div><div class="child-info"><div class="child-name">${child.name}</div><div class="child-section">${child.gradeLevel} – ${child.sectionName}</div></div><span class="child-report-badge">${reportRecord?.reports.length || 0}</span></div>`;
+        }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();
-    }
-
-    function getInitials(name) {
-      return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
     }
 
     function switchChild(childKey, el) {
@@ -348,14 +293,15 @@
     }
 
     function renderLatest() {
-      const child = REPORTS_BY_CHILD[currentChild];
+      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const reportRecord = getReportRecord(currentChild);
       const wrap = document.getElementById('latest-report-wrap');
-      if (!child) {
+      if (!child || !reportRecord) {
         wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Weekly reports will appear here when a child account is linked.' })}</div>`;
         lucide.createIcons();
         return;
       }
-      const latest = child.reports[0];
+      const latest = reportRecord.reports[0];
 
       // EJS: <% if (latestReport) { %>
       if (!latest) {
@@ -386,8 +332,8 @@
       <div class="lr-text">${latest.text}</div>
       <div class="lr-foot">
         <div class="lr-meta">
-          <span class="lr-teacher-avatar">${getInitials(latest.teacherName)}</span>
-          <span>Sent by ${latest.teacherName} · ${latest.confirmedAt}</span>
+          <span class="lr-teacher-avatar">${latest.teacherInitials || window.EDUGNAY_CONFIG.getInitials(latest.teacherName)}</span>
+          <span>Sent by ${latest.teacherName} · ${latest.confirmedAtLabel}</span>
         </div>
       </div>
     </div>`;
@@ -396,19 +342,20 @@
     }
 
     function renderTimeline() {
-      const child = REPORTS_BY_CHILD[currentChild];
+      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const reportRecord = getReportRecord(currentChild);
       const query = document.getElementById('search-input').value.toLowerCase();
       const riskFilter = document.getElementById('risk-filter').value;
       const wrap = document.getElementById('timeline-wrap');
 
-      if (!child) {
+      if (!child || !reportRecord) {
         wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Confirmed reports will appear here when a child account is linked.' })}</div>`;
         lucide.createIcons();
         return;
       }
 
       // Skip the latest report in the timeline — it already has the hero treatment above
-      const pastReports = child.reports.slice(1).filter(r => {
+      const pastReports = reportRecord.reports.slice(1).filter(r => {
         if (query && !r.text.toLowerCase().includes(query) && !r.weekLabel.toLowerCase().includes(query)) return false;
         if (riskFilter === 'at-risk' && !r.atRisk) return false;
         return true;
@@ -418,7 +365,7 @@
         wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'notebook-pen',
           title: 'No past reports to show',
-          text: child.reports.length <= 1
+          text: reportRecord.reports.length <= 1
             ? 'This is the first confirmed report for ' + child.name.split(' ')[0] + '.'
             : 'Try adjusting your search or filter.'
         })}</div>`;
@@ -431,7 +378,7 @@
       ${pastReports.map(r => `
         <div class="timeline-entry ${r.atRisk ? 'at-risk' : ''}">
           <div class="timeline-dot"><div class="timeline-dot-inner"></div></div>
-          <div class="report-card ${r.atRisk ? 'at-risk' : ''}" onclick="openReportModal(${r.id})">
+          <div class="report-card ${r.atRisk ? 'at-risk' : ''}" onclick="openReportModal('${r.id}')">
             <div class="rc-head">
               <div>
                 <div class="rc-week-label">${r.weekLabel}</div>
@@ -444,10 +391,10 @@
             <div class="rc-excerpt">${r.text}</div>
             <div class="rc-foot">
               <div class="rc-foot-left">
-                <span class="rc-teacher-avatar">${getInitials(r.teacherName)}</span>
-                <span>${r.teacherName} · ${r.confirmedAt}</span>
+                <span class="rc-teacher-avatar">${r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName)}</span>
+                <span>${r.teacherName} · ${r.confirmedAtLabel}</span>
               </div>
-              <button class="rc-read-link" onclick="event.stopPropagation(); openReportModal(${r.id})">
+              <button class="rc-read-link" onclick="event.stopPropagation(); openReportModal('${r.id}')">
                 Read full report <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
               </button>
             </div>
@@ -458,16 +405,17 @@
     }
 
     function openReportModal(id) {
-      const child = REPORTS_BY_CHILD[currentChild];
-      const r = child.reports.find(x => x.id === id);
-      if (!r) return;
-      activeReportId = id;
+      const child = PARENT_CHILDREN.find(child => child.studentId === currentChild);
+      const reportRecord = getReportRecord(currentChild);
+      const r = reportRecord?.reports.find(report => report.id === String(id));
+      if (!child || !r) return;
+      activeReportId = String(id);
 
       document.getElementById('rm-week').textContent = r.weekLabel;
-      document.getElementById('rm-child').textContent = `${child.name} · ${child.section}`;
+      document.getElementById('rm-child').textContent = `${child.name} · ${child.gradeLevel} – ${child.sectionName}`;
       document.getElementById('rm-text').textContent = r.text;
-      document.getElementById('rm-foot-avatar').textContent = getInitials(r.teacherName);
-      document.getElementById('rm-foot-meta-text').textContent = `Sent by ${r.teacherName} · ${r.confirmedAt}`;
+      document.getElementById('rm-foot-avatar').textContent = r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName);
+      document.getElementById('rm-foot-meta-text').textContent = `Sent by ${r.teacherName} · ${r.confirmedAtLabel}`;
 
       const riskBanner = document.getElementById('rm-risk-banner');
       riskBanner.style.display = r.atRisk ? 'flex' : 'none';
@@ -492,13 +440,15 @@
     });
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { toggleDrawer(false); closeProfileMenu(); closeReportModal(); }
+      if (e.key === 'Escape') { toggleDrawer(false); toggleProfileDropdown(false); closeReportModal(); }
     });
 
     /* ── INIT ── */
-    renderChildSwitcher();
-    renderLatest();
-    renderTimeline();
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderChildSwitcher();
+      renderLatest();
+      renderTimeline();
+    });
   </script>
 
 </body>

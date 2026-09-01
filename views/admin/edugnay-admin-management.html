@@ -57,19 +57,14 @@
         </div>
         <div class="form-row-2 modal-final-row">
           <div class="form-group">
-            <label class="form-label">Assigned Adviser</label>
-            <select class="form-select dropdown" name="adviserId">
+            <label class="form-label" for="createAdviser">Assigned Adviser</label>
+            <select class="form-select dropdown" name="adviserId" id="createAdviser">
               <option value="">Select faculty</option>
-              <option value="mr1">Ms. Maria Reyes</option>
-              <option value="lv1">Ms. Lara Villanueva</option>
-              <option value="pt1">Mr. Paolo Tan</option>
-              <option value="cd1">Ms. Carla Dizon</option>
-              <option value="rs1">Mr. Rico Santos</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Max Capacity</label>
-            <input class="form-select" type="number" name="maxCapacity" placeholder="e.g. 40"/>
+            <input class="form-select" type="number" name="maxCapacity" id="createCapacity" placeholder="e.g. 40"/>
           </div>
         </div>
       </form>
@@ -96,6 +91,7 @@
     <div class="modal-body">
       <form id="editSectionForm" method="post">
         <input type="hidden" name="_method" value="PUT"/>
+        <input type="hidden" name="sectionId" id="editSectionId" value=""/>
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="editSchoolLevel">School Level</label>
@@ -121,11 +117,6 @@
             <label class="form-label">Assigned Adviser</label>
             <select class="form-select dropdown" name="adviserId" id="editAdviser">
               <option value="">Select faculty</option>
-              <option value="mr1">Ms. Maria Reyes</option>
-              <option value="lv1">Ms. Lara Villanueva</option>
-              <option value="pt1">Mr. Paolo Tan</option>
-              <option value="cd1">Ms. Carla Dizon</option>
-              <option value="rs1">Mr. Rico Santos</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
@@ -236,24 +227,17 @@
             <div class="ctx-val" id="teacherCtxVal">Select a section and subject</div>
           </div>
         </div>
-        <input type="hidden" name="assignmentContext" id="teacherAssignmentContext" value=""/>
+        <input type="hidden" name="sectionId" id="teacherAssignmentSectionId" value=""/>
+        <input type="hidden" name="subjectId" id="teacherAssignmentSubjectId" value=""/>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label" for="teacherSelect-search">Faculty Member</label>
-          <select class="form-select dropdown" id="teacherSelect" name="teacher" onchange="previewTeacher(this.value)">
-            <option value="">— Select a teacher —</option>
-            <option value="Maria Reyes|m.reyes.fac@stcolumban.edu.ph|MR">Ms. Maria Reyes · m.reyes.fac@stcolumban.edu.ph</option>
-            <option value="Lara Villanueva|l.villanueva.fac@stcolumban.edu.ph|LV">Ms. Lara Villanueva · l.villanueva.fac@stcolumban.edu.ph</option>
-            <option value="Paolo Tan|p.tan.fac@stcolumban.edu.ph|PT">Mr. Paolo Tan · p.tan.fac@stcolumban.edu.ph</option>
-            <option value="Rico Santos|r.santos.fac@stcolumban.edu.ph|RS">Mr. Rico Santos · r.santos.fac@stcolumban.edu.ph</option>
-            <option value="Carla Dizon|c.dizon.fac@stcolumban.edu.ph|CD">Ms. Carla Dizon · c.dizon.fac@stcolumban.edu.ph</option>
-            <option value="Jana Mendez|j.mendez.fac@stcolumban.edu.ph|JM">Ms. Jana Mendez · j.mendez.fac@stcolumban.edu.ph</option>
-            <option value="Ana Garcia|a.garcia.fac@stcolumban.edu.ph|AG">Ms. Ana Garcia · a.garcia.fac@stcolumban.edu.ph</option>
+          <select class="form-select dropdown" id="teacherSelect" name="teacherId" onchange="previewTeacher(this)">
           </select>
           <div class="teacher-preview" id="teacherPreview">
-            <div class="tp-av" id="tpAv">MR</div>
+            <div class="tp-av" id="tpAv"></div>
             <div>
-              <div class="tp-name" id="tpName">Ms. Maria Reyes</div>
-              <div class="tp-detail" id="tpDetail">m.reyes.fac@stcolumban.edu.ph</div>
+              <div class="tp-name" id="tpName"></div>
+              <div class="tp-detail" id="tpDetail"></div>
             </div>
           </div>
         </div>
@@ -944,133 +928,224 @@ function updateSectionFormFields(mode) {
 function openSectionAddModal() {
   const form = document.getElementById('createSectionForm');
   form.reset();
+  renderTeacherOptions();
   document.getElementById('createSchoolLevel').value = managementDefaultLevel();
+  document.getElementById('createCapacity').value = 40;
   updateSectionFormFields('create');
   document.getElementById('sectionAddModalBackdrop').classList.add('open');
 }
 function closeSectionAddModal() { document.getElementById('sectionAddModalBackdrop').classList.remove('open'); }
 document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
 
-const adviserMap = {
-  'ms. maria reyes':     'mr1',
-  'ms. lara villanueva': 'lv1',
-  'mr. paolo tan':       'pt1',
-  'ms. carla dizon':     'cd1',
-  'mr. rico santos':     'rs1',
-};
+function teacherAccounts() {
+  const teacherRole = window.EDUGNAY_CONFIG.values?.roles?.TEACHER || 'teacher';
+  return window.EDUGNAY_CONFIG.getUsers().filter(user => user.role === teacherRole);
+}
+
+function teacherInitials(teacher) {
+  return String(teacher?.firstName || teacher?.displayName || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .concat(String(teacher?.lastName || '').split(/\s+/).filter(Boolean))
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function renderTeacherOptions() {
+  const teachers = teacherAccounts();
+  const adviserOptions = document.querySelectorAll('#createAdviser, #editAdviser');
+  adviserOptions.forEach(select => {
+    const selected = select.value;
+    select.innerHTML = '';
+    select.appendChild(new Option('Select faculty', ''));
+    teachers.forEach(teacher => select.appendChild(new Option(teacher.displayName, teacher.profileId || teacher.id)));
+    select.value = teachers.some(teacher => (teacher.profileId || teacher.id) === selected) ? selected : '';
+  });
+
+  const select = document.getElementById('teacherSelect');
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = '';
+  select.appendChild(new Option('Select a teacher', ''));
+  teachers.forEach(teacher => {
+    const option = new Option(`${teacher.displayName} · ${teacher.email}`, teacher.profileId || teacher.id);
+    option.dataset.name = teacher.displayName || '';
+    option.dataset.email = teacher.email || '';
+    option.dataset.initials = teacherInitials(teacher);
+    select.appendChild(option);
+  });
+  select.value = teachers.some(teacher => (teacher.profileId || teacher.id) === selected) ? selected : '';
+  window.syncSearchableSelect?.(select);
+}
+
+function saveManagementSchool(school) {
+  if (!school?.id) return false;
+  const schools = window.EDUGNAY_CONFIG.getSchools();
+  const index = schools.findIndex(record => record.id === school.id);
+  if (index < 0) return false;
+  schools[index] = school;
+  window.EDUGNAY_CONFIG.saveSchools(schools);
+  window.EDUGNAY_CONFIG.refreshUserDirectories?.();
+  return true;
+}
+
+function refreshManagementViews() {
+  syncManagementStudentRecords();
+  renderManagementGradeFilters();
+  renderTeacherOptions();
+  renderManagementSubjectTabs();
+  renderManagementTabPills();
+  renderSections();
+  renderSubjects();
+  renderTeacherAssignments();
+  renderStudentsTab();
+}
+
+function saveSectionForm(event, mode) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const level = form.elements.schoolLevel?.value || '';
+  const grade = form.elements.gradeLevel?.value || '';
+  const name = String(form.elements.sectionName?.value || '').trim();
+  const strand = level === 'shs' ? String(form.elements.strand?.value || '').trim() : '';
+  const adviserId = form.elements.adviserId?.value || null;
+  const capacityValue = Number(form.elements.maxCapacity?.value);
+  const capacity = Number.isFinite(capacityValue) && capacityValue > 0 ? capacityValue : 40;
+  if (!level || !grade || !name) {
+    form.reportValidity();
+    return;
+  }
+
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  if (!school) return;
+  school.divisions ||= {};
+  school.schoolLevels = Array.isArray(school.schoolLevels) ? school.schoolLevels : [];
+  if (!school.schoolLevels.includes(level)) school.schoolLevels.push(level);
+  let targetDivision = school.divisions[level] || window.EDUGNAY_CONFIG.createDivision(level);
+  targetDivision.sections = Array.isArray(targetDivision.sections) ? targetDivision.sections : [];
+  const sectionId = mode === 'edit'
+    ? (form.elements.sectionId?.value || form.dataset.sectionId)
+    : `section-${Date.now()}`;
+  let previousSection = null;
+
+  if (mode === 'edit') {
+    Object.entries(school.divisions).some(([, division]) => {
+      const index = (division.sections || []).findIndex(section => section.id === sectionId);
+      if (index < 0) return false;
+      previousSection = { ...division.sections[index] };
+      division.sections.splice(index, 1);
+      return true;
+    });
+    if (!previousSection) return;
+  }
+
+  targetDivision.sections.push({
+    ...(previousSection || {}),
+    id: sectionId,
+    schoolId: school.id,
+    name,
+    grade,
+    strand: strand || null,
+    capacity,
+    enrolled: previousSection?.enrolled || 0,
+    adviserId
+  });
+  school.divisions[level] = targetDivision;
+  school.activeDivision = level;
+  if (!saveManagementSchool(school)) return;
+  if (mode === 'edit') closeSectionEditModal();
+  else closeSectionAddModal();
+  refreshManagementViews();
+}
+
+document.getElementById('createSectionForm').addEventListener('submit', event => saveSectionForm(event, 'create'));
+document.getElementById('editSectionForm').addEventListener('submit', event => saveSectionForm(event, 'edit'));
 
 /* ══════════════════════════════════════════════
    DATA ARRAYS
 ══════════════════════════════════════════════ */
-// The School Settings structure is the shared section source for Class Management.
-const SECTIONS_DATA = window.EDUGNAY_CONFIG
-  .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
-  .map(section => ({
-    ...section,
-    students: section.enrolled,
-  }));
-
-const GRADE_BADGE_CLASS = { 7: 'badge-blue', 8: 'badge-gold', 9: 'badge-green', 10: 'badge-orange' };
-const GRADE_PILL_CLASS  = { 7: 'gp-7', 8: 'gp-8', 9: 'gp-9', 10: 'gp-10' };
+// Sections come from the active school's divisions. The separate array below
+// stores only teacher-assignment relationships keyed by sectionId.
 const BAR_CLASS_BY_GRADE = { 7: 'bar-blue', 8: 'bar-gold', 9: 'bar-green', 10: 'bar-orange' };
 
-const SUBJECTS_DATA = [
-  { id: 'mathematics', name: 'Mathematics', code: 'MATH', type: 'Core Subject', icon: 'hash', iconBg: 'var(--blue-xpale)', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], total: 8 },
-  { id: 'english', name: 'English', code: 'ENG', type: 'Core Subject', icon: 'book', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
-  { id: 'filipino', name: 'Filipino', code: 'FIL', type: 'Core Subject', icon: 'message-circle', iconBg: '#fef9c3', iconColor: '#92400e', grades: ['7','8','9','10'], total: 8 },
-  { id: 'science', name: 'Science', code: 'SCI', type: 'Core Subject', icon: 'flask-conical', iconBg: '#ecfdf5', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
-  { id: 'ap', name: 'Araling Panlipunan', code: 'AP', type: 'Core Subject', icon: 'globe', iconBg: '#eff6ff', iconColor: 'var(--blue-mid)', grades: ['7','8','9','10'], total: 8 },
-  { id: 'esp', name: 'ESP', code: 'EsP', type: 'Core Subject', icon: 'bird', iconBg: '#f0fdf4', iconColor: '#16a34a', grades: ['7','8','9','10'], total: 8 },
-  { id: 'tle', name: 'TLE', code: 'TLE', type: 'Applied Subject', icon: 'wrench', iconBg: 'var(--orange-pale)', iconColor: '#d97706', grades: ['7','8','9','10'], total: 8 },
-  { id: 'mapeh', name: 'MAPEH', code: 'MAPEH', type: 'Applied Subject', icon: 'music', iconBg: '#fdf4ff', iconColor: '#92400e', grades: ['7','8','9','10'], total: 8 },
-];
+// One local subject collection for this page, derived from the shared school
+// configuration. Replace this initialization with the subjects API response later.
+const SUBJECTS_DATA = window.EDUGNAY_CONFIG.subjects
+  .map(subject => ({
+    id: subject.id,
+    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+    name: subject.name,
+    code: subject.code,
+    type: subject.levels.length === 1 && subject.levels.includes('shs')
+      ? 'Specialized Subject'
+      : 'Core Subject',
+    grades: managementSchoolLevels().flatMap(level => {
+      const division = managementDivision(level);
+      if (!Array.isArray(division.subjects) || !division.subjects.includes(subject.id)) return [];
+      return managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`);
+    })
+  }))
+  .filter(subject => subject.grades.length);
 
-function teacherRow(name, code, icon, iconColor, teacher, email, initials, avClass) {
-  return { name, code, icon, iconColor, teacher, email, initials, avClass };
+const SUBJECT_AVATAR_CLASSES = {
+  mathematics: 'av-blue',
+  english: 'av-navy',
+  filipino: 'av-green',
+  science: 'av-orange',
+  'araling-panlipunan': 'av-purple',
+  'values-education': 'av-purple',
+  esp: 'av-teal',
+  tle: 'av-green',
+  mapeh: 'av-blue',
+  'pe-health': 'av-purple',
+  'empowerment-technologies': 'av-blue',
+  'practical-research': 'av-orange'
+};
+
+// Assignment records store relationships only. Names and emails come from
+// the shared teacher accounts/profiles in shell-common.js.
+const JHS_SUBJECT_TEACHERS = {
+  mathematics: 'teacher-2',
+  english: 'teacher-9',
+  filipino: 'teacher-carla-dizon',
+  science: 'teacher-rico-santos',
+  'araling-panlipunan': 'teacher-3',
+  esp: 'teacher-jana-mendez',
+  tle: 'teacher-ana-garcia',
+  mapeh: 'teacher-2'
+};
+
+function seededTeacherAssignments(subjectIds) {
+  return subjectIds.map(subjectId => ({
+    subjectId,
+    teacherId: JHS_SUBJECT_TEACHERS[subjectId] || null
+  }));
 }
 
-const TEACHER_ASSIGNMENTS_DATA = [
-  { id: 'st-matthew', grade: '7', name: 'St. Matthew', adviser: 'Ms. Reyes', collapsed: false, subjects: [
-    teacherRow('Mathematics','MATH 7','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 7','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 7','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 7','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 7','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 7','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 7','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 7','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
-  { id: 'st-mark', grade: '7', name: 'St. Mark', adviser: 'Ms. Dizon', collapsed: false, subjects: [
-    teacherRow('Mathematics','MATH 7','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 7','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 7','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 7','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 7','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 7','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 7','wrench','#d97706',null,null,null,null),
-    teacherRow('MAPEH','MAPEH 7','music','#92400e',null,null,null,null),
-  ]},
-  { id: 'st-luke', grade: '8', name: 'St. Luke', adviser: 'Ms. Villanueva', collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 8','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 8','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 8','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 8','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 8','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 8','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 8','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 8','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
-  { id: 'st-john', grade: '8', name: 'St. John', adviser: null, collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 8','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 8','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 8','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 8','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 8','globe','var(--blue-mid)',null,null,null,null),
-    teacherRow('ESP','EsP 8','bird','#16a34a',null,null,null,null),
-    teacherRow('TLE','TLE 8','wrench','#d97706',null,null,null,null),
-    teacherRow('MAPEH','MAPEH 8','music','#92400e',null,null,null,null),
-  ]},
-  { id: 'st-peter', grade: '9', name: 'St. Peter', adviser: 'Mr. Santos', collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 9','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 9','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 9','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 9','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 9','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 9','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 9','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 9','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
-  { id: 'st-paul', grade: '9', name: 'St. Paul', adviser: 'Ms. Mendez', collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 9','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 9','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 9','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 9','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 9','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 9','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 9','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 9','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
-  { id: 'st-james', grade: '10', name: 'St. James', adviser: 'Mr. Tan', collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 10','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 10','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 10','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 10','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 10','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 10','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 10','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 10','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
-  { id: 'st-thomas', grade: '10', name: 'St. Thomas', adviser: 'Ms. Garcia', collapsed: true, subjects: [
-    teacherRow('Mathematics','MATH 10','hash','var(--blue-mid)','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-    teacherRow('English','ENG 10','book','#16a34a','Ms. Lara Villanueva','l.villanueva.fac@stcolumban.edu.ph','LV','av-navy'),
-    teacherRow('Filipino','FIL 10','message-circle','#92400e','Ms. Carla Dizon','c.dizon.fac@stcolumban.edu.ph','CD','av-green'),
-    teacherRow('Science','SCI 10','flask-conical','#16a34a','Mr. Rico Santos','r.santos.fac@stcolumban.edu.ph','RS','av-orange'),
-    teacherRow('Araling Panlipunan','AP 10','globe','var(--blue-mid)','Mr. Paolo Tan','p.tan.fac@stcolumban.edu.ph','PT','av-purple'),
-    teacherRow('ESP','EsP 10','bird','#16a34a','Ms. Jana Mendez','j.mendez.fac@stcolumban.edu.ph','JM','av-teal'),
-    teacherRow('TLE','TLE 10','wrench','#d97706','Ms. Ana Garcia','a.garcia.fac@stcolumban.edu.ph','AG','av-green'),
-    teacherRow('MAPEH','MAPEH 10','music','#92400e','Ms. Maria Reyes','m.reyes.fac@stcolumban.edu.ph','MR','av-blue'),
-  ]},
+const TEACHER_ASSIGNMENT_SEEDS = [
+  { sectionId: 'jhs-grade7-matthew', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade7-mark', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp']) },
+  { sectionId: 'jhs-grade8-luke', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade8-john', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science']) },
+  { sectionId: 'jhs-grade9-peter', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade9-paul', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade10-james', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade10-thomas', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) }
 ];
+
+const TEACHER_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.withActiveSchool(
+  TEACHER_ASSIGNMENT_SEEDS.map(record => ({
+    ...record,
+    subjects: record.subjects.map(assignment => ({
+      ...assignment,
+      id: `${record.sectionId}-${assignment.subjectId}`,
+      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+      sectionId: record.sectionId
+    }))
+  }))
+);
 
 // Keep the management table in step with the shared student directory.
 // Later, replace this source with the student API response in the same shape.
@@ -1083,7 +1158,7 @@ function managementStudentSectionId(student) {
   const name = sectionLabel.split('/').pop().trim().toLowerCase();
   const configuredSections = window.EDUGNAY_CONFIG
     .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
-  const matchingSection = [...SECTIONS_DATA, ...configuredSections].find(section => (
+  const matchingSection = configuredSections.find(section => (
     managementGradeKey(section.grade) === grade
     && String(section.name || '').trim().toLowerCase() === name
   ));
@@ -1094,7 +1169,7 @@ function managementStudentSectionId(student) {
 const STUDENTS_DATA = [];
 
 function syncManagementStudentRecords() {
-  const records = window.EDUGNAY_CONFIG.students.map(student => ({
+  const records = window.EDUGNAY_CONFIG.getStudents().map(student => ({
     id: student.id,
     name: student.name,
     email: student.email,
@@ -1135,77 +1210,6 @@ function updateManagementEmptySlot(container, key, options, show) {
   slot.classList.add('panel-empty-slot');
   slot.hidden = !show;
   slot.innerHTML = show ? window.EDUGNAY_CONFIG.renderPanelEmptyState(options) : '';
-}
-
-function getTeacherAssignmentStatsLegacy() {
-  const slots = TEACHER_ASSIGNMENTS_DATA.flatMap(section => section.subjects);
-  const assigned = slots.filter(subject => subject.teacher).length;
-  return {
-    total: slots.length,
-    assigned,
-    unassigned: slots.length - assigned,
-    faculty: new Set(slots.filter(subject => subject.teacher).map(subject => subject.teacher)).size,
-  };
-}
-
-function renderSectionsLegacy() {
-  const withAdviser = SECTIONS_DATA.filter(s => s.adviser).length;
-  const totalStudents = STUDENTS_DATA.filter(student => student.section).length;
-  renderManagementStatCards('sections-summary-cards', [
-    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Total Sections', sub: 'Across configured school levels' },
-    { tone: 'green', icon: 'graduation-cap', value: totalStudents, label: 'Students', sub: 'Enrolled this school year' },
-    { tone: 'gold', icon: 'book-open', value: withAdviser, label: 'With Adviser', sub: `Out of ${SECTIONS_DATA.length} total sections` },
-  ]);
-
-  // card view
-  const container = document.getElementById('sectionCardView');
-  container.innerHTML = ['7','8','9','10'].map(grade => {
-    const items = SECTIONS_DATA.filter(s => s.grade === grade);
-    if (!items.length) return '';
-    const gTotal = items.reduce((sum, s) => sum + s.students, 0);
-    return `
-      <div class="grade-group" data-grade="${grade}">
-        <div class="grade-label"><span class="grade-text">Grade ${grade}</span><div class="grade-line"></div><span class="grade-count">${items.length} Sections · ${gTotal} Students</span></div>
-        <div class="sections-grid">
-          ${items.map(s => `
-            <div class="section-card" data-grade="${s.grade}" data-name="${s.name.toLowerCase()}" data-id="${s.id}">
-              <div class="card-stripe stripe-${s.grade}"></div>
-              <div class="card-body">
-                <div class="card-head"><div class="section-name">${s.name}</div><span class="section-grade-badge gb-${s.grade}">Grade ${s.grade}</span></div>
-                <div class="card-stats">
-                  <div class="cs-item"><div class="cs-num">${s.students}</div><div class="cs-label">Students</div></div>
-                  <div class="cs-item"><div class="cs-num">${s.subjects}</div><div class="cs-label">Subjects</div></div>
-                  <div class="cs-item"><div class="cs-num">${s.capacity}</div><div class="cs-label">Capacity</div></div>
-                </div>
-                ${s.adviser
-                  ? `<div class="card-adviser"><div class="adviser-av">${s.adviserInitials}</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">${s.adviser}</div></div></div>`
-                  : `<div class="no-adviser"><div class="no-adviser-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div><div class="no-adviser-text">No adviser assigned yet</div></div>`}
-                <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">${s.adviser ? 'Edit' : 'Assign Adviser'}</button></div>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>`;
-  }).join('');
-
-  container.querySelectorAll('.section-card').forEach(card => {
-    card.querySelector('.card-btn.edit').addEventListener('click', () => openSectionEditModal(card));
-    card.querySelector('.card-btn.view').addEventListener('click', () => openSectionStudentsModal(card));
-  });
-
-  // table view
-  const tbody = document.querySelector('#sectionTableView tbody');
-  tbody.innerHTML = SECTIONS_DATA.map(s => `
-    <tr data-id="${s.id}">
-      <td><strong>${s.name}</strong></td>
-      <td><span class="badge ${GRADE_BADGE_CLASS[s.grade]}">Grade ${s.grade}</span></td>
-      <td>${s.adviser || '<span style="color:var(--red);font-weight:600;"><i data-lucide="alert-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Unassigned</span>'}</td>
-      <td>${s.students}</td>
-      <td>${s.subjects}</td>
-      <td>${s.capacity}</td>
-      <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">${s.adviser ? 'Edit' : 'Assign'}</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td>
-    </tr>`).join('');
-
-  lucide.createIcons();
 }
 
 function renderSections() {
@@ -1276,50 +1280,12 @@ function renderSections() {
   lucide.createIcons();
 }
 
-const subjectGradeOverrides = new Map();
-const removedSubjectIds = new Set();
-
 function managementSubjectRecords() {
-  const configSubjects = Array.isArray(window.EDUGNAY_CONFIG.subjects) ? window.EDUGNAY_CONFIG.subjects : [];
-  const localSubjects = Array.isArray(SUBJECTS_DATA) ? SUBJECTS_DATA : [];
-  const aliases = { ap: 'araling-panlipunan', esp: 'edukasyon-sa-pagpapakatao' };
-  const normalizeName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const sections = managementSectionRecords();
-
-  const records = configSubjects.filter(subject => (
-    !removedSubjectIds.has(subject.id)
-    && !removedSubjectIds.has(normalizeName(subject.name))
-  )).map(subject => {
-    const local = localSubjects.find(item => item.id === subject.id || aliases[item.id] === subject.id || normalizeName(item.name) === normalizeName(subject.name));
-    const levels = managementSchoolLevels().filter(level => {
-      const division = managementDivision(level);
-      return Array.isArray(division.subjects) && division.subjects.includes(subject.id);
-    });
-    const fallbackGrades = local?.grades?.map(grade => `jhs:${managementGradeKey(grade)}`) || [];
-    const configuredGrades = (levels.length ? levels.flatMap(level => managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`)) : fallbackGrades);
-    const grades = [...(subjectGradeOverrides.get(local?.id || subject.id) || configuredGrades)];
-    const total = sections.filter(section => grades.includes(managementSectionFilterKey(section))).length;
-    return {
-      ...(local || {}),
-      id: local?.id || subject.id,
-      name: local?.name || subject.name,
-      code: local?.code || subject.code,
-      type: local?.type || (subject.levels?.includes('shs') && subject.levels.length === 1 ? 'Specialized Subject' : 'Core Subject'),
-      icon: local?.icon || 'book-open',
-      iconBg: local?.iconBg || 'var(--blue-xpale)',
-      iconColor: local?.iconColor || 'var(--blue-mid)',
-      grades,
-      total
-    };
-  });
-
-  localSubjects.forEach(local => {
-    if (removedSubjectIds.has(local.id) || removedSubjectIds.has(normalizeName(local.name))) return;
-    if (records.some(subject => subject.id === local.id || normalizeName(subject.name) === normalizeName(local.name))) return;
-    const grades = [...(subjectGradeOverrides.get(local.id) || local.grades.map(grade => `jhs:${managementGradeKey(grade)}`))];
-    records.push({ ...local, grades, total: sections.filter(section => grades.includes(managementSectionFilterKey(section))).length });
-  });
-  return records;
+  return SUBJECTS_DATA.map(subject => ({
+    ...subject,
+    total: sections.filter(section => subject.grades.includes(managementSectionFilterKey(section))).length
+  }));
 }
 
 function managementFilterMatches(filterValue, keys) {
@@ -1382,20 +1348,38 @@ function renderManagementSubjectTabs() {
 }
 
 function getManagementTeacherSlots() {
-  const subjects = managementSubjectRecords();
-  return managementSectionRecords().flatMap(section => section.teacherAssignments?.length
-    ? section.teacherAssignments
-    : subjects.filter(subject => subject.grades.includes(managementSectionFilterKey(section))).map(subject => ({ name: subject.name, teacher: null })));
+  return managementSectionRecords().flatMap(teacherAssignmentsForSection);
+}
+
+function teacherRecordById(teacherId) {
+  if (!teacherId) return null;
+  return teacherAccounts().find(teacher => (teacher.profileId || teacher.id) === teacherId) || null;
+}
+
+function teacherAssignmentsForSection(section) {
+  const subjects = managementSubjectRecords().filter(subject => subject.grades.includes(managementSectionFilterKey(section)));
+  const storedAssignments = Array.isArray(section.teacherAssignments) ? section.teacherAssignments : [];
+  return subjects.map(subject => {
+    const assignment = storedAssignments.find(record => record.subjectId === subject.id);
+    const avClass = SUBJECT_AVATAR_CLASSES[subject.id] || 'av-blue';
+    return {
+      subjectId: subject.id,
+      name: subject.name,
+      code: subject.code,
+      avClass,
+      teacherId: assignment?.teacherId || null
+    };
+  });
 }
 
 function getTeacherAssignmentStats() {
   const slots = getManagementTeacherSlots();
-  const assigned = slots.filter(subject => subject.teacher).length;
+  const assigned = slots.filter(subject => subject.teacherId).length;
   return {
     total: slots.length,
     assigned,
     unassigned: slots.length - assigned,
-    faculty: new Set(slots.filter(subject => subject.teacher).map(subject => subject.teacher)).size,
+    faculty: new Set(slots.filter(subject => subject.teacherId).map(subject => subject.teacherId)).size,
   };
 }
 
@@ -1433,7 +1417,7 @@ function renderSubjects() {
 
 const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
-let teacherTargetSubject = null;
+let teacherTargetSubjectId = null;
 
 function bindTeacherRemoveButtons(container) {
   container.querySelectorAll('.section-block .row-btn.remove').forEach(button => {
@@ -1441,6 +1425,7 @@ function bindTeacherRemoveButtons(container) {
       event.stopPropagation();
       const block = button.closest('.section-block');
       const row = button.closest('.subject-row');
+      const subjectId = row?.dataset.subjectId || '';
       const subjectName = row?.querySelector('.subj-name')?.textContent.trim() || '';
       const teacherName = row?.querySelector('.teacher-name')?.textContent.trim() || '';
       const sectionName = block?.querySelector('.section-name')?.textContent.trim() || '';
@@ -1448,6 +1433,7 @@ function bindTeacherRemoveButtons(container) {
       if (block && subjectName && teacherName) {
         openTeacherRemoveConfirmation({
           sectionId: block.dataset.id,
+          subjectId,
           sectionName,
           gradeLabel,
           subjectName,
@@ -1458,73 +1444,11 @@ function bindTeacherRemoveButtons(container) {
   });
 }
 
-function renderTeacherAssignmentsLegacy() {
-  const assignmentStats = getTeacherAssignmentStats();
-  renderManagementStatCards('teacher-summary-cards', [
-    { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across all sections & subjects' },
-    { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Assigned', sub: 'Subject-section slots filled' },
-    { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Unassigned', sub: 'Still needs a teacher' },
-    { tone: 'gold', icon: 'book-open', value: assignmentStats.faculty, label: 'Faculty Assigned', sub: 'Unique teachers linked' },
-  ]);
-  const container = document.getElementById('panel-teachers');
-  container.querySelectorAll('.section-block').forEach(el => el.remove());
-
-  const html = TEACHER_ASSIGNMENTS_DATA.map(sec => {
-    const assignedCount = sec.subjects.filter(su => su.teacher).length;
-    const total = sec.subjects.length;
-    const full = assignedCount === total;
-    const pct = Math.round((assignedCount / total) * 100);
-
-    const rows = sec.subjects.map(su => `
-      <div class="subject-row">
-        <div class="subj-name-wrap"><div><div class="subj-name">${su.name}</div><div class="subj-code">${su.code}</div></div></div>
-        ${su.teacher ? `
-          <div class="teacher-assign"><div class="teacher-av ${su.avClass}">${su.initials}</div><div><div class="teacher-name">${su.teacher}</div><div class="teacher-email">${su.email}</div></div></div>
-          <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
-        ` : `
-          <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
-          <div class="row-actions"><button class="row-btn assign" onclick="teacherTargetSection='${sec.id}';teacherTargetSubject='${su.name}';openTeacherModal('Grade ${sec.grade} – ${sec.name} · ${su.name}')">＋ Assign</button></div>
-        `}
-      </div>`).join('');
-
-    return `
-      <div class="section-block${sec.collapsed ? ' collapsed' : ''}" data-grade="${sec.grade}" data-name="${sec.name.toLowerCase()}" data-status="${full ? 'complete' : 'incomplete'}" data-id="${sec.id}">
-        <div class="section-head" onclick="toggleTeacherSection(this)">
-          <div class="section-head-left"><span class="section-grade-pill ${GRADE_PILL_CLASS[sec.grade]}">Grade ${sec.grade}</span><div class="section-name">${sec.name}</div></div>
-          <div class="section-meta">
-            <div class="meta-item"><i data-lucide="library" style="width:16px;height:16px;"></i><strong>${total}</strong> Subjects</div>
-            <div class="meta-item"><i data-lucide="user" style="width:16px;height:16px;"></i>Adviser: <strong${sec.adviser ? '' : ' style="color:var(--red)"'}>${sec.adviser || 'None'}</strong></div>
-            <div class="coverage-bar-wrap"><div class="coverage-bar"><div class="coverage-fill ${full ? 'fill-full' : 'fill-partial'}" style="width:${pct}%"></div></div><span class="coverage-label ${full ? 'label-full' : 'label-partial'}">${assignedCount}/${total} Assigned</span></div>
-            ${full ? '<span class="badge badge-green"><i data-lucide="check" style="width:14px;height:14px;"></i> Complete</span>' : '<span class="badge badge-orange"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Incomplete</span>'}
-          </div>
-          <span class="collapse-arrow"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
-        </div>
-        <div class="subject-list">${rows}</div>
-      </div>`;
-  }).join('');
-
-  container.insertAdjacentHTML('beforeend', html);
-
-  bindTeacherRemoveButtons(container);
-
-  container.querySelectorAll('.row-btn.change').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const block = this.closest('.section-block');
-      const row = this.closest('.subject-row');
-      teacherTargetSection = block.dataset.id;
-      teacherTargetSubject = row.querySelector('.subj-name').textContent.trim();
-      openTeacherModal(`Grade ${block.dataset.grade} – ${block.querySelector('.section-name').textContent.trim()} · ${teacherTargetSubject}`);
-    });
-  });
-
-  lucide.createIcons();
-}
-
 function renderTeacherAssignments() {
   const sections = managementSectionRecords();
   const assignmentStats = getTeacherAssignmentStats();
   renderManagementStatCards('teacher-summary-cards', [
-    { tone: 'blue', icon: 'clipboard-list', value: sections.reduce((sum, section) => sum + (section.teacherAssignments?.length || managementSubjectRecords().filter(subject => subject.grades.includes(managementSectionFilterKey(section))).length), 0), label: 'Total Assignments', sub: 'Across configured sections' },
+    { tone: 'blue', icon: 'clipboard-list', value: assignmentStats.total, label: 'Total Assignments', sub: 'Across configured sections' },
     { tone: 'green', icon: 'check-circle', value: assignmentStats.assigned, label: 'Assigned', sub: 'Subject-section slots filled' },
     { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Unassigned', sub: 'Still needs a teacher' },
     { tone: 'gold', icon: 'book-open', value: assignmentStats.faculty, label: 'Faculty Assigned', sub: 'Unique teachers linked' },
@@ -1532,30 +1456,26 @@ function renderTeacherAssignments() {
   const container = document.getElementById('panel-teachers');
   container.querySelectorAll('.section-block').forEach(element => element.remove());
   container.querySelector('[data-management-empty="teachers"]')?.remove();
-  const subjects = managementSubjectRecords();
   const html = sections.map(section => {
-    const sectionSubjects = section.teacherAssignments?.length
-      ? section.teacherAssignments
-      : subjects.filter(subject => subject.grades.includes(managementSectionFilterKey(section))).map(subject => ({
-        name: subject.name,
-        code: subject.code,
-        teacher: null
-      }));
-    const assignedCount = sectionSubjects.filter(subject => subject.teacher).length;
+    const sectionSubjects = teacherAssignmentsForSection(section);
+    const assignedCount = sectionSubjects.filter(subject => subject.teacherId).length;
     const total = sectionSubjects.length;
     const full = total > 0 && assignedCount === total;
     const pct = total ? Math.round((assignedCount / total) * 100) : 0;
-      const rows = sectionSubjects.length ? sectionSubjects.map(subject => `
-      <div class="subject-row">
+      const rows = sectionSubjects.length ? sectionSubjects.map(subject => {
+        const teacher = teacherRecordById(subject.teacherId);
+        return `
+      <div class="subject-row" data-subject-id="${subject.subjectId || ''}">
         <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
-        ${subject.teacher ? `
-          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${subject.initials || subject.teacher.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div><div class="teacher-name">${subject.teacher}</div><div class="teacher-email">${subject.email || ''}</div></div></div>
+        ${subject.teacherId ? `
+          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${teacherInitials(teacher)}</div><div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.email || ''}</div></div></div>
           <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
         ` : `
           <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
           <div class="row-actions"><button class="row-btn assign">+ Assign</button></div>
         `}
-      </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects configured', text: 'Assign subjects to this section to manage their teachers.' });
+      </div>`;
+      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects configured', text: 'Assign subjects to this section to manage their teachers.' });
     const collapsed = managementTeacherCollapseState[section.id] ?? section.collapsed;
     return `
       <div class="section-block${collapsed ? ' collapsed' : ''}" data-grade="${managementSectionFilterKey(section)}" data-level="${section.level}" data-name="${section.name.toLowerCase()}" data-status="${full ? 'complete' : 'incomplete'}" data-id="${section.id}">
@@ -1584,70 +1504,12 @@ function renderTeacherAssignments() {
     const block = button.closest('.section-block');
     const row = button.closest('.subject-row');
     teacherTargetSection = block.dataset.id;
-    teacherTargetSubject = row?.querySelector('.subj-name')?.textContent.trim() || '';
-    openTeacherModal(`${block.querySelector('.section-grade-pill').textContent.trim()} · ${block.querySelector('.section-name').textContent.trim()} · ${teacherTargetSubject}`);
+    teacherTargetSubjectId = row?.dataset.subjectId || '';
+    const subjectName = row?.querySelector('.subj-name')?.textContent.trim() || '';
+    openTeacherModal(`${block.querySelector('.section-grade-pill').textContent.trim()} · ${block.querySelector('.section-name').textContent.trim()} · ${subjectName}`);
   }));
   filterTeacherBlocks();
   lucide.createIcons();
-}
-
-function sectionNameById(id) {
-  const s = managementSectionById(id);
-  return s ? s.name : null;
-}
-
-function renderEnrolledTableLegacy() {
-  const tbody = document.getElementById('enrolledBody');
-  tbody.innerHTML = STUDENTS_DATA.map(st => {
-    const initials = st.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    if (st.section) {
-      const secName = sectionNameById(st.section);
-      return `
-      <tr data-grade="${st.grade}" data-section="${secName.toLowerCase()}" data-assigned="true" data-id="${st.id}">
-        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${st.name}</div><div class="user-email">${st.email}</div></div></div></td>
-        <td><span class="enrolled-section-name">${secName}</span></td>
-        <td><span class="badge ${GRADE_BADGE_CLASS[st.grade]}">Grade ${st.grade}</span></td>
-        <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${st.name}', '${st.id}', '${secName}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${st.name}', '${secName}', '${st.id}', this)">Remove</button></div></td>
-      </tr>`;
-    }
-    return `
-      <tr data-grade="unassigned" data-section="none" data-assigned="false" data-id="${st.id}">
-        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${st.name}</div><div class="user-email">${st.email}</div></div></div></td>
-        <td><span style="color:var(--red);font-weight:600;font-size:12px;">⚠ Unassigned</span></td>
-        <td><span class="badge badge-gray">—</span></td>
-        <td><button class="row-btn assign" onclick="openStudentAssignModal('${st.name}')">＋ Assign</button></td>
-      </tr>`;
-  }).join('');
-  lucide.createIcons();
-}
-
-function renderSectionOverviewCardsLegacy() {
-  const container = document.querySelector('#panel-students .sc-list');
-  container.innerHTML = SECTIONS_DATA.map(s => {
-    const pct = Math.round((s.students / s.capacity) * 100);
-    return `
-    <div class="sc-card" data-id="${s.id}" onclick="filterByStudentSection('${s.name.toLowerCase()}', this)">
-      <div class="sc-head">
-        <div class="sc-info"><div class="sc-section-name">${s.name}</div><div class="sc-grade-text">Grade ${s.grade}</div></div>
-        <div class="sc-count-wrap"><div class="sc-count-num">${s.students}</div><div class="sc-count-label">Students</div></div>
-      </div>
-      <div class="sc-bar"><div class="sc-fill ${BAR_CLASS_BY_GRADE[s.grade]}" style="width:${pct}%"></div></div>
-      <div class="sc-cap-text">${s.students} / ${s.capacity} capacity</div>
-    </div>`;
-  }).join('');
-}
-
-function renderStudentsTabLegacy() {
-  const assigned = STUDENTS_DATA.filter(student => student.section).length;
-  renderManagementStatCards('students-summary-cards', [
-    { tone: 'green', icon: 'graduation-cap', value: STUDENTS_DATA.length, label: 'Total Students', sub: 'Registered in the system' },
-    { tone: 'green', icon: 'check-circle', value: assigned, label: 'Assigned', sub: 'Placed in a section' },
-    { tone: 'orange', icon: 'alert-triangle', value: STUDENTS_DATA.length - assigned, label: 'Unassigned', sub: 'Still needs a section' },
-    { tone: 'blue', icon: 'door-open', value: SECTIONS_DATA.length, label: 'Active Sections', sub: 'Across configured school levels' },
-  ]);
-  renderEnrolledTable();
-  renderSectionOverviewCards();
-  applyStudentFilters();
 }
 
 function renderStudentGradeTabs() {
@@ -1738,7 +1600,7 @@ function renderEnrolledTable() {
         <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.name}</div><div class="user-email">${student.email}</div></div></div></td>
         <td><span class="table-warning">Unassigned</span></td>
         <td><span class="badge badge-gray">Not set</span></td>
-        <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.name}')">+ Assign</button></td>
+        <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.id}')">+ Assign</button></td>
       </tr>`;
   }).join('') + `<tr class="panel-empty-row" hidden><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students found', text: 'Try adjusting the search, grade, or section filters.' })}</td></tr>`;
   lucide.createIcons();
@@ -1781,66 +1643,11 @@ function renderStudentsTab() {
   applyStudentFilters();
 }
 
-function openSectionEditModalLegacy(card) {
-  const name     = card.querySelector('.section-name').textContent.trim();
-  const grade    = card.dataset.grade;
-  const adviser  = card.querySelector('.adviser-name')?.textContent.trim() || '';
-  const capacity = card.querySelector('.cs-item:nth-child(3) .cs-num').textContent.trim();
-
-  document.getElementById('editSectionName').value = name;
-  document.getElementById('editGradeLevel').value  = grade;
-  document.getElementById('editCapacity').value    = capacity;
-  document.getElementById('editAdviser').value = adviserMap[adviser.toLowerCase()] || '';
-  document.getElementById('editSectionForm').action = `/admin/sections/update/${card.dataset.id || name.toLowerCase().replace(/\s+/g, '-')}`;
-  document.getElementById('sectionEditModalBackdrop').classList.add('open');
-}
 function closeSectionEditModal() { document.getElementById('sectionEditModalBackdrop').classList.remove('open'); }
 document.getElementById('sectionEditModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionEditModal(); });
 
-const sectionStudents = {
-  'st. matthew': [
-    { name: 'Anna Cruz', email: 'anna.cruz@school.edu', status: 'Active' },
-    { name: 'Ben Reyes', email: 'ben.reyes@school.edu', status: 'Active' },
-    { name: 'Cara Lim',  email: 'cara.lim@school.edu',  status: 'Inactive' },
-  ],
-  'st. mark':   [{ name: 'Diego Santos', email: 'diego.santos@school.edu', status: 'Active' }, { name: 'Elena Flores', email: 'elena.flores@school.edu', status: 'Active' }],
-  'st. luke':   [{ name: 'Felix Tan',    email: 'felix.tan@school.edu',    status: 'Active' }],
-  'st. john':   [{ name: 'Gia Mendoza',  email: 'gia.mendoza@school.edu',  status: 'Active' }],
-  'st. peter':  [{ name: 'Hans Villanueva', email: 'hans.v@school.edu',    status: 'Active' }],
-  'st. paul':   [{ name: 'Iris Garcia',  email: 'iris.garcia@school.edu',  status: 'Active' }],
-  'st. james':  [{ name: 'Jake Dizon',   email: 'jake.dizon@school.edu',   status: 'Active' }],
-  'st. thomas': [{ name: 'Kyla Ramos',   email: 'kyla.ramos@school.edu',   status: 'Inactive' }],
-};
-
-function openSectionStudentsModalLegacy(card) {
-  const name  = card.querySelector('.section-name').textContent.trim();
-  const grade = card.dataset.grade;
-  const list  = sectionStudents[name.toLowerCase()] || [];
-
-  document.getElementById('sectionStudentsModalTitle').textContent = name + ': Students';
-  document.getElementById('sectionStudentsModalSub').textContent   = `Grade ${grade} · ${list.length} enrolled`;
-
-  const tbody = document.getElementById('sectionStudentsTableBody');
-  tbody.innerHTML = list.length
-    ? list.map((s, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td><strong>${s.name}</strong></td>
-          <td>${s.email}</td>
-          <td><span class="badge ${s.status === 'Active' ? 'badge-green' : 'badge-orange'}">${s.status}</span></td>
-          <td><button class="row-btn remove" onclick="removeSectionStudent(this, '${s.name}')">Remove</button></td>
-        </tr>`).join('')
-    : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
-
-  document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
-}
 function closeSectionStudentsModal() { document.getElementById('sectionStudentsModalBackdrop').classList.remove('open'); }
 document.getElementById('sectionStudentsModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionStudentsModal(); });
-
-function removeSectionStudent(btn, name) {
-  if (!confirm(`Remove ${name} from this section?`)) return;
-  btn.closest('tr').remove();
-}
 
 function managementSectionById(id) {
   return managementSectionRecords().find(section => section.id === id) || null;
@@ -1849,12 +1656,15 @@ function managementSectionById(id) {
 function openSectionEditModal(card) {
   const section = managementSectionById(card.dataset.id);
   if (!section) return;
+  renderTeacherOptions();
   document.getElementById('editSectionName').value = section.name;
   document.getElementById('editSchoolLevel').value = section.level;
   document.getElementById('editGradeLevel').value = section.grade;
   document.getElementById('editStrand').value = section.strand || '';
   document.getElementById('editCapacity').value = section.capacity;
-  document.getElementById('editAdviser').value = adviserMap[section.adviser?.toLowerCase()] || '';
+  document.getElementById('editAdviser').value = section.adviserId || '';
+  document.getElementById('editSectionId').value = section.id;
+  document.getElementById('editSectionForm').dataset.sectionId = section.id;
   document.getElementById('editSectionForm').action = `/admin/sections/update/${section.id}`;
   updateSectionFormFields('edit');
   document.getElementById('sectionEditModalBackdrop').classList.add('open');
@@ -1869,13 +1679,11 @@ function openSectionStudentsModal(card) {
     status: 'Active',
     id: student.id
   }));
-  const fallback = sectionStudents[section.name.toLowerCase()] || [];
-  const list = assigned.length ? assigned : fallback;
   document.getElementById('sectionStudentsModalTitle').textContent = `${section.name}: Students`;
   document.getElementById('sectionStudentsModalSub').textContent = `${managementSectionPlacement(section)} · ${section.students} enrolled`;
   const tbody = document.getElementById('sectionStudentsTableBody');
-  tbody.innerHTML = list.length
-    ? list.map((student, index) => `
+  tbody.innerHTML = assigned.length
+    ? assigned.map((student, index) => `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${student.name}</strong></td>
@@ -2054,6 +1862,19 @@ document.getElementById('subjectModalBackdrop').addEventListener('click', functi
   if (e.target === this) closeSubjectModal();
 });
 
+function updateSchoolSubjectMembership(subjectId, grades) {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  if (!school) return;
+  const selectedLevels = new Set(grades.map(key => key.split(':')[0]));
+  Object.entries(school.divisions || {}).forEach(([level, division]) => {
+    const subjectIds = Array.isArray(division.subjects) ? division.subjects : [];
+    if (selectedLevels.has(level) && !subjectIds.includes(subjectId)) subjectIds.push(subjectId);
+    if (!selectedLevels.has(level)) division.subjects = subjectIds.filter(id => id !== subjectId);
+    else division.subjects = subjectIds;
+  });
+  saveManagementSchool(school);
+}
+
 document.getElementById('createSubjectForm').addEventListener('submit', function(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -2086,30 +1907,33 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
   }
 
   const subjectId = existing?.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `subject-${Date.now()}`;
-  removedSubjectIds.delete(subjectId);
-  removedSubjectIds.delete(name.toLowerCase().replace(/[^a-z0-9]+/g, ''));
   const localIndex = SUBJECTS_DATA.findIndex(item => item.id === subjectId);
   const localRecord = {
-    ...(existing || {}),
     id: subjectId,
+    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
     name,
     code,
     type: existing?.type || 'Core Subject',
-    icon: existing?.icon || 'book-open',
-    iconBg: existing?.iconBg || 'var(--blue-xpale)',
-    iconColor: existing?.iconColor || 'var(--blue-mid)',
-    grades: grades.map(key => key.includes(':') ? key.split(':')[1] : key),
-    total: existing?.total || 0
+    grades
   };
   if (localIndex >= 0) SUBJECTS_DATA[localIndex] = { ...SUBJECTS_DATA[localIndex], ...localRecord };
   else SUBJECTS_DATA.push(localRecord);
-  subjectGradeOverrides.set(subjectId, grades);
+
+  const catalog = window.EDUGNAY_CONFIG.subjects;
+  const catalogIndex = catalog.findIndex(item => item.id === subjectId);
+  const subjectLevels = [...new Set(grades.map(key => key.split(':')[0]))];
+  const catalogRecord = { id: subjectId, name, code, levels: subjectLevels };
+  if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...catalogRecord };
+  else catalog.push(catalogRecord);
+  updateSchoolSubjectMembership(subjectId, grades);
 
   /* Backend integration: replace this local merge with fetch(form.action, ...),
      then merge the returned subject into the same local record collection. */
   closeSubjectModal();
   renderManagementSubjectTabs();
   renderSubjects();
+  renderTeacherAssignments();
+  renderManagementTabPills();
   filterSubjects();
 });
 
@@ -2169,8 +1993,10 @@ function toggleTeacherSection(head) {
 
 function openTeacherModal(context) {
   const ctx = context || 'Choose a teacher for assignment';
+  renderTeacherOptions();
   document.getElementById('teacherCtxVal').textContent = ctx;
-  document.getElementById('teacherAssignmentContext').value = ctx;
+  document.getElementById('teacherAssignmentSectionId').value = teacherTargetSection || '';
+  document.getElementById('teacherAssignmentSubjectId').value = teacherTargetSubjectId || '';
   document.getElementById('teacherModalBackdrop').classList.add('open');
   document.getElementById('teacherPreview').classList.remove('visible');
   const select = document.getElementById('teacherSelect');
@@ -2180,20 +2006,57 @@ function openTeacherModal(context) {
 function closeTeacherModal() { document.getElementById('teacherModalBackdrop').classList.remove('open'); }
 document.getElementById('teacherModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeTeacherModal(); });
 
-function previewTeacher(val) {
+function previewTeacher(select) {
   const preview = document.getElementById('teacherPreview');
-  if (!val) {
+  if (!select.value) {
     preview.classList.remove('visible');
     window.syncSearchableSelect?.(document.getElementById('teacherSelect'));
     return;
   }
-  const [name, email, initials] = val.split('|');
+  const option = select.selectedOptions[0];
+  const name = option.dataset.name;
+  const email = option.dataset.email;
+  const initials = option.dataset.initials;
   document.getElementById('tpAv').textContent = initials;
   document.getElementById('tpName').textContent = name;
   document.getElementById('tpDetail').textContent = email;
   preview.classList.add('visible');
   window.syncSearchableSelect?.(document.getElementById('teacherSelect'));
 }
+
+document.getElementById('assignTeacherForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const sectionId = document.getElementById('teacherAssignmentSectionId').value;
+  const subjectId = document.getElementById('teacherAssignmentSubjectId').value;
+  const teacherId = document.getElementById('teacherSelect').value || null;
+  if (!sectionId || !subjectId || !teacherId) {
+    alert('Choose a faculty member first.');
+    return;
+  }
+
+  let section = TEACHER_ASSIGNMENTS_DATA.find(record => record.sectionId === sectionId);
+  if (!section) {
+    section = { schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), sectionId, adviserId: null, collapsed: true, subjects: [] };
+    TEACHER_ASSIGNMENTS_DATA.push(section);
+  }
+  let assignment = section.subjects.find(record => record.subjectId === subjectId);
+  if (!assignment) {
+    assignment = {
+      id: `${sectionId}-${subjectId}`,
+      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+      sectionId,
+      subjectId,
+      teacherId: null
+    };
+    section.subjects.push(assignment);
+  }
+  assignment.teacherId = teacherId;
+
+  closeTeacherModal();
+  renderTeacherAssignments();
+  renderManagementTabPills();
+  renderSubjects();
+});
 
 function filterTeacherBlocks() {
   const search = document.getElementById('teacherSearchInput').value.toLowerCase();
@@ -2219,7 +2082,7 @@ function filterTeacherBlocks() {
 /* ══════════════════════════════════════════════
    ASSIGN STUDENTS TAB
 ══════════════════════════════════════════════ */
-const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.students;
+const MANAGEMENT_ASSIGNMENT_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
 const managementAssignState = { student: null, level: '', grade: '', strand: '', section: '' };
 const managementMoveState = { student: null, level: '', grade: '', strand: '', section: '', excludedSection: '' };
 
@@ -2251,7 +2114,7 @@ function managementDefaultLevel() {
 
 function managementDivision(level) {
   const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  return school?.divisions?.[level] || (school?.schoolType === level ? school : {}) || {};
+  return school?.divisions?.[level] || {};
 }
 
 function managementSectionStudentCount(sectionId) {
@@ -2263,25 +2126,27 @@ function managementSectionStudentCount(sectionId) {
 function managementSectionRecords() {
   const configured = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
   return configured.map(section => {
-    const local = SECTIONS_DATA.find(item => item.id === section.id)
-      || SECTIONS_DATA.find(item => item.name.toLowerCase() === section.name.toLowerCase() && managementGradeKey(item.grade) === managementGradeKey(section.grade));
-    const teacherSection = typeof TEACHER_ASSIGNMENTS_DATA !== 'undefined'
-      ? TEACHER_ASSIGNMENTS_DATA.find(item => item.id === local?.id || (item.name.toLowerCase() === section.name.toLowerCase() && managementGradeKey(item.grade) === managementGradeKey(section.grade)))
-      : null;
+    const teacherSection = TEACHER_ASSIGNMENTS_DATA.find(item => item.sectionId === section.id);
     const division = managementDivision(section.level);
     const configuredSubjectCount = Array.isArray(division.subjects) ? division.subjects.length : 0;
-    const subjects = local?.subjects ?? (section.subjects > 0 ? section.subjects : teacherSection?.subjects?.length || configuredSubjectCount);
+    const subjects = Number(section.subjects) > 0 ? Number(section.subjects) : configuredSubjectCount;
     const students = managementSectionStudentCount(section.id);
+    const adviserId = section.adviserId || null;
+    const adviserProfile = window.EDUGNAY_CONFIG.getUsers().find(user => user.profileId === adviserId);
+    const adviser = adviserProfile?.displayName || null;
     return {
       ...section,
       gradeValue: managementGradeKey(section.grade),
       enrolled: students,
       students,
       subjects,
-      adviser: local?.adviser || section.adviser || teacherSection?.adviser || null,
-      adviserInitials: local?.adviserInitials || section.adviserInitials || '',
+      adviserId,
+      adviser,
+      adviserInitials: adviserProfile
+        ? `${adviserProfile.firstName?.[0] || ''}${adviserProfile.lastName?.[0] || ''}`.toUpperCase()
+        : section.adviserInitials || '',
       teacherAssignments: teacherSection?.subjects || [],
-      collapsed: teacherSection?.collapsed ?? true
+      collapsed: managementTeacherCollapseState[section.id] ?? teacherSection?.collapsed ?? true
     };
   });
 }
@@ -2353,16 +2218,6 @@ function renderManagementTabPills() {
   if (studentPill) studentPill.textContent = `${STUDENTS_DATA.filter(student => !student.section).length} open`;
 }
 
-function renderManagementSubjectTabsLegacy() {
-  const tabs = document.getElementById('subjectGradeTabs');
-  if (!tabs) return;
-  const options = managementGradeFilterOptions();
-  tabs.innerHTML = [
-    `<div class="filter-tab active" data-grade="all" onclick="switchSubjectGradeTab('all', this)">All School Levels <span class="tab-count">${SUBJECTS_DATA.length}</span></div>`,
-    ...options.map(optionData => `<div class="filter-tab" data-grade="${optionData.value}" onclick="switchSubjectGradeTab('${optionData.value}', this)">${optionData.label} <span class="tab-count">${SUBJECTS_DATA.filter(subject => subject.grades.map(managementGradeKey).includes(optionData.grade ? managementGradeKey(optionData.grade) : '')).length}</span></div>`)
-  ].join('');
-}
-
 function managementSetOptions(select, options, placeholder, selectedValue) {
   if (!select) return;
   select.innerHTML = '';
@@ -2401,12 +2256,12 @@ function managementSectionLabel(section) {
   return `${section.grade}${strand} · ${section.name} (${section.students}/${section.capacity})`;
 }
 
-function managementStudentMeta(studentName, studentId) {
-  const directoryStudent = MANAGEMENT_ASSIGNMENT_STUDENTS.find(student => student.id === studentId || student.name.toLowerCase() === String(studentName || '').toLowerCase());
+function managementStudentMeta(studentId) {
+  const directoryStudent = MANAGEMENT_ASSIGNMENT_STUDENTS.find(student => student.id === studentId);
   if (directoryStudent) return directoryStudent;
-  const localStudent = STUDENTS_DATA.find(student => student.id === studentId || student.name.toLowerCase() === String(studentName || '').toLowerCase());
+  const localStudent = STUDENTS_DATA.find(student => student.id === studentId);
   if (!localStudent) return null;
-  const section = SECTIONS_DATA.find(item => item.id === localStudent.section);
+  const section = managementSectionById(localStudent.section);
   return {
     id: localStudent.id,
     name: localStudent.name,
@@ -2517,7 +2372,7 @@ function updateManagementMoveFields() {
 }
 
 function handleManagementStudentChange(studentId) {
-  const student = managementStudentMeta('', studentId);
+  const student = managementStudentMeta(studentId);
   managementAssignState.student = student;
   managementAssignState.level = student?.level || managementDefaultLevel() || '';
   managementAssignState.grade = student?.grade || '';
@@ -2536,9 +2391,10 @@ function handleManagementStudentChange(studentId) {
   window.syncSearchableSelect?.(document.getElementById('studentSelect'));
 }
 
-function openStudentAssignModal(studentName) {
-  const isQuickAssign = !!studentName;
-  document.getElementById('studentModalTitle').textContent = isQuickAssign ? `Assign: ${studentName}` : 'Assign Student';
+function openStudentAssignModal(studentId = '') {
+  const matchedStudent = managementStudentMeta(studentId);
+  const isQuickAssign = Boolean(matchedStudent);
+  document.getElementById('studentModalTitle').textContent = matchedStudent ? `Assign: ${matchedStudent.name}` : 'Assign Student';
   document.getElementById('studentModalSub').textContent = 'Choose the student and class placement.';
   managementAssignState.student = null;
   managementAssignState.level = managementDefaultLevel() || '';
@@ -2556,7 +2412,6 @@ function openStudentAssignModal(studentName) {
   document.getElementById('studentModalSubmitBtn').setAttribute('form', 'assignStudentForm');
   document.getElementById('studentModalSubmitBtn').textContent = 'Save Assignment';
 
-  const matchedStudent = managementStudentMeta(studentName, '');
   if (matchedStudent) {
     managementAssignState.student = matchedStudent;
     managementAssignState.level = matchedStudent.level || managementAssignState.level;
@@ -2581,7 +2436,7 @@ function openMoveStudentModal(studentName, studentId, currentSection) {
   document.getElementById('studentModalSub').textContent = 'Choose a new class placement.';
   document.getElementById('moveStudentId').value = studentId;
 
-  const student = managementStudentMeta(studentName, studentId) || { name: studentName, level: 'jhs', grade: '', strand: '' };
+  const student = managementStudentMeta(studentId) || { id: studentId, name: studentName, level: 'jhs', grade: '', strand: '' };
   managementMoveState.student = student;
   managementMoveState.level = student.level || 'jhs';
   managementMoveState.grade = student.grade || '';
@@ -2650,13 +2505,14 @@ function openConfirmRemoveModal(config) {
   document.getElementById('confirmRemoveModalBackdrop').classList.add('open');
 }
 
-function openTeacherRemoveConfirmation({ sectionId, sectionName, gradeLabel, subjectName, teacherName }) {
+function openTeacherRemoveConfirmation({ sectionId, subjectId, sectionName, gradeLabel, subjectName, teacherName }) {
   const placement = [gradeLabel, sectionName].filter(Boolean).join(' · ');
   openConfirmRemoveModal({
     type: 'teacher',
-    id: `${sectionId}|${subjectName}`,
-    targetId: `${sectionId}|${subjectName}`,
+    id: `${sectionId}|${subjectId}`,
+    targetId: `${sectionId}|${subjectId}`,
     sectionId,
+    subjectId,
     subjectName,
     name: teacherName,
     context: `${subjectName}${placement ? ` · ${placement}` : ''}`,
@@ -2731,15 +2587,16 @@ document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', 
 
 function saveManagementStudentPlacement(studentId, section) {
   if (!studentId || !section) return null;
-  const placement = `${section.grade} / ${section.name}`;
   const student = window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
     level: section.level,
     grade: section.grade,
     strand: section.strand || '',
-    section: placement,
     sectionId: section.id
   });
-  if (student) syncManagementStudentRecords();
+  if (student) {
+    window.EDUGNAY_CONFIG.saveAccounts();
+    syncManagementStudentRecords();
+  }
   return student;
 }
 
@@ -2749,39 +2606,29 @@ function renderManagementStudentChanges() {
   renderManagementTabPills();
 }
 
-function removeTeacherAssignment(sectionId, subjectName, sectionName, gradeLabel) {
-  const normalizedSectionName = String(sectionName || '').trim().toLowerCase();
-  const normalizedGrade = managementGradeKey(gradeLabel);
-  const section = TEACHER_ASSIGNMENTS_DATA.find(record => (
-    record.id === sectionId
-    || (
-      String(record.name || '').trim().toLowerCase() === normalizedSectionName
-      && managementGradeKey(record.grade) === normalizedGrade
-    )
-  ));
-  const assignment = section?.subjects?.find(subject => subject.name === subjectName);
-  if (!assignment || !assignment.teacher) return false;
-  assignment.teacher = null;
-  assignment.email = null;
-  assignment.initials = null;
-  assignment.avClass = null;
+function removeTeacherAssignment(sectionId, subjectId) {
+  const section = TEACHER_ASSIGNMENTS_DATA.find(record => record.sectionId === sectionId);
+  const assignment = section?.subjects?.find(subject => subject.subjectId === subjectId);
+  if (!assignment || !assignment.teacherId) return false;
+  assignment.teacherId = null;
   return true;
 }
 
 function removeSubjectRecord(subjectId) {
-  const subject = managementSubjectRecords().find(record => record.id === subjectId);
-  if (!subject) return false;
-
-  const normalizedName = String(subject.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  removedSubjectIds.add(subject.id);
-  if (normalizedName) removedSubjectIds.add(normalizedName);
-  subjectGradeOverrides.delete(subject.id);
+  const index = SUBJECTS_DATA.findIndex(subject => subject.id === subjectId);
+  if (index < 0) return false;
+  const [subject] = SUBJECTS_DATA.splice(index, 1);
 
   /* A removed subject no longer contributes assignment slots in this local
      frontend source. Replace this local mutation with the backend DELETE later. */
   TEACHER_ASSIGNMENTS_DATA.forEach(section => {
-    section.subjects = section.subjects.filter(assignment => assignment.name !== subject.name);
+    section.subjects = section.subjects.filter(assignment => assignment.subjectId !== subjectId);
   });
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  Object.values(school?.divisions || {}).forEach(division => {
+    division.subjects = (division.subjects || []).filter(id => id !== subjectId);
+  });
+  saveManagementSchool(school);
   return true;
 }
 
@@ -2822,7 +2669,7 @@ document.getElementById('removeStudentForm').addEventListener('submit', function
 
   if (type === 'teacher') {
     const request = pendingRemoveRequest || {};
-    const removed = removeTeacherAssignment(request.sectionId, request.subjectName, request.sectionName, request.gradeLabel);
+    const removed = removeTeacherAssignment(request.sectionId, request.subjectId);
     closeConfirmRemoveModal();
     if (!removed) return;
     renderTeacherAssignments();
@@ -2841,13 +2688,13 @@ document.getElementById('removeStudentForm').addEventListener('submit', function
   }
 
   const studentId = document.getElementById('removeStudentId').value || targetId;
-  const student = window.EDUGNAY_CONFIG.students.find(record => record.id === studentId);
+  const student = window.EDUGNAY_CONFIG.getStudents().find(record => record.id === studentId);
   if (!student) { closeConfirmRemoveModal(); return; }
 
   window.EDUGNAY_CONFIG.updateStudentPlacement(studentId, {
-    section: 'Unassigned',
     sectionId: null
   });
+  window.EDUGNAY_CONFIG.saveAccounts();
   syncManagementStudentRecords();
   closeConfirmRemoveModal();
   closeSectionStudentsModal();
@@ -2924,38 +2771,41 @@ function createImportedStudentAccount(record, level, grade, strand, section) {
   const lastName = String(record.lastName || '').trim();
   const name = `${firstName} ${lastName}`.trim() || 'Unnamed Student';
   const email = String(record.email || '').trim();
-  let account = email && config.accounts.find(item => item.email === email);
+  let account = email && config.getAccounts().find(item => item.email === email);
 
   if (!account) {
     const recordId = `stu-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    account = {
+    account = config.createUserAccount({
       id: `student-${recordId}`,
-      studentId: recordId,
+      schoolId: config.getActiveSchoolId(),
+      email,
+      role: 'student',
+      status: 'active',
+      createdAt: new Date().toISOString(),
       firstName,
       lastName,
       displayName: name,
-      email,
-      role: 'stud',
-      status: 'active',
-      dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      studentId: `stu-${recordId}`,
       lrn: String(record.lrn || '').trim(),
-      linkedStudents: []
-    };
-    config.accounts.push(account);
+      schoolLevel: level,
+      gradeLevel: grade,
+      strand: strand || null,
+      sectionId: section.id
+    });
+    return account;
   }
 
-  account.role = 'stud';
-  account.firstName = firstName || account.firstName;
-  account.lastName = lastName || account.lastName;
-  account.displayName = name;
-  account.email = email || account.email;
-  account.lrn = String(record.lrn || account.lrn || '').trim();
+  config.updateAccount(account.id, { role: 'student', email: email || account.email });
 
   return config.upsertStudentProfile(account, {
+    studentId: `stu-${account.id}`,
+    firstName,
+    lastName,
+    displayName: name,
+    lrn: String(record.lrn || '').trim(),
     level,
     grade,
-    strand: strand || '',
-    section: `${section.grade} / ${section.name}`,
+    strand: strand || null,
     sectionId: section.id
   });
 }
@@ -3014,18 +2864,12 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
       sectionIdx = (sectionIdx + 1) % gradeSections.length;
     });
 
+    window.EDUGNAY_CONFIG.saveAccounts();
     syncManagementStudentRecords();
     closeImportStudentsModal();
     renderManagementStudentChanges();
     alert(`${placed} of ${records.length} student(s) auto-sorted into ${managementLevelLabel(level)} ${grade} sections.`);
 
-    // --- ASYNC (swap in later, once backend exists) ---
-    // async function submitImportStudentsForm(form) {
-    //   const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
-    //   if (!res.ok) { alert('Could not import students.'); return; }
-    //   const created = await res.json(); // expect created student records back
-    //   // replace the shared student response, then syncManagementStudentRecords() and renderManagementStudentChanges()
-    // }
   };
   reader.readAsText(file);
 });
@@ -3106,11 +2950,13 @@ function applyStudentFilters() {
   lucide.createIcons();
 }
 
-renderManagementGradeFilters();
-renderManagementSubjectTabs();
-renderManagementTabPills();
-updateSectionFormFields('create');
-updateSectionFormFields('edit');
+document.addEventListener('DOMContentLoaded', async () => {
+  renderManagementGradeFilters();
+  renderTeacherOptions();
+  renderManagementSubjectTabs();
+  renderManagementTabPills();
+  updateSectionFormFields('create');
+  updateSectionFormFields('edit');
   updateImportGradeOptions();
   renderSections();
   renderSubjects();
@@ -3129,6 +2975,7 @@ updateSectionFormFields('edit');
     ariaLabel: 'Faculty member'
   });
   lucide.createIcons();
+});
 
 </script>
 
