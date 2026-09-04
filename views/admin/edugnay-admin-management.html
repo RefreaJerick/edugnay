@@ -180,6 +180,7 @@
       <form id="createSubjectForm" method="post" action="/subjects/create">
         <input type="hidden" name="subjectId" id="subjectModalSubjectId" value="">
         <input type="hidden" name="subjectContext" id="subjectModalContext" value="all">
+        <input type="hidden" name="subjectStrand" id="subjectModalStrand" value="all">
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Subject Name</label>
@@ -720,7 +721,7 @@
         <div class="info-icon"><i data-lucide="lightbulb" style="width:20px;height:20px;"></i></div>
         <div>
           <div class="info-title">How subjects work in Academix</div>
-          <div class="info-text">Subjects defined here are applied to all sections of the selected grade levels. Once saved, they appear in the <strong>Assign Teachers</strong> tab where you can link a specific teacher to each subject per section.</div>
+          <div class="info-text">Subjects are applied to the selected grade levels and, for Senior High School, selected strands. Once saved, they appear in the <strong>Assign Teachers</strong> tab where you can link a teacher to each subject per section.</div>
         </div>
       </div>
 
@@ -1068,8 +1069,9 @@ document.getElementById('editSectionForm').addEventListener('submit', event => s
 // stores only teacher-assignment relationships keyed by sectionId.
 const BAR_CLASS_BY_GRADE = { 7: 'bar-blue', 8: 'bar-gold', 9: 'bar-green', 10: 'bar-orange' };
 
-// One local subject collection for this page, derived from the shared school
-// configuration. Replace this initialization with the subjects API response later.
+// Subject placement is stored once in shell-common.js. Each row represents
+// one subject offered to one grade/strand combination of one school.
+const SUBJECT_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.getSubjectAssignments();
 const SUBJECTS_DATA = window.EDUGNAY_CONFIG.subjects
   .map(subject => ({
     id: subject.id,
@@ -1079,11 +1081,14 @@ const SUBJECTS_DATA = window.EDUGNAY_CONFIG.subjects
     type: subject.levels.length === 1 && subject.levels.includes('shs')
       ? 'Specialized Subject'
       : 'Core Subject',
-    grades: managementSchoolLevels().flatMap(level => {
-      const division = managementDivision(level);
-      if (!Array.isArray(division.subjects) || !division.subjects.includes(subject.id)) return [];
-      return managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`);
-    })
+    grades: [...new Set(SUBJECT_ASSIGNMENTS_DATA
+      .filter(record => record.schoolId === window.EDUGNAY_CONFIG.getActiveSchoolId())
+      .filter(record => record.subjectId === subject.id)
+      .filter(record => subject.levels?.includes(record.schoolLevel))
+      .filter(record => managementSchoolLevels().includes(record.schoolLevel))
+      .filter(record => managementGradeOptions(record.schoolLevel)
+        .some(grade => managementGradeKey(grade) === managementGradeKey(record.gradeLevel)))
+       .map(record => managementSubjectPlacementKey(record)))]
   }))
   .filter(subject => subject.grades.length);
 
@@ -1107,7 +1112,6 @@ const SUBJECT_AVATAR_CLASSES = {
 const JHS_SUBJECT_TEACHERS = {
   mathematics: 'teacher-2',
   english: 'teacher-9',
-  filipino: 'teacher-carla-dizon',
   science: 'teacher-rico-santos',
   'araling-panlipunan': 'teacher-3',
   esp: 'teacher-jana-mendez',
@@ -1123,14 +1127,14 @@ function seededTeacherAssignments(subjectIds) {
 }
 
 const TEACHER_ASSIGNMENT_SEEDS = [
-  { sectionId: 'jhs-grade7-matthew', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade7-mark', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp']) },
-  { sectionId: 'jhs-grade8-luke', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade8-john', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science']) },
-  { sectionId: 'jhs-grade9-peter', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade9-paul', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade10-james', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade10-thomas', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'filipino', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) }
+  { sectionId: 'jhs-grade7-matthew', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade7-mark', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp']) },
+  { sectionId: 'jhs-grade8-luke', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade8-john', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science']) },
+  { sectionId: 'jhs-grade9-peter', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade9-paul', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade10-james', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
+  { sectionId: 'jhs-grade10-thomas', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) }
 ];
 
 const TEACHER_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.withActiveSchool(
@@ -1256,7 +1260,10 @@ function managementSubjectRecords() {
   const sections = managementSectionRecords();
   return SUBJECTS_DATA.map(subject => ({
     ...subject,
-    total: sections.filter(section => subject.grades.includes(managementSectionFilterKey(section))).length
+    total: sections.filter(section => managementSubjectFilterMatches(
+      managementSubjectSectionKey(section),
+      subject.grades
+    )).length
   }));
 }
 
@@ -1269,12 +1276,39 @@ function managementFilterMatches(filterValue, keys) {
   return values.includes(filterValue);
 }
 
+function managementSubjectFilterMatches(filterValue, keys, strand = 'all') {
+  if (filterValue === 'all') return true;
+  const values = Array.isArray(keys) ? keys : [keys];
+  const filterParts = String(filterValue || '').split(':');
+  const filterLevel = filterParts[0];
+  const filterGrade = filterParts[1] || '';
+  const filterStrand = filterParts[2] || strand || 'all';
+
+  return values.some(value => {
+    const [level, grade, valueStrand = 'all'] = String(value || '').split(':');
+    if (level !== filterLevel) return false;
+    if (filterGrade && grade !== filterGrade) return false;
+    if (level === 'shs' && filterStrand !== 'all') {
+      return valueStrand === filterStrand || valueStrand === 'all';
+    }
+    return true;
+  });
+}
+
+function managementSubjectPlacementKey(record) {
+  const level = String(record?.schoolLevel || '');
+  const grade = managementGradeKey(record?.gradeLevel);
+  if (level === 'shs') return `${level}:${grade}:${managementStrandKey(record?.strand) || 'all'}`;
+  return `${level}:${grade}`;
+}
+
 function renderSubjectGradeTabs(level) {
   const tabs = document.getElementById('subjectGradeSubTabs');
   if (!tabs) return;
   if (level === 'all') {
     tabs.innerHTML = '';
     tabs.classList.add('is-empty');
+    renderSubjectStrandTabs('all');
     return;
   }
 
@@ -1284,14 +1318,38 @@ function renderSubjectGradeTabs(level) {
   const levelLabel = managementLevelLabel(level);
   const grades = managementGradeOptions(level);
   subjectTabTitles[level] = { title: `${levelLabel} Subjects` };
+  renderSubjectStrandTabs(level);
 
   tabs.innerHTML = [
-    `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchSubjectGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${subjects.filter(subject => managementFilterMatches(level, subject.grades)).length}</span></div>`,
+    `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === level ? 'active' : ''}" data-grade="${level}" onclick="switchSubjectGradeTab('${level}', this)">All ${levelLabel} <span class="tab-count">${subjects.filter(subject => managementSubjectFilterMatches(level, subject.grades, activeSubjectStrand)).length}</span></div>`,
     ...grades.map(grade => {
       const key = `${level}:${managementGradeKey(grade)}`;
       subjectTabTitles[key] = { title: `${levelLabel} · ${grade} Subjects` };
-      const count = subjects.filter(subject => subject.grades.includes(key)).length;
+      const count = subjects.filter(subject => managementSubjectFilterMatches(key, subject.grades, activeSubjectStrand)).length;
       return `<div class="filter-tab grade-filter-tab ${activeSubjectGrade === key ? 'active' : ''}" data-grade="${key}" onclick="switchSubjectGradeTab('${key}', this)">${grade} <span class="tab-count">${count}</span></div>`;
+    })
+  ].join('');
+}
+
+function renderSubjectStrandTabs(level) {
+  const tabs = document.getElementById('subjectStrandSubTabs');
+  if (!tabs) return;
+  if (level !== 'shs') {
+    tabs.innerHTML = '';
+    tabs.classList.add('is-empty');
+    return;
+  }
+
+  const subjects = managementSubjectRecords();
+  const gradeFilter = activeSubjectGrade.startsWith('shs') ? activeSubjectGrade : 'shs';
+  const strands = managementStrandOptions('shs');
+  tabs.classList.remove('is-empty');
+  tabs.innerHTML = [
+    `<div class="filter-tab grade-filter-tab ${activeSubjectStrand === 'all' ? 'active' : ''}" data-strand="all" onclick="switchSubjectStrandTab('all')">All Strands <span class="tab-count">${subjects.filter(subject => managementSubjectFilterMatches(gradeFilter, subject.grades)).length}</span></div>`,
+    ...strands.map(strand => {
+      const key = managementStrandKey(strand);
+      const count = subjects.filter(subject => managementSubjectFilterMatches(gradeFilter, subject.grades, key)).length;
+      return `<div class="filter-tab grade-filter-tab ${activeSubjectStrand === key ? 'active' : ''}" data-strand="${key}" onclick="switchSubjectStrandTab('${key}')">${strand} <span class="tab-count">${count}</span></div>`;
     })
   ].join('');
 }
@@ -1309,14 +1367,14 @@ function renderManagementSubjectTabs() {
       <button type="button" class="division-filter-tab ${activeDivision === 'all' ? 'active' : ''}" data-division="all" role="tab" aria-selected="${activeDivision === 'all'}" onclick="switchSubjectDivisionTab('all', this)">All School Levels <span class="tab-count">${subjects.length}</span></button>
       ${levels.map(level => {
         subjectTabTitles[level] = { title: `${managementLevelLabel(level)} Subjects` };
-        const count = subjects.filter(subject => managementFilterMatches(level, subject.grades)).length;
+        const count = subjects.filter(subject => managementSubjectFilterMatches(level, subject.grades)).length;
         return `<button type="button" class="division-filter-tab ${activeDivision === level ? 'active' : ''}" data-division="${level}" role="tab" aria-selected="${activeDivision === level}" onclick="switchSubjectDivisionTab('${level}', this)">${managementLevelLabel(level)} <span class="tab-count">${count}</span></button>`;
       }).join('')}
     </div>
+    <div class="grade-filter-tabs is-empty" id="subjectStrandSubTabs" role="tablist" aria-label="SHS strands"></div>
     <div class="grade-filter-tabs is-empty" id="subjectGradeSubTabs" role="tablist" aria-label="Grade levels"></div>`;
   renderSubjectGradeTabs(activeDivision === 'all' ? 'all' : activeDivision);
-  const initialInfo = subjectTabTitles[activeSubjectGrade] || subjectTabTitles[activeDivision] || subjectTabTitles.all;
-  document.getElementById('subjectPanelTitle').textContent = initialInfo.title;
+  updateSubjectPanelTitle();
 }
 
 function getManagementTeacherSlots() {
@@ -1330,7 +1388,10 @@ function teacherRecordById(teacherId) {
 }
 
 function teacherAssignmentsForSection(section) {
-  const subjects = managementSubjectRecords().filter(subject => subject.grades.includes(managementSectionFilterKey(section)));
+  const sectionKey = managementSubjectSectionKey(section);
+  const subjects = managementSubjectRecords().filter(subject => (
+    subject.grades.some(key => managementSubjectFilterMatches(sectionKey, [key]))
+  ));
   const storedAssignments = Array.isArray(section.teacherAssignments) ? section.teacherAssignments : [];
   return subjects.map(subject => {
     const assignment = storedAssignments.find(record => record.subjectId === subject.id);
@@ -1712,12 +1773,24 @@ function filterSections() {
 /* ══════════════════════════════════════════════
    SUBJECTS TAB
 ══════════════════════════════════════════════ */
-const subjectModalState = { subject: null, contextValue: 'all' };
+const subjectModalState = { subject: null, contextValue: 'all', contextStrand: 'all' };
 
-function getSubjectModalContext(value = activeSubjectGrade) {
+function getSubjectModalContext(value = activeSubjectGrade, strandValue = activeSubjectStrand) {
   const levels = managementSchoolLevels();
   const selected = value || 'all';
-  const keysForLevel = level => managementGradeOptions(level).map(grade => `${level}:${managementGradeKey(grade)}`);
+  const selectedStrand = strandValue || 'all';
+  const keysForLevel = (level, gradeValue = '', strand = 'all') => {
+    const grades = managementGradeOptions(level).filter(option => !gradeValue || managementGradeKey(option) === gradeValue);
+    const strands = level === 'shs'
+      ? managementStrandOptions(level).filter(option => strand === 'all' || managementStrandKey(option) === strand)
+      : [];
+    return grades.flatMap(grade => {
+      const gradeKey = managementGradeKey(grade);
+      return level === 'shs'
+        ? (strands.length ? strands : [null]).map(option => `shs:${gradeKey}:${managementStrandKey(option) || 'all'}`)
+        : [`${level}:${gradeKey}`];
+    });
+  };
 
   if (selected === 'all') {
     return {
@@ -1725,32 +1798,43 @@ function getSubjectModalContext(value = activeSubjectGrade) {
       key: 'all',
       level: null,
       grade: null,
+      strand: 'all',
       label: 'All School Levels',
-      scopeKeys: levels.flatMap(keysForLevel)
+      scopeKeys: levels.flatMap(level => keysForLevel(level))
     };
   }
 
   if (levels.includes(selected)) {
+    const strand = selected === 'shs' ? selectedStrand : 'all';
+    const strandLabel = strand === 'all'
+      ? ''
+      : managementStrandOptions('shs').find(option => managementStrandKey(option) === strand) || strand;
     return {
       mode: 'division',
       key: selected,
       level: selected,
       grade: null,
-      label: managementLevelLabel(selected),
-      scopeKeys: keysForLevel(selected)
+      strand,
+      label: `${managementLevelLabel(selected)}${strandLabel ? ` / ${strandLabel}` : ''}`,
+      scopeKeys: keysForLevel(selected, '', strand)
     };
   }
 
   const [level, grade] = selected.split(':');
   if (levels.includes(level) && grade) {
     const gradeOption = managementGradeOptions(level).find(option => managementGradeKey(option) === grade);
+    const strand = level === 'shs' ? selectedStrand : 'all';
+    const strandLabel = strand === 'all'
+      ? ''
+      : managementStrandOptions('shs').find(option => managementStrandKey(option) === strand) || strand;
     return {
       mode: 'grade',
       key: `${level}:${grade}`,
       level,
       grade,
-      label: `${managementLevelLabel(level)} / ${gradeOption || (grade === 'kindergarten' ? 'Kindergarten' : `Grade ${grade}`)}`,
-      scopeKeys: [`${level}:${grade}`]
+      strand,
+      label: `${managementLevelLabel(level)} / ${gradeOption || (grade === 'kindergarten' ? 'Kindergarten' : `Grade ${grade}`)}${strandLabel ? ` / ${strandLabel}` : ''}`,
+      scopeKeys: keysForLevel(level, grade, strand)
     };
   }
 
@@ -1764,15 +1848,19 @@ function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = n
   const contextInput = document.getElementById('subjectModalContext');
   if (!target || !group) return;
 
-  const context = getSubjectModalContext(contextValue);
-  const lockedToGrade = context.mode === 'grade';
+  const context = getSubjectModalContext(contextValue, subjectModalState.contextStrand);
+  const lockedToGrade = context.mode === 'grade' && context.level !== 'shs';
   group.style.display = lockedToGrade ? 'none' : '';
   target.innerHTML = '';
   if (contextInput) contextInput.value = context.key;
+  const strandInput = document.getElementById('subjectModalStrand');
+  if (strandInput) strandInput.value = context.strand || 'all';
   if (scopeLabel) {
     scopeLabel.textContent = context.mode === 'all'
-      ? 'Applies to Grade Level(s)'
-      : `Applies to ${context.label} Grade Level(s)`;
+      ? 'Applies to Grade Level(s) and Strand(s)'
+      : context.level === 'shs'
+        ? `Applies to ${context.label}`
+        : `Applies to ${context.label} Grade Level(s)`;
   }
   if (lockedToGrade) return;
 
@@ -1781,6 +1869,32 @@ function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = n
   target.innerHTML = levels.map(level => {
     const grades = managementGradeOptions(level);
     if (!grades.length) return '';
+    if (level === 'shs') {
+      const strands = managementStrandOptions(level).filter(option => (
+        context.strand === 'all' || managementStrandKey(option) === context.strand
+      ));
+      const availableStrands = strands.length ? strands : [null];
+      const gradeOptions = context.mode === 'grade'
+        ? grades.filter(grade => managementGradeKey(grade) === context.grade)
+        : grades;
+      return gradeOptions.map(grade => {
+        const gradeKey = managementGradeKey(grade);
+        return `
+          <div class="grade-check-group">
+            <div class="grade-check-group-title">${managementLevelLabel(level)} · ${grade}</div>
+            <div class="grade-check-grid">
+              ${availableStrands.map(strand => {
+                const strandKey = managementStrandKey(strand) || 'all';
+                const value = `shs:${gradeKey}:${strandKey}`;
+                const checked = subject
+                  ? existingGrades.has(value) || existingGrades.has(`shs:${gradeKey}:all`)
+                  : true;
+                return `<label class="grade-check-item"><input type="checkbox" name="grades" value="${value}"${checked ? ' checked' : ''}/><span>${strand || 'All strands'}</span></label>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('');
+    }
     return `
       <div class="grade-check-group">
         <div class="grade-check-group-title">${managementLevelLabel(level)}</div>
@@ -1802,9 +1916,11 @@ function openSubjectModal(subjectKey) {
     ? records.find(record => record.id === subjectKey || record.name === subjectKey)
     : null;
   const contextValue = activeSubjectGrade || 'all';
-  const context = getSubjectModalContext(contextValue);
+  const contextStrand = activeSubjectStrand || 'all';
+  const context = getSubjectModalContext(contextValue, contextStrand);
   subjectModalState.subject = subject || null;
   subjectModalState.contextValue = contextValue;
+  subjectModalState.contextStrand = contextStrand;
 
   form.reset();
   form.action = subject ? `/subjects/update/${encodeURIComponent(subject.id)}` : '/subjects/create';
@@ -1830,17 +1946,39 @@ document.getElementById('subjectModalBackdrop').addEventListener('click', functi
   if (e.target === this) closeSubjectModal();
 });
 
-function updateSchoolSubjectMembership(subjectId, grades) {
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  if (!school) return;
-  const selectedLevels = new Set(grades.map(key => key.split(':')[0]));
-  Object.entries(school.divisions || {}).forEach(([level, division]) => {
-    const subjectIds = Array.isArray(division.subjects) ? division.subjects : [];
-    if (selectedLevels.has(level) && !subjectIds.includes(subjectId)) subjectIds.push(subjectId);
-    if (!selectedLevels.has(level)) division.subjects = subjectIds.filter(id => id !== subjectId);
-    else division.subjects = subjectIds;
+function updateSubjectAssignments(subjectId, grades) {
+  const schoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
+  const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === subjectId);
+  const assignments = window.EDUGNAY_CONFIG.getSubjectAssignments();
+  const selectedGrades = [...new Set(grades || [])];
+
+  for (let index = assignments.length - 1; index >= 0; index -= 1) {
+    const record = assignments[index];
+    if (record.schoolId === schoolId && record.subjectId === subjectId) assignments.splice(index, 1);
+  }
+
+  selectedGrades.forEach(key => {
+    const [schoolLevel, gradeKey, strandKey = ''] = String(key).split(':');
+    const grade = managementGradeOptions(schoolLevel).find(item => managementGradeKey(item) === gradeKey);
+    if (!subject?.levels?.includes(schoolLevel) || !grade) return;
+    const strands = schoolLevel === 'shs'
+      ? managementStrandOptions(schoolLevel).filter(option => !strandKey || strandKey === 'all' || managementStrandKey(option) === strandKey)
+      : [null];
+    (strands.length ? strands : [null]).forEach(strand => {
+      const selectedStrand = schoolLevel === 'shs' ? strand : null;
+      const selectedStrandKey = managementStrandKey(selectedStrand) || 'all';
+      assignments.push({
+        id: `${schoolId}-${subjectId}-${schoolLevel}-${gradeKey}-${selectedStrandKey}`,
+        schoolId,
+        subjectId,
+        schoolLevel,
+        gradeLevel: grade,
+        strand: selectedStrand
+      });
+    });
   });
-  saveManagementSchool(school);
+
+  window.EDUGNAY_CONFIG.saveSubjectAssignments();
 }
 
 document.getElementById('createSubjectForm').addEventListener('submit', function(event) {
@@ -1853,7 +1991,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
     return;
   }
 
-  const context = getSubjectModalContext(subjectModalState.contextValue);
+  const context = getSubjectModalContext(subjectModalState.contextValue, subjectModalState.contextStrand);
   const existing = subjectModalState.subject;
   const existingGrades = [...(existing?.grades || [])];
   const checkedGrades = [...form.querySelectorAll('input[name="grades"]:checked')].map(input => input.value);
@@ -1861,8 +1999,11 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
   let grades;
 
   if (context.mode === 'grade') {
-    grades = existing ? [...existingGrades] : [context.key];
-    if (existing && !grades.includes(context.key)) grades.push(context.key);
+    const hasGradeChecks = form.querySelectorAll('input[name="grades"]').length > 0;
+    const selectedContextGrades = hasGradeChecks ? checkedGrades : context.scopeKeys;
+    grades = existing
+      ? [...new Set([...existingGrades.filter(key => !scope.has(key)), ...selectedContextGrades])]
+      : [...new Set(selectedContextGrades)];
   } else if (existing) {
     grades = [...new Set([...existingGrades.filter(key => !scope.has(key)), ...checkedGrades])];
   } else {
@@ -1870,7 +2011,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
   }
 
   if (!grades.length) {
-    alert('Select at least one grade level for this subject.');
+    alert('Select at least one grade level or strand for this subject.');
     return;
   }
 
@@ -1889,11 +2030,11 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
 
   const catalog = window.EDUGNAY_CONFIG.subjects;
   const catalogIndex = catalog.findIndex(item => item.id === subjectId);
-  const subjectLevels = [...new Set(grades.map(key => key.split(':')[0]))];
+  const subjectLevels = [...new Set(grades.map(key => String(key).split(':')[0]))];
   const catalogRecord = { id: subjectId, name, code, levels: subjectLevels };
   if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...catalogRecord };
   else catalog.push(catalogRecord);
-  updateSchoolSubjectMembership(subjectId, grades);
+  updateSubjectAssignments(subjectId, grades);
 
   /* Backend integration: replace this local merge with fetch(form.action, ...),
      then merge the returned subject into the same local record collection. */
@@ -1906,29 +2047,53 @@ document.getElementById('createSubjectForm').addEventListener('submit', function
 });
 
 let activeSubjectGrade = 'all';
+let activeSubjectStrand = 'all';
 let subjectTabTitles = { all: { title: 'All Subjects' } };
+
+function updateSubjectPanelTitle() {
+  const title = document.getElementById('subjectPanelTitle');
+  if (!title) return;
+  const info = subjectTabTitles[activeSubjectGrade] || subjectTabTitles.all;
+  const strand = activeSubjectGrade.startsWith('shs') && activeSubjectStrand !== 'all'
+    ? managementStrandOptions('shs').find(item => managementStrandKey(item) === activeSubjectStrand)
+    : '';
+  title.textContent = strand ? `${info.title.replace(/ Subjects$/, '')} / ${strand} Subjects` : info.title;
+}
 
 function switchSubjectGradeTab(grade, el) {
   activeSubjectGrade = grade;
   const level = grade === 'all' ? 'all' : (managementSchoolLevels().includes(grade) ? grade : grade.split(':')[0]);
+  if (level !== 'shs') activeSubjectStrand = 'all';
   document.querySelectorAll('#subjectGradeTabs .division-filter-tab, #subjectGradeTabs .grade-filter-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`#subjectGradeTabs .division-filter-tab[data-division="${level}"]`)?.classList.add('active');
   renderSubjectGradeTabs(level);
   (el || document.querySelector(`#subjectGradeTabs .grade-filter-tab[data-grade="${grade}"]`))?.classList.add('active');
-  const info = subjectTabTitles[grade] || subjectTabTitles.all;
-  document.getElementById('subjectPanelTitle').textContent = info.title;
+  updateSubjectPanelTitle();
   filterSubjects();
 }
 
 function switchSubjectDivisionTab(level, el) {
   activeSubjectGrade = level;
+  activeSubjectStrand = 'all';
   document.querySelectorAll('#subjectGradeTabs .division-filter-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.division === level);
     tab.setAttribute('aria-selected', String(tab.dataset.division === level));
   });
   renderSubjectGradeTabs(level);
-  const info = subjectTabTitles[level] || subjectTabTitles.all;
-  document.getElementById('subjectPanelTitle').textContent = info.title;
+  updateSubjectPanelTitle();
+  filterSubjects();
+}
+
+function switchSubjectStrandTab(strand) {
+  activeSubjectStrand = strand || 'all';
+  if (!activeSubjectGrade.startsWith('shs')) activeSubjectGrade = 'shs';
+  document.querySelectorAll('#subjectGradeTabs .division-filter-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.division === 'shs');
+    tab.setAttribute('aria-selected', String(tab.dataset.division === 'shs'));
+  });
+  renderSubjectGradeTabs('shs');
+  document.querySelector(`#subjectStrandSubTabs .grade-filter-tab[data-strand="${activeSubjectStrand}"]`)?.classList.add('active');
+  updateSubjectPanelTitle();
   filterSubjects();
 }
 
@@ -1937,7 +2102,11 @@ function filterSubjects() {
   let visible = 0;
   document.querySelectorAll('#subjectTableBody .subject-card').forEach(row => {
     const matchSearch = row.dataset.name.includes(search);
-    const matchGrade  = managementFilterMatches(activeSubjectGrade, row.dataset.grades.split(',').filter(Boolean));
+    const matchGrade = managementSubjectFilterMatches(
+      activeSubjectGrade,
+      row.dataset.grades.split(',').filter(Boolean),
+      activeSubjectStrand
+    );
     const show = matchSearch && matchGrade;
     row.style.display = show ? '' : 'none';
     if (show) visible += 1;
@@ -2058,6 +2227,10 @@ function managementGradeKey(value) {
   return text === 'kindergarten' ? text : text.replace(/^grade\s*/, '');
 }
 
+function managementStrandKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
 function managementLevelLabel(level) {
   return window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level;
 }
@@ -2091,12 +2264,21 @@ function managementSectionStudentCount(sectionId) {
 }
 
 function managementSectionRecords() {
-  const configured = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  const configured = window.EDUGNAY_CONFIG.getAssignmentSections(school);
   return configured.map(section => {
     const teacherSection = TEACHER_ASSIGNMENTS_DATA.find(item => item.sectionId === section.id);
-    const division = managementDivision(section.level);
-    const configuredSubjectCount = Array.isArray(division.subjects) ? division.subjects.length : 0;
-    const subjects = Number(section.subjects) > 0 ? Number(section.subjects) : configuredSubjectCount;
+    const sectionSubjectIds = new Set(SUBJECT_ASSIGNMENTS_DATA
+      .filter(record => record.schoolId === school?.id)
+      .filter(record => managementSubjectFilterMatches(
+        managementSubjectSectionKey(section),
+        [managementSubjectPlacementKey(record)]
+      ))
+      .map(record => record.subjectId));
+    const subjects = [...sectionSubjectIds].filter(subjectId => {
+      const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === subjectId);
+      return subject?.levels?.includes(section.level);
+    }).length;
     const students = managementSectionStudentCount(section.id);
     const adviserId = section.adviserId || null;
     const adviserProfile = window.EDUGNAY_CONFIG.getUserById(adviserId);
@@ -2129,6 +2311,13 @@ function managementGradeFilterOptions() {
 
 function managementSectionFilterKey(section) {
   return `${section.level}:${managementGradeKey(section.grade)}`;
+}
+
+function managementSubjectSectionKey(section) {
+  const level = String(section?.level || '');
+  const grade = managementGradeKey(section?.grade);
+  if (level === 'shs') return `${level}:${grade}:${managementStrandKey(section?.strand) || 'all'}`;
+  return `${level}:${grade}`;
 }
 
 function managementSectionTone(level, grade = '') {
@@ -2211,10 +2400,9 @@ function managementStrandOptions(level) {
   if (level !== 'shs') return [];
   const division = managementDivision(level);
   const sectionStrands = managementSectionRecords().filter(section => section.level === level).map(section => section.strand).filter(Boolean);
-  if (sectionStrands.length) return [...new Set(sectionStrands)];
   return [...new Set([
     ...(Array.isArray(division.strands) ? division.strands : []),
-    ...(Array.isArray(division.tracks) ? division.tracks : [])
+    ...sectionStrands
   ])];
 }
 
@@ -2492,22 +2680,25 @@ function openTeacherRemoveConfirmation({ sectionId, subjectId, sectionName, grad
 
 function openSubjectRemoveConfirmation(subject) {
   if (!subject) return;
+  const scope = getSubjectModalContext(activeSubjectGrade, activeSubjectStrand);
+  const removingAll = scope.mode === 'all';
+  const scopeLabel = removingAll ? 'all configured grade levels and strands' : scope.label;
   openConfirmRemoveModal({
     type: 'subject',
     id: subject.id,
     targetId: subject.id,
+    contextValue: activeSubjectGrade,
+    contextStrand: activeSubjectStrand,
     name: subject.name,
     context: `${subject.code || 'Subject'} · ${subject.type || 'Configured subject'}`,
-    contextLabel: 'Removing from',
+    contextLabel: 'Subject',
     title: `Remove: ${subject.name}`,
-    sub: 'This removes the subject from the current list.',
-    label: 'Removing from',
+    sub: 'Remove this subject from the selected grade or strand.',
+    label: 'Subject',
     icon: 'book-minus',
     action: '/subjects/remove',
     messageParts: [
-      { text: 'This will remove ' },
-      { text: subject.name, strong: true },
-      { text: ' from the subject list and clear its configured assignment slots.' }
+      { text: `Remove this subject from ${scopeLabel}?` }
     ]
   });
 }
@@ -2569,21 +2760,46 @@ function removeTeacherAssignment(sectionId, subjectId) {
   return true;
 }
 
-function removeSubjectRecord(subjectId) {
+function removeSubjectRecord(subjectId, contextValue = 'all', contextStrand = 'all') {
   const index = SUBJECTS_DATA.findIndex(subject => subject.id === subjectId);
   if (index < 0) return false;
-  const [subject] = SUBJECTS_DATA.splice(index, 1);
+  const scope = getSubjectModalContext(contextValue, contextStrand);
+  const assignments = window.EDUGNAY_CONFIG.getSubjectAssignments();
+  const schoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
+  let removedCount = 0;
 
-  /* A removed subject no longer contributes assignment slots in this local
-     frontend source. Replace this local mutation with the backend DELETE later. */
-  TEACHER_ASSIGNMENTS_DATA.forEach(section => {
-    section.subjects = section.subjects.filter(assignment => assignment.subjectId !== subjectId);
+  for (let assignmentIndex = assignments.length - 1; assignmentIndex >= 0; assignmentIndex -= 1) {
+    const assignment = assignments[assignmentIndex];
+    if (assignment.schoolId !== schoolId || assignment.subjectId !== subjectId) continue;
+    if (scope.mode !== 'all' && assignment.schoolLevel !== scope.level) continue;
+    if (scope.mode === 'grade' && managementGradeKey(assignment.gradeLevel) !== scope.grade) continue;
+    if (scope.level === 'shs' && scope.strand !== 'all' && assignment.strand && managementStrandKey(assignment.strand) !== scope.strand) continue;
+    assignments.splice(assignmentIndex, 1);
+    removedCount += 1;
+  }
+
+  if (!removedCount && scope.mode !== 'all') return false;
+
+  const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
+  TEACHER_ASSIGNMENTS_DATA.forEach(sectionRecord => {
+    const section = sections.find(item => item.id === sectionRecord.sectionId);
+    const inScope = scope.mode === 'all'
+      || (section?.level === scope.level
+        && (scope.mode !== 'grade' || managementGradeKey(section.grade) === scope.grade)
+        && (scope.level !== 'shs' || scope.strand === 'all' || managementStrandKey(section.strand) === scope.strand));
+    if (inScope) sectionRecord.subjects = sectionRecord.subjects.filter(assignment => assignment.subjectId !== subjectId);
   });
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  Object.values(school?.divisions || {}).forEach(division => {
-    division.subjects = (division.subjects || []).filter(id => id !== subjectId);
-  });
-  saveManagementSchool(school);
+
+  const remainingGrades = assignments
+    .filter(assignment => assignment.schoolId === schoolId && assignment.subjectId === subjectId)
+    .map(assignment => managementSubjectPlacementKey(assignment));
+  if (remainingGrades.length) {
+    SUBJECTS_DATA[index].grades = [...new Set(remainingGrades)];
+  } else {
+    SUBJECTS_DATA.splice(index, 1);
+  }
+
+  window.EDUGNAY_CONFIG.saveSubjectAssignments();
   return true;
 }
 
@@ -2632,7 +2848,11 @@ document.getElementById('removeStudentForm').addEventListener('submit', function
   }
 
   if (type === 'subject') {
-    const removed = removeSubjectRecord(targetId);
+    const removed = removeSubjectRecord(
+      targetId,
+      pendingRemoveRequest?.contextValue || 'all',
+      pendingRemoveRequest?.contextStrand || 'all'
+    );
     closeConfirmRemoveModal();
     if (!removed) return;
     renderManagementSubjectTabs();

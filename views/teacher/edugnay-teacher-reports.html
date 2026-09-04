@@ -513,8 +513,8 @@
   if (generationJournalSubject) generationJournalSubject.textContent = journalSubjectName;
 
   const REPORT_WEEK_ID = '2025-W23';
-  const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
-  const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(TEACHER_ID, REPORT_WEEK_ID);
+  const REPORT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+  const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(REPORT_TEACHER_ID, REPORT_WEEK_ID);
 
   function buildTeacherReportSummaryCards() {
     const pendingReports = REPORTS.filter(report => report.status === 'pending');
@@ -644,7 +644,7 @@
             <div class="report-avatar">${window.EDUGNAY_CONFIG.getInitials(r.studentName)}</div>
             <div style="flex:1;min-width:0;">
               <div class="report-card-name">${r.studentName}</div>
-              <div class="report-card-meta">${r.studentId} · ${r.sectionLabel || 'Section not assigned'}</div>
+              <div class="report-card-meta">${r.studentEmail || 'Email not available'} · ${r.sectionLabel || 'Section not assigned'}</div>
             </div>
             ${r.atRisk ? `<div class="at-risk-flag"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> At-Risk</div>` : ''}
           </div>

@@ -749,6 +749,10 @@ thead tr:hover .comp-delete-btn {
   margin-right: 0;
 }
 
+#content-scores .panel > #quarterLockBanner {
+  margin-top: 16px;
+}
+
 .publish-banner-left {
   display: flex;
   align-items: flex-start;

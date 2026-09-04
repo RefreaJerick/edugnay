@@ -463,11 +463,6 @@
               <div class="panel-title">Flagged Students</div>
               <select class="flag-filter" id="flagSectionFilter" onchange="filterFlaggedStudents()">
                 <option value="all">All My Sections</option>
-                <option value="jhs-grade7-matthew">Grade 7 – St. Matthew</option>
-                <option value="jhs-grade8-luke">Grade 8 – St. Luke</option>
-                <option value="jhs-grade8-john">Grade 8 – St. John</option>
-                <option value="jhs-grade9-peter">Grade 9 – St. Peter</option>
-                <option value="jhs-grade9-paul">Grade 9 – St. Paul</option>
               </select>
             </div>
             <div class="flag-grid-single" id="flagGridSingle"></div>
@@ -488,7 +483,7 @@
     // Advisership and a subject assignment stay separate, so subject can be blank.
     const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
     const journalSubjectName = journalSubject?.name || 'Values Education';
-    const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+    const DASHBOARD_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
     const TEACHER_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections();
     const TEACHER_SECTIONS = window.EDUGNAY_CONFIG.withActiveSchool([
       { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName },
@@ -500,7 +495,7 @@
 
     TEACHER_SECTIONS.forEach(section => {
       const record = TEACHER_SECTION_RECORDS.find(item => item.id === section.sectionId);
-      section.isAdviser = record?.adviserId === TEACHER_ID;
+      section.isAdviser = record?.adviserId === DASHBOARD_TEACHER_ID;
     });
 
     function getTeacherSectionAttendance(section) {
@@ -532,14 +527,16 @@
       return TEACHER_STUDENT_RECORDS.filter(student => student.sectionId === sectionId).length;
     }
 
-    const TEACHER_REPORTS_TO_CONFIRM = window.EDUGNAY_CONFIG.getReportsForTeacher(TEACHER_ID, '2025-W23');
+    const TEACHER_ADVISORY_REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(DASHBOARD_TEACHER_ID, '2025-W23');
+    const PENDING_REPORTS = TEACHER_ADVISORY_REPORTS.filter(report => report.status === 'pending');
+    const HANDLED_SECTION_IDS = TEACHER_SECTIONS.map(section => section.sectionId);
 
     const FLAGGED_STUDENTS = window.EDUGNAY_CONFIG.withActiveSchool([
       { studentId: 'bg-007', sectionId: 'jhs-grade9-paul', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
       { studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
       { studentId: 'ml-006', sectionId: 'jhs-grade9-peter', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
       { studentId: 'as-008', sectionId: 'jhs-grade10-james', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
-    ]);
+    ]).filter(flag => HANDLED_SECTION_IDS.includes(flag.sectionId));
 
     const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
@@ -564,7 +561,7 @@
             icon: 'hourglass',
             label: 'Reports to Confirm',
             sub: 'Ready for your review',
-            records: TEACHER_REPORTS_TO_CONFIRM,
+            records: PENDING_REPORTS,
           }
         : {
             tone: 'red',
@@ -578,7 +575,7 @@
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
 
     const PENDING_TASKS = window.EDUGNAY_CONFIG.withActiveSchool([
-      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ title: `${TEACHER_REPORTS_TO_CONFIRM.filter(report => report.status === 'pending').length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
+      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ title: `${PENDING_REPORTS.length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
       { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
       { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
     ]);
@@ -633,6 +630,13 @@
 
       const flagList = document.getElementById('flagGridSingle');
       if (flagList) {
+        const flagFilter = document.getElementById('flagSectionFilter');
+        if (flagFilter) {
+          flagFilter.innerHTML = [
+            '<option value="all">All My Sections</option>',
+            ...TEACHER_SECTIONS.map(section => `<option value="${section.sectionId}">${section.name}</option>`)
+          ].join('');
+        }
         flagList.innerHTML = FLAGGED_STUDENTS.map(flag => {
           const student = window.EDUGNAY_CONFIG.getUserById(flag.studentId);
           if (!student) return '';

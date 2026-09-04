@@ -10,11 +10,18 @@ const TEACHER_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 // Replace this local object with the signed-in teacher's access payload later.
 // Subject IDs match the shared subject catalog so school settings can choose
 // any configured journal subject without another name-matching rule.
+const TEACHER_ID = 'teacher-2';
+const TEACHER_ADVISORY_SECTION_IDS = window.EDUGNAY_CONFIG
+  .getAssignmentSections()
+  .filter(section => section.adviserId === TEACHER_ID)
+  .map(section => section.id);
+
 const TEACHER_PORTAL_ACCESS = {
   schoolId: TEACHER_SCHOOL_ID,
-  teacherId: 'teacher-2',
+  teacherId: TEACHER_ID,
   subjects: ['values-education', 'mathematics', 'science'],
-  isAdviser: true
+  isAdviser: TEACHER_ADVISORY_SECTION_IDS.length > 0,
+  advisorySectionIds: TEACHER_ADVISORY_SECTION_IDS
 };
 
 window.EDUGNAY_TEACHER_ACCESS = TEACHER_PORTAL_ACCESS;

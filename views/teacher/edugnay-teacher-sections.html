@@ -73,7 +73,7 @@
         </div>
         <div id="selectedCatBadge" class="cat-badge cat-ww">
           <i data-lucide="pencil" style="width:10px;height:10px;"></i>
-          Written Work (30%)
+          Written Work (—)
         </div>
       </div>
 
@@ -243,11 +243,10 @@
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Visible to Students</label>
-        <select class="form-select">
-          <option selected>Immediately after upload</option>
-          <option>Schedule a date</option>
-          <option>Hidden (draft)</option>
-        </select>
+          <select class="form-select">
+            <option selected>Immediately after upload</option>
+            <option>Hidden (draft)</option>
+          </select>
       </div>
     </div>
     <div class="modal-foot">
@@ -581,7 +580,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Score Recording: Values Education</div>
-            <div class="panel-sub">Grade 7 – St. Matthew · Q2 · Weights: WW 30% · PT 50% · QA 20%</div>
+            <div class="panel-sub">Grade 7 – St. Matthew · Q2 · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
           </div>
           <div class="panel-head-actions">
             <button class="top-btn secondary" onclick="openModal('addCompModal')">
@@ -626,15 +625,15 @@
           </div>
           <div class="cat-tab" onclick="switchCatTab(this,'WW')">
             <i data-lucide="pencil" style="width:12px;height:12px;"></i>
-            Written Work <span class="cat-weight">30%</span>
+            <span data-grading-label="WW">Written Work</span> <span class="cat-weight" data-grading-weight="WW">—</span>
           </div>
           <div class="cat-tab" onclick="switchCatTab(this,'PT')">
             <i data-lucide="target" style="width:12px;height:12px;"></i>
-            Performance Task <span class="cat-weight">50%</span>
+            <span data-grading-label="PT">Performance Task</span> <span class="cat-weight" data-grading-weight="PT">—</span>
           </div>
           <div class="cat-tab" onclick="switchCatTab(this,'QA')">
             <i data-lucide="clipboard-list" style="width:12px;height:12px;"></i>
-            Quarterly Assessment <span class="cat-weight">20%</span>
+            <span data-grading-label="QA">Quarterly Assessment</span> <span class="cat-weight" data-grading-weight="QA">—</span>
           </div>
         </div>
 
@@ -867,6 +866,16 @@
   const CURRENT_SECTION = CURRENT_SECTION_RECORD ? `${CURRENT_SECTION_RECORD.grade} – ${CURRENT_SECTION_RECORD.name}` : 'Section';
   const CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
   const CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
+  const CURRENT_LEVEL = CURRENT_SECTION_RECORD?.level || 'jhs';
+  const CURRENT_GRADING_RULES = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL]?.gradingRules || [];
+  const GRADING_RULES_BY_ID = Object.fromEntries(
+    CURRENT_GRADING_RULES.map(rule => [String(rule.id || '').toLowerCase(), rule])
+  );
+
+  function gradingWeight(category) {
+    return Number(GRADING_RULES_BY_ID[String(category).toLowerCase()]?.weight) || 0;
+  }
+
   document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
 
   // Attendance rows come from the shared attendance source. Replace its
@@ -1091,13 +1100,37 @@
 
   /* ── COMPONENT TYPE MODAL ── */
   const catMap = {
-    WW: { label: 'Written Work (30%)',          cls: 'cat-ww', icon: 'pencil' },
-    PT: { label: 'Performance Task (50%)',       cls: 'cat-pt', icon: 'target' },
-    QA: { label: 'Quarterly Assessment (20%)',   cls: 'cat-qa', icon: 'clipboard-list' },
+    WW: { label: `${GRADING_RULES_BY_ID.ww?.label || 'Written Work'} (${gradingWeight('WW')}%)`, cls: 'cat-ww', icon: 'pencil' },
+    PT: { label: `${GRADING_RULES_BY_ID.pt?.label || 'Performance Task'} (${gradingWeight('PT')}%)`, cls: 'cat-pt', icon: 'target' },
+    QA: { label: `${GRADING_RULES_BY_ID.qa?.label || 'Quarterly Assessment'} (${gradingWeight('QA')}%)`, cls: 'cat-qa', icon: 'clipboard-list' },
   };
 
   let selectedCompType = 'Quiz';
   let selectedCompCat  = 'WW';
+
+  function renderGradingRules() {
+    const weights = ['WW', 'PT', 'QA'].map(category => `${category} ${gradingWeight(category)}%`).join(' · ');
+    const summary = document.getElementById('scorePanelWeights');
+    if (summary) summary.textContent = weights;
+
+    document.querySelectorAll('[data-grading-weight]').forEach(element => {
+      element.textContent = `${gradingWeight(element.dataset.gradingWeight)}%`;
+    });
+    document.querySelectorAll('[data-grading-label]').forEach(element => {
+      const rule = GRADING_RULES_BY_ID[String(element.dataset.gradingLabel).toLowerCase()];
+      if (rule?.label) element.textContent = rule.label;
+    });
+
+    const badge = document.getElementById('selectedCatBadge');
+    const info = catMap[selectedCompCat];
+    if (badge && info) {
+      badge.className = 'cat-badge ' + info.cls;
+      badge.innerHTML = `<i data-lucide="${info.icon}" style="width:10px;height:10px;"></i> ${info.label}`;
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  renderGradingRules();
 
   function selectCompType(el, type, cat) {
     document.querySelectorAll('.comp-type-opt').forEach(o => o.classList.remove('selected'));
@@ -1121,8 +1154,11 @@
   }
 
   /* ── GRADE COMPUTATION ── */
-  // Weights (match system config)
-  const WEIGHTS = { WW: 0.30, PT: 0.50, QA: 0.20 };
+  const WEIGHTS = {
+    WW: gradingWeight('WW') / 100,
+    PT: gradingWeight('PT') / 100,
+    QA: gradingWeight('QA') / 100
+  };
 
   // Stand-in for per-quarter components and scores, replace with real data once backend is wired
   const QUARTER_DATA = {

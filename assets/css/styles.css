@@ -1289,25 +1289,6 @@ body.drawer-open .sidebar {
   user-select: none;
 }
 
-.login-network-pattern {
-  position: absolute;
-  inset: 10% -14% auto auto;
-  width: min(94%, 720px);
-  height: 72%;
-  color: color-mix(in srgb, var(--blue-light) 20%, transparent);
-  pointer-events: none;
-}
-
-.login-network-pattern path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-}
-
-.login-network-pattern circle {
-  fill: currentColor;
-}
-
 .login-brand-content {
   position: relative;
   z-index: 1;
