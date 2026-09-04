@@ -690,10 +690,7 @@
         </div>
 
         <div class="att-toolbar">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <i data-lucide="calendar" style="width:15px;height:15px;color:var(--gray-400);"></i>
-            <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
-          </div>
+          <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
           <div class="att-summary">
             <div class="att-summary-item"><div class="att-dot present"></div><span style="color:#16a34a;">Present: <strong id="countP">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot absent"></div><span style="color:var(--red);">Absent: <strong id="countA">0</strong></span></div>

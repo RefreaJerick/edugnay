@@ -459,8 +459,8 @@ lucide.createIcons();
 /* ══════ DATA ══════ */
 // Journal entries are shared with the student portal. Replace this getter
 // with the teacher journal API response later.
-const TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
-const JOURNAL_ENTRY_STATE = window.EDUGNAY_CONFIG.getJournalsForTeacher(TEACHER_ID)
+const CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+const JOURNAL_ENTRY_STATE = window.EDUGNAY_CONFIG.getJournalsForTeacher(CURRENT_TEACHER_ID)
   .filter(record => record.isCurrent);
 
 const SECTIONS = {
