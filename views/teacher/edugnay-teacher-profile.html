@@ -296,14 +296,11 @@
           </div>
         </div>
         <div class="config-panel-body" id="teacher-employment-details">
-          <div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;">
-            <span class="profile-detail-label">Sections Handled</span>
-            <div class="section-list" role="list" aria-label="Sections handled">
-              <span class="badge badge-blue">Gr. 7 – St. Matthew</span>
-              <span class="badge badge-blue">Gr. 8 – St. Luke</span>
-              <span class="badge badge-blue">Gr. 9 – St. Peter</span>
-              <span class="badge badge-blue">Gr. 10 – St. Andrew</span>
-            </div>
+          <div class="section-list" role="list" aria-label="Sections handled">
+            <span class="badge badge-blue">Gr. 7 – St. Matthew</span>
+            <span class="badge badge-blue">Gr. 8 – St. Luke</span>
+            <span class="badge badge-blue">Gr. 9 – St. Peter</span>
+            <span class="badge badge-blue">Gr. 10 – St. Andrew</span>
           </div>
         </div>
       </div>
@@ -381,7 +378,7 @@
     if (!panel) return;
     const details = EMPLOYMENT_DETAILS[0];
     panel.innerHTML = details?.sections?.length
-      ? `<div class="profile-detail-row profile-detail-row-stacked" style="border-bottom:none;"><span class="profile-detail-label">Sections Handled</span><div class="section-list" role="list" aria-label="Sections handled">${details.sections.map(section => `<span class="badge badge-blue" role="listitem">${section}</span>`).join('')}</div></div>`
+      ? `<div class="section-list" role="list" aria-label="Sections handled">${details.sections.map(section => `<span class="badge badge-blue" role="listitem">${section}</span>`).join('')}</div>`
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
   }
 

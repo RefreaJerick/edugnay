@@ -1,51 +1,6 @@
 /* ── PAGE-SPECIFIC: admin/profile.css ── */
 /* Fully self-contained — no dependency on subjects.css */
 
-/* ══════════════════════════════
-    PROFILE HEADER CARD
-══════════════════════════════ */
-.profile-header-card {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  border-radius: 16px;
-  padding: 26px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 12px 26px rgba(11, 31, 58, 0.18);
-}
-
-.profile-avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 2;
-}
-
-.profile-avatar {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  background: rgba(212, 175, 55, 0.16);
-  border: 1px solid rgba(247, 217, 128, 0.22);
-  color: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  font-weight: 700;
-  overflow: hidden;
-}
-
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .profile-avatar-edit {
   position: absolute;
   bottom: 0;
@@ -63,43 +18,6 @@
   transition: background 0.15s;
 }
 .profile-avatar-edit:hover { background: var(--blue-mid); }
-
-.profile-header-info { flex: 1; min-width: 0; }
-
-.profile-header-name {
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--white);
-  margin-bottom: 6px;
-}
-
-.profile-header-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.72);
-}
-.profile-header-meta span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* ══════════════════════════════
-    AVATAR — dynamic background color
-    (driven by data-color attribute, set via EJS on load
-     or via JS after a swatch is picked)
-══════════════════════════════ */
-.profile-avatar[data-color="navy"]     { background: var(--navy); }
-.profile-avatar[data-color="blue"] { background: var(--blue-mid); }
-.profile-avatar[data-color="gold"]     { background: var(--gold); }
-.profile-avatar[data-color="green"]    { background: var(--green); }
-.profile-avatar[data-color="orange"]   { background: var(--orange); }
-.profile-avatar[data-color="red"]      { background: var(--red); }
-.profile-avatar[data-color="purple"]   { background: var(--purple); }
-.profile-avatar[data-color="teal"]     { background: var(--teal); }
-.profile-avatar[data-color="magenta"]  { background: var(--magenta); }
 
 /* ══════════════════════════════
     AVATAR COLOR PICKER
@@ -227,111 +145,10 @@
   background: #dc2626;
 }
 
-/* ══════════════════════════════
-    DETAIL ROWS (Employment Details)
-══════════════════════════════ */
-.profile-detail-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--gray-100);
-  gap: 12px;
-}
-.profile-detail-row:last-child { border-bottom: none; }
-
-.profile-detail-label {
-  font-size: 12.5px;
-  color: var(--gray-500);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.profile-detail-value {
-  font-size: 13px;
-  color: var(--gray-800);
-  font-weight: 600;
-  text-align: right;
-}
-
-/* ══════════════════════════════
-    PANEL SHELL (page-local, not shared)
-══════════════════════════════ */
-.panel {
-  background: var(--white);
-  border-radius: 14px;
-  border: 1px solid var(--gray-200);
-  overflow: hidden;
-}
-
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--gray-100);
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.panel-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gray-800);
-}
-
-.panel-sub {
-  font-size: 12px;
-  color: var(--gray-400);
-  margin-top: 2px;
-}
-
-.panel-head-title-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.panel-title-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.config-panel-body {
-  padding: 20px 24px;
-}
-.config-panel-body .form-group:last-child { margin-bottom: 0; }
-
-.config-panel-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 24px;
-  border-top: 1px solid var(--gray-100);
-}
-
 .form-hint {
   font-size: 11px;
   color: var(--gray-400);
   margin-top: 4px;
-}
-
-/* ══════════════════════════════
-    TWO-COLUMN LAYOUT (page-local)
-══════════════════════════════ */
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
 }
 
 /* ══════════════════════════════
@@ -430,15 +247,4 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .two-col { grid-template-columns: 1fr; }
-}
-@media (max-width: 640px) {
-  .profile-header-card { flex-direction: column; text-align: center; }
-  .profile-header-meta { justify-content: center; }
-  .profile-detail-row { flex-wrap: wrap; }
-  .profile-detail-value { text-align: left; }
 }

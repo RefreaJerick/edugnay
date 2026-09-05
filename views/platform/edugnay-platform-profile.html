@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
-  <link rel="stylesheet" href="../../assets/css/admin/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <link rel="stylesheet" href="../../assets/css/platform/profile.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -103,15 +102,14 @@
           <div class="config-panel-body profile-fields" id="platformProfileFields"></div>
         </section>
 
-        <section class="panel" aria-labelledby="profile-access-title">
+        <section class="panel" aria-labelledby="platform-account-access-title">
           <div class="panel-head">
             <div class="panel-head-title-group">
               <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
-              <div><div class="panel-title" id="profile-access-title">Platform Access</div></div>
+              <div><div class="panel-title" id="platform-account-access-title">Account Access</div></div>
             </div>
           </div>
           <div class="config-panel-body profile-details" id="platformAccessDetails"></div>
-          <p class="profile-note">Your platform role is limited to school registration and account review workflows.</p>
         </section>
       </div>
     </main>
@@ -126,7 +124,7 @@
       { label: 'Role', getValue: admin => admin.role === 'platform_admin' ? 'Platform Administrator' : admin.role }
     ];
 
-    const PLATFORM_ACCESS_DETAILS = [
+    const PLATFORM_ACCOUNT_ACCESS_DETAILS = [
       { label: 'Account status', value: 'Active' },
       { label: 'Access scope', value: 'All registered schools' },
       { label: 'Primary responsibility', value: 'School account review' }
@@ -141,9 +139,9 @@
       document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.length ? PLATFORM_PROFILE_FIELDS.map(field => `
         <div class="form-group">
           <label class="form-label">${escapeHtml(field.label)}</label>
-          <div class="form-input profile-readonly-value" role="textbox" aria-readonly="true">${escapeHtml(field.getValue(admin))}</div>
+          <input class="form-input" type="text" value="${escapeHtml(field.getValue(admin))}" disabled aria-readonly="true">
         </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round', title: 'No profile details', text: 'Platform administrator details will appear here.' });
-      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCESS_DETAILS.length ? PLATFORM_ACCESS_DETAILS.map(detail => `
+      document.getElementById('platformAccessDetails').innerHTML = PLATFORM_ACCOUNT_ACCESS_DETAILS.length ? PLATFORM_ACCOUNT_ACCESS_DETAILS.map(detail => `
         <div class="profile-detail-row"><span class="profile-detail-label">${escapeHtml(detail.label)}</span><span class="profile-detail-value">${escapeHtml(detail.value)}</span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'shield-check', title: 'No access details', text: 'Platform access information will appear here.' });
       if (window.lucide) window.lucide.createIcons();
     }

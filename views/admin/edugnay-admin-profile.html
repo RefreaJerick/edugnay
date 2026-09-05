@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
-  <link rel="stylesheet" href="../../assets/css/admin/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
+  <link rel="stylesheet" href="../../assets/css/admin/profile.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
@@ -244,7 +244,7 @@
       </div>
     </div>
 
-    <div class="two-col" style="align-items:start;">
+    <div class="two-col">
 
       <!-- Personal Information -->
       <div class="panel personal-info-panel">
@@ -257,20 +257,20 @@
           </div>
         </div>
         <form id="profileForm" action="/admin/profile" method="POST" onsubmit="return submitProfile(event)">
-          <div class="config-panel-body">
+          <div class="config-panel-body profile-fields">
             <div class="form-group">
               <label class="form-label">Full Name</label>
-              <input class="form-input" type="text" name="fullName" value="Sr. Admin" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="text" name="fullName" value="Sr. Admin" disabled/>
               <span class="form-hint">Managed through account administration.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Account Email</label>
-              <input class="form-input" type="email" name="email" value="admin@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="email" name="email" value="admin@stcolumban.edu.ph" disabled/>
               <span class="form-hint">Used to sign in to your account.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Employee Number</label>
-              <input class="form-input" type="text" name="employeeNo" id="adminEmployeeNoInput" value="" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="text" name="employeeNo" id="adminEmployeeNoInput" value="" disabled/>
               <span class="form-hint">Your school-assigned ID.</span>
             </div>
             <div class="form-group" style="margin-bottom:0;">
@@ -287,30 +287,18 @@
       </div>
 
       <div class="profile-side-column">
-        <!-- Employment Details (read-only) -->
-        <div class="panel">
+        <!-- Account Access -->
+        <section class="panel" aria-labelledby="admin-access-title">
           <div class="panel-head">
             <div class="panel-head-title-group">
-              <div class="panel-title-icon">
-                <i data-lucide="briefcase" style="width:16px;height:16px;"></i>
-              </div>
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:16px;height:16px;"></i></div>
               <div>
-                <div class="panel-title">Employment Details</div>
-                <div class="panel-sub">Managed through account administration.</div>
+                <div class="panel-title" id="admin-access-title">Account Access</div>
               </div>
             </div>
           </div>
-          <div class="config-panel-body" id="admin-employment-details">
-            <div class="profile-detail-row">
-              <span class="profile-detail-label">Position</span>
-              <span class="profile-detail-value">System Administrator</span>
-            </div>
-            <div class="profile-detail-row">
-              <span class="profile-detail-label">Access Level</span>
-              <span class="profile-detail-value">Full System Access</span>
-            </div>
-          </div>
-        </div>
+          <div class="config-panel-body profile-details" id="admin-access-details"></div>
+        </section>
 
         <!-- Security -->
         <div class="panel">
@@ -376,19 +364,6 @@
 </div>
 
 <script>
-  const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([
-    { label: 'Position', value: 'System Administrator' },
-    { label: 'Access Level', value: 'Full System Access' }
-  ]);
-
-  function renderEmploymentDetails() {
-    const panel = document.getElementById('admin-employment-details');
-    if (!panel) return;
-    panel.innerHTML = EMPLOYMENT_DETAILS.length
-      ? EMPLOYMENT_DETAILS.map(item => `<div class="profile-detail-row"><span class="profile-detail-label">${item.label}</span><span class="profile-detail-value">${item.value}</span></div>`).join('')
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'briefcase-business', title: 'No employment details', text: 'Employment information will appear here when it is configured.' });
-  }
-
   function openModal() { document.getElementById('changePasswordModal').classList.add('open'); }
   function closeModal() {
     document.getElementById('changePasswordModal').classList.remove('open');
@@ -488,6 +463,25 @@
     return false;
   }
 
+  const activeSchool = window.EDUGNAY_CONFIG?.getActiveSchool?.();
+  const schoolAdmin = window.EDUGNAY_CONFIG?.getUsers?.()
+    ?.find(user => user.role === 'school_admin' && user.schoolId === activeSchool?.id);
+  const ADMIN_ACCESS_DETAILS = [
+    { label: 'Account status', value: schoolAdmin?.status ? schoolAdmin.status.charAt(0).toUpperCase() + schoolAdmin.status.slice(1) : 'Unknown' },
+    { label: 'Access scope', value: schoolAdmin?.schoolId === activeSchool?.id ? 'Current school only' : 'School assignment unavailable' },
+    { label: 'Role', value: schoolAdmin?.role === 'school_admin' ? 'School Administrator' : schoolAdmin?.role || 'Unknown' }
+  ];
+
+  function renderAdminAccessDetails() {
+    const panel = document.getElementById('admin-access-details');
+    if (!panel) return;
+    panel.innerHTML = ADMIN_ACCESS_DETAILS.map(detail => `
+      <div class="profile-detail-row">
+        <span class="profile-detail-label">${escapeHtml(detail.label)}</span>
+        <span class="profile-detail-value">${escapeHtml(detail.value)}</span>
+      </div>`).join('');
+  }
+
   // The school administrator is a canonical user record. Replace this lookup
   // with the authenticated administrator returned by the API later.
   function renderAdminEmployeeNumber() {
@@ -502,7 +496,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    renderEmploymentDetails();
+    renderAdminAccessDetails();
     renderAdminEmployeeNumber();
     lucide.createIcons();
   });
