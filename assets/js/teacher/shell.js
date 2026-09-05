@@ -15,6 +15,7 @@ const TEACHER_ADVISORY_SECTION_IDS = window.EDUGNAY_CONFIG
   .getAssignmentSections()
   .filter(section => section.adviserId === TEACHER_ID)
   .map(section => section.id);
+const TEACHER_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 
 const TEACHER_PORTAL_ACCESS = {
   schoolId: TEACHER_SCHOOL_ID,
@@ -48,6 +49,18 @@ function teacherCanAccess(feature) {
 }
 
 const NOTIFICATIONS = [
+  ...(TEACHER_NO_CLASS_DAY ? [{
+    id: `teacher-notif-no-class-${TEACHER_NO_CLASS_DAY.date}`,
+    schoolId: TEACHER_SCHOOL_ID,
+    icon: 'calendar-off',
+    tone: 'gold',
+    type: 'Calendar',
+    read: false,
+    title: TEACHER_NO_CLASS_DAY.title || 'No classes today',
+    message: TEACHER_NO_CLASS_DAY.detail || 'Classes are suspended today.',
+    link: { page: 'announcements' },
+    createdAt: `${TEACHER_NO_CLASS_DAY.date}T00:00:00.000Z`
+  }] : []),
   {
     id: 'teacher-notif-report-001', icon: 'file-text', tone: 'orange', type: 'Report', read: false, access: 'reports',
     title: '5 reports awaiting confirmation',
@@ -91,7 +104,7 @@ const NOTIFICATIONS = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
 ]
-  .map(record => ({ ...record, schoolId: 'scc' }))
+  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === TEACHER_SCHOOL_ID);
 
 /* ── READ STATE (localStorage; swap for DB column later) ── */

@@ -1770,6 +1770,7 @@ body.drawer-open .sidebar {
   .sidebar {
     position: fixed; top: 0; left: 0;
     width: min(280px, 80vw); height: 100vh;
+    height: 100dvh;
     transform: translateX(-100%); z-index: 130;
     border-right: none; box-shadow: 6px 0 24px rgba(0,0,0,0.18);
   }
@@ -1919,61 +1920,6 @@ body.drawer-open .sidebar {
   }
 }
 
-/* Shared holiday and no-class notice used by every portal shell. */
-.system-day-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 0 0 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--orange-border);
-  border-radius: 13px;
-  background: var(--orange-pale);
-  color: var(--gray-700);
-  box-shadow: 0 3px 12px rgba(180, 83, 9, .06);
-}
-
-.system-day-banner-icon {
-  display: inline-flex;
-  flex: 0 0 34px;
-  width: 34px;
-  height: 34px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 10px;
-  background: var(--white);
-  color: var(--orange-dark);
-  box-shadow: 0 2px 7px rgba(16, 40, 80, .08);
-}
-
-.system-day-banner-icon svg {
-  width: 17px;
-  height: 17px;
-}
-
-.system-day-banner-kicker {
-  margin-bottom: 3px;
-  color: var(--orange-dark);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.system-day-banner-title {
-  color: var(--gray-800);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.system-day-banner-text {
-  margin-top: 2px;
-  color: var(--gray-600);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 /* Keep dynamically rendered navigation icons aligned with the established
    portal sidebar proportions. */
 .sidebar .nav-icon svg {
@@ -1984,19 +1930,6 @@ body.drawer-open .sidebar {
 .sidebar .nav-chevron {
   width: 15px !important;
   height: 15px !important;
-}
-
-@media (max-width: 640px) {
-  .system-day-banner {
-    padding: 12px;
-    border-radius: 12px;
-  }
-
-  .system-day-banner-icon {
-    flex-basis: 32px;
-    width: 32px;
-    height: 32px;
-  }
 }
 
 /* Shared card interaction: match the Admin Dashboard summary-card hover

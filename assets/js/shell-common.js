@@ -374,6 +374,7 @@ function formatRelativeTime(dateValue) {
   const DEFAULT_HOLIDAYS = [
     {
       id: 'demo-foundation-day',
+      schoolId: 'scc',
       date: '2026-08-17',
       title: 'School Foundation Day',
       detail: 'No classes and no office transactions today.',
@@ -382,13 +383,14 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'national-heroes-day',
+      schoolId: 'scc',
       date: '2026-08-31',
       title: 'National Heroes Day',
       detail: 'Regular classes resume on the next school day.',
       type: 'holiday',
       appliesTo: 'all'
     }
-  ].map(record => ({ ...record, schoolId: 'scc' }));
+  ];
 
   function readJson(key, fallback) {
     try {
@@ -674,8 +676,35 @@ function formatRelativeTime(dateValue) {
 
   function getAnnouncements(audience) {
     const key = String(audience || '').toLowerCase();
-    return ANNOUNCEMENT_DIRECTORY
-      .filter(record => record.schoolId === getActiveSchoolId() && record.status !== 'draft')
+    const schoolId = getActiveSchoolId();
+    const records = ANNOUNCEMENT_DIRECTORY
+      .filter(record => record.schoolId === schoolId && record.status !== 'draft');
+    const noClassDay = getNoClassDay();
+
+    if (noClassDay) {
+      records.push({
+        id: `calendar-${noClassDay.id}`,
+        schoolId,
+        title: noClassDay.title || 'No classes today',
+        body: noClassDay.detail || 'Classes are suspended today.',
+        priority: 'event',
+        audience: ['all'],
+        authorId: null,
+        authorName: 'School calendar',
+        createdAt: new Date(`${noClassDay.date}T00:00:00`).toISOString(),
+        status: 'published',
+        pinned: false,
+        icon: 'calendar-off',
+        iconClass: 'icon-event',
+        tag: 'Calendar',
+        read: false,
+        seenCount: 0,
+        imageUrl: null,
+        access: null
+      });
+    }
+
+    return records
       .filter(record => !key || (Array.isArray(record.audience) && (record.audience.includes('all') || record.audience.includes(key))))
       .map(announcementView);
   }
@@ -2412,38 +2441,9 @@ function applyGradePortalAccess() {
   }
 }
 
-function renderNoClassNotice() {
-  if (document.body?.dataset.platformPortal === 'true') return;
-  const pageName = location.pathname.split('/').pop().toLowerCase();
-  if (!/(dashboard|notifications)\.html$/.test(pageName)) return;
-
-  const main = document.querySelector('.main');
-  if (!main || main.querySelector('[data-system-day-banner]')) return;
-
-  const noClassDay = window.EDUGNAY_CONFIG.getNoClassDay();
-  if (!noClassDay) return;
-
-  const banner = document.createElement('div');
-  banner.className = 'system-day-banner';
-  banner.dataset.systemDayBanner = 'true';
-  banner.setAttribute('role', 'status');
-  banner.innerHTML = `
-    <div class="system-day-banner-icon" aria-hidden="true"><i data-lucide="calendar-off"></i></div>
-    <div class="system-day-banner-copy">
-      <div class="system-day-banner-kicker">No classes today</div>
-      <div class="system-day-banner-title"></div>
-      <div class="system-day-banner-text"></div>
-    </div>`;
-  banner.querySelector('.system-day-banner-title').textContent = noClassDay.title || '';
-  banner.querySelector('.system-day-banner-text').textContent = noClassDay.detail || '';
-  main.prepend(banner);
-  if (window.lucide) lucide.createIcons();
-}
-
 window.refreshEdUgnayShellContext = function refreshEdUgnayShellContext() {
   applyActiveSchoolToShell();
   applyGradePortalAccess();
-  renderNoClassNotice();
 };
 
 function applyPageTitleToTopbar() {
@@ -2651,7 +2651,6 @@ document.addEventListener('click', event => {
 document.addEventListener('DOMContentLoaded', async () => {
   applyActiveSchoolToShell();
   applyGradePortalAccess();
-  renderNoClassNotice();
   applyPageTitleToTopbar();
   initScrollFades();
   initSidebarScrollbars();

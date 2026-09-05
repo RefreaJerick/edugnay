@@ -8,6 +8,7 @@
 /* ── LINKED CHILDREN DATA ── */
 const PARENT_CONFIG = window.EDUGNAY_CONFIG;
 const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
+const PARENT_NO_CLASS_DAY = PARENT_CONFIG.getNoClassDay();
 
 // Parent-child links stay as relationship records. Pages resolve the student
 // with getUserById(link.studentId) when they need display details.
@@ -23,6 +24,18 @@ window.EDUGNAY_PARENT = {
 
 /* ── NOTIFICATIONS DATA ── */
 const NOTIFICATIONS = [
+  ...(PARENT_NO_CLASS_DAY ? [{
+    id: `parent-notif-no-class-${PARENT_NO_CLASS_DAY.date}`,
+    schoolId: PARENT_SCHOOL_ID,
+    icon: 'calendar-off',
+    tone: 'gold',
+    type: 'Calendar',
+    read: false,
+    title: PARENT_NO_CLASS_DAY.title || 'No classes today',
+    message: PARENT_NO_CLASS_DAY.detail || 'Classes are suspended today.',
+    link: { page: 'announcements' },
+    createdAt: `${PARENT_NO_CLASS_DAY.date}T00:00:00.000Z`
+  }] : []),
   {
     id: 'parent-notif-report-001', icon: 'sparkles', tone: 'purple', type: 'Report', read: false, access: 'reports',
     title: 'Weekly report sent',
@@ -59,7 +72,7 @@ const NOTIFICATIONS = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
 ]
-  .map(record => ({ ...record, schoolId: 'scc' }))
+  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === PARENT_SCHOOL_ID);
 
 const PARENT_READ_STORE_KEY = `edugnay_parent_notif_read:${PARENT_SCHOOL_ID}`;

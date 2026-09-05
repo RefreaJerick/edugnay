@@ -32,7 +32,20 @@ function getReopenRequestDetails(request) {
 /* ── NOTIFICATIONS DATA ──
    Replace this local array with the signed-in school admin's notification
    response later. Reopen requests remain local for now and are merged below. */
+const ADMIN_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 const NOTIFICATIONS = [
+  ...(ADMIN_NO_CLASS_DAY ? [{
+    id: `admin-notif-no-class-${ADMIN_NO_CLASS_DAY.date}`,
+    schoolId: ADMIN_SCHOOL_ID,
+    icon: 'calendar-off',
+    tone: 'gold',
+    type: 'Calendar',
+    read: false,
+    title: ADMIN_NO_CLASS_DAY.title || 'No classes today',
+    message: ADMIN_NO_CLASS_DAY.detail || 'Classes are suspended today.',
+    link: { page: 'announcements' },
+    createdAt: `${ADMIN_NO_CLASS_DAY.date}T00:00:00.000Z`
+  }] : []),
   {
     id: 'admin-notif-announcement',
     icon: 'megaphone',
@@ -56,7 +69,7 @@ const NOTIFICATIONS = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
   }
 ]
-  .map(record => ({ ...record, schoolId: 'scc' }))
+  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
 
 /* ── ADMIN ACTIVITY DATA (shared by the dashboard and activity page) ──

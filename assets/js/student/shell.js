@@ -7,7 +7,20 @@
 
 /* ── NOTIFICATIONS DATA ── */
 const STUDENT_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
+const STUDENT_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 const NOTIFICATIONS = [
+  ...(STUDENT_NO_CLASS_DAY ? [{
+    id: `student-notif-no-class-${STUDENT_NO_CLASS_DAY.date}`,
+    schoolId: STUDENT_SCHOOL_ID,
+    icon: 'calendar-off',
+    tone: 'gold',
+    type: 'Calendar',
+    read: false,
+    title: STUDENT_NO_CLASS_DAY.title || 'No classes today',
+    message: STUDENT_NO_CLASS_DAY.detail || 'Classes are suspended today.',
+    link: { page: 'announcements' },
+    createdAt: `${STUDENT_NO_CLASS_DAY.date}T00:00:00.000Z`
+  }] : []),
   {
     id: 'student-notif-materials-001', icon: 'folder-open', tone: 'blue', type: 'Materials', read: false,
     title: 'New learning material posted',
@@ -44,7 +57,7 @@ const NOTIFICATIONS = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   }
 ]
-  .map(record => ({ ...record, schoolId: 'scc' }))
+  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === STUDENT_SCHOOL_ID);
 
 const STUDENT_READ_STORE_KEY = `edugnay_student_notif_read:${STUDENT_SCHOOL_ID}`;
