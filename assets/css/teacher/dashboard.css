@@ -1,5 +1,35 @@
 /* ── PAGE-SPECIFIC: teacher/dashboard.css ── */
 
+/* Dashboard upload modal shell. Shared modal-system.css supplies the form
+   controls and modal language; this page only owns the open/closed state. */
+.teacher-material-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s, visibility .2s;
+}
+
+.teacher-material-modal-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.teacher-material-modal-backdrop .modal {
+  width: 100%;
+  max-width: 520px;
+  transform: translateY(20px);
+  transition: transform .2s ease;
+}
+
+.teacher-material-modal-backdrop.open .modal {
+  transform: translateY(0);
+}
+
 /* Welcome banner */
 .grading-banner {
   position: relative;

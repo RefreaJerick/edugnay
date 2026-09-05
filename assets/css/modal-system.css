@@ -16,6 +16,7 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 32px);
+  background: var(--white) !important;
   border: 1px solid rgba(178, 194, 214, .78) !important;
   border-radius: 18px !important;
   box-shadow: 0 24px 64px rgba(15, 32, 58, .2) !important;
@@ -377,6 +378,12 @@
   margin-bottom: 15px;
 }
 
+.modal-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 /* Keep the final two-column form row flush with the modal body. Conditional
    SHS fields share this row, so their default field margin must not enlarge
    the row when the track/strand control becomes visible. */
@@ -392,6 +399,8 @@
 }
 
 .modal :is(.form-input, .form-select, .form-textarea) {
+  width: 100%;
+  box-sizing: border-box;
   min-height: 42px;
   border: 1.5px solid var(--gray-200);
   border-radius: 10px;
@@ -477,6 +486,11 @@
 
 /* The management page keeps its two-column rows until 520px. */
 @media (max-width: 520px) {
+  .modal-form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
   .modal-backdrop .modal-final-row > .form-group {
     margin-bottom: 15px;
   }
@@ -881,6 +895,8 @@ body :is(
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid transparent;
+  appearance: none;
   gap: var(--button-gap);
   min-height: var(--button-height);
   padding: 9px var(--button-pad-x);

@@ -21,6 +21,70 @@
 <body>
 
 
+  <div class="modal-backdrop teacher-material-modal-backdrop" id="teacherMaterialUploadModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherMaterialUploadTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-up"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="teacherMaterialUploadTitle">Upload Learning Material</div>
+            <div class="modal-sub">Choose the grade and section that can access this file.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" aria-label="Close upload material modal" onclick="closeTeacherMaterialModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="teacherMaterialUploadForm">
+          <div class="form-group">
+            <label class="form-label" for="teacherMaterialFile">File</label>
+            <input id="teacherMaterialFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.png,.mp4"
+              style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
+              onchange="updateTeacherMaterialFileName(this)">
+            <div class="file-upload-wrap">
+              <button class="file-upload-btn" type="button" onclick="document.getElementById('teacherMaterialFile').click()">
+                <i data-lucide="upload" style="width:14px;height:14px;"></i> Choose File
+              </button>
+              <span class="file-upload-name" id="teacherMaterialFileName">No file selected</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="teacherMaterialTitle">Material title</label>
+            <input class="form-input" id="teacherMaterialTitle" type="text" placeholder="e.g. Module 3 - Respect and Kindness">
+          </div>
+          <div class="modal-form-row">
+            <div class="form-group">
+              <label class="form-label" for="teacherMaterialGrade">Grade level</label>
+              <select class="form-select" id="teacherMaterialGrade">
+                <option value="">Select a grade level</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="teacherMaterialSection">Section</label>
+              <select class="form-select" id="teacherMaterialSection" disabled>
+                <option value="">Select a grade level first</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="teacherMaterialVisibility">Visibility</label>
+            <select class="form-select" id="teacherMaterialVisibility">
+              <option value="published">Publish immediately</option>
+              <option value="draft">Save as draft</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" onclick="closeTeacherMaterialModal()">Cancel</button>
+        <button class="btn btn-save" type="button" id="teacherMaterialUploadSubmit" onclick="submitTeacherMaterialUpload()">
+          <i data-lucide="upload" style="width:13px;height:13px;"></i> Upload
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
@@ -542,11 +606,113 @@
 
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
 
+    function openTeacherMaterialModal() {
+      const modal = document.getElementById('teacherMaterialUploadModal');
+      if (!modal) return false;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      return false;
+    }
+
+    function closeTeacherMaterialModal() {
+      const modal = document.getElementById('teacherMaterialUploadModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function updateTeacherMaterialFileName(input) {
+      const label = document.getElementById('teacherMaterialFileName');
+      if (!label) return;
+      const hasFile = Boolean(input?.files?.length);
+      label.textContent = hasFile ? input.files[0].name : 'No file selected';
+      label.classList.toggle('has-file', hasFile);
+    }
+
     const TEACHER_QUICK_ACTIONS = [
-      { icon: 'clipboard-pen', title: 'Encode Grades', desc: 'Open your sections to enter student scores', action: "navigate('section'); return false;" },
-      { icon: 'user-check', title: 'Take Attendance', desc: 'Record attendance for your assigned sections', action: "navigate('section'); return false;" },
-      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ icon: 'file-text', title: 'Review Narrative Reports', desc: 'Confirm reports for your advisory section', action: "navigate('reports'); return false;" }] : [])
+      { icon: 'file-up', title: 'Upload Learning Material', desc: 'Share a file with a specific grade and section', action: "openTeacherMaterialModal(); return false;" }
     ];
+
+    const TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section =>
+      section.schoolId === window.EDUGNAY_CONFIG.getActiveSchoolId()
+    );
+    const TEACHER_MATERIAL_FILE_TYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'png', 'mp4'];
+
+    function formatTeacherMaterialGrade(grade) {
+      const value = String(grade || '').trim();
+      return /^(kindergarten|grade\s)/i.test(value) ? value : `Grade ${value}`;
+    }
+
+    function getSelectedTeacherMaterialSection() {
+      const sectionId = document.getElementById('teacherMaterialSection')?.value;
+      return TEACHER_MATERIAL_SECTIONS.find(section => section.sectionId === sectionId) || null;
+    }
+
+    function updateTeacherMaterialSections() {
+      const gradeSelect = document.getElementById('teacherMaterialGrade');
+      const sectionSelect = document.getElementById('teacherMaterialSection');
+      if (!gradeSelect || !sectionSelect) return;
+
+      const sections = TEACHER_MATERIAL_SECTIONS.filter(section => section.grade === gradeSelect.value);
+      sectionSelect.innerHTML = sections.length
+        ? '<option value="">Select a section</option>' + sections.map(section => `<option value="${section.sectionId}">${section.name}</option>`).join('')
+        : '<option value="">Select a grade level first</option>';
+      sectionSelect.disabled = sections.length === 0;
+      sectionSelect.value = '';
+    }
+
+    function initTeacherMaterialTargets() {
+      const gradeSelect = document.getElementById('teacherMaterialGrade');
+      if (!gradeSelect) return;
+
+      const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))];
+      gradeSelect.innerHTML = '<option value="">Select a grade level</option>'
+        + grades.map(grade => `<option value="${grade}">${formatTeacherMaterialGrade(grade)}</option>`).join('');
+      gradeSelect.addEventListener('change', updateTeacherMaterialSections);
+      updateTeacherMaterialSections();
+    }
+
+    function submitTeacherMaterialUpload() {
+      const file = document.getElementById('teacherMaterialFile')?.files?.[0];
+      const title = document.getElementById('teacherMaterialTitle')?.value.trim();
+      const grade = document.getElementById('teacherMaterialGrade')?.value;
+      const section = getSelectedTeacherMaterialSection();
+      const status = document.getElementById('teacherMaterialVisibility')?.value || 'published';
+      const visibleToStudents = status === 'published';
+
+      if (!file) { alert('Please choose a file.'); return false; }
+      if (!title) { alert('Please enter a material title.'); return false; }
+      if (!grade) { alert('Please select a grade level.'); return false; }
+      if (!section || section.grade !== grade) { alert('Please select a section for the chosen grade.'); return false; }
+
+      const type = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'file';
+      if (!TEACHER_MATERIAL_FILE_TYPES.includes(type)) {
+        alert('Choose a PDF, Word, PowerPoint, Excel, image, or video file.');
+        return false;
+      }
+      const fileSize = file.size ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : null;
+      const material = window.EDUGNAY_CONFIG.createLearningMaterial({
+        schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+        sectionId: section.sectionId,
+        subjectId: section.subjectId || null,
+        teacherId: DASHBOARD_TEACHER_ID,
+        title,
+        type,
+        postedAt: visibleToStudents ? new Date().toISOString() : null,
+        fileSize,
+        fileUrl: null,
+        status,
+        visibleToStudents
+      });
+
+      if (!material) return false;
+      document.getElementById('teacherMaterialUploadForm')?.reset();
+      updateTeacherMaterialFileName(document.getElementById('teacherMaterialFile'));
+      closeTeacherMaterialModal();
+      updateTeacherMaterialSections();
+      alert(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${section.name}.`);
+      return false;
+    }
 
     function renderTeacherDashboardData() {
       const summaryList = document.getElementById('teacher-summary-cards');
@@ -691,6 +857,7 @@
     }
     document.addEventListener('DOMContentLoaded', async () => {
       renderTeacherDashboardData();
+      initTeacherMaterialTargets();
       applySectionFilter();
       renderWeekCalendar();
 

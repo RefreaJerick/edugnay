@@ -602,6 +602,30 @@ function formatRelativeTime(dateValue) {
     writeJson(schoolStorageKey(STORAGE_KEYS.materials), Array.isArray(records) ? records : []);
   }
 
+  function createLearningMaterial(values = {}) {
+    const material = {
+      id: String(values.id || `material-${Date.now()}`),
+      schoolId: values.schoolId || getActiveSchoolId(),
+      sectionId: values.sectionId ? String(values.sectionId) : null,
+      subjectId: values.subjectId ? String(values.subjectId) : null,
+      teacherId: values.teacherId ? String(values.teacherId) : null,
+      title: String(values.title || '').trim(),
+      description: values.description ? String(values.description).trim() : null,
+      type: String(values.type || 'file'),
+      schoolYear: values.schoolYear || '2025-2026',
+      academicPeriodId: values.academicPeriodId || null,
+      postedAt: values.postedAt || null,
+      fileSize: values.fileSize || null,
+      fileUrl: values.fileUrl || null,
+      status: values.status || 'draft',
+      visibleToStudents: values.visibleToStudents === true,
+      views: Number(values.views) || 0
+    };
+    LEARNING_MATERIAL_DIRECTORY.push(material);
+    saveLearningMaterials();
+    return material;
+  }
+
   function gradeWithLabels(record) {
     const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
     const teacher = getUserById(record.teacherId);
@@ -1337,6 +1361,7 @@ function formatRelativeTime(dateValue) {
       subjectId: record.subjectId || null,
       teacherId: record.teacherId || null,
       title: String(record.title || ''),
+      description: record.description || null,
       type: String(record.type || 'file'),
       schoolYear: record.schoolYear || '2025-2026',
       academicPeriodId: record.academicPeriodId || null,
@@ -2005,6 +2030,7 @@ function formatRelativeTime(dateValue) {
     getLearningMaterialsForSection,
     getLearningMaterialsForStudent,
     saveLearningMaterials,
+    createLearningMaterial,
     gradeRecords: GRADE_DIRECTORY,
     getGradesForStudent,
     journals: JOURNAL_DIRECTORY,

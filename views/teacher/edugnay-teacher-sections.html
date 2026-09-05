@@ -228,30 +228,30 @@
     </div>
     <div class="modal-body">
       <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.png,.mp4"/>
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.png,.mp4"/>
         <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--gray-400);margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;"></i>
         <div style="font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:4px;">Click to browse or drag files here</div>
         <div style="font-size:12px;color:var(--gray-400);">PDF, Word, PowerPoint, Excel, Images, Video</div>
       </div>
       <div class="form-group">
         <label class="form-label">Title</label>
-        <input class="form-input" type="text" placeholder="e.g. Module 3 – Respect and Kindness"/>
+        <input class="form-input" type="text" id="materialTitleInput" placeholder="e.g. Module 3 – Respect and Kindness"/>
       </div>
       <div class="form-group">
         <label class="form-label">Description <span style="color:var(--gray-300);font-weight:400;">(optional)</span></label>
-        <input class="form-input" type="text" placeholder="Brief note about this material"/>
+        <input class="form-input" type="text" id="materialDescriptionInput" placeholder="Brief note about this material"/>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Visible to Students</label>
-          <select class="form-select">
-            <option selected>Immediately after upload</option>
-            <option>Hidden (draft)</option>
+          <select class="form-select" id="materialVisibilityInput">
+            <option value="published" selected>Immediately after upload</option>
+            <option value="draft">Hidden (draft)</option>
           </select>
       </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-cancel" onclick="closeModal('uploadModal')">Cancel</button>
-      <button class="btn btn-save">
+      <button class="btn btn-save" type="button" onclick="submitSectionMaterialUpload()">
         <i data-lucide="upload" style="width:13px;height:13px;"></i> Upload
       </button>
     </div>
@@ -1558,6 +1558,49 @@
       </div>`;
     }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials', text: 'Files uploaded for this section will appear here.' });
     lucide.createIcons();
+  }
+
+  function submitSectionMaterialUpload() {
+    const file = document.getElementById('fileInput')?.files?.[0];
+    const title = document.getElementById('materialTitleInput')?.value.trim();
+    const description = document.getElementById('materialDescriptionInput')?.value.trim() || null;
+    const status = document.getElementById('materialVisibilityInput')?.value || 'published';
+    const supportedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'png', 'mp4'];
+
+    if (!file) { alert('Please choose a file.'); return false; }
+    if (!title) { alert('Please enter a material title.'); return false; }
+
+    const type = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'file';
+    if (!supportedTypes.includes(type)) {
+      alert('Choose a PDF, Word, PowerPoint, Excel, image, or video file.');
+      return false;
+    }
+
+    const material = window.EDUGNAY_CONFIG.createLearningMaterial({
+      schoolId: TEACHER_SECTION_SCHOOL_ID,
+      sectionId: CURRENT_SECTION_ID,
+      subjectId: CURRENT_SUBJECT_ID,
+      teacherId: CURRENT_TEACHER_ID,
+      title,
+      description,
+      type,
+      postedAt: status === 'published' ? new Date().toISOString() : null,
+      fileSize: file.size ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : null,
+      fileUrl: null,
+      status,
+      visibleToStudents: status === 'published'
+    });
+
+    if (!material) return false;
+    TEACHER_MATERIALS.push(material);
+    document.getElementById('fileInput').value = '';
+    document.getElementById('materialTitleInput').value = '';
+    document.getElementById('materialDescriptionInput').value = '';
+    document.getElementById('materialVisibilityInput').value = 'published';
+    closeModal('uploadModal');
+    renderTeacherMaterials();
+    alert(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`);
+    return false;
   }
 
   function addAssignment() {
