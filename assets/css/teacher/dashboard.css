@@ -392,7 +392,7 @@ tbody td {
 .section-card-stats {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   width: 100%;
   margin-top: 13px;
@@ -406,10 +406,6 @@ tbody td {
   gap: 4px;
   min-width: 0;
   flex: 0 1 auto;
-}
-
-.section-stat + .section-stat {
-  margin-left: auto;
 }
 
 .section-stat-label {
@@ -426,33 +422,6 @@ tbody td {
   display: flex;
   align-items: center;
   line-height: 1.2;
-}
-
-.section-stat:last-child .section-stat-label {
-  display: none;
-}
-
-.section-stat > .badge {
-  align-self: flex-start;
-  padding: 4px 8px;
-  width: fit-content;
-  max-width: 100%;
-  border: 1px solid transparent;
-  font-size: 9px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.section-stat > .badge svg {
-  flex-shrink: 0;
-}
-
-.section-stat > .badge-green {
-  border-color: var(--green-border);
-}
-
-.section-stat > .badge-orange {
-  border-color: var(--orange-border);
 }
 
 /* ── FLAGGED STUDENTS (card style, single column) ── */

@@ -313,11 +313,6 @@
                     <span class="section-stat-label">Students</span>
                     <span class="section-stat-value">38</span>
                   </div>
-                  <div class="section-stat">
-                    <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
-                      Done</span>
-                  </div>
                 </div>
               </div>
 
@@ -335,11 +330,6 @@
                   <div class="section-stat">
                     <span class="section-stat-label">Students</span>
                     <span class="section-stat-value">36</span>
-                  </div>
-                  <div class="section-stat">
-                    <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-orange"><i data-lucide="clock-3" style="width:10px;height:10px;"></i> Not
-                      taken</span>
                   </div>
                 </div>
               </div>
@@ -359,11 +349,6 @@
                     <span class="section-stat-label">Students</span>
                     <span class="section-stat-value">35</span>
                   </div>
-                  <div class="section-stat">
-                    <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
-                      Done</span>
-                  </div>
                 </div>
               </div>
 
@@ -382,11 +367,6 @@
                     <span class="section-stat-label">Students</span>
                     <span class="section-stat-value">37</span>
                   </div>
-                  <div class="section-stat">
-                    <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-orange"><i data-lucide="clock-3" style="width:10px;height:10px;"></i> Not
-                      taken</span>
-                  </div>
                 </div>
               </div>
 
@@ -404,11 +384,6 @@
                   <div class="section-stat">
                     <span class="section-stat-label">Students</span>
                     <span class="section-stat-value">34</span>
-                  </div>
-                  <div class="section-stat">
-                    <span class="section-stat-label">Attendance</span>
-                    <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px;"></i>
-                      Done</span>
                   </div>
                 </div>
               </div>
@@ -529,19 +504,6 @@
       const record = TEACHER_SECTION_RECORDS.find(item => item.id === section.sectionId);
       section.isAdviser = record?.adviserId === DASHBOARD_TEACHER_ID;
     });
-
-    function getTeacherSectionAttendance(section) {
-      const records = window.EDUGNAY_CONFIG.getAttendanceRecords({
-        sectionId: section.sectionId,
-        ...(section.subjectId ? { subjectId: section.subjectId } : {}),
-        date: '2025-06-10'
-      });
-      return records.length
-        ? { attendance: 'Done', attendanceClass: 'badge-green', attendanceIcon: 'check' }
-        : { attendance: 'Not taken', attendanceClass: 'badge-orange', attendanceIcon: 'clock-3' };
-    }
-
-    TEACHER_SECTIONS.forEach(section => Object.assign(section, getTeacherSectionAttendance(section)));
 
     function getTeacherSectionSub(section) {
       return [section.isAdviser ? 'Class Adviser' : '', section.subjectName || '']
@@ -735,7 +697,7 @@
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
             <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${getTeacherSectionSub(section)}</div></div></div>
             <div class="section-card-divider"></div>
-            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.sectionId)}</span></div><div class="section-stat"><span class="section-stat-label">Attendance</span><span class="badge ${section.attendanceClass}"><i data-lucide="${section.attendanceIcon}" style="width:10px;height:10px;"></i> ${section.attendance}</span></div></div>
+            <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.sectionId)}</span></div></div>
           </div>`).join('') + `<div id="teacherSectionsEmpty" class="panel-empty-slot" hidden></div>`;
         const sectionEmpty = document.getElementById('teacherSectionsEmpty');
         if (sectionEmpty && !TEACHER_SECTIONS.length) {
