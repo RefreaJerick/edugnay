@@ -417,44 +417,12 @@
             <div class="week-calendar-grid" id="weekCalendarGrid"></div>
           </div>
 
-          <!-- Pending Tasks -->
-          <div class="panel panel-tasks">
+          <!-- Quick Actions -->
+          <div class="panel" aria-labelledby="teacher-actions-title">
             <div class="panel-head">
-              <div class="panel-title">Pending Tasks</div>
-              <span class="panel-meta">3 items need attention</span>
+              <div class="panel-title" id="teacher-actions-title">Quick Actions</div>
             </div>
-            <div class="task-list" id="teacher-pending-tasks">
-              <div class="task-item" onclick="navigate('reports')">
-                <div class="task-icon" style="background:var(--orange-pale);color:#d97706;">
-                  <i data-lucide="file-text" style="width:15px;height:15px;"></i>
-                </div>
-                <div class="task-body">
-                  <div class="task-title">5 Narrative Reports Awaiting Confirmation</div>
-                  <div class="task-sub">Generated reports ready for your review</div>
-                </div>
-                <a class="task-action">Review <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-              </div>
-              <div class="task-item" onclick="navigate('section','8-luke','scores')">
-                <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
-                  <i data-lucide="clipboard-pen" style="width:15px;height:15px;"></i>
-                </div>
-                <div class="task-body">
-                  <div class="task-title">Grade Encoding Incomplete: Grade 8 – St. Luke</div>
-                  <div class="task-sub">10 student scores still need to be entered</div>
-                </div>
-                <a class="task-action">Encode <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-              </div>
-              <div class="task-item" onclick="navigate('section','9-peter','attendance')">
-                <div class="task-icon" style="background:var(--red-pale);color:var(--red);">
-                  <i data-lucide="user-check" style="width:15px;height:15px;"></i>
-                </div>
-                <div class="task-body">
-                  <div class="task-title">Attendance Not Taken: Grade 9 – St. Peter</div>
-                  <div class="task-sub">Today's class record is still open</div>
-                </div>
-                <a class="task-action">Take <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a>
-              </div>
-            </div>
+            <div class="quick-actions" id="teacher-quick-actions"></div>
           </div>
 
           <!-- Flagged Students -->
@@ -574,11 +542,11 @@
 
     const TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
 
-    const PENDING_TASKS = window.EDUGNAY_CONFIG.withActiveSchool([
-      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ title: `${PENDING_REPORTS.length} Narrative Reports Awaiting Confirmation`, sub: 'Generated reports ready for your review', icon: 'file-text', tone: 'orange', action: 'Review', target: "navigate('reports')" }] : []),
-      { title: 'Grade Encoding Incomplete: Grade 8 - St. Luke', sub: '10 student scores still need to be entered', icon: 'clipboard-pen', tone: 'red', action: 'Encode', target: "navigate('section','8-luke','scores')" },
-      { title: 'Attendance Not Taken: Grade 9 - St. Peter', sub: "Today's class record is still open", icon: 'user-check', tone: 'red', action: 'Take', target: "navigate('section','9-peter','attendance')" }
-    ]);
+    const TEACHER_QUICK_ACTIONS = [
+      { icon: 'clipboard-pen', title: 'Encode Grades', desc: 'Open your sections to enter student scores', action: "navigate('section'); return false;" },
+      { icon: 'user-check', title: 'Take Attendance', desc: 'Record attendance for your assigned sections', action: "navigate('section'); return false;" },
+      ...(TEACHER_CAN_REVIEW_REPORTS ? [{ icon: 'file-text', title: 'Review Narrative Reports', desc: 'Confirm reports for your advisory section', action: "navigate('reports'); return false;" }] : [])
+    ];
 
     function renderTeacherDashboardData() {
       const summaryList = document.getElementById('teacher-summary-cards');
@@ -620,12 +588,16 @@
           <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div><div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
         if (!visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
-      const taskList = document.getElementById('teacher-pending-tasks');
-      if (taskList) {
-        const tones = { orange: ['var(--orange-pale)', 'var(--orange-dark)'], red: ['var(--red-pale)', 'var(--red)'] };
-        taskList.innerHTML = PENDING_TASKS.map(task => `
-          <div class="task-item" onclick="${task.target}"><div class="task-icon" style="background:${tones[task.tone][0]};color:${tones[task.tone][1]};"><i data-lucide="${task.icon}" style="width:15px;height:15px;"></i></div><div class="task-body"><div class="task-title">${task.title}</div><div class="task-sub">${task.sub}</div></div><a class="task-action">${task.action} <i data-lucide="arrow-right" style="width:11px;height:11px;"></i></a></div>`).join('');
-        if (!PENDING_TASKS.length) taskList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No pending tasks', text: 'Tasks that need your attention will appear here.' });
+      const actions = document.getElementById('teacher-quick-actions');
+      if (actions) {
+        actions.innerHTML = TEACHER_QUICK_ACTIONS.length
+          ? TEACHER_QUICK_ACTIONS.map(action => `
+              <a href="#" class="qa-item" onclick="${action.action}">
+                <div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div>
+                <div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div>
+                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+              </a>`).join('')
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here.' });
       }
 
       const flagList = document.getElementById('flagGridSingle');

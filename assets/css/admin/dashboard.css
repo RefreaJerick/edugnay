@@ -192,7 +192,7 @@
   color: var(--white);
 }
 
-/* Meta badge (matches "3 items need attention" style on teacher's Pending Tasks) */
+/* Shared meta badge */
 .panel-meta {
   font-size: 10px;
   font-weight: 800;
@@ -250,68 +250,6 @@
 .panel-action:hover {
   color: var(--blue-light);
   background: var(--blue-pale);
-}
-
-/* ── QUICK ACTIONS ── */
-.quick-actions {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.qa-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 14px;
-  border-radius: 10px;
-  border: 1.5px solid var(--gray-200);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-decoration: none;
-}
-.qa-item:hover {
-  border-color: var(--blue-mid);
-  background: var(--blue-xpale);
-}
-.qa-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: var(--gray-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  color: var(--blue-mid);
-}
-.qa-item:hover .qa-icon {
-  background: var(--blue-pale);
-  color: var(--blue-mid);
-}
-.qa-text {
-}
-.qa-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-800);
-}
-.qa-desc {
-  font-size: 11px;
-  color: var(--gray-400);
-  margin-top: 1px;
-}
-.qa-arrow {
-  margin-left: auto;
-  color: var(--gray-300);
-  font-size: 16px;
-  transition: color 0.15s, transform 0.15s;
-}
-.qa-item:hover .qa-arrow {
-  color: var(--blue-mid);
-  transform: translateX(3px);
 }
 
 /* ── ACTIVITY FEED ── */

@@ -2497,7 +2497,6 @@ body.drawer-open .sidebar {
 .shell .main :is(
   .announcements-list,
   .ann-list,
-  .task-list,
   .assignment-preview-list,
   .activity-list,
   .notif-list
@@ -2505,7 +2504,6 @@ body.drawer-open .sidebar {
 .shell .main :is(
   .announcements-list,
   .ann-list,
-  .task-list,
   .assignment-preview-list,
   .activity-list,
   .notif-list
@@ -2552,6 +2550,78 @@ body.drawer-open .sidebar {
    empty. The shared empty slot supplies the complete state instead. */
 .shell .main .notif-list:empty {
   display: none;
+}
+
+/* Shared dashboard quick actions. */
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.qa-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+
+.qa-item:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+}
+
+.qa-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--gray-100);
+  color: var(--blue-mid);
+  font-size: 16px;
+  transition: background .15s, color .15s;
+}
+
+.qa-item:hover .qa-icon {
+  background: var(--blue-pale);
+  color: var(--blue-mid);
+}
+
+.qa-text {
+  min-width: 0;
+}
+
+.qa-title {
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qa-desc {
+  margin-top: 1px;
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.qa-arrow {
+  margin-left: auto;
+  color: var(--gray-300);
+  font-size: 16px;
+  transition: color .15s, transform .15s;
+}
+
+.qa-item:hover .qa-arrow {
+  color: var(--blue-mid);
+  transform: translateX(3px);
 }
 
 /* When a data host has no other element children, let the shared empty state

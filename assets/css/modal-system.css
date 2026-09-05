@@ -896,7 +896,7 @@ body :is(
     transform .16s ease;
 }
 
-body :is(.activity-loadmore-btn, .ub-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
+body :is(.activity-loadmore-btn, .ub-btn, .footer-btn, .card-btn, .btn-sm, .panel-action) {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -964,8 +964,7 @@ body :is(
   .footer-btn,
   .card-btn,
   .btn-sm,
-  .panel-action,
-  .task-action
+  .panel-action
 ) > svg {
   flex: 0 0 auto;
   width: 14px;
@@ -1027,7 +1026,6 @@ body :is(
   .card-btn,
   .btn-sm,
   .panel-action,
-  .task-action,
   .rc-read-link,
   .page-btn,
   .cal-nav-btn,
@@ -1070,7 +1068,6 @@ body :is(
   .card-btn,
   .btn-sm,
   .panel-action,
-  .task-action,
   .page-btn,
   .cal-nav-btn,
   .modal-nav-btn,
@@ -1095,7 +1092,6 @@ body :is(
   .card-btn,
   .btn-sm,
   .panel-action,
-  .task-action,
   .page-btn,
   .cal-nav-btn,
   .modal-nav-btn,
@@ -1177,7 +1173,7 @@ body :is(
     font-size: 12px;
   }
 
-  body :is(.activity-loadmore-btn, .ub-btn, .row-btn, .footer-btn, .card-btn, .btn-sm, .panel-action, .task-action) {
+  body :is(.activity-loadmore-btn, .ub-btn, .row-btn, .footer-btn, .card-btn, .btn-sm, .panel-action) {
     min-height: 32px;
     padding-inline: 10px;
     font-size: 11px;
