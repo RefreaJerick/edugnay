@@ -770,34 +770,6 @@ tbody td {
   }
 }
 
-/* On phones, keep the week panel focused on today. */
-@media (max-width: 760px) {
-  .week-calendar-grid {
-    grid-template-columns: minmax(120px, 180px);
-    justify-content: center;
-    padding: 14px;
-  }
-
-  .week-day:not(.is-today) {
-    display: none;
-  }
-}
-
-@media (max-width: 1100px) {
-  .panel-week .panel-head { justify-content: center; min-height: 52px; gap: 10px; padding: 11px 16px; background: var(--surface-blue-soft); border-bottom: 1px solid var(--blue-pale); }
-  .panel-week .panel-head::before { display: none; }
-  .panel-week .week-title-wrap { display: none; }
-  .panel-week .week-range-label { border: 0; background: transparent; padding: 0; font-size: 0; color: var(--gray-600); }
-  .panel-week .week-range-label::before { content: 'Today · '; font-size: 12px; font-weight: 700; color: var(--gray-400); }
-  .panel-week .week-range-label::after { content: attr(data-current-date); font-size: 12px; font-weight: 800; color: var(--gray-700); }
-}
-
-@media (max-width: 1100px) {
-  .panel-week .week-range-label { display: none; }
-  .panel-week .week-calendar-grid { display: none; }
-  .panel-week .panel-head::after { content: 'TODAY: ' attr(data-current-date); display: block; color: var(--blue-mid); font-size: 11px; font-weight: 750; letter-spacing: .1px; text-transform: uppercase; }
-}
-
 @media (max-width: 515px) {
   .section-cards {
     grid-template-columns: 1fr;
@@ -874,9 +846,6 @@ tbody td {
     order: -2;
   }
 
-  #weekPanel {
-    order: -1;
-  }
 }
 
 /* ── Week calendar (7-day strip, not a full month) ── */
@@ -1009,38 +978,6 @@ tbody td {
   background: var(--blue-xpale);
   border-color: var(--blue-pale);
   color: var(--blue-mid);
-}
-
-@media (max-width: 1100px) {
-  .week-calendar-grid { grid-template-columns: minmax(120px, 180px); justify-content: center; padding: 14px; }
-  .week-day:not(.is-today) { display: none; }
-}
-
-/* On phones, keep the week panel focused on today. */
-@media (max-width: 760px) {
-  .week-calendar-grid {
-    grid-template-columns: minmax(120px, 180px);
-    justify-content: center;
-    padding: 14px;
-  }
-
-  .week-day:not(.is-today) {
-    display: none;
-  }
-}
-
-@media (max-width: 1100px) {
-  .panel-week .panel-head {
-    justify-content: center;
-    min-height: 52px;
-    gap: 10px;
-    padding: 11px 16px;
-    background: var(--surface-blue-soft);
-    border-bottom: 1px solid var(--blue-pale);
-  }
-  .panel-week .week-title-wrap { display: none; }
-  .panel-week .week-range-label,
-  .panel-week .week-calendar-grid { display: none; }
 }
 
 /* Teacher dashboard notification panel */

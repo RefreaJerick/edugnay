@@ -2863,6 +2863,12 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
+@media (max-width: 760px) {
+  .panel-week {
+    display: none;
+  }
+}
+
 /* Shared school-level choice layout. The checkbox itself uses the global
    treatment above so every standard checkbox stays visually consistent. */
 .onboarding-level-options,
