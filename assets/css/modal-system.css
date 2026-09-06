@@ -990,14 +990,14 @@ body :is(
 /* Semantic hierarchy. Existing page classes still control their local
    composition; these shared colors keep primary, neutral and destructive
    actions recognizable everywhere. */
-body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit) {
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit, .report-hero-link) {
   border-color: var(--blue);
   background: var(--blue);
   color: var(--white);
   box-shadow: var(--button-primary-shadow);
 }
 
-body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit):hover:not(:disabled) {
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit, .report-hero-link):hover:not(:disabled) {
   border-color: var(--blue-mid);
   background: var(--blue-mid);
 }

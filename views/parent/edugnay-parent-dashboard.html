@@ -45,14 +45,14 @@
     - weeklyReport[selectedChild]        → ONLY rendered if status === 'confirmed'
         for the current week. Query MUST filter at DB level:
         WHERE status = 'confirmed' AND studentId = :studentId AND weekOf = :currentWeek
-        If no confirmed report exists, render the is-waiting state — never expose
+        If no confirmed report exists, render the compact empty state — never expose
         whether a pending one exists.
         Shape: { weekLabel, text, atRisk, confirmedAt }
     - announcements[]                    → filtered to audience IN ('all','parents')
 
   CONDITIONAL RENDERING:
     - Child alert dot only renders if child.hasAlert === true
-    - report-hero vs report-hero.is-waiting based on weeklyReport presence
+    - report-hero shows a report-ready link for the selected child
 
   ROUTES: static .html hrefs → /parent/... once Express routes exist.
 -->
@@ -200,7 +200,7 @@
           <div class="grading-banner">
             <div class="grading-welcome">
               <div class="grading-welcome-name" id="greeting-time-label">Welcome back, Rosario!</div>
-              <div class="grading-welcome-date" id="banner-child-context"></div>
+              <div class="grading-welcome-date">Here's what's happening for your child today.</div>
             </div>
             <div class="grading-period-card">
               <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i>
@@ -219,29 +219,22 @@
 
           <!-- Weekly Report — confirmed only, fully invisible if not yet confirmed -->
           <!-- EJS: <% if (weeklyReport) { %> -->
-          <section class="report-hero" aria-labelledby="weeklyReportTitle">
-            <div class="report-hero-head">
+          <section class="report-hero" aria-labelledby="report-status-title">
+            <div class="report-hero-content">
               <div class="report-hero-icon" aria-hidden="true">
-                <i data-lucide="notebook-pen" style="width:18px;height:18px;"></i>
+                <i data-lucide="file-text" style="width:18px;height:18px;"></i>
               </div>
-              <div class="report-hero-title-wrap">
-                <div class="report-hero-kicker" id="weeklyReportTitle">Weekly Report</div>
-                <div class="report-hero-sub"></div>
+              <div class="report-hero-copy">
+                <div class="report-hero-kicker">Weekly report</div>
+                <h2 class="report-hero-title" id="report-status-title"></h2>
+                <p class="report-hero-description">Review attendance, grades, and teacher notes.</p>
               </div>
-            </div>
-            <div class="report-hero-quote-mark">"</div>
-            <div class="report-hero-text" id="report-hero-text"></div>
-            <div class="report-hero-foot">
-              <div class="report-hero-meta-wrap">
-                <span class="report-hero-avatar" aria-hidden="true"></span>
-                <span class="report-hero-meta"></span>
-              </div>
-              <a href="edugnay-parent-reports.html" class="report-hero-link">
-                View all reports <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
+              <a href="edugnay-parent-reports.html" class="report-hero-link" id="report-hero-link">
+                View report <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
               </a>
             </div>
           </section>
-          <!-- Empty report state is shown by renderWeeklyReport() when no confirmed report exists. -->
+          <!-- Empty report state is rendered by updateChildContext() when no confirmed report exists. -->
 
           <!-- Daily attendance & assignments — LIVE, not report-gated -->
           <section class="panel panel-daily-activity" aria-labelledby="dailyActivityTitle">
@@ -400,26 +393,23 @@
       const showEmptyReport = (title, text) => {
         if (!hero) return;
         hero.classList.add('is-empty');
-        hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title, text });
+        hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'file-text', title, text });
         if (window.lucide) lucide.createIcons();
       };
       if (!child || !data) {
-        document.getElementById('banner-child-context').textContent = 'No linked children';
         showEmptyReport('No weekly report yet', 'A weekly report will appear here when a child account is linked.');
         return;
       }
       const report = window.EDUGNAY_CONFIG.getReportsForStudent(currentChild, true)[0] || null;
-      const section = PARENT_SECTIONS.find(record => record.id === child.sectionId);
-      document.getElementById('banner-child-context').textContent = `Viewing: ${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       if (!report || !String(report.text || '').trim()) {
-        showEmptyReport('No weekly report yet', 'A weekly report will appear here when it is confirmed and sent.');
+        showEmptyReport('No weekly report yet', `A weekly report will appear here when it is confirmed for ${child.displayName}.`);
         return;
       }
       hero?.classList.remove('is-empty');
-      document.querySelector('.report-hero-sub').textContent = report.weekLabel;
-      document.getElementById('report-hero-text').textContent = report.text;
-      document.querySelector('.report-hero-avatar').textContent = report.teacherInitials || report.teacherName;
-      document.querySelector('.report-hero-meta').textContent = `Sent by ${report.teacherName} · ${report.confirmedAtLabel}`;
+      const reportTitle = document.getElementById('report-status-title');
+      const reportLink = document.getElementById('report-hero-link');
+      if (reportTitle) reportTitle.textContent = `This week's report is ready for ${child.displayName}.`;
+      if (reportLink) reportLink.href = `edugnay-parent-reports.html?studentId=${encodeURIComponent(currentChild)}`;
     }
 
     function switchChild(childKey, el) {

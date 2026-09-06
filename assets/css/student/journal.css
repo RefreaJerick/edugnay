@@ -1,53 +1,44 @@
 /* EJS NOTE: moves to assets/css/student/journal.css. Shared tokens only. */
 
-/* Prompt card: the same soft purple treatment used by the student's journal feature. */
-.prompt-card {
-  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--white) 72%);
-  border: 1px solid var(--purple-border);
-  border-radius: var(--panel-radius);
-  padding: 22px 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 16px rgba(16, 40, 80, .04);
+.journal-prompt {
+  padding: 20px 22px;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
 }
 
-.prompt-card-top {
+.journal-prompt-heading {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.prompt-card-heading {
-  display: flex;
-  align-items: flex-start;
   gap: 12px;
   min-width: 0;
 }
 
-.prompt-icon {
+.journal-prompt-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 36px;
-  background: var(--purple);
-  color: var(--white);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
 }
 
-.prompt-eyebrow {
+.journal-prompt-copy {
+  min-width: 0;
+}
+
+.journal-prompt-eyebrow {
   margin-bottom: 4px;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: .6px;
   text-transform: uppercase;
-  color: var(--purple);
+  color: var(--blue-mid);
 }
 
-.prompt-period {
+.journal-prompt-period {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 800;
@@ -55,7 +46,8 @@
   margin-top: 0;
 }
 
-.prompt-text {
+.journal-prompt-text {
+  margin: 14px 0 0;
   font-size: 14px;
   color: var(--gray-700);
   line-height: 1.7;
@@ -64,7 +56,7 @@
   max-width: 720px;
 }
 
-.prompt-deadline {
+.journal-prompt-deadline {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -73,8 +65,8 @@
   margin-top: 14px;
 }
 
-.prompt-deadline strong {
-  color: var(--navy);
+.journal-prompt-deadline strong {
+  color: var(--blue-mid);
 }
 
 /* ── Panel ── */
@@ -365,8 +357,8 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: var(--purple-pale);
-  color: var(--purple);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -578,16 +570,6 @@
 }
 
 /* Journal page refinements */
-.prompt-card-top {
-  margin-bottom: 14px;
-}
-
-.prompt-text {
-  max-width: 760px;
-  font-size: 14px;
-  line-height: 1.65;
-}
-
 #current-week-panel,
 .journal-history-panel {
   border-radius: 16px;
@@ -693,20 +675,15 @@
     padding: 16px;
   }
 
-  .prompt-card {
-    padding: 18px;
-    margin-bottom: 14px;
+  .journal-prompt {
+    padding: 16px;
   }
 
-  .prompt-card-top {
-    align-items: flex-start;
-  }
-
-  .prompt-period {
+  .journal-prompt-period {
     font-size: 14px;
   }
 
-  .prompt-text {
+  .journal-prompt-text {
     font-size: 13px;
   }
 
@@ -758,7 +735,7 @@
 }
 
 @media (max-width: 460px) {
-  .prompt-deadline {
+  .journal-prompt-deadline {
     align-items: flex-start;
   }
 

@@ -268,7 +268,10 @@
       return reports.length ? { studentId, reports } : null;
     }
 
-    let currentChild = PARENT_CHILDREN[0]?.studentId || null;
+    const requestedChild = new URLSearchParams(window.location.search).get('studentId');
+    let currentChild = PARENT_CHILDREN.some(child => child.studentId === requestedChild)
+      ? requestedChild
+      : PARENT_CHILDREN[0]?.studentId || null;
     let activeReportId = null;
 
     function renderChildSwitcher() {

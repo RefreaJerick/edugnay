@@ -199,25 +199,6 @@
         </div>
       </section>
 
-      <!-- journalWindow: prompt card -->
-      <div class="prompt-card">
-        <div class="prompt-card-top">
-          <div class="prompt-card-heading">
-            <div class="prompt-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
-            <div>
-            <div class="prompt-eyebrow">Values Education · Weekly Journal</div>
-            <div class="prompt-period">Week 3 · June 9 to 14, 2025</div>
-            </div>
-          </div>
-        </div>
-        <p class="prompt-text">"Describe a moment this week when you helped a classmate or a classmate helped you. What
-          did you learn from that experience?"</p>
-        <div class="prompt-deadline">
-          <i data-lucide="clock" style="width:13px;height:13px;"></i>
-          <span>Submit before <strong>Friday, 11:59 PM</strong></span>
-        </div>
-      </div>
-
       <!-- This week's panel: composer OR submitted state, rendered by JS based on currentEntry -->
       <div class="panel" id="current-week-panel">
         <!-- JS fills this in -->
@@ -272,8 +253,6 @@
   <script>
     lucide.createIcons();
     const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
-    const promptEyebrow = document.querySelector('.prompt-eyebrow');
-    if (promptEyebrow) promptEyebrow.textContent = `${journalSubjectName} · Weekly Journal`;
 
     /*
       EJS NOTE: these two objects are client-side placeholders. On conversion:
@@ -287,6 +266,21 @@
     const STUDENT_ID = 'jd-004';
     const JOURNAL_RECORDS = window.EDUGNAY_CONFIG.getJournalsForStudent(STUDENT_ID);
     const currentJournal = JOURNAL_RECORDS.find(record => record.isCurrent);
+    const journalPromptMarkup = currentJournal ? `
+      <div class="journal-prompt">
+        <div class="journal-prompt-heading">
+          <div class="journal-prompt-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
+          <div class="journal-prompt-copy">
+            <div class="journal-prompt-eyebrow">${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectName)} · Weekly Journal</div>
+            <div class="journal-prompt-period">${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.week)} · ${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.dateRange)}</div>
+          </div>
+        </div>
+        <p class="journal-prompt-text">&quot;${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.prompt)}&quot;</p>
+        <div class="journal-prompt-deadline">
+          <i data-lucide="clock" style="width:13px;height:13px;"></i>
+          <span>Submit before <strong>${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.dueLabel || 'Friday, 11:59 PM')}</strong></span>
+        </div>
+      </div>` : '';
     const JOURNAL_WINDOW = {
       schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
       isOpen: currentJournal?.isOpen === true,
@@ -303,15 +297,6 @@
         excerpt: record.entryText.slice(0, 90) + (record.entryText.length > 90 ? '…' : ''),
         submittedAt: window.EDUGNAY_CONFIG.formatDateTime(record.submittedAt)
       }));
-    if (currentJournal) {
-      const promptPeriod = document.querySelector('.prompt-period');
-      const promptText = document.querySelector('.prompt-text');
-      const promptDeadline = document.querySelector('.prompt-deadline strong');
-      if (promptPeriod) promptPeriod.textContent = `${currentJournal.week} · ${currentJournal.dateRange}`;
-      if (promptText) promptText.textContent = `"${currentJournal.prompt}"`;
-      if (promptDeadline) promptDeadline.textContent = 'Friday, 11:59 PM';
-    }
-
     function wordCount(text) {
       return text.trim().split(/\s+/).filter(Boolean).length;
     }
@@ -325,7 +310,7 @@
           ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${CURRENT_ENTRY.score} <span class="score-max">/ 50</span></span>`
           : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
 
-        panel.innerHTML = `
+        panel.innerHTML = `${journalPromptMarkup}
       <div class="panel-head">
         <div>
           <div class="panel-title">This Week's Entry</div>
@@ -350,7 +335,7 @@
       }
 
       if (!JOURNAL_WINDOW.isOpen) {
-        panel.innerHTML = `
+        panel.innerHTML = `${journalPromptMarkup}
       <div class="closed-state">
         <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
         <div class="closed-title">Submission window closed</div>
@@ -361,7 +346,7 @@
       }
 
       // Open composer
-      panel.innerHTML = `
+      panel.innerHTML = `${journalPromptMarkup}
     <div class="panel-head">
       <div>
         <div class="panel-title">Write Your Entry</div>
