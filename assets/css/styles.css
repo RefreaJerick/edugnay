@@ -1437,6 +1437,23 @@ body.drawer-open .sidebar {
   line-height: 1.5;
 }
 
+/* Dashboard announcement image */
+.ann-item-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .ann-item-img {
+    max-height: 140px;
+  }
+}
+
 /* Login header */
 .login-top {
   margin-bottom: 32px;

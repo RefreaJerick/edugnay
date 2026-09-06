@@ -957,7 +957,7 @@ body .rc-read-link {
   transition: color .16s ease, background-color .16s ease;
 }
 
-body :is(.page-btn, .cal-nav-btn, .modal-nav-btn, .material-action, .comp-btn, .att-btn, .vt-btn) {
+body :is(.page-btn, .cal-nav-btn, .modal-nav-btn, .material-action, .status-btn, .att-btn, .vt-btn) {
   border-radius: var(--button-radius-compact);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 700;
@@ -1047,7 +1047,7 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-btn,
+  .status-btn,
   .att-btn,
   .vt-btn,
   .modal-close,
@@ -1088,7 +1088,7 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-btn,
+  .status-btn,
   .att-btn,
   .vt-btn,
   .btn-archive-full
@@ -1112,7 +1112,7 @@ body :is(
   .cal-nav-btn,
   .modal-nav-btn,
   .material-action,
-  .comp-btn,
+  .status-btn,
   .att-btn,
   .vt-btn,
   .btn-archive-full

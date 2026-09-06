@@ -310,6 +310,7 @@
       list.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
           <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+          ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
           <div class="ann-item-body">${item.body}</div>
           <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
         </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
@@ -433,13 +434,10 @@
       }
 
       strip.innerHTML = DAYS.map(d => {
-        const att = data.attendance[d.key];
-        const dotClass = !att ? 'dot-none' : att.status === 'present' ? 'dot-present' : att.status === 'late' ? 'dot-late' : 'dot-absent';
         return `
       <button class="day-pill ${d.key === currentDay ? 'active' : ''}" onclick="selectDay('${d.key}', this)">
         <div class="day-pill-label">${d.label}</div>
         <div class="day-pill-date">${d.date}</div>
-        <div class="day-pill-dot ${dotClass}"></div>
       </button>`;
       }).join('');
     }
@@ -504,27 +502,20 @@
       lucide.createIcons();
     }
 
-    const TODAY = new Date('2025-06-13');
-
-    function resolveTaskStatus(task) {
-      if (task.completedAt) return 'completed';
-      const due = new Date(task.dueDate);
-      if (due > TODAY) return 'not-due';
-      if (due.getTime() === TODAY.getTime()) return 'due-today';
-      return 'awaiting';
-    }
-
     function getParentAssignments(studentId, dayKey) {
       const day = DAYS.find(item => item.key === dayKey);
       if (!day) return [];
       const assignedDate = `2025-06-${String(day.date).padStart(2, '0')}`;
+      const statusRecords = window.EDUGNAY_CONFIG.getAssignmentStatuses();
       return window.EDUGNAY_CONFIG.getAssignmentsForStudent(studentId)
         .filter(assignment => assignment.assignedDate === assignedDate)
         .map(assignment => ({
           subject: assignment.subject,
           task: assignment.title,
           dueDate: assignment.dueDate,
-          completedAt: assignment.completedAt
+          status: statusRecords.find(record =>
+            record.assignmentId === assignment.id && record.studentId === String(studentId)
+          )?.status || 'pending'
         }));
     }
 
@@ -544,16 +535,15 @@
         return;
       }
 
-      const statuses = tasks.map(resolveTaskStatus);
-      const completedCount = statuses.filter(s => s === 'completed').length;
-      const dueTodayCount = statuses.filter(s => s === 'due-today').length;
-      const awaitingCount = statuses.filter(s => s === 'awaiting').length;
+      const submittedCount = tasks.filter(task => task.status === 'submitted').length;
+      const pendingCount = tasks.filter(task => task.status === 'pending').length;
+      const notSubmittedCount = tasks.filter(task => task.status === 'not_submitted').length;
 
       let bannerSub = 'Across all subjects for this day.';
-      if (awaitingCount > 0) {
-        bannerSub = `${awaitingCount} task${awaitingCount === 1 ? '' : 's'} past due date, awaiting teacher update.`;
-      } else if (dueTodayCount > 0) {
-        bannerSub = `${dueTodayCount} task${dueTodayCount === 1 ? '' : 's'} due today, not yet marked complete.`;
+      if (notSubmittedCount > 0) {
+        bannerSub = `${notSubmittedCount} task${notSubmittedCount === 1 ? '' : 's'} marked not submitted.`;
+      } else if (pendingCount > 0) {
+        bannerSub = `${pendingCount} task${pendingCount === 1 ? '' : 's'} pending teacher update.`;
       }
 
       container.innerHTML = `
@@ -562,18 +552,17 @@
         <i data-lucide="clipboard-check" style="width:18px;height:18px;"></i>
       </div>
       <div>
-        <div class="daily-status-title">${completedCount} of ${tasks.length} tasks completed</div>
+        <div class="daily-status-title">${submittedCount} of ${tasks.length} tasks submitted</div>
         <div class="daily-status-sub">${bannerSub}</div>
       </div>
     </div>
     <div>
-      ${tasks.map((t, i) => {
-        const status = statuses[i];
+      ${tasks.map(t => {
+        const status = t.status;
         const visual = {
-          completed: { bg: 'var(--green-pale)', color: '#16a34a', icon: 'check', badge: '<span class="badge badge-green">Done</span>' },
-          'not-due': { bg: 'var(--gray-100)', color: 'var(--gray-400)', icon: 'calendar', badge: '<span class="badge badge-gray">Not due yet</span>' },
-          'due-today': { bg: 'var(--blue-xpale)', color: 'var(--blue-mid)', icon: 'clock', badge: '<span class="badge badge-blue">Due Today</span>' },
-          awaiting: { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Awaiting Update</span>' },
+          submitted: { bg: 'var(--green-pale)', color: '#16a34a', icon: 'check', badge: '<span class="badge badge-green">Submitted</span>' },
+          pending: { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' },
+          not_submitted: { bg: 'var(--red-pale)', color: 'var(--red)', icon: 'x', badge: '<span class="badge badge-red">Not submitted</span>' }
         }[status];
 
         const dueLabel = new Date(t.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

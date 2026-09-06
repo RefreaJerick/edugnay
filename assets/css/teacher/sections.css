@@ -1490,13 +1490,13 @@ thead tr:hover .comp-delete-btn {
   flex-shrink: 0;
 }
 
-.comp-btn-group {
+.status-btn-group {
   display: flex;
   gap: 6px;
   justify-content: center;
 }
 
-.comp-btn {
+.status-btn {
   width: 30px;
   height: 30px;
   border-radius: 8px;
@@ -1510,16 +1510,22 @@ thead tr:hover .comp-delete-btn {
   transition: all 0.15s;
 }
 
-.comp-btn.done.selected {
+.status-btn.submitted.selected {
   background: var(--green-pale);
   border-color: #16a34a;
   color: #16a34a;
 }
 
-.comp-btn.pending.selected {
+.status-btn.pending.selected {
   background: var(--orange-pale);
   border-color: #d97706;
   color: #d97706;
+}
+
+.status-btn.not-submitted.selected {
+  background: var(--red-pale);
+  border-color: var(--red);
+  color: var(--red);
 }
 
 
@@ -1784,7 +1790,7 @@ tbody tr:hover td.sticky-col {
   background: var(--gray-100);
 }
 
-.comp-btn {
+.status-btn {
   width: 32px;
   height: 32px;
   border-radius: 8px;

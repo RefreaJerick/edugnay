@@ -343,11 +343,20 @@
       });
 
     const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
-    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent('jd-004').slice(0, 3);
+    const ASSIGNMENT_STATUSES = window.EDUGNAY_CONFIG.getAssignmentStatuses();
+    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent('jd-004')
+      .map(function (assignment) {
+        const statusRecord = ASSIGNMENT_STATUSES.find(function (record) {
+          return record.assignmentId === assignment.id && record.studentId === 'jd-004';
+        });
+        return { ...assignment, status: statusRecord?.status || 'pending' };
+      })
+      .slice(0, 3);
 
     const DASHBOARD_ASSIGNMENT_STATUS = {
       pending: { label: 'Pending', icon: 'clock-3' },
-      completed: { label: 'Completed', icon: 'circle-check' }
+      submitted: { label: 'Submitted', icon: 'circle-check' },
+      not_submitted: { label: 'Not submitted', icon: 'x-circle' }
     };
 
     function getAssignmentDateMeta(value) {
@@ -377,7 +386,7 @@
         const date = getAssignmentDateMeta(item.dueDate);
         const title = window.EDUGNAY_CONFIG.escapeHtml(item.title);
         const subject = window.EDUGNAY_CONFIG.escapeHtml(item.subject);
-        const statusClass = item.status === 'completed' ? 'completed' : 'pending';
+        const statusClass = item.status;
 
         return `
           <a class="assignment-preview-row ${statusClass}" href="edugnay-student-assignments.html"
@@ -422,6 +431,7 @@
         announcements.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
           <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
             <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+            ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
             <div class="ann-item-body">${item.body}</div>
             <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
           </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });

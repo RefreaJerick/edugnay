@@ -922,7 +922,8 @@
 
 .ann-image {
   width: 100%;
-  aspect-ratio: 2.4 / 1;
+  aspect-ratio: 16 / 9;
+  max-height: 320px;
   object-fit: cover;
   display: block;
 }

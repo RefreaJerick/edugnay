@@ -188,13 +188,18 @@
 }
 
 .assignment-status.pending {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
 }
 
-.assignment-status.completed {
+.assignment-status.submitted {
   background: var(--green-pale);
   color: var(--green-dark);
+}
+
+.assignment-status.not_submitted {
+  background: var(--red-pale);
+  color: var(--red-dark);
 }
 
 @media (max-width: 760px) {

@@ -86,10 +86,16 @@
   color: var(--blue-mid);
 }
 
-.assignment-preview-row.completed .assignment-preview-date {
+.assignment-preview-row.submitted .assignment-preview-date {
   border-color: var(--gray-200);
   background: var(--gray-50);
   color: var(--gray-500);
+}
+
+.assignment-preview-row.not_submitted .assignment-preview-date {
+  border-color: var(--red-pale);
+  background: var(--red-pale);
+  color: var(--red-dark);
 }
 
 .assignment-preview-month {
@@ -146,13 +152,18 @@
 }
 
 .assignment-preview-status.pending {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
 }
 
-.assignment-preview-status.completed {
+.assignment-preview-status.submitted {
   background: var(--green-pale);
   color: var(--green-dark);
+}
+
+.assignment-preview-status.not_submitted {
+  background: var(--red-pale);
+  color: var(--red-dark);
 }
 
 .assignment-preview-arrow {

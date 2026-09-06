@@ -22,7 +22,7 @@
   <!--
     EJS CONVERSION MAP
     assignments[] comes from the shared school assignment source. The page
-    only adds the current student's completion status to each record.
+    only adds the current student's submission status to each record.
   -->
 
   <div class="shell">
@@ -151,7 +151,7 @@
         <div class="portal-overview-copy">
           <div class="portal-overview-kicker">Student workspace</div>
           <h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1>
-          <p class="portal-overview-description">Track your assignments and completion.</p>
+          <p class="portal-overview-description">Track your assignments and submission status.</p>
         </div>
       </section>
 
@@ -180,17 +180,25 @@
 
     // The authenticated student's ID will come from the session later.
     const STUDENT_ID = 'jd-004';
-    const ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
+    const ASSIGNMENT_STATUSES = window.EDUGNAY_CONFIG.getAssignmentStatuses();
+    const ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID).map(function (assignment) {
+      const statusRecord = ASSIGNMENT_STATUSES.find(function (record) {
+        return record.assignmentId === assignment.id && record.studentId === STUDENT_ID;
+      });
+      return { ...assignment, status: statusRecord?.status || 'pending' };
+    });
 
     const ASSIGNMENT_FILTERS = [
       { key: 'all', label: 'All' },
       { key: 'pending', label: 'Pending' },
-      { key: 'completed', label: 'Completed' }
+      { key: 'submitted', label: 'Submitted' },
+      { key: 'not_submitted', label: 'Not submitted' }
     ];
 
     const STATUS_META = {
       pending: { label: 'Pending', icon: 'clock-3' },
-      completed: { label: 'Completed', icon: 'check-circle-2' }
+      submitted: { label: 'Submitted', icon: 'check-circle-2' },
+      not_submitted: { label: 'Not submitted', icon: 'x-circle' }
     };
 
     let currentFilter = 'all';

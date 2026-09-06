@@ -713,7 +713,7 @@
       if (announcements) {
         const visibleAnnouncements = TEACHER_DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || teacherCanAccess(item.access));
         announcements.innerHTML = visibleAnnouncements.map(item => `
-          <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div><div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
+          <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}<div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
         if (!visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
       const actions = document.getElementById('teacher-quick-actions');

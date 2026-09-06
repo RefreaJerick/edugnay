@@ -513,29 +513,6 @@
   margin-top: 1px;
 }
 
-.day-pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin: 4px auto 0;
-}
-
-.dot-present {
-  background: #16a34a;
-}
-
-.dot-absent {
-  background: var(--red);
-}
-
-.dot-late {
-  background: var(--orange);
-}
-
-.dot-none {
-  background: var(--gray-200);
-}
-
 .daily-detail {
   padding: 12px 18px 18px;
 }

@@ -111,7 +111,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-list"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title">Add Assignment</div>
-        <div class="modal-sub">Post a task for students. Completion is tracked separately from grading.</div>
+        <div class="modal-sub">Post a task for students. Submission status is tracked separately from grading.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal('addAssignmentModal')">
@@ -143,29 +143,29 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="completionModal">
+<div class="modal-backdrop" id="assignmentStatusModal">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-heading">
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="check-check"></i></div>
         <div class="modal-heading-copy">
-        <div class="modal-title" id="completionModalTitle">Mark Completion</div>
-        <div class="modal-sub">Toggle each student as Done or Pending.</div>
+        <div class="modal-title" id="assignmentStatusModalTitle">Update Assignment Status</div>
+        <div class="modal-sub">Set each student's submission status.</div>
         </div>
       </div>
-      <button class="modal-close" onclick="closeModal('completionModal')">
+      <button class="modal-close" onclick="closeModal('assignmentStatusModal')">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
     <div class="modal-body">
       <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
         <table>
-          <tbody id="completionTbody"><!-- JS generated --></tbody>
+          <tbody id="assignmentStatusTbody"><!-- JS generated --></tbody>
         </table>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-save" onclick="closeModal('completionModal')">Done</button>
+      <button class="btn btn-save" onclick="closeModal('assignmentStatusModal')">Close</button>
     </div>
   </div>
 </div>
@@ -1490,20 +1490,22 @@
     document.getElementById('assignmentCount').textContent = assignments.length;
 
     list.innerHTML = assignments.length ? assignments.map(a => {
-      const completed = Array.isArray(a.completion) ? a.completion.length : 0;
-      const pct = STUDENTS.length ? Math.round((completed / STUDENTS.length) * 100) : 0;
+      const submitted = window.EDUGNAY_CONFIG
+        .getAssignmentStatuses(a.id)
+        .filter(record => record.status === 'submitted').length;
+      const pct = STUDENTS.length ? Math.round((submitted / STUDENTS.length) * 100) : 0;
       const dueLabel = new Date(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       return `
         <div class="assignment-card">
           <div class="assignment-card-icon"><i data-lucide="list-checks" style="width:17px;height:17px;"></i></div>
           <div class="assignment-card-body">
             <div class="assignment-card-title">${a.title}</div>
-            <div class="assignment-card-meta">${a.subjectName} · Due ${dueLabel} · ${completed}/${STUDENTS.length} completed</div>
+            <div class="assignment-card-meta">${a.subjectName} · Due ${dueLabel} · ${submitted}/${STUDENTS.length} submitted</div>
             <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
           </div>
           <div class="assignment-card-actions">
-            <button class="top-btn secondary" onclick="openCompletionModal('${a.id}')">
-              <i data-lucide="check-square" style="width:13px;height:13px;"></i> Mark Completion
+            <button class="top-btn secondary" onclick="openStatusModal('${a.id}')">
+              <i data-lucide="check-square" style="width:13px;height:13px;"></i> Update Status
             </button>
           </div>
         </div>`;
@@ -1627,39 +1629,43 @@
 
   let activeAssignmentId = null;
 
-  function openCompletionModal(id) {
+  function openStatusModal(id) {
     activeAssignmentId = String(id);
     const a = getTeacherAssignments().find(x => x.id === String(id));
-    document.getElementById('completionModalTitle').textContent = 'Mark Completion — ' + a.title;
+    document.getElementById('assignmentStatusModalTitle').textContent = 'Update Status — ' + a.title;
 
-    const tbody = document.getElementById('completionTbody');
+    const tbody = document.getElementById('assignmentStatusTbody');
+    const statuses = window.EDUGNAY_CONFIG.getAssignmentStatuses(a.id);
     tbody.innerHTML = STUDENTS.length ? STUDENTS.map((s, index) => {
-      const isDone = Array.isArray(a.completion) && a.completion.some(item => String(item.studentId) === String(s.id));
+      const currentStatus = statuses.find(item => String(item.studentId) === String(s.id))?.status || 'pending';
       return `
         <tr>
           <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${s.initials}</div><div class="student-name">${s.displayName}</div></div></td>
-          <td class="center" style="width:90px;">
-            <div class="comp-btn-group">
-              <button class="comp-btn done ${isDone ? 'selected' : ''}" onclick="setCompletion('${s.id}', true, this)" title="Done">
+          <td class="center" style="width:150px;">
+            <div class="status-btn-group">
+              <button class="status-btn submitted ${currentStatus === 'submitted' ? 'selected' : ''}" onclick="setStudentStatus('${s.id}', 'submitted', this)" title="Submitted" aria-label="Submitted">
                 <i data-lucide="check" style="width:14px;height:14px;"></i>
               </button>
-              <button class="comp-btn pending ${!isDone ? 'selected' : ''}" onclick="setCompletion('${s.id}', false, this)" title="Pending">
+              <button class="status-btn pending ${currentStatus === 'pending' ? 'selected' : ''}" onclick="setStudentStatus('${s.id}', 'pending', this)" title="Pending" aria-label="Pending">
                 <i data-lucide="clock" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="status-btn not-submitted ${currentStatus === 'not_submitted' ? 'selected' : ''}" onclick="setStudentStatus('${s.id}', 'not_submitted', this)" title="Not submitted" aria-label="Not submitted">
+                <i data-lucide="x" style="width:14px;height:14px;"></i>
               </button>
             </div>
           </td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="2">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students to update', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
-    openModal('completionModal');
+    openModal('assignmentStatusModal');
     lucide.createIcons();
   }
 
-  function setCompletion(studentId, isDone, btn) {
-    window.EDUGNAY_CONFIG.setAssignmentCompletion(activeAssignmentId, studentId, isDone);
+  function setStudentStatus(studentId, status, btn) {
+    window.EDUGNAY_CONFIG.setAssignmentStatus(activeAssignmentId, studentId, status);
 
-    const group = btn.closest('.comp-btn-group');
-    group.querySelectorAll('.comp-btn').forEach(b => b.classList.remove('selected'));
+    const group = btn.closest('.status-btn-group');
+    group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     renderAssignments();
   }
