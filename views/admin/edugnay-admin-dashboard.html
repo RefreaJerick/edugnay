@@ -309,6 +309,67 @@
     </div>
   </div>
 
+  <!-- ADMIN TO-DO MODAL -->
+  <div class="modal-backdrop dashboard-modal-backdrop" id="adminTodoModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminTodoModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="list-checks"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="adminTodoModalTitle">Add task</div>
+            <div class="modal-sub">Add a personal task to your to-do list.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="adminTodoCloseButton" type="button" aria-label="Close task dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="adminTodoForm">
+          <input id="adminTodoId" type="hidden">
+          <div class="form-group">
+            <label class="form-label" for="adminTodoTitle">Task title</label>
+            <input class="form-input" id="adminTodoTitle" name="title" type="text" placeholder="Enter a task" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="adminTodoDueDate">Due date (optional)</label>
+            <input class="form-input" id="adminTodoDueDate" name="dueDate" type="date">
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="adminTodoCancelButton" type="button">Cancel</button>
+        <button class="btn btn-save" id="adminTodoSaveButton" type="submit" form="adminTodoForm">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN TO-DO DELETE MODAL -->
+  <div class="modal-backdrop dashboard-modal-backdrop" id="adminTodoDeleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminTodoDeleteTitle" style="max-width:400px;">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="adminTodoDeleteTitle">Delete task</div>
+            <div class="modal-sub">This action cannot be undone.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="adminTodoDeleteCloseButton" type="button" aria-label="Close delete task dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input id="adminTodoDeleteId" type="hidden">
+        <p class="confirm-remove-message">Delete <strong id="adminTodoDeleteName"></strong> from your to-do list?</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="adminTodoDeleteCancelButton" type="button">Cancel</button>
+        <button class="btn btn-danger" id="adminTodoDeleteConfirmButton" type="button">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <div class="shell">
     <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -587,6 +648,18 @@
             </div>
           </div>
 
+          <!-- Personal To-do List -->
+          <div class="panel" aria-labelledby="admin-todos-title">
+            <div class="panel-head">
+              <div class="panel-title" id="admin-todos-title">My To-do List</div>
+              <button class="panel-action" id="addAdminTodoButton" type="button" aria-haspopup="dialog">
+                <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                Add task
+              </button>
+            </div>
+            <div class="todo-list" id="admin-todo-list"></div>
+          </div>
+
         </div>
 
       </div>
@@ -598,6 +671,7 @@
   <script>
     // Shared frontend data services. Replace their internals with fetched data
     // later, then call renderAdminDashboard().
+    const DASHBOARD_ADMIN_ID = 'admin-1';
     let ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
 
     const ADMIN_SUMMARY_CARDS = [
@@ -856,8 +930,154 @@
       lucide.createIcons();
     }
 
+    function openAdminTodoModal(todoId = null) {
+      const modal = document.getElementById('adminTodoModal');
+      const form = document.getElementById('adminTodoForm');
+      if (!modal || !form) return;
+      form.reset();
+      const todo = todoId
+        ? window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID).find(item => item.id === String(todoId))
+        : null;
+      document.getElementById('adminTodoId').value = todo?.id || '';
+      document.getElementById('adminTodoTitle').value = todo?.title || '';
+      document.getElementById('adminTodoDueDate').value = todo?.dueDate || '';
+      document.getElementById('adminTodoModalTitle').textContent = todo ? 'Edit task' : 'Add task';
+      document.getElementById('adminTodoSaveButton').textContent = todo ? 'Save changes' : 'Add task';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('adminTodoTitle').focus();
+    }
+
+    function closeAdminTodoModal() {
+      const modal = document.getElementById('adminTodoModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function saveAdminTodo(event) {
+      event?.preventDefault();
+      const todoId = document.getElementById('adminTodoId').value;
+      const titleInput = document.getElementById('adminTodoTitle');
+      const title = titleInput.value.trim();
+      const dueDate = document.getElementById('adminTodoDueDate').value || null;
+      titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
+      if (!titleInput.reportValidity()) return false;
+
+      if (todoId) {
+        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
+      } else {
+        window.EDUGNAY_CONFIG.createTodo({
+          schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+          userId: DASHBOARD_ADMIN_ID,
+          title,
+          dueDate
+        });
+      }
+
+      closeAdminTodoModal();
+      renderAdminTodos();
+      return false;
+    }
+
+    function toggleAdminTodo(todoId) {
+      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+        .find(item => item.id === String(todoId));
+      if (!todo) return;
+      const completed = todo.status !== 'completed';
+      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? new Date().toISOString() : null
+      });
+      renderAdminTodos();
+    }
+
+    function openAdminTodoDeleteModal(todoId) {
+      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+        .find(item => item.id === String(todoId));
+      const modal = document.getElementById('adminTodoDeleteModal');
+      if (!todo || !modal) return;
+      document.getElementById('adminTodoDeleteId').value = todo.id;
+      document.getElementById('adminTodoDeleteName').textContent = `“${todo.title}”`;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closeAdminTodoDeleteModal() {
+      const modal = document.getElementById('adminTodoDeleteModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('adminTodoDeleteId').value = '';
+    }
+
+    function confirmDeleteAdminTodo() {
+      const todoId = document.getElementById('adminTodoDeleteId').value;
+      if (!todoId) return;
+      window.EDUGNAY_CONFIG.deleteTodo(todoId);
+      closeAdminTodoDeleteModal();
+      renderAdminTodos();
+    }
+
+    function renderAdminTodos() {
+      const list = document.getElementById('admin-todo-list');
+      if (!list) return;
+
+      const todos = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+        .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
+
+      if (!todos.length) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'list-checks',
+          title: 'No tasks yet',
+          text: 'Add a personal task to start your list.'
+        });
+        return;
+      }
+
+      list.innerHTML = todos.map(todo => {
+        const completed = todo.status === 'completed';
+        const dueDate = todo.dueDate
+          ? new Date(`${todo.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null;
+        return `
+          <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
+            <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
+              ${completed ? 'checked' : ''} onchange="toggleAdminTodo('${todo.id}')">
+            <div class="todo-copy">
+              <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
+              ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
+            </div>
+            <div class="todo-actions">
+              <button type="button" aria-label="Edit ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openAdminTodoModal('${todo.id}')">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button type="button" aria-label="Delete ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openAdminTodoDeleteModal('${todo.id}')">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       renderAdminDashboard();
+      renderAdminTodos();
+      document.getElementById('addAdminTodoButton')?.addEventListener('click', () => openAdminTodoModal());
+      document.getElementById('adminTodoForm')?.addEventListener('submit', saveAdminTodo);
+      document.getElementById('adminTodoCloseButton')?.addEventListener('click', closeAdminTodoModal);
+      document.getElementById('adminTodoCancelButton')?.addEventListener('click', closeAdminTodoModal);
+      document.getElementById('adminTodoDeleteCloseButton')?.addEventListener('click', closeAdminTodoDeleteModal);
+      document.getElementById('adminTodoDeleteCancelButton')?.addEventListener('click', closeAdminTodoDeleteModal);
+      document.getElementById('adminTodoDeleteConfirmButton')?.addEventListener('click', confirmDeleteAdminTodo);
+      document.getElementById('adminTodoModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closeAdminTodoModal();
+      });
+      document.getElementById('adminTodoDeleteModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closeAdminTodoDeleteModal();
+      });
       renderDashboardStudentOptions();
       window.initSearchableSelect?.(document.getElementById('modalStudent'), {
         placeholder: 'Select a student',
@@ -1141,7 +1361,12 @@
       renderAdminDashboard();
     });
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudentModal(); });
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      closeStudentModal();
+      closeAdminTodoModal();
+      closeAdminTodoDeleteModal();
+    });
 
     function openAnnouncementModal() {
       document.getElementById('announcementModalBackdrop').classList.add('open');

@@ -125,6 +125,7 @@ function formatRelativeTime(dateValue) {
     assignments: 'edugnay_assignments',
     assignmentStatuses: 'edugnay_assignment_statuses',
     materials: 'edugnay_learning_materials',
+    todos: 'edugnay_user_todos',
     announcements: 'edugnay_announcements',
     grades: 'edugnay_grades',
     journals: 'edugnay_journals',
@@ -655,6 +656,69 @@ function formatRelativeTime(dateValue) {
     LEARNING_MATERIAL_DIRECTORY.push(material);
     saveLearningMaterials();
     return material;
+  }
+
+  function getUserTodos(userId, schoolId = getActiveSchoolId()) {
+    return USER_TODOS.filter(todo =>
+      todo.schoolId === schoolId &&
+      todo.userId === String(userId)
+    );
+  }
+
+  function saveTodos() {
+    writeJson(STORAGE_KEYS.todos, USER_TODOS);
+  }
+
+  function createTodo(values = {}) {
+    const createdAt = values.createdAt || new Date().toISOString();
+    const status = values.status === 'completed' ? 'completed' : 'pending';
+    const schoolId = values.schoolId === null
+      ? null
+      : (values.schoolId || getActiveSchoolId());
+    const todo = {
+      id: String(values.id || `todo-${Date.now()}`),
+      schoolId,
+      userId: values.userId ? String(values.userId) : null,
+      title: String(values.title || '').trim(),
+      dueDate: values.dueDate || null,
+      status,
+      createdAt,
+      updatedAt: values.updatedAt || createdAt,
+      completedAt: status === 'completed' ? (values.completedAt || createdAt) : null
+    };
+    USER_TODOS.push(todo);
+    saveTodos();
+    return todo;
+  }
+
+  function updateTodo(todoId, values = {}, schoolId = getActiveSchoolId()) {
+    const todo = USER_TODOS.find(item =>
+      item.id === String(todoId) && item.schoolId === schoolId
+    );
+    if (!todo) return null;
+
+    if (values.title !== undefined) todo.title = String(values.title).trim();
+    if (values.dueDate !== undefined) todo.dueDate = values.dueDate || null;
+    if (values.status !== undefined) {
+      todo.status = values.status === 'completed' ? 'completed' : 'pending';
+    }
+    todo.updatedAt = new Date().toISOString();
+    todo.completedAt = todo.status === 'completed'
+      ? (values.completedAt || todo.completedAt || todo.updatedAt)
+      : null;
+
+    saveTodos();
+    return todo;
+  }
+
+  function deleteTodo(todoId, schoolId = getActiveSchoolId()) {
+    const index = USER_TODOS.findIndex(todo =>
+      todo.id === String(todoId) && todo.schoolId === schoolId
+    );
+    if (index < 0) return null;
+    const [todo] = USER_TODOS.splice(index, 1);
+    saveTodos();
+    return todo;
   }
 
   function gradeWithLabels(record) {
@@ -1408,6 +1472,113 @@ function formatRelativeTime(dateValue) {
       views: Number(record.views) || 0
     }));
 
+  // Personal user tasks. A future API can return this same record shape.
+  const DEFAULT_USER_TODOS = [
+    {
+      id: 'teacher-todo-001',
+      schoolId: 'scc',
+      userId: 'teacher-2',
+      title: 'Review Grade 7 journal entries',
+      dueDate: '2026-09-09',
+      status: 'pending',
+      createdAt: '2026-09-07T08:00:00+08:00',
+      updatedAt: '2026-09-07T08:00:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'teacher-todo-002',
+      schoolId: 'scc',
+      userId: 'teacher-2',
+      title: 'Prepare next week\'s learning material',
+      dueDate: '2026-09-11',
+      status: 'pending',
+      createdAt: '2026-09-07T08:15:00+08:00',
+      updatedAt: '2026-09-07T08:15:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'teacher-todo-003',
+      schoolId: 'scc',
+      userId: 'teacher-2',
+      title: 'Check Grade 8 attendance records',
+      dueDate: '2026-09-07',
+      status: 'completed',
+      createdAt: '2026-09-05T15:30:00+08:00',
+      updatedAt: '2026-09-07T09:10:00+08:00',
+      completedAt: '2026-09-07T09:10:00+08:00'
+    },
+    {
+      id: 'platform-todo-001',
+      schoolId: null,
+      userId: 'platform-admin-001',
+      title: 'Review Manghi school account registration',
+      dueDate: '2026-09-08',
+      status: 'pending',
+      createdAt: '2026-09-07T08:20:00+08:00',
+      updatedAt: '2026-09-07T08:20:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'platform-todo-002',
+      schoolId: null,
+      userId: 'platform-admin-001',
+      title: 'Check suspended school accounts',
+      dueDate: '2026-09-10',
+      status: 'pending',
+      createdAt: '2026-09-07T08:35:00+08:00',
+      updatedAt: '2026-09-07T08:35:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'platform-todo-003',
+      schoolId: null,
+      userId: 'platform-admin-001',
+      title: 'Verify recent school configuration updates',
+      dueDate: null,
+      status: 'completed',
+      createdAt: '2026-09-06T16:20:00+08:00',
+      updatedAt: '2026-09-07T09:25:00+08:00',
+      completedAt: '2026-09-07T09:25:00+08:00'
+    },
+    {
+      id: 'admin-todo-001',
+      schoolId: 'scc',
+      userId: 'admin-1',
+      title: 'Review pending quarter reopen requests',
+      dueDate: '2026-09-08',
+      status: 'pending',
+      createdAt: '2026-09-07T08:30:00+08:00',
+      updatedAt: '2026-09-07T08:30:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'admin-todo-002',
+      schoolId: 'scc',
+      userId: 'admin-1',
+      title: 'Confirm the active grading rules',
+      dueDate: '2026-09-10',
+      status: 'pending',
+      createdAt: '2026-09-07T08:45:00+08:00',
+      updatedAt: '2026-09-07T08:45:00+08:00',
+      completedAt: null
+    },
+    {
+      id: 'admin-todo-003',
+      schoolId: 'scc',
+      userId: 'admin-1',
+      title: 'Check this week\'s school announcements',
+      dueDate: null,
+      status: 'completed',
+      createdAt: '2026-09-06T16:00:00+08:00',
+      updatedAt: '2026-09-07T09:20:00+08:00',
+      completedAt: '2026-09-07T09:20:00+08:00'
+    }
+  ];
+  const savedTodos = readJson(STORAGE_KEYS.todos, null);
+  const USER_TODOS = Array.isArray(savedTodos)
+    ? savedTodos
+    : clone(DEFAULT_USER_TODOS);
+
   // Shared published/draft announcement records for every school portal.
   // Optional fields are always present: imageUrl/access use null, pinned uses false.
   // Portal pages read this collection with an audience key; Admin can read
@@ -2068,6 +2239,11 @@ function formatRelativeTime(dateValue) {
     getLearningMaterialsForStudent,
     saveLearningMaterials,
     createLearningMaterial,
+    getUserTodos,
+    saveTodos,
+    createTodo,
+    updateTodo,
+    deleteTodo,
     gradeRecords: GRADE_DIRECTORY,
     getGradesForStudent,
     journals: JOURNAL_DIRECTORY,

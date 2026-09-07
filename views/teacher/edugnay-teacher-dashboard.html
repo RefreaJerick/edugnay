@@ -21,7 +21,7 @@
 <body>
 
 
-  <div class="modal-backdrop teacher-material-modal-backdrop" id="teacherMaterialUploadModal" aria-hidden="true">
+  <div class="modal-backdrop dashboard-modal-backdrop" id="teacherMaterialUploadModal" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherMaterialUploadTitle">
       <div class="modal-head">
         <div class="modal-heading">
@@ -81,6 +81,67 @@
         <button class="btn btn-save" type="button" id="teacherMaterialUploadSubmit" onclick="submitTeacherMaterialUpload()">
           <i data-lucide="upload" style="width:13px;height:13px;"></i> Upload
         </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop dashboard-modal-backdrop" id="teacherTodoModal" aria-hidden="true"
+    onclick="if(event.target === this) closeTeacherTodoModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherTodoModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="list-checks"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="teacherTodoModalTitle">Add task</div>
+            <div class="modal-sub">Add a personal task to your to-do list.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" aria-label="Close task modal" onclick="closeTeacherTodoModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="teacherTodoForm" onsubmit="return saveTeacherTodo()">
+          <input id="teacherTodoId" type="hidden">
+          <div class="form-group">
+            <label class="form-label" for="teacherTodoTitle">Task title</label>
+            <input class="form-input" id="teacherTodoTitle" type="text" placeholder="Enter a task" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="teacherTodoDueDate">Due date (optional)</label>
+            <input class="form-input" id="teacherTodoDueDate" type="date">
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" onclick="closeTeacherTodoModal()">Cancel</button>
+        <button class="btn btn-save" id="teacherTodoSaveButton" type="submit" form="teacherTodoForm">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop dashboard-modal-backdrop" id="teacherTodoDeleteModal" aria-hidden="true"
+    onclick="if(event.target === this) closeTeacherTodoDeleteModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherTodoDeleteTitle" style="max-width:400px;">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="teacherTodoDeleteTitle">Delete task</div>
+            <div class="modal-sub">This action cannot be undone.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" aria-label="Close delete task modal" onclick="closeTeacherTodoDeleteModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input id="teacherTodoDeleteId" type="hidden">
+        <p class="confirm-remove-message">Delete <strong id="teacherTodoDeleteName"></strong> from your to-do list?</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" onclick="closeTeacherTodoDeleteModal()">Cancel</button>
+        <button class="btn btn-danger" type="button" onclick="confirmDeleteTeacherTodo()">Yes, Delete</button>
       </div>
     </div>
   </div>
@@ -464,6 +525,18 @@
             <div class="quick-actions" id="teacher-quick-actions"></div>
           </div>
 
+          <!-- Personal To-do List -->
+          <div class="panel" aria-labelledby="teacher-todos-title">
+            <div class="panel-head">
+              <div class="panel-title" id="teacher-todos-title">My To-do List</div>
+              <button class="panel-action" id="addTeacherTodoButton" type="button" aria-haspopup="dialog" onclick="openTeacherTodoModal()">
+                <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                Add task
+              </button>
+            </div>
+            <div class="todo-list" id="teacher-todo-list"></div>
+          </div>
+
           <!-- Flagged Students -->
           <div class="panel panel-flagged">
             <div class="panel-head">
@@ -583,6 +656,96 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
+    function openTeacherTodoModal(todoId = null) {
+      const modal = document.getElementById('teacherTodoModal');
+      const form = document.getElementById('teacherTodoForm');
+      if (!modal || !form) return;
+      form.reset();
+      const todo = todoId
+        ? window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID).find(item => item.id === String(todoId))
+        : null;
+      document.getElementById('teacherTodoId').value = todo?.id || '';
+      document.getElementById('teacherTodoTitle').value = todo?.title || '';
+      document.getElementById('teacherTodoTitle').setCustomValidity('');
+      document.getElementById('teacherTodoDueDate').value = todo?.dueDate || '';
+      document.getElementById('teacherTodoModalTitle').textContent = todo ? 'Edit task' : 'Add task';
+      document.getElementById('teacherTodoSaveButton').textContent = todo ? 'Save changes' : 'Add task';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('teacherTodoTitle').focus();
+    }
+
+    function closeTeacherTodoModal() {
+      const modal = document.getElementById('teacherTodoModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function saveTeacherTodo() {
+      const todoId = document.getElementById('teacherTodoId').value;
+      const titleInput = document.getElementById('teacherTodoTitle');
+      const title = titleInput.value.trim();
+      const dueDate = document.getElementById('teacherTodoDueDate').value || null;
+      titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
+      if (!titleInput.reportValidity()) return false;
+
+      if (todoId) {
+        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
+      } else {
+        window.EDUGNAY_CONFIG.createTodo({
+          schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+          userId: DASHBOARD_TEACHER_ID,
+          title,
+          dueDate
+        });
+      }
+
+      closeTeacherTodoModal();
+      renderTeacherTodos();
+      return false;
+    }
+
+    function toggleTeacherTodo(todoId) {
+      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+        .find(item => item.id === String(todoId));
+      if (!todo) return;
+      const completed = todo.status !== 'completed';
+      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? new Date().toISOString() : null
+      });
+      renderTeacherTodos();
+    }
+
+    function openTeacherTodoDeleteModal(todoId) {
+      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+        .find(item => item.id === String(todoId));
+      const modal = document.getElementById('teacherTodoDeleteModal');
+      if (!todo || !modal) return;
+      document.getElementById('teacherTodoDeleteId').value = todo.id;
+      document.getElementById('teacherTodoDeleteName').textContent = `“${todo.title}”`;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closeTeacherTodoDeleteModal() {
+      const modal = document.getElementById('teacherTodoDeleteModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('teacherTodoDeleteId').value = '';
+    }
+
+    function confirmDeleteTeacherTodo() {
+      const todoId = document.getElementById('teacherTodoDeleteId').value;
+      if (!todoId) return;
+      window.EDUGNAY_CONFIG.deleteTodo(todoId);
+      closeTeacherTodoDeleteModal();
+      renderTeacherTodos();
+    }
+
     function updateTeacherMaterialFileName(input) {
       const label = document.getElementById('teacherMaterialFileName');
       if (!label) return;
@@ -674,6 +837,48 @@
       updateTeacherMaterialSections();
       alert(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${section.name}.`);
       return false;
+    }
+
+    function renderTeacherTodos() {
+      const list = document.getElementById('teacher-todo-list');
+      if (!list) return;
+
+      const todos = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+        .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
+
+      if (!todos.length) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'list-checks',
+          title: 'No tasks yet',
+          text: 'Add a personal task to start your list.'
+        });
+        return;
+      }
+
+      list.innerHTML = todos.map(todo => {
+        const completed = todo.status === 'completed';
+        const dueDate = todo.dueDate
+          ? new Date(`${todo.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null;
+        return `
+          <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
+            <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
+              ${completed ? 'checked' : ''} onchange="toggleTeacherTodo('${todo.id}')">
+            <div class="todo-copy">
+              <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
+              ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
+            </div>
+            <div class="todo-actions">
+              <button type="button" aria-label="Edit ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openTeacherTodoModal('${todo.id}')">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button type="button" aria-label="Delete ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openTeacherTodoDeleteModal('${todo.id}')">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+      lucide.createIcons();
     }
 
     function renderTeacherDashboardData() {
@@ -819,6 +1024,7 @@
     }
     document.addEventListener('DOMContentLoaded', async () => {
       renderTeacherDashboardData();
+      renderTeacherTodos();
       initTeacherMaterialTargets();
       applySectionFilter();
       renderWeekCalendar();
@@ -864,7 +1070,11 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') toggleDrawer(false);
+      if (e.key === 'Escape') {
+        toggleDrawer(false);
+        closeTeacherTodoModal();
+        closeTeacherTodoDeleteModal();
+      }
     });
   </script>
 </body>

@@ -2641,6 +2641,144 @@ body.drawer-open .sidebar {
   transform: translateX(3px);
 }
 
+/* Shared modal shell for dashboard actions. */
+.dashboard-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s, visibility .2s;
+}
+
+.dashboard-modal-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dashboard-modal-backdrop .modal {
+  width: 100%;
+  max-width: 520px;
+  transform: translateY(20px);
+  transition: transform .2s ease;
+}
+
+.dashboard-modal-backdrop.open .modal {
+  transform: translateY(0);
+}
+
+/* Shared personal to-do list. */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  transition: border-color .15s, background .15s;
+}
+
+.todo-item:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+}
+
+.todo-check {
+  margin: 0;
+}
+
+.todo-copy {
+  min-width: 0;
+}
+
+.todo-title {
+  overflow-wrap: anywhere;
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.todo-due {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.todo-item.is-completed .todo-title {
+  color: var(--gray-400);
+  text-decoration: line-through;
+}
+
+.todo-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.todo-actions button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.todo-actions button:hover {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.todo-actions button:last-child:hover {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+@media (max-width: 515px) {
+  .todo-list {
+    padding: 14px;
+  }
+
+  .todo-item {
+    gap: 10px;
+  }
+
+  .todo-actions {
+    gap: 4px;
+  }
+
+  .todo-actions button {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* When a data host has no other element children, let the shared empty state
    own the spacing. A structural selector keeps this behavior consistent for
    new panels without maintaining a page-by-page selector list. */

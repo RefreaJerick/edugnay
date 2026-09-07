@@ -16,6 +16,65 @@
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
 <body class="platform-dashboard" data-platform-portal="true">
+  <div class="modal-backdrop dashboard-modal-backdrop" id="platformTodoModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="platformTodoModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="list-checks"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="platformTodoModalTitle">Add task</div>
+            <div class="modal-sub">Add a personal task to your to-do list.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="platformTodoCloseButton" type="button" aria-label="Close task dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="platformTodoForm">
+          <input id="platformTodoId" type="hidden">
+          <div class="form-group">
+            <label class="form-label" for="platformTodoTitle">Task title</label>
+            <input class="form-input" id="platformTodoTitle" name="title" type="text" placeholder="Enter a task" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="platformTodoDueDate">Due date (optional)</label>
+            <input class="form-input" id="platformTodoDueDate" name="dueDate" type="date">
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="platformTodoCancelButton" type="button">Cancel</button>
+        <button class="btn btn-save" id="platformTodoSaveButton" type="submit" form="platformTodoForm">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop dashboard-modal-backdrop" id="platformTodoDeleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="platformTodoDeleteTitle" style="max-width:400px;">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="platformTodoDeleteTitle">Delete task</div>
+            <div class="modal-sub">This action cannot be undone.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="platformTodoDeleteCloseButton" type="button" aria-label="Close delete task dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input id="platformTodoDeleteId" type="hidden">
+        <p class="confirm-remove-message">Delete <strong id="platformTodoDeleteName"></strong> from your to-do list?</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="platformTodoDeleteCancelButton" type="button">Cancel</button>
+        <button class="btn btn-danger" id="platformTodoDeleteConfirmButton" type="button">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
@@ -137,6 +196,17 @@
             <div class="panel-head"><div class="panel-title" id="platform-actions-title">Quick Actions</div></div>
             <div class="quick-actions" id="platform-quick-actions"></div>
           </section>
+
+          <section class="panel" aria-labelledby="platform-todos-title">
+            <div class="panel-head">
+              <div class="panel-title" id="platform-todos-title">My To-do List</div>
+              <button class="panel-action" id="addPlatformTodoButton" type="button" aria-haspopup="dialog">
+                <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                Add task
+              </button>
+            </div>
+            <div class="todo-list" id="platform-todo-list"></div>
+          </section>
         </div>
       </div>
     </main>
@@ -192,6 +262,140 @@
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'activity', title: 'No platform activity', text: 'School account changes and system events will appear here.' });
     }
 
+    function getPlatformTodos() {
+      return window.EDUGNAY_CONFIG.getUserTodos(PLATFORM.admin.id, null);
+    }
+
+    function openPlatformTodoModal(todoId = null) {
+      const modal = document.getElementById('platformTodoModal');
+      const form = document.getElementById('platformTodoForm');
+      if (!modal || !form) return;
+      form.reset();
+      const todo = todoId
+        ? getPlatformTodos().find(item => item.id === String(todoId))
+        : null;
+      document.getElementById('platformTodoId').value = todo?.id || '';
+      document.getElementById('platformTodoTitle').value = todo?.title || '';
+      document.getElementById('platformTodoDueDate').value = todo?.dueDate || '';
+      document.getElementById('platformTodoModalTitle').textContent = todo ? 'Edit task' : 'Add task';
+      document.getElementById('platformTodoSaveButton').textContent = todo ? 'Save changes' : 'Add task';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('platformTodoTitle').focus();
+    }
+
+    function closePlatformTodoModal() {
+      const modal = document.getElementById('platformTodoModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function savePlatformTodo(event) {
+      event?.preventDefault();
+      const todoId = document.getElementById('platformTodoId').value;
+      const titleInput = document.getElementById('platformTodoTitle');
+      const title = titleInput.value.trim();
+      const dueDate = document.getElementById('platformTodoDueDate').value || null;
+      titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
+      if (!titleInput.reportValidity()) return false;
+
+      if (todoId) {
+        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate }, null);
+      } else {
+        window.EDUGNAY_CONFIG.createTodo({
+          schoolId: null,
+          userId: PLATFORM.admin.id,
+          title,
+          dueDate
+        });
+      }
+
+      closePlatformTodoModal();
+      renderPlatformTodos();
+      return false;
+    }
+
+    function togglePlatformTodo(todoId) {
+      const todo = getPlatformTodos().find(item => item.id === String(todoId));
+      if (!todo) return;
+      const completed = todo.status !== 'completed';
+      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? new Date().toISOString() : null
+      }, null);
+      renderPlatformTodos();
+    }
+
+    function openPlatformTodoDeleteModal(todoId) {
+      const todo = getPlatformTodos().find(item => item.id === String(todoId));
+      const modal = document.getElementById('platformTodoDeleteModal');
+      if (!todo || !modal) return;
+      document.getElementById('platformTodoDeleteId').value = todo.id;
+      document.getElementById('platformTodoDeleteName').textContent = `“${todo.title}”`;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closePlatformTodoDeleteModal() {
+      const modal = document.getElementById('platformTodoDeleteModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('platformTodoDeleteId').value = '';
+    }
+
+    function confirmDeletePlatformTodo() {
+      const todoId = document.getElementById('platformTodoDeleteId').value;
+      if (!todoId) return;
+      window.EDUGNAY_CONFIG.deleteTodo(todoId, null);
+      closePlatformTodoDeleteModal();
+      renderPlatformTodos();
+    }
+
+    function renderPlatformTodos() {
+      const list = document.getElementById('platform-todo-list');
+      if (!list) return;
+
+      const todos = getPlatformTodos()
+        .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
+
+      if (!todos.length) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'list-checks',
+          title: 'No tasks yet',
+          text: 'Add a personal task to start your list.'
+        });
+        return;
+      }
+
+      list.innerHTML = todos.map(todo => {
+        const completed = todo.status === 'completed';
+        const dueDate = todo.dueDate
+          ? new Date(`${todo.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null;
+        return `
+          <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
+            <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
+              ${completed ? 'checked' : ''} onchange="togglePlatformTodo('${todo.id}')">
+            <div class="todo-copy">
+              <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
+              ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
+            </div>
+            <div class="todo-actions">
+              <button type="button" aria-label="Edit ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openPlatformTodoModal('${todo.id}')">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button type="button" aria-label="Delete ${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}" onclick="openPlatformTodoDeleteModal('${todo.id}')">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
     function renderPlatformDashboard() {
       const summaryCards = document.getElementById('platform-summary-cards');
       const schools = PLATFORM.getSchoolRecords();
@@ -229,8 +433,28 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       renderPlatformDashboard();
+      renderPlatformTodos();
       renderPlatformWeek();
       PLATFORM.renderTopbarNotifs();
+
+      document.getElementById('addPlatformTodoButton')?.addEventListener('click', () => openPlatformTodoModal());
+      document.getElementById('platformTodoForm')?.addEventListener('submit', savePlatformTodo);
+      document.getElementById('platformTodoCloseButton')?.addEventListener('click', closePlatformTodoModal);
+      document.getElementById('platformTodoCancelButton')?.addEventListener('click', closePlatformTodoModal);
+      document.getElementById('platformTodoDeleteCloseButton')?.addEventListener('click', closePlatformTodoDeleteModal);
+      document.getElementById('platformTodoDeleteCancelButton')?.addEventListener('click', closePlatformTodoDeleteModal);
+      document.getElementById('platformTodoDeleteConfirmButton')?.addEventListener('click', confirmDeletePlatformTodo);
+      document.getElementById('platformTodoModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closePlatformTodoModal();
+      });
+      document.getElementById('platformTodoDeleteModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closePlatformTodoDeleteModal();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        closePlatformTodoModal();
+        closePlatformTodoDeleteModal();
+      });
     });
   </script>
 </body>
