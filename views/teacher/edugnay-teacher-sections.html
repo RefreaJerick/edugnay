@@ -123,6 +123,10 @@
         <label class="form-label">Task Title</label>
         <input class="form-input" type="text" id="assignTitleInput" placeholder="e.g. Reading Response"/>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="assignInstructionsInput">Instructions (optional)</label>
+        <textarea class="form-input" id="assignInstructionsInput" rows="3" placeholder="Add instructions for students"></textarea>
+      </div>
       <div class="form-row-2">
         <div class="form-group">
           <label class="form-label">Subject</label>
@@ -133,11 +137,50 @@
           <input class="form-input" type="date" id="assignDueInput"/>
         </div>
       </div>
+      <div class="school-toggle-list">
+        <label class="school-toggle-row">
+          <span class="school-toggle-copy">
+            <strong>Allow online submissions</strong>
+            <small>Students can upload their work for this assignment.</small>
+          </span>
+          <input class="school-toggle-input" type="checkbox" id="assignOnlineSubmissionInput">
+          <span class="school-toggle-control" aria-hidden="true"></span>
+        </label>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-cancel" onclick="closeModal('addAssignmentModal')">Cancel</button>
       <button class="btn btn-save" onclick="addAssignment()">
         <i data-lucide="plus" style="width:13px;height:13px;"></i> Add Assignment
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="assignmentInstructionsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="message-square-text"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title">Assignment Instructions</div>
+          <div class="modal-sub" id="assignmentInstructionsModalSub">Add instructions for students.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeAssignmentInstructionsModal()">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="editAssignmentInstructionsInput">Instructions (optional)</label>
+        <textarea class="form-input" id="editAssignmentInstructionsInput" rows="5" placeholder="Add instructions for students"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeAssignmentInstructionsModal()">Cancel</button>
+      <button class="btn btn-save" type="button" onclick="saveAssignmentInstructions()">
+        <i data-lucide="save" style="width:13px;height:13px;"></i> Save Instructions
       </button>
     </div>
   </div>
@@ -150,7 +193,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="check-check"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title" id="assignmentStatusModalTitle">Update Assignment Status</div>
-        <div class="modal-sub">Set each student's submission status.</div>
+        <div class="modal-sub" id="assignmentStatusModalSub">Set each student's submission status.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal('assignmentStatusModal')">
@@ -1504,6 +1547,14 @@
             <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
           </div>
           <div class="assignment-card-actions">
+            <button class="top-btn secondary assignment-instructions-btn" type="button" onclick="openAssignmentInstructionsModal('${a.id}')">
+              <i data-lucide="message-square-plus" style="width:13px;height:13px;"></i> ${a.instructions ? 'Edit instructions' : 'Add instructions'}
+            </button>
+            <label class="assignment-online-toggle" title="${a.onlineSubmissionEnabled ? 'Online submissions enabled' : 'Allow online submissions'}">
+              <span class="assignment-online-toggle-label">Online submissions</span>
+              <input class="school-toggle-input" type="checkbox" aria-label="Allow online submissions for ${a.title}" ${a.onlineSubmissionEnabled ? 'checked' : ''} onchange="toggleAssignmentOnlineSubmissions('${a.id}', this.checked)">
+              <span class="school-toggle-control" aria-hidden="true"></span>
+            </label>
             <button class="top-btn secondary" onclick="openStatusModal('${a.id}')">
               <i data-lucide="check-square" style="width:13px;height:13px;"></i> Update Status
             </button>
@@ -1511,6 +1562,12 @@
         </div>`;
     }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments you create for this section will appear here.' });
     lucide.createIcons();
+  }
+
+  function toggleAssignmentOnlineSubmissions(assignmentId, enabled) {
+    window.EDUGNAY_CONFIG.updateAssignment(assignmentId, {
+      onlineSubmissionEnabled: enabled
+    });
   }
 
   const TEACHER_MATERIAL_TYPE_META = {
@@ -1608,7 +1665,9 @@
   function addAssignment() {
     const title = document.getElementById('assignTitleInput').value.trim();
     const subject = document.getElementById('assignSubjectInput').value.trim();
+    const instructions = document.getElementById('assignInstructionsInput').value.trim();
     const due = document.getElementById('assignDueInput').value;
+    const onlineSubmissionEnabled = document.getElementById('assignOnlineSubmissionInput').checked;
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
 
     const subjectRecord = window.EDUGNAY_CONFIG.subjects.find(item => item.name === subject) || CURRENT_SUBJECT_RECORD;
@@ -1618,21 +1677,55 @@
       sectionId: CURRENT_SECTION_ID,
       subjectId: subjectRecord?.id || CURRENT_SUBJECT_ID,
       title,
+      instructions: instructions || null,
       assignedDate: due,
-      dueDate: due
+      dueDate: due,
+      onlineSubmissionEnabled
     });
     document.getElementById('assignTitleInput').value = '';
+    document.getElementById('assignInstructionsInput').value = '';
     document.getElementById('assignDueInput').value = '';
+    document.getElementById('assignOnlineSubmissionInput').checked = false;
     closeModal('addAssignmentModal');
     renderAssignments();
   }
 
   let activeAssignmentId = null;
 
+  function openAssignmentInstructionsModal(id) {
+    const assignment = getTeacherAssignments().find(item => item.id === String(id));
+    if (!assignment) return;
+
+    activeAssignmentId = assignment.id;
+    document.getElementById('assignmentInstructionsModalSub').textContent = assignment.title;
+    document.getElementById('editAssignmentInstructionsInput').value = assignment.instructions || '';
+    openModal('assignmentInstructionsModal');
+    lucide.createIcons();
+  }
+
+  function closeAssignmentInstructionsModal() {
+    closeModal('assignmentInstructionsModal');
+    activeAssignmentId = null;
+  }
+
+  function saveAssignmentInstructions() {
+    if (!activeAssignmentId) return;
+
+    const instructions = document.getElementById('editAssignmentInstructionsInput').value.trim();
+    window.EDUGNAY_CONFIG.updateAssignment(activeAssignmentId, {
+      instructions: instructions || null
+    });
+    closeAssignmentInstructionsModal();
+    renderAssignments();
+  }
+
   function openStatusModal(id) {
     activeAssignmentId = String(id);
     const a = getTeacherAssignments().find(x => x.id === String(id));
     document.getElementById('assignmentStatusModalTitle').textContent = 'Update Status — ' + a.title;
+    document.getElementById('assignmentStatusModalSub').textContent = a.onlineSubmissionEnabled
+      ? 'Online submissions enabled. Set each student’s status.'
+      : 'Online submissions disabled. Set each student’s status.';
 
     const tbody = document.getElementById('assignmentStatusTbody');
     const statuses = window.EDUGNAY_CONFIG.getAssignmentStatuses(a.id);

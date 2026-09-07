@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/student/assignments.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
-  <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
 <body>
@@ -151,7 +151,7 @@
         <div class="portal-overview-copy">
           <div class="portal-overview-kicker">Student workspace</div>
           <h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1>
-          <p class="portal-overview-description">Track your assignments and submission status.</p>
+          <p class="portal-overview-description">View your assignments and submission status.</p>
         </div>
       </section>
 
@@ -170,9 +170,52 @@
           </div>
           <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" onchange="renderAssignments()" aria-label="Filter by subject"></select>
         </div>
+        <div class="assignment-list-head" aria-hidden="true">
+          <span>Assignment</span>
+          <span>Online submission</span>
+          <span>Status</span>
+          <span>Action</span>
+        </div>
         <div class="assignment-list" id="assignmentList"></div>
       </section>
     </main>
+  </div>
+
+  <!-- ASSIGNMENT DETAILS AND SUBMISSION MODAL -->
+  <div class="modal-backdrop dashboard-modal-backdrop" id="assignmentSubmissionModal" hidden>
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-list"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="submissionModalTitle">Assignment details</div>
+            <div class="modal-sub" id="submissionModalSub">Review this assignment before submitting.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" id="assignmentSubmissionClose" aria-label="Close submission modal">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="assignment-detail-meta" id="assignmentDetailMeta"></div>
+        <div class="assignment-detail-block">
+          <div class="form-label">Instructions</div>
+          <div class="assignment-detail-instructions" id="assignmentDetailInstructions">No additional instructions were provided.</div>
+        </div>
+        <div class="assignment-detail-notice" id="assignmentOnlineNotice"></div>
+        <div class="form-group" id="assignmentSubmissionForm">
+          <label class="form-label" for="assignmentSubmissionFile">File</label>
+          <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4">
+          <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, Excel, image, or video.</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" id="assignmentSubmissionCancel">Close</button>
+        <button class="btn btn-save" type="button" id="assignmentSubmissionSubmit">
+          <i data-lucide="send" style="width:13px;height:13px;"></i> Submit work
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -180,13 +223,9 @@
 
     // The authenticated student's ID will come from the session later.
     const STUDENT_ID = 'jd-004';
-    const ASSIGNMENT_STATUSES = window.EDUGNAY_CONFIG.getAssignmentStatuses();
-    const ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID).map(function (assignment) {
-      const statusRecord = ASSIGNMENT_STATUSES.find(function (record) {
-        return record.assignmentId === assignment.id && record.studentId === STUDENT_ID;
-      });
-      return { ...assignment, status: statusRecord?.status || 'pending' };
-    });
+    let ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
+    let STUDENT_SUBMISSIONS = window.EDUGNAY_CONFIG.getAssignmentSubmissions()
+      .filter(function (record) { return record.studentId === STUDENT_ID; });
 
     const ASSIGNMENT_FILTERS = [
       { key: 'all', label: 'All' },
@@ -256,12 +295,29 @@
 
       list.innerHTML = visible.map(function (item) {
         const status = STATUS_META[item.status];
-        return '<article class="assignment-row">' +
+        const onlineLabel = item.onlineSubmissionEnabled ? 'Available' : 'Not available';
+        const onlineClass = item.onlineSubmissionEnabled ? 'available' : 'not-available';
+        const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
+          return record.assignmentId === item.id;
+        });
+        const submissionAction = item.onlineSubmissionEnabled
+          ? '<button class="top-btn assignment-submit-action" type="button" data-assignment-id="' + escapeHtml(item.id) + '">' +
+              '<i data-lucide="file-up" style="width:13px;height:13px;"></i> ' + (hasOnlineSubmission ? 'Replace file' : 'Submit work') + '</button>'
+          : '<span class="assignment-action-muted">Submit in class</span>';
+        return '<article class="assignment-row assignment-details-trigger" data-assignment-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="View details for ' + escapeHtml(item.title) + '">' +
           '<div class="assignment-row-content">' +
             '<h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
             '<div class="assignment-row-meta">' + escapeHtml(item.subject) + ' · Due ' + formatDate(item.dueDate) + ' · ' + escapeHtml(item.teacher) + '</div>' +
           '</div>' +
-          '<span class="assignment-status ' + item.status + '" aria-label="' + escapeHtml(status.label) + '" title="' + escapeHtml(status.label) + '"><i data-lucide="' + status.icon + '" style="width:12px;height:12px;"></i><span class="assignment-status-label">' + escapeHtml(status.label) + '</span></span>' +
+          '<div class="assignment-online-cell" data-label="Online submission">' +
+            '<span class="assignment-online-status ' + onlineClass + '">' + onlineLabel + '</span>' +
+          '</div>' +
+          '<div class="assignment-status-cell" data-label="Status">' +
+            '<span class="assignment-status ' + item.status + '" aria-label="' + escapeHtml(status.label) + '" title="' + escapeHtml(status.label) + '"><i data-lucide="' + status.icon + '" style="width:12px;height:12px;"></i><span class="assignment-status-label">' + escapeHtml(status.label) + '</span></span>' +
+          '</div>' +
+          '<div class="assignment-row-actions" data-label="Action">' +
+            submissionAction +
+          '</div>' +
         '</article>';
       }).join('');
       lucide.createIcons();
@@ -279,10 +335,132 @@
         }).join('');
     }
 
+    let activeSubmissionAssignmentId = null;
+
+    function openAssignmentSubmissionModal(assignmentId) {
+      const assignment = ASSIGNMENTS.find(function (item) {
+        return item.id === String(assignmentId);
+      });
+      if (!assignment) return;
+
+      activeSubmissionAssignmentId = assignment.id;
+      const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
+        return record.assignmentId === assignment.id;
+      });
+      document.getElementById('submissionModalTitle').textContent = assignment.onlineSubmissionEnabled
+        ? hasOnlineSubmission ? 'Replace submission' : 'Submit assignment'
+        : 'Assignment details';
+      document.getElementById('submissionModalSub').textContent = assignment.title;
+      document.getElementById('assignmentDetailMeta').textContent =
+        assignment.subject + ' · Due ' + formatDate(assignment.dueDate) + ' · ' + assignment.teacher;
+      document.getElementById('assignmentDetailInstructions').textContent = assignment.instructions ||
+        "No additional instructions were provided.";
+
+      const submissionForm = document.getElementById('assignmentSubmissionForm');
+      const submitButton = document.getElementById('assignmentSubmissionSubmit');
+      const canSubmitOnline = assignment.onlineSubmissionEnabled === true;
+      submissionForm.hidden = !canSubmitOnline;
+      submitButton.hidden = !canSubmitOnline;
+      submitButton.innerHTML = '<i data-lucide="send" style="width:13px;height:13px;"></i> ' +
+        (hasOnlineSubmission ? 'Replace file' : 'Submit work');
+      document.getElementById('assignmentOnlineNotice').textContent = canSubmitOnline
+        ? 'Online submission is available for this assignment.'
+        : 'Submit this assignment in class.';
+
+      const fileInput = document.getElementById('assignmentSubmissionFile');
+      fileInput.value = '';
+      document.getElementById('assignmentSubmissionFileHint').textContent = 'PDF, Word, PowerPoint, Excel, image, or video.';
+      document.getElementById('assignmentSubmissionFileHint').style.color = '';
+
+      const modal = document.getElementById('assignmentSubmissionModal');
+      modal.hidden = false;
+      modal.classList.add('open');
+      lucide.createIcons();
+    }
+
+    function closeAssignmentSubmissionModal() {
+      const modal = document.getElementById('assignmentSubmissionModal');
+      modal.classList.remove('open');
+      modal.hidden = true;
+      activeSubmissionAssignmentId = null;
+    }
+
+    function validateAssignmentSubmission() {
+      const fileInput = document.getElementById('assignmentSubmissionFile');
+      const hint = document.getElementById('assignmentSubmissionFileHint');
+      const file = fileInput.files[0];
+      const supportedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'mp4'];
+      const extension = file?.name.split('.').pop().toLowerCase();
+
+      if (!file) {
+        hint.textContent = 'Choose a file before submitting.';
+        hint.style.color = 'var(--red)';
+        fileInput.focus();
+        return false;
+      }
+      if (!supportedTypes.includes(extension)) {
+        hint.textContent = 'Choose a supported file type.';
+        hint.style.color = 'var(--red)';
+        fileInput.focus();
+        return false;
+      }
+
+      hint.textContent = file.name;
+      hint.style.color = '';
+      return true;
+    }
+
+    function submitStudentAssignment() {
+      if (!activeSubmissionAssignmentId || !validateAssignmentSubmission()) return;
+
+      const file = document.getElementById('assignmentSubmissionFile').files[0];
+      const type = file.name.split('.').pop().toLowerCase();
+      const submission = window.EDUGNAY_CONFIG.submitAssignment({
+        assignmentId: activeSubmissionAssignmentId,
+        studentId: STUDENT_ID,
+        fileName: file.name,
+        type,
+        fileSize: file.size,
+        fileUrl: null
+      });
+
+      if (!submission) return;
+
+      ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
+      STUDENT_SUBMISSIONS = window.EDUGNAY_CONFIG.getAssignmentSubmissions()
+        .filter(function (record) { return record.studentId === STUDENT_ID; });
+      closeAssignmentSubmissionModal();
+      renderFilterTabs();
+      renderAssignments();
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       populateSubjectFilter();
       renderFilterTabs();
       renderAssignments();
+
+      document.addEventListener('click', function (event) {
+        const action = event.target.closest('.assignment-submit-action');
+        if (action) {
+          openAssignmentSubmissionModal(action.dataset.assignmentId);
+          return;
+        }
+
+        const row = event.target.closest('.assignment-details-trigger');
+        if (row) openAssignmentSubmissionModal(row.dataset.assignmentId);
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        const row = event.target.closest('.assignment-details-trigger');
+        if (!row || event.target.closest('button')) return;
+        event.preventDefault();
+        openAssignmentSubmissionModal(row.dataset.assignmentId);
+      });
+      document.getElementById('assignmentSubmissionClose').addEventListener('click', closeAssignmentSubmissionModal);
+      document.getElementById('assignmentSubmissionCancel').addEventListener('click', closeAssignmentSubmissionModal);
+      document.getElementById('assignmentSubmissionFile').addEventListener('change', validateAssignmentSubmission);
+      document.getElementById('assignmentSubmissionSubmit').addEventListener('click', submitStudentAssignment);
     });
   </script>
 </body>

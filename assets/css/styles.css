@@ -1955,7 +1955,6 @@ body.drawer-open .sidebar {
 .shell .main :is(
   .ann-card,
   .archive-year-card,
-  .assignment-card,
   .data-source-card,
   .flag-card,
   .journal-card,
@@ -1971,7 +1970,6 @@ body.drawer-open .sidebar {
 .shell .main :is(
   .ann-card,
   .archive-year-card,
-  .assignment-card,
   .data-source-card,
   .flag-card,
   .journal-card,

@@ -506,16 +506,13 @@
       const day = DAYS.find(item => item.key === dayKey);
       if (!day) return [];
       const assignedDate = `2025-06-${String(day.date).padStart(2, '0')}`;
-      const statusRecords = window.EDUGNAY_CONFIG.getAssignmentStatuses();
       return window.EDUGNAY_CONFIG.getAssignmentsForStudent(studentId)
         .filter(assignment => assignment.assignedDate === assignedDate)
         .map(assignment => ({
           subject: assignment.subject,
           task: assignment.title,
           dueDate: assignment.dueDate,
-          status: statusRecords.find(record =>
-            record.assignmentId === assignment.id && record.studentId === String(studentId)
-          )?.status || 'pending'
+          status: assignment.status
         }));
     }
 

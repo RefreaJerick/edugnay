@@ -1470,6 +1470,8 @@ thead tr:hover .comp-delete-btn {
 
 .assignment-progress-track {
   height: 5px;
+  width: 100%;
+  max-width: 420px;
   background: var(--gray-100);
   border-radius: 999px;
   margin-top: 8px;
@@ -1486,8 +1488,31 @@ thead tr:hover .comp-delete-btn {
 .assignment-card-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 35px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.assignment-instructions-btn {
+  min-height: 30px;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.assignment-online-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assignment-online-toggle-label {
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .status-btn-group {
@@ -1765,13 +1790,12 @@ tbody tr:hover td.sticky-col {
   padding: 14px 16px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(16, 40, 80, 0.035);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .assignment-card:hover {
   border-color: var(--blue-pale);
   box-shadow: 0 5px 14px rgba(16, 40, 80, 0.075);
-  transform: translateY(-1px);
 }
 
 #assignmentList {
@@ -1851,6 +1875,12 @@ tbody tr:hover td.sticky-col {
   .material-actions,
   .assignment-card-actions {
     justify-content: flex-end;
+  }
+
+  .assignment-instructions-btn {
+    min-height: 30px;
+    padding: 6px 9px;
+    font-size: 11px;
   }
 
   .upload-zone {

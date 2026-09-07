@@ -124,6 +124,7 @@ function formatRelativeTime(dateValue) {
     attendance: 'edugnay_attendance',
     assignments: 'edugnay_assignments',
     assignmentStatuses: 'edugnay_assignment_statuses',
+    assignmentSubmissions: 'edugnay_assignment_submissions',
     materials: 'edugnay_learning_materials',
     todos: 'edugnay_user_todos',
     announcements: 'edugnay_announcements',
@@ -545,10 +546,30 @@ function formatRelativeTime(dateValue) {
       subjectId: values.subjectId || null,
       teacherId: values.teacherId || null,
       title: String(values.title || '').trim(),
+      instructions: String(values.instructions || '').trim() || null,
       assignedDate: values.assignedDate || values.dueDate || null,
-      dueDate: values.dueDate || null
+      dueDate: values.dueDate || null,
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true
     };
     ASSIGNMENT_DIRECTORY.push(assignment);
+    saveAssignments();
+    return assignment;
+  }
+
+  function updateAssignment(assignmentId, values = {}) {
+    const assignment = ASSIGNMENT_DIRECTORY.find(record =>
+      record.id === String(assignmentId) && record.schoolId === getActiveSchoolId()
+    );
+    if (!assignment) return null;
+
+    if (values.onlineSubmissionEnabled !== undefined) {
+      assignment.onlineSubmissionEnabled = values.onlineSubmissionEnabled === true;
+    }
+
+    if (values.instructions !== undefined) {
+      assignment.instructions = String(values.instructions || '').trim() || null;
+    }
+
     saveAssignments();
     return assignment;
   }
@@ -1368,35 +1389,35 @@ function formatRelativeTime(dateValue) {
   const DEFAULT_ASSIGNMENT_DIRECTORY = [
     {
       id: 'assignment-001', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Seatwork 1: Kindness and Respect', assignedDate: '2025-06-09', dueDate: '2025-06-09'
+      title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-002', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Quiz 1 Review: Core Values', assignedDate: '2025-06-11', dueDate: '2025-06-11'
+      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-003', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Activity 1: Good Citizenship', assignedDate: '2025-06-13', dueDate: '2025-06-13'
+      title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Seatwork 1: Kindness and Respect', assignedDate: '2025-06-09', dueDate: '2025-06-09'
+      title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-005', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Quiz 1 Review: Core Values', assignedDate: '2025-06-11', dueDate: '2025-06-11'
+      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: true
     },
     {
       id: 'assignment-006', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Activity 1: Good Citizenship', assignedDate: '2025-06-13', dueDate: '2025-06-13'
+      title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-007', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-3',
-      title: 'Linear Equations Practice', assignedDate: '2025-06-12', dueDate: '2025-06-12'
+      title: 'Linear Equations Practice', instructions: null, assignedDate: '2025-06-12', dueDate: '2025-06-12', onlineSubmissionEnabled: false
     },
     {
       id: 'assignment-008', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-2',
-      title: 'Reading Response: Short Stories', assignedDate: '2025-06-10', dueDate: '2025-06-10'
+      title: 'Reading Response: Short Stories', instructions: null, assignedDate: '2025-06-10', dueDate: '2025-06-10', onlineSubmissionEnabled: false
     }
   ];
   const savedAssignments = readJson(schoolStorageKey(STORAGE_KEYS.assignments, ACTIVE_SCHOOL_ID), null);
@@ -1407,7 +1428,9 @@ function formatRelativeTime(dateValue) {
     .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
     .map(({ completion, ...record }) => ({
       ...record,
-      schoolId: record.schoolId || ACTIVE_SCHOOL_ID
+      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      instructions: record.instructions || null,
+      onlineSubmissionEnabled: record.onlineSubmissionEnabled === true
     }));
 
   const savedAssignmentStatuses = readJson(
@@ -1417,6 +1440,76 @@ function formatRelativeTime(dateValue) {
   const ASSIGNMENT_STATUS_RECORDS = Array.isArray(savedAssignmentStatuses)
     ? savedAssignmentStatuses.filter(record => record.schoolId === ACTIVE_SCHOOL_ID)
     : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_STATUS_RECORDS, ACTIVE_SCHOOL_ID));
+
+  // One submission record belongs to one student and one assignment. The file
+  // itself will be stored by the backend later; the frontend keeps metadata.
+  const DEFAULT_ASSIGNMENT_SUBMISSIONS = [];
+  const savedAssignmentSubmissions = readJson(
+    schoolStorageKey(STORAGE_KEYS.assignmentSubmissions, ACTIVE_SCHOOL_ID),
+    null
+  );
+  const ASSIGNMENT_SUBMISSIONS = Array.isArray(savedAssignmentSubmissions)
+    ? savedAssignmentSubmissions
+    : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_SUBMISSIONS, ACTIVE_SCHOOL_ID));
+
+  function getAssignmentSubmissions(assignmentId = null) {
+    return ASSIGNMENT_SUBMISSIONS.filter(record =>
+      record.schoolId === getActiveSchoolId() &&
+      (!assignmentId || record.assignmentId === String(assignmentId))
+    );
+  }
+
+  function saveAssignmentSubmissions() {
+    writeJson(schoolStorageKey(STORAGE_KEYS.assignmentSubmissions), ASSIGNMENT_SUBMISSIONS);
+  }
+
+  function submitAssignment(values = {}) {
+    const schoolId = getActiveSchoolId();
+    const assignmentId = String(values.assignmentId || '');
+    const studentId = String(values.studentId || '');
+    const assignment = ASSIGNMENT_DIRECTORY.find(record =>
+      record.id === assignmentId && record.schoolId === schoolId
+    );
+    const student = getUserById(studentId);
+    const fileName = String(values.fileName || '').trim();
+    const type = String(values.type || '').trim();
+
+    if (
+      !assignment ||
+      !student ||
+      student.schoolId !== schoolId ||
+      student.sectionId !== assignment.sectionId ||
+      assignment.onlineSubmissionEnabled !== true ||
+      !fileName ||
+      !type
+    ) return null;
+
+    const submittedAt = values.submittedAt || new Date().toISOString();
+    const record = {
+      id: String(values.id || `assignment-submission-${assignmentId}-${studentId}`),
+      schoolId,
+      assignmentId,
+      studentId,
+      fileName,
+      type,
+      fileSize: values.fileSize || null,
+      fileUrl: values.fileUrl || null,
+      submittedAt,
+      updatedAt: values.updatedAt || submittedAt
+    };
+    const existing = ASSIGNMENT_SUBMISSIONS.find(item =>
+      item.schoolId === schoolId &&
+      item.assignmentId === assignmentId &&
+      item.studentId === studentId
+    );
+
+    if (existing) Object.assign(existing, record, { id: existing.id });
+    else ASSIGNMENT_SUBMISSIONS.push(record);
+
+    saveAssignmentSubmissions();
+    setAssignmentStatus(assignmentId, studentId, 'submitted');
+    return existing || record;
+  }
 
   // Shared learning-material records for Teacher and Student portals. Every
   // record uses IDs for school, section, subject, and teacher so this array
@@ -2230,6 +2323,10 @@ function formatRelativeTime(dateValue) {
     getAssignmentsForStudent,
     saveAssignments,
     createAssignment,
+    updateAssignment,
+    getAssignmentSubmissions,
+    saveAssignmentSubmissions,
+    submitAssignment,
     getAssignmentStatuses,
     saveAssignmentStatuses,
     setAssignmentStatus,
