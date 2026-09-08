@@ -74,17 +74,6 @@
   white-space: nowrap;
 }
 
-.child-report-badge {
-  flex-shrink: 0;
-  margin-left: auto;
-  background: var(--purple);
-  color: var(--white);
-  font-size: 9.5px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
 /* ── Latest report panel ── */
 .latest-report-hero {
   position: relative;

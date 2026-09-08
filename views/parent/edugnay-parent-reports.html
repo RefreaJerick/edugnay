@@ -282,8 +282,7 @@
           const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
           if (!student || student.role !== 'student') return '';
           const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-          const reportRecord = getReportRecord(student.id);
-          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div><span class="child-report-badge">${reportRecord?.reports.length || 0}</span></div>`;
+          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div></div>`;
         }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();

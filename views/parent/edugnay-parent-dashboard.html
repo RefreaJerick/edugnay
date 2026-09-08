@@ -382,7 +382,7 @@
         if (!student || student.role !== 'student') return '';
         const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
         const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
-        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${sectionLabel}</div></div>${student.id === 'mt-012' ? '<span class="child-alert-dot" title="Needs attention"></span>' : ''}</div>`;
+        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${sectionLabel}</div></div></div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       if (window.lucide) lucide.createIcons();
     }
