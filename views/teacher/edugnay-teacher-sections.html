@@ -967,7 +967,15 @@
   const CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
   const CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
   const CURRENT_LEVEL = CURRENT_SECTION_RECORD?.level || 'jhs';
-  const CURRENT_GRADING_RULES = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL]?.gradingRules || [];
+  const CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
+  const CURRENT_GRADING_RULES = CURRENT_DIVISION.gradingRules || [];
+  const GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
+    ? CURRENT_DIVISION.gradeRounding
+    : 'round';
+  const PASSING_GRADE_THRESHOLD = Number.isFinite(Number(CURRENT_DIVISION.passingGradeThreshold))
+    ? Math.max(0, Math.min(100, Number(CURRENT_DIVISION.passingGradeThreshold)))
+    : 75;
+  const WARNING_GRADE_THRESHOLD = Math.max(0, PASSING_GRADE_THRESHOLD - 5);
   const GRADING_RULES_BY_ID = Object.fromEntries(
     CURRENT_GRADING_RULES.map(rule => [String(rule.id || '').toLowerCase(), rule])
   );
@@ -1454,7 +1462,11 @@
     const qaAvg = groups.QA.maxSum > 0 ? (groups.QA.sum / groups.QA.maxSum) * 100 : 0;
 
     const final = (wwAvg * WEIGHTS.WW) + (ptAvg * WEIGHTS.PT) + (qaAvg * WEIGHTS.QA);
-    const rounded = Math.round(final);
+    const rounded = GRADE_ROUNDING === 'roundup'
+      ? Math.ceil(final)
+      : GRADE_ROUNDING === 'truncate'
+        ? Math.trunc(final)
+        : Math.round(final);
 
     const computed = row.querySelectorAll('.computed-cell');
     if (computed.length >= 4) {
@@ -1462,7 +1474,13 @@
       computed[1].textContent = ptAvg.toFixed(1);
       computed[2].textContent = qaAvg.toFixed(1);
       computed[3].textContent = rounded;
-      computed[3].className = 'center computed-cell computed-final ' + (rounded >= 75 ? 'grade-pass' : rounded >= 70 ? 'grade-warn' : 'grade-fail');
+      computed[3].className = 'center computed-cell computed-final ' + (
+        rounded >= PASSING_GRADE_THRESHOLD
+          ? 'grade-pass'
+          : rounded >= WARNING_GRADE_THRESHOLD
+            ? 'grade-warn'
+            : 'grade-fail'
+      );
     }
   }
 
