@@ -1507,6 +1507,10 @@ thead tr:hover .comp-delete-btn {
   vertical-align: middle;
 }
 
+.assignment-submissions-table tbody td:first-child {
+  font-weight: 700;
+}
+
 .assignment-file-unavailable {
   color: var(--gray-400);
   font-size: 12px;

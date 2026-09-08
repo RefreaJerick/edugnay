@@ -1243,6 +1243,7 @@ body :is(.row-btn.edit, .row-btn.change, .row-btn.view, .row-btn.move, .row-btn.
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
   color: var(--blue-mid);
+  text-decoration: none;
 }
 
 body :is(.row-btn.edit, .row-btn.change, .row-btn.view, .row-btn.move, .row-btn.primary):hover:not(:disabled) {

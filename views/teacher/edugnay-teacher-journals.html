@@ -72,11 +72,11 @@
           <div class="score-input-wrap">
             <div class="score-input-label">Points Earned</div>
             <div class="score-input-row">
-              <input class="score-num-input" type="number" id="modal-score-input" min="0" max="50" placeholder="—"/>
+              <input class="score-num-input" type="number" id="modal-score-input" min="0" placeholder="—"/>
               <span class="score-divider">/</span>
-              <span class="score-max-label">50</span>
+              <span class="score-max-label">—</span>
             </div>
-            <div class="score-hint">Graded out of 50 points</div>
+            <div class="score-hint">Graded out of the journal's maximum score</div>
           </div>
         </div>
       </div>
@@ -737,7 +737,7 @@ function populateModal(s) {
   document.getElementById('modal-avatar').textContent = student.initials;
   document.getElementById('modal-avatar').className = 'modal-avatar av-a';
   document.getElementById('modal-student-name').textContent = student.displayName;
-  document.getElementById('modal-meta').textContent = `${sec.label} · Week 3 · June 9–14, 2025`;
+  document.getElementById('modal-meta').textContent = `${sec.label} · ${s.week || 'Journal'} · ${s.dateRange || ''}`;
   document.getElementById('modal-prompt').textContent = sec.prompt;
 
   const entryEl = document.getElementById('modal-entry-body');
@@ -749,8 +749,13 @@ function populateModal(s) {
     entryEl.classList.add('no-entry');
   }
 
-  document.getElementById('modal-score-input').value = s.score !== null ? s.score : '';
-  document.getElementById('modal-score-input').disabled = !s.submitted;
+  const maxScore = Number(s.maxScore) || 50;
+  const scoreInput = document.getElementById('modal-score-input');
+  scoreInput.max = maxScore;
+  scoreInput.value = s.score !== null ? s.score : '';
+  scoreInput.disabled = !s.submitted;
+  document.querySelector('.score-max-label').textContent = maxScore;
+  document.querySelector('.score-hint').textContent = `Graded out of ${maxScore} points`;
 
   const statusNote = document.getElementById('modal-status-note');
   if (s.reviewed) {
@@ -800,7 +805,8 @@ function markReviewed() {
   scoreInput.style.borderColor = '';
 
   if (s.submitted && !isNaN(scoreVal)) {
-    s.score = Math.min(50, Math.max(0, scoreVal));
+    const maxScore = Number(s.maxScore) || 50;
+    s.score = Math.min(maxScore, Math.max(0, scoreVal));
   }
   s.reviewed = true;
   window.EDUGNAY_CONFIG.updateJournalEntry(s.id, {

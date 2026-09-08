@@ -1391,7 +1391,9 @@ function formatRelativeTime(dateValue) {
     { id: 'assignment-status-007', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'lr-002', status: 'submitted', updatedAt: '2025-06-13T00:00:00.000Z' },
     { id: 'assignment-status-008', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'sc-013', status: 'submitted', updatedAt: '2025-06-13T00:00:00.000Z' },
     { id: 'assignment-status-009', schoolId: 'scc', assignmentId: 'assignment-004', studentId: 'jd-004', status: 'submitted', updatedAt: '2025-06-09T00:00:00.000Z' },
-    { id: 'assignment-status-010', schoolId: 'scc', assignmentId: 'assignment-006', studentId: 'jd-004', status: 'submitted', updatedAt: '2025-06-13T00:00:00.000Z' }
+    { id: 'assignment-status-010', schoolId: 'scc', assignmentId: 'assignment-006', studentId: 'jd-004', status: 'submitted', updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-status-011', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'cm-001', status: 'submitted', updatedAt: '2025-06-10T00:15:00.000Z' },
+    { id: 'assignment-status-012', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'sc-013', status: 'submitted', updatedAt: '2025-06-11T01:10:00.000Z' }
   ];
 
   const DEFAULT_ASSIGNMENT_DIRECTORY = [
@@ -1401,7 +1403,7 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'assignment-002', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: false
+      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: true
     },
     {
       id: 'assignment-003', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
@@ -1451,7 +1453,23 @@ function formatRelativeTime(dateValue) {
 
   // One submission record belongs to one student and one assignment. The file
   // itself will be stored by the backend later; the frontend keeps metadata.
-  const DEFAULT_ASSIGNMENT_SUBMISSIONS = [];
+  const DEFAULT_ASSIGNMENT_SUBMISSIONS = [
+    {
+      id: 'assignment-submission-assignment-002-cm-001', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'cm-001',
+      fileName: 'core-values-review-carlo.pdf', type: 'pdf', fileSize: 184320, fileUrl: '/assets/uploads/assignment-submissions/core-values-review-carlo.pdf',
+      submittedAt: '2025-06-10T00:15:00.000Z', updatedAt: '2025-06-10T00:15:00.000Z'
+    },
+    {
+      id: 'assignment-submission-assignment-002-lr-002', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'lr-002',
+      fileName: 'quiz-1-review-liza.docx', type: 'docx', fileSize: 96256, fileUrl: null,
+      submittedAt: '2025-06-11T00:00:00.000Z', updatedAt: '2025-06-11T00:00:00.000Z'
+    },
+    {
+      id: 'assignment-submission-assignment-002-sc-013', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'sc-013',
+      fileName: 'core-values-review-sofia.jpg', type: 'jpg', fileSize: 512000, fileUrl: null,
+      submittedAt: '2025-06-11T01:10:00.000Z', updatedAt: '2025-06-11T01:10:00.000Z'
+    }
+  ];
   const savedAssignmentSubmissions = readJson(
     schoolStorageKey(STORAGE_KEYS.assignmentSubmissions, ACTIVE_SCHOOL_ID),
     null
@@ -1801,7 +1819,8 @@ function formatRelativeTime(dateValue) {
   const DEFAULT_JOURNAL_DIRECTORY = [
     {
       id: 'journal-cm-001-2025-w23', schoolId: 'scc', studentId: 'cm-001', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: true, late: false, reviewed: true, score: 40,
       entryText: 'This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.',
@@ -1809,7 +1828,8 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'journal-lr-002-2025-w23', schoolId: 'scc', studentId: 'lr-002', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: true, late: false, reviewed: true, score: 45,
       entryText: 'I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.',
@@ -1817,13 +1837,15 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'journal-mt-012-2025-w23', schoolId: 'scc', studentId: 'mt-012', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
     },
     {
       id: 'journal-sc-013-2025-w23', schoolId: 'scc', studentId: 'sc-013', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: true, late: true, reviewed: false, score: null,
       entryText: 'The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item, and I managed to finish before the bell. I will keep practicing this.',
@@ -1831,13 +1853,15 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'journal-gb-014-2025-w23', schoolId: 'scc', studentId: 'gb-014', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
     },
     {
       id: 'journal-na-015-2025-w23', schoolId: 'scc', studentId: 'na-015', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: true, late: false, reviewed: true, score: 50,
       entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and now I understand when to flip the sign and when not to.',
@@ -1845,13 +1869,15 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'journal-jd-004-2025-w23', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
       submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
     },
     {
       id: 'journal-jd-004-2025-w22', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      weekId: '2025-W22', week: 'Week 2', dateRange: 'June 2 to 7, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W22', week: 'Week 2', dateRange: 'June 2 to 7, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Talk about a challenge you faced this week and how you tried to overcome it.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
       submitted: true, late: false, reviewed: true, score: 50,
       entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
@@ -1859,7 +1885,8 @@ function formatRelativeTime(dateValue) {
     },
     {
       id: 'journal-jd-004-2025-w21', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      weekId: '2025-W21', week: 'Week 1', dateRange: 'May 26 to 31, 2025',
+      academicPeriodId: 'q2', weekId: '2025-W21', week: 'Week 1', dateRange: 'May 26 to 31, 2025',
+      categoryId: 'pt', maxScore: 50,
       prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
       submitted: true, late: false, reviewed: true, score: 45,
       entryText: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
@@ -1875,6 +1902,9 @@ function formatRelativeTime(dateValue) {
     .map(record => ({
       ...record,
       schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+      academicPeriodId: record.academicPeriodId || 'q2',
+      categoryId: record.categoryId || 'pt',
+      maxScore: Number(record.maxScore) || 50,
       submitted: Boolean(record.submitted),
       reviewed: Boolean(record.reviewed),
       late: Boolean(record.late),
@@ -2158,6 +2188,7 @@ function formatRelativeTime(dateValue) {
 
   function getJournalsForTeacher(teacherId, sectionId = null) {
     return JOURNAL_DIRECTORY.filter(record =>
+      record.schoolId === getActiveSchoolId() &&
       record.teacherId === String(teacherId) &&
       (!sectionId || record.sectionId === String(sectionId))
     );
@@ -2168,7 +2199,9 @@ function formatRelativeTime(dateValue) {
   }
 
   function updateJournalEntry(entryId, values = {}) {
-    const entry = JOURNAL_DIRECTORY.find(record => record.id === String(entryId));
+    const entry = JOURNAL_DIRECTORY.find(record =>
+      record.id === String(entryId) && record.schoolId === getActiveSchoolId()
+    );
     if (!entry) return null;
     Object.assign(entry, values);
     saveJournals();

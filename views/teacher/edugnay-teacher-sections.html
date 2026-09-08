@@ -111,7 +111,7 @@
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-list"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title">Add Assignment</div>
-        <div class="modal-sub">Post a task for students. Submission status is tracked separately from grading.</div>
+        <div class="modal-sub">Create a task for your students.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal('addAssignmentModal')">
@@ -1269,15 +1269,14 @@
         { name: 'Quiz 2', max: 20, cat: 'WW' },
         { name: 'Written Report', max: 30, cat: 'WW' },
         { name: 'Skills Demo', max: 100, cat: 'PT' },
-        { name: 'Journal', max: 50, cat: 'PT', readonly: true },
         { name: 'Qtrly Exam', max: 100, cat: 'QA' },
       ],
       scores: {
-        'cm-001': [18, 17, 26, 85, 42, 80],
-        'lr-002': [20, 19, 29, 92, 48, 88],
-        'mt-012': [12, 14, 20, 68, null, 65],
-        'sc-013': [16, 18, 25, 80, null, 76],
-        'gb-014': [15, 13, 22, 74, 38, 70],
+        'cm-001': [18, 17, 26, 85, 80],
+        'lr-002': [20, 19, 29, 92, 88],
+        'mt-012': [12, 14, 20, 68, 65],
+        'sc-013': [16, 18, 25, 80, 76],
+        'gb-014': [15, 13, 22, 74, 70],
       }
     },
     Q2: {
@@ -1288,15 +1287,14 @@
         { name: 'Seatwork 1', max: 20, cat: 'WW' },
         { name: 'Perf. Task 1', max: 100, cat: 'PT' },
         { name: 'Project', max: 100, cat: 'PT' },
-        { name: 'Journal', max: 50, cat: 'PT', readonly: true },
         { name: 'Qtrly Exam', max: 100, cat: 'QA' },
       ],
       scores: {
-        'cm-001': [45, 28, 18, 88, 90, 45, 82],
-        'lr-002': [50, 30, 20, 95, 92, 50, 90],
-        'mt-012': [30, 18, 12, 70, 65, null, 68],
-        'sc-013': [42, 25, 17, 85, 88, null, 80],
-        'gb-014': [38, 20, 14, 78, 75, 40, 72],
+        'cm-001': [45, 28, 18, 88, 90, 82],
+        'lr-002': [50, 30, 20, 95, 92, 90],
+        'mt-012': [30, 18, 12, 70, 65, 68],
+        'sc-013': [42, 25, 17, 85, 88, 80],
+        'gb-014': [38, 20, 14, 78, 75, 72],
       }
     },
     Q3: { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} },
@@ -1307,18 +1305,44 @@
     const data = QUARTER_DATA[quarter];
     const theadRow = document.getElementById('scoreTheadRow');
     const tbody = document.getElementById('scoreTbody');
+    const journalRecords = window.EDUGNAY_CONFIG
+      .getJournalsForTeacher(CURRENT_TEACHER_ID, CURRENT_SECTION_ID)
+      .filter(record =>
+        record.schoolId === TEACHER_SECTION_SCHOOL_ID &&
+        record.sectionId === CURRENT_SECTION_ID &&
+        record.subjectId === CURRENT_SUBJECT_ID &&
+        record.academicPeriodId === quarter.toLowerCase()
+      );
+    const journalWeeks = [];
+    journalRecords.forEach(record => {
+      if (!journalWeeks.some(week => week.weekId === record.weekId)) journalWeeks.push(record);
+    });
+    const journalComponents = journalWeeks.map(record => ({
+      id: `journal-${record.weekId}`,
+      name: `Journal · ${record.week}`,
+      max: Number(record.maxScore) || 50,
+      cat: String(record.categoryId || 'pt').toUpperCase(),
+      readonly: true,
+      journalWeekId: record.weekId
+    }));
+    const components = data && Array.isArray(data.components)
+      ? [
+          ...data.components.filter(component => component.cat !== 'QA'),
+          ...journalComponents,
+          ...data.components.filter(component => component.cat === 'QA')
+        ]
+      : [];
 
     theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
 
-    if (!data || !Array.isArray(data.components) || data.components.length === 0) {
-      const emptyColspan = Math.max((Array.isArray(data?.components) ? data.components.length + 5 : 1), 1);
-      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${emptyColspan}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this quarter to begin recording grades.' })}</td></tr>`;
+    if (!components.length) {
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this quarter to begin recording grades.' })}</td></tr>`;
       return;
     }
 
     const typeClass = { WW: 'type-ww', PT: 'type-pt', QA: 'type-qa' };
 
-    data.components.forEach(c => {
+    components.forEach(c => {
       const th = document.createElement('th');
       th.className = 'comp-head-cell center';
       th.dataset.cat = c.cat;
@@ -1346,10 +1370,11 @@
     theadRow.appendChild(finalTh);
 
     tbody.innerHTML = '';
-    Object.keys(data.scores || {}).forEach((studentId, idx) => {
+    Object.keys(data?.scores || {}).forEach((studentId, idx) => {
       const student = STUDENTS_BY_ID[studentId];
       if (!student) return;
       const scores = data.scores[studentId];
+      let scoreIndex = 0;
 
       let cellsHtml =
         '<td class="sticky-col">' +
@@ -1362,10 +1387,13 @@
           '</div>' +
         '</td>';
 
-      data.components.forEach((c, i) => {
-        const val = scores[i];
+      components.forEach(c => {
+        const journal = c.journalWeekId
+          ? journalRecords.find(record => record.studentId === studentId && record.weekId === c.journalWeekId)
+          : null;
+        const val = c.journalWeekId ? (journal?.score ?? null) : (scores[scoreIndex++] ?? null);
         const displayVal = val !== null ? val : '';
-        const scoreId = studentId + ':' + c.name; // stand-in for a real score row id
+        const scoreId = studentId + ':' + (c.id || c.name);
         if (c.readonly) {
           cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input readonly-score" type="number" value="' + displayVal + '" placeholder="' + (val === null ? 'n/a' : '') + '" min="0" max="' + c.max + '" disabled title="Synced from Student Journals page"/></td>';
         } else {
@@ -1385,8 +1413,8 @@
       tbody.appendChild(tr);
     });
 
-    if (!Object.keys(data.scores || {}).length) {
-      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${data.components.length + 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' })}</td></tr>`;
+    if (!Object.keys(data?.scores || {}).length) {
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${components.length + 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' })}</td></tr>`;
     }
 
     tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
