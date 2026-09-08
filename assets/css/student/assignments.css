@@ -287,18 +287,52 @@
   background: var(--blue-mid);
 }
 
-.assignment-detail-meta {
-  margin-bottom: 15px;
-  color: var(--gray-400);
-  font-size: 11.5px;
-  line-height: 1.45;
+#assignmentSubmissionModal .modal-body {
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+.assignment-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 14px;
+  margin-bottom: 18px;
+}
+
+.assignment-detail-item {
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.assignment-detail-label {
+  margin-bottom: 6px;
+  color: var(--gray-600);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .75px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.assignment-detail-value {
+  color: var(--gray-700);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .assignment-detail-block {
-  padding: 12px 14px;
+  padding: 11px 13px;
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--gray-50);
+}
+
+.assignment-detail-block .form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 700;
 }
 
 .assignment-detail-instructions {
@@ -309,11 +343,39 @@
   overflow-wrap: anywhere;
 }
 
+.assignment-submission-section {
+  margin-top: 15px;
+}
+
+.assignment-submission-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignment-submission-heading .form-label {
+  margin-bottom: 0;
+}
+
+.assignment-submission-section .form-group {
+  margin: 11px 0 0;
+}
+
 .assignment-detail-notice {
-  margin-top: 12px;
+  margin-top: 0;
   color: var(--gray-500);
   font-size: 11px;
   line-height: 1.45;
+  text-align: right;
+}
+
+.assignment-detail-notice.is-available {
+  color: var(--green-dark);
+}
+
+.assignment-detail-notice.is-classroom {
+  color: var(--gray-500);
 }
 
 #assignmentSubmissionModal #assignmentSubmissionForm[hidden],
@@ -486,5 +548,44 @@
   .assignment-action-muted {
     margin-left: auto;
     text-align: right;
+  }
+}
+
+@media (max-width: 560px) {
+  #assignmentSubmissionModal .modal-body {
+    padding: 16px !important;
+  }
+
+  #assignmentSubmissionModal .assignment-detail-grid {
+    column-gap: 16px;
+    row-gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  #assignmentSubmissionModal .assignment-detail-item {
+    padding: 2px 0;
+  }
+
+  #assignmentSubmissionModal .assignment-submission-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
+  #assignmentSubmissionModal .assignment-detail-notice {
+    width: 100%;
+    text-align: left;
+  }
+
+  #assignmentSubmissionModal #assignmentSubmissionFile {
+    width: 100%;
+  }
+
+  #assignmentSubmissionModal .modal-foot {
+    flex-wrap: nowrap;
+  }
+
+  #assignmentSubmissionModal .modal-foot .btn {
+    min-width: 0;
   }
 }

@@ -197,16 +197,38 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="assignment-detail-meta" id="assignmentDetailMeta"></div>
+        <div class="assignment-detail-grid" id="assignmentDetailGrid">
+          <div class="assignment-detail-item">
+            <div class="assignment-detail-label">ASSIGNMENT TITLE</div>
+            <div class="assignment-detail-value" id="assignmentDetailTitle">—</div>
+          </div>
+          <div class="assignment-detail-item">
+            <div class="assignment-detail-label">SUBJECT</div>
+            <div class="assignment-detail-value" id="assignmentDetailSubject">—</div>
+          </div>
+          <div class="assignment-detail-item">
+            <div class="assignment-detail-label">TEACHER</div>
+            <div class="assignment-detail-value" id="assignmentDetailTeacher">—</div>
+          </div>
+          <div class="assignment-detail-item">
+            <div class="assignment-detail-label">DUE DATE</div>
+            <div class="assignment-detail-value" id="assignmentDetailDueDate">—</div>
+          </div>
+        </div>
         <div class="assignment-detail-block">
           <div class="form-label">Instructions</div>
           <div class="assignment-detail-instructions" id="assignmentDetailInstructions">No additional instructions were provided.</div>
         </div>
-        <div class="assignment-detail-notice" id="assignmentOnlineNotice"></div>
-        <div class="form-group" id="assignmentSubmissionForm">
-          <label class="form-label" for="assignmentSubmissionFile">File</label>
-          <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4">
-          <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, Excel, image, or video.</span>
+        <div class="assignment-submission-section">
+          <div class="assignment-submission-heading">
+            <div class="form-label">Submission</div>
+            <div class="assignment-detail-notice" id="assignmentOnlineNotice"></div>
+          </div>
+          <div class="form-group" id="assignmentSubmissionForm">
+            <label class="form-label" for="assignmentSubmissionFile">File</label>
+            <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4">
+            <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, Excel, image, or video.</span>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -350,9 +372,15 @@
       document.getElementById('submissionModalTitle').textContent = assignment.onlineSubmissionEnabled
         ? hasOnlineSubmission ? 'Replace submission' : 'Submit assignment'
         : 'Assignment details';
-      document.getElementById('submissionModalSub').textContent = assignment.title;
-      document.getElementById('assignmentDetailMeta').textContent =
-        assignment.subject + ' · Due ' + formatDate(assignment.dueDate) + ' · ' + assignment.teacher;
+      document.getElementById('submissionModalSub').textContent = assignment.onlineSubmissionEnabled
+        ? 'Review the details and upload your work.'
+        : 'Review the assignment details and instructions.';
+      document.getElementById('assignmentDetailTitle').textContent = assignment.title || '—';
+      document.getElementById('assignmentDetailSubject').textContent = assignment.subject || '—';
+      document.getElementById('assignmentDetailTeacher').textContent = assignment.teacher || '—';
+      document.getElementById('assignmentDetailDueDate').textContent = assignment.dueDate
+        ? formatDate(assignment.dueDate)
+        : '—';
       document.getElementById('assignmentDetailInstructions').textContent = assignment.instructions ||
         "No additional instructions were provided.";
 
@@ -363,9 +391,12 @@
       submitButton.hidden = !canSubmitOnline;
       submitButton.innerHTML = '<i data-lucide="send" style="width:13px;height:13px;"></i> ' +
         (hasOnlineSubmission ? 'Replace file' : 'Submit work');
-      document.getElementById('assignmentOnlineNotice').textContent = canSubmitOnline
-        ? 'Online submission is available for this assignment.'
-        : 'Submit this assignment in class.';
+      const onlineNotice = document.getElementById('assignmentOnlineNotice');
+      onlineNotice.textContent = canSubmitOnline
+        ? 'Online submission available'
+        : 'Submit in class';
+      onlineNotice.classList.toggle('is-available', canSubmitOnline);
+      onlineNotice.classList.toggle('is-classroom', !canSubmitOnline);
 
       const fileInput = document.getElementById('assignmentSubmissionFile');
       fileInput.value = '';
