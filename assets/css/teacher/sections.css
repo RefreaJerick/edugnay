@@ -1488,31 +1488,29 @@ thead tr:hover .comp-delete-btn {
 .assignment-card-actions {
   display: flex;
   align-items: center;
-  gap: 35px;
+  gap: 8px;
   flex-shrink: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.assignment-instructions-btn {
-  min-height: 30px;
-  padding: 6px 9px;
-  font-size: 11px;
+.assignment-submissions-modal {
+  max-width: 760px;
 }
 
-.assignment-online-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 32px;
-  white-space: nowrap;
-  cursor: pointer;
+.assignment-submissions-table {
+  min-width: 620px;
 }
 
-.assignment-online-toggle-label {
-  color: var(--gray-700);
+.assignment-submissions-table th,
+.assignment-submissions-table td {
+  vertical-align: middle;
+}
+
+.assignment-file-unavailable {
+  color: var(--gray-400);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .status-btn-group {
@@ -1877,10 +1875,23 @@ tbody tr:hover td.sticky-col {
     justify-content: flex-end;
   }
 
-  .assignment-instructions-btn {
-    min-height: 30px;
-    padding: 6px 9px;
-    font-size: 11px;
+  .assignment-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .assignment-card-actions .top-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .assignment-card-actions .top-btn:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .assignment-submissions-modal .modal-body {
+    padding: 16px;
   }
 
   .upload-zone {

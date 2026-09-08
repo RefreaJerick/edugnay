@@ -157,30 +157,54 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="assignmentInstructionsModal">
+<div class="modal-backdrop" id="editAssignmentModal">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-heading">
-        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="message-square-text"></i></div>
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="pencil"></i></div>
         <div class="modal-heading-copy">
-          <div class="modal-title">Assignment Instructions</div>
-          <div class="modal-sub" id="assignmentInstructionsModalSub">Add instructions for students.</div>
+          <div class="modal-title">Edit Assignment</div>
+          <div class="modal-sub">Update the assignment details and submission setting.</div>
         </div>
       </div>
-      <button class="modal-close" type="button" onclick="closeAssignmentInstructionsModal()">
+      <button class="modal-close" type="button" onclick="closeModal('editAssignmentModal')">
         <i data-lucide="x" style="width:14px;height:14px;"></i>
       </button>
     </div>
     <div class="modal-body">
       <div class="form-group">
+        <label class="form-label" for="editAssignmentTitleInput">Task Title</label>
+        <input class="form-input" type="text" id="editAssignmentTitleInput" placeholder="e.g. Reading Response">
+      </div>
+      <div class="form-group">
         <label class="form-label" for="editAssignmentInstructionsInput">Instructions (optional)</label>
-        <textarea class="form-input" id="editAssignmentInstructionsInput" rows="5" placeholder="Add instructions for students"></textarea>
+        <textarea class="form-input" id="editAssignmentInstructionsInput" rows="3" placeholder="Add instructions for students"></textarea>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label" for="editAssignmentSubjectInput">Subject</label>
+          <input class="form-input" type="text" id="editAssignmentSubjectInput" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editAssignmentDueInput">Due Date</label>
+          <input class="form-input" type="date" id="editAssignmentDueInput">
+        </div>
+      </div>
+      <div class="school-toggle-list">
+        <label class="school-toggle-row">
+          <span class="school-toggle-copy">
+            <strong>Allow online submissions</strong>
+            <small>Students can upload their work for this assignment.</small>
+          </span>
+          <input class="school-toggle-input" type="checkbox" id="editAssignmentOnlineInput">
+          <span class="school-toggle-control" aria-hidden="true"></span>
+        </label>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-cancel" type="button" onclick="closeAssignmentInstructionsModal()">Cancel</button>
-      <button class="btn btn-save" type="button" onclick="saveAssignmentInstructions()">
-        <i data-lucide="save" style="width:13px;height:13px;"></i> Save Instructions
+      <button class="btn btn-cancel" type="button" onclick="closeModal('editAssignmentModal')">Cancel</button>
+      <button class="btn btn-save" type="button" onclick="saveAssignmentChanges()">
+        <i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes
       </button>
     </div>
   </div>
@@ -209,6 +233,42 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-save" onclick="closeModal('assignmentStatusModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ASSIGNMENT SUBMISSIONS MODAL ══════ -->
+<div class="modal-backdrop" id="assignmentSubmissionsModal">
+  <div class="modal assignment-submissions-modal">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="inbox"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title">Assignment Submissions</div>
+          <div class="modal-sub" id="assignmentSubmissionsModalSub">Review submitted student work.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeModal('assignmentSubmissionsModal')">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" id="assignmentSubmissionsContent">
+        <table class="assignment-submissions-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>File</th>
+              <th>Submitted at</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="assignmentSubmissionsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-save" type="button" onclick="closeModal('assignmentSubmissionsModal')">Close</button>
     </div>
   </div>
 </div>
@@ -1524,7 +1584,11 @@
 
   /* ── ASSIGNMENTS ── */
   function getTeacherAssignments() {
-    return window.EDUGNAY_CONFIG.getAssignmentsForSection(CURRENT_SECTION_ID);
+    return window.EDUGNAY_CONFIG.getAssignmentsForSection(CURRENT_SECTION_ID)
+      .filter(assignment =>
+        assignment.teacherId === CURRENT_TEACHER_ID &&
+        assignment.subjectId === CURRENT_SUBJECT_ID
+      );
   }
 
   function renderAssignments() {
@@ -1547,27 +1611,20 @@
             <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
           </div>
           <div class="assignment-card-actions">
-            <button class="top-btn secondary assignment-instructions-btn" type="button" onclick="openAssignmentInstructionsModal('${a.id}')">
-              <i data-lucide="message-square-plus" style="width:13px;height:13px;"></i> ${a.instructions ? 'Edit instructions' : 'Add instructions'}
+            <button class="top-btn secondary" type="button" onclick="openEditAssignmentModal('${a.id}')">
+              <i data-lucide="pencil" style="width:13px;height:13px;"></i> Edit
             </button>
-            <label class="assignment-online-toggle" title="${a.onlineSubmissionEnabled ? 'Online submissions enabled' : 'Allow online submissions'}">
-              <span class="assignment-online-toggle-label">Online submissions</span>
-              <input class="school-toggle-input" type="checkbox" aria-label="Allow online submissions for ${a.title}" ${a.onlineSubmissionEnabled ? 'checked' : ''} onchange="toggleAssignmentOnlineSubmissions('${a.id}', this.checked)">
-              <span class="school-toggle-control" aria-hidden="true"></span>
-            </label>
-            <button class="top-btn secondary" onclick="openStatusModal('${a.id}')">
+            <button class="top-btn secondary" type="button" onclick="openStatusModal('${a.id}')">
               <i data-lucide="check-square" style="width:13px;height:13px;"></i> Update Status
             </button>
+            ${a.onlineSubmissionEnabled === true ? `
+              <button class="top-btn secondary" type="button" onclick="openAssignmentSubmissionsModal('${a.id}')">
+                <i data-lucide="inbox" style="width:13px;height:13px;"></i> View Submissions
+              </button>` : ''}
           </div>
         </div>`;
     }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments you create for this section will appear here.' });
     lucide.createIcons();
-  }
-
-  function toggleAssignmentOnlineSubmissions(assignmentId, enabled) {
-    window.EDUGNAY_CONFIG.updateAssignment(assignmentId, {
-      onlineSubmissionEnabled: enabled
-    });
   }
 
   const TEACHER_MATERIAL_TYPE_META = {
@@ -1692,31 +1749,68 @@
 
   let activeAssignmentId = null;
 
-  function openAssignmentInstructionsModal(id) {
-    const assignment = getTeacherAssignments().find(item => item.id === String(id));
+  function openEditAssignmentModal(assignmentId) {
+    const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
     if (!assignment) return;
 
     activeAssignmentId = assignment.id;
-    document.getElementById('assignmentInstructionsModalSub').textContent = assignment.title;
+    document.getElementById('editAssignmentTitleInput').value = assignment.title || '';
     document.getElementById('editAssignmentInstructionsInput').value = assignment.instructions || '';
-    openModal('assignmentInstructionsModal');
+    document.getElementById('editAssignmentSubjectInput').value = assignment.subjectName || CURRENT_SUBJECT;
+    document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
+    document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
+    openModal('editAssignmentModal');
     lucide.createIcons();
   }
 
-  function closeAssignmentInstructionsModal() {
-    closeModal('assignmentInstructionsModal');
-    activeAssignmentId = null;
-  }
-
-  function saveAssignmentInstructions() {
+  function saveAssignmentChanges() {
     if (!activeAssignmentId) return;
 
+    const title = document.getElementById('editAssignmentTitleInput').value.trim();
     const instructions = document.getElementById('editAssignmentInstructionsInput').value.trim();
-    window.EDUGNAY_CONFIG.updateAssignment(activeAssignmentId, {
-      instructions: instructions || null
+    const dueDate = document.getElementById('editAssignmentDueInput').value;
+    const onlineSubmissionEnabled = document.getElementById('editAssignmentOnlineInput').checked;
+    if (!title || !dueDate) {
+      alert('Please fill in task title and due date.');
+      return;
+    }
+
+    const assignment = window.EDUGNAY_CONFIG.updateAssignment(activeAssignmentId, {
+      title,
+      instructions: instructions || null,
+      dueDate,
+      onlineSubmissionEnabled
     });
-    closeAssignmentInstructionsModal();
+    if (!assignment) return;
+
+    closeModal('editAssignmentModal');
+    activeAssignmentId = null;
     renderAssignments();
+  }
+
+  function openAssignmentSubmissionsModal(assignmentId) {
+    const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
+    if (!assignment) return;
+
+    activeAssignmentId = assignment.id;
+    document.getElementById('assignmentSubmissionsModalSub').textContent = assignment.title;
+    const submissions = window.EDUGNAY_CONFIG.getAssignmentSubmissions(assignment.id);
+    document.getElementById('assignmentSubmissionsTbody').innerHTML = submissions.length ? submissions.map(submission => {
+      const student = window.EDUGNAY_CONFIG.getUserById(submission.studentId);
+      const studentName = student?.displayName || 'Unknown student';
+      const fileAction = submission.fileUrl
+        ? `<a class="row-btn view" href="${window.EDUGNAY_CONFIG.escapeHtml(submission.fileUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link" style="width:13px;height:13px;"></i> View file</a>`
+        : '<span class="assignment-file-unavailable">File unavailable</span>';
+      return `
+        <tr>
+          <td>${window.EDUGNAY_CONFIG.escapeHtml(studentName)}</td>
+          <td>${window.EDUGNAY_CONFIG.escapeHtml(submission.fileName)}</td>
+          <td>${window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt)}</td>
+          <td>${fileAction}</td>
+        </tr>`;
+    }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'inbox', title: 'No submissions yet', text: 'Student files will appear here after they submit this assignment online.' })}</td></tr>`;
+    openModal('assignmentSubmissionsModal');
+    lucide.createIcons();
   }
 
   function openStatusModal(id) {

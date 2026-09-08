@@ -562,12 +562,20 @@ function formatRelativeTime(dateValue) {
     );
     if (!assignment) return null;
 
-    if (values.onlineSubmissionEnabled !== undefined) {
-      assignment.onlineSubmissionEnabled = values.onlineSubmissionEnabled === true;
+    if (values.title !== undefined) {
+      assignment.title = String(values.title || '').trim();
     }
 
     if (values.instructions !== undefined) {
       assignment.instructions = String(values.instructions || '').trim() || null;
+    }
+
+    if (values.dueDate !== undefined) {
+      assignment.dueDate = values.dueDate ? String(values.dueDate) : null;
+    }
+
+    if (values.onlineSubmissionEnabled !== undefined) {
+      assignment.onlineSubmissionEnabled = values.onlineSubmissionEnabled === true;
     }
 
     saveAssignments();
