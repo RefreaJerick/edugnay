@@ -146,6 +146,24 @@
           <input class="school-toggle-input" type="checkbox" id="assignOnlineSubmissionInput">
           <span class="school-toggle-control" aria-hidden="true"></span>
         </label>
+        <label class="school-toggle-row">
+          <span class="school-toggle-copy">
+            <strong>Include in Score Recording</strong>
+            <small>Add this assignment as a graded component.</small>
+          </span>
+          <input class="school-toggle-input" type="checkbox" id="assignGradingInput" onchange="document.getElementById('assignGradingFields').hidden = !this.checked">
+          <span class="school-toggle-control" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="form-row-2" id="assignGradingFields" hidden>
+        <div class="form-group">
+          <label class="form-label" for="assignCategoryInput">Grading Category</label>
+          <select class="form-select" id="assignCategoryInput"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="assignMaxScoreInput">Highest Possible Score</label>
+          <input class="form-input" type="number" id="assignMaxScoreInput" min="1" step="1" placeholder="e.g. 50">
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -199,6 +217,24 @@
           <input class="school-toggle-input" type="checkbox" id="editAssignmentOnlineInput">
           <span class="school-toggle-control" aria-hidden="true"></span>
         </label>
+        <label class="school-toggle-row">
+          <span class="school-toggle-copy">
+            <strong>Include in Score Recording</strong>
+            <small>Add this assignment as a graded component.</small>
+          </span>
+          <input class="school-toggle-input" type="checkbox" id="editAssignmentGradingInput" onchange="document.getElementById('editAssignmentGradingFields').hidden = !this.checked">
+          <span class="school-toggle-control" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="form-row-2" id="editAssignmentGradingFields" hidden>
+        <div class="form-group">
+          <label class="form-label" for="editAssignmentCategoryInput">Grading Category</label>
+          <select class="form-select" id="editAssignmentCategoryInput"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editAssignmentMaxScoreInput">Highest Possible Score</label>
+          <input class="form-input" type="number" id="editAssignmentMaxScoreInput" min="1" step="1" placeholder="e.g. 50">
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -260,6 +296,7 @@
               <th>Student</th>
               <th>File</th>
               <th>Submitted at</th>
+              <th>Score</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -1009,7 +1046,6 @@
   const STUDENTS = CURRENT_SECTION_STUDENT_IDS
     .map(id => window.EDUGNAY_CONFIG.getUserById(id))
     .filter(student => student?.role === 'student');
-  const STUDENTS_BY_ID = Object.fromEntries(STUDENTS.map(s => [s.id, s]));
 
   const STUDENT_PROGRESS = window.EDUGNAY_CONFIG.withActiveSchool([
     { studentId: 'cm-001', attendanceRate: '96%', grade: 88, status: 'Passing', tone: 'green' },
@@ -1239,6 +1275,11 @@
   }
 
   renderGradingRules();
+  const ASSIGNMENT_CATEGORY_OPTIONS = CURRENT_GRADING_RULES.map(rule =>
+    `<option value="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)} (${Number(rule.weight) || 0}%)</option>`
+  ).join('');
+  document.getElementById('assignCategoryInput').innerHTML = ASSIGNMENT_CATEGORY_OPTIONS;
+  document.getElementById('editAssignmentCategoryInput').innerHTML = ASSIGNMENT_CATEGORY_OPTIONS;
 
   function selectCompType(el, type, cat) {
     document.querySelectorAll('.comp-type-opt').forEach(o => o.classList.remove('selected'));
@@ -1262,22 +1303,20 @@
   }
 
   /* ── GRADE COMPUTATION ── */
-  const WEIGHTS = {
-    WW: gradingWeight('WW') / 100,
-    PT: gradingWeight('PT') / 100,
-    QA: gradingWeight('QA') / 100
-  };
+  const WEIGHTS = Object.fromEntries(
+    CURRENT_GRADING_RULES.map(rule => [String(rule.id).toUpperCase(), Number(rule.weight) / 100 || 0])
+  );
 
   // Stand-in for per-quarter components and scores, replace with real data once backend is wired
   const QUARTER_DATA = {
     Q1: {
       schoolId: TEACHER_SECTION_SCHOOL_ID,
       components: [
-        { name: 'Quiz 1', max: 20, cat: 'WW' },
-        { name: 'Quiz 2', max: 20, cat: 'WW' },
-        { name: 'Written Report', max: 30, cat: 'WW' },
-        { name: 'Skills Demo', max: 100, cat: 'PT' },
-        { name: 'Qtrly Exam', max: 100, cat: 'QA' },
+        { id: 'q1-quiz-1', name: 'Quiz 1', max: 20, cat: 'WW', scoreIndex: 0 },
+        { id: 'q1-quiz-2', name: 'Quiz 2', max: 20, cat: 'WW', scoreIndex: 1 },
+        { id: 'q1-written-report', name: 'Written Report', max: 30, cat: 'WW', scoreIndex: 2 },
+        { id: 'q1-skills-demo', name: 'Skills Demo', max: 100, cat: 'PT', scoreIndex: 3 },
+        { id: 'q1-quarterly-exam', name: 'Qtrly Exam', max: 100, cat: 'QA', scoreIndex: 4 },
       ],
       scores: {
         'cm-001': [18, 17, 26, 85, 80],
@@ -1290,19 +1329,16 @@
     Q2: {
       schoolId: TEACHER_SECTION_SCHOOL_ID,
       components: [
-        { name: 'Quiz 1', max: 50, cat: 'WW' },
-        { name: 'Activity 1', max: 30, cat: 'WW' },
-        { name: 'Seatwork 1', max: 20, cat: 'WW' },
-        { name: 'Perf. Task 1', max: 100, cat: 'PT' },
-        { name: 'Project', max: 100, cat: 'PT' },
-        { name: 'Qtrly Exam', max: 100, cat: 'QA' },
+        { id: 'q2-performance-task-1', name: 'Perf. Task 1', max: 100, cat: 'PT', scoreIndex: 0 },
+        { id: 'q2-project', name: 'Project', max: 100, cat: 'PT', scoreIndex: 1 },
+        { id: 'q2-quarterly-exam', name: 'Qtrly Exam', max: 100, cat: 'QA', scoreIndex: 2 },
       ],
       scores: {
-        'cm-001': [45, 28, 18, 88, 90, 82],
-        'lr-002': [50, 30, 20, 95, 92, 90],
-        'mt-012': [30, 18, 12, 70, 65, 68],
-        'sc-013': [42, 25, 17, 85, 88, 80],
-        'gb-014': [38, 20, 14, 78, 75, 72],
+        'cm-001': [88, 90, 82],
+        'lr-002': [95, 92, 90],
+        'mt-012': [70, 65, 68],
+        'sc-013': [85, 88, 80],
+        'gb-014': [78, 75, 72],
       }
     },
     Q3: { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} },
@@ -1333,13 +1369,27 @@
       readonly: true,
       journalWeekId: record.weekId
     }));
-    const components = data && Array.isArray(data.components)
-      ? [
-          ...data.components.filter(component => component.cat !== 'QA'),
-          ...journalComponents,
-          ...data.components.filter(component => component.cat === 'QA')
-        ]
-      : [];
+    const validCategoryIds = CURRENT_GRADING_RULES.map(rule => String(rule.id).toLowerCase());
+    const assignmentRecords = getTeacherAssignments().filter(assignment =>
+      assignment.academicPeriodId === quarter.toLowerCase() &&
+      validCategoryIds.includes(String(assignment.categoryId).toLowerCase()) &&
+      Number(assignment.maxScore) > 0
+    );
+    const assignmentComponents = assignmentRecords.map(assignment => ({
+      id: assignment.id,
+      name: assignment.title,
+      max: Number(assignment.maxScore),
+      cat: String(assignment.categoryId).toUpperCase(),
+      assignmentId: assignment.id
+    }));
+    const categoryCodes = validCategoryIds.map(category => category.toUpperCase());
+    const staticComponents = data && Array.isArray(data.components) ? data.components : [];
+    const components = categoryCodes.flatMap(category => [
+      ...staticComponents.filter(component => component.cat === category),
+      ...assignmentComponents.filter(component => component.cat === category),
+      ...journalComponents.filter(component => component.cat === category)
+    ]);
+    const assignmentScores = window.EDUGNAY_CONFIG.getAssignmentScores();
 
     theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
 
@@ -1356,18 +1406,18 @@
       th.dataset.cat = c.cat;
       th.innerHTML =
         '<div class="comp-head-inner">' +
-          '<div class="comp-head-name">' + c.name + '</div>' +
+          '<div class="comp-head-name">' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '</div>' +
           '<div class="comp-head-max">/ ' + c.max + '</div>' +
-          '<div class="comp-head-type ' + typeClass[c.cat] + '">' + c.cat + '</div>' +
+          '<div class="comp-head-type ' + (typeClass[c.cat] || 'type-ww') + '">' + c.cat + '</div>' +
         '</div>';
       theadRow.appendChild(th);
     });
 
-    ['WW Avg', 'PT Avg', 'QA'].forEach(label => {
+    CURRENT_GRADING_RULES.forEach(rule => {
       const th = document.createElement('th');
       th.className = 'center';
       th.style.cssText = 'min-width:80px;background:#f0f4ff;';
-      th.textContent = label;
+      th.textContent = `${String(rule.id).toUpperCase()} Avg`;
       theadRow.appendChild(th);
     });
 
@@ -1378,11 +1428,9 @@
     theadRow.appendChild(finalTh);
 
     tbody.innerHTML = '';
-    Object.keys(data?.scores || {}).forEach((studentId, idx) => {
-      const student = STUDENTS_BY_ID[studentId];
-      if (!student) return;
-      const scores = data.scores[studentId];
-      let scoreIndex = 0;
+    STUDENTS.forEach((student, idx) => {
+      const studentId = student.id;
+      const scores = data?.scores?.[studentId] || [];
 
       let cellsHtml =
         '<td class="sticky-col">' +
@@ -1399,21 +1447,29 @@
         const journal = c.journalWeekId
           ? journalRecords.find(record => record.studentId === studentId && record.weekId === c.journalWeekId)
           : null;
-        const val = c.journalWeekId ? (journal?.score ?? null) : (scores[scoreIndex++] ?? null);
+        const assignmentScore = c.assignmentId
+          ? assignmentScores.find(record => record.assignmentId === c.assignmentId && record.studentId === studentId)
+          : null;
+        const val = c.assignmentId
+          ? (assignmentScore?.score ?? null)
+          : c.journalWeekId
+            ? (journal?.score ?? null)
+            : (scores[c.scoreIndex] ?? null);
         const displayVal = val !== null ? val : '';
         const scoreId = studentId + ':' + (c.id || c.name);
         if (c.readonly) {
           cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input readonly-score" type="number" value="' + displayVal + '" placeholder="' + (val === null ? 'n/a' : '') + '" min="0" max="' + c.max + '" disabled title="Synced from Student Journals page"/></td>';
+        } else if (c.assignmentId) {
+          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-assignment-id="' + c.assignmentId + '" oninput="computeRow(this, true)"/></td>';
         } else {
-          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" oninput="computeRow(this)"/></td>';
+          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-score-index="' + c.scoreIndex + '" data-quarter="' + quarter + '" oninput="computeRow(this, true)"/></td>';
         }
       });
 
-      cellsHtml +=
-        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
-        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
-        '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>' +
-        '<td class="center computed-cell computed-final" style="background:var(--blue-xpale);">0</td>';
+      cellsHtml += CURRENT_GRADING_RULES
+        .map(() => '<td class="center computed-cell computed-avg" style="background:#f8faff;">0.0</td>')
+        .join('');
+      cellsHtml += '<td class="center computed-cell computed-final" style="background:var(--blue-xpale);">0</td>';
 
       const tr = document.createElement('tr');
       tr.dataset.studentId = studentId;
@@ -1421,8 +1477,8 @@
       tbody.appendChild(tr);
     });
 
-    if (!Object.keys(data?.scores || {}).length) {
-      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${components.length + 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' })}</td></tr>`;
+    if (!STUDENTS.length) {
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${components.length + CURRENT_GRADING_RULES.length + 2}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' })}</td></tr>`;
     }
 
     tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
@@ -1430,7 +1486,7 @@
 
   let scoreSaveTimers = {};
 
-  function computeRow(input) {
+  function computeRow(input, shouldSave = false) {
     const row = input.closest('tr');
     const max = parseFloat(input.max);
     const val = parseFloat(input.value);
@@ -1438,30 +1494,42 @@
 
     // debounced save — fires 600ms after typing stops
     const scoreId = input.dataset.scoreId;
-    if (scoreId) {
+    if (shouldSave && scoreId) {
       const studentId = row.dataset.studentId;
-      const compIndex = Array.from(row.querySelectorAll('.score-input')).indexOf(input);
       clearTimeout(scoreSaveTimers[scoreId]);
-      scoreSaveTimers[scoreId] = setTimeout(() => saveScore(scoreId, input.value, studentId, compIndex), 600);
+      scoreSaveTimers[scoreId] = setTimeout(() => {
+        if (input.dataset.assignmentId) {
+          window.EDUGNAY_CONFIG.setAssignmentScore(input.dataset.assignmentId, studentId, input.value);
+        } else {
+          saveScore(input.value, studentId, Number(input.dataset.scoreIndex), input.dataset.quarter);
+        }
+      }, 600);
     }
 
-    const groups = { WW: { sum: 0, maxSum: 0 }, PT: { sum: 0, maxSum: 0 }, QA: { sum: 0, maxSum: 0 } };
+    const groups = Object.fromEntries(
+      CURRENT_GRADING_RULES.map(rule => [String(rule.id).toUpperCase(), { sum: 0, maxSum: 0 }])
+    );
 
     row.querySelectorAll('td[data-cat] .score-input').forEach(inp => {
       const cat = inp.closest('td').dataset.cat;
       const mx = parseFloat(inp.max);
       const v = parseFloat(inp.value);
-      if (!isNaN(v)) {
+      if (groups[cat] && !isNaN(v)) {
         groups[cat].sum += v;
         groups[cat].maxSum += mx;
       }
     });
 
-    const wwAvg = groups.WW.maxSum > 0 ? (groups.WW.sum / groups.WW.maxSum) * 100 : 0;
-    const ptAvg = groups.PT.maxSum > 0 ? (groups.PT.sum / groups.PT.maxSum) * 100 : 0;
-    const qaAvg = groups.QA.maxSum > 0 ? (groups.QA.sum / groups.QA.maxSum) * 100 : 0;
-
-    const final = (wwAvg * WEIGHTS.WW) + (ptAvg * WEIGHTS.PT) + (qaAvg * WEIGHTS.QA);
+    const averages = Object.fromEntries(
+      Object.entries(groups).map(([category, values]) => [
+        category,
+        values.maxSum > 0 ? (values.sum / values.maxSum) * 100 : 0
+      ])
+    );
+    const final = Object.entries(averages).reduce(
+      (total, [category, average]) => total + (average * (WEIGHTS[category] || 0)),
+      0
+    );
     const rounded = GRADE_ROUNDING === 'roundup'
       ? Math.ceil(final)
       : GRADE_ROUNDING === 'truncate'
@@ -1469,12 +1537,13 @@
         : Math.round(final);
 
     const computed = row.querySelectorAll('.computed-cell');
-    if (computed.length >= 4) {
-      computed[0].textContent = wwAvg.toFixed(1);
-      computed[1].textContent = ptAvg.toFixed(1);
-      computed[2].textContent = qaAvg.toFixed(1);
-      computed[3].textContent = rounded;
-      computed[3].className = 'center computed-cell computed-final ' + (
+    if (computed.length >= CURRENT_GRADING_RULES.length + 1) {
+      CURRENT_GRADING_RULES.forEach((rule, index) => {
+        computed[index].textContent = (averages[String(rule.id).toUpperCase()] || 0).toFixed(1);
+      });
+      const finalCell = computed[CURRENT_GRADING_RULES.length];
+      finalCell.textContent = rounded;
+      finalCell.className = 'center computed-cell computed-final ' + (
         rounded >= PASSING_GRADE_THRESHOLD
           ? 'grade-pass'
           : rounded >= WARNING_GRADE_THRESHOLD
@@ -1484,26 +1553,11 @@
     }
   }
 
-  function saveScore(scoreId, value, studentId, compIndex) {
-    // --- SYNC (current, GitHub Pages friendly) ---
-    // Update local state directly, no network call.
-    QUARTER_DATA[ACTIVE_QUARTER].scores[studentId][compIndex] = Number(value);
-    console.log('Score saved locally:', scoreId, '→', value);
-
-    // --- ASYNC (swap in later, once backend exists) ---
-    // async function saveScore(scoreId, value, studentId, compIndex) {
-    //   try {
-    //     const res = await fetch(`/api/scores/${scoreId}`, {
-    //       method: 'PATCH',
-    //       headers: { 'Content-Type': 'application/json' },
-    //       body: JSON.stringify({ score: value })
-    //     });
-    //     if (!res.ok) throw new Error('save failed');
-    //     QUARTER_DATA[ACTIVE_QUARTER].scores[studentId][compIndex] = Number(value);
-    //   } catch (err) {
-    //     console.error('Score save failed', err);
-    //   }
-    // }
+  function saveScore(value, studentId, compIndex, quarter) {
+    if (!QUARTER_DATA[quarter].scores[studentId]) {
+      QUARTER_DATA[quarter].scores[studentId] = [];
+    }
+    QUARTER_DATA[quarter].scores[studentId][compIndex] = value === '' ? null : Number(value);
   }
 
   /* ── ATTENDANCE ── */
@@ -1648,12 +1702,16 @@
         .filter(record => record.status === 'submitted').length;
       const pct = STUDENTS.length ? Math.round((submitted / STUDENTS.length) * 100) : 0;
       const dueLabel = new Date(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const gradingRule = GRADING_RULES_BY_ID[String(a.categoryId || '').toLowerCase()];
+      const gradingLabel = gradingRule && Number(a.maxScore) > 0
+        ? ` · ${window.EDUGNAY_CONFIG.escapeHtml(gradingRule.label)} · ${a.maxScore} points`
+        : ' · Not included in Score Recording';
       return `
         <div class="assignment-card">
           <div class="assignment-card-icon"><i data-lucide="list-checks" style="width:17px;height:17px;"></i></div>
           <div class="assignment-card-body">
             <div class="assignment-card-title">${a.title}</div>
-            <div class="assignment-card-meta">${a.subjectName} · Due ${dueLabel} · ${submitted}/${STUDENTS.length} submitted</div>
+            <div class="assignment-card-meta">${a.subjectName} · Due ${dueLabel} · ${submitted}/${STUDENTS.length} submitted${gradingLabel}</div>
             <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
           </div>
           <div class="assignment-card-actions">
@@ -1771,7 +1829,14 @@
     const instructions = document.getElementById('assignInstructionsInput').value.trim();
     const due = document.getElementById('assignDueInput').value;
     const onlineSubmissionEnabled = document.getElementById('assignOnlineSubmissionInput').checked;
+    const includeInScoreRecording = document.getElementById('assignGradingInput').checked;
+    const categoryId = includeInScoreRecording ? document.getElementById('assignCategoryInput').value : null;
+    const maxScore = includeInScoreRecording ? Number(document.getElementById('assignMaxScoreInput').value) : null;
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
+    if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
+      alert('Please select a grading category and enter the highest possible score.');
+      return;
+    }
 
     const subjectRecord = window.EDUGNAY_CONFIG.subjects.find(item => item.name === subject) || CURRENT_SUBJECT_RECORD;
     window.EDUGNAY_CONFIG.createAssignment({
@@ -1779,18 +1844,25 @@
       teacherId: CURRENT_TEACHER_ID,
       sectionId: CURRENT_SECTION_ID,
       subjectId: subjectRecord?.id || CURRENT_SUBJECT_ID,
+      academicPeriodId: document.getElementById('quarterSelect').value.toLowerCase(),
       title,
       instructions: instructions || null,
       assignedDate: due,
       dueDate: due,
-      onlineSubmissionEnabled
+      onlineSubmissionEnabled,
+      categoryId,
+      maxScore
     });
     document.getElementById('assignTitleInput').value = '';
     document.getElementById('assignInstructionsInput').value = '';
     document.getElementById('assignDueInput').value = '';
     document.getElementById('assignOnlineSubmissionInput').checked = false;
+    document.getElementById('assignGradingInput').checked = false;
+    document.getElementById('assignGradingFields').hidden = true;
+    document.getElementById('assignMaxScoreInput').value = '';
     closeModal('addAssignmentModal');
     renderAssignments();
+    renderScoreTable(document.getElementById('quarterSelect').value);
   }
 
   let activeAssignmentId = null;
@@ -1805,6 +1877,11 @@
     document.getElementById('editAssignmentSubjectInput').value = assignment.subjectName || CURRENT_SUBJECT;
     document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
     document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
+    const includeInScoreRecording = Boolean(assignment.categoryId && Number(assignment.maxScore) > 0);
+    document.getElementById('editAssignmentGradingInput').checked = includeInScoreRecording;
+    document.getElementById('editAssignmentGradingFields').hidden = !includeInScoreRecording;
+    document.getElementById('editAssignmentCategoryInput').value = assignment.categoryId || '';
+    document.getElementById('editAssignmentMaxScoreInput').value = assignment.maxScore || '';
     openModal('editAssignmentModal');
     lucide.createIcons();
   }
@@ -1816,22 +1893,42 @@
     const instructions = document.getElementById('editAssignmentInstructionsInput').value.trim();
     const dueDate = document.getElementById('editAssignmentDueInput').value;
     const onlineSubmissionEnabled = document.getElementById('editAssignmentOnlineInput').checked;
+    const includeInScoreRecording = document.getElementById('editAssignmentGradingInput').checked;
+    const categoryId = includeInScoreRecording ? document.getElementById('editAssignmentCategoryInput').value : null;
+    const maxScore = includeInScoreRecording ? Number(document.getElementById('editAssignmentMaxScoreInput').value) : null;
     if (!title || !dueDate) {
       alert('Please fill in task title and due date.');
       return;
+    }
+    if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
+      alert('Please select a grading category and enter the highest possible score.');
+      return;
+    }
+
+    if (includeInScoreRecording) {
+      const highestScore = window.EDUGNAY_CONFIG
+        .getAssignmentScores({ assignmentId: activeAssignmentId })
+        .reduce((highest, record) => Math.max(highest, Number(record.score) || 0), 0);
+      if (maxScore < highestScore) {
+        alert(`The highest possible score cannot be lower than the existing score of ${highestScore}.`);
+        return;
+      }
     }
 
     const assignment = window.EDUGNAY_CONFIG.updateAssignment(activeAssignmentId, {
       title,
       instructions: instructions || null,
       dueDate,
-      onlineSubmissionEnabled
+      onlineSubmissionEnabled,
+      categoryId,
+      maxScore
     });
     if (!assignment) return;
 
     closeModal('editAssignmentModal');
     activeAssignmentId = null;
     renderAssignments();
+    renderScoreTable(document.getElementById('quarterSelect').value);
   }
 
   function openAssignmentSubmissionsModal(assignmentId) {
@@ -1841,9 +1938,14 @@
     activeAssignmentId = assignment.id;
     document.getElementById('assignmentSubmissionsModalSub').textContent = assignment.title;
     const submissions = window.EDUGNAY_CONFIG.getAssignmentSubmissions(assignment.id);
+    const scores = window.EDUGNAY_CONFIG.getAssignmentScores({ assignmentId: assignment.id });
     document.getElementById('assignmentSubmissionsTbody').innerHTML = submissions.length ? submissions.map(submission => {
       const student = window.EDUGNAY_CONFIG.getUserById(submission.studentId);
       const studentName = student?.displayName || 'Unknown student';
+      const score = scores.find(record => record.studentId === submission.studentId)?.score ?? '';
+      const scoreInput = assignment.categoryId && Number(assignment.maxScore) > 0
+        ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
+        : '<span class="assignment-file-unavailable">Not graded</span>';
       const fileAction = submission.fileUrl
         ? `<a class="row-btn view" href="${window.EDUGNAY_CONFIG.escapeHtml(submission.fileUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link" style="width:13px;height:13px;"></i> View file</a>`
         : '<span class="assignment-file-unavailable">File unavailable</span>';
@@ -1852,11 +1954,25 @@
           <td>${window.EDUGNAY_CONFIG.escapeHtml(studentName)}</td>
           <td>${window.EDUGNAY_CONFIG.escapeHtml(submission.fileName)}</td>
           <td>${window.EDUGNAY_CONFIG.formatDateTime(submission.submittedAt)}</td>
+          <td>${scoreInput}</td>
           <td>${fileAction}</td>
         </tr>`;
-    }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'inbox', title: 'No submissions yet', text: 'Student files will appear here after they submit this assignment online.' })}</td></tr>`;
+    }).join('') : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'inbox', title: 'No submissions yet', text: 'Student files will appear here after they submit this assignment online.' })}</td></tr>`;
     openModal('assignmentSubmissionsModal');
     lucide.createIcons();
+  }
+
+  function saveAssignmentSubmissionScore(assignmentId, studentId, input) {
+    const score = input.value === '' ? null : Number(input.value);
+    const maxScore = Number(input.max);
+    if (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore)) {
+      alert(`Enter a score from 0 to ${maxScore}.`);
+      openAssignmentSubmissionsModal(assignmentId);
+      return;
+    }
+
+    window.EDUGNAY_CONFIG.setAssignmentScore(assignmentId, studentId, score);
+    renderScoreTable(document.getElementById('quarterSelect').value);
   }
 
   function openStatusModal(id) {

@@ -123,6 +123,7 @@ function formatRelativeTime(dateValue) {
     parentStudentLinks: 'edugnay_parent_student_links',
     attendance: 'edugnay_attendance',
     assignments: 'edugnay_assignments',
+    assignmentScores: 'edugnay_assignment_scores',
     assignmentStatuses: 'edugnay_assignment_statuses',
     assignmentSubmissions: 'edugnay_assignment_submissions',
     materials: 'edugnay_learning_materials',
@@ -539,17 +540,22 @@ function formatRelativeTime(dateValue) {
   }
 
   function createAssignment(values = {}) {
+    const categoryId = String(values.categoryId || '').trim().toLowerCase() || null;
+    const maxScore = Number(values.maxScore);
     const assignment = {
       id: String(values.id || `assignment-${Date.now()}`),
       schoolId: values.schoolId || getActiveSchoolId(),
       sectionId: values.sectionId || null,
       subjectId: values.subjectId || null,
       teacherId: values.teacherId || null,
+      academicPeriodId: values.academicPeriodId || null,
       title: String(values.title || '').trim(),
       instructions: String(values.instructions || '').trim() || null,
       assignedDate: values.assignedDate || values.dueDate || null,
       dueDate: values.dueDate || null,
-      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true,
+      categoryId: categoryId && maxScore > 0 ? categoryId : null,
+      maxScore: categoryId && maxScore > 0 ? maxScore : null
     };
     ASSIGNMENT_DIRECTORY.push(assignment);
     saveAssignments();
@@ -561,6 +567,30 @@ function formatRelativeTime(dateValue) {
       record.id === String(assignmentId) && record.schoolId === getActiveSchoolId()
     );
     if (!assignment) return null;
+
+    let nextCategoryId = assignment.categoryId;
+    let nextMaxScore = assignment.maxScore;
+    if (values.categoryId !== undefined || values.maxScore !== undefined) {
+      const categoryValue = values.categoryId !== undefined ? values.categoryId : assignment.categoryId;
+      const maxScoreValue = values.maxScore !== undefined ? values.maxScore : assignment.maxScore;
+      const categoryId = String(categoryValue || '').trim().toLowerCase() || null;
+      const maxScore = Number(maxScoreValue);
+      const gradingRemoved = !categoryId || !(maxScore > 0);
+
+      if (!gradingRemoved) {
+        const highestScore = ASSIGNMENT_SCORE_RECORDS
+          .filter(record =>
+            record.schoolId === getActiveSchoolId() &&
+            record.assignmentId === assignment.id &&
+            record.score !== null
+          )
+          .reduce((highest, record) => Math.max(highest, Number(record.score) || 0), 0);
+        if (maxScore < highestScore) return null;
+      }
+
+      nextCategoryId = gradingRemoved ? null : categoryId;
+      nextMaxScore = gradingRemoved ? null : maxScore;
+    }
 
     if (values.title !== undefined) {
       assignment.title = String(values.title || '').trim();
@@ -576,6 +606,15 @@ function formatRelativeTime(dateValue) {
 
     if (values.onlineSubmissionEnabled !== undefined) {
       assignment.onlineSubmissionEnabled = values.onlineSubmissionEnabled === true;
+    }
+
+    if (values.academicPeriodId !== undefined) {
+      assignment.academicPeriodId = values.academicPeriodId || null;
+    }
+
+    if (values.categoryId !== undefined || values.maxScore !== undefined) {
+      assignment.categoryId = nextCategoryId;
+      assignment.maxScore = nextMaxScore;
     }
 
     saveAssignments();
@@ -620,6 +659,65 @@ function formatRelativeTime(dateValue) {
       ASSIGNMENT_STATUS_RECORDS.push(record);
     }
     saveAssignmentStatuses();
+    return record;
+  }
+
+  function getAssignmentScores(filters = {}) {
+    const schoolId = filters.schoolId || getActiveSchoolId();
+    return ASSIGNMENT_SCORE_RECORDS.filter(record =>
+      record.schoolId === schoolId &&
+      (!filters.assignmentId || record.assignmentId === String(filters.assignmentId)) &&
+      (!filters.studentId || record.studentId === String(filters.studentId))
+    );
+  }
+
+  function saveAssignmentScores() {
+    writeJson(schoolStorageKey(STORAGE_KEYS.assignmentScores), ASSIGNMENT_SCORE_RECORDS);
+  }
+
+  function setAssignmentScore(assignmentId, studentId, score) {
+    const schoolId = getActiveSchoolId();
+    const assignment = ASSIGNMENT_DIRECTORY.find(record =>
+      record.id === String(assignmentId) && record.schoolId === schoolId
+    );
+    const student = getUserById(studentId);
+    const scoreValue = score === '' || score === null ? null : Number(score);
+
+    if (
+      !assignment ||
+      !student ||
+      student.role !== RECORD_VALUES.roles.STUDENT ||
+      student.schoolId !== schoolId ||
+      student.sectionId !== assignment.sectionId ||
+      !assignment.categoryId ||
+      !(Number(assignment.maxScore) > 0) ||
+      (scoreValue !== null && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > Number(assignment.maxScore)))
+    ) return null;
+
+    let record = ASSIGNMENT_SCORE_RECORDS.find(item =>
+      item.schoolId === schoolId &&
+      item.assignmentId === assignment.id &&
+      item.studentId === String(studentId)
+    );
+    if (!record && scoreValue === null) return null;
+    const updatedAt = new Date().toISOString();
+
+    if (record) {
+      record.score = scoreValue;
+      record.updatedAt = updatedAt;
+    } else {
+      record = {
+        id: `assignment-score-${assignment.id}-${studentId}`,
+        schoolId,
+        assignmentId: assignment.id,
+        studentId: String(studentId),
+        score: scoreValue,
+        updatedAt
+      };
+      ASSIGNMENT_SCORE_RECORDS.push(record);
+    }
+
+    saveAssignmentScores();
     return record;
   }
 
@@ -1399,35 +1497,43 @@ function formatRelativeTime(dateValue) {
   const DEFAULT_ASSIGNMENT_DIRECTORY = [
     {
       id: 'assignment-001', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09',
+      onlineSubmissionEnabled: false, categoryId: 'ww', maxScore: 20
     },
     {
       id: 'assignment-002', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: true
+      academicPeriodId: 'q2', title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11',
+      onlineSubmissionEnabled: true, categoryId: 'ww', maxScore: 50
     },
     {
       id: 'assignment-003', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13',
+      onlineSubmissionEnabled: false, categoryId: 'ww', maxScore: 30
     },
     {
       id: 'assignment-004', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Seatwork 1: Kindness and Respect', instructions: null, assignedDate: '2025-06-09', dueDate: '2025-06-09',
+      onlineSubmissionEnabled: false, categoryId: 'ww', maxScore: 20
     },
     {
       id: 'assignment-005', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11', onlineSubmissionEnabled: true
+      academicPeriodId: 'q2', title: 'Quiz 1 Review: Core Values', instructions: null, assignedDate: '2025-06-11', dueDate: '2025-06-11',
+      onlineSubmissionEnabled: true, categoryId: 'ww', maxScore: 50
     },
     {
       id: 'assignment-006', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2',
-      title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Activity 1: Good Citizenship', instructions: null, assignedDate: '2025-06-13', dueDate: '2025-06-13',
+      onlineSubmissionEnabled: false, categoryId: 'ww', maxScore: 30
     },
     {
       id: 'assignment-007', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-3',
-      title: 'Linear Equations Practice', instructions: null, assignedDate: '2025-06-12', dueDate: '2025-06-12', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Linear Equations Practice', instructions: null, assignedDate: '2025-06-12', dueDate: '2025-06-12',
+      onlineSubmissionEnabled: false, categoryId: null, maxScore: null
     },
     {
       id: 'assignment-008', schoolId: 'scc', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-2',
-      title: 'Reading Response: Short Stories', instructions: null, assignedDate: '2025-06-10', dueDate: '2025-06-10', onlineSubmissionEnabled: false
+      academicPeriodId: 'q2', title: 'Reading Response: Short Stories', instructions: null, assignedDate: '2025-06-10', dueDate: '2025-06-10',
+      onlineSubmissionEnabled: false, categoryId: null, maxScore: null
     }
   ];
   const savedAssignments = readJson(schoolStorageKey(STORAGE_KEYS.assignments, ACTIVE_SCHOOL_ID), null);
@@ -1436,12 +1542,25 @@ function formatRelativeTime(dateValue) {
     : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_DIRECTORY, ACTIVE_SCHOOL_ID));
   const ASSIGNMENT_DIRECTORY = assignmentSeed
     .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
-    .map(({ completion, ...record }) => ({
-      ...record,
-      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
-      instructions: record.instructions || null,
-      onlineSubmissionEnabled: record.onlineSubmissionEnabled === true
-    }));
+    .map(({ completion, ...record }) => {
+      const defaultRecord = DEFAULT_ASSIGNMENT_DIRECTORY.find(item => item.id === record.id);
+      const categoryId = Object.prototype.hasOwnProperty.call(record, 'categoryId')
+        ? record.categoryId
+        : defaultRecord?.categoryId || null;
+      const savedMaxScore = Object.prototype.hasOwnProperty.call(record, 'maxScore')
+        ? record.maxScore
+        : defaultRecord?.maxScore;
+      const maxScore = Number(savedMaxScore);
+      return {
+        ...record,
+        schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
+        academicPeriodId: record.academicPeriodId || defaultRecord?.academicPeriodId || null,
+        instructions: record.instructions || null,
+        onlineSubmissionEnabled: record.onlineSubmissionEnabled === true,
+        categoryId: categoryId || null,
+        maxScore: categoryId && maxScore > 0 ? maxScore : null
+      };
+    });
 
   const savedAssignmentStatuses = readJson(
     schoolStorageKey(STORAGE_KEYS.assignmentStatuses, ACTIVE_SCHOOL_ID),
@@ -1450,6 +1569,31 @@ function formatRelativeTime(dateValue) {
   const ASSIGNMENT_STATUS_RECORDS = Array.isArray(savedAssignmentStatuses)
     ? savedAssignmentStatuses.filter(record => record.schoolId === ACTIVE_SCHOOL_ID)
     : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_STATUS_RECORDS, ACTIVE_SCHOOL_ID));
+
+  const DEFAULT_ASSIGNMENT_SCORE_RECORDS = [
+    { id: 'assignment-score-assignment-001-cm-001', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'cm-001', score: 18, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-001-lr-002', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'lr-002', score: 20, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-001-mt-012', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'mt-012', score: 12, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-001-sc-013', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'sc-013', score: 17, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-001-gb-014', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'gb-014', score: 14, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-002-cm-001', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'cm-001', score: 45, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-002-lr-002', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'lr-002', score: 50, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-002-mt-012', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'mt-012', score: 30, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-002-sc-013', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'sc-013', score: 42, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-002-gb-014', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'gb-014', score: 38, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-003-cm-001', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'cm-001', score: 28, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-003-lr-002', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'lr-002', score: 30, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-003-mt-012', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'mt-012', score: 18, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-003-sc-013', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'sc-013', score: 25, updatedAt: '2025-06-13T00:00:00.000Z' },
+    { id: 'assignment-score-assignment-003-gb-014', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'gb-014', score: 20, updatedAt: '2025-06-13T00:00:00.000Z' }
+  ];
+  const savedAssignmentScores = readJson(
+    schoolStorageKey(STORAGE_KEYS.assignmentScores, ACTIVE_SCHOOL_ID),
+    null
+  );
+  const ASSIGNMENT_SCORE_RECORDS = Array.isArray(savedAssignmentScores)
+    ? savedAssignmentScores.filter(record => record.schoolId === ACTIVE_SCHOOL_ID)
+    : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_SCORE_RECORDS, ACTIVE_SCHOOL_ID));
 
   // One submission record belongs to one student and one assignment. The file
   // itself will be stored by the backend later; the frontend keeps metadata.
@@ -2371,6 +2515,9 @@ function formatRelativeTime(dateValue) {
     getAssignmentStatuses,
     saveAssignmentStatuses,
     setAssignmentStatus,
+    getAssignmentScores,
+    saveAssignmentScores,
+    setAssignmentScore,
     learningMaterials: LEARNING_MATERIAL_DIRECTORY,
     getLearningMaterials,
     getLearningMaterialsForSection,

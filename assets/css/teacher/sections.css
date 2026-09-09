@@ -1494,12 +1494,22 @@ thead tr:hover .comp-delete-btn {
   justify-content: flex-end;
 }
 
+#assignGradingFields,
+#editAssignmentGradingFields {
+  margin-top: 16px;
+}
+
+#assignGradingFields[hidden],
+#editAssignmentGradingFields[hidden] {
+  display: none;
+}
+
 .assignment-submissions-modal {
   max-width: 760px;
 }
 
 .assignment-submissions-table {
-  min-width: 620px;
+  min-width: 700px;
 }
 
 .assignment-submissions-table th,
@@ -1509,6 +1519,22 @@ thead tr:hover .comp-delete-btn {
 
 .assignment-submissions-table tbody td:first-child {
   font-weight: 700;
+}
+
+.assignment-submission-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.assignment-submission-score .score-input {
+  width: 54px;
+}
+
+.assignment-submission-score span {
+  color: var(--gray-400);
+  font-size: 12px;
 }
 
 .assignment-file-unavailable {
