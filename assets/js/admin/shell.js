@@ -6,6 +6,26 @@
    ══════════════════════════════════════════ */
 
 /* ── REOPEN REQUEST DATA (source: quarter reopen request system) ── */
+/* Frontend-only redirect. The backend must also reject access for any
+   authenticated school whose platform status is not active. */
+function enforceSchoolAccess() {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  const statuses = window.EDUGNAY_CONFIG.values.statuses;
+
+  if (school?.platformStatus === statuses.PENDING) {
+    window.location.replace('../onboarding/edugnay-registration-pending.html');
+    return false;
+  }
+
+  if (school?.platformStatus !== statuses.ACTIVE) {
+    window.location.replace('../../index.html');
+    return false;
+  }
+
+  return true;
+}
+
+enforceSchoolAccess();
 const ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 const REOPEN_STORE_KEY = `edugnay_reopen_requests:${ADMIN_SCHOOL_ID}`;
 const ADMIN_READ_STORE_KEY = `edugnay_admin_notif_read:${ADMIN_SCHOOL_ID}`;

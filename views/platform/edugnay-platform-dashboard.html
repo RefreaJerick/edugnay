@@ -396,10 +396,11 @@
       lucide.createIcons();
     }
 
-    function renderPlatformDashboard() {
+    async function renderPlatformDashboard() {
       const summaryCards = document.getElementById('platform-summary-cards');
-      const schools = PLATFORM.getSchoolRecords();
-      const summary = PLATFORM.getDashboardSummary();
+      const schools = await PLATFORM.getSchoolRecords();
+      const summary = PLATFORM.getDashboardSummary(schools);
+      const activeStatus = window.EDUGNAY_CONFIG.values.statuses.ACTIVE;
 
       summaryCards.innerHTML = summary.map(card => `
         <article class="stat-card ${card.tone}">
@@ -407,8 +408,9 @@
           <div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div>
         </article>`).join('');
 
-      document.getElementById('platform-school-list').innerHTML = schools.length ? schools.map(school => {
-        const status = escapeHtml(school.status);
+      document.getElementById('platform-school-list').innerHTML = schools.length ? schools.slice(0, 4).map(school => {
+        const status = school.platformStatus;
+        const safeStatus = escapeHtml(status);
         const type = escapeHtml(school.typeLabel || school.schoolType);
         const logo = school.logoUrl
           ? `<img src="${escapeHtml(school.logoUrl)}" alt="" onerror="this.parentElement.classList.remove('has-logo'); this.remove();">`
@@ -416,7 +418,7 @@
         return `<article class="school-directory-row">
           <div class="school-identity"><div class="school-logo${logo ? ' has-logo' : ''}" aria-hidden="true">${logo}<i data-lucide="building-2" style="width:16px;height:16px;"></i></div><div><div class="school-name">${escapeHtml(school.name)}</div><div class="school-meta">${type} · ${escapeHtml(school.schoolYear || 'School year not set')}</div></div></div>
           <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorEmail)}</div>
-          <div><span class="school-status ${status}"><i data-lucide="${status === 'active' ? 'circle-check-big' : 'clock-3'}" style="width:13px;height:13px;"></i>${status}</span></div>
+          <div><span class="school-status ${safeStatus}"><i data-lucide="${status === activeStatus ? 'circle-check-big' : 'clock-3'}" style="width:13px;height:13px;"></i>${safeStatus}</span></div>
         </article>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });
 
@@ -432,7 +434,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      renderPlatformDashboard();
+      try {
+        await renderPlatformDashboard();
+      } catch (error) {
+        window.alert(error?.message || 'The platform dashboard could not be loaded.');
+      }
       renderPlatformTodos();
       renderPlatformWeek();
       PLATFORM.renderTopbarNotifs();

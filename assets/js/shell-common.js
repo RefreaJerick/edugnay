@@ -147,6 +147,7 @@ function formatRelativeTime(dateValue) {
       ACTIVE: 'active',
       INACTIVE: 'inactive',
       PENDING: 'pending',
+      REJECTED: 'rejected',
       SUSPENDED: 'suspended'
     }
   };
@@ -282,6 +283,10 @@ function formatRelativeTime(dateValue) {
       schoolYear: '2025-2026',
       platformStatus: RECORD_VALUES.statuses.ACTIVE,
       submittedAt: null,
+      notificationEmail: null,
+      approvedAt: null,
+      rejectedAt: null,
+      rejectionReason: null,
       // School-wide portal policy. Replace this local setting with the
       // authenticated school's settings response during backend integration.
       gradesPageEnabled: true,
@@ -356,6 +361,10 @@ function formatRelativeTime(dateValue) {
       schoolYear: '2025-2026',
       platformStatus: RECORD_VALUES.statuses.PENDING,
       submittedAt: '2026-08-30T09:00:00.000Z',
+      notificationEmail: null,
+      approvedAt: null,
+      rejectedAt: null,
+      rejectionReason: null,
       gradesPageEnabled: true,
       narrativeReportsEnabled: true,
       journalsEnabled: true,
@@ -415,23 +424,87 @@ function formatRelativeTime(dateValue) {
       : JSON.parse(JSON.stringify(value));
   }
 
+  function normalizeSchoolRecord(school = {}) {
+    const validStatuses = [
+      RECORD_VALUES.statuses.ACTIVE,
+      RECORD_VALUES.statuses.PENDING,
+      RECORD_VALUES.statuses.REJECTED,
+      RECORD_VALUES.statuses.SUSPENDED
+    ];
+    const administrator = school.initialAdministrator;
+
+    return {
+      ...school,
+      email: school.email ? String(school.email).trim().toLowerCase() : null,
+      notificationEmail: school.notificationEmail
+        ? String(school.notificationEmail).trim().toLowerCase()
+        : null,
+      platformStatus: validStatuses.includes(school.platformStatus)
+        ? school.platformStatus
+        : RECORD_VALUES.statuses.PENDING,
+      submittedAt: school.submittedAt || null,
+      approvedAt: school.approvedAt || null,
+      rejectedAt: school.rejectedAt || null,
+      rejectionReason: school.rejectionReason
+        ? String(school.rejectionReason).trim()
+        : null,
+      initialAdministrator: administrator
+        ? {
+          ...administrator,
+          email: administrator.email
+            ? String(administrator.email).trim().toLowerCase()
+            : null
+        }
+        : null
+    };
+  }
+
   function getSchools() {
     const saved = readJson(STORAGE_KEYS.schools, null);
-    return Array.isArray(saved) && saved.length ? saved : clone(DEFAULT_SCHOOLS);
+    const schools = Array.isArray(saved) && saved.length ? saved : clone(DEFAULT_SCHOOLS);
+    return schools.map(normalizeSchoolRecord);
   }
 
   function saveSchools(schools) {
-    writeJson(STORAGE_KEYS.schools, schools);
+    const normalizedSchools = Array.isArray(schools)
+      ? schools.map(normalizeSchoolRecord)
+      : [];
+    writeJson(STORAGE_KEYS.schools, normalizedSchools);
+    return normalizedSchools;
+  }
+
+  // Replace this localStorage implementation with POST /api/school-registrations.
+  async function createSchoolRegistration(registrationData = {}) {
+    const school = registrationData.school;
+    if (!school?.id) return null;
+
+    const schools = getSchools();
+    if (schools.some(record => record.id === school.id)) return null;
+
+    schools.push(school);
+    const savedSchools = saveSchools(schools);
+    return savedSchools.find(record => record.id === school.id) || null;
+  }
+
+  // Replace this local getter with GET /api/school-registrations/:id.
+  async function getSchoolRegistration(registrationId) {
+    return getSchools().find(school => school.id === registrationId) || null;
+  }
+
+  // Replace this localStorage implementation with PATCH /api/schools/:id.
+  function updateSchool(schoolId, updates = {}) {
+    const schools = getSchools();
+    const index = schools.findIndex(school => school.id === schoolId);
+    if (index < 0) return null;
+
+    schools[index] = { ...schools[index], ...updates };
+    return saveSchools(schools)[index] || null;
   }
 
   function getActiveSchool() {
     const schools = getSchools();
     const activeId = localStorage.getItem(STORAGE_KEYS.activeSchool) || schools[0]?.id;
     return schools.find(school => school.id === activeId) || schools[0];
-  }
-
-  function setActiveSchool(schoolId) {
-    localStorage.setItem(STORAGE_KEYS.activeSchool, schoolId);
   }
 
   function getActiveSchoolId() {
@@ -2491,8 +2564,10 @@ function formatRelativeTime(dateValue) {
     upsertAttendanceRecord,
     getSchools,
     saveSchools,
+    createSchoolRegistration,
+    getSchoolRegistration,
+    updateSchool,
     getActiveSchool,
-    setActiveSchool,
     getSchoolTypeInfo,
     isGradesPageEnabled,
     isNarrativeReportsEnabled,

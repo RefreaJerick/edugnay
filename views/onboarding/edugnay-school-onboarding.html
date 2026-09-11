@@ -159,7 +159,12 @@
               </div>
               <div class="onboarding-field">
                 <label for="adminEmail">Administrator email</label>
-                <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@school.edu.ph" required />
+                <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@school.edu.ph" autocomplete="email" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="notificationEmail">Notification email</label>
+                <input id="notificationEmail" name="notificationEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
+                <small>Enter an existing Gmail, Outlook, or school email where you can currently receive registration updates.</small>
               </div>
               <div class="onboarding-field">
                 <label for="adminPassword">Temporary password</label>
@@ -176,7 +181,6 @@
           <div class="onboarding-actions">
             <button class="onboarding-submit" type="submit"><i data-lucide="arrow-right" style="width:15px;height:15px;"></i> Create school profile</button>
           </div>
-          <div class="onboarding-message" id="onboardingMessage" role="status" aria-live="polite"></div>
         </form>
       </div>
     </section>
@@ -208,7 +212,16 @@
 
     let schoolLogoData = '';
 
-    function previewSchoolLogo(event) {
+    function readSchoolLogo(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('The school logo could not be read.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function previewSchoolLogo(event) {
       const file = event.target.files?.[0];
       const placeholder = document.getElementById('schoolLogoPlaceholder');
       const preview = document.getElementById('schoolLogoPreviewImage');
@@ -226,21 +239,29 @@
         placeholder.hidden = false;
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        schoolLogoData = reader.result;
-        preview.src = reader.result;
+
+      try {
+        schoolLogoData = await readSchoolLogo(file);
+        preview.src = schoolLogoData;
         preview.alt = `${file.name} preview`;
         preview.hidden = false;
         placeholder.hidden = true;
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        event.target.value = '';
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        placeholder.hidden = false;
+      }
     }
 
-    function submitSchoolOnboarding(event) {
+    async function submitSchoolOnboarding(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const values = Object.fromEntries(new FormData(form).entries());
+      const temporaryPassword = values.adminPassword;
+      const notificationEmail = values.notificationEmail.trim().toLowerCase();
+      const schoolEmail = values.schoolEmail.trim().toLowerCase();
+      const administratorEmail = values.adminEmail.trim().toLowerCase();
       const schoolLevels = selectedSchoolLevels();
       if (!schoolLevels.length) {
         document.getElementById('schoolLevelsError').hidden = false;
@@ -260,14 +281,18 @@
         schoolType: type.value,
         typeLabel: type.label,
         schoolId: values.schoolId.trim() || null,
-        address: values.schoolAddress.trim(),
+        address: values.schoolAddress.trim() || null,
         phone: values.schoolPhone.trim() || null,
-        email: values.schoolEmail.trim(),
+        email: schoolEmail,
+        notificationEmail,
         website: values.schoolWebsite.trim() || null,
         logoUrl: null,
         schoolYear: '2025-2026',
-        platformStatus: 'pending',
+        platformStatus: window.EDUGNAY_CONFIG.values.statuses.PENDING,
         submittedAt: new Date().toISOString(),
+        approvedAt: null,
+        rejectedAt: null,
+        rejectionReason: null,
         gradesPageEnabled: true,
         narrativeReportsEnabled: true,
         journalsEnabled: true,
@@ -279,42 +304,39 @@
         initialAdministrator: {
           schoolId: schoolRecordId,
           name: values.adminName.trim(),
-          email: values.adminEmail.trim()
+          email: administratorEmail
         }
       };
 
       const logoInput = document.getElementById('schoolLogo');
-      const saveSchool = logoData => {
-        if (logoData) school.logoUrl = logoData;
-        const schools = window.EDUGNAY_CONFIG?.getSchools?.() || [];
-        schools.push(school);
-        window.EDUGNAY_CONFIG?.saveSchools?.(schools);
-        window.EDUGNAY_CONFIG?.setActiveSchool?.(school.id);
-        localStorage.setItem(`edugnay_onboarding_admin:${school.id}`, JSON.stringify(school.initialAdministrator));
-        const message = document.getElementById('onboardingMessage');
-        message.textContent = `${school.name} is ready. Configure grades, sections, subjects, grading rules, and calendar settings in `;
-        const adminLink = document.createElement('a');
-        adminLink.href = '../../views/admin/edugnay-admin-schools.html';
-        adminLink.textContent = 'School Management';
-        message.append(adminLink);
-        message.append('.');
-        message.classList.add('show');
-        form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = true; });
-        if (window.lucide) lucide.createIcons();
-      };
+      const submitButton = form.querySelector('[type="submit"]');
+      submitButton.disabled = true;
 
-      if (schoolLogoData) {
-        saveSchool(schoolLogoData);
-      } else if (logoInput.files?.[0]) {
-        const reader = new FileReader();
-        reader.onload = () => saveSchool(reader.result);
-        reader.readAsDataURL(logoInput.files[0]);
-      } else {
-        saveSchool('');
+      try {
+        if (!schoolLogoData && logoInput.files?.[0]) {
+          schoolLogoData = await readSchoolLogo(logoInput.files[0]);
+        }
+        school.logoUrl = schoolLogoData || null;
+
+        const createdSchool = await window.EDUGNAY_CONFIG.createSchoolRegistration({
+          school,
+          temporaryPassword
+        });
+        if (!createdSchool) throw new Error('The school registration could not be created.');
+
+        sessionStorage.setItem('edugnay_pending_registration', JSON.stringify({
+          registrationId: createdSchool.id,
+          schoolName: createdSchool.name,
+          notificationEmail: createdSchool.notificationEmail
+        }));
+        window.location.href = './edugnay-registration-pending.html';
+      } catch (error) {
+        submitButton.disabled = false;
+        window.alert(error?.message || 'The school registration could not be created.');
       }
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
       populateSchoolLevels();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
       if (window.lucide) lucide.createIcons();

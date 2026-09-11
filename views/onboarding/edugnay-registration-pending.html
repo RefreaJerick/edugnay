@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registration submitted | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/onboarding.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+</head>
+<body>
+  <main class="onboarding-page">
+    <section class="onboarding-brand" aria-label="Academix school onboarding">
+      <img class="login-brand-watermark" src="../../assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
+      <div class="login-brand-content">
+        <div class="system-mark">
+          <div class="system-crest">
+            <img src="../../assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
+          </div>
+          <div class="brand-name">Acade<span>mix</span></div>
+        </div>
+        <div class="login-brand-copy">
+          <div class="login-brand-kicker">School onboarding</div>
+          <h1 class="login-brand-heading">Your registration is under review.</h1>
+          <p class="login-brand-description">Platform Admin will review your school details before the school administrator account becomes available.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="onboarding-form-area">
+      <div class="login-mobile-brand onboarding-mobile-brand" aria-label="Academix">
+        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" />
+      </div>
+      <div class="login-brand-copy onboarding-mobile-copy">
+        <div class="login-brand-kicker">School onboarding</div>
+        <h1 class="login-brand-heading">Your registration is under review.</h1>
+      </div>
+
+      <div class="onboarding-card pending-registration-card">
+    <div class="onboarding-form-head">
+      <div class="onboarding-form-heading">
+        <div>
+          <h2>Registration submitted</h2>
+          <p>Your school registration is awaiting Platform Admin review.</p>
+            </div>
+          </div>
+          <a class="onboarding-back" href="../../index.html">
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span>Back to sign in</span>
+          </a>
+        </div>
+
+        <div class="pending-registration-content">
+          <p class="pending-registration-intro">We’ll notify you at the email below once a decision has been made. The school administrator account cannot be used until the registration is approved.</p>
+
+          <dl class="pending-registration-details">
+            <div>
+              <dt>School</dt>
+              <dd id="pendingSchoolName">Your school</dd>
+            </div>
+            <div>
+              <dt>Notification email</dt>
+              <dd id="pendingNotificationEmail">Your notification email</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function maskEmail(email) {
+      const parts = String(email || '').split('@');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) return 'Not available';
+      return `${parts[0].slice(0, 2)}***@${parts[1]}`;
+    }
+
+    async function getPendingRegistration() {
+      let summary;
+      try {
+        summary = JSON.parse(sessionStorage.getItem('edugnay_pending_registration') || 'null');
+      } catch (error) {
+        return null;
+      }
+
+      if (!summary?.registrationId) return summary;
+      const registration = await window.EDUGNAY_CONFIG.getSchoolRegistration(summary.registrationId);
+      return registration || summary;
+    }
+
+    async function renderPendingRegistration() {
+      const registration = await getPendingRegistration();
+      if (!registration) return;
+
+      document.getElementById('pendingSchoolName').textContent = registration.name || registration.schoolName || 'Your school';
+      document.getElementById('pendingNotificationEmail').textContent = maskEmail(registration.notificationEmail);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await renderPendingRegistration();
+      } catch (error) {
+        window.alert(error?.message || 'The registration information could not be loaded.');
+      }
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

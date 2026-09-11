@@ -114,21 +114,21 @@
     }
   ];
 
-  function getSchoolRecords() {
-    const schools = window.EDUGNAY_CONFIG?.getSchools?.() || [];
+  // Replace the local getter with GET /api/schools during backend integration.
+  async function getSchoolRecords() {
+    const schools = await (window.EDUGNAY_CONFIG?.getSchools?.() || []);
     return schools.map(school => ({
       ...school,
       typeLabel: Array.isArray(school.schoolLevels)
         ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
         : (school.typeLabel || school.schoolType || 'School'),
-      status: school.platformStatus || 'active',
       administrator: school.initialAdministrator?.name || 'School administrator',
       administratorEmail: school.initialAdministrator?.email || school.email || ''
     }));
   }
 
-  function getDashboardSummary() {
-    const schools = getSchoolRecords();
+  function getDashboardSummary(schools = []) {
+    const statuses = window.EDUGNAY_CONFIG.values.statuses;
     return [
       {
         id: 'schools',
@@ -144,7 +144,7 @@
         icon: 'circle-check-big',
         label: 'Active Schools',
         sub: 'Available to their school communities',
-        value: schools.filter(school => school.status === 'active').length
+        value: schools.filter(school => school.platformStatus === statuses.ACTIVE).length
       },
       {
         id: 'pending-schools',
@@ -152,7 +152,7 @@
         icon: 'clipboard-check',
         label: 'Pending Reviews',
         sub: 'School registrations awaiting action',
-        value: schools.filter(school => school.status === 'pending').length
+        value: schools.filter(school => school.platformStatus === statuses.PENDING).length
       }
     ];
   }

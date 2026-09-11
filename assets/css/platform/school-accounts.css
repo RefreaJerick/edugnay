@@ -197,7 +197,8 @@
   object-fit: contain;
 }
 
-.platform-school-accounts .school-account-logo.has-logo > i {
+.platform-school-accounts .school-account-logo.has-logo > i,
+.platform-school-accounts .school-account-logo.has-logo > svg {
   display: none;
 }
 
@@ -251,6 +252,12 @@
   color: var(--red);
 }
 
+.platform-school-accounts .school-account-status.rejected {
+  border-color: var(--red-pale);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
 .platform-school-accounts .platform-account-modal {
   width: min(100%, 560px);
   background: var(--white);
@@ -261,6 +268,31 @@
    the shared dialog surface and button foundation explicit here. */
 .platform-school-accounts .platform-account-modal .modal-body {
   background: var(--white);
+}
+
+.platform-school-accounts #schoolAccountRejectModal .modal-body > .modal-sub {
+  margin: 0 0 18px;
+}
+
+.platform-school-accounts #schoolAccountRejectModal .form-group {
+  margin-bottom: 0;
+}
+
+.platform-school-accounts #schoolAccountRejectModal .form-label {
+  margin-bottom: 8px;
+}
+
+.platform-school-accounts #schoolAccountRejectModal .form-textarea {
+  display: block;
+  min-height: 104px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.platform-school-accounts #schoolAccountRejectModal .modal-foot {
+  justify-content: flex-end;
 }
 
 .platform-school-accounts .platform-account-modal .modal-foot .btn {
@@ -296,14 +328,16 @@
 
 /* Keep the destructive action aligned with the existing delete/deactivate
    confirmation buttons: solid red with a stable hover state. */
-.platform-school-accounts .platform-account-modal .school-account-suspend {
+.platform-school-accounts .platform-account-modal .school-account-suspend,
+.platform-school-accounts .platform-account-modal .school-account-reject {
   border-color: var(--red);
   background: var(--red);
   color: var(--white);
   box-shadow: none;
 }
 
-.platform-school-accounts .platform-account-modal .school-account-suspend:hover:not(:disabled) {
+.platform-school-accounts .platform-account-modal .school-account-suspend:hover:not(:disabled),
+.platform-school-accounts .platform-account-modal .school-account-reject:hover:not(:disabled) {
   border-color: var(--red);
   background: var(--red);
   color: var(--white);
@@ -338,7 +372,8 @@
   object-fit: contain;
 }
 
-.platform-school-accounts .account-review-logo.has-logo > i {
+.platform-school-accounts .account-review-logo.has-logo > i,
+.platform-school-accounts .account-review-logo.has-logo > svg {
   display: none;
 }
 

@@ -90,26 +90,57 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="schoolAccountRejectModal" aria-hidden="true">
+    <section class="modal platform-account-modal" role="dialog" aria-modal="true" aria-labelledby="schoolAccountRejectModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="circle-x"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="schoolAccountRejectModalTitle">Reject registration</div>
+            <div class="modal-sub">You may provide a reason for this decision.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" aria-label="Close rejection form" onclick="closeSchoolRejectionModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-sub">You are rejecting <strong id="schoolAccountRejectionName">this school</strong>. Any reason provided will be saved with the registration.</p>
+        <div class="form-group">
+          <label class="form-label" for="schoolAccountRejectionReason">Reason for rejection (optional)</label>
+          <textarea class="form-textarea" id="schoolAccountRejectionReason" rows="4" maxlength="500" placeholder="Explain why this registration is being rejected."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" onclick="closeSchoolRejectionModal()">Cancel</button>
+        <button class="btn btn-danger" id="schoolAccountRejectConfirm" type="button">Reject registration</button>
+      </div>
+    </section>
+  </div>
+
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
+    const SCHOOL_STATUS_VALUES = window.EDUGNAY_CONFIG.values.statuses;
     const schoolAccountState = { filter: 'all', query: '', selectedSchoolId: null };
+    let schoolAccountRecords = [];
     const SCHOOL_ACCOUNT_FILTERS = [
       { id: 'all', label: 'All schools' },
       { id: 'active', label: 'Active' },
       { id: 'pending', label: 'Pending review' },
+      { id: 'rejected', label: 'Rejected' },
       { id: 'suspended', label: 'Suspended' }
     ];
 
-    function getSchoolStatus(school) {
-      return ['active', 'pending', 'suspended'].includes(school.status) ? school.status : 'active';
-    }
-
     function schoolStatusLabel(status) {
-      return status === 'pending' ? 'Pending review' : status.charAt(0).toUpperCase() + status.slice(1);
+      return status === SCHOOL_STATUS_VALUES.PENDING
+        ? 'Pending review'
+        : status.charAt(0).toUpperCase() + status.slice(1);
     }
 
     function schoolStatusIcon(status) {
-      return status === 'active' ? 'circle-check-big' : status === 'pending' ? 'clock-3' : 'circle-off';
+      return status === SCHOOL_STATUS_VALUES.ACTIVE
+        ? 'circle-check-big'
+        : status === SCHOOL_STATUS_VALUES.PENDING
+          ? 'clock-3'
+          : 'circle-off';
     }
 
     function schoolLogoMarkup(school, className) {
@@ -121,21 +152,26 @@
 
     function getFilteredSchoolAccounts() {
       const query = schoolAccountState.query.trim().toLowerCase();
-      return PLATFORM.getSchoolRecords().filter(school => {
-        const status = getSchoolStatus(school);
+      return schoolAccountRecords.filter(school => {
+        const status = school.platformStatus;
         const matchesFilter = schoolAccountState.filter === 'all' || status === schoolAccountState.filter;
         const searchable = [school.name, school.schoolId, school.administrator, school.administratorEmail, school.email].join(' ').toLowerCase();
         return matchesFilter && (!query || searchable.includes(query));
       });
     }
 
+    async function refreshSchoolAccounts() {
+      schoolAccountRecords = await PLATFORM.getSchoolRecords();
+      renderSchoolAccounts();
+    }
+
     function renderSchoolAccountTabs(schools) {
       const counts = schools.reduce((result, school) => {
-        const status = getSchoolStatus(school);
+        const status = school.platformStatus;
         result.all += 1;
         result[status] += 1;
         return result;
-      }, { all: 0, active: 0, pending: 0, suspended: 0 });
+      }, { all: 0, active: 0, pending: 0, rejected: 0, suspended: 0 });
 
       document.getElementById('schoolAccountTabs').innerHTML = SCHOOL_ACCOUNT_FILTERS.map(filter => `
         <button class="cat-tab ${schoolAccountState.filter === filter.id ? 'active' : ''}" type="button" role="tab" aria-selected="${schoolAccountState.filter === filter.id}" data-school-account-filter="${filter.id}">${filter.label}<span class="tab-count">${counts[filter.id]}</span></button>`).join('');
@@ -149,7 +185,7 @@
     }
 
     function renderSchoolAccounts() {
-      const schools = PLATFORM.getSchoolRecords();
+      const schools = schoolAccountRecords;
       const filtered = getFilteredSchoolAccounts();
       const resultCount = document.getElementById('schoolAccountResultCount');
       const list = document.getElementById('schoolAccountList');
@@ -158,7 +194,7 @@
       resultCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`;
 
       list.innerHTML = filtered.length ? filtered.map(school => {
-        const status = getSchoolStatus(school);
+        const status = school.platformStatus;
         const type = school.typeLabel || school.schoolType || 'School';
         return `<tr>
           <td><div class="school-account-identity">${schoolLogoMarkup(school, 'school-account-logo')}<div><div class="school-account-name">${escapeHtml(school.name)}</div><div class="school-account-meta">${escapeHtml(type)}</div></div></div></td>
@@ -178,10 +214,10 @@
     }
 
     function openSchoolAccountModal(schoolId) {
-      const school = PLATFORM.getSchoolRecords().find(item => item.id === schoolId);
+      const school = schoolAccountRecords.find(item => item.id === schoolId);
       if (!school) return;
       schoolAccountState.selectedSchoolId = school.id;
-      const status = getSchoolStatus(school);
+      const status = school.platformStatus;
       const type = school.typeLabel || school.schoolType || 'School';
       const levels = Array.isArray(school.schoolLevels) && school.schoolLevels.length
         ? (window.EDUGNAY_CONFIG.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.schoolLevels.join(' + '))
@@ -200,6 +236,8 @@
           <div><dt>Platform access</dt><dd>${schoolStatusLabel(status)}</dd></div>
           <div><dt>Initial administrator</dt><dd>${escapeHtml(school.administrator)}</dd></div>
           <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorEmail || 'Not set')}</dd></div>
+          <div><dt>Notification email</dt><dd>${escapeHtml(school.notificationEmail || 'Not set')}</dd></div>
+          <div><dt>Submitted</dt><dd>${escapeHtml(school.submittedAt ? window.EDUGNAY_CONFIG.formatDateTime(school.submittedAt) : 'Not available')}</dd></div>
           <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>
           <div><dt>School email</dt><dd>${escapeHtml(school.email || 'Not set')}</dd></div>
         </dl>
@@ -217,18 +255,74 @@
           </div>
         </section>`;
 
-      const action = status === 'active'
-        ? '<button class="btn btn-save school-account-suspend" type="button" data-school-status="suspended">Suspend school</button>'
-        : status === 'pending'
-          ? '<button class="btn btn-save" type="button" data-school-status="active">Approve registration</button>'
-          : '<button class="btn btn-save" type="button" data-school-status="active">Reactivate school</button>';
+      const action = status === SCHOOL_STATUS_VALUES.ACTIVE
+        ? `<button class="btn btn-save school-account-suspend" type="button" data-school-status="${SCHOOL_STATUS_VALUES.SUSPENDED}">Suspend school</button>`
+        : status === SCHOOL_STATUS_VALUES.PENDING
+          ? `<button class="btn btn-save school-account-reject" type="button" data-school-action="reject">Reject registration</button><button class="btn btn-save" type="button" data-school-status="${SCHOOL_STATUS_VALUES.ACTIVE}">Approve registration</button>`
+          : status === SCHOOL_STATUS_VALUES.SUSPENDED
+            ? `<button class="btn btn-save" type="button" data-school-status="${SCHOOL_STATUS_VALUES.ACTIVE}">Reactivate school</button>`
+            : '';
       document.getElementById('schoolAccountModalActions').innerHTML = action;
-      document.querySelector('[data-school-status]').addEventListener('click', () => updateSchoolAccountStatus(document.querySelector('[data-school-status]').dataset.schoolStatus));
+      const rejectButton = document.querySelector('[data-school-action="reject"]');
+      if (rejectButton) rejectButton.addEventListener('click', openSchoolRejectionModal);
+      const statusButton = document.querySelector('[data-school-status]');
+      if (statusButton) statusButton.addEventListener('click', () => {
+        const selectedSchool = schoolAccountRecords.find(item => item.id === schoolAccountState.selectedSchoolId);
+        if (!selectedSchool) return;
+        const nextStatus = statusButton.dataset.schoolStatus;
+        const actionLabel = nextStatus === SCHOOL_STATUS_VALUES.SUSPENDED
+          ? 'Suspend'
+          : selectedSchool.platformStatus === SCHOOL_STATUS_VALUES.PENDING
+            ? 'Approve'
+            : 'Reactivate';
+        if (!window.confirm(`${actionLabel} ${selectedSchool.name}?`)) return;
+        updateSchoolAccountStatus(nextStatus);
+      });
 
       const modal = document.getElementById('schoolAccountModal');
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       if (window.lucide) window.lucide.createIcons();
+    }
+
+    function openSchoolRejectionModal() {
+      const school = schoolAccountRecords.find(item => item.id === schoolAccountState.selectedSchoolId);
+      if (!school) return;
+      document.getElementById('schoolAccountRejectionName').textContent = school.name;
+      document.getElementById('schoolAccountRejectionReason').value = '';
+      const modal = document.getElementById('schoolAccountRejectModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('schoolAccountRejectionReason').focus();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeSchoolRejectionModal() {
+      const modal = document.getElementById('schoolAccountRejectModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function rejectSchoolRegistration() {
+      const rejectionReason = document.getElementById('schoolAccountRejectionReason').value.trim() || null;
+
+      try {
+        const updatedSchool = await window.EDUGNAY_CONFIG.updateSchool(schoolAccountState.selectedSchoolId, {
+          platformStatus: SCHOOL_STATUS_VALUES.REJECTED,
+          rejectedAt: new Date().toISOString(),
+          rejectionReason,
+          approvedAt: null
+        });
+        if (!updatedSchool) {
+          window.alert('The school record was not found.');
+          return;
+        }
+        closeSchoolRejectionModal();
+        closeSchoolAccountModal();
+        await refreshSchoolAccounts();
+      } catch (error) {
+        window.alert(error.message || 'The school registration could not be rejected.');
+      }
     }
 
     function closeSchoolAccountModal() {
@@ -238,14 +332,28 @@
       schoolAccountState.selectedSchoolId = null;
     }
 
-    function updateSchoolAccountStatus(status) {
-      const schools = window.EDUGNAY_CONFIG.getSchools();
-      const index = schools.findIndex(school => school.id === schoolAccountState.selectedSchoolId);
-      if (index < 0) return;
-      schools[index] = { ...schools[index], platformStatus: status };
-      window.EDUGNAY_CONFIG.saveSchools(schools);
-      closeSchoolAccountModal();
-      renderSchoolAccounts();
+    async function updateSchoolAccountStatus(status) {
+      const school = schoolAccountRecords.find(item => item.id === schoolAccountState.selectedSchoolId);
+      if (!school) return;
+
+      const updates = { platformStatus: status };
+      if (status === SCHOOL_STATUS_VALUES.ACTIVE && school.platformStatus === SCHOOL_STATUS_VALUES.PENDING) {
+        updates.approvedAt = new Date().toISOString();
+        updates.rejectedAt = null;
+        updates.rejectionReason = null;
+      }
+
+      try {
+        const updatedSchool = await window.EDUGNAY_CONFIG.updateSchool(school.id, updates);
+        if (!updatedSchool) {
+          window.alert('The school record was not found.');
+          return;
+        }
+        closeSchoolAccountModal();
+        await refreshSchoolAccounts();
+      } catch (error) {
+        window.alert(error.message || 'The school account could not be updated.');
+      }
     }
 
     document.getElementById('schoolAccountSearch').addEventListener('input', event => {
@@ -257,9 +365,19 @@
       if (event.target.id === 'schoolAccountModal') closeSchoolAccountModal();
     });
 
+    document.getElementById('schoolAccountRejectModal').addEventListener('click', event => {
+      if (event.target.id === 'schoolAccountRejectModal') closeSchoolRejectionModal();
+    });
+
+    document.getElementById('schoolAccountRejectConfirm').addEventListener('click', rejectSchoolRegistration);
+
     document.addEventListener('DOMContentLoaded', async () => {
       PLATFORM.renderTopbarNotifs();
-      renderSchoolAccounts();
+      try {
+        await refreshSchoolAccounts();
+      } catch (error) {
+        window.alert(error?.message || 'The school accounts could not be loaded.');
+      }
       if (window.lucide) window.lucide.createIcons();
     });
   </script>

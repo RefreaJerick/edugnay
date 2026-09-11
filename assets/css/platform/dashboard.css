@@ -454,7 +454,8 @@
   background: var(--white);
 }
 
-.platform-dashboard .school-logo.has-logo > i {
+.platform-dashboard .school-logo.has-logo > i,
+.platform-dashboard .school-logo.has-logo > svg {
   display: none;
 }
 
