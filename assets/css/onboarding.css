@@ -696,6 +696,8 @@ body:has(.onboarding-page) {
 
   .onboarding-form-area {
     height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
     padding: 20px;
     overflow: visible;
     background: var(--navy);
