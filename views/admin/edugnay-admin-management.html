@@ -38,11 +38,11 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="createSchoolLevel">School Level</label>
-            <select class="form-select dropdown" name="schoolLevel" id="createSchoolLevel" onchange="updateSectionFormFields('create')" required></select>
+            <select class="form-select dropdown" name="level" id="createSchoolLevel" onchange="updateSectionFormFields('create')" required></select>
           </div>
           <div class="form-group">
             <label class="form-label" for="createGradeLevel">Grade Level</label>
-            <select class="form-select dropdown" name="gradeLevel" id="createGradeLevel" onchange="updateSectionFormFields('create')" required></select>
+            <select class="form-select dropdown" name="grade" id="createGradeLevel" onchange="updateSectionFormFields('create')" required></select>
           </div>
         </div>
         <div class="form-row-2">
@@ -52,7 +52,7 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="createSectionName">Section Name</label>
-            <input class="form-select" type="text" name="sectionName" id="createSectionName" placeholder="e.g. St. Matthew" required/>
+            <input class="form-select" type="text" name="name" id="createSectionName" placeholder="e.g. St. Matthew" required/>
           </div>
         </div>
         <div class="form-row-2 modal-final-row">
@@ -64,7 +64,7 @@
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Max Capacity</label>
-            <input class="form-select" type="number" name="maxCapacity" id="createCapacity" placeholder="e.g. 40"/>
+            <input class="form-select" type="number" name="capacity" id="createCapacity" min="1" placeholder="e.g. 40" required/>
           </div>
         </div>
       </form>
@@ -89,17 +89,16 @@
       <button class="modal-close" onclick="closeSectionEditModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
     </div>
     <div class="modal-body">
-      <form id="editSectionForm" method="post">
-        <input type="hidden" name="_method" value="PUT"/>
+      <form id="editSectionForm">
         <input type="hidden" name="sectionId" id="editSectionId" value=""/>
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="editSchoolLevel">School Level</label>
-            <select class="form-select dropdown" name="schoolLevel" id="editSchoolLevel" onchange="updateSectionFormFields('edit')" required></select>
+            <select class="form-select dropdown" name="level" id="editSchoolLevel" onchange="updateSectionFormFields('edit')" required></select>
           </div>
           <div class="form-group">
             <label class="form-label" for="editGradeLevel">Grade Level</label>
-            <select class="form-select dropdown" name="gradeLevel" id="editGradeLevel" onchange="updateSectionFormFields('edit')" required></select>
+            <select class="form-select dropdown" name="grade" id="editGradeLevel" onchange="updateSectionFormFields('edit')" required></select>
           </div>
         </div>
         <div class="form-row-2">
@@ -109,7 +108,7 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="editSectionName">Section Name</label>
-            <input class="form-select" type="text" name="sectionName" id="editSectionName" required/>
+            <input class="form-select" type="text" name="name" id="editSectionName" required/>
           </div>
         </div>
         <div class="form-row-2 modal-final-row">
@@ -121,7 +120,7 @@
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Max Capacity</label>
-            <input class="form-select" type="number" name="maxCapacity" id="editCapacity"/>
+            <input class="form-select" type="number" name="capacity" id="editCapacity" min="1" required/>
           </div>
         </div>
       </form>
@@ -149,7 +148,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>#</th><th>Student Name</th><th>Email</th><th>Status</th><th>Action</th></tr>
+            <tr><th>#</th><th>Student Name</th><th>Email</th><th>Action</th></tr>
           </thead>
           <tbody id="sectionStudentsTableBody"></tbody>
         </table>
@@ -858,6 +857,7 @@
 <script>
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  closeSectionMenus();
   closeSectionAddModal(); closeSectionEditModal(); closeSectionStudentsModal();
   closeSubjectModal(); closeTeacherModal();
   closeStudentAssignModal(); closeConfirmRemoveModal(); closeImportStudentsModal();
@@ -990,7 +990,9 @@ function saveManagementSchool(school) {
   return true;
 }
 
-function refreshManagementViews() {
+async function refreshManagementViews() {
+  const sections = await window.EDUGNAY_CONFIG.getSections();
+  SECTION_RECORDS = Array.isArray(sections) ? sections : [];
   syncManagementStudentRecords();
   renderManagementGradeFilters();
   renderTeacherOptions();
@@ -1002,18 +1004,46 @@ function refreshManagementViews() {
   renderStudentsTab();
 }
 
-function saveSectionForm(event, mode) {
+async function saveSectionForm(event, mode) {
   event.preventDefault();
   const form = event.currentTarget;
-  const level = form.elements.schoolLevel?.value || '';
-  const grade = form.elements.gradeLevel?.value || '';
-  const name = String(form.elements.sectionName?.value || '').trim();
+  const level = form.elements.level?.value || '';
+  const grade = form.elements.grade?.value || '';
+  const name = String(form.elements.name?.value || '').trim();
   const strand = level === 'shs' ? String(form.elements.strand?.value || '').trim() : '';
   const adviserId = form.elements.adviserId?.value || null;
-  const capacityValue = Number(form.elements.maxCapacity?.value);
-  const capacity = Number.isFinite(capacityValue) && capacityValue > 0 ? capacityValue : 40;
-  if (!level || !grade || !name) {
+  const capacity = Number(form.elements.capacity?.value);
+  if (!level || !grade || !name || !Number.isFinite(capacity) || capacity <= 0) {
     form.reportValidity();
+    return;
+  }
+
+  const sectionData = {
+    name,
+    level,
+    grade,
+    strand: strand || null,
+    capacity,
+    adviserId
+  };
+
+  if (mode === 'edit') {
+    const sectionId = form.elements.sectionId?.value || '';
+    const submitButton = event.submitter;
+    if (submitButton) submitButton.disabled = true;
+    try {
+      const updatedSection = await window.EDUGNAY_CONFIG.updateSection(sectionId, sectionData);
+      if (!updatedSection) {
+        window.alert('The section could not be updated.');
+        return;
+      }
+      closeSectionEditModal();
+      await refreshManagementViews();
+    } catch (error) {
+      window.alert(error?.message || 'The section could not be updated.');
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
     return;
   }
 
@@ -1022,41 +1052,19 @@ function saveSectionForm(event, mode) {
   school.divisions ||= {};
   school.schoolLevels = Array.isArray(school.schoolLevels) ? school.schoolLevels : [];
   if (!school.schoolLevels.includes(level)) school.schoolLevels.push(level);
-  let targetDivision = school.divisions[level] || window.EDUGNAY_CONFIG.createDivision(level);
+  const targetDivision = school.divisions[level] || window.EDUGNAY_CONFIG.createDivision(level);
   targetDivision.sections = Array.isArray(targetDivision.sections) ? targetDivision.sections : [];
-  const sectionId = mode === 'edit'
-    ? (form.elements.sectionId?.value || form.dataset.sectionId)
-    : `section-${Date.now()}`;
-  let previousSection = null;
-
-  if (mode === 'edit') {
-    Object.entries(school.divisions).some(([, division]) => {
-      const index = (division.sections || []).findIndex(section => section.id === sectionId);
-      if (index < 0) return false;
-      previousSection = { ...division.sections[index] };
-      division.sections.splice(index, 1);
-      return true;
-    });
-    if (!previousSection) return;
-  }
-
   targetDivision.sections.push({
-    ...(previousSection || {}),
-    id: sectionId,
+    id: `section-${Date.now()}`,
     schoolId: school.id,
-    name,
-    grade,
-    strand: strand || null,
-    capacity,
-    enrolled: previousSection?.enrolled || 0,
-    adviserId
+    ...sectionData,
+    enrolled: 0
   });
   school.divisions[level] = targetDivision;
   school.activeDivision = level;
   if (!saveManagementSchool(school)) return;
-  if (mode === 'edit') closeSectionEditModal();
-  else closeSectionAddModal();
-  refreshManagementViews();
+  closeSectionAddModal();
+  await refreshManagementViews();
 }
 
 document.getElementById('createSectionForm').addEventListener('submit', event => saveSectionForm(event, 'create'));
@@ -1068,6 +1076,7 @@ document.getElementById('editSectionForm').addEventListener('submit', event => s
 // Sections come from the active school's divisions. The separate array below
 // stores only teacher-assignment relationships keyed by sectionId.
 const BAR_CLASS_BY_GRADE = { 7: 'bar-blue', 8: 'bar-gold', 9: 'bar-green', 10: 'bar-orange' };
+let SECTION_RECORDS = [];
 
 // Subject placement is stored once in shell-common.js. Each row represents
 // one subject offered to one grade/strand combination of one school.
@@ -1188,6 +1197,15 @@ function updateManagementEmptySlot(container, key, options, show) {
   slot.innerHTML = show ? window.EDUGNAY_CONFIG.renderPanelEmptyState(options) : '';
 }
 
+function closeSectionMenus() {
+  document.querySelectorAll('.section-action-menu.open').forEach(menu => menu.classList.remove('open'));
+  document.querySelectorAll('.section-menu-trigger[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+}
+
+document.addEventListener('click', event => {
+  if (!event.target.closest('.section-card-menu')) closeSectionMenus();
+});
+
 function renderSections() {
   const records = managementSectionRecords();
   const withAdviser = records.filter(section => section.adviser).length;
@@ -1222,7 +1240,17 @@ function renderSections() {
               ${section.adviser
                 ? `<div class="card-adviser"><div class="adviser-av">${section.adviserInitials || section.adviser.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">${section.adviser}</div></div></div>`
                 : `<div class="no-adviser"><div class="no-adviser-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div><div class="no-adviser-text">No adviser assigned yet</div></div>`}
-              <div class="card-foot"><button class="card-btn view">View Students</button><button class="card-btn edit">${section.adviser ? 'Edit' : 'Assign Adviser'}</button></div>
+              <div class="card-foot">
+                <button class="card-btn view" type="button">View Students</button>
+                ${section.adviser ? '' : '<button class="card-btn edit assign-adviser" type="button">Assign Adviser</button>'}
+                <div class="section-card-menu">
+                  <button class="section-menu-trigger" type="button" aria-label="Section actions" aria-haspopup="menu" aria-expanded="false"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i></button>
+                  <div class="section-action-menu" role="menu">
+                    <button class="section-menu-item section-menu-edit" type="button" role="menuitem"><i data-lucide="pencil" style="width:14px;height:14px;"></i>Edit Section</button>
+                    <button class="section-menu-item delete" type="button" role="menuitem"><i data-lucide="trash-2" style="width:14px;height:14px;"></i>Delete Section</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>`).join('')}
       </div>
@@ -1234,8 +1262,23 @@ function renderSections() {
   }, groups.length === 0);
 
   container.querySelectorAll('.section-card').forEach(card => {
-    card.querySelector('.card-btn.edit').addEventListener('click', () => openSectionEditModal(card));
+    const assignButton = card.querySelector('.assign-adviser');
+    if (assignButton) assignButton.addEventListener('click', () => openSectionEditModal(card));
     card.querySelector('.card-btn.view').addEventListener('click', () => openSectionStudentsModal(card));
+    const menuButton = card.querySelector('.section-menu-trigger');
+    const menu = card.querySelector('.section-action-menu');
+    menuButton.addEventListener('click', event => {
+      event.stopPropagation();
+      const shouldOpen = !menu.classList.contains('open');
+      closeSectionMenus();
+      if (!shouldOpen) return;
+      menu.classList.add('open');
+      menuButton.setAttribute('aria-expanded', 'true');
+    });
+    card.querySelector('.section-menu-edit').addEventListener('click', () => {
+      closeSectionMenus();
+      openSectionEditModal(card);
+    });
   });
 
   const tbody = document.querySelector('#sectionTableView tbody');
@@ -1698,8 +1741,6 @@ function openSectionEditModal(card) {
   document.getElementById('editCapacity').value = section.capacity;
   document.getElementById('editAdviser').value = section.adviserId || '';
   document.getElementById('editSectionId').value = section.id;
-  document.getElementById('editSectionForm').dataset.sectionId = section.id;
-  document.getElementById('editSectionForm').action = `/admin/sections/update/${section.id}`;
   updateSectionFormFields('edit');
   document.getElementById('sectionEditModalBackdrop').classList.add('open');
 }
@@ -1717,10 +1758,9 @@ function openSectionStudentsModal(card) {
           <td>${index + 1}</td>
           <td><strong>${student.displayName}</strong></td>
           <td>${student.email || ''}</td>
-          <td><span class="badge ${student.status === 'Active' ? 'badge-green' : 'badge-orange'}">${student.status || 'Active'}</span></td>
           <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
         </tr>`).join('')
-    : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
+    : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
   document.getElementById('sectionStudentsModalBackdrop').classList.add('open');
 }
 
@@ -2265,8 +2305,7 @@ function managementSectionStudentCount(sectionId) {
 
 function managementSectionRecords() {
   const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  const configured = window.EDUGNAY_CONFIG.getAssignmentSections(school);
-  return configured.map(section => {
+  return SECTION_RECORDS.map(section => {
     const teacherSection = TEACHER_ASSIGNMENTS_DATA.find(item => item.sectionId === section.id);
     const sectionSubjectIds = new Set(SUBJECT_ASSIGNMENTS_DATA
       .filter(record => record.schoolId === school?.id)
@@ -3122,17 +3161,14 @@ function applyStudentFilters() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  renderManagementGradeFilters();
-  renderTeacherOptions();
-  renderManagementSubjectTabs();
-  renderManagementTabPills();
   updateSectionFormFields('create');
   updateSectionFormFields('edit');
   updateImportGradeOptions();
-  renderSections();
-  renderSubjects();
-  renderTeacherAssignments();
-  renderStudentsTab();
+  try {
+    await refreshManagementViews();
+  } catch (error) {
+    window.alert(error?.message || 'The class management data could not be loaded.');
+  }
   window.initSearchableSelect?.(document.getElementById('studentSelect'), {
     placeholder: 'Select a student',
     searchPlaceholder: 'Search students...',

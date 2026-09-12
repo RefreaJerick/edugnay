@@ -1691,6 +1691,19 @@
       );
   }
 
+  function closeAssignmentMenus() {
+    document.querySelectorAll('.assignment-action-menu.open').forEach(menu => menu.classList.remove('open'));
+    document.querySelectorAll('.assignment-menu-trigger[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.assignment-card-menu')) closeAssignmentMenus();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeAssignmentMenus();
+  });
+
   function renderAssignments() {
     const list = document.getElementById('assignmentList');
     const assignments = getTeacherAssignments();
@@ -1715,9 +1728,6 @@
             <div class="assignment-progress-track"><div class="assignment-progress-fill" style="width:${pct}%;"></div></div>
           </div>
           <div class="assignment-card-actions">
-            <button class="top-btn secondary" type="button" onclick="openEditAssignmentModal('${a.id}')">
-              <i data-lucide="pencil" style="width:13px;height:13px;"></i> Edit
-            </button>
             <button class="top-btn secondary" type="button" onclick="openStatusModal('${a.id}')">
               <i data-lucide="check-square" style="width:13px;height:13px;"></i> Update Status
             </button>
@@ -1725,9 +1735,35 @@
               <button class="top-btn secondary" type="button" onclick="openAssignmentSubmissionsModal('${a.id}')">
                 <i data-lucide="inbox" style="width:13px;height:13px;"></i> View Submissions
               </button>` : ''}
+            <div class="assignment-card-menu">
+              <button class="assignment-menu-trigger" type="button" aria-label="Assignment actions" aria-haspopup="menu" aria-expanded="false">
+                <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
+              </button>
+              <div class="assignment-action-menu" role="menu">
+                <button class="assignment-menu-item" type="button" role="menuitem" onclick="closeAssignmentMenus(); openEditAssignmentModal('${a.id}')">
+                  <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Assignment
+                </button>
+                <button class="assignment-menu-item delete" type="button" role="menuitem">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Assignment
+                </button>
+              </div>
+            </div>
           </div>
         </div>`;
     }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments you create for this section will appear here.' });
+
+    list.querySelectorAll('.assignment-card-menu').forEach(container => {
+      const button = container.querySelector('.assignment-menu-trigger');
+      const menu = container.querySelector('.assignment-action-menu');
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const shouldOpen = !menu.classList.contains('open');
+        closeAssignmentMenus();
+        if (!shouldOpen) return;
+        menu.classList.add('open');
+        button.setAttribute('aria-expanded', 'true');
+      });
+    });
     lucide.createIcons();
   }
 

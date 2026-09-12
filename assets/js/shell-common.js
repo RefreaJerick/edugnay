@@ -572,6 +572,66 @@ function formatRelativeTime(dateValue) {
     );
   }
 
+  // Replace this local getter with GET /api/sections during backend integration.
+  async function getSections() {
+    return getAssignmentSections();
+  }
+
+  // Replace this localStorage implementation with PATCH /api/sections/:id.
+  async function updateSection(sectionId, values = {}) {
+    const school = getActiveSchool();
+    if (!school?.id || !sectionId) return null;
+
+    const divisions = school.divisions || {};
+    let sourceLevel = '';
+    let sourceIndex = -1;
+    Object.entries(divisions).some(([level, division]) => {
+      const index = (division.sections || []).findIndex(section => section.id === String(sectionId));
+      if (index < 0) return false;
+      sourceLevel = level;
+      sourceIndex = index;
+      return true;
+    });
+    if (sourceIndex < 0) return null;
+
+    const name = String(values.name || '').trim();
+    const level = String(values.level || '').trim();
+    const grade = String(values.grade || '').trim();
+    const capacity = Number(values.capacity);
+    if (!name || !level || !grade || !Number.isFinite(capacity) || capacity <= 0) return null;
+
+    const sourceDivision = divisions[sourceLevel];
+    const currentSection = sourceDivision.sections[sourceIndex];
+    const targetDivision = divisions[level] || createDivision(level);
+    targetDivision.sections = Array.isArray(targetDivision.sections) ? targetDivision.sections : [];
+    const updatedSection = {
+      ...currentSection,
+      id: currentSection.id,
+      schoolId: school.id,
+      name,
+      level,
+      grade,
+      strand: level === 'shs' ? String(values.strand || '').trim() || null : null,
+      capacity,
+      adviserId: values.adviserId ? String(values.adviserId).trim() || null : null
+    };
+
+    sourceDivision.sections.splice(sourceIndex, 1);
+    if (sourceLevel === level) targetDivision.sections.splice(sourceIndex, 0, updatedSection);
+    else targetDivision.sections.push(updatedSection);
+
+    divisions[level] = targetDivision;
+    school.schoolLevels = Array.isArray(school.schoolLevels) ? school.schoolLevels : [];
+    if (!school.schoolLevels.includes(level)) school.schoolLevels.push(level);
+    const savedSchool = updateSchool(school.id, {
+      divisions,
+      schoolLevels: school.schoolLevels,
+      activeDivision: level
+    });
+    if (!savedSchool) return null;
+    return getAssignmentSections(savedSchool).find(section => section.id === updatedSection.id) || null;
+  }
+
   function assignmentWithLabels(record, studentId = null) {
     const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
     const teacher = getUserById(record.teacherId);
@@ -2577,6 +2637,8 @@ function formatRelativeTime(dateValue) {
     getJournalSubject,
     isJournalsEnabled,
     getAssignmentSections,
+    getSections,
+    updateSection,
     assignments: ASSIGNMENT_DIRECTORY,
     getAssignments,
     getAssignmentsForSection,

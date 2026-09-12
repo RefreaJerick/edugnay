@@ -1494,6 +1494,81 @@ thead tr:hover .comp-delete-btn {
   justify-content: flex-end;
 }
 
+.assignment-card-menu {
+  position: relative;
+  display: flex;
+  flex: 0 0 36px;
+}
+
+.assignment-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.assignment-menu-trigger:hover,
+.assignment-menu-trigger[aria-expanded="true"] {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.assignment-action-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  display: none;
+  width: 174px;
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 9px;
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
+}
+
+.assignment-action-menu.open {
+  display: grid;
+}
+
+.assignment-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assignment-menu-item:hover {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.assignment-menu-item.delete {
+  color: var(--red);
+}
+
+.assignment-menu-item.delete:hover {
+  background: var(--red-pale);
+}
+
 #assignGradingFields,
 #editAssignmentGradingFields {
   margin-top: 16px;
@@ -1906,18 +1981,18 @@ tbody tr:hover td.sticky-col {
   }
 
   .assignment-card-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
     gap: 8px;
   }
 
   .assignment-card-actions .top-btn {
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
   }
 
-  .assignment-card-actions .top-btn:nth-child(3) {
-    grid-column: 1 / -1;
+  .assignment-card-menu {
+    flex: 0 0 36px;
   }
 
   .assignment-submissions-modal .modal-body {

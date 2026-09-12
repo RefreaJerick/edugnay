@@ -568,7 +568,7 @@ tbody tr:hover {
 
 .sections-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
   gap: 14px;
 }
 
@@ -1972,6 +1972,81 @@ tbody tr:hover {
   background: var(--blue-xpale);
 }
 
+.section-card-menu {
+  position: relative;
+  display: flex;
+  flex: 0 0 35px;
+}
+
+.section-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.section-menu-trigger:hover,
+.section-menu-trigger[aria-expanded="true"] {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.section-action-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  display: none;
+  width: 160px;
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 9px;
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
+}
+
+.section-action-menu.open {
+  display: grid;
+}
+
+.section-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-menu-item:hover {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.section-menu-item.delete {
+  color: var(--red);
+}
+
+.section-menu-item.delete:hover {
+  background: var(--red-pale);
+}
+
 @media (max-width: 520px) {
   .section-card .card-head {
     padding-inline: 15px;
@@ -1987,6 +2062,19 @@ tbody tr:hover {
 
   .section-card .card-foot {
     padding: 11px 15px;
+  }
+
+  .section-card-menu,
+  .section-menu-trigger {
+    width: 100%;
+  }
+
+  .section-card-menu {
+    flex-basis: auto;
+  }
+
+  .section-action-menu {
+    width: 100%;
   }
 }
 
