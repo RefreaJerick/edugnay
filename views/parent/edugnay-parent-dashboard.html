@@ -220,19 +220,14 @@
           <!-- Weekly Report — confirmed only, fully invisible if not yet confirmed -->
           <!-- EJS: <% if (weeklyReport) { %> -->
           <section class="report-hero" aria-labelledby="report-status-title">
-            <div class="report-hero-content">
-              <div class="report-hero-icon" aria-hidden="true">
-                <i data-lucide="file-text" style="width:18px;height:18px;"></i>
-              </div>
-              <div class="report-hero-copy">
-                <div class="report-hero-kicker">Weekly report</div>
-                <h2 class="report-hero-title" id="report-status-title"></h2>
-                <p class="report-hero-description">Review attendance, grades, and teacher notes.</p>
-              </div>
+            <div class="report-hero-head">
+              <div class="report-hero-kicker">Weekly report</div>
               <a href="edugnay-parent-reports.html" class="report-hero-link" id="report-hero-link">
                 View report <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
               </a>
             </div>
+            <h2 class="report-hero-title" id="report-status-title"></h2>
+            <p class="report-hero-description">Review attendance, grades, and teacher notes.</p>
           </section>
           <!-- Empty report state is rendered by updateChildContext() when no confirmed report exists. -->
 

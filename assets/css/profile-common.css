@@ -9,7 +9,7 @@
   gap: 20px;
   background: var(--navy);
   border: 1px solid rgba(255,255,255,.1);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 28px;
   min-height: 150px;
   margin-bottom: 18px;
@@ -19,7 +19,7 @@
 .profile-avatar {
   width: 88px;
   height: 88px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-mid);
   border: 3px solid rgba(255,255,255,.22);
   color: var(--white);
@@ -48,9 +48,9 @@
 .profile-header-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 18px; font-size: 12px; color: rgba(255,255,255,.72); }
 .profile-header-meta span { display: flex; align-items: center; gap: 5px; }
 
-.profile-tab-bar { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; padding: 5px; margin-bottom: 18px; border: 1px solid var(--gray-200); border-radius: 14px; background: var(--white); box-shadow: 0 3px 14px rgba(16, 40, 80, .045); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.profile-tab-bar { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; padding: 5px; margin-bottom: 18px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: var(--white); box-shadow: 0 3px 14px rgba(16, 40, 80, .045); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .profile-tab-bar::-webkit-scrollbar { display: none; }
-.profile-tab { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; min-height: 40px; padding: 9px 15px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--gray-500); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer; -webkit-font-smoothing: antialiased; transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease; }
+.profile-tab { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; min-height: 40px; padding: 9px 15px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--gray-500); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer; -webkit-font-smoothing: antialiased; transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease; }
 .profile-tab:not(.active):hover { background: var(--gray-50) !important; border-color: var(--gray-200) !important; color: var(--gray-700) !important; }
 .profile-tab.active { background: var(--blue-xpale) !important; border-color: var(--blue-pale) !important; color: var(--blue-mid) !important; box-shadow: 0 2px 6px rgba(29,92,180,.08) !important; }
 .profile-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--button-focus-ring); }
@@ -58,15 +58,15 @@
 .two-col { display: grid; grid-template-columns: minmax(0,1.12fr) minmax(280px,.88fr); gap: 18px; margin-bottom: 20px; align-items: start; }
 .two-col > * { min-width: 0; align-self: start; }
 .profile-side-column { display: grid; gap: 18px; align-content: start; min-width: 0; }
-.panel { border: 1px solid var(--gray-200); border-radius: 17px; background: var(--white); box-shadow: 0 8px 22px rgba(16,40,80,.07); overflow: hidden; }
+.panel { border: 1px solid var(--gray-200); border-radius: var(--radius-lg); background: var(--white); box-shadow: 0 8px 22px rgba(16,40,80,.07); overflow: hidden; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 22px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; gap: 10px; }
 .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--gray-800); }
 .panel-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
 .panel-head-title-group { display: flex; align-items: center; gap: 13px; min-width: 0; }
-.panel-title-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--blue-xpale); color: var(--blue-mid); box-shadow: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.panel-title-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--blue-xpale); color: var(--blue-mid); box-shadow: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .config-panel-body { padding: 18px; display: grid; gap: 11px; }
 .profile-fields .form-group, .profile-fields .form-input { width: 100%; box-sizing: border-box; }
-.config-panel-body .form-group { margin-bottom: 0; padding: 13px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: #fbfdff; }
+.config-panel-body .form-group { margin-bottom: 0; padding: 13px 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: #fbfdff; }
 .profile-pane#pane-personal .config-panel-body .form-group,
 .personal-info-panel .config-panel-body .form-group { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .config-panel-body .form-label { margin-bottom: 7px; }
@@ -96,7 +96,7 @@
   font-weight: 600;
   text-align: right;
 }
-.form-input { width: 100%; box-sizing: border-box; min-height: 46px; border-radius: 10px; background: #fbfdff; }
+.form-input { width: 100%; box-sizing: border-box; min-height: 46px; border-radius: var(--radius-sm); background: #fbfdff; }
 .form-input:focus { background: var(--white); }
 .profile-pane.active { animation: profilePaneIn .2s ease both; }
 @keyframes profilePaneIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -111,7 +111,7 @@
   .two-col { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
-  .profile-header-card { padding: 20px; gap: 14px; border-radius: 16px; }
+  .profile-header-card { padding: 20px; gap: 14px; border-radius: var(--radius-md); }
   .profile-avatar { width: 72px; height: 72px; font-size: 22px; }
   .profile-avatar-edit { width: 26px; height: 26px; }
   .profile-header-name { font-size: 19px; }

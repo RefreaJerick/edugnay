@@ -25,7 +25,7 @@
   gap: 6px;
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 5px;
   margin-bottom: 22px;
   overflow-x: auto;
@@ -39,7 +39,7 @@
   min-height: 40px;
   padding: 9px 15px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: none;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
@@ -68,7 +68,7 @@
   font-weight: 700;
   background: var(--gray-200);
   color: var(--gray-600);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 1px 7px;
 }
 
@@ -139,7 +139,7 @@
   margin: 0;
   padding: 9px 15px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--gray-500);
   font: inherit;
@@ -210,7 +210,7 @@
   min-height: 34px;
   padding: 7px 12px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--white);
   font-family: inherit;
   font-size: 12.5px;
@@ -236,7 +236,7 @@
   font-weight: 700;
   background: var(--gray-100);
   color: var(--gray-500);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 1px 7px;
 }
 
@@ -250,7 +250,7 @@
   padding: 8px 12px;
   border: 1px solid transparent;
   border-bottom-color: transparent;
-  border-radius: 9px 9px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: transparent;
   color: var(--gray-500);
   font-size: 11px;
@@ -298,7 +298,7 @@
   background-color: var(--white);
   /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
   border: 1px solid var(--gray-200);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   box-shadow: 0 3px 12px rgba(16, 40, 80, 0.045);
   flex-wrap: wrap;
   justify-content: space-between;
@@ -333,7 +333,7 @@
 .search-input {
   padding: 9px 14px 9px 36px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 13px;
   width: 230px;
@@ -349,7 +349,7 @@
 .filter-select {
   padding: 9px 30px 9px 14px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 13px;
   background: var(--white);
@@ -366,7 +366,7 @@
 .view-toggle {
   display: flex;
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -396,7 +396,7 @@
 .panel {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.055);
 }
@@ -482,7 +482,7 @@ tbody tr:hover {
   font-size: 11px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -575,7 +575,7 @@ tbody tr:hover {
 .section-card {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 3px 12px rgba(16, 40, 80, 0.045);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -613,7 +613,7 @@ tbody tr:hover {
   font-size: 10px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .gb-7 {
@@ -642,7 +642,7 @@ tbody tr:hover {
   gap: 0;
   padding: 11px 8px;
   border: 1px solid var(--gray-100);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: var(--gray-50);
   margin: 0 0 13px;
 }
@@ -678,7 +678,7 @@ tbody tr:hover {
 .adviser-av {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-xpale);
   color: var(--blue-mid);
   font-size: 11px;
@@ -708,7 +708,7 @@ tbody tr:hover {
   gap: 8px;
   padding: 8px 10px;
   background: var(--orange-pale);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 13px;
   border: 1px solid var(--orange-border);
   color: #92400e;
@@ -731,7 +731,7 @@ tbody tr:hover {
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
   background: var(--white);
   color: var(--gray-600);
@@ -789,7 +789,7 @@ tbody tr:hover {
   color: var(--gray-600);
   padding: 8px 10px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--gray-50);
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease, color .15s ease;
@@ -812,7 +812,7 @@ tbody tr:hover {
   gap: 12px;
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 18px;
 }
@@ -823,7 +823,7 @@ tbody tr:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--blue-mid);
   flex-shrink: 0;
@@ -868,7 +868,7 @@ tbody tr:hover {
 .section-block {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   margin-bottom: 14px;
   overflow: hidden;
   box-shadow: 0 3px 13px rgba(16, 40, 80, 0.05);
@@ -900,7 +900,7 @@ tbody tr:hover {
   font-size: 10px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .gp-7 {
@@ -949,14 +949,14 @@ tbody tr:hover {
 .coverage-bar {
   width: 80px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--gray-100);
   overflow: hidden;
 }
 
 .coverage-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .label-full {
@@ -998,7 +998,7 @@ tbody tr:hover {
   margin: 4px 0;
   padding: 11px 10px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   flex-wrap: wrap;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
@@ -1037,7 +1037,7 @@ tbody tr:hover {
 .teacher-av {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   color: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -1107,7 +1107,7 @@ tbody tr:hover {
   margin-bottom: 18px;
   border: 1px solid var(--blue-pale);
   background: var(--blue-xpale);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .ctx-icon {
@@ -1136,7 +1136,7 @@ tbody tr:hover {
   margin-top: 10px;
   padding: 12px 14px;
   border: 1px solid var(--gold-border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--gold-pale);
 }
 
@@ -1146,7 +1146,7 @@ tbody tr:hover {
   gap: 12px;
   background: var(--green-pale);
   border: 1px solid #86efac;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-top: 10px;
 }
@@ -1160,7 +1160,7 @@ tbody tr:hover {
 .sp-av {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-mid);
   color: #fff;
   font-size: 12px;
@@ -1226,7 +1226,7 @@ tbody tr:hover {
   gap: 12px;
   background: var(--orange-pale);
   border: 1px solid var(--orange-border);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 20px;
   flex-wrap: wrap;
@@ -1264,7 +1264,7 @@ tbody tr:hover {
   border: 1.5px solid #fcd34d;
   background: #fff;
   color: #92400e;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1316,12 +1316,12 @@ tbody tr:hover {
   width: 100%;
   padding: 9px 14px 9px 34px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 13px;
   outline: none;
   background: var(--white);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .es-input:focus {
@@ -1337,7 +1337,7 @@ tbody tr:hover {
 .user-av {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-mid);
   color: #fff;
   font-size: 11px;
@@ -1372,7 +1372,7 @@ tbody tr:hover {
 .sc-card {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   cursor: pointer;
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.035);
@@ -1431,7 +1431,7 @@ tbody tr:hover {
 
 .sc-bar {
   height: 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--gray-100);
   overflow: hidden;
   margin-bottom: 4px;
@@ -1439,7 +1439,7 @@ tbody tr:hover {
 
 .sc-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .bar-blue {
@@ -1490,7 +1490,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   background: var(--white);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 24px 64px rgba(11, 31, 58, 0.25);
   overflow: hidden;
   transform: translateY(20px);
@@ -1534,7 +1534,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--gray-100);
   color: var(--gray-500);
   cursor: pointer;
@@ -1561,7 +1561,7 @@ tbody tr:hover {
 .btn {
   padding: 10px 20px;
   border: none;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 700;
@@ -1603,7 +1603,7 @@ tbody tr:hover {
   width: 100%;
   padding: 11px 36px 11px 14px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-800);
@@ -1986,7 +1986,7 @@ tbody tr:hover {
   min-height: 34px;
   padding: 0;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gray-600);
   cursor: pointer;
@@ -2008,7 +2008,7 @@ tbody tr:hover {
   width: 160px;
   padding: 5px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
 }
@@ -2024,7 +2024,7 @@ tbody tr:hover {
   width: 100%;
   padding: 8px 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--gray-700);
   font-family: inherit;
@@ -2086,7 +2086,7 @@ tbody tr:hover {
   justify-content: center;
   flex: 0 0 34px;
   margin-top: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--orange-dark);
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.08);
@@ -2112,7 +2112,7 @@ tbody tr:hover {
 .unassigned-banner .ub-btn {
   align-self: center;
   border-color: var(--orange-border);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gold-dark);
 }
@@ -2137,7 +2137,7 @@ tbody tr:hover {
   justify-content: space-between;
   padding: 16px;
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--white);
   transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }

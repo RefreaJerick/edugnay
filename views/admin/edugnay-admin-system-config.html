@@ -360,13 +360,13 @@
       const dateLabel = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       return `
         <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--gray-100);">
-          <div style="width:34px;height:34px;border-radius:8px;background:var(--gold-pale);color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <div style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--gold-pale);color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <i data-lucide="unlock" style="width:16px;height:16px;"></i>
           </div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;color:var(--gray-800);">Q${r.quarter.slice(1)} · ${details.section} · ${details.subject}</div>
             <div style="font-size:12px;color:var(--gray-500);margin:2px 0 6px;">Requested by ${details.teacher} · ${dateLabel}</div>
-            <div style="font-size:12px;color:var(--gray-700);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:7px;padding:8px 10px;">${r.reason}</div>
+            <div style="font-size:12px;color:var(--gray-700);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius-xs);padding:8px 10px;">${r.reason}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="top-btn secondary" style="color:var(--red);border-color:#fecaca;" onclick="denyReopenRequest('${r.id}')"><i data-lucide="x" style="width:13px;height:13px;"></i> Deny</button>

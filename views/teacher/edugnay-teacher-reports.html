@@ -829,7 +829,7 @@
     const t = document.createElement('div');
     t.style.cssText = `
       position:fixed; bottom:24px; right:24px;
-      padding:12px 18px; border-radius:10px;
+      padding:12px 18px; border-radius:var(--radius-sm);
       font-size:13px; font-weight:600; font-family:'Plus Jakarta Sans',sans-serif;
       background:${colors[type] || colors.success}; color:#fff;
       z-index:999; box-shadow:0 4px 16px rgba(0,0,0,0.15);

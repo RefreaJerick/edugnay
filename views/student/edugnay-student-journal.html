@@ -428,7 +428,7 @@
 
     function showToast(msg, type) {
       const t = document.createElement('div');
-      t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
+      t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
       t.textContent = msg;
       document.body.appendChild(t);
       setTimeout(() => t.remove(), 3000);

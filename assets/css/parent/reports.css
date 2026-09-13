@@ -19,7 +19,7 @@
   gap: 10px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 10px 16px 10px 10px;
   cursor: pointer;
   transition: all 0.15s;
@@ -40,7 +40,7 @@
 .child-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -107,7 +107,7 @@
 .lr-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,7 +175,7 @@
 .lr-teacher-avatar {
   width: 22px;
   height: 22px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
   background: var(--purple-pale);
   border: 1px solid var(--purple-border);
@@ -197,7 +197,7 @@
   font-size: 11px;
   font-weight: 700;
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 /* ── Filter row ── */
@@ -231,7 +231,7 @@
   padding: 10px 14px 10px 36px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-800);
@@ -252,7 +252,7 @@
   padding: 10px 14px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-600);
@@ -311,7 +311,7 @@
   top: 18px;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--white);
   border: 3px solid var(--blue-mid);
   display: flex;
@@ -327,7 +327,7 @@
 .timeline-dot-inner {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-mid);
 }
 
@@ -338,7 +338,7 @@
 .report-card {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(16, 40, 80, 0.05);
   transition: box-shadow 0.15s, transform 0.15s;
@@ -393,7 +393,7 @@
   font-size: 10.5px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -449,7 +449,7 @@
 .rc-teacher-avatar {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
   background: var(--blue-xpale);
   color: var(--blue-mid);
@@ -500,7 +500,7 @@
 
 .report-modal {
   background: var(--white);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 600px;
   max-height: 88vh;
@@ -528,7 +528,7 @@
   gap: 10px;
   background: var(--red-pale);
   border: 1px solid #fecaca;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-bottom: 18px;
   font-size: 12px;
@@ -570,7 +570,7 @@
 .rm-foot-avatar {
   width: 24px;
   height: 24px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
   background: var(--blue-xpale);
   color: var(--blue-mid);
@@ -583,7 +583,7 @@
 
 .btn-close-modal {
   padding: 9px 18px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   border: none;
   background: var(--blue);
   color: var(--white);
@@ -662,7 +662,7 @@
 .child-card {
   min-width: 214px;
   padding: 10px 14px 10px 10px;
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   box-shadow: 0 2px 8px rgba(16, 40, 80, .04);
 }
 
@@ -683,7 +683,7 @@
   padding: 12px;
   margin-bottom: 16px;
   border: 1px solid var(--gray-200);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: var(--white);
   box-shadow: 0 2px 9px rgba(16, 40, 80, .04);
 }
@@ -706,7 +706,7 @@
 }
 
 .report-card {
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   box-shadow: 0 3px 12px rgba(16, 40, 80, .05);
 }
 
@@ -736,7 +736,7 @@
 }
 
 .report-modal {
-  border-radius: 17px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 22px 58px rgba(11, 31, 58, .26);
 }
 
@@ -747,7 +747,7 @@
 
 .report-modal {
   border: 1px solid rgba(255, 255, 255, .24);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
 }
 
 .rm-body {
@@ -756,7 +756,7 @@
 }
 
 .rm-risk-banner {
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   padding: 13px 14px;
 }
 
@@ -764,7 +764,7 @@
   padding: 17px 18px;
   background: #fbfdff;
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   line-height: 1.85;
 }
 
@@ -775,7 +775,7 @@
 
 .btn-close-modal {
   min-height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 @media (max-width: 760px) {
@@ -814,7 +814,7 @@
 
   .report-modal {
     max-height: 88vh;
-    border-radius: 17px;
+    border-radius: var(--radius-lg);
   }
 
   .rm-body,

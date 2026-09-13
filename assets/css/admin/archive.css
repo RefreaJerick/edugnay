@@ -5,7 +5,7 @@
   gap: 12px;
   background: var(--orange-pale);
   border: 1px solid var(--orange-border);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 20px;
   box-shadow: 0 3px 12px rgba(180, 83, 9, 0.06);
@@ -19,7 +19,7 @@
   justify-content: center;
   color: var(--orange-dark);
   background: var(--white);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   flex: 0 0 34px;
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.08);
 }
@@ -56,7 +56,7 @@
 /* ── PANEL ── */
 .panel {
   background: var(--white);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
   animation: fadeUp 0.4s ease both;
@@ -95,7 +95,7 @@
 
 .archive-year-card {
   border: 1.5px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -122,7 +122,7 @@
 .ayc-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--gray-100);
   color: var(--gray-500);
   display: flex;
@@ -161,7 +161,7 @@
   font-size: 11px;
   font-weight: 700;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -295,13 +295,13 @@
   flex: 1;
   height: 6px;
   background: var(--gray-200);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
 .quarter-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--blue-mid);
 }
 
@@ -345,7 +345,7 @@
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -416,7 +416,7 @@
   padding: 10px 12px;
   background: var(--gray-50);
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-800);
@@ -454,7 +454,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
   background: var(--white);
 }
@@ -472,7 +472,7 @@
 .check-icon-wrap {
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -518,7 +518,7 @@
   gap: 12px;
   padding: 12px 14px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   margin-bottom: 14px;
   background: var(--gray-50);
 }
@@ -527,7 +527,7 @@
   width: 44px;
   height: 24px;
   background: var(--gray-200);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   position: relative;
   cursor: pointer;
   transition: background 0.2s;
@@ -544,7 +544,7 @@
   width: 18px;
   height: 18px;
   background: white;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   top: 3px;
   left: 3px;
   transition: transform 0.2s;
@@ -565,7 +565,7 @@
 .btn-archive-full {
   width: 100%;
   padding: 13px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: none;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
@@ -616,7 +616,7 @@
 
 .modal {
   background: var(--white);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;
   box-shadow: 0 24px 64px rgba(11, 31, 58, 0.25);
@@ -653,7 +653,7 @@
 .modal-close {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--gray-100);
   border: none;
   cursor: pointer;
@@ -686,7 +686,7 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -734,7 +734,7 @@
   align-items: center;
   gap: 10px;
   background: var(--gray-100);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 18px;
 }
@@ -755,7 +755,7 @@
 .view-stat {
   background: var(--gray-50);
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 12px 14px;
   text-align: center;
 }

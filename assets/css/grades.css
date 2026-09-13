@@ -35,7 +35,7 @@
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--blue-pale);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
@@ -55,7 +55,7 @@
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--gray-50);
 }
 
@@ -135,7 +135,7 @@
   min-height: 54px;
   padding: 10px 14px;
   border: 1px solid var(--blue-pale);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--blue-xpale);
 }
 
@@ -145,7 +145,7 @@
   height: 32px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--blue-mid);
 }
@@ -215,13 +215,13 @@
     gap: 10px;
     min-height: 0;
     padding: 11px 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   .grades-note-icon {
     width: 30px;
     height: 30px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
   }
 
   .grades-note-copy {

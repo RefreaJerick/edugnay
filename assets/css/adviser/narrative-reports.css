@@ -21,7 +21,7 @@
       overflow: hidden;
       background: linear-gradient(120deg, #0b1f3a 0%, #123d78 58%, #1d5cb4 100%);
       border: 1px solid rgba(212, 175, 55, 0.22);
-      border-radius: 16px;
+      border-radius: var(--radius-md);
       padding: 24px 26px 22px;
       margin-bottom: 24px;
       box-shadow: 0 12px 26px rgba(11, 31, 58, 0.18);
@@ -32,7 +32,7 @@
       content: '';
       position: absolute;
       z-index: -1;
-      border-radius: 50%;
+      border-radius: var(--radius-circle);
       pointer-events: none;
     }
 
@@ -72,7 +72,7 @@
     .pipeline-icon {
       width: 42px; height: 42px;
       background: rgba(255,255,255,0.12);
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
@@ -124,7 +124,7 @@
 
     .flow-step-icon {
       width: 40px; height: 40px;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       background: rgba(255,255,255,0.07);
       border: 1.5px solid rgba(255,255,255,0.12);
       display: flex; align-items: center; justify-content: center;
@@ -173,7 +173,7 @@
     .summary-item {
       background: var(--white);
       border: 1px solid var(--gray-200);
-      border-radius: 14px;
+      border-radius: var(--radius-md);
       padding: 18px 20px;
       display: flex;
       align-items: center;
@@ -190,7 +190,7 @@
 
     .summary-icon {
       width: 40px; height: 40px;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
@@ -215,7 +215,7 @@
     /* â”€â”€ PANEL HEADER (shared pattern) â”€â”€ */
     .panel {
       background: var(--white);
-      border-radius: 16px;
+      border-radius: var(--radius-md);
       border: 1px solid var(--gray-200);
       overflow: hidden;
       box-shadow: 0 4px 16px rgba(16,40,80,0.04);
@@ -265,7 +265,7 @@
       width: 100%;
       padding: 7px 12px 7px 34px;
       border: 1.5px solid var(--gray-200);
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 13px;
       background: var(--white);
@@ -285,7 +285,7 @@
 
     .select-filter {
       padding: 7px 14px; background: var(--white);
-      border: 1.5px solid var(--gray-200); border-radius: 10px;
+      border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
       font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px;
       color: var(--gray-600); outline: none; cursor: pointer; transition: border-color 0.2s;
       appearance: none;
@@ -305,7 +305,7 @@
       font-size: 11px;
       font-weight: 700;
       padding: 3px 10px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       white-space: nowrap;
     }
 
@@ -323,7 +323,7 @@
       align-items: center;
       gap: 5px;
       padding: 5px 12px;
-      border-radius: 7px;
+      border-radius: var(--radius-xs);
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
@@ -355,7 +355,7 @@
       display: flex;
       flex-direction: column;
       border: 1.5px solid var(--gray-200);
-      border-radius: 14px;
+      border-radius: var(--radius-md);
       background: linear-gradient(145deg, #ffffff 0%, #fbfcff 100%);
       overflow: hidden;
       transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
@@ -381,7 +381,7 @@
 
     .report-avatar {
       width: 40px; height: 40px;
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center;
       font-size: 12px; font-weight: 700;
       flex-shrink: 0;
@@ -413,7 +413,7 @@
       font-size: 9.5px;
       font-weight: 700;
       padding: 3px 8px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
     }
 
     /* Metrics row */
@@ -429,7 +429,7 @@
       text-align: center;
       padding: 9px 5px;
       border: 1px solid var(--gray-100);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       background: var(--gray-50);
     }
 
@@ -505,7 +505,7 @@
       color: var(--gray-600);
       line-height: 1.55;
       background: var(--purple-pale);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       padding: 10px 12px;
       border-left: 3px solid var(--purple);
       border-top: 1px solid rgba(124,58,237,0.1);
@@ -538,7 +538,7 @@
       font-size: 11px;
       font-weight: 700;
       padding: 4px 10px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
     }
 
     .status-confirmed { background: var(--green-pale);  color: var(--green-darker); }
@@ -562,7 +562,7 @@
 
     .review-modal {
       background: var(--white);
-      border-radius: 18px;
+      border-radius: var(--radius-lg);
       width: 100%;
       max-width: 660px;
       max-height: 90vh;
@@ -584,7 +584,7 @@
 
     .review-avatar {
       width: 44px; height: 44px;
-      border-radius: 11px;
+      border-radius: var(--radius-md);
       background: var(--blue-xpale);
       color: var(--blue-mid);
       display: flex; align-items: center; justify-content: center;
@@ -609,7 +609,7 @@
       position: absolute;
       top: 18px; right: 18px;
       width: 30px; height: 30px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       background: var(--gray-100);
       border: none;
       cursor: pointer;
@@ -649,7 +649,7 @@
 
     .data-source-card {
       border: 1px solid var(--gray-200);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       padding: 10px 12px;
       display: flex;
       align-items: center;
@@ -658,7 +658,7 @@
 
     .ds-icon {
       width: 30px; height: 30px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
@@ -687,7 +687,7 @@
     .icon-gold   { background: var(--gold-pale);   color: var(--gold-dark); }
 
     /* â”€â”€ NAV DOT (shared box model, color comes from dot-7/8/9) â”€â”€ */
-    .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .nav-dot { width: 6px; height: 6px; border-radius: var(--radius-circle); flex-shrink: 0; }
 
     /* â”€â”€ DATA SOURCE CARD LAYOUT HELPERS â”€â”€ */
     .ds-attendance,
@@ -711,7 +711,7 @@
     /* â”€â”€ GENERATE MODAL DONE ICON â”€â”€ */
     .gen-done-icon {
       width: 54px; height: 54px;
-      border-radius: 50%;
+      border-radius: var(--radius-circle);
       background: var(--green-pale);
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 18px;
@@ -724,7 +724,7 @@
       gap: 10px;
       background: var(--red-pale);
       border: 1px solid #fecaca;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       padding: 12px 14px;
       margin-bottom: 18px;
       font-size: 12px;
@@ -747,7 +747,7 @@
       line-height: 1.7;
       background: var(--blue-xpale);
       border: 1.5px solid var(--blue-pale);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       padding: 16px 18px;
       resize: vertical;
       min-height: 140px;
@@ -800,7 +800,7 @@
 
     .gen-spinner {
       width: 54px; height: 54px;
-      border-radius: 50%;
+      border-radius: var(--radius-circle);
       border: 4px solid var(--blue-xpale);
       border-top-color: var(--blue-mid);
       margin: 0 auto 18px;
@@ -826,7 +826,7 @@
     .gen-bar-track {
       height: 7px;
       background: var(--gray-100);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       overflow: hidden;
       margin-bottom: 10px;
     }
@@ -834,7 +834,7 @@
     .gen-bar-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--blue-mid), var(--purple));
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       transition: width 0.3s ease;
       width: 0%;
     }
@@ -905,7 +905,7 @@
   isolation: isolate;
   background: var(--surface-blue);
   border: 1px solid var(--blue-pale);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   padding: 22px;
   margin-bottom: 22px;
   box-shadow: 0 5px 16px rgba(16, 40, 80, .055);
@@ -917,7 +917,7 @@
 .pipeline-icon {
   width: 40px;
   height: 40px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
 }
@@ -966,7 +966,7 @@
 .flow-step-icon {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--white);
   border: 1.5px solid var(--blue-pale);
   box-shadow: 0 2px 6px rgba(16, 40, 80, .06);
@@ -986,7 +986,7 @@
 .summary-strip .stat-card { min-height: 148px; }
 
 .panel {
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   border-color: var(--gray-200);
   box-shadow: 0 5px 16px rgba(16, 40, 80, .045);
   margin-bottom: 20px;
@@ -1005,7 +1005,7 @@
 .select-filter {
   min-height: 34px;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--gray-50);
   color: var(--gray-700);
   font-size: 11px;
@@ -1020,7 +1020,7 @@
 }
 .report-card {
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--white);
   box-shadow: none;
 }
@@ -1031,10 +1031,10 @@
 }
 .report-card.at-risk { border-color: var(--red-border); }
 .report-card-head { padding: 16px 16px 0; }
-.report-avatar { width: 38px; height: 38px; border-radius: 10px; background: var(--blue-xpale); border: 1px solid var(--blue-pale); }
+.report-avatar { width: 38px; height: 38px; border-radius: var(--radius-sm); background: var(--blue-xpale); border: 1px solid var(--blue-pale); }
 .report-card-name { font-size: 13px; }
 .report-card-meta { font-size: 10px; }
-.at-risk-flag { border-radius: 6px; padding: 4px 7px; font-size: 9px; }
+.at-risk-flag { border-radius: var(--radius-xs); padding: 4px 7px; font-size: 9px; }
 .report-card-metrics {
   gap: 0;
   padding: 13px 16px;
@@ -1055,7 +1055,7 @@
   min-height: 58px;
   padding: 10px 11px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--gray-50);
   color: var(--gray-600);
   font-size: 11px;
@@ -1063,8 +1063,8 @@
 }
 .excerpt-text.pending { border-color: var(--gray-200); background: var(--gray-50); }
 .report-card-foot { padding: 12px 16px 14px; margin-top: 14px; background: var(--white); }
-.status-pill { border-radius: 6px; padding: 4px 8px; font-size: 9.5px; }
-.btn-sm { border-radius: 7px; }
+.status-pill { border-radius: var(--radius-xs); padding: 4px 8px; font-size: 9.5px; }
+.btn-sm { border-radius: var(--radius-xs); }
 
 #review-modal,
 #gen-modal { background: var(--overlay-modal); backdrop-filter: blur(3px); }
@@ -1072,7 +1072,7 @@
   max-width: 700px;
   max-height: min(700px, calc(100vh - 32px));
   border: 1px solid var(--gray-200);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 24px 58px rgba(11, 31, 58, .2);
 }
 .review-modal-head {
@@ -1081,7 +1081,7 @@
   border-bottom: 1px solid var(--gray-200);
   align-items: center;
 }
-.review-avatar { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--blue-pale); }
+.review-avatar { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--blue-pale); }
 .review-modal-title { font-size: 16px; }
 .review-modal-sub { font-size: 10.5px; }
 .modal-close { top: 15px; right: 15px; width: 28px; height: 28px; border: 1px solid var(--gray-200); background: var(--white); }
@@ -1092,21 +1092,21 @@
 .data-source-card {
   min-height: 54px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   padding: 9px 10px;
   background: var(--white);
 }
-.ds-icon { width: 28px; height: 28px; border-radius: 8px; }
+.ds-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); }
 .ds-val { font-size: 12px; }
 .ds-label { font-size: 8.5px; }
 .ds-detail { font-size: 10px; line-height: 1.45; }
-.at-risk-banner { margin-bottom: 16px; border-radius: 9px; padding: 11px 12px; font-size: 11px; }
+.at-risk-banner { margin-bottom: 16px; border-radius: var(--radius-sm); padding: 11px 12px; font-size: 11px; }
 .at-risk-banner strong { font-size: 11.5px; }
 .ai-report-text {
   min-height: 150px;
   padding: 13px 14px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   font-size: 12.5px;
   line-height: 1.65;
@@ -1115,7 +1115,7 @@
 .review-modal-foot { padding: 13px 22px; background: var(--surface-muted); border-top-color: var(--gray-200); }
 .review-modal-foot-left { font-size: 10px; }
 .review-modal-foot-actions { gap: 7px; }
-.top-btn.confirm-btn { border-radius: 8px; }
+.top-btn.confirm-btn { border-radius: var(--radius-sm); }
 .gen-modal { max-width: 460px; }
 .gen-progress-wrap { padding: 24px 22px; }
 .gen-progress-title { font-size: 15px; }

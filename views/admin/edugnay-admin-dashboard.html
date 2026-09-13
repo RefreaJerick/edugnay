@@ -177,7 +177,7 @@
               left:0;right:0;
               background:#fff;
               border:1px solid var(--gray-200);
-              border-radius:8px;
+              border-radius:var(--radius-sm);
               box-shadow:0 4px 12px rgba(0,0,0,0.08);
               max-height:180px;
               overflow-y:auto;
@@ -1296,7 +1296,7 @@
         display:inline-flex;align-items:center;gap:6px;
         background:var(--blue-xpale);color:var(--blue-mid);
         border:1px solid var(--blue-mid);
-        border-radius:20px;padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
+        border-radius:var(--radius-pill);padding:3px 10px 3px 10px;font-size:12px;font-weight:500;
       ">
         ${student.displayName}
         <span style="cursor:pointer;opacity:0.6;font-size:14px;line-height:1;" onclick="removeLinkedStudent('${student.id}')">&times;</span>

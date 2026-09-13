@@ -19,7 +19,7 @@
   gap: 10px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 10px 16px 10px 10px;
   cursor: pointer;
   transition: all 0.15s;
@@ -40,7 +40,7 @@
 .child-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -81,7 +81,7 @@
   gap: 0;
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 22px;
   box-shadow: 0 2px 8px rgba(16, 40, 80, 0.05);
@@ -103,7 +103,7 @@
 .summary-icon {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,7 +138,7 @@
 /* ── Panel ── */
 .panel {
   background: var(--white);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(16, 40, 80, 0.05);
@@ -178,7 +178,7 @@
 .cal-nav-btn {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
   background: var(--white);
   color: var(--gray-600);
@@ -237,7 +237,7 @@
 .cal-day {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -268,7 +268,7 @@
 .cal-day-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   margin-top: 3px;
 }
 
@@ -352,7 +352,7 @@
 .legend-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   flex-shrink: 0;
 }
 
@@ -366,7 +366,7 @@
   align-items: center;
   gap: 12px;
   padding: 13px 16px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   margin-bottom: 14px;
 }
 
@@ -385,7 +385,7 @@
 .ddb-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -440,7 +440,7 @@
   font-size: 10.5px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -486,7 +486,7 @@
 .flag-date-chip {
   width: 42px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   background: var(--red-pale);
   display: flex;
@@ -541,7 +541,7 @@
   padding: 13px 16px;
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   color: var(--blue);
   line-height: 1.55;
@@ -656,7 +656,7 @@
   gap: 12px;
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   box-shadow: 0 3px 12px rgba(16, 40, 80, .05);
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
@@ -674,7 +674,7 @@
 .summary-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .summary-num {
@@ -691,7 +691,7 @@
 }
 
 .att-layout>.panel {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 7px 20px rgba(16, 40, 80, .06);
 }
 
@@ -713,7 +713,7 @@
 }
 
 .cal-day {
-  border-radius: 11px;
+  border-radius: var(--radius-md);
 }
 
 .cal-legend {
@@ -721,7 +721,7 @@
 }
 
 .att-layout>div>.panel {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 7px 20px rgba(16, 40, 80, .06);
 }
 
@@ -734,7 +734,7 @@
 #flagged-list .flag-row {
   padding: 11px 12px;
   border: 1px solid var(--gray-200);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: #fbfdff;
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
@@ -820,7 +820,7 @@
   }
 
   .cal-day {
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
   }
 
   .cal-day-num {
@@ -856,7 +856,7 @@
   max-height: calc(100vh - 32px);
   background: var(--white);
   border: 1px solid rgba(255, 255, 255, .24);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 24px 64px rgba(11, 31, 58, .3);
   overflow: hidden;
   transform: translateY(12px);
@@ -896,7 +896,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gray-500);
   cursor: pointer;
@@ -912,7 +912,7 @@
 .attendance-detail-modal .day-detail-banner {
   padding: 14px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-bottom: 16px;
 }
 
@@ -941,7 +941,7 @@
   margin-bottom: 7px;
   padding: 11px 12px;
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: #fbfdff;
 }
 
@@ -957,7 +957,7 @@
 
   .attendance-detail-modal .modal {
     max-height: 88vh;
-    border-radius: 17px;
+    border-radius: var(--radius-lg);
   }
 
   .attendance-detail-modal .modal-head,
@@ -986,7 +986,7 @@
   gap: 12px;
   background: linear-gradient(145deg, #fff 0%, #f9fbff 100%);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 .summary-item:hover {
@@ -998,7 +998,7 @@
 .summary-icon {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .summary-num {
@@ -1023,7 +1023,7 @@
 
 /* Refined calendar panel */
 .attendance-calendar-panel {
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border-color: var(--gray-200);
   box-shadow: 0 8px 24px rgba(16, 40, 80, .07);
 }
@@ -1048,7 +1048,7 @@
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--gray-200);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: var(--gray-50);
 }
 
@@ -1056,7 +1056,7 @@
   width: 30px;
   height: 30px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
 }
 
@@ -1099,7 +1099,7 @@
   justify-content: flex-start;
   padding: 10px;
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--white);
 }
 
@@ -1193,7 +1193,7 @@
   .attendance-calendar-panel .cal-day {
     min-height: 49px;
     padding: 8px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
   }
 
   .attendance-calendar-panel .cal-legend {
@@ -1253,7 +1253,7 @@
 
 .summary-card-badge {
   padding: 4px 7px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .2px;
@@ -1318,7 +1318,7 @@
 .summary-rate-track {
   height: 5px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #dbeafe;
 }
 
@@ -1388,7 +1388,7 @@
     flex-direction: column;
     min-height: 84px;
     padding: 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   .attendance-stat-grid .stat-card-top {
@@ -1405,7 +1405,7 @@
     right: 10px;
     width: 22px;
     height: 22px;
-    border-radius: 7px;
+    border-radius: var(--radius-xs);
   }
 
   .attendance-stat-grid .stat-card-icon svg {

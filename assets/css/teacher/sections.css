@@ -9,7 +9,7 @@
   background: var(--navy);
   background-image: none;
   border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 24px 26px;
   margin-bottom: 18px;
   box-shadow: 0 12px 26px rgba(11, 31, 58, .16);
@@ -25,7 +25,7 @@
   content: '';
   position: absolute;
   z-index: -1;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   pointer-events: none;
 }
 
@@ -54,7 +54,7 @@
 .section-badge {
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(212, 175, 55, 0.16);
   border: 1px solid rgba(247, 217, 128, 0.22);
   display: flex;
@@ -110,7 +110,7 @@
   align-items: center;
   gap: 7px;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -169,7 +169,7 @@
   gap: 2px;
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 6px;
   margin-bottom: 18px;
   box-shadow: 0 2px 10px rgba(16, 40, 80, 0.04);
@@ -181,7 +181,7 @@
   align-items: center;
   gap: 7px;
   padding: 9px 18px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -208,7 +208,7 @@
   font-size: 10px;
   font-weight: 800;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.25);
 }
 
@@ -230,7 +230,7 @@
 ═══════════════════════════════ */
 .panel {
   background: var(--white);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
   /* box-shadow: 0 2px 10px rgba(16,40,80,0.05); */
@@ -351,7 +351,7 @@ tbody tr:hover td.sticky-col {
 .student-av {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,7 +407,7 @@ tbody tr:hover td.sticky-col {
   font-size: 11px;
   font-weight: 700;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -475,7 +475,7 @@ tbody tr:hover td.sticky-col {
   padding: 9px 12px 9px 34px;
   background: var(--gray-50);
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-800);
@@ -497,7 +497,7 @@ tbody tr:hover td.sticky-col {
   padding: 10px 14px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-600);
@@ -538,7 +538,7 @@ tbody tr:hover td.sticky-col {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -563,7 +563,7 @@ tbody tr:hover td.sticky-col {
 .cat-tab .cat-weight {
   font-size: 10px;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.25);
   color: inherit;
 }
@@ -629,7 +629,7 @@ tbody tr:hover td.sticky-col {
   font-size: 9px;
   font-weight: 700;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   margin-top: 2px;
 }
 
@@ -654,7 +654,7 @@ tbody tr:hover td.sticky-col {
   right: 0;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--red);
   color: white;
   border: none;
@@ -676,7 +676,7 @@ thead tr:hover .comp-delete-btn {
   padding: 6px 8px;
   background: var(--gray-50);
   border: 1.5px solid var(--gray-200);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -733,7 +733,7 @@ thead tr:hover .comp-delete-btn {
   justify-content: space-between;
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin: 0 24px 20px;
   flex-wrap: wrap;
@@ -767,7 +767,7 @@ thead tr:hover .comp-delete-btn {
   align-items: center;
   justify-content: center;
   flex: 0 0 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.08);
 }
@@ -824,7 +824,7 @@ thead tr:hover .comp-delete-btn {
   padding: 9px 14px;
   background: var(--white);
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-700);
@@ -856,7 +856,7 @@ thead tr:hover .comp-delete-btn {
 .att-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
 }
 
 .att-dot.present {
@@ -883,7 +883,7 @@ thead tr:hover .comp-delete-btn {
 
 .att-btn {
   padding: 5px 12px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -931,7 +931,7 @@ thead tr:hover .comp-delete-btn {
 
 .att-hist-tab {
   padding: 5px 12px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -967,13 +967,13 @@ thead tr:hover .comp-delete-btn {
 .att-legend-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
 }
 
 .att-record-cell {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1013,7 +1013,7 @@ thead tr:hover .comp-delete-btn {
 .upload-zone {
   margin: 20px 24px;
   border: 2px dashed var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 32px;
   text-align: center;
   transition: all 0.2s;
@@ -1056,7 +1056,7 @@ thead tr:hover .comp-delete-btn {
 
 .file-type-tag {
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--gray-100);
   color: var(--gray-500);
   font-size: 11px;
@@ -1088,7 +1088,7 @@ thead tr:hover .comp-delete-btn {
 .material-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1146,7 +1146,7 @@ thead tr:hover .comp-delete-btn {
 
 .modal {
   background: var(--white);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;
   box-shadow: 0 24px 64px rgba(11, 31, 58, 0.25);
@@ -1183,7 +1183,7 @@ thead tr:hover .comp-delete-btn {
 .modal-close {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--gray-100);
   border: none;
   cursor: pointer;
@@ -1229,7 +1229,7 @@ thead tr:hover .comp-delete-btn {
   padding: 10px 12px;
   background: var(--gray-50);
   border: 1.5px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
   color: var(--gray-800);
@@ -1266,7 +1266,7 @@ thead tr:hover .comp-delete-btn {
 
 .comp-type-opt {
   padding: 10px 8px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
   text-align: center;
   cursor: pointer;
@@ -1308,7 +1308,7 @@ thead tr:hover .comp-delete-btn {
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   margin-top: 10px;
 }
 
@@ -1339,7 +1339,7 @@ thead tr:hover .comp-delete-btn {
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -1373,7 +1373,7 @@ thead tr:hover .comp-delete-btn {
   background: var(--orange-pale);
   border: 1px solid #fcd34d;
   border-left: 4px solid var(--orange);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 14px 16px;
   margin-bottom: 18px;
   display: flex;
@@ -1407,7 +1407,7 @@ thead tr:hover .comp-delete-btn {
 
 .file-drop-zone {
   border: 2px dashed var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 28px;
   text-align: center;
   margin-bottom: 16px;
@@ -1431,7 +1431,7 @@ thead tr:hover .comp-delete-btn {
 .assignment-card {
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px 18px;
   margin-bottom: 10px;
   display: flex;
@@ -1442,7 +1442,7 @@ thead tr:hover .comp-delete-btn {
 .assignment-card-icon {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   background: var(--blue-xpale);
   color: var(--blue-mid);
@@ -1473,7 +1473,7 @@ thead tr:hover .comp-delete-btn {
   width: 100%;
   max-width: 420px;
   background: var(--gray-100);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   margin-top: 8px;
   overflow: hidden;
 }
@@ -1481,7 +1481,7 @@ thead tr:hover .comp-delete-btn {
 .assignment-progress-fill {
   height: 100%;
   background: var(--blue-mid);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: width 0.2s;
 }
 
@@ -1508,7 +1508,7 @@ thead tr:hover .comp-delete-btn {
   min-height: 36px;
   padding: 0;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gray-600);
   cursor: pointer;
@@ -1530,7 +1530,7 @@ thead tr:hover .comp-delete-btn {
   width: 174px;
   padding: 5px;
   border: 1px solid var(--gray-200);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
 }
@@ -1546,7 +1546,7 @@ thead tr:hover .comp-delete-btn {
   width: 100%;
   padding: 8px 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--gray-700);
   font-family: inherit;
@@ -1627,7 +1627,7 @@ thead tr:hover .comp-delete-btn {
 .status-btn {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
   background: var(--white);
   cursor: pointer;
@@ -1719,7 +1719,7 @@ thead tr:hover .comp-delete-btn {
    ------------------------------------------------------------------------- */
 .tab-content > .panel,
 .tab-content .panel {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   border-color: var(--gray-200);
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.055);
 }
@@ -1756,7 +1756,7 @@ thead tr:hover .comp-delete-btn {
 .filter-select {
   min-height: 38px;
   background: var(--white);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .search-toolbar .search-input:focus,
@@ -1805,7 +1805,7 @@ tbody tr:hover td.sticky-col {
 .att-summary-item {
   padding: 6px 9px;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--gray-50);
 }
 
@@ -1820,7 +1820,7 @@ tbody tr:hover td.sticky-col {
 
 .att-btn {
   min-height: 31px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .att-record-cell {
@@ -1830,7 +1830,7 @@ tbody tr:hover td.sticky-col {
 .upload-zone {
   margin: 18px 20px;
   padding: 28px 22px;
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: var(--gray-50);
   border-color: var(--gray-200);
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
@@ -1849,7 +1849,7 @@ tbody tr:hover td.sticky-col {
   align-items: center;
   justify-content: center;
   margin: 0 auto 10px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: var(--white);
   color: var(--blue-mid);
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.07);
@@ -1881,7 +1881,7 @@ tbody tr:hover td.sticky-col {
 .material-icon {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .material-actions {
@@ -1891,7 +1891,7 @@ tbody tr:hover td.sticky-col {
 .assignment-card {
   margin-bottom: 9px;
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 2px 8px rgba(16, 40, 80, 0.035);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -1909,7 +1909,7 @@ tbody tr:hover td.sticky-col {
 .assignment-card-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 .assignment-progress-track {
@@ -1920,7 +1920,7 @@ tbody tr:hover td.sticky-col {
 .status-btn {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 @media (max-width: 760px) {

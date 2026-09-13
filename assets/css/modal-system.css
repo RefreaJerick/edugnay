@@ -18,7 +18,7 @@
   max-height: calc(100vh - 32px);
   background: var(--white) !important;
   border: 1px solid rgba(178, 194, 214, .78) !important;
-  border-radius: 18px !important;
+  border-radius: var(--radius-lg) !important;
   box-shadow: 0 24px 64px rgba(15, 32, 58, .2) !important;
   overflow: hidden;
 }
@@ -67,7 +67,7 @@
   place-items: center;
   flex: 0 0 auto;
   border: 1px solid var(--blue-pale);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
@@ -115,7 +115,7 @@
   height: 34px;
   flex: 0 0 auto;
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gray-500);
   cursor: pointer;
@@ -198,15 +198,15 @@
    by the modal shell. The list remains bounded and scrollable on its own. */
 #teacherModalBackdrop .modal {
   overflow: visible;
-  border-radius: 18px !important;
+  border-radius: var(--radius-lg) !important;
 }
 
 #teacherModalBackdrop .modal-head {
-  border-radius: 17px 17px 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 #teacherModalBackdrop .modal-foot {
-  border-radius: 0 0 17px 17px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 /* Searchable user fields keep the native select in the form while presenting
@@ -295,7 +295,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--gray-200);
-  border-radius: 10px 0px 0px 10px;
+  border-radius: var(--radius-sm) 0px 0px var(--radius-sm);
   background: var(--white);
   box-shadow: 0 12px 24px rgba(15, 32, 58, .12);
 }
@@ -310,7 +310,7 @@
   gap: 10px;
   min-height: 44px;
   padding: 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--gray-800);
   cursor: pointer;
 }
@@ -330,7 +330,7 @@
   height: 28px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--blue-xpale);
   color: var(--blue-mid);
   font-size: 10px;
@@ -403,7 +403,7 @@
   box-sizing: border-box;
   min-height: 42px;
   border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--gray-50);
   color: var(--gray-800);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -631,7 +631,7 @@ select:not([multiple]) {
   min-height: 42px !important;
   padding: 10px 34px 10px 12px !important;
   border: 1.5px solid var(--gray-200) !important;
-  border-radius: 10px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--gray-50) !important;
   background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%) !important;
   background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50% !important;
@@ -671,7 +671,7 @@ select:not([multiple]):disabled {
   min-height: 38px !important;
   padding: 0 36px 0 14px !important;
   border: 1.5px solid var(--gray-200) !important;
-  border-radius: 10px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--white) !important;
   color: var(--gray-700) !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
@@ -698,7 +698,7 @@ select:not([multiple]):disabled {
 .search-wrap ~ select.filter-select#status-filter,
 .search-wrap ~ select.filter-select#type-filter,
 .search-wrap ~ select.filter-select#flagReasonFilter {
-  border-radius: 9px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--gray-50) !important;
 }
 
@@ -708,7 +708,7 @@ select:not([multiple]):disabled {
   min-height: 34px !important;
   padding: 0 36px 0 14px !important;
   border-width: 1px !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--gray-50) !important;
   font-size: 11px !important;
 }
@@ -723,7 +723,7 @@ select:not([multiple]):disabled {
   height: 40px !important;
   min-height: 40px !important;
   padding: 9px 34px 9px 12px !important;
-  border-radius: 10px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--white) !important;
   font-size: 12px !important;
 }
@@ -738,7 +738,7 @@ select:not([multiple]):disabled {
   min-height: 0 !important;
   padding: 8px 36px 8px 12px !important;
   border: 1.5px solid var(--gray-200) !important;
-  border-radius: 9px !important;
+  border-radius: var(--radius-sm) !important;
   background-color: var(--white) !important;
   color: var(--gray-700) !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
@@ -803,7 +803,7 @@ select:not([multiple]):disabled {
   flex-wrap: nowrap;
   padding: 5px;
   border: 1px solid var(--gray-200);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--white);
   box-shadow: 0 3px 14px rgba(16, 40, 80, 0.045);
   overflow-x: auto;
@@ -836,7 +836,7 @@ select:not([multiple]):disabled {
   min-height: 40px;
   padding: 9px 15px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--gray-500);
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
@@ -888,7 +888,6 @@ body :is(
   .settings-trigger,
   .btn-submit,
   .btn-close-modal,
-  .report-hero-link,
   .journal-cta
 ) {
   box-sizing: border-box;
@@ -972,7 +971,6 @@ body :is(
   .settings-trigger,
   .btn-submit,
   .btn-close-modal,
-  .report-hero-link,
   .journal-cta,
   .activity-loadmore-btn,
   .ub-btn,
@@ -990,14 +988,14 @@ body :is(
 /* Semantic hierarchy. Existing page classes still control their local
    composition; these shared colors keep primary, neutral and destructive
    actions recognizable everywhere. */
-body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit, .report-hero-link) {
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit) {
   border-color: var(--blue);
   background: var(--blue);
   color: var(--white);
   box-shadow: var(--button-primary-shadow);
 }
 
-body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit, .report-hero-link):hover:not(:disabled) {
+body :is(.btn-save, .btn-post, .top-btn.primary, .btn-submit):hover:not(:disabled) {
   border-color: var(--blue-mid);
   background: var(--blue-mid);
 }
@@ -1033,7 +1031,6 @@ body :is(
   .settings-trigger,
   .btn-submit,
   .btn-close-modal,
-  .report-hero-link,
   .journal-cta,
   .activity-loadmore-btn,
   .ub-btn,
@@ -1181,7 +1178,6 @@ body :is(
     .settings-trigger,
     .btn-submit,
     .btn-close-modal,
-    .report-hero-link,
     .journal-cta
   ) {
     min-height: 36px;

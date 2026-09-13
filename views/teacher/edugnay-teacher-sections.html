@@ -461,15 +461,15 @@
           </div>
           <div class="nav-children">
             <a class="nav-child active" onclick="navigate('section', '7-matthew')">
-              <span class="dot-7" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              <span class="dot-7" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
               Grade 7 – St. Matthew
             </a>
             <a class="nav-child" onclick="navigate('section', '8-luke')">
-              <span class="dot-8" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              <span class="dot-8" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
               Grade 8 – St. Luke
             </a>
             <a class="nav-child" onclick="navigate('section', '9-peter')">
-              <span class="dot-9" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;"></span>
+              <span class="dot-9" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
               Grade 9 – St. Peter
             </a>
           </div>
@@ -1101,7 +1101,7 @@
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
           <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${student.initials}</div><div class="student-name">${student.displayName}</div></div></td>
           <td class="center"><div class="att-btn-group" style="justify-content:center;">${buttons}</div></td>
-          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" data-attendance-remark></td>
+          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-xs);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" data-attendance-remark></td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance roster', text: 'Students assigned to this section will appear here for attendance.' })}</td></tr>`;
     document.getElementById('attendanceListFooter').textContent = `Showing ${STUDENTS.length} students`;

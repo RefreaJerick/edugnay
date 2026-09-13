@@ -79,7 +79,7 @@ body:has(.onboarding-page) {
   height: 36px;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
@@ -169,7 +169,7 @@ body:has(.onboarding-page) {
   flex: 0 0 24px;
   place-items: center;
   border: 1px solid var(--blue-pale);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
   font-size: 10px;
@@ -215,7 +215,7 @@ body:has(.onboarding-page) {
   position: absolute;
   overflow: hidden;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   box-shadow: 0 4px 14px rgba(16, 40, 80, .055);
 }
@@ -395,7 +395,7 @@ body:has(.onboarding-page) {
   margin-top: 22px;
   padding: 10px 14px;
   border: 1px solid var(--blue-pale);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--blue-xpale);
   color: var(--gray-600);
   font-size: 11.5px;
@@ -408,7 +408,7 @@ body:has(.onboarding-page) {
   height: 32px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--blue-mid);
 }
@@ -439,7 +439,7 @@ body:has(.onboarding-page) {
   margin-right: 10px;
   padding: 0 10px;
   border: 1px solid var(--gray-200);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--gray-700);
   font: inherit;
@@ -473,7 +473,7 @@ body:has(.onboarding-page) {
   width: 76px;
   height: 76px;
   border: 1px solid var(--gray-200);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--gray-50);
 }
 
@@ -575,7 +575,7 @@ body:has(.onboarding-page) {
   gap: 0;
   margin: 24px 0 0;
   border: 1px solid var(--panel-divider);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -710,7 +710,7 @@ body:has(.onboarding-page) {
   }
 
   .onboarding-card {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   .onboarding-form-head {

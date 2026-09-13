@@ -16,7 +16,7 @@
 .journal-prompt-icon {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -72,7 +72,7 @@
 /* ── Panel ── */
 .panel {
   background: var(--white);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(16, 40, 80, 0.05);
@@ -112,7 +112,7 @@
   min-height: 160px;
   resize: vertical;
   border: 1.5px solid var(--gray-200);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13.5px;
@@ -166,7 +166,7 @@
   align-items: center;
   gap: 7px;
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: none;
   background: var(--blue);
   color: var(--white);
@@ -196,7 +196,7 @@
   padding: 11px 14px;
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 11.5px;
   color: var(--blue);
   line-height: 1.5;
@@ -213,7 +213,7 @@
   gap: 12px;
   background: var(--green-pale);
   border: 1px solid #bbf7d0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 16px;
 }
@@ -221,7 +221,7 @@
 .submitted-icon {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: #16a34a;
   color: var(--white);
   display: flex;
@@ -247,7 +247,7 @@
   color: var(--gray-700);
   line-height: 1.7;
   background: var(--gray-50);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   padding: 16px 18px;
   border: 1px solid var(--gray-100);
   white-space: pre-wrap;
@@ -282,7 +282,7 @@
   font-size: 12px;
   font-weight: 700;
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .score-given-chip {
@@ -294,7 +294,7 @@
   font-size: 12px;
   font-weight: 700;
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .score-given-chip .score-max {
@@ -311,7 +311,7 @@
 .closed-icon {
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--gray-100);
   display: flex;
   align-items: center;
@@ -356,7 +356,7 @@
 .history-icon {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
   display: flex;
@@ -397,7 +397,7 @@
   font-size: 10.5px;
   font-weight: 700;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -435,7 +435,7 @@
 
 .entry-modal {
   background: var(--white);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
   max-height: 88vh;
@@ -476,7 +476,7 @@
   line-height: 1.75;
   background: var(--gray-50);
   border: 1px solid var(--gray-100);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 16px 18px;
   white-space: pre-wrap;
 }
@@ -572,7 +572,7 @@
 /* Journal page refinements */
 #current-week-panel,
 .journal-history-panel {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(16, 40, 80, .07);
 }
 
@@ -620,7 +620,7 @@
 .history-icon {
   width: 40px;
   height: 40px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
 }
 
 .history-week {
@@ -639,7 +639,7 @@
 .entry-modal {
   max-width: 600px;
   border: 1px solid rgba(255, 255, 255, .28);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 26px 70px rgba(11, 31, 58, .32);
 }
 
@@ -653,7 +653,7 @@
   background: var(--blue-xpale);
   border: 1px solid var(--blue-pale);
   border-left: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--blue);
 }
 
@@ -721,7 +721,7 @@
 
   .entry-modal {
     max-height: 88vh;
-    border-radius: 17px;
+    border-radius: var(--radius-lg);
   }
 
   .entry-modal-body {
@@ -791,7 +791,7 @@
   place-items: center;
   flex: 0 0 auto;
   border: 1px solid var(--blue-pale);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
@@ -823,7 +823,7 @@
   height: 34px;
   flex: 0 0 auto;
   border: 1px solid var(--gray-200) !important;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--white) !important;
   color: var(--gray-500) !important;
 }
