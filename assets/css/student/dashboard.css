@@ -724,6 +724,7 @@
 
   .journal-foot {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .journal-cta {
