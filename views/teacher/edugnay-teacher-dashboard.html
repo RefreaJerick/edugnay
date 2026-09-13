@@ -253,14 +253,11 @@
           </button>
 
           <div class="tb-notif-panel teacher-notif-panel" id="tbNotifPanel" role="dialog" aria-label="Teacher notifications">
-            <div class="tb-notif-panel-head teacher-notif-panel-head">
-              <div class="teacher-notif-heading">
-                <span class="teacher-notif-heading-icon" aria-hidden="true">
-                  <i data-lucide="bell" style="width:16px;height:16px;"></i>
-                </span>
-                <span class="teacher-notif-heading-copy">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-copy">
                   <span class="tb-notif-panel-title">Notifications</span>
-                  <span class="teacher-notif-unread-count" aria-live="polite"></span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
                 </span>
               </div>
               <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
@@ -322,7 +319,7 @@
           <div class="grading-banner">
             <div class="grading-welcome">
               <div class="grading-welcome-name">Welcome back, Maria!</div>
-              <div class="grading-welcome-date">Here's what's happening across your classes</div>
+              <div class="grading-welcome-date" data-current-date>Monday, September 14, 2026.</div>
             </div>
             <div class="grading-period-card">
               <div class="grading-period-icon"><i data-lucide="calendar-range" style="width:17px;height:17px;"></i></div>

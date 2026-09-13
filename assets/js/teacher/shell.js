@@ -123,7 +123,7 @@ function renderTopbarNotifs() {
   const teacherDashboardPanel = document.querySelector('.teacher-notif-panel');
   const visibleNotifications = getTeacherVisibleNotifications();
   const unreadCount = visibleNotifications.filter(n => !n.read).length;
-  const unreadLabel = document.querySelector('.teacher-notif-unread-count');
+  const unreadLabel = document.querySelector('.tb-notif-unread-count');
   if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
 
   const top5 = [...visibleNotifications]

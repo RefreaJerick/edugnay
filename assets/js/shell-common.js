@@ -109,6 +109,19 @@ function formatRelativeTime(dateValue) {
   return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${formatTime(date)}`;
 }
 
+function applyCurrentDateToGradingBanners() {
+  const currentDateLabel = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(new Date());
+
+  document.querySelectorAll('.grading-banner [data-current-date]').forEach(element => {
+    element.textContent = `${currentDateLabel}.`;
+  });
+}
+
 /*
  * Frontend configuration store.
  * Replace the localStorage reads/writes with API calls during backend integration.
@@ -3310,6 +3323,7 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  applyCurrentDateToGradingBanners();
   applyActiveSchoolToShell();
   applyGradePortalAccess();
   applyPageTitleToTopbar();

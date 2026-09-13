@@ -604,7 +604,6 @@ body.drawer-open .sidebar {
   display: none;
   flex-direction: column;
   overflow: hidden;
-  border-top: 3px solid var(--blue-mid);
   border-radius: var(--radius-md);
   box-shadow: 0 20px 48px rgba(11, 31, 58, 0.18), 0 3px 10px rgba(16, 40, 80, 0.06);
 }
@@ -1123,51 +1122,98 @@ body.drawer-open .sidebar {
 
 /* ── GRADING PERIOD BANNER ── */
 .grading-banner {
+  position: relative;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: var(--radius-sm);
-  padding: 22px 24px;
-  /* margin-bottom: 24px; */
+  flex-wrap: nowrap;
+  gap: 24px;
+  overflow: hidden;
+  min-height: 0;
+  padding: 30px 32px 28px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 58%, var(--blue-mid) 100%);
+}
+
+.grading-welcome,
+.grading-period-card {
+  position: relative;
+  z-index: 1;
+}
+
+.grading-welcome {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .grading-welcome-name {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.6rem;
+  margin: 0;
+  color: var(--white);
+  font-size: 28px;
   font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.3px;
-  margin-bottom: 8px;
+  line-height: 1.2;
+  letter-spacing: -.7px;
+  overflow-wrap: anywhere;
 }
 
 .grading-welcome-date {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.55);
+  margin-top: 8px;
+  color: rgba(255, 255, 255, .76);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .grading-period-card {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 46%;
+  min-height: 48px;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, .08);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.grading-period-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, .76);
+}
+
+.grading-period-icon svg {
+  width: 18px !important;
+  height: 18px !important;
 }
 
 .grading-period-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(212, 175, 55, 0.85);
-  margin-bottom: 4px;
+  display: none;
+}
+
+.grading-period-card > div:last-child {
+  min-width: 0;
 }
 
 .grading-period-value {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #fff;
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* ══════════════════════════════
@@ -1817,13 +1863,49 @@ body.drawer-open .sidebar {
   }
 }
 
-@media (max-width: 710px) {
-  .grading-welcome {
-    width: 100%;
-    margin-bottom: 10px;
+@media (max-width: 520px) {
+  .shell .main .grading-banner {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 26px 24px 24px;
   }
-  .grading-period-card {
+
+  .shell .main .grading-welcome {
     width: 100%;
+  }
+
+  .shell .main .grading-welcome-name {
+    font-size: clamp(22px, 6vw, 25px);
+    line-height: 1.25;
+  }
+
+  .shell .main .grading-welcome-date {
+    margin-top: 7px;
+    font-size: 13px;
+  }
+
+  .shell .main .grading-period-card {
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+    padding: 11px 12px;
+  }
+
+  .shell .main .grading-period-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
+
+  .shell .main .grading-period-icon svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .shell .main .grading-period-value {
+    font-size: 12px;
   }
 }
 
@@ -2032,19 +2114,11 @@ body.drawer-open .sidebar {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 10px;
+  gap: 0;
 }
 
 .tb-notif-heading-icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-sm);
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
+  display: none;
 }
 
 .tb-notif-heading-copy {
@@ -2183,14 +2257,10 @@ body.drawer-open .sidebar {
   }
 
   .tb-notif-panel .tb-notif-mark-read {
-    width: 31px;
+    width: auto;
     height: 31px;
     justify-content: center;
-    padding: 0;
-  }
-
-  .tb-notif-panel .tb-notif-mark-read span {
-    display: none;
+    padding: 0 9px;
   }
 }
 

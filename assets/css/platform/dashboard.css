@@ -1,74 +1,6 @@
 /* Platform dashboard primitives. Keep this page self-contained so it does not
    inherit the school-admin dashboard stylesheet. */
 
-/* Welcome banner */
-.platform-dashboard .grading-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  overflow: hidden;
-  min-height: 124px;
-  padding: 24px 26px;
-  border: 1px solid rgba(212, 175, 55, .22);
-  border-radius: var(--radius-md);
-  background: linear-gradient(120deg, var(--navy) 0%, #123d78 58%, var(--blue-mid) 100%);
-  box-shadow: 0 12px 26px rgba(11, 31, 58, .18);
-}
-
-.platform-dashboard .grading-welcome,
-.platform-dashboard .grading-period-card {
-  position: relative;
-  z-index: 1;
-}
-
-.platform-dashboard .grading-welcome-name {
-  margin-bottom: 5px;
-  color: var(--white);
-  font-size: 25px;
-  line-height: 1.1;
-}
-
-.platform-dashboard .grading-welcome-date {
-  color: rgba(255, 255, 255, .7);
-  font-size: 12px;
-}
-
-.platform-dashboard .grading-period-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, .11);
-  backdrop-filter: blur(8px);
-}
-
-.platform-dashboard .grading-period-icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: rgba(212, 175, 55, .16);
-  color: var(--gold-light);
-}
-
-.platform-dashboard .grading-period-label {
-  margin-bottom: 3px;
-  color: rgba(247, 217, 128, .9);
-  font-size: .68rem;
-}
-
-.platform-dashboard .grading-period-value {
-  color: var(--white);
-  font-size: 12px;
-}
-
 /* Two-column dashboard layout */
 .platform-dashboard .dashboard-grid {
   display: grid;
@@ -383,18 +315,6 @@
   .platform-dashboard .act-tag {
     display: none;
   }
-}
-
-@media (max-width: 710px) {
-  .platform-dashboard .grading-welcome {
-    width: 100%;
-    margin-bottom: 10px;
-  }
-
-  .platform-dashboard .grading-period-card {
-    width: 100%;
-  }
-
 }
 
 @media (max-width: 560px) {
