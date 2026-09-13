@@ -399,6 +399,81 @@ tbody td {
   gap: 8px;
 }
 
+.user-row-menu {
+  position: relative;
+  display: flex;
+  flex: 0 0 34px;
+}
+
+.user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.user-menu-trigger:hover,
+.user-menu-trigger[aria-expanded="true"] {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.user-action-menu {
+  position: absolute;
+  right: calc(100% + 6px);
+  bottom: 0;
+  z-index: 10;
+  display: none;
+  width: 164px;
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: 9px;
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
+}
+
+.user-action-menu.open {
+  display: grid;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-menu-item:hover {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.user-menu-item.delete {
+  color: var(--red);
+}
+
+.user-menu-item.delete:hover {
+  background: var(--red-pale);
+}
+
 
 /* ── PAGINATION ── */
 .pagination {
@@ -822,10 +897,6 @@ tbody td {
   }
 
   /* .topbar-right { justify-content: space-between; } */
-  .row-btn {
-    display: none;
-  }
-
   .form-row-2 {
     grid-template-columns: 1fr;
   }
@@ -986,7 +1057,7 @@ tbody td {
 }
 
 #userTable .account-actions-cell {
-  min-width: 190px;
+  min-width: 160px;
 }
 
 #userTable .account-actions-cell .row-actions {

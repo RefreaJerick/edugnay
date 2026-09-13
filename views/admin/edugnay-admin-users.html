@@ -799,13 +799,27 @@
           ? '<span class="badge badge-green">● Active</span>'
           : '<span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span>';
 
-        let actionButtons = '<button class="row-btn edit">Edit</button>';
+        let actionButtons = '';
         if (u.role !== 'school_admin') {
           actionButtons += u.status === 'active'
             ? '<button class="row-btn deactivate">Deactivate</button>'
             : '<button class="row-btn reactivate">Reactivate</button>';
-          actionButtons += '<button class="row-btn delete" title="Delete account"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>';
         }
+        actionButtons += `
+          <div class="user-row-menu">
+            <button class="user-menu-trigger" type="button" aria-label="User actions" aria-haspopup="menu" aria-expanded="false">
+              <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
+            </button>
+            <div class="user-action-menu" role="menu">
+              <button class="user-menu-item edit" type="button" role="menuitem">
+                <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Account
+              </button>
+              ${u.role !== 'school_admin' ? `
+                <button class="user-menu-item delete" type="button" role="menuitem">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Account
+                </button>` : ''}
+            </div>
+          </div>`;
 
         return `
       <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}">
@@ -869,15 +883,41 @@
       renderUsers();
     }
 
+    function closeUserMenus() {
+      document.querySelectorAll('.user-action-menu.open').forEach(menu => menu.classList.remove('open'));
+      document.querySelectorAll('.user-menu-trigger[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.user-row-menu')) closeUserMenus();
+    });
+
     function wireRowButtons() {
-      document.querySelectorAll('.row-btn.edit').forEach(btn => {
-        btn.addEventListener('click', function () { openEditModal(this.closest('tr')); });
+      document.querySelectorAll('.user-menu-trigger').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const menu = this.nextElementSibling;
+          const shouldOpen = !menu.classList.contains('open');
+          closeUserMenus();
+          if (!shouldOpen) return;
+          menu.classList.add('open');
+          this.setAttribute('aria-expanded', 'true');
+        });
+      });
+      document.querySelectorAll('.user-menu-item.edit').forEach(btn => {
+        btn.addEventListener('click', function () {
+          closeUserMenus();
+          openEditModal(this.closest('tr'));
+        });
       });
       document.querySelectorAll('.row-btn.deactivate, .row-btn.reactivate').forEach(btn => {
         btn.addEventListener('click', function () { openDeactivateModal(this.closest('tr')); });
       });
-      document.querySelectorAll('.row-btn.delete').forEach(btn => {
-        btn.addEventListener('click', function () { openDeleteModal(this.closest('tr')); });
+      document.querySelectorAll('.user-menu-item.delete').forEach(btn => {
+        btn.addEventListener('click', function () {
+          closeUserMenus();
+          openDeleteModal(this.closest('tr'));
+        });
       });
     }
 
@@ -1301,6 +1341,7 @@
     /* ── ESCAPE KEY ── */
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        closeUserMenus();
         closeAccountModal();
         closeDeactivateModal();
         closeDeleteModal();
