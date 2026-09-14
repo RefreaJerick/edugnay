@@ -3142,7 +3142,6 @@ function initScrollFades() {
     '.profile-tab-bar',
     '.mgmt-tabs',
     '.school-tabs',
-    '.sf-tabs',
     '.filter-tabs',
     '.tab-bar',
     '.cat-tabs',

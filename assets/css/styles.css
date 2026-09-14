@@ -1154,7 +1154,7 @@ body.drawer-open .sidebar {
   font-family: 'Plus Jakarta Sans', sans-serif;
   margin: 0;
   color: var(--white);
-  font-size: 28px;
+  font-size: 25px;
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -.7px;
@@ -1164,7 +1164,7 @@ body.drawer-open .sidebar {
 .grading-welcome-date {
   margin-top: 8px;
   color: rgba(255, 255, 255, .76);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -1877,13 +1877,13 @@ body.drawer-open .sidebar {
   }
 
   .shell .main .grading-welcome-name {
-    font-size: clamp(22px, 6vw, 25px);
+    font-size: clamp(20px, 5.4vw, 23px);
     line-height: 1.25;
   }
 
   .shell .main .grading-welcome-date {
     margin-top: 7px;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .shell .main .grading-period-card {

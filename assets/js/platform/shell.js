@@ -50,12 +50,12 @@
       link: { page: 'school-accounts' }
     },
     {
-      id: 'platform-activity-template-updated',
+      id: 'platform-activity-school-config-updated',
       schoolId: 'scc',
       actor: 'Platform',
-      title: 'updated an SF template configuration',
-      detail: 'A template mapping was saved for review.',
-      icon: 'file-cog',
+      title: 'updated a school configuration',
+      detail: 'A school profile setting was saved for review.',
+      icon: 'settings',
       tone: 'gold',
       createdAt: '2026-08-22T11:10:00.000Z',
       type: 'Configuration',

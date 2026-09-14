@@ -308,7 +308,6 @@ function ensureAdminConfigurationNav() {
 
   const items = [
     { href: 'edugnay-admin-schools.html', icon: 'building-2', label: 'School Settings' },
-    { href: 'edugnay-admin-sf-templates.html', icon: 'file-cog', label: 'SF Templates' },
     { href: 'edugnay-admin-system-config.html', icon: 'settings', label: 'System Config' },
     { href: 'edugnay-admin-archive.html', icon: 'archive', label: 'Archive Data' }
   ];
