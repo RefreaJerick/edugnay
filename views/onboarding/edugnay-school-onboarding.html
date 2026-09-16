@@ -403,7 +403,7 @@
       const temporaryPassword = values.adminPassword;
       const notificationEmail = values.notificationEmail.trim().toLowerCase();
       const schoolEmail = values.schoolEmail.trim().toLowerCase();
-      const administratorEmail = values.adminEmail.trim().toLowerCase();
+      const administratorSchoolEmail = values.adminEmail.trim().toLowerCase();
       const schoolLevels = selectedSchoolLevels();
       if (!schoolLevels.length) {
         document.getElementById('schoolLevelsError').hidden = false;
@@ -458,7 +458,7 @@
         initialAdministrator: {
           schoolId: schoolRecordId,
           name: values.adminName.trim(),
-          email: administratorEmail
+          schoolEmail: administratorSchoolEmail
         }
       };
 

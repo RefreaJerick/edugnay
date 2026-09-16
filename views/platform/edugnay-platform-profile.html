@@ -120,7 +120,7 @@
 
     const PLATFORM_PROFILE_FIELDS = [
       { label: 'Full Name', getValue: admin => admin.displayName },
-      { label: 'Account Email', getValue: admin => admin.email },
+      { label: 'Account Email', getValue: admin => admin.schoolEmail },
       { label: 'Role', getValue: admin => admin.role === 'platform_admin' ? 'Platform Administrator' : admin.role }
     ];
 
@@ -135,7 +135,7 @@
       const displayName = admin.displayName || [admin.firstName, admin.lastName].filter(Boolean).join(' ') || 'Platform Admin';
       document.getElementById('profileInitials').textContent = getInitials(displayName);
       document.getElementById('profile-header-name').textContent = displayName;
-      document.getElementById('profileEmail').textContent = admin.email;
+      document.getElementById('profileEmail').textContent = admin.schoolEmail;
       document.getElementById('platformProfileFields').innerHTML = PLATFORM_PROFILE_FIELDS.length ? PLATFORM_PROFILE_FIELDS.map(field => `
         <div class="form-group">
           <label class="form-label">${escapeHtml(field.label)}</label>

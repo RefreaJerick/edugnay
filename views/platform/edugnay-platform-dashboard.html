@@ -417,7 +417,7 @@
           : '';
         return `<article class="school-directory-row">
           <div class="school-identity"><div class="school-logo${logo ? ' has-logo' : ''}" aria-hidden="true">${logo}<i data-lucide="building-2" style="width:16px;height:16px;"></i></div><div><div class="school-name">${escapeHtml(school.name)}</div><div class="school-meta">${type} · ${escapeHtml(school.schoolYear || 'School year not set')}</div></div></div>
-          <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorEmail)}</div>
+          <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail)}</div>
           <div><span class="school-status ${safeStatus}"><i data-lucide="${status === activeStatus ? 'circle-check-big' : 'clock-3'}" style="width:13px;height:13px;"></i>${safeStatus}</span></div>
         </article>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });

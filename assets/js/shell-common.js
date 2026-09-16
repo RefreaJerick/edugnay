@@ -470,7 +470,7 @@ function applyCurrentDateToGradingBanners() {
       initialAdministrator: {
         schoolId: 'scc',
         name: 'Sr. Admin',
-        email: 'admin.adm@stcolumban.edu.ph'
+        schoolEmail: 'admin.adm@stcolumban.edu.ph'
       }
     },
     {
@@ -508,7 +508,7 @@ function applyCurrentDateToGradingBanners() {
       initialAdministrator: {
         schoolId: 'manghi',
         name: 'Pending administrator',
-        email: null
+        schoolEmail: null
       }
     }
   ];
@@ -641,8 +641,8 @@ function applyCurrentDateToGradingBanners() {
       initialAdministrator: administrator
         ? {
           ...administrator,
-          email: administrator.email
-            ? String(administrator.email).trim().toLowerCase()
+          schoolEmail: administrator.schoolEmail || administrator.email
+            ? String(administrator.schoolEmail || administrator.email).trim().toLowerCase()
             : null
         }
         : null
@@ -3082,7 +3082,8 @@ function applyCurrentDateToGradingBanners() {
         savedLrn = digits;
       }
     }
-    const schoolEmail = user.schoolEmail || user.email || '';
+    const schoolEmail = String(user.schoolEmail || user.email || '').trim().toLowerCase();
+    const personalEmail = String(user.personalEmail || '').trim().toLowerCase() || null;
     if (user.lrn !== savedLrn) {
       user.lrn = savedLrn;
       usersChanged = true;
@@ -3091,8 +3092,12 @@ function applyCurrentDateToGradingBanners() {
       user.schoolEmail = schoolEmail;
       usersChanged = true;
     }
-    if (!Object.hasOwn(user, 'personalEmail')) {
-      user.personalEmail = null;
+    if (Object.hasOwn(user, 'email') && user.email !== schoolEmail) {
+      user.email = schoolEmail;
+      usersChanged = true;
+    }
+    if (user.personalEmail !== personalEmail) {
+      user.personalEmail = personalEmail;
       usersChanged = true;
     }
   });
@@ -3264,7 +3269,7 @@ function applyCurrentDateToGradingBanners() {
     const base = `${firstName.charAt(0)}.${lastName}.${roleSuffix}`;
     const existingEmails = new Set(USERS
       .filter(user => user.id !== String(values.userId || ''))
-      .map(user => String(user.schoolEmail || user.email || '').trim().toLowerCase())
+      .map(user => String(user.schoolEmail || '').trim().toLowerCase())
       .filter(Boolean));
 
     let localPart = base;
@@ -3288,8 +3293,22 @@ function applyCurrentDateToGradingBanners() {
     const schoolId = values.schoolId || getActiveSchoolId();
     const lrn = isStudent ? String(values.lrn || '').trim() : null;
     const requestedSchoolEmail = String(values.schoolEmail || '').trim().toLowerCase()
-      || (!values.personalEmail ? String(values.email || '').trim().toLowerCase() : '')
+      || String(values.email || '').trim().toLowerCase()
       || generateSchoolEmail({ ...values, role });
+    const personalEmail = String(values.personalEmail || '').trim().toLowerCase() || null;
+
+    if (requestedSchoolEmail && USERS.some(user => (
+      user.schoolId === schoolId
+      && String(user.schoolEmail || '').trim().toLowerCase() === requestedSchoolEmail
+    ))) {
+      throw new Error('That school email is already assigned to another account.');
+    }
+    if (personalEmail && USERS.some(user => (
+      user.schoolId === schoolId
+      && String(user.personalEmail || '').trim().toLowerCase() === personalEmail
+    ))) {
+      throw new Error('That personal email is already assigned to another account.');
+    }
 
     if (isStudent && !LRN_PATTERN.test(lrn)) {
       throw new Error('LRN must contain exactly 12 digits.');
@@ -3308,7 +3327,7 @@ function applyCurrentDateToGradingBanners() {
       role,
       email: requestedSchoolEmail,
       schoolEmail: requestedSchoolEmail,
-      personalEmail: String(values.personalEmail || '').trim().toLowerCase() || null,
+      personalEmail,
       status: values.status || RECORD_VALUES.statuses.ACTIVE,
       createdAt: values.createdAt || new Date().toISOString(),
       honorific: isStaff ? values.honorific ?? null : null,
@@ -3439,7 +3458,7 @@ function applyCurrentDateToGradingBanners() {
 
     const usedIds = new Set(USERS.map(user => String(user.id)));
     const usedSchoolEmails = new Set(USERS
-      .map(user => String(user.schoolEmail || user.email || '').trim().toLowerCase())
+      .map(user => String(user.schoolEmail || '').trim().toLowerCase())
       .filter(Boolean));
     const createdUsers = [];
     const createdLinks = [];
@@ -3535,6 +3554,29 @@ function applyCurrentDateToGradingBanners() {
     const nextLrn = nextRole === RECORD_VALUES.roles.STUDENT
       ? String(Object.hasOwn(values, 'lrn') ? values.lrn : user.lrn || '').trim()
       : null;
+    const nextSchoolEmail = Object.hasOwn(values, 'schoolEmail')
+      ? String(values.schoolEmail || '').trim().toLowerCase()
+      : (Object.hasOwn(values, 'email')
+        ? String(values.email || '').trim().toLowerCase()
+        : String(user.schoolEmail || '').trim().toLowerCase());
+    const nextPersonalEmail = Object.hasOwn(values, 'personalEmail')
+      ? String(values.personalEmail || '').trim().toLowerCase()
+      : String(user.personalEmail || '').trim().toLowerCase();
+
+    if (nextSchoolEmail && USERS.some(item => (
+      item.id !== user.id
+      && item.schoolId === user.schoolId
+      && String(item.schoolEmail || '').trim().toLowerCase() === nextSchoolEmail
+    ))) {
+      throw new Error('That school email is already assigned to another account.');
+    }
+    if (nextPersonalEmail && USERS.some(item => (
+      item.id !== user.id
+      && item.schoolId === user.schoolId
+      && String(item.personalEmail || '').trim().toLowerCase() === nextPersonalEmail
+    ))) {
+      throw new Error('That personal email is already assigned to another account.');
+    }
     const shouldValidateLrn = nextRole === RECORD_VALUES.roles.STUDENT
       && (Object.hasOwn(values, 'lrn') || nextRole !== user.role);
 
@@ -3559,10 +3601,8 @@ function applyCurrentDateToGradingBanners() {
       if (!Object.hasOwn(values, field)) return;
       if (field === 'role') user.role = nextRole;
       else if (field === 'email' || field === 'schoolEmail') {
-        const email = String(values[field] || '').trim().toLowerCase();
-        user[field] = email;
-        if (field === 'schoolEmail') user.email = email;
-        if (field === 'email' && !user.schoolEmail) user.schoolEmail = email;
+        user.schoolEmail = nextSchoolEmail;
+        user.email = nextSchoolEmail;
       }
       else if (field === 'personalEmail') user.personalEmail = String(values.personalEmail || '').trim().toLowerCase() || null;
       else if (field === 'lrn') user.lrn = nextLrn;
@@ -3746,7 +3786,7 @@ function applyCurrentDateToGradingBanners() {
     return {
       ...record,
       studentName: student?.displayName || '',
-      studentEmail: student?.email || '',
+      studentEmail: student?.schoolEmail || '',
       sectionLabel: section ? `${section.grade} - ${section.name}` : '',
       teacherName,
       teacherInitials: record.teacherInitials || getInitials(teacherName),

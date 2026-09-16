@@ -223,7 +223,7 @@
           class="form-input"
           type="email"
           id="emailInput"
-          name="email"
+          name="schoolEmail"
           placeholder="name@school.edu.ph"
           autocomplete="email"
           required
@@ -288,7 +288,7 @@
               class="form-input"
               type="email"
               id="resetEmailInput"
-              name="email"
+              name="schoolEmail"
               placeholder="name@school.edu.ph"
               autocomplete="email"
               required
@@ -375,7 +375,7 @@
     { identifier: 'plat', userId: 'platform-1', role: 'platform_admin', schoolId: null, dashboard: './views/platform/edugnay-platform-dashboard.html' }
   ];
   const AUTH_STATE = {
-    pendingEmail: '',
+    pendingSchoolEmail: '',
     resetToken: new URLSearchParams(window.location.search).get('token')
       || new URLSearchParams(window.location.search).get('resetToken')
       || ''
@@ -396,9 +396,9 @@
   }
 
   function openForgotPassword() {
-    const signInEmail = document.getElementById('emailInput').value.trim();
+    const signInSchoolEmail = document.getElementById('emailInput').value.trim();
     const resetEmail = document.getElementById('resetEmailInput');
-    if (signInEmail.includes('@')) resetEmail.value = signInEmail;
+    if (signInSchoolEmail.includes('@')) resetEmail.value = signInSchoolEmail;
     setAuthMessage('forgotMessage', '');
     showAuthView('forgot');
   }
@@ -435,13 +435,13 @@
   async function requestPasswordReset(event) {
     event.preventDefault();
     const form = event.currentTarget;
-    const emailInput = document.getElementById('resetEmailInput');
-    const email = emailInput.value.trim();
+    const schoolEmailInput = document.getElementById('resetEmailInput');
+    const schoolEmail = schoolEmailInput.value.trim();
     const submitButton = form.querySelector('button[type="submit"]');
 
-    if (!email || !emailInput.checkValidity()) {
+    if (!schoolEmail || !schoolEmailInput.checkValidity()) {
       setAuthMessage('forgotMessage', 'Enter a valid school email address.', true);
-      emailInput.focus();
+      schoolEmailInput.focus();
       return;
     }
 
@@ -450,10 +450,10 @@
 
     try {
       if (!AUTH_CONFIG.frontendOnly) {
-        await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { email });
+        await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { schoolEmail });
       }
-      AUTH_STATE.pendingEmail = email;
-      document.getElementById('resetEmailSummary').textContent = email;
+      AUTH_STATE.pendingSchoolEmail = schoolEmail;
+      document.getElementById('resetEmailSummary').textContent = schoolEmail;
       showAuthView('sent');
     } catch (error) {
       setAuthMessage('forgotMessage', 'Unable to process the request right now. Please try again.', true);
@@ -472,7 +472,7 @@
   }
 
   function goBackFromReset() {
-    showAuthView(AUTH_STATE.pendingEmail ? 'sent' : 'signin');
+    showAuthView(AUTH_STATE.pendingSchoolEmail ? 'sent' : 'signin');
   }
 
   async function completePasswordReset(event) {
@@ -515,7 +515,7 @@
   }
 
   function returnToSignIn() {
-    AUTH_STATE.pendingEmail = '';
+    AUTH_STATE.pendingSchoolEmail = '';
     AUTH_STATE.resetToken = '';
     document.getElementById('passwordInput').value = '';
     setAuthMessage('signInMessage', '');

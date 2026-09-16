@@ -503,7 +503,7 @@
 
       const profile = PARENT_CONFIG.getUserProfile(parent.id);
       const links = getParentLinks();
-      const schoolEmail = parent.schoolEmail || parent.email || '';
+      const schoolEmail = parent.schoolEmail || '';
       const displayName = parent.displayName || [parent.firstName, parent.lastName].filter(Boolean).join(' ');
 
       setParentText('parent-profile-name', displayName);

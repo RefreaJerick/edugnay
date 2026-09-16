@@ -8,6 +8,9 @@
     id: 'platform-admin-001',
     schoolId: null,
     role: 'platform_admin',
+    schoolEmail: 'platform.admin@academix.local',
+    personalEmail: null,
+    // Temporary compatibility alias until the legacy user email field is removed.
     email: 'platform.admin@academix.local',
     status: 'active',
     createdAt: '2025-01-01T00:00:00.000Z',
@@ -123,7 +126,7 @@
         ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
         : (school.typeLabel || school.schoolType || 'School'),
       administrator: school.initialAdministrator?.name || 'School administrator',
-      administratorEmail: school.initialAdministrator?.email || school.email || ''
+      administratorSchoolEmail: school.initialAdministrator?.schoolEmail || ''
     }));
   }
 

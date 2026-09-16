@@ -684,7 +684,7 @@
       if (!select) return;
       dashboardSetOptions(select, DASHBOARD_ASSIGNMENT_STUDENTS.map(student => ({
         value: student.id,
-        label: `${student.displayName} \u00b7 ${student.email}`
+        label: `${student.displayName} \u00b7 ${student.schoolEmail}`
       })), 'Select a student', selectedId);
     }
 
@@ -786,7 +786,7 @@
       } else {
         document.getElementById('spAv').textContent = student.initials;
         document.getElementById('spName').textContent = student.displayName;
-        document.getElementById('spDetail').textContent = student.email;
+        document.getElementById('spDetail').textContent = student.schoolEmail;
         preview?.classList.add('visible');
       }
       updateDashboardAssignmentFields();

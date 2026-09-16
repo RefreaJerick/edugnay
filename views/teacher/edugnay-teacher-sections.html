@@ -688,7 +688,7 @@
               <tr>
                 <th>#</th>
                 <th>Student</th>
-                <th>Email</th>
+                <th>School Email</th>
                 <th>Attendance Rate</th>
                 <th><span id="studentGradePeriodName">Current period</span> Final Grade</th>
                 <th>Status</th>
@@ -1071,7 +1071,7 @@
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
           <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${student.initials}</div><div><div class="student-name">${student.displayName}</div></div></div></td>
-          <td style="font-size:12px;color:var(--gray-400);">${student.email}</td>
+          <td style="font-size:12px;color:var(--gray-400);">${student.schoolEmail}</td>
           <td><span class="badge badge-${progress.tone}">${progress.attendanceRate}</span></td>
           <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.tone] || 'var(--gray-400)'};">${progress.grade}</span></td>
           <td><span class="badge badge-${progress.tone}">${progress.status}</span></td>

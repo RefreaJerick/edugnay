@@ -619,7 +619,7 @@ function renderStudentProfile() {
   const profile = STUDENT_CONFIG.getUserProfile(student.id);
   const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student.sectionId);
   const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
-  const schoolEmail = student.schoolEmail || student.email || '';
+  const schoolEmail = student.schoolEmail || '';
   const displayName = student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ');
   const placement = [student.gradeLevel, section?.name].filter(Boolean).join(' – ');
 

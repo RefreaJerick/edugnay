@@ -155,7 +155,7 @@
       return schoolAccountRecords.filter(school => {
         const status = school.platformStatus;
         const matchesFilter = schoolAccountState.filter === 'all' || status === schoolAccountState.filter;
-        const searchable = [school.name, school.schoolId, school.administrator, school.administratorEmail, school.email].join(' ').toLowerCase();
+        const searchable = [school.name, school.schoolId, school.administrator, school.administratorSchoolEmail, school.email].join(' ').toLowerCase();
         return matchesFilter && (!query || searchable.includes(query));
       });
     }
@@ -198,7 +198,7 @@
         const type = school.typeLabel || school.schoolType || 'School';
         return `<tr>
           <td><div class="school-account-identity">${schoolLogoMarkup(school, 'school-account-logo')}<div><div class="school-account-name">${escapeHtml(school.name)}</div><div class="school-account-meta">${escapeHtml(type)}</div></div></div></td>
-          <td><div class="school-account-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorEmail || 'No administrator email')}</div></td>
+          <td><div class="school-account-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail || 'No administrator email')}</div></td>
           <td><div class="school-account-id">${escapeHtml(school.schoolId || 'Not set')}</div></td>
           <td><span class="school-account-status ${status}"><i data-lucide="${schoolStatusIcon(status)}" style="width:13px;height:13px;"></i>${schoolStatusLabel(status)}</span></td>
           <td><button class="row-btn edit" type="button" data-review-school="${escapeHtml(school.id)}">Review</button></td>
@@ -244,7 +244,7 @@
           <div><dt>School ID</dt><dd>${escapeHtml(school.schoolId || 'Not set')}</dd></div>
           <div><dt>Platform access</dt><dd>${schoolStatusLabel(status)}</dd></div>
           <div><dt>Initial administrator</dt><dd>${escapeHtml(school.administrator)}</dd></div>
-          <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorEmail || 'Not set')}</dd></div>
+          <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorSchoolEmail || 'Not set')}</dd></div>
           <div><dt>Notification email</dt><dd>${escapeHtml(school.notificationEmail || 'Not set')}</dd></div>
           <div><dt>Submitted</dt><dd>${escapeHtml(school.submittedAt ? window.EDUGNAY_CONFIG.formatDateTime(school.submittedAt) : 'Not available')}</dd></div>
           <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>

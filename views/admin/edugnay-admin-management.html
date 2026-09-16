@@ -148,7 +148,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>#</th><th>Student Name</th><th>Email</th><th>Action</th></tr>
+            <tr><th>#</th><th>Student Name</th><th>School Email</th><th>Action</th></tr>
           </thead>
           <tbody id="sectionStudentsTableBody"></tbody>
         </table>
@@ -439,7 +439,7 @@
             <div>
               <span class="csv-hint-label">Expected columns</span>
               <div class="csv-hint-cols">
-                <span class="csv-col-tag">email</span>
+                <span class="csv-col-tag">schoolEmail</span>
                 <span class="csv-col-tag">firstName</span>
                 <span class="csv-col-tag">lastName</span>
                 <span class="csv-col-tag">lrn</span>
@@ -818,7 +818,7 @@
           <div class="hierarchical-filter-tabs" id="studentGradeTabs"></div>
           <div class="enrolled-search">
             <span class="es-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
-            <input class="es-input" type="text" id="studentSearchInput" placeholder="Search students by name or email..." oninput="filterStudentsList()"/>
+            <input class="es-input" type="text" id="studentSearchInput" placeholder="Search students by name or school email..." oninput="filterStudentsList()"/>
           </div>
           <div class="table-wrap">
             <table id="enrolledTable">
@@ -971,9 +971,9 @@ function renderTeacherOptions() {
   select.innerHTML = '';
   select.appendChild(new Option('Select a teacher', ''));
   teachers.forEach(teacher => {
-    const option = new Option(`${teacher.displayName} \u00b7 ${teacher.email}`, teacher.id);
+    const option = new Option(`${teacher.displayName} \u00b7 ${teacher.schoolEmail}`, teacher.id);
     option.dataset.name = teacher.displayName || '';
-    option.dataset.email = teacher.email || '';
+    option.dataset.schoolEmail = teacher.schoolEmail || '';
     option.dataset.initials = teacherInitials(teacher);
     select.appendChild(option);
   });
@@ -1546,7 +1546,7 @@ function renderTeacherAssignments() {
       <div class="subject-row" data-subject-id="${subject.subjectId || ''}">
         <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
         ${subject.teacherId ? `
-          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${teacherInitials(teacher)}</div><div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.email || ''}</div></div></div>
+          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${teacherInitials(teacher)}</div><div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.schoolEmail || ''}</div></div></div>
           <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
         ` : `
           <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
@@ -1667,7 +1667,7 @@ function renderEnrolledTable() {
     if (section) {
       return `
       <tr data-grade="${managementSectionFilterKey(section)}" data-section="${section.id}" data-assigned="true" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
         <td><span class="enrolled-section-name">${section.name}</span><div class="table-secondary">${managementSectionContext(section)}</div></td>
         <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${section.grade}</span></td>
         <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${student.displayName}', '${student.id}', '${section.id}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', this)">Remove</button></div></td>
@@ -1675,7 +1675,7 @@ function renderEnrolledTable() {
     }
     return `
       <tr data-grade="unassigned" data-section="none" data-assigned="false" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.email}</div></div></div></td>
+        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
         <td><span class="table-warning">Unassigned</span></td>
         <td><span class="badge badge-gray">Not set</span></td>
         <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.id}')">+ Assign</button></td>
@@ -1758,7 +1758,7 @@ function openSectionStudentsModal(card) {
         <tr>
           <td>${index + 1}</td>
           <td><strong>${student.displayName}</strong></td>
-          <td>${student.email || ''}</td>
+          <td>${student.schoolEmail || ''}</td>
           <td>${student.id ? `<button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', this)">Remove</button>` : '<span class="table-muted">—</span>'}</td>
         </tr>`).join('')
     : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
@@ -2193,11 +2193,11 @@ function previewTeacher(select) {
   }
   const option = select.selectedOptions[0];
   const name = option.dataset.name;
-  const email = option.dataset.email;
+  const schoolEmail = option.dataset.schoolEmail;
   const initials = option.dataset.initials;
   document.getElementById('tpAv').textContent = initials;
   document.getElementById('tpName').textContent = name;
-  document.getElementById('tpDetail').textContent = email;
+  document.getElementById('tpDetail').textContent = schoolEmail;
   preview.classList.add('visible');
   window.syncSearchableSelect?.(document.getElementById('teacherSelect'));
 }
@@ -2459,7 +2459,7 @@ function managementStudentMeta(studentId) {
 function managementRenderStudentOptions(selectedId = '') {
   managementSetOptions(
     document.getElementById('studentSelect'),
-    MANAGEMENT_ASSIGNMENT_STUDENTS.map(student => ({ value: student.id, label: `${student.displayName} · ${student.email}` })),
+    MANAGEMENT_ASSIGNMENT_STUDENTS.map(student => ({ value: student.id, label: `${student.displayName} · ${student.schoolEmail}` })),
     'Select a student',
     selectedId
   );
@@ -2567,7 +2567,7 @@ function handleManagementStudentChange(studentId) {
   } else {
     document.getElementById('spAv').textContent = student.initials;
     document.getElementById('spName').textContent = student.displayName;
-    document.getElementById('spDetail').textContent = student.email;
+    document.getElementById('spDetail').textContent = student.schoolEmail;
     preview?.classList.add('visible');
   }
   updateManagementAssignmentFields();
@@ -2603,7 +2603,7 @@ function openStudentAssignModal(studentId = '') {
     document.getElementById('studentSelect').value = matchedStudent.id;
     document.getElementById('spAv').textContent = matchedStudent.initials;
     document.getElementById('spName').textContent = matchedStudent.displayName;
-    document.getElementById('spDetail').textContent = matchedStudent.email;
+    document.getElementById('spDetail').textContent = matchedStudent.schoolEmail;
     document.getElementById('studentPreview').classList.add('visible');
   }
   window.syncSearchableSelect?.(document.getElementById('studentSelect'));
@@ -2984,15 +2984,15 @@ function createImportedStudentAccount(record, level, grade, strand, section) {
   const firstName = String(record.firstName || '').trim();
   const lastName = String(record.lastName || '').trim();
   const name = `${firstName} ${lastName}`.trim() || 'Unnamed Student';
-  const email = String(record.email || '').trim();
-  let user = email && config.getUsers().find(item => item.email === email);
+  const schoolEmail = String(record.schoolEmail || '').trim().toLowerCase();
+  let user = schoolEmail && config.getUsers().find(item => item.schoolEmail === schoolEmail);
 
   if (!user) {
     const recordId = `stu-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     user = config.createUser({
       id: `student-${recordId}`,
       schoolId: config.getActiveSchoolId(),
-      email,
+      schoolEmail,
       role: 'student',
       status: 'active',
       createdAt: new Date().toISOString(),
@@ -3010,7 +3010,7 @@ function createImportedStudentAccount(record, level, grade, strand, section) {
 
   return config.updateUser(user.id, {
     role: 'student',
-    email: email || user.email,
+    schoolEmail: schoolEmail || user.schoolEmail,
     firstName,
     lastName,
     displayName: name,
@@ -3053,8 +3053,11 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
       const lrn = String(record.lrn || '').trim();
-      const email = String(record.email || '').trim().toLowerCase();
-      const existingUser = users.find(user => String(user.email || '').toLowerCase() === email);
+      // Accept the old CSV header once, then continue with the canonical field.
+      const schoolEmail = String(record.schoolEmail || record.email || '').trim().toLowerCase();
+      const existingUser = schoolEmail
+        ? users.find(user => String(user.schoolEmail || '').toLowerCase() === schoolEmail)
+        : null;
       const lrnOwner = users.find(user => user.role === 'student' && String(user.lrn || '').trim() === lrn);
 
       if (!/^\d{12}$/.test(lrn)) {
@@ -3067,6 +3070,7 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
       }
 
       record.lrn = lrn;
+      record.schoolEmail = schoolEmail;
       importedLrns.add(lrn);
     }
 
