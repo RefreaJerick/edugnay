@@ -566,8 +566,8 @@
   height: 44px;
   border-radius: var(--radius-md);
   flex-shrink: 0;
-  background: var(--purple-pale);
-  color: var(--purple);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
   display: flex;
   align-items: center;
   justify-content: center;

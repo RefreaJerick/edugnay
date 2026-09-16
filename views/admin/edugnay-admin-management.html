@@ -442,6 +442,7 @@
                 <span class="csv-col-tag">email</span>
                 <span class="csv-col-tag">firstName</span>
                 <span class="csv-col-tag">lastName</span>
+                <span class="csv-col-tag">lrn</span>
                 <span class="csv-col-tag">average</span>
               </div>
             </div>
@@ -3046,6 +3047,28 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
       headers.forEach((h, i) => record[h] = cols[i] || '');
       return record;
     });
+
+    const users = window.EDUGNAY_CONFIG.getUsers();
+    const importedLrns = new Set();
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index];
+      const lrn = String(record.lrn || '').trim();
+      const email = String(record.email || '').trim().toLowerCase();
+      const existingUser = users.find(user => String(user.email || '').toLowerCase() === email);
+      const lrnOwner = users.find(user => user.role === 'student' && String(user.lrn || '').trim() === lrn);
+
+      if (!/^\d{12}$/.test(lrn)) {
+        alert(`Row ${index + 2}: LRN must contain exactly 12 digits.`);
+        return;
+      }
+      if (importedLrns.has(lrn) || (lrnOwner && lrnOwner.id !== existingUser?.id)) {
+        alert(`Row ${index + 2}: That LRN is already assigned to another student account.`);
+        return;
+      }
+
+      record.lrn = lrn;
+      importedLrns.add(lrn);
+    }
 
     // --- SYNC (current, GitHub Pages friendly) ---
     // Highest averages get seated first, then distributed round-robin

@@ -158,9 +158,9 @@
         <div class="tb-profile" id="topbarProfile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()" aria-haspopup="true"
             aria-expanded="false">
-            <div class="tb-avatar parent">RA</div>
+            <div class="tb-avatar parent" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Rosario Alcantara</div>
+              <div class="tb-profile-name" data-parent-name>Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -280,7 +280,7 @@
       switcher.innerHTML = PARENT_CHILDREN.length
         ? PARENT_CHILDREN.map(link => {
           const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-          if (!student || student.role !== 'student') return '';
+          if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
           const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
           return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div></div>`;
         }).join('')

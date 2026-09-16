@@ -368,11 +368,11 @@
 
   const AUTH_VIEWS = ['signin', 'forgot', 'sent', 'reset', 'complete'];
   const FRONTEND_ACCOUNT_ROUTES = [
-    { identifier: 'adm', dashboard: './views/admin/edugnay-admin-dashboard.html' },
-    { identifier: 'fac', dashboard: './views/teacher/edugnay-teacher-dashboard.html' },
-    { identifier: 'stud', dashboard: './views/student/edugnay-student-dashboard.html' },
-    { identifier: 'par', dashboard: './views/parent/edugnay-parent-dashboard.html' },
-    { identifier: 'plat', dashboard: './views/platform/edugnay-platform-dashboard.html' }
+    { identifier: 'adm', userId: 'admin-1', role: 'school_admin', schoolId: 'scc', dashboard: './views/admin/edugnay-admin-dashboard.html' },
+    { identifier: 'fac', userId: 'teacher-2', role: 'teacher', schoolId: 'scc', dashboard: './views/teacher/edugnay-teacher-dashboard.html' },
+    { identifier: 'stud', userId: 'jd-004', role: 'student', schoolId: 'scc', dashboard: './views/student/edugnay-student-dashboard.html' },
+    { identifier: 'par', userId: 'parent-7', role: 'parent', schoolId: 'scc', dashboard: './views/parent/edugnay-parent-dashboard.html' },
+    { identifier: 'plat', userId: 'platform-1', role: 'platform_admin', schoolId: null, dashboard: './views/platform/edugnay-platform-dashboard.html' }
   ];
   const AUTH_STATE = {
     pendingEmail: '',
@@ -540,6 +540,15 @@
     }
 
     setAuthMessage('signInMessage', '');
+    try {
+      sessionStorage.setItem('edugnay_session', JSON.stringify({
+        userId: account.userId,
+        role: account.role,
+        schoolId: account.schoolId
+      }));
+    } catch {
+      // Portal pages keep their current frontend fallback when storage is unavailable.
+    }
     window.location.href = account.dashboard;
   }
 

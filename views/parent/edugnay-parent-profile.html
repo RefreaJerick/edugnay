@@ -26,16 +26,16 @@
   EJS CONVERSION MAP — parent-profile.html
   ─────────────────────────────────────────
   - parent              → session record:
-                         { firstName, lastName, email, phone, avatarUrl }
+                         { firstName, lastName, personalEmail, schoolEmail, avatarUrl }
   - children[]           → linked student records (read-only here):
                          { firstName, lastName, gradeSection, adviserName,
                            relationship: 'Mother'|'Father'|'Guardian', isPrimary }
                          NEVER editable by the parent — linking/unlinking a child
                          to a parent account must go through the registrar/admin
                          portal, not here.
-  - Personal info form   → ONLY editable field is phone — email is
-                         fixed (registrar-controlled, tied to the parent's
-                         school-account login), same tier as name.
+  - Personal info form   → personal email, sex, religion, contact number,
+                         address, and parent details are editable; school
+                         email and name remain read-only.
 
   FORM SUBMIT: POST /parent/profile/update — validate server-side regardless of
   client-side input types. Avatar upload goes through the same handler pattern as
@@ -159,9 +159,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar parent">RA</div>
+            <div class="tb-avatar parent" id="parent-topbar-initials" data-parent-initials>--</div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Rosario Alcantara</div>
+              <div class="tb-profile-name" id="parent-topbar-name" data-parent-name>Loading profile...</div>
               <div class="tb-profile-role">Parent</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -195,7 +195,7 @@
       <div class="profile-header-card">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar" id="profileAvatar" data-color="blue">
-            <span id="avatarInitials">RA</span>
+            <span id="avatarInitials">--</span>
             <img id="avatarImage" src="" alt="" style="display:none;" />
           </div>
           <button class="profile-avatar-edit" id="avatarEditTrigger" onclick="toggleAvatarMenu()" title="Edit avatar">
@@ -249,23 +249,23 @@
           </div>
         </div>
         <div class="profile-header-info">
-          <div class="profile-header-name">Rosario Alcantara</div>
+          <div class="profile-header-name" id="parent-profile-name">Loading profile...</div>
           <div class="profile-header-meta">
-            <span><i data-lucide="users" style="width:13px;height:13px;"></i> Parent · 2 linked children</span>
-            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> rosario.alcantara@gmail.com</span>
+            <span><i data-lucide="users" style="width:13px;height:13px;"></i> <span id="parent-profile-child-count">Loading...</span></span>
+            <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="parent-profile-school-email">Loading...</span></span>
           </div>
         </div>
       </div>
 
       <!-- Tab bar -->
       <div class="profile-tab-bar">
-        <button class="profile-tab active" onclick="switchTab('children', this)">
+        <button class="profile-tab active" data-profile-tab="children" onclick="switchTab('children', this)">
           <i data-lucide="users" style="width:13px;height:13px;"></i> My Children
         </button>
-        <button class="profile-tab" onclick="switchTab('personal', this)">
+        <button class="profile-tab" data-profile-tab="personal" onclick="switchTab('personal', this)">
           <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
         </button>
-        <button class="profile-tab" onclick="switchTab('security', this)">
+        <button class="profile-tab" data-profile-tab="security" onclick="switchTab('security', this)">
           <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
         </button>
       </div>
@@ -297,45 +297,109 @@
               </div>
             </div>
           </div>
+          <div class="profile-setup-notice" id="parent-profile-setup-notice" role="status" hidden>
+            <div class="profile-setup-notice-icon"><i data-lucide="clipboard-check" style="width:20px;height:20px;"></i></div>
+            <div>
+              <div class="profile-setup-notice-title">Complete your profile</div>
+              <div class="profile-setup-notice-text">Complete the required details below before using the parent portal. This information helps your school keep family contact records accurate.</div>
+            </div>
+          </div>
           <form id="profileForm" action="/parent/profile/update" method="POST" onsubmit="return submitProfile(event)">
-            <div class="config-panel-body">
-              <div class="form-grid-2">
-                <div class="form-group">
-                  <label class="form-label">First Name</label>
-                  <input class="form-input" type="text" name="firstName" value="Rosario" disabled
-                    style="color:var(--gray-400);cursor:not-allowed;" />
-                  <span class="form-hint">Managed by your school administrator.</span>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Last Name</label>
-                  <input class="form-input" type="text" name="lastName" value="Alcantara" disabled
-                    style="color:var(--gray-400);cursor:not-allowed;" />
-                  <span class="form-hint">Managed by your school administrator.</span>
-                </div>
-              </div>
-
-              <div class="form-divider"></div>
-
-              <div class="form-grid-2">
-                <div class="form-group">
-                  <label class="form-label">Account Email</label>
-                  <input class="form-input" type="email" name="email" id="profile-email"
-                    value="rosario.alcantara@gmail.com" disabled style="color:var(--gray-400);cursor:not-allowed;" />
-                  <span class="form-hint">Used to sign in to your account.</span>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Mobile Number</label>
-                  <input class="form-input" type="tel" name="phone" id="profile-phone" value="0918 234 5678"
-                    placeholder="09XX XXX XXXX" />
-                  <span class="form-hint">Optional contact number.</span>
+            <div class="config-panel-body profile-fields">
+              <div class="profile-form-section">
+                <div class="profile-form-section-title">Account information</div>
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="form-label" for="parent-first-name">First Name</label>
+                    <input class="form-input" type="text" id="parent-first-name" disabled />
+                    <span class="form-hint">Managed by your school administrator.</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-last-name">Last Name</label>
+                    <input class="form-input" type="text" id="parent-last-name" disabled />
+                    <span class="form-hint">Managed by your school administrator.</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-school-email">School Email</label>
+                    <input class="form-input" type="email" id="parent-school-email" disabled />
+                    <span class="form-hint">Used to sign in to your account.</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-personal-email">Personal Email</label>
+                    <input class="form-input" type="email" name="personalEmail" id="parent-personal-email" placeholder="you@example.com" />
+                    <span class="form-hint">Used for account recovery and important notices.</span>
+                  </div>
                 </div>
               </div>
 
+              <div class="profile-form-section">
+                <div class="profile-form-section-title">Personal details</div>
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="form-label" for="parent-middle-name">Middle Name</label>
+                    <input class="form-input" type="text" name="middleName" id="parent-middle-name" placeholder="e.g. Santos" />
+                    <label class="profile-checkbox" for="parent-no-middle-name">
+                      <input type="checkbox" name="hasNoMiddleName" id="parent-no-middle-name" />
+                      <span>I do not have a middle name</span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-contact-number">Contact Number</label>
+                    <input class="form-input" type="tel" name="contactNumber" id="parent-contact-number" placeholder="09XX XXX XXXX" />
+                    <span class="form-hint">Used for school-related contact.</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-sex">Sex</label>
+                    <select class="form-input form-select" name="sex" id="parent-sex">
+                      <option value="">Select sex</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-religion">Religion</label>
+                    <input class="form-input" type="text" name="religion" id="parent-religion" placeholder="Enter religion" />
+                    <label class="profile-checkbox" for="parent-no-religion">
+                      <input type="checkbox" id="parent-no-religion" />
+                      <span>Prefer not to provide</span>
+                    </label>
+                  </div>
+                  <div class="form-group form-group-wide" id="parent-maiden-name-group" hidden>
+                    <label class="form-label" for="parent-maiden-name">Maiden Last Name</label>
+                    <input class="form-input" type="text" name="maidenLastName" id="parent-maiden-name" placeholder="Enter maiden last name" />
+                    <label class="profile-checkbox" for="parent-no-maiden-name">
+                      <input type="checkbox" id="parent-no-maiden-name" />
+                      <span>I do not have a maiden name</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="profile-form-section">
+                <div class="profile-form-section-title">Address</div>
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="form-label" for="parent-house-street">House Number and Street</label>
+                    <input class="form-input" type="text" name="houseStreet" id="parent-house-street" placeholder="Enter house number and street" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-barangay">Barangay</label>
+                    <input class="form-input" type="text" name="barangay" id="parent-barangay" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-city">City or Municipality</label>
+                    <input class="form-input" type="text" name="cityMunicipality" id="parent-city" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="parent-province">Province</label>
+                    <input class="form-input" type="text" name="province" id="parent-province" />
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="config-panel-foot">
-              <button type="button" class="btn btn-cancel" onclick="resetForm()">Discard</button>
-              <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save
-                Changes</button>
+              <button type="button" class="btn btn-cancel" id="parent-profile-discard" onclick="resetForm()">Discard</button>
+              <button type="submit" class="btn btn-save" id="parent-profile-submit"><i data-lucide="save" style="width:13px;height:13px;"></i> <span id="parent-profile-submit-label">Save Changes</span></button>
             </div>
           </form>
         </div>
@@ -410,31 +474,171 @@
   <script>
     lucide.createIcons();
 
-    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
-    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
+    const escapeProfileHtml = PARENT_CONFIG.escapeHtml;
+    let parentSetupRequired = false;
 
-    function renderLinkedChildren() {
+    function setParentText(id, value, fallback = 'Not provided') {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value || fallback;
+    }
+
+    function setParentInput(id, value) {
+      const element = document.getElementById(id);
+      if (element) element.value = value || '';
+    }
+
+    function getParentLinks() {
+      return window.EDUGNAY_PARENT.children;
+    }
+
+    function renderParentProfile() {
+      const parent = window.EDUGNAY_PARENT.currentUser;
+      if (!parent) {
+        setParentText('parent-profile-name', 'Profile unavailable');
+        setParentText('parent-profile-child-count', 'No parent account found');
+        setParentText('parent-profile-school-email', 'Not available');
+        renderLinkedChildren([]);
+        return;
+      }
+
+      const profile = PARENT_CONFIG.getUserProfile(parent.id);
+      const links = getParentLinks();
+      const schoolEmail = parent.schoolEmail || parent.email || '';
+      const displayName = parent.displayName || [parent.firstName, parent.lastName].filter(Boolean).join(' ');
+
+      setParentText('parent-profile-name', displayName);
+      setParentText('parent-profile-child-count', `Parent · ${links.length} linked ${links.length === 1 ? 'child' : 'children'}`);
+      setParentText('parent-profile-school-email', schoolEmail);
+
+      setParentInput('parent-first-name', parent.firstName);
+      setParentInput('parent-last-name', parent.lastName);
+      setParentInput('parent-school-email', schoolEmail);
+      setParentInput('parent-personal-email', parent.personalEmail);
+      setParentInput('parent-middle-name', profile.middleName);
+      setParentInput('parent-contact-number', profile.contactNumber);
+      setParentInput('parent-sex', profile.sex);
+      setParentInput('parent-religion', profile.religion === 'prefer_not_to_provide' ? '' : profile.religion);
+      setParentInput('parent-house-street', profile.houseStreet);
+      setParentInput('parent-barangay', profile.barangay);
+      setParentInput('parent-city', profile.cityMunicipality);
+      setParentInput('parent-province', profile.province);
+
+      const isMother = links.some(link => link.relationship === 'mother');
+      const maidenNameGroup = document.getElementById('parent-maiden-name-group');
+      const noMaidenName = document.getElementById('parent-no-maiden-name');
+      if (maidenNameGroup) maidenNameGroup.hidden = !isMother;
+      if (noMaidenName) noMaidenName.checked = isMother && profile.hasNoMaidenName;
+      setParentInput('parent-maiden-name', isMother ? profile.maidenLastName : '');
+      document.getElementById('parent-no-middle-name').checked = profile.hasNoMiddleName;
+      document.getElementById('parent-no-religion').checked = profile.religion === 'prefer_not_to_provide';
+      updateParentProfileChoices();
+
+      const initials = document.getElementById('avatarInitials');
+      if (initials) initials.textContent = parent.initials || '';
+      renderLinkedChildren(links);
+      applyParentProfileSetupState();
+    }
+
+    function updateParentProfileChoices() {
+      const middleName = document.getElementById('parent-middle-name');
+      const noMiddleName = document.getElementById('parent-no-middle-name');
+      const maidenName = document.getElementById('parent-maiden-name');
+      const noMaidenName = document.getElementById('parent-no-maiden-name');
+      const maidenNameGroup = document.getElementById('parent-maiden-name-group');
+      const religion = document.getElementById('parent-religion');
+      const noReligion = document.getElementById('parent-no-religion');
+      const maidenNameVisible = maidenNameGroup && !maidenNameGroup.hidden;
+
+      middleName.disabled = noMiddleName.checked;
+      maidenName.disabled = noMaidenName.checked;
+      religion.disabled = noReligion.checked;
+      middleName.required = parentSetupRequired && !noMiddleName.checked;
+      maidenName.required = parentSetupRequired && maidenNameVisible && !noMaidenName.checked;
+      religion.required = parentSetupRequired && !noReligion.checked;
+      middleName.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
+      maidenName.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired && maidenNameVisible);
+      religion.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
+    }
+
+    function applyParentProfileSetupState() {
+      const parent = window.EDUGNAY_PARENT.currentUser;
+      parentSetupRequired = parent
+        ? PARENT_CONFIG.isProfileSetupRequired(parent.id)
+        : false;
+
+      document.body.classList.toggle('profile-setup-required', parentSetupRequired);
+      document.getElementById('parent-profile-setup-notice').hidden = !parentSetupRequired;
+      document.getElementById('parent-profile-discard').hidden = parentSetupRequired;
+      document.getElementById('parent-profile-submit-label').textContent = parentSetupRequired
+        ? 'Complete setup'
+        : 'Save Changes';
+
+      [
+        'parent-personal-email',
+        'parent-contact-number',
+        'parent-sex',
+        'parent-house-street',
+        'parent-barangay',
+        'parent-city',
+        'parent-province'
+      ].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.required = parentSetupRequired;
+        input.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
+      });
+
+      document.querySelectorAll('[data-profile-tab]').forEach(tab => {
+        const isPersonalTab = tab.dataset.profileTab === 'personal';
+        tab.disabled = parentSetupRequired && !isPersonalTab;
+        tab.setAttribute('aria-disabled', String(tab.disabled));
+      });
+
+      updateParentProfileChoices();
+      if (parentSetupRequired) {
+        const personalTab = document.querySelector('[data-profile-tab="personal"]');
+        if (personalTab) switchTab('personal', personalTab);
+      } else if (new URLSearchParams(window.location.search).get('setup') === 'required' && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      }
+      lucide.createIcons();
+    }
+
+    function renderLinkedChildren(links = getParentLinks()) {
       const list = document.getElementById('linked-children-list');
       if (!list) return;
-      if (!PARENT_CHILDREN.length) {
+      if (!links.length) {
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
         lucide.createIcons();
         return;
       }
-      list.innerHTML = PARENT_CHILDREN.map(link => {
-        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-        if (!student || student.role !== 'student') return '';
-        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
+      const sections = PARENT_CONFIG.getAssignmentSections();
+      list.innerHTML = links.map(link => {
+        const student = PARENT_CONFIG.getUserById(link.studentId);
+        if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
+        const section = sections.find(record => record.id === student.sectionId);
         const adviser = section?.adviserId
-          ? window.EDUGNAY_CONFIG.getUserById(section.adviserId)
+          ? PARENT_CONFIG.getUserById(section.adviserId)
           : null;
-        return `<div class="child-record-card"><div class="child-record-avatar">${student.initials}</div><div class="child-record-info"><div class="child-record-name">${student.displayName}</div><div class="child-record-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'} · Adviser: ${adviser?.displayName || 'Not assigned'}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${student.lrn || 'Not available'}</div></div><span class="child-relationship-tag"><i data-lucide="star" style="width:9px;height:9px;"></i> Parent</span></div>`;
+        const relationship = link.relationship
+          ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
+          : 'Relationship not set';
+        return `<div class="child-record-card"><div class="child-record-avatar">${escapeProfileHtml(student.initials || '')}</div><div class="child-record-info"><div class="child-record-name">${escapeProfileHtml(student.displayName || '')}</div><div class="child-record-section">${escapeProfileHtml(student.gradeLevel || 'Unassigned')} – ${escapeProfileHtml(section?.name || 'Unassigned')} · Adviser: ${escapeProfileHtml(adviser?.displayName || 'Not assigned')}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${escapeProfileHtml(student.lrn || 'Not available')}</div></div><div class="child-record-labels"><span class="child-relationship-tag"><i data-lucide="heart-handshake" style="width:9px;height:9px;"></i> ${escapeProfileHtml(relationship)}</span></div></div>`;
       }).join('');
       lucide.createIcons();
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      renderLinkedChildren();
+    document.addEventListener('DOMContentLoaded', () => {
+      renderParentProfile();
+      document.getElementById('parent-no-middle-name').addEventListener('change', updateParentProfileChoices);
+      document.getElementById('parent-no-maiden-name').addEventListener('change', function () {
+        if (this.checked) document.getElementById('parent-maiden-name').value = '';
+        updateParentProfileChoices();
+      });
+      document.getElementById('parent-no-religion').addEventListener('change', function () {
+        if (this.checked) document.getElementById('parent-religion').value = '';
+        updateParentProfileChoices();
+      });
     });
 
     /* ── AVATAR UPLOAD ── */
@@ -519,23 +723,68 @@
     }
 
     function switchTab(tabKey, btn) {
+      if (parentSetupRequired && tabKey !== 'personal') return;
       document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.profile-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('pane-' + tabKey).classList.add('active');
     }
 
-    function submitProfile(event) {
+    async function submitProfile(event) {
       event.preventDefault();
-      const form = document.getElementById('profileForm');
-      const body = Object.fromEntries(new FormData(form).entries());
-      // fetch('/parent/profile/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-      alert('Contact info updated.');
+      const parent = window.EDUGNAY_PARENT.currentUser;
+      if (!parent) return false;
+
+      const personalEmail = document.getElementById('parent-personal-email').value.trim();
+      if (personalEmail && !/^\S+@\S+\.\S+$/.test(personalEmail)) {
+        alert('Please provide a valid personal email.');
+        return false;
+      }
+
+      const links = getParentLinks();
+      const isMother = links.some(link => link.relationship === 'mother');
+      const noMaidenName = document.getElementById('parent-no-maiden-name').checked;
+      const noReligion = document.getElementById('parent-no-religion').checked;
+      const profileData = {
+        middleName: document.getElementById('parent-no-middle-name').checked
+          ? null
+          : document.getElementById('parent-middle-name').value.trim() || null,
+        hasNoMiddleName: document.getElementById('parent-no-middle-name').checked,
+        contactNumber: document.getElementById('parent-contact-number').value.trim() || null,
+        sex: document.getElementById('parent-sex').value || null,
+        religion: noReligion
+          ? 'prefer_not_to_provide'
+          : document.getElementById('parent-religion').value.trim() || null,
+        houseStreet: document.getElementById('parent-house-street').value.trim() || null,
+        barangay: document.getElementById('parent-barangay').value.trim() || null,
+        cityMunicipality: document.getElementById('parent-city').value.trim() || null,
+        province: document.getElementById('parent-province').value.trim() || null,
+        maidenLastName: isMother && !noMaidenName
+          ? document.getElementById('parent-maiden-name').value.trim() || null
+          : null,
+        hasNoMaidenName: isMother && noMaidenName
+      };
+
+      try {
+        if (parentSetupRequired) {
+          await PARENT_CONFIG.completeProfileSetup(parent.id, { personalEmail, ...profileData });
+          alert('Profile setup complete.');
+          window.location.replace('./edugnay-parent-dashboard.html');
+          return false;
+        }
+
+        PARENT_CONFIG.updateUser(parent.id, { personalEmail });
+        await PARENT_CONFIG.updateUserProfile(parent.id, profileData);
+        renderParentProfile();
+        alert('Profile updated.');
+      } catch (error) {
+        alert(error.message || 'Unable to update profile.');
+      }
       return false;
     }
 
     function resetForm() {
-      document.getElementById('profile-phone').value = '0918 234 5678';
+      renderParentProfile();
     }
   </script>
 

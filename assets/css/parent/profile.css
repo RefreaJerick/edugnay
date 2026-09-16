@@ -485,10 +485,6 @@
   background: linear-gradient(135deg, var(--blue-mid), var(--blue-light));
 }
 
-.child-record-card:nth-child(2) .child-record-avatar {
-  background: linear-gradient(135deg, var(--purple), #9333ea);
-}
-
 .child-record-info {
   flex: 1;
   min-width: 0;
@@ -693,12 +689,3 @@
     justify-content: center;
   }
 }
-
-/* Keep the linked-children heading concise in the profile header. */
-#pane-children .panel-sub { font-size: 0; }
-#pane-children .panel-sub::after { content: 'Managed by the school registrar'; font-size: 12px; }
-#pane-children .child-record-section { font-size: 0; }
-#pane-children .child-record-card:first-of-type .child-record-section::after { content: 'Grade 7, St. Matthew · Adviser: Ms. Maria Reyes'; font-size: 11px; }
-#pane-children .child-record-card:nth-of-type(2) .child-record-section::after { content: 'Grade 4, St. Clare · Adviser: Mrs. Liza Ramos'; font-size: 11px; }
-.profile-header-meta span:first-child { font-size: 0; }
-.profile-header-meta span:first-child::after { content: 'Parent · 2 children'; font-size: 12.5px; }

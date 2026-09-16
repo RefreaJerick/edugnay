@@ -9,18 +9,47 @@
 const PARENT_CONFIG = window.EDUGNAY_CONFIG;
 const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
 const PARENT_NO_CLASS_DAY = PARENT_CONFIG.getNoClassDay();
+const PARENT_USERS = PARENT_CONFIG.getUsersByRole(PARENT_CONFIG.values.roles.PARENT);
+const PARENT_CURRENT_USER = PARENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
+  || PARENT_USERS.find(user => user.id === 'parent-7')
+  || PARENT_USERS.find(user => user.status === PARENT_CONFIG.values.statuses.ACTIVE)
+  || PARENT_USERS[0]
+  || null;
 
 // Parent-child links stay as relationship records. Pages resolve the student
 // with getUserById(link.studentId) when they need display details.
 const PARENT_CHILD_DIRECTORY = PARENT_CONFIG.getParentStudentLinks()
   .filter(link => (
     (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID
-    && PARENT_CONFIG.getUserById(link.studentId)?.role === 'student'
+    && link.parentId === PARENT_CURRENT_USER?.id
+    && PARENT_CONFIG.getUserById(link.studentId)?.role === PARENT_CONFIG.values.roles.STUDENT
   ));
+const PARENT_PRIMARY_CHILD = PARENT_CONFIG.getUserById(PARENT_CHILD_DIRECTORY[0]?.studentId);
+const PARENT_CHILD_LABEL = PARENT_PRIMARY_CHILD?.firstName || 'Your child';
 
 window.EDUGNAY_PARENT = {
+  currentUser: PARENT_CURRENT_USER,
   children: PARENT_CHILD_DIRECTORY
 };
+
+function renderParentIdentity() {
+  const parent = window.EDUGNAY_PARENT.currentUser;
+  const displayName = parent?.displayName
+    || [parent?.firstName, parent?.lastName].filter(Boolean).join(' ')
+    || 'Profile unavailable';
+  const firstName = parent?.firstName || 'Parent';
+  const initials = parent?.initials || PARENT_CONFIG.getInitials(displayName) || '--';
+
+  document.querySelectorAll('[data-parent-name]').forEach(element => {
+    element.textContent = displayName;
+  });
+  document.querySelectorAll('[data-parent-first-name]').forEach(element => {
+    element.textContent = firstName;
+  });
+  document.querySelectorAll('[data-parent-initials]').forEach(element => {
+    element.textContent = initials;
+  });
+}
 
 /* ── NOTIFICATIONS DATA ── */
 const NOTIFICATIONS = [
@@ -39,14 +68,14 @@ const NOTIFICATIONS = [
   {
     id: 'parent-notif-report-001', icon: 'sparkles', tone: 'purple', type: 'Report', read: false, access: 'reports',
     title: 'Weekly report sent',
-    message: 'Juan\'s weekly report for June 9–14 is now available.',
+    message: `${PARENT_CHILD_LABEL}'s weekly report for June 9–14 is now available.`,
     link: { page: 'reports' },
     createdAt: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
   },
   {
     id: 'parent-notif-attendance-001', icon: 'circle-alert', tone: 'red', type: 'Attendance', read: false,
     title: 'Absence recorded',
-    message: 'Maya was marked absent today. Contact the adviser if this seems incorrect.',
+    message: `${PARENT_CHILD_LABEL} was marked absent today. Contact the adviser if this seems incorrect.`,
     link: { page: 'attendance' },
     createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
   },
@@ -194,7 +223,9 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  if (PARENT_CONFIG.enforceProfileSetup(PARENT_CURRENT_USER?.id, 'edugnay-parent-profile.html')) return;
+  renderParentIdentity();
   applyParentReportAccess();
   renderTopbarNotifs();
 });

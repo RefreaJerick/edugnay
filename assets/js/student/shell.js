@@ -6,6 +6,15 @@
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
+const STUDENT_SHELL_USERS = window.EDUGNAY_CONFIG.getUsersByRole(window.EDUGNAY_CONFIG.values.roles.STUDENT);
+const STUDENT_CURRENT_USER = STUDENT_SHELL_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
+  || STUDENT_SHELL_USERS.find(user => user.id === 'jd-004')
+  || STUDENT_SHELL_USERS.find(user => user.status === window.EDUGNAY_CONFIG.values.statuses.ACTIVE)
+  || STUDENT_SHELL_USERS[0]
+  || null;
+
+window.EDUGNAY_STUDENT = { currentUser: STUDENT_CURRENT_USER };
+
 const STUDENT_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 const STUDENT_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 const NOTIFICATIONS = [
@@ -178,6 +187,7 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;
   applyStudentJournalAccess();
   renderTopbarNotifs();
 });

@@ -23,7 +23,7 @@
   ─────────────────────────────────────────
   - student            → session record:
                          { firstName, lastName, lrn, gradeLevel, section, adviserName,
-                           email, phone, avatarUrl }
+                           personalEmail, schoolEmail, avatarUrl }
   - academicInfo        → read-only block: { lrn, gradeLevel, section, schoolYear,
                          adviserName, enrollmentStatus, enrollmentDate }
                          NEVER editable by the student — any change to LRN/section/
@@ -31,11 +31,9 @@
   - subjects[]          → enrolled subjects + assigned teacher for the current grading period,
                          read-only (same source as the student subject list,
                          minus the grade column)
-  - linkedParent         → { name, phone, email }
-  - Personal info form   → ONLY editable field is phone — email is
-                         fixed (registrar-controlled, same tier as name)
-                         since it's tied to the student's school account/login.
-                         Name is school-admin controlled and remains disabled here.
+  - linkedParent         → parent–student links + parent account/profile records
+  - Personal info form   → personal email and profile details are editable;
+                         school email, name, LRN, and placement remain read-only.
 
   FORM SUBMIT: POST /student/profile/update — validate server-side regardless of
   client-side input types. Avatar upload goes through the same handler pattern as
@@ -163,9 +161,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar student">JD</div>
+          <div class="tb-avatar student" id="student-topbar-initials">--</div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Juan Dela Cruz</div>
+            <div class="tb-profile-name" id="student-topbar-name">Loading profile...</div>
             <div class="tb-profile-role">Student</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -199,7 +197,7 @@
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
         <div class="profile-avatar" id="profileAvatar" data-color="green">
-          <span id="avatarInitials">JD</span>
+          <span id="avatarInitials">--</span>
           <img id="avatarImage" src="" alt="" style="display:none;"/>
         </div>
         <button class="profile-avatar-edit" id="avatarEditTrigger" onclick="toggleAvatarMenu()" title="Edit avatar">
@@ -241,27 +239,27 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name">Juan Dela Cruz</div>
+        <div class="profile-header-name" id="student-profile-name">Loading profile...</div>
         <div class="profile-header-meta">
-          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN 100-201-0001</span>
-          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> Grade 7 – St. Matthew</span>
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> juan.alcantara@stcolumban.edu.ph</span>
+          <span><i data-lucide="badge-check" style="width:13px;height:13px;"></i> LRN <span id="student-profile-lrn">Loading...</span></span>
+          <span><i data-lucide="door-open" style="width:13px;height:13px;"></i> <span id="student-profile-placement">Loading...</span></span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span id="student-profile-school-email">Loading...</span></span>
         </div>
       </div>
     </div>
 
     <!-- Tab bar -->
     <div class="profile-tab-bar">
-      <button class="profile-tab active" onclick="switchTab('academic', this)">
+      <button class="profile-tab active" data-profile-tab="academic" onclick="switchTab('academic', this)">
         <i data-lucide="graduation-cap" style="width:13px;height:13px;"></i> Academic Record
       </button>
-      <button class="profile-tab" onclick="switchTab('personal', this)">
+      <button class="profile-tab" data-profile-tab="personal" onclick="switchTab('personal', this)">
         <i data-lucide="user" style="width:13px;height:13px;"></i> Personal Info
       </button>
-      <button class="profile-tab" onclick="switchTab('guardian', this)">
+      <button class="profile-tab" data-profile-tab="guardian" onclick="switchTab('guardian', this)">
         <i data-lucide="heart-handshake" style="width:13px;height:13px;"></i> Linked Parent
       </button>
-      <button class="profile-tab" onclick="switchTab('security', this)">
+      <button class="profile-tab" data-profile-tab="security" onclick="switchTab('security', this)">
         <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Account & Security
       </button>
     </div>
@@ -281,19 +279,19 @@
         <div class="info-grid">
           <div class="info-cell">
             <div class="info-label">LRN</div>
-            <div class="info-value">100-201-0001</div>
+            <div class="info-value" id="student-record-lrn">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">Grade & Section</div>
-            <div class="info-value">Grade 7 – St. Matthew</div>
+            <div class="info-value" id="student-record-placement">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">Class Adviser</div>
-            <div class="info-value">Ms. Maria Reyes</div>
+            <div class="info-value" id="student-record-adviser">Loading...</div>
           </div>
           <div class="info-cell">
             <div class="info-label">School Year</div>
-            <div class="info-value">2025–2026</div>
+            <div class="info-value" id="student-record-school-year">Loading...</div>
           </div>
         </div>
       </div>
@@ -369,40 +367,127 @@
             </div>
           </div>
         </div>
+        <div class="profile-setup-notice" id="student-profile-setup-notice" role="status" hidden>
+          <div class="profile-setup-notice-icon"><i data-lucide="clipboard-check" style="width:20px;height:20px;"></i></div>
+          <div>
+            <div class="profile-setup-notice-title">Complete your profile</div>
+            <div class="profile-setup-notice-text">Complete the required details below before using the student portal. This information helps your school keep official learner records accurate.</div>
+          </div>
+        </div>
         <form id="profileForm" action="/student/profile/update" method="POST" onsubmit="return submitProfile(event)">
-        <div class="config-panel-body">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">First Name</label>
-              <input class="form-input" type="text" name="firstName" value="Juan" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Managed by your school administrator.</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Last Name</label>
-              <input class="form-input" type="text" name="lastName" value="Alcantara" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Managed by your school administrator.</span>
-            </div>
-          </div>
-
-          <div class="form-divider"></div>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Account Email</label>
-              <input class="form-input" type="email" name="email" id="profile-email" value="juan.alcantara@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
-              <span class="form-hint">Used to sign in to your account.</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Mobile Number</label>
-              <input class="form-input" type="tel" name="phone" id="profile-phone" value="0917 123 4567" placeholder="09XX XXX XXXX"/>
-              <span class="form-hint">Optional contact number.</span>
+        <div class="config-panel-body profile-fields">
+          <div class="profile-form-section">
+            <div class="profile-form-section-title">Account information</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="student-first-name">First Name</label>
+                <input class="form-input" type="text" id="student-first-name" disabled />
+                <span class="form-hint">Managed by your school administrator.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-last-name">Last Name</label>
+                <input class="form-input" type="text" id="student-last-name" disabled />
+                <span class="form-hint">Managed by your school administrator.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-school-email">School Email</label>
+                <input class="form-input" type="email" id="student-school-email" disabled />
+                <span class="form-hint">Used to sign in to your account.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-personal-email">Personal Email</label>
+                <input class="form-input" type="email" name="personalEmail" id="student-personal-email" placeholder="you@example.com" />
+                <span class="form-hint">Used for account recovery and important notices.</span>
+              </div>
             </div>
           </div>
 
+          <div class="profile-form-section">
+            <div class="profile-form-section-title">Personal details</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="student-middle-name">Middle Name</label>
+                <input class="form-input" type="text" name="middleName" id="student-middle-name" placeholder="e.g. Santos" />
+                <label class="profile-checkbox" for="student-no-middle-name">
+                  <input type="checkbox" name="hasNoMiddleName" id="student-no-middle-name" />
+                  <span>I do not have a middle name</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-contact-number">Contact Number</label>
+                <input class="form-input" type="tel" name="contactNumber" id="student-contact-number" placeholder="09XX XXX XXXX" />
+                <span class="form-hint">Optional contact number.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-sex">Sex</label>
+                <select class="form-input form-select" name="sex" id="student-sex">
+                  <option value="">Select sex</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-birth-date">Birth Date</label>
+                <input class="form-input" type="date" name="birthDate" id="student-birth-date" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-birthplace-province">Birthplace Province</label>
+                <input class="form-input" type="text" name="birthPlaceProvince" id="student-birthplace-province" placeholder="e.g. Pangasinan" />
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-form-section">
+            <div class="profile-form-section-title">Learner information</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="student-mother-tongue">Mother Tongue</label>
+                <input class="form-input" type="text" name="motherTongue" id="student-mother-tongue" placeholder="e.g. Pangasinan" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-indigenous-group">Indigenous Group</label>
+                <input class="form-input" type="text" name="indigenousGroup" id="student-indigenous-group" placeholder="Enter group or select not applicable" />
+                <label class="profile-checkbox" for="student-no-indigenous-group">
+                  <input type="checkbox" id="student-no-indigenous-group" />
+                  <span>Not applicable</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-religion">Religion</label>
+                <input class="form-input" type="text" name="religion" id="student-religion" placeholder="Enter religion" />
+                <label class="profile-checkbox" for="student-no-religion">
+                  <input type="checkbox" id="student-no-religion" />
+                  <span>Prefer not to provide</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-form-section">
+            <div class="profile-form-section-title">Address</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="student-house-street">House Number and Street</label>
+                <input class="form-input" type="text" name="houseStreet" id="student-house-street" placeholder="Enter house number and street" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-barangay">Barangay</label>
+                <input class="form-input" type="text" name="barangay" id="student-barangay" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-city">City or Municipality</label>
+                <input class="form-input" type="text" name="cityMunicipality" id="student-city" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-province">Province</label>
+                <input class="form-input" type="text" name="province" id="student-province" />
+              </div>
+            </div>
+          </div>
         </div>
         <div class="config-panel-foot">
-          <button type="button" class="btn btn-cancel" onclick="resetForm()">Discard</button>
-          <button type="submit" class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+          <button type="button" class="btn btn-cancel" id="student-profile-discard" onclick="resetForm()">Discard</button>
+          <button type="submit" class="btn btn-save" id="student-profile-submit"><i data-lucide="save" style="width:13px;height:13px;"></i> <span id="student-profile-submit-label">Save Changes</span></button>
         </div>
         </form>
       </div>
@@ -419,25 +504,7 @@
             </div>
           </div>
         </div>
-        <div>
-          <!-- linkedParent: render the parent record here -->
-          <div class="guardian-card">
-            <div class="guardian-avatar">RA</div>
-            <div class="guardian-info">
-              <div class="guardian-name">Rosario Alcantara</div>
-              <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> 0918 234 5678</div>
-              <div class="guardian-contact-row"><i data-lucide="mail" style="width:12px;height:12px;"></i> rosario.alcantara@gmail.com</div>
-            </div>
-          </div>
-          <div class="guardian-card">
-            <div class="guardian-avatar">FA</div>
-            <div class="guardian-info">
-              <div class="guardian-name">Fernando Alcantara</div>
-              <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> 0917 345 6789</div>
-            </div>
-          </div>
-          <!-- end linkedParent record -->
-        </div>
+        <div id="student-linked-parent-list"></div>
       </div>
     </div>
 
@@ -511,7 +578,195 @@ lucide.createIcons();
 /* ── AVATAR UPLOAD ── */
 // Subject assignment relationships use canonical subject and teacher IDs.
 // Replace this array with the enrolled-subjects endpoint later.
-const STUDENT_SUBJECTS = window.EDUGNAY_CONFIG.withActiveSchool([
+const STUDENT_CONFIG = window.EDUGNAY_CONFIG;
+const STUDENT_USERS = STUDENT_CONFIG.getUsersByRole('student');
+// Use the authenticated session when available; keep the demo record as the frontend fallback.
+const STUDENT_ID = window.EDUGNAY_STUDENT?.currentUser?.id
+  || STUDENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)?.id
+  || STUDENT_USERS.find(user => user.id === 'jd-004')?.id
+  || STUDENT_USERS.find(user => user.status === 'active')?.id
+  || STUDENT_USERS[0]?.id
+  || null;
+const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
+let studentSetupRequired = false;
+
+function setStudentText(id, value, fallback = 'Not provided') {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value || fallback;
+}
+
+function setStudentInput(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.value = value || '';
+}
+
+function renderStudentProfile() {
+  const student = STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
+  if (!student) {
+    setStudentText('student-profile-name', 'Profile unavailable');
+    setStudentText('student-topbar-name', 'Profile unavailable');
+    setStudentText('student-profile-lrn', 'Not available');
+    setStudentText('student-profile-placement', 'Not available');
+    setStudentText('student-profile-school-email', 'Not available');
+    setStudentText('student-record-lrn', 'Not available');
+    setStudentText('student-record-placement', 'Not available');
+    setStudentText('student-record-adviser', 'Not available');
+    setStudentText('student-record-school-year', 'Not available');
+    renderStudentLinkedParents('');
+    return;
+  }
+
+  const profile = STUDENT_CONFIG.getUserProfile(student.id);
+  const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student.sectionId);
+  const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
+  const schoolEmail = student.schoolEmail || student.email || '';
+  const displayName = student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ');
+  const placement = [student.gradeLevel, section?.name].filter(Boolean).join(' – ');
+
+  setStudentText('student-profile-name', displayName);
+  setStudentText('student-topbar-name', displayName);
+  setStudentText('student-profile-lrn', student.lrn, 'Not available');
+  setStudentText('student-profile-placement', placement, 'Unassigned');
+  setStudentText('student-profile-school-email', schoolEmail);
+  setStudentText('student-record-lrn', student.lrn, 'Not available');
+  setStudentText('student-record-placement', placement, 'Unassigned');
+  setStudentText('student-record-adviser', adviser?.displayName, 'Not assigned');
+  setStudentText('student-record-school-year', STUDENT_CONFIG.getActiveSchool()?.schoolYear, 'Not available');
+
+  setStudentInput('student-first-name', student.firstName);
+  setStudentInput('student-last-name', student.lastName);
+  setStudentInput('student-school-email', schoolEmail);
+  setStudentInput('student-personal-email', student.personalEmail);
+  setStudentInput('student-middle-name', profile.middleName);
+  setStudentInput('student-contact-number', profile.contactNumber);
+  setStudentInput('student-sex', profile.sex);
+  setStudentInput('student-birth-date', profile.birthDate);
+  setStudentInput('student-birthplace-province', profile.birthPlaceProvince);
+  setStudentInput('student-mother-tongue', profile.motherTongue);
+  setStudentInput('student-indigenous-group', profile.indigenousGroup === 'not_applicable' ? '' : profile.indigenousGroup);
+  setStudentInput('student-religion', profile.religion === 'prefer_not_to_provide' ? '' : profile.religion);
+  setStudentInput('student-house-street', profile.houseStreet);
+  setStudentInput('student-barangay', profile.barangay);
+  setStudentInput('student-city', profile.cityMunicipality);
+  setStudentInput('student-province', profile.province);
+
+  document.getElementById('student-no-middle-name').checked = profile.hasNoMiddleName;
+  document.getElementById('student-no-indigenous-group').checked = profile.indigenousGroup === 'not_applicable';
+  document.getElementById('student-no-religion').checked = profile.religion === 'prefer_not_to_provide';
+  updateStudentProfileChoices();
+
+  const initials = document.getElementById('avatarInitials');
+  if (initials) initials.textContent = student.initials || '';
+  const topbarInitials = document.getElementById('student-topbar-initials');
+  if (topbarInitials) topbarInitials.textContent = student.initials || '';
+  renderStudentLinkedParents(student.id);
+  applyStudentProfileSetupState();
+}
+
+function updateStudentProfileChoices() {
+  const middleName = document.getElementById('student-middle-name');
+  const noMiddleName = document.getElementById('student-no-middle-name');
+  const indigenousGroup = document.getElementById('student-indigenous-group');
+  const noIndigenousGroup = document.getElementById('student-no-indigenous-group');
+  const religion = document.getElementById('student-religion');
+  const noReligion = document.getElementById('student-no-religion');
+
+  middleName.disabled = noMiddleName.checked;
+  indigenousGroup.disabled = noIndigenousGroup.checked;
+  religion.disabled = noReligion.checked;
+  middleName.required = studentSetupRequired && !noMiddleName.checked;
+  indigenousGroup.required = studentSetupRequired && !noIndigenousGroup.checked;
+  religion.required = studentSetupRequired && !noReligion.checked;
+  middleName.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+  indigenousGroup.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+  religion.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+}
+
+function applyStudentProfileSetupState() {
+  studentSetupRequired = STUDENT_ID
+    ? STUDENT_CONFIG.isProfileSetupRequired(STUDENT_ID)
+    : false;
+
+  document.body.classList.toggle('profile-setup-required', studentSetupRequired);
+  document.getElementById('student-profile-setup-notice').hidden = !studentSetupRequired;
+  document.getElementById('student-profile-discard').hidden = studentSetupRequired;
+  document.getElementById('student-profile-submit-label').textContent = studentSetupRequired
+    ? 'Complete setup'
+    : 'Save Changes';
+
+  [
+    'student-personal-email',
+    'student-sex',
+    'student-birth-date',
+    'student-birthplace-province',
+    'student-mother-tongue',
+    'student-house-street',
+    'student-barangay',
+    'student-city',
+    'student-province'
+  ].forEach(id => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.required = studentSetupRequired;
+    input.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+  });
+
+  document.querySelectorAll('[data-profile-tab]').forEach(tab => {
+    const isPersonalTab = tab.dataset.profileTab === 'personal';
+    tab.disabled = studentSetupRequired && !isPersonalTab;
+    tab.setAttribute('aria-disabled', String(tab.disabled));
+  });
+
+  updateStudentProfileChoices();
+  if (studentSetupRequired) {
+    const personalTab = document.querySelector('[data-profile-tab="personal"]');
+    if (personalTab) switchTab('personal', personalTab);
+  } else if (new URLSearchParams(window.location.search).get('setup') === 'required' && window.history.replaceState) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+  }
+  lucide.createIcons();
+}
+
+function renderStudentLinkedParents(studentId) {
+  const list = document.getElementById('student-linked-parent-list');
+  if (!list) return;
+
+  const links = STUDENT_CONFIG.getParentStudentLinks()
+    .filter(link => link.studentId === String(studentId))
+    .map(link => ({ link, parent: STUDENT_CONFIG.getUserById(link.parentId) }))
+    .filter(record => record.parent?.role === 'parent');
+
+  if (!links.length) {
+    list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
+      icon: 'heart-handshake',
+      title: 'No linked parent',
+      text: 'A parent or guardian linked to your account will appear here.'
+    });
+    lucide.createIcons();
+    return;
+  }
+
+  list.innerHTML = links.map(({ link, parent }) => {
+    const profile = STUDENT_CONFIG.getUserProfile(parent.id);
+    const relationship = link.relationship
+      ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
+      : 'Relationship not set';
+    return `
+      <div class="guardian-card">
+        <div class="guardian-avatar">${escapeProfileHtml(parent.initials || '')}</div>
+        <div class="guardian-info">
+          <div class="guardian-name">${escapeProfileHtml(parent.displayName || '')}</div>
+          <div class="guardian-meta-row"><span class="badge badge-blue">${escapeProfileHtml(relationship)}</span></div>
+          <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> ${escapeProfileHtml(profile?.contactNumber || 'Not provided')}</div>
+          <div class="guardian-contact-row"><i data-lucide="mail" style="width:12px;height:12px;"></i> ${escapeProfileHtml(parent.personalEmail || 'Not provided')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  lucide.createIcons();
+}
+
+const STUDENT_SUBJECTS = STUDENT_CONFIG.withActiveSchool([
   { subjectId: 'mathematics', teacherId: 'teacher-2', adviserId: 'teacher-2' },
   { subjectId: 'english', teacherId: 'teacher-3' },
   { subjectId: 'science', teacherId: 'teacher-rico-santos' },
@@ -531,8 +786,18 @@ function renderStudentSubjects() {
   lucide.createIcons();
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   renderStudentSubjects();
+  renderStudentProfile();
+  document.getElementById('student-no-middle-name').addEventListener('change', updateStudentProfileChoices);
+  document.getElementById('student-no-indigenous-group').addEventListener('change', function () {
+    if (this.checked) document.getElementById('student-indigenous-group').value = '';
+    updateStudentProfileChoices();
+  });
+  document.getElementById('student-no-religion').addEventListener('change', function () {
+    if (this.checked) document.getElementById('student-religion').value = '';
+    updateStudentProfileChoices();
+  });
 });
 
 function handleAvatarUpload(event) {
@@ -616,23 +881,71 @@ function selectAvatarColor(btn, colorName) {
 }
 
 function switchTab(tabKey, btn) {
+  if (studentSetupRequired && tabKey !== 'personal') return;
   document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.profile-pane').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('pane-' + tabKey).classList.add('active');
 }
 
-function submitProfile(event) {
+async function submitProfile(event) {
   event.preventDefault();
-  const form = document.getElementById('profileForm');
-  const body = Object.fromEntries(new FormData(form).entries());
-  // fetch('/student/profile/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-  alert('Contact info updated.');
+  const student = STUDENT_CONFIG.getUserById(STUDENT_ID);
+  if (!student) return false;
+
+  const personalEmail = document.getElementById('student-personal-email').value.trim();
+  const birthDate = document.getElementById('student-birth-date').value;
+  if (personalEmail && !/^\S+@\S+\.\S+$/.test(personalEmail)) {
+    alert('Please provide a valid personal email.');
+    return false;
+  }
+  if (birthDate && new Date(`${birthDate}T00:00:00`) > new Date()) {
+    alert('Birth date cannot be in the future.');
+    return false;
+  }
+
+  const profileData = {
+    middleName: document.getElementById('student-no-middle-name').checked
+      ? null
+      : document.getElementById('student-middle-name').value.trim() || null,
+    hasNoMiddleName: document.getElementById('student-no-middle-name').checked,
+    contactNumber: document.getElementById('student-contact-number').value.trim() || null,
+    sex: document.getElementById('student-sex').value || null,
+    birthDate: birthDate || null,
+    birthPlaceProvince: document.getElementById('student-birthplace-province').value.trim() || null,
+    motherTongue: document.getElementById('student-mother-tongue').value.trim() || null,
+    indigenousGroup: document.getElementById('student-no-indigenous-group').checked
+      ? 'not_applicable'
+      : document.getElementById('student-indigenous-group').value.trim() || null,
+    religion: document.getElementById('student-no-religion').checked
+      ? 'prefer_not_to_provide'
+      : document.getElementById('student-religion').value.trim() || null,
+    houseStreet: document.getElementById('student-house-street').value.trim() || null,
+    barangay: document.getElementById('student-barangay').value.trim() || null,
+    cityMunicipality: document.getElementById('student-city').value.trim() || null,
+    province: document.getElementById('student-province').value.trim() || null
+  };
+
+  try {
+    if (studentSetupRequired) {
+      await STUDENT_CONFIG.completeProfileSetup(student.id, { personalEmail, ...profileData });
+      alert('Profile setup complete.');
+      window.location.replace('./edugnay-student-dashboard.html');
+      return false;
+    }
+
+    STUDENT_CONFIG.updateUser(student.id, { personalEmail });
+    await STUDENT_CONFIG.updateUserProfile(student.id, profileData);
+    renderStudentProfile();
+    alert('Profile updated.');
+  } catch (error) {
+    alert(error.message || 'Unable to update profile.');
+  }
   return false;
 }
 
 function resetForm() {
-  document.getElementById('profile-phone').value = '0917 123 4567';
+  renderStudentProfile();
 }
 </script>
 
