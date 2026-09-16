@@ -3,7 +3,6 @@
 (function initializeSfWorkbookService() {
   const DB_NAME = 'edugnay_sf_workbooks';
   const STORE_NAME = 'templateFiles';
-  const MAX_FILE_SIZE = 10 * 1024 * 1024;
   const PREVIEW_ROWS = 60;
   const PREVIEW_COLUMNS = 24;
 
@@ -29,16 +28,8 @@
         }
       };
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(new Error('The workbook file could not be stored.'));
+      request.onerror = () => reject(new Error('The workbook file could not be opened.'));
     });
-  }
-
-  async function fileHash(buffer) {
-    if (!window.crypto?.subtle) return null;
-    const hash = await window.crypto.subtle.digest('SHA-256', buffer);
-    return Array.from(new Uint8Array(hash))
-      .map(value => value.toString(16).padStart(2, '0'))
-      .join('');
   }
 
   function definitionKey(details = {}) {
@@ -65,52 +56,6 @@
 
   function worksheetMerges(worksheet) {
     return Array.isArray(worksheet.model?.merges) ? worksheet.model.merges : [];
-  }
-
-  function workbookDetails(workbook) {
-    let formulaCount = 0;
-    let mergedCellCount = 0;
-    let imageCount = 0;
-    let hiddenSheetCount = 0;
-    let hasPrintSettings = false;
-
-    const sheets = workbook.worksheets.map(worksheet => {
-      let sheetFormulaCount = 0;
-      worksheet.eachRow({ includeEmpty: false }, row => {
-        row.eachCell({ includeEmpty: false }, cell => {
-          if (cell.value && typeof cell.value === 'object' && cell.value.formula) sheetFormulaCount += 1;
-        });
-      });
-
-      const sheetMerges = worksheetMerges(worksheet).length;
-      const sheetImages = typeof worksheet.getImages === 'function' ? worksheet.getImages().length : 0;
-      formulaCount += sheetFormulaCount;
-      mergedCellCount += sheetMerges;
-      imageCount += sheetImages;
-      if (worksheet.state && worksheet.state !== 'visible') hiddenSheetCount += 1;
-      if (worksheet.pageSetup && Object.keys(worksheet.pageSetup).length) hasPrintSettings = true;
-
-      return {
-        name: worksheet.name,
-        rowCount: worksheet.actualRowCount || worksheet.rowCount || 0,
-        columnCount: worksheet.actualColumnCount || worksheet.columnCount || 0,
-        hidden: Boolean(worksheet.state && worksheet.state !== 'visible'),
-        formulaCount: sheetFormulaCount,
-        mergedCellCount: sheetMerges
-      };
-    });
-
-    return {
-      sheets,
-      workbookSummary: {
-        sheetCount: sheets.length,
-        formulaCount,
-        mergedCellCount,
-        imageCount,
-        hiddenSheetCount,
-        hasPrintSettings
-      }
-    };
   }
 
   function columnNumber(letters) {
@@ -245,63 +190,6 @@
     };
   }
 
-  async function inspectTemplateFile(file, details = {}) {
-    const issues = [];
-    const emptyResult = { valid: false, fileHash: null, mappingStatus: 'unmapped', sheets: [], workbookSummary: null, preview: null };
-    if (!file) return { ...emptyResult, issues: [issue('file_required', 'error', 'Choose an XLSX workbook.')] };
-    if (!file.name.toLowerCase().endsWith('.xlsx')) issues.push(issue('unsupported_file_type', 'error', 'Only XLSX workbooks are supported.'));
-    if (!file.size) issues.push(issue('empty_file', 'error', 'The selected workbook is empty.'));
-    if (file.size > MAX_FILE_SIZE) issues.push(issue('file_too_large', 'error', 'The workbook must be 10 MB or smaller.'));
-
-    const buffer = issues.length ? null : await file.arrayBuffer();
-    if (buffer) {
-      const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 4));
-      if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) issues.push(issue('invalid_xlsx_container', 'error', 'The selected file is not a valid XLSX workbook.'));
-    }
-    if (issues.length) return { ...emptyResult, fileHash: buffer ? await fileHash(buffer) : null, issues };
-
-    try {
-      const { workbook } = await loadWorkbook(buffer);
-      const detailsResult = workbookDetails(workbook);
-      if (!detailsResult.sheets.length) issues.push(issue('workbook_has_no_sheets', 'error', 'The workbook does not contain any worksheets.'));
-      const mapping = validateDefinition(workbook, details);
-      if (details.formCode) issues.push(...mapping.issues);
-      const firstSheet = workbook.worksheets.find(sheet => !sheet.state || sheet.state === 'visible') || workbook.worksheets[0];
-      return {
-        valid: !issues.some(record => record.severity === 'error'),
-        fileHash: await fileHash(buffer),
-        mappingStatus: mapping.mappingStatus,
-        sheets: detailsResult.sheets,
-        workbookSummary: detailsResult.workbookSummary,
-        preview: firstSheet ? worksheetPreview(firstSheet) : null,
-        issues
-      };
-    } catch (error) {
-      return {
-        ...emptyResult,
-        fileHash: await fileHash(buffer),
-        mappingStatus: 'invalid',
-        issues: [issue('workbook_unreadable', 'error', 'The workbook could not be opened. It may be damaged, encrypted, or unsupported.')]
-      };
-    }
-  }
-
-  async function saveTemplateFile(storageKey, file) {
-    const database = await openDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = database.transaction(STORE_NAME, 'readwrite');
-      transaction.objectStore(STORE_NAME).put(file, storageKey);
-      transaction.oncomplete = () => {
-        database.close();
-        resolve(storageKey);
-      };
-      transaction.onerror = () => {
-        database.close();
-        reject(new Error('The workbook file could not be stored.'));
-      };
-    });
-  }
-
   async function getTemplateFile(storageKey) {
     const database = await openDatabase();
     return new Promise((resolve, reject) => {
@@ -385,8 +273,6 @@
   }
 
   window.EDUGNAY_SF_WORKBOOK = {
-    inspectTemplateFile,
-    saveTemplateFile,
     getTemplateFile,
     getFilePreview,
     getStoredTemplatePreview,

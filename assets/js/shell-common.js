@@ -1312,109 +1312,36 @@ function applyCurrentDateToGradingBanners() {
       ? records
         .filter(record => record.schoolId === schoolId)
         .map(record => ({
-          ...record,
+          id: record.id,
+          schoolId: record.schoolId,
+          formCode: record.formCode,
+          formName: record.formName,
+          schoolLevel: record.schoolLevel,
+          version: record.version,
+          fileName: record.fileName || '',
+          templateFileKey: record.templateFileKey || '',
+          source: record.source || '',
+          status: record.status || '',
           mappingStatus: record.mappingStatus || 'unmapped',
-          workbookSummary: record.workbookSummary || null,
           sheets: Array.isArray(record.sheets) ? record.sheets : [],
-          validationIssues: Array.isArray(record.validationIssues) ? record.validationIssues : []
+          updatedAt: record.updatedAt || '',
+          updatedBy: record.updatedBy || ''
         }))
       : [];
   }
 
   // Replace with GET /api/teacher/sf-templates.
   async function getSfTemplates() {
-    return getStoredSfTemplates().map(record => ({ ...record }));
-  }
-
-  // Replace with POST /api/teacher/sf-templates/imports/validate.
-  async function validateSfTemplate(file, values = {}) {
-    if (!window.EDUGNAY_SF_WORKBOOK) {
-      return {
-        valid: false,
-        fileHash: null,
-        issues: [{
-          code: 'workbook_service_unavailable',
-          severity: 'error',
-          sheetName: null,
-          cellAddress: null,
-          field: 'file',
-          message: 'Workbook validation is unavailable.'
-        }]
-      };
-    }
-
-    const result = await window.EDUGNAY_SF_WORKBOOK.inspectTemplateFile(file, values);
-    const duplicate = result.fileHash && getStoredSfTemplates()
-      .some(record => record.fileHash === result.fileHash);
-    if (duplicate) {
-      result.issues.push({
-        code: 'duplicate_template_file',
-        severity: 'error',
-        sheetName: null,
-        cellAddress: null,
-        field: 'file',
-        message: 'This workbook has already been imported.'
-      });
-      result.valid = false;
-    }
-    return result;
-  }
-
-  // Replace with POST /api/teacher/sf-templates. IDs, ownership, status, and
-  // timestamps are created here only while the feature remains frontend-only.
-  async function importSfTemplate(file, values = {}) {
-    const validation = await validateSfTemplate(file, values);
-    if (!validation.valid) throw new Error(validation.issues[0]?.message || 'The workbook is invalid.');
-
-    const formCode = String(values.formCode || '').trim().toUpperCase();
-    const formName = String(values.formName || '').trim();
-    const schoolLevel = String(values.schoolLevel || '').trim();
-    const version = String(values.version || '').trim();
-    if (!/^SF(10|[1-9])$/.test(formCode) || !formName || !['elementary', 'jhs', 'shs'].includes(schoolLevel) || !version) {
-      throw new Error('Complete all template details before importing.');
-    }
-
-    const records = getStoredSfTemplates();
-    const versionExists = records.some(record => (
-      record.formCode === formCode &&
-      record.schoolLevel === schoolLevel &&
-      String(record.version || '').toLowerCase() === version.toLowerCase()
-    ));
-    if (versionExists) throw new Error('That form, school level, and version already exists.');
-
-    const schoolId = getActiveSchoolId();
-    const id = `sf-template-${Date.now()}`;
-    const storageKey = `${schoolId}:${id}`;
-    await window.EDUGNAY_SF_WORKBOOK.saveTemplateFile(storageKey, file);
-
-    const record = {
-      id,
-      schoolId,
-      formCode,
-      formName,
-      schoolLevel,
-      version,
-      originalFileName: file.name,
-      fileHash: validation.fileHash,
-      storageKey,
-      status: validation.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : RECORD_VALUES.statuses.DRAFT,
-      mappingStatus: validation.mappingStatus,
-      workbookSummary: validation.workbookSummary,
-      sheets: validation.sheets,
-      validationIssues: validation.issues,
-      uploadedBy: window.EDUGNAY_TEACHER_ACCESS?.teacherId || null,
-      uploadedAt: new Date().toISOString()
-    };
-    records.push(record);
-    writeJson(schoolStorageKey(STORAGE_KEYS.sfTemplates, schoolId), records);
-    return { ...record };
+    return getStoredSfTemplates()
+      .filter(record => record.source === 'official' && record.status === RECORD_VALUES.statuses.ACTIVE)
+      .map(record => ({ ...record }));
   }
 
   // Replace with GET /api/teacher/sf-templates/:templateId/preview.
   async function getSfTemplatePreview(templateId, sheetName = '') {
-    const template = getStoredSfTemplates().find(record => record.id === String(templateId));
+    const template = (await getSfTemplates()).find(record => record.id === String(templateId));
     if (!template) throw new Error('The selected template could not be found.');
-    const preview = await window.EDUGNAY_SF_WORKBOOK.getStoredTemplatePreview(template.storageKey, sheetName);
+    const preview = await window.EDUGNAY_SF_WORKBOOK.getStoredTemplatePreview(template.templateFileKey, sheetName);
     return {
       template: { ...template },
       preview
@@ -1424,7 +1351,7 @@ function applyCurrentDateToGradingBanners() {
   // Replace with POST /api/teacher/sf-forms/preview. The backend must repeat
   // the section permission check before returning school or learner records.
   async function generateSfForm(values = {}) {
-    const template = getStoredSfTemplates().find(record => record.id === String(values.templateId));
+    const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
       throw new Error('Select an active template with a verified mapping.');
     }
@@ -1452,7 +1379,7 @@ function applyCurrentDateToGradingBanners() {
         .filter(grade => grade.academicPeriodId === academicPeriodId)
     };
 
-    const generated = await window.EDUGNAY_SF_WORKBOOK.generateWorkbook(template.storageKey, template, context);
+    const generated = await window.EDUGNAY_SF_WORKBOOK.generateWorkbook(template.templateFileKey, template, context);
     const fileName = `${template.formCode}_${section.grade}-${section.name}_${schoolYear}.xlsx`
       .replace(/[<>:"/\\|?*]+/g, '-')
       .replace(/\s+/g, '-');
@@ -3495,8 +3422,6 @@ function applyCurrentDateToGradingBanners() {
     updateSection,
     getMyTeachingSections,
     getSfTemplates,
-    validateSfTemplate,
-    importSfTemplate,
     getSfTemplatePreview,
     generateSfForm,
     assignments: ASSIGNMENT_DIRECTORY,

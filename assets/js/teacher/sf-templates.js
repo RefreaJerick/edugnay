@@ -1,8 +1,6 @@
 const sfState = {
   templates: [],
   sections: [],
-  selectedFile: null,
-  inspection: null,
   selectedTemplate: null,
   generated: null,
   editing: false
@@ -13,18 +11,6 @@ const sfElements = {
   count: document.getElementById('sfTemplateCount'),
   codeFilter: document.getElementById('sfCodeFilter'),
   levelFilter: document.getElementById('sfLevelFilter'),
-  statusFilter: document.getElementById('sfStatusFilter'),
-  modal: document.getElementById('sfImportModal'),
-  form: document.getElementById('sfImportForm'),
-  file: document.getElementById('sfTemplateFile'),
-  fileName: document.getElementById('sfTemplateFileName'),
-  validation: document.getElementById('sfValidation'),
-  importReview: document.getElementById('sfImportReview'),
-  inspectionSummary: document.getElementById('sfInspectionSummary'),
-  importSheetTabs: document.getElementById('sfImportSheetTabs'),
-  importPreview: document.getElementById('sfImportPreview'),
-  error: document.getElementById('sfImportError'),
-  submit: document.getElementById('sfImportSubmit'),
   generatorForm: document.getElementById('sfGeneratorForm'),
   templateSelect: document.getElementById('sfGenerateTemplate'),
   sectionSelect: document.getElementById('sfGenerateSection'),
@@ -34,7 +20,7 @@ const sfElements = {
   previewTitle: document.getElementById('sfPreviewTitle'),
   previewSubtitle: document.getElementById('sfPreviewSubtitle'),
   previewContent: document.getElementById('sfPreviewContent'),
-  editButton: document.getElementById('sfEditDraft'),
+  editButton: document.getElementById('sfEditGenerated'),
   downloadButton: document.getElementById('sfDownloadWorkbook'),
   toast: document.getElementById('sfToast')
 };
@@ -61,8 +47,7 @@ function escapeHtml(value) {
 function filteredTemplates() {
   return sfState.templates.filter(template => (
     (sfElements.codeFilter.value === 'all' || template.formCode === sfElements.codeFilter.value) &&
-    (sfElements.levelFilter.value === 'all' || template.schoolLevel === sfElements.levelFilter.value) &&
-    (sfElements.statusFilter.value === 'all' || template.status === sfElements.statusFilter.value)
+    (sfElements.levelFilter.value === 'all' || template.schoolLevel === sfElements.levelFilter.value)
   ));
 }
 
@@ -76,7 +61,7 @@ function renderTemplateLibrary() {
     sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: hasFilters ? 'search-x' : 'file-spreadsheet',
       title: hasFilters ? 'No templates match these filters' : 'No SF templates available',
-      text: hasFilters ? 'Change a filter to see other templates.' : 'Import an official XLSX template to begin.'
+      text: hasFilters ? 'Change a filter to see other templates.' : 'Official templates will appear here when they are configured.'
     });
     return;
   }
@@ -89,24 +74,15 @@ function renderTemplateLibrary() {
         <div class="sf-template-name">${escapeHtml(template.formName)}</div>
       </div>
       <div>
-        <div class="sf-template-file" title="${escapeHtml(template.originalFileName)}">${escapeHtml(template.originalFileName)}</div>
+        <div class="sf-template-file" title="${escapeHtml(template.fileName || 'Official XLSX template')}">${escapeHtml(template.fileName || 'Official XLSX template')}</div>
         <div class="sf-template-meta">${escapeHtml(schoolLevelLabel(template.schoolLevel))}</div>
       </div>
       <div class="sf-template-version">
         <div class="sf-template-code">v${escapeHtml(template.version)}</div>
-        <div class="sf-template-meta">${escapeHtml(formatTemplateDate(template.uploadedAt))}</div>
+        <div class="sf-template-meta">Updated ${escapeHtml(formatTemplateDate(template.updatedAt))}</div>
       </div>
-      <span class="sf-status ${escapeHtml(template.status)}">${escapeHtml(template.status)}</span>
-      <div class="sf-template-menu">
-        <button class="sf-menu-trigger" type="button" aria-label="Template actions" aria-haspopup="menu" aria-expanded="false" data-template-menu-trigger>
-          <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
-        </button>
-        <div class="sf-action-menu" role="menu">
-          <button class="sf-menu-item" type="button" role="menuitem" data-template-preview="${escapeHtml(template.id)}"><i data-lucide="eye" style="width:14px;height:14px;"></i> Preview template</button>
-          <button class="sf-menu-item" type="button" role="menuitem" data-template-setup="${escapeHtml(template.id)}"><i data-lucide="settings-2" style="width:14px;height:14px;"></i> Continue setup</button>
-          <button class="sf-menu-item delete" type="button" role="menuitem"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete template</button>
-        </div>
-      </div>
+      <span class="sf-status active">Available</span>
+      <button class="sf-template-preview" type="button" data-template-preview="${escapeHtml(template.id)}">Preview</button>
     </article>
   `).join('');
   if (window.lucide) lucide.createIcons();
@@ -147,59 +123,6 @@ function updateGenerateButton() {
     sfElements.schoolYear.value &&
     sfElements.periodSelect.value
   );
-}
-
-function closeTemplateMenus() {
-  document.querySelectorAll('.sf-action-menu.open').forEach(menu => menu.classList.remove('open'));
-  document.querySelectorAll('[data-template-menu-trigger][aria-expanded="true"]')
-    .forEach(button => button.setAttribute('aria-expanded', 'false'));
-}
-
-function openImportModal() {
-  sfElements.form.reset();
-  sfState.selectedFile = null;
-  sfState.inspection = null;
-  sfElements.fileName.textContent = 'No file selected';
-  sfElements.fileName.classList.remove('has-file');
-  sfElements.validation.hidden = true;
-  sfElements.importReview.hidden = true;
-  sfElements.error.hidden = true;
-  sfElements.submit.disabled = true;
-  sfElements.modal.classList.add('open');
-  sfElements.modal.setAttribute('aria-hidden', 'false');
-  document.getElementById('sfFormCode').focus();
-}
-
-function closeImportModal() {
-  sfElements.modal.classList.remove('open');
-  sfElements.modal.setAttribute('aria-hidden', 'true');
-}
-
-function renderValidation() {
-  const result = sfState.inspection;
-  if (!result) {
-    sfElements.validation.hidden = true;
-    sfElements.submit.disabled = true;
-    return;
-  }
-
-  const hasError = result.issues.some(record => record.severity === 'error');
-  const hasWarning = result.issues.some(record => record.severity === 'warning');
-  sfElements.validation.className = `sf-validation ${hasError ? 'error' : hasWarning ? 'warning' : 'success'}`;
-  sfElements.validation.innerHTML = result.issues.length
-    ? result.issues.map(record => `<div class="sf-validation-item">${escapeHtml(record.message)}</div>`).join('')
-    : '<div class="sf-validation-item">Workbook opened successfully. Review its worksheets before importing.</div>';
-  sfElements.validation.hidden = false;
-  sfElements.submit.disabled = !result.valid;
-}
-
-function renderInspectionSummary(summary) {
-  sfElements.inspectionSummary.innerHTML = [
-    ['Worksheets', summary.sheetCount],
-    ['Formulas', summary.formulaCount],
-    ['Merged ranges', summary.mergedCellCount],
-    ['Images', summary.imageCount]
-  ].map(([label, value]) => `<div class="sf-inspection-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
 }
 
 function renderSheetTabs(container, sheets, selectedName) {
@@ -254,71 +177,6 @@ function workbookTable(preview, editing = false) {
 
 function renderWorkbook(container, preview, editing = false) {
   container.innerHTML = `${workbookTable(preview, editing)}${preview.truncated ? '<div class="sf-preview-limit">Preview limited to the first 60 rows and 24 columns.</div>' : ''}`;
-}
-
-function renderImportReview() {
-  const result = sfState.inspection;
-  if (!result?.valid || !result.preview || !result.workbookSummary) {
-    sfElements.importReview.hidden = true;
-    return;
-  }
-  sfElements.importReview.hidden = false;
-  renderInspectionSummary(result.workbookSummary);
-  renderSheetTabs(sfElements.importSheetTabs, result.sheets, result.preview.name);
-  renderWorkbook(sfElements.importPreview, result.preview);
-}
-
-async function reviewSelectedFile() {
-  sfState.selectedFile = sfElements.file.files?.[0] || null;
-  sfElements.fileName.textContent = sfState.selectedFile?.name || 'No file selected';
-  sfElements.fileName.classList.toggle('has-file', Boolean(sfState.selectedFile));
-  sfElements.validation.className = 'sf-validation';
-  sfElements.validation.textContent = 'Opening workbook...';
-  sfElements.validation.hidden = false;
-  sfElements.importReview.hidden = true;
-  sfElements.submit.disabled = true;
-  sfState.inspection = await window.EDUGNAY_CONFIG.validateSfTemplate(sfState.selectedFile);
-  renderValidation();
-  renderImportReview();
-}
-
-async function showImportSheet(sheetName) {
-  if (!sfState.selectedFile) return;
-  sfElements.importPreview.innerHTML = '<div class="sf-preview-loading">Opening worksheet...</div>';
-  const preview = await window.EDUGNAY_SF_WORKBOOK.getFilePreview(sfState.selectedFile, sheetName);
-  renderSheetTabs(sfElements.importSheetTabs, sfState.inspection.sheets, preview.name);
-  renderWorkbook(sfElements.importPreview, preview);
-}
-
-async function submitTemplateImport(event) {
-  event.preventDefault();
-  sfElements.error.hidden = true;
-  if (!sfState.selectedFile || !sfState.inspection?.valid) return;
-
-  const values = {
-    formCode: document.getElementById('sfFormCode').value,
-    formName: document.getElementById('sfFormName').value,
-    schoolLevel: document.getElementById('sfSchoolLevel').value,
-    version: document.getElementById('sfTemplateVersion').value
-  };
-
-  sfElements.submit.disabled = true;
-  sfElements.submit.textContent = 'Importing...';
-  try {
-    const created = await window.EDUGNAY_CONFIG.importSfTemplate(sfState.selectedFile, values);
-    sfState.templates = await window.EDUGNAY_CONFIG.getSfTemplates();
-    renderTemplateLibrary();
-    renderGenerationOptions();
-    closeImportModal();
-    await openTemplatePreview(created.id);
-    showSfToast(created.status === 'active' ? 'Template imported and activated.' : 'Template imported as a draft.');
-  } catch (error) {
-    sfElements.error.textContent = error.message;
-    sfElements.error.hidden = false;
-  } finally {
-    sfElements.submit.textContent = 'Import template';
-    sfElements.submit.disabled = !sfState.inspection?.valid;
-  }
 }
 
 async function openTemplatePreview(templateId, sheetName = '') {
@@ -396,9 +254,9 @@ async function toggleGeneratedEditing() {
   sfState.generated.buffer = result.buffer;
   sfState.generated.preview = result.preview;
   sfState.editing = false;
-  sfElements.editButton.textContent = 'Edit draft';
+  sfElements.editButton.textContent = 'Edit generated form';
   renderWorkbook(workbook, sfState.generated.preview);
-  showSfToast('Draft edits saved in this browser.');
+  showSfToast('Generated form edits saved in this browser.');
 }
 
 function downloadGeneratedWorkbook() {
@@ -430,24 +288,13 @@ async function initializeSfTemplatesPage() {
   if (window.lucide) lucide.createIcons();
 }
 
-document.getElementById('sfOpenImport').addEventListener('click', openImportModal);
-document.getElementById('sfImportClose').addEventListener('click', closeImportModal);
-document.getElementById('sfImportCancel').addEventListener('click', closeImportModal);
-document.getElementById('sfChooseFile').addEventListener('click', () => sfElements.file.click());
-sfElements.file.addEventListener('change', reviewSelectedFile);
-sfElements.form.addEventListener('submit', submitTemplateImport);
 sfElements.generatorForm.addEventListener('submit', generateForm);
 sfElements.sectionSelect.addEventListener('change', renderPeriodOptions);
 [sfElements.templateSelect, sfElements.periodSelect].forEach(select => select.addEventListener('change', updateGenerateButton));
-[sfElements.codeFilter, sfElements.levelFilter, sfElements.statusFilter]
+[sfElements.codeFilter, sfElements.levelFilter]
   .forEach(select => select.addEventListener('change', renderTemplateLibrary));
 sfElements.editButton.addEventListener('click', toggleGeneratedEditing);
 sfElements.downloadButton.addEventListener('click', downloadGeneratedWorkbook);
-
-sfElements.importSheetTabs.addEventListener('click', event => {
-  const tab = event.target.closest('[data-sheet-name]');
-  if (tab) showImportSheet(tab.dataset.sheetName);
-});
 
 sfElements.previewContent.addEventListener('click', event => {
   const tab = event.target.closest('[data-sheet-name]');
@@ -456,39 +303,8 @@ sfElements.previewContent.addEventListener('click', event => {
 
 sfElements.list.addEventListener('click', event => {
   const previewButton = event.target.closest('[data-template-preview]');
-  const setupButton = event.target.closest('[data-template-setup]');
-  const trigger = event.target.closest('[data-template-menu-trigger]');
   if (previewButton) {
-    closeTemplateMenus();
     openTemplatePreview(previewButton.dataset.templatePreview);
-    return;
-  }
-  if (setupButton) {
-    closeTemplateMenus();
-    openTemplatePreview(setupButton.dataset.templateSetup);
-    showSfToast('A verified mapping will be added when the official form is configured.');
-    return;
-  }
-  if (!trigger) return;
-  const menu = trigger.nextElementSibling;
-  const willOpen = !menu.classList.contains('open');
-  closeTemplateMenus();
-  menu.classList.toggle('open', willOpen);
-  trigger.setAttribute('aria-expanded', String(willOpen));
-});
-
-sfElements.modal.addEventListener('click', event => {
-  if (event.target === sfElements.modal) closeImportModal();
-});
-
-document.addEventListener('click', event => {
-  if (!event.target.closest('.sf-template-menu')) closeTemplateMenus();
-});
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') {
-    closeImportModal();
-    closeTemplateMenus();
   }
 });
 

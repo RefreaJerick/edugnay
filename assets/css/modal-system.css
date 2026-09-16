@@ -519,8 +519,9 @@
 
 /* Shared form and control language
    This stylesheet is loaded after each page stylesheet, so the shared input,
-   select, tab, and action rules below provide the final consistent treatment
-   without requiring page-by-page overrides. */
+   tab, and action rules below provide the final consistent treatment without
+   requiring page-by-page overrides. Select controls are defined globally in
+   styles.css so pages without modals use the same arrow treatment. */
 /* Standalone page forms use the same control language as modal forms. */
 .main .form-group { margin-bottom: 16px; }
 .main .form-label {
@@ -624,47 +625,8 @@
   box-shadow: 0 0 0 3px var(--button-focus-ring) !important;
 }
 
-/* Shared select control language. Selects use the same height and surface as
-   the input controls while keeping the compact assignment-style arrow. */
-select:not([multiple]) {
-  box-sizing: border-box;
-  min-height: 42px !important;
-  padding: 10px 34px 10px 12px !important;
-  border: 1.5px solid var(--gray-200) !important;
-  border-radius: var(--radius-sm) !important;
-  background-color: var(--gray-50) !important;
-  background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%) !important;
-  background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50% !important;
-  background-repeat: no-repeat !important;
-  background-size: 4px 4px, 4px 4px !important;
-  color: var(--gray-700) !important;
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
-  font-size: 12px !important;
-  line-height: 1.3;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
-}
-
-select:not([multiple]):focus {
-  border-color: var(--blue-mid) !important;
-  background-color: var(--white) !important;
-  box-shadow: 0 0 0 3px var(--button-focus-ring);
-}
-
-select:not([multiple]):not(:disabled):not(:focus):hover {
-  border-color: var(--gray-300) !important;
-}
-
-select:not([multiple]):disabled {
-  cursor: not-allowed;
-  opacity: .65;
-}
-
-/* Search-adjacent filters only. Form and modal selects keep the shared
-   control treatment above. */
+/* Search-adjacent filters only. Form and modal selects inherit the shared
+   control treatment from styles.css. */
 .search-wrap ~ select.filter-select,
 .search-wrap ~ select.select-filter {
   height: 38px !important;

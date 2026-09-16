@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/sf-templates.css">
-  <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/vendor/exceljs.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
@@ -18,95 +17,6 @@
   <script src="../../assets/js/teacher/shell.js"></script>
 </head>
 <body>
-  <div class="modal-backdrop sf-import-backdrop" id="sfImportModal" aria-hidden="true">
-    <div class="modal sf-import-modal" role="dialog" aria-modal="true" aria-labelledby="sfImportTitle">
-      <div class="modal-head">
-        <div class="modal-heading">
-          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-up"></i></div>
-          <div class="modal-heading-copy">
-            <div class="modal-title" id="sfImportTitle">Import SF template</div>
-            <div class="modal-sub">Add an official XLSX workbook as a draft for review and mapping.</div>
-          </div>
-        </div>
-        <button class="modal-close" id="sfImportClose" type="button" aria-label="Close import template dialog">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <form id="sfImportForm">
-          <div class="form-group">
-            <label class="form-label" for="sfTemplateFile">XLSX workbook</label>
-            <input id="sfTemplateFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-            <div class="file-upload-wrap">
-              <button class="file-upload-btn" id="sfChooseFile" type="button">
-                <i data-lucide="upload"></i> Choose file
-              </button>
-              <span class="file-upload-name" id="sfTemplateFileName">No file selected</span>
-            </div>
-            <div class="sf-file-help">XLSX only. Maximum file size: 10 MB.</div>
-          </div>
-
-          <div class="sf-validation" id="sfValidation" aria-live="polite" hidden></div>
-
-          <section class="sf-import-review" id="sfImportReview" aria-label="Workbook inspection" hidden>
-            <div class="sf-inspection-summary" id="sfInspectionSummary"></div>
-            <div class="sf-sheet-tabs" id="sfImportSheetTabs"></div>
-            <div class="sf-workbook-frame compact" id="sfImportPreview"></div>
-          </section>
-
-          <div class="modal-form-row">
-            <div class="form-group">
-              <label class="form-label" for="sfFormCode">Form code</label>
-              <select class="form-select" id="sfFormCode" required>
-                <option value="">Select a form</option>
-                <option value="SF1">SF1</option>
-                <option value="SF2">SF2</option>
-                <option value="SF3">SF3</option>
-                <option value="SF4">SF4</option>
-                <option value="SF5">SF5</option>
-                <option value="SF6">SF6</option>
-                <option value="SF7">SF7</option>
-                <option value="SF8">SF8</option>
-                <option value="SF9">SF9</option>
-                <option value="SF10">SF10</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sfSchoolLevel">School level</label>
-              <select class="form-select" id="sfSchoolLevel" required>
-                <option value="">Select a level</option>
-                <option value="elementary">Elementary</option>
-                <option value="jhs">Junior High School</option>
-                <option value="shs">Senior High School</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="modal-form-row sf-import-final-row">
-            <div class="form-group">
-              <label class="form-label" for="sfFormName">Official form name</label>
-              <input class="form-input" id="sfFormName" type="text" placeholder="Enter the official form name" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sfTemplateVersion">Version</label>
-              <input class="form-input" id="sfTemplateVersion" type="text" placeholder="e.g. 2026.1" required>
-            </div>
-          </div>
-
-          <div class="sf-import-error" id="sfImportError" role="alert" hidden></div>
-        </form>
-      </div>
-
-      <div class="modal-foot">
-        <button class="btn btn-cancel" id="sfImportCancel" type="button">Cancel</button>
-        <button class="btn btn-save" id="sfImportSubmit" type="submit" form="sfImportForm" disabled>
-          Import template
-        </button>
-      </div>
-    </div>
-  </div>
-
   <div class="shell">
     <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -230,7 +140,6 @@
               <h2 class="sf-panel-title" id="sfLibraryTitle">Template Library</h2>
               <p class="sf-panel-sub" id="sfTemplateCount">0 templates</p>
             </div>
-            <button class="top-btn secondary" id="sfOpenImport" type="button"><i data-lucide="file-up"></i> Import template</button>
           </div>
 
           <div class="sf-filters">
@@ -252,21 +161,11 @@
                 <option value="shs">Senior High School</option>
               </select>
             </label>
-            <label class="sf-filter-field" for="sfStatusFilter">
-              <span>Status</span>
-              <select id="sfStatusFilter">
-                <option value="all">All statuses</option>
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="invalid">Invalid</option>
-              </select>
-            </label>
           </div>
 
           <div class="sf-template-columns" role="row">
             <span role="columnheader">Form</span>
-            <span role="columnheader">File</span>
+            <span role="columnheader">Workbook</span>
             <span role="columnheader">Version</span>
             <span role="columnheader">Status</span>
             <span role="columnheader">Actions</span>
@@ -296,10 +195,10 @@
         <div class="sf-panel-head sf-preview-head">
           <div>
             <h2 class="sf-panel-title" id="sfPreviewTitle">Workbook preview</h2>
-            <p class="sf-panel-sub" id="sfPreviewSubtitle">Review an imported workbook or generate a populated form.</p>
+            <p class="sf-panel-sub" id="sfPreviewSubtitle">Preview an official template or generate a populated form.</p>
           </div>
           <div class="sf-preview-actions">
-            <button class="top-btn secondary" id="sfEditDraft" type="button" disabled>Edit draft</button>
+            <button class="top-btn secondary" id="sfEditGenerated" type="button" disabled>Edit generated form</button>
             <button class="top-btn primary" id="sfDownloadWorkbook" type="button" disabled><i data-lucide="download"></i> Download XLSX</button>
           </div>
         </div>
@@ -307,7 +206,7 @@
           <div class="sf-preview-empty" id="sfPreviewEmpty">
             <div class="sf-preview-empty-icon"><i data-lucide="sheet"></i></div>
             <strong>No workbook selected</strong>
-            <span>Preview an imported template or generate a populated form.</span>
+            <span>Select an official template or generate a populated form.</span>
           </div>
         </div>
       </section>
