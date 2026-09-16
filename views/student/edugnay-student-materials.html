@@ -114,7 +114,7 @@
           </div>
           <div class="topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -233,7 +233,9 @@
     lucide.createIcons();
 
     // The shared getter can later request only the selected subject from the API.
-    const MATERIAL_RECORDS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent('jd-004');
+    const MATERIAL_STUDENT = window.EDUGNAY_CONFIG.getUserById('jd-004');
+    const MATERIAL_RECORDS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(MATERIAL_STUDENT.id);
+    const MATERIAL_PERIODS = window.EDUGNAY_CONFIG.getAcademicPeriods(MATERIAL_STUDENT.schoolId, MATERIAL_STUDENT.schoolLevel);
     const MATERIALS_BY_SUBJECT = {};
     MATERIAL_RECORDS.forEach(material => {
       if (!MATERIALS_BY_SUBJECT[material.subjectId]) {
@@ -255,14 +257,7 @@
       docx: { icon: 'file-text', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)', label: 'Document' },
     };
 
-    const PERIOD_LABELS = {
-      q1: '1st Quarter',
-      q2: '2nd Quarter',
-      q3: '3rd Quarter',
-      q4: '4th Quarter',
-      'semester-1': '1st Semester',
-      'semester-2': '2nd Semester'
-    };
+    const PERIOD_LABELS = Object.fromEntries(MATERIAL_PERIODS.map(period => [period.id, period.name]));
 
     function formatMaterialDate(value) {
       const date = new Date(value);
@@ -333,17 +328,17 @@
       }
 
       // Group by academic period for the existing list layout.
-      const quarters = [];
+      const periodGroups = [];
       const grouped = {};
       filtered.forEach(m => {
         const period = PERIOD_LABELS[m.academicPeriodId] || 'Academic Period';
-        if (!grouped[period]) { grouped[period] = []; quarters.push(period); }
+        if (!grouped[period]) { grouped[period] = []; periodGroups.push(period); }
         grouped[period].push(m);
       });
 
-      container.innerHTML = quarters.map(quarter => `
-    <div class="week-group-label">${quarter}</div>
-    ${grouped[quarter].map(m => {
+      container.innerHTML = periodGroups.map(period => `
+    <div class="week-group-label">${period}</div>
+    ${grouped[period].map(m => {
         const meta = TYPE_META[m.type];
         return `
         <div class="material-row" onclick="downloadMaterial('${window.EDUGNAY_CONFIG.escapeHtml(m.id)}')">

@@ -93,7 +93,7 @@
           </div>
           <div class="topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period>Loading academic period...</strong>
           </div>
         </div>
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)">
@@ -175,7 +175,8 @@
           </div>
           <div class="school-tabs" role="tablist"><button class="school-tab active" data-school-tab="profile"
               type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic"
-              type="button">Academic Structure</button><button class="school-tab" data-school-tab="grading"
+              type="button">Academic Structure</button><button class="school-tab" data-school-tab="terms"
+              type="button">Academic Terms</button><button class="school-tab" data-school-tab="grading"
               type="button">Grading Rules</button><button class="school-tab" data-school-tab="attendance"
               type="button">Attendance Rules</button><button class="school-tab" data-school-tab="portal"
               type="button">Portal Features</button></div>
@@ -197,12 +198,35 @@
     </main>
   </div>
 
+  <div class="modal-backdrop school-term-modal" id="termActionModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="termActionTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon"><i data-lucide="calendar-range"></i></span>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="termActionTitle">Academic period</div>
+            <div class="modal-sub" id="termActionSubtitle"></div>
+          </div>
+        </div>
+        <button class="modal-close" id="closeTermActionModal" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="termActionForm">
+        <div class="modal-body" id="termActionBody"></div>
+        <div class="modal-foot">
+          <button class="btn btn-cancel" id="cancelTermAction" type="button">Cancel</button>
+          <button class="btn btn-save" id="confirmTermAction" type="submit">Confirm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
     const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
-    const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '' };
+    const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '', termDraft: null, termAction: null, termTrigger: null };
 
     function activeSchool() { return state.school; }
+    function setSettingsHeading(title, subtitle) { document.getElementById('settingsTitle').textContent = title; document.getElementById('settingsSubtitle').textContent = subtitle; }
     function levelLabel(level) { return SCHOOL_LEVELS.find(item => item.value === level)?.label || level; }
     function schoolTypeInfo(levels) { return window.EDUGNAY_CONFIG.getSchoolTypeInfo(levels); }
     function schoolLevels(school) {
@@ -254,8 +278,7 @@
 
     function renderProfilePane() {
       const school = activeSchool();
-      document.getElementById('settingsTitle').textContent = school?.name || 'New school profile';
-      document.getElementById('settingsSubtitle').textContent = school?.typeLabel || 'Configure school details and branding.';
+      setSettingsHeading(school?.name || 'New school profile', school?.typeLabel || 'Configure school details and branding.');
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-profile-pane active">
           <form id="schoolProfileForm">
@@ -314,46 +337,125 @@
 
     function renderAcademicPane() {
       const school = activeSchool();
+      setSettingsHeading('Academic structure', 'Manage grade levels, tracks, and strands.');
       const { level, data } = activeDivision(school);
       const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || window.EDUGNAY_CONFIG.grades[0] || { label: levelLabel(level), grades: [] };
-      const defaults = window.EDUGNAY_CONFIG.createDivision(level);
       const gradeOptions = Array.isArray(catalog.grades) ? catalog.grades : [];
       const trackOptions = Array.isArray(catalog.tracks) ? catalog.tracks : [];
       const enabledGrades = Array.isArray(data.enabledGrades) ? data.enabledGrades : gradeOptions;
-      const periodStartDate = data.periodStartDate || defaults.periodStartDate;
-      const periodEndDate = data.periodEndDate || defaults.periodEndDate;
-      const gradeEncodingOpen = data.gradeEncodingOpen !== false;
-      const lockPreviousPeriods = data.lockPreviousPeriods !== false;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-academic-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
-            <div class="school-form-grid">
-              <div class="school-field"><label for="academicLevel">School level</label><select id="academicLevel" name="schoolLevel">${schoolLevels(school).map(item => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(item)}" ${item === level ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(levelLabel(item))}</option>`).join('')}</select></div>
-              <div class="school-field"><label for="academicYear">School year</label><input id="academicYear" name="schoolYear" value="${window.EDUGNAY_CONFIG.escapeHtml(school.schoolYear || '2025-2026')}"></div>
-              <div class="school-field"><label for="academicPeriod">Academic period</label><select id="academicPeriod" name="academicPeriod">${(window.EDUGNAY_CONFIG.periods[level] || []).map(period => `<option ${period === data.academicPeriod ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(period)}</option>`).join('')}</select></div>
-              <div class="school-field"><label for="periodStartDate">Period start date</label><input id="periodStartDate" name="periodStartDate" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(periodStartDate)}"></div>
-              <div class="school-field"><label for="periodEndDate">Period end date</label><input id="periodEndDate" name="periodEndDate" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(periodEndDate)}"></div>
-            </div>
-            <div class="school-section-block">
-              <div class="school-section-block-head"><div class="school-section-block-title">Academic access</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>
-              <div class="school-toggle-list">
-                <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Grade encoding open</strong><small>Allow teachers to encode and update grades for the active academic period.</small></span><input class="school-toggle-input" type="checkbox" name="gradeEncodingOpen" ${gradeEncodingOpen ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
-                <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Lock previous periods</strong><small>Prevent changes to grades from completed grading periods.</small></span><input class="school-toggle-input" type="checkbox" name="lockPreviousPeriods" ${lockPreviousPeriods ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
-              </div>
-            </div>
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<div class="check-item"><input type="checkbox" id="grade-${window.EDUGNAY_CONFIG.escapeHtml(grade.replace(/\W/g, ''))}" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><label for="grade-${window.EDUGNAY_CONFIG.escapeHtml(grade.replace(/\W/g, ''))}">${window.EDUGNAY_CONFIG.escapeHtml(grade)}</label></div>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS track options</div><div class="track-options">${trackOptions.map(track => `<div class="check-item"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><label>${window.EDUGNAY_CONFIG.escapeHtml(track)}</label></div>`).join('')}</div>` : ''}</div>
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS track options</div><div class="track-options">${trackOptions.map(track => `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}</span></label>`).join('')}</div>` : ''}</div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
       document.getElementById('schoolAcademicForm').addEventListener('submit', saveAcademic);
-      document.getElementById('academicLevel').addEventListener('change', () => { state.division = document.getElementById('academicLevel').value; renderAcademicPane(); });
+      bindDivisionSwitcher();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function formatTermDate(value) {
+      if (!value) return 'Date not set';
+      return new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderAcademicTermsPane() {
+      const school = activeSchool();
+      setSettingsHeading('Academic terms', 'Plan and control each grading period.');
+      const { level, data } = activeDivision(school);
+      const draft = state.termDraft?.schoolLevel === level ? state.termDraft : null;
+      const periods = draft?.academicPeriods || (Array.isArray(data.academicPeriods) ? data.academicPeriods : []);
+      const gradingPeriodType = draft?.gradingPeriodType || data.gradingPeriodType;
+      const type = window.EDUGNAY_CONFIG.academicPeriodTypes[gradingPeriodType] || window.EDUGNAY_CONFIG.academicPeriodTypes.quarterly;
+      const activePeriod = periods.find(period => period.id === data.activeAcademicPeriodId) || null;
+      const nextPeriod = periods.find(period => period.status === 'upcoming') || null;
+      const hasStarted = periods.some(period => period.status !== 'upcoming');
+      const schoolYearHasStarted = Object.values(school.divisions || {}).some(division =>
+        division.academicPeriods?.some(period => period.status !== 'upcoming')
+      );
+      const scheduleComplete = periods.length > 0 && periods.every(period => period.plannedStartDate && period.plannedEndDate);
+      const reminder = window.EDUGNAY_CONFIG.getAcademicPeriodReminder(activePeriod);
+      const periodTypeOptions = Object.values(window.EDUGNAY_CONFIG.academicPeriodTypes).map(option =>
+        `<option value="${option.id}" ${option.id === type.id ? 'selected' : ''}>${option.label}</option>`
+      ).join('');
+
+      const tracker = periods.map(period => `
+        <div class="term-tracker-item ${period.status}" aria-label="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}: ${period.status}">
+          <div class="term-tracker-marker"><i data-lucide="${period.status === 'closed' ? 'check' : period.status === 'active' ? 'circle-dot' : 'circle'}"></i></div>
+          <div class="term-tracker-copy">
+            <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong>
+            <span>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedEndDate))}</span>
+            <small>${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</small>
+          </div>
+        </div>`).join('');
+
+      let currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>Schedule not configured</strong><p>Complete and save the grading-period dates before starting the school year.</p></div>';
+      let currentActions = '';
+      if (activePeriod) {
+        currentCard = `<div class="term-current-copy"><span class="term-current-label">Active grading period</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.name)}</strong><p>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(activePeriod.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(activePeriod.plannedEndDate))}</p>${reminder ? `<span class="term-reminder ${reminder.tone}">${window.EDUGNAY_CONFIG.escapeHtml(reminder.label)}</span>` : ''}</div>`;
+        currentActions = `<button class="top-btn secondary" type="button" data-term-action="extend" data-period-id="${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.id)}"><i data-lucide="calendar-plus"></i> Extend end date</button><button class="top-btn primary" type="button" data-term-action="close" data-period-id="${window.EDUGNAY_CONFIG.escapeHtml(activePeriod.id)}"><i data-lucide="check-circle-2"></i> Review and close</button>`;
+      } else if (nextPeriod && scheduleComplete) {
+        currentCard = `<div class="term-current-copy"><span class="term-current-label">Next grading period</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(nextPeriod.name)}</strong><p>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(nextPeriod.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(nextPeriod.plannedEndDate))}</p></div>`;
+        currentActions = draft
+          ? '<span class="term-modal-alert">Save these academic terms before starting a grading period.</span>'
+          : `<button class="top-btn primary" type="button" data-term-action="start" data-period-id="${window.EDUGNAY_CONFIG.escapeHtml(nextPeriod.id)}"><i data-lucide="play"></i> Start period</button>`;
+      } else if (!nextPeriod && periods.length) {
+        currentCard = '<div class="term-current-copy"><span class="term-current-label">School year status</span><strong>All grading periods are closed</strong><p>This school year’s period lifecycle is complete.</p></div>';
+      }
+
+      document.getElementById('schoolSettingsBody').innerHTML = `
+        <div class="school-pane school-terms-pane active">
+          ${renderDivisionSwitcher(school)}
+          <form id="schoolAcademicTermsForm">
+            <div class="school-form-grid term-config-grid">
+              <div class="school-field"><label for="termSchoolYear">School year</label><input id="termSchoolYear" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYear || school.schoolYear || '')}" pattern="[0-9]{4}-[0-9]{4}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termSchoolYearStart">School-year start date</label><input id="termSchoolYearStart" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearStartDate || school.schoolYearStartDate || '')}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termSchoolYearEnd">School-year end date</label><input id="termSchoolYearEnd" type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(draft?.schoolYearEndDate || school.schoolYearEndDate || '')}" ${schoolYearHasStarted ? 'disabled' : ''} required></div>
+              <div class="school-field"><label for="termPeriodType">Period structure</label><select id="termPeriodType" ${hasStarted ? 'disabled' : ''}>${periodTypeOptions}</select><small>${hasStarted ? 'The structure is locked because a grading period has started.' : 'Changing this regenerates the period schedule.'}</small></div>
+            </div>
+
+            <div class="school-section-block term-tracker-block">
+              <div class="school-section-block-head"><div><div class="school-section-block-title">School-year tracker</div><div class="school-section-block-sub">Dates show the plan. Periods only change status after administrator confirmation.</div></div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(type.label)}</span></div>
+              <div class="term-tracker">${tracker}</div>
+            </div>
+
+            <div class="term-current-card">
+              ${currentCard}
+              <div class="term-current-actions">${currentActions}</div>
+            </div>
+
+            <div class="school-section-block">
+              <div class="school-section-block-head"><div><div class="school-section-block-title">Planned schedule</div><div class="school-section-block-sub">Closed and active periods are protected. Upcoming dates may still be adjusted.</div></div></div>
+              <div class="term-schedule-list">
+                ${periods.map(period => `<div class="term-schedule-row" data-term-period>
+                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
+                  <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
+                  <div class="school-field"><label>Start date</label><input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                  <div class="school-field"><label>End date</label><input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                  <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
+                </div>`).join('')}
+              </div>
+            </div>
+            <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic terms</button></div>
+          </form>
+        </div>`;
+
+      const termsForm = document.getElementById('schoolAcademicTermsForm');
+      termsForm.addEventListener('submit', saveAcademicTerms);
+      termsForm.addEventListener('input', () => {
+        document.querySelectorAll('[data-term-action]').forEach(button => { button.disabled = true; });
+      });
+      document.getElementById('termPeriodType').addEventListener('change', changeAcademicPeriodType);
+      document.querySelectorAll('[data-term-action]').forEach(button => button.addEventListener('click', () => openTermActionModal(button.dataset.termAction, button.dataset.periodId)));
       bindDivisionSwitcher();
       if (window.lucide) lucide.createIcons();
     }
 
     function renderGradingPane() {
       const school = activeSchool();
+      setSettingsHeading('Grading rules', 'Configure grading weights and final-grade rules.');
       const { level, data } = activeDivision(school);
       const defaults = window.EDUGNAY_CONFIG.createDivision(level);
       const rules = Array.isArray(data.gradingRules) ? data.gradingRules : defaults.gradingRules;
@@ -376,12 +478,13 @@
 
     function renderPortalFeaturesPane() {
       const school = activeSchool();
+      setSettingsHeading('Portal features', 'Control optional features across each portal.');
       const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
       const journalSubjectId = school?.journalSubjectId || subjects[0]?.id || '';
       const hasJournalSubject = subjects.some(subject => subject.id === journalSubjectId);
-      const gradesPageEnabled = school?.gradesPageEnabled !== false;
-      const narrativeReportsEnabled = school?.narrativeReportsEnabled !== false;
-      const journalsEnabled = school?.journalsEnabled !== false && hasJournalSubject;
+      const gradesPageEnabled = Boolean(school?.gradesPageEnabled);
+      const narrativeReportsEnabled = Boolean(school?.narrativeReportsEnabled);
+      const journalsEnabled = Boolean(school?.journalsEnabled && hasJournalSubject);
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
@@ -447,6 +550,7 @@
 
     function renderAttendancePane() {
       const school = activeSchool();
+      setSettingsHeading('Attendance rules', 'Configure attendance codes and alert thresholds.');
       const rules = getAttendanceRules(school);
       const codes = Array.isArray(rules.statusCodes) ? rules.statusCodes : [];
       document.getElementById('schoolSettingsBody').innerHTML = `
@@ -482,7 +586,7 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else if (state.tab === 'portal') renderPortalFeaturesPane(); else renderProfilePane(); }
+    function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'terms') renderAcademicTermsPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else if (state.tab === 'portal') renderPortalFeaturesPane(); else renderProfilePane(); }
     function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
     function renderLogoPreview(logoUrl) {
       const image = document.getElementById('profileLogoImage');
@@ -560,18 +664,8 @@
       const form = event.currentTarget;
       const school = activeSchool();
       const values = new FormData(form);
-      const level = values.get('schoolLevel') || currentDivisionKey(school);
+      const level = currentDivisionKey(school);
       const target = ensureDivision(school, level);
-      const periodStartDate = values.get('periodStartDate');
-      const periodEndDate = values.get('periodEndDate');
-      if (periodStartDate && periodEndDate && periodEndDate < periodStartDate) { notify('The period end date must be after the start date.'); return; }
-      const schoolYear = values.get('schoolYear');
-      school.schoolYear = schoolYear;
-      target.academicPeriod = values.get('academicPeriod');
-      target.periodStartDate = periodStartDate;
-      target.periodEndDate = periodEndDate;
-      target.gradeEncodingOpen = values.has('gradeEncodingOpen');
-      target.lockPreviousPeriods = values.has('lockPreviousPeriods');
       target.enabledGrades = values.getAll('grades');
       target.tracks = values.getAll('tracks');
       state.division = level;
@@ -579,6 +673,140 @@
       persistSchool();
       renderAll();
       notify(`${levelLabel(level)} academic structure saved.`);
+    }
+
+    function changeAcademicPeriodType(event) {
+      const school = activeSchool();
+      const { level } = activeDivision(school);
+      const schoolYear = document.getElementById('termSchoolYear').value.trim();
+      state.termDraft = {
+        schoolLevel: level,
+        schoolYear,
+        schoolYearStartDate: document.getElementById('termSchoolYearStart').value,
+        schoolYearEndDate: document.getElementById('termSchoolYearEnd').value,
+        gradingPeriodType: event.target.value,
+        academicPeriods: window.EDUGNAY_CONFIG.createAcademicPeriods(
+          event.target.value,
+          [],
+          `${school.id}-${level}-${schoolYear.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+        )
+      };
+      renderAcademicTermsPane();
+    }
+
+    async function saveAcademicTerms(event) {
+      event.preventDefault();
+      const school = activeSchool();
+      const { level, data } = activeDivision(school);
+      const values = {
+        schoolLevel: level,
+        schoolYear: document.getElementById('termSchoolYear').value.trim(),
+        schoolYearStartDate: document.getElementById('termSchoolYearStart').value,
+        schoolYearEndDate: document.getElementById('termSchoolYearEnd').value,
+        gradingPeriodType: document.getElementById('termPeriodType').value,
+        academicPeriods: Array.from(document.querySelectorAll('[data-term-period]')).map((row, index) => ({
+          name: row.querySelector('[data-term-period-name]').value,
+          sequence: index + 1,
+          plannedStartDate: row.querySelector('[data-term-period-start]').value,
+          plannedEndDate: row.querySelector('[data-term-period-end]').value
+        }))
+      };
+
+      try {
+        await window.EDUGNAY_CONFIG.saveAcademicTermConfig(school.id, values);
+        state.termDraft = null;
+        state.school = window.EDUGNAY_CONFIG.getActiveSchool();
+        renderAcademicTermsPane();
+        window.refreshEdUgnayShellContext?.();
+        notify(`${levelLabel(level)} academic terms saved.`);
+      } catch (error) {
+        notify(error.message || 'The academic terms could not be saved.');
+      }
+    }
+
+    function closeTermActionModal() {
+      const modal = document.getElementById('termActionModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      state.termAction = null;
+      state.termTrigger?.focus();
+      state.termTrigger = null;
+    }
+
+    async function openTermActionModal(action, periodId) {
+      const { level, data } = activeDivision(activeSchool());
+      const period = data.academicPeriods.find(item => item.id === periodId);
+      if (!period) return;
+
+      const modal = document.getElementById('termActionModal');
+      const title = document.getElementById('termActionTitle');
+      const subtitle = document.getElementById('termActionSubtitle');
+      const body = document.getElementById('termActionBody');
+      const confirmButton = document.getElementById('confirmTermAction');
+      state.termTrigger = document.activeElement;
+      state.termAction = { action, periodId, schoolLevel: level };
+      confirmButton.disabled = false;
+
+      if (action === 'start') {
+        const startsEarly = period.plannedStartDate && period.plannedStartDate > new Date().toISOString().slice(0, 10);
+        title.textContent = `Start ${period.name}`;
+        subtitle.textContent = 'This makes the grading period active for the selected school level.';
+        body.innerHTML = `<p class="term-modal-message">Start <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> for ${window.EDUGNAY_CONFIG.escapeHtml(levelLabel(level))}?</p><div class="term-modal-summary"><span>Planned dates</span><strong>${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedStartDate))} – ${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedEndDate))}</strong></div>${startsEarly ? '<div class="term-modal-alert">This period is being started before its planned start date.</div>' : ''}`;
+        confirmButton.textContent = 'Start period';
+      } else if (action === 'extend') {
+        title.textContent = `Extend ${period.name}`;
+        subtitle.textContent = 'Update the planned end date while keeping an audit reason.';
+        body.innerHTML = `<div class="term-modal-fields"><div class="form-group"><label class="form-label" for="currentPeriodEndDate">Current end date</label><input class="form-input" id="currentPeriodEndDate" value="${window.EDUGNAY_CONFIG.escapeHtml(formatTermDate(period.plannedEndDate))}" readonly></div><div class="form-group"><label class="form-label" for="extendedEndDate">New end date</label><input class="form-input" id="extendedEndDate" type="date" min="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" required></div><div class="form-group"><label class="form-label" for="extensionReason">Reason for extension</label><textarea class="form-textarea" id="extensionReason" rows="3" placeholder="Explain why the grading period needs more time." required></textarea></div></div>`;
+        confirmButton.textContent = 'Extend period';
+      } else {
+        title.textContent = `Close ${period.name}`;
+        subtitle.textContent = 'Review incomplete records before closing this grading period.';
+        let readiness;
+        try {
+          readiness = await window.EDUGNAY_CONFIG.getAcademicPeriodCloseReadiness(activeSchool().id, level, periodId);
+        } catch (error) {
+          state.termAction = null;
+          state.termTrigger = null;
+          notify(error.message || 'The grading-period readiness could not be loaded.');
+          return;
+        }
+        const issues = [...readiness.blockingIssues.map(item => `<li class="blocking">${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`), ...readiness.warnings.map(item => `<li>${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`)].join('');
+        body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p>${issues ? `<ul class="term-readiness-list">${issues}</ul>` : '<div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>No blocking issues were found.</span></div>'}`;
+        confirmButton.textContent = 'Close period';
+        confirmButton.disabled = !readiness.canClose;
+      }
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      confirmButton.focus();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function submitTermAction(event) {
+      event.preventDefault();
+      if (!state.termAction) return;
+      const schoolId = activeSchool().id;
+      const { action, schoolLevel, periodId } = state.termAction;
+      const confirmButton = document.getElementById('confirmTermAction');
+      confirmButton.disabled = true;
+
+      try {
+        if (action === 'start') await window.EDUGNAY_CONFIG.startAcademicPeriod(schoolId, schoolLevel, periodId);
+        else if (action === 'close') await window.EDUGNAY_CONFIG.closeAcademicPeriod(schoolId, schoolLevel, periodId);
+        else await window.EDUGNAY_CONFIG.extendAcademicPeriod(schoolId, schoolLevel, periodId, {
+          plannedEndDate: document.getElementById('extendedEndDate').value,
+          reason: document.getElementById('extensionReason').value
+        });
+        state.school = window.EDUGNAY_CONFIG.getActiveSchool();
+        closeTermActionModal();
+        renderAcademicTermsPane();
+        window.refreshEdUgnayShellContext?.();
+        if (typeof renderTopbarNotifs === 'function') renderTopbarNotifs();
+        notify(`Academic period ${action === 'start' ? 'started' : action === 'close' ? 'closed' : 'extended'}.`);
+      } catch (error) {
+        confirmButton.disabled = false;
+        notify(error.message || 'The academic-period action could not be completed.');
+      }
     }
     function saveGrading(event) {
       event.preventDefault();
@@ -609,9 +837,9 @@
         form.elements.journalSubjectId?.focus();
         return;
       }
-      school.gradesPageEnabled = form.elements.gradesPageEnabled?.checked !== false;
-      school.narrativeReportsEnabled = form.elements.narrativeReportsEnabled?.checked !== false;
-      school.journalsEnabled = form.elements.journalsEnabled?.checked !== false;
+      school.gradesPageEnabled = Boolean(form.elements.gradesPageEnabled?.checked);
+      school.narrativeReportsEnabled = Boolean(form.elements.narrativeReportsEnabled?.checked);
+      school.journalsEnabled = Boolean(form.elements.journalsEnabled?.checked);
       school.journalSubjectId = journalSubjectId;
       persistSchool();
       window.refreshEdUgnayShellContext?.();
@@ -639,8 +867,17 @@
     function addHoliday(event) { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); const holidays = window.EDUGNAY_CONFIG.getHolidays(); holidays.push({ id: `holiday-${Date.now()}`, date: values.date, title: values.title.trim(), detail: values.detail.trim() || 'No classes today.', type: 'holiday', appliesTo: 'all' }); window.EDUGNAY_CONFIG.saveHolidays(holidays); event.currentTarget.reset(); renderCalendarPane(); notify('Calendar notice added.'); }
     function removeHoliday(id) { window.EDUGNAY_CONFIG.saveHolidays(window.EDUGNAY_CONFIG.getHolidays().filter(day => day.id !== id)); renderCalendarPane(); notify('Calendar notice removed.'); }
 
+    document.getElementById('termActionForm').addEventListener('submit', submitTermAction);
+    document.getElementById('closeTermActionModal').addEventListener('click', closeTermActionModal);
+    document.getElementById('cancelTermAction').addEventListener('click', closeTermActionModal);
+    document.getElementById('termActionModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeTermActionModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.termAction) closeTermActionModal(); });
     document.querySelectorAll('[data-school-tab]').forEach(tab => tab.addEventListener('click', () => { state.tab = tab.dataset.schoolTab; document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item === tab)); renderPane(); }));
     document.addEventListener('DOMContentLoaded', async () => {
+      if (window.location.hash === '#academic-terms') {
+        state.tab = 'terms';
+        document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item.dataset.schoolTab === 'terms'));
+      }
       renderAll();
     });
   </script>

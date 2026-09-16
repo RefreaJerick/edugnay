@@ -3098,7 +3098,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 }
 
 .onboarding-field .onboarding-level-option,
-.school-field .school-level-option {
+.school-field .school-level-option,
+.school-academic-pane .academic-option {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -3119,20 +3120,27 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 }
 
 .onboarding-field .onboarding-level-option:hover,
-.school-field .school-level-option:hover {
+.school-field .school-level-option:hover,
+.school-academic-pane .academic-option:hover {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
 
 .onboarding-field .onboarding-level-option:has(input:checked),
-.school-field .school-level-option:has(input:checked) {
+.school-field .school-level-option:has(input:checked),
+.school-academic-pane .academic-option:has(input:checked) {
   border-color: var(--blue-mid);
   background: var(--blue-xpale);
   color: var(--blue-mid);
 }
 
 .onboarding-field .onboarding-level-option span,
-.school-field .school-level-option span {
+.school-field .school-level-option span,
+.school-academic-pane .academic-option span {
   min-width: 0;
+}
+
+.school-academic-pane .academic-option input {
+  margin-top: 0;
 }

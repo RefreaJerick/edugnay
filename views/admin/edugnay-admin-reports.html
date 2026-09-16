@@ -112,7 +112,7 @@
           </div>
           <div class="topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period>Loading academic period...</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu"
@@ -194,16 +194,10 @@
       <!-- Filter bar -->
       <div class="filter-bar">
         <span class="filter-label">Filter:</span>
-        <select class="filter-select">
-          <option>S.Y. 2025–2026</option>
-          <option>S.Y. 2024–2025</option>
+        <select class="filter-select" id="reportSchoolYear">
+          <option></option>
         </select>
-        <select class="filter-select">
-          <option>Quarter 2</option>
-          <option>Quarter 1</option>
-          <option>Quarter 3</option>
-          <option>Quarter 4</option>
-        </select>
+        <select class="filter-select" id="reportAcademicPeriod"></select>
         <div class="filter-divider"></div>
         <select class="filter-select">
           <option>All Grade Levels</option>
@@ -240,7 +234,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
           <div class="panel-head">
             <div class="panel-title">Average Grade per Subject</div>
-            <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
+            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Current period</span> · All Sections</span>
           </div>
           <div class="bar-chart grouped ranked" id="subject-performance-chart">
 
@@ -369,7 +363,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
           <div class="panel-head">
             <div class="panel-title">Pass / Fail Rate</div>
-            <span style="font-size:11px;color:var(--gray-400);">Q2 · All Sections</span>
+            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Current period</span> · All Sections</span>
           </div>
           <div class="donut-wrap" id="grade-outcome-donut">
             <div class="donut">
@@ -458,7 +452,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Rate</div>
-            <span style="font-size:11px;color:var(--gray-400);">Per Section · Q2</span>
+            <span style="font-size:11px;color:var(--gray-400);">Per Section · <span data-report-period-label>Current period</span></span>
           </div>
           <div class="bar-chart grouped" id="attendance-rate-chart">
 
@@ -525,7 +519,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Breakdown</div>
-            <span style="font-size:11px;color:var(--gray-400);">All Sections · Q2</span>
+            <span style="font-size:11px;color:var(--gray-400);">All Sections · <span data-report-period-label>Current period</span></span>
           </div>
           <div class="donut-wrap" id="attendance-breakdown-donut">
             <div class="donut">
@@ -731,6 +725,7 @@
 
     // Replace REPORTS_DATA with EJS JSON or pass the same shape to renderReportPanels(payload).
     const REPORTS_TONE_COLORS = { high: 'var(--green)', mid: 'var(--blue-mid)', low: 'var(--orange)' };
+    let reportPeriodLabel = 'Current period';
 
     function buildReportSummary(data = REPORTS_DATA) {
       const outcome = data.gradeOutcome || { passing: 0, total: 0 };
@@ -738,8 +733,8 @@
       const attendanceRate = data.attendanceBreakdown?.find(item => item.label === 'Present')?.value || 0;
       const sectionCount = (data.attendanceByGrade || []).reduce((total, group) => total + group.rows.length, 0);
       return [
-        { tone: 'green', icon: 'check-circle', badge: 'On track', trend: 'trend-up', value: `${passingRate}%`, label: 'Passing rate', sub: `${outcome.passing} of ${outcome.total} students · Q2` },
-        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: `${attendanceRate}%`, label: 'Attendance rate', sub: `Across ${sectionCount} sections · Q2` },
+        { tone: 'green', icon: 'check-circle', badge: 'On track', trend: 'trend-up', value: `${passingRate}%`, label: 'Passing rate', sub: `${outcome.passing} of ${outcome.total} students · ${reportPeriodLabel}` },
+        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: `${attendanceRate}%`, label: 'Attendance rate', sub: `Across ${sectionCount} sections · ${reportPeriodLabel}` },
         { tone: 'red', icon: 'alert-triangle', badge: 'Needs review', trend: 'trend-down', value: (data.flaggedStudents || []).length, label: 'Flagged students', sub: 'Absences or grades below threshold' },
       ];
     }
@@ -858,6 +853,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      const school = window.EDUGNAY_CONFIG.getActiveSchool();
+      const periods = window.EDUGNAY_CONFIG.getAcademicPeriods(school.id, school.activeDivision);
+      const activePeriod = periods.find(period => period.id === school.divisions?.[school.activeDivision]?.activeAcademicPeriodId);
+      reportPeriodLabel = activePeriod?.name || periods[0]?.name || 'No grading period';
+      document.getElementById('reportSchoolYear').innerHTML = `<option value="${escapeHtml(school.schoolYear)}">S.Y. ${escapeHtml(school.schoolYear)}</option>`;
+      document.getElementById('reportAcademicPeriod').innerHTML = periods.length
+        ? periods.map(period => `<option value="${escapeHtml(period.id)}" ${period.id === activePeriod?.id ? 'selected' : ''}>${escapeHtml(period.name)}</option>`).join('')
+        : '<option value="">No grading periods</option>';
+      document.querySelectorAll('[data-report-period-label]').forEach(element => { element.textContent = reportPeriodLabel; });
       renderReportPanels();
       filterFlagged();
       lucide.createIcons();

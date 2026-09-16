@@ -28,7 +28,7 @@
                          adviserName, enrollmentStatus, enrollmentDate }
                          NEVER editable by the student — any change to LRN/section/
                          adviser must go through the registrar/admin portal, not here.
-  - subjects[]          → enrolled subjects + assigned teacher for current quarter,
+  - subjects[]          → enrolled subjects + assigned teacher for the current grading period,
                          read-only (same source as the student subject list,
                          minus the grade column)
   - linkedParent         → { name, phone, email }
@@ -116,7 +116,7 @@
         </div>
         <div class="topbar-context-copy">
           <span>Active term</span>
-          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
         </div>
       </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">

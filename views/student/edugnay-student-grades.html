@@ -154,11 +154,11 @@
         <div class="portal-overview-copy">
           <div class="portal-overview-kicker">Student workspace</div>
           <h1 class="portal-overview-title" id="student-grades-title">My Grades</h1>
-          <p class="portal-overview-description">Review your academic performance by quarter.</p>
+          <p class="portal-overview-description">Review your academic performance by grading period.</p>
         </div>
       </section>
 
-      <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Academic quarter"></div>
+      <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Academic grading period"></div>
 
       <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
         <div class="panel-head">
@@ -175,7 +175,7 @@
 
       <div class="grades-note" role="note">
         <div class="grades-note-icon" aria-hidden="true"><i data-lucide="info" style="width:15px;height:15px;"></i></div>
-        <div class="grades-note-copy" id="gradesNoteCopy">These are the final marks available for the selected quarter. Contact your subject teacher for score details.</div>
+        <div class="grades-note-copy" id="gradesNoteCopy">These are the final marks available for the selected grading period. Contact your subject teacher for score details.</div>
       </div>
     </main>
   </div>
@@ -186,13 +186,14 @@
     // Replace the shared getter with GET /student/grades later without
     // changing the grade tabs or subject-row renderer.
     const STUDENT_ID = 'jd-004';
+    const STUDENT_RECORD = window.EDUGNAY_CONFIG.getUserById(STUDENT_ID);
     const STUDENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
     const STUDENT_GRADE_RECORDS = window.EDUGNAY_CONFIG.getGradesForStudent(STUDENT_ID, STUDENT_SCHOOL_YEAR);
 
-    let activeQuarterId = 'q2';
+    let activeAcademicPeriodId = window.EDUGNAY_CONFIG.getCurrentAcademicPeriod(STUDENT_RECORD?.schoolId, STUDENT_RECORD?.schoolLevel)?.id || STUDENT_GRADE_RECORDS[0]?.id || null;
 
-    function getActiveQuarter() {
-      return STUDENT_GRADE_RECORDS.find(record => record.id === activeQuarterId) || STUDENT_GRADE_RECORDS[0];
+    function getSelectedAcademicPeriod() {
+      return STUDENT_GRADE_RECORDS.find(record => record.id === activeAcademicPeriodId) || STUDENT_GRADE_RECORDS[0];
     }
 
     function scoreClass(score) {
@@ -202,15 +203,15 @@
       return 'is-review';
     }
 
-    function renderQuarterTabs() {
+    function renderAcademicPeriodTabs() {
       const tabs = document.getElementById('gradeTabs');
       tabs.innerHTML = STUDENT_GRADE_RECORDS.length ? STUDENT_GRADE_RECORDS.map(record => {
-        return `<button class="grade-tab ${record.id === activeQuarterId ? 'active' : ''}" type="button" role="tab" aria-selected="${record.id === activeQuarterId}" data-quarter="${record.id}">
+        return `<button class="grade-tab ${record.id === activeAcademicPeriodId ? 'active' : ''}" type="button" role="tab" aria-selected="${record.id === activeAcademicPeriodId}" data-academic-period-id="${record.id}">
           <span>${escapeHtml(record.label)}</span>
         </button>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
-      tabs.querySelectorAll('[data-quarter]').forEach(button => button.addEventListener('click', function () {
-        activeQuarterId = this.dataset.quarter;
+      tabs.querySelectorAll('[data-academic-period-id]').forEach(button => button.addEventListener('click', function () {
+        activeAcademicPeriodId = this.dataset.academicPeriodId;
         renderGrades();
       }));
     }
@@ -223,7 +224,7 @@
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'book-open-check',
           title: 'No grades available yet',
-          text: 'Subject marks will appear here when this quarter is opened.'
+          text: 'Subject marks will appear here when this grading period is opened.'
         });
         if (window.lucide) lucide.createIcons();
         return;
@@ -245,7 +246,7 @@
     }
 
     function renderGrades() {
-      const record = getActiveQuarter();
+      const record = getSelectedAcademicPeriod();
       const tabs = document.getElementById('gradeTabs');
       const list = document.getElementById('gradeSubjectList');
       const note = document.getElementById('gradesNoteCopy');
@@ -256,11 +257,11 @@
         lucide.createIcons();
         return;
       }
-      renderQuarterTabs();
+      renderAcademicPeriodTabs();
       renderSubjectGrades(record);
       note.innerHTML = record.status === 'final'
-        ? '<strong>Final quarter grades.</strong> Contact your subject teacher for score details or corrections.'
-        : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the quarter is released.';
+        ? '<strong>Final grading-period results.</strong> Contact your subject teacher for score details or corrections.'
+        : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the grading period is released.';
       lucide.createIcons();
     }
 

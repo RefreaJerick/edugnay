@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SF Templates | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/teacher/sf-templates.css">
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/vendor/exceljs.min.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/sf-workbook.js"></script>
+  <script src="../../assets/js/teacher/shell.js"></script>
+</head>
+<body>
+  <div class="modal-backdrop sf-import-backdrop" id="sfImportModal" aria-hidden="true">
+    <div class="modal sf-import-modal" role="dialog" aria-modal="true" aria-labelledby="sfImportTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-up"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="sfImportTitle">Import SF template</div>
+            <div class="modal-sub">Add an official XLSX workbook as a draft for review and mapping.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="sfImportClose" type="button" aria-label="Close import template dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form id="sfImportForm">
+          <div class="form-group">
+            <label class="form-label" for="sfTemplateFile">XLSX workbook</label>
+            <input id="sfTemplateFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+            <div class="file-upload-wrap">
+              <button class="file-upload-btn" id="sfChooseFile" type="button">
+                <i data-lucide="upload"></i> Choose file
+              </button>
+              <span class="file-upload-name" id="sfTemplateFileName">No file selected</span>
+            </div>
+            <div class="sf-file-help">XLSX only. Maximum file size: 10 MB.</div>
+          </div>
+
+          <div class="sf-validation" id="sfValidation" aria-live="polite" hidden></div>
+
+          <section class="sf-import-review" id="sfImportReview" aria-label="Workbook inspection" hidden>
+            <div class="sf-inspection-summary" id="sfInspectionSummary"></div>
+            <div class="sf-sheet-tabs" id="sfImportSheetTabs"></div>
+            <div class="sf-workbook-frame compact" id="sfImportPreview"></div>
+          </section>
+
+          <div class="modal-form-row">
+            <div class="form-group">
+              <label class="form-label" for="sfFormCode">Form code</label>
+              <select class="form-select" id="sfFormCode" required>
+                <option value="">Select a form</option>
+                <option value="SF1">SF1</option>
+                <option value="SF2">SF2</option>
+                <option value="SF3">SF3</option>
+                <option value="SF4">SF4</option>
+                <option value="SF5">SF5</option>
+                <option value="SF6">SF6</option>
+                <option value="SF7">SF7</option>
+                <option value="SF8">SF8</option>
+                <option value="SF9">SF9</option>
+                <option value="SF10">SF10</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sfSchoolLevel">School level</label>
+              <select class="form-select" id="sfSchoolLevel" required>
+                <option value="">Select a level</option>
+                <option value="elementary">Elementary</option>
+                <option value="jhs">Junior High School</option>
+                <option value="shs">Senior High School</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-form-row sf-import-final-row">
+            <div class="form-group">
+              <label class="form-label" for="sfFormName">Official form name</label>
+              <input class="form-input" id="sfFormName" type="text" placeholder="Enter the official form name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sfTemplateVersion">Version</label>
+              <input class="form-input" id="sfTemplateVersion" type="text" placeholder="e.g. 2026.1" required>
+            </div>
+          </div>
+
+          <div class="sf-import-error" id="sfImportError" role="alert" hidden></div>
+        </form>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="sfImportCancel" type="button">Cancel</button>
+        <button class="btn btn-save" id="sfImportSubmit" type="submit" form="sfImportForm" disabled>
+          Import template
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'">
+        </div>
+        <div>
+          <div class="brand-name">Acade<span>mix</span></div>
+          <div class="brand-sub">ST. COLUMBAN'S COLLEGE</div>
+        </div>
+      </div>
+
+      <div class="nav-scroll">
+        <div class="nav-section">
+          <div class="nav-section-label">Main</div>
+          <a class="nav-item" onclick="navigate('dashboard')">
+            <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div>
+            <span class="nav-label">Dashboard</span>
+          </a>
+          <div class="nav-group" id="sections-group">
+            <div class="nav-group-toggle" onclick="toggleGroup('sections-group')">
+              <div class="nav-icon"><i data-lucide="door-open"></i></div>
+              <span>My Sections</span>
+              <i data-lucide="chevron-right" class="nav-chevron"></i>
+            </div>
+            <div class="nav-children">
+              <a class="nav-child" onclick="navigate('section', '7-matthew')"><span class="nav-dot dot-7"></span>Grade 7 &ndash; St. Matthew</a>
+              <a class="nav-child" onclick="navigate('section', '8-luke')"><span class="nav-dot dot-8"></span>Grade 8 &ndash; St. Luke</a>
+              <a class="nav-child" onclick="navigate('section', '9-peter')"><span class="nav-dot dot-9"></span>Grade 9 &ndash; St. Peter</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-section" id="reports-nav">
+          <div class="nav-section-label">Reports</div>
+          <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
+            <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
+            <span class="nav-label">Narrative Reports</span>
+            <span class="nav-badge">5</span>
+          </a>
+          <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
+            <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
+            <span class="nav-label">Student Journals</span>
+          </a>
+          <a class="nav-item active" data-teacher-access="sfTemplates" onclick="navigate('sfTemplates')">
+            <div class="nav-icon"><i data-lucide="file-spreadsheet"></i></div>
+            <span class="nav-label">SF Templates</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-label">Communication</div>
+          <a class="nav-item" onclick="navigate('announcements')">
+            <div class="nav-icon"><i data-lucide="megaphone"></i></div>
+            <span class="nav-label">Announcements</span>
+            <span class="nav-badge gold">2</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-teacher-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context">
+          <div class="topbar-context-icon"><i data-lucide="file-spreadsheet"></i></div>
+          <div class="topbar-context-copy"><span>Reports</span><strong>SF Templates</strong></div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
+          <i data-lucide="menu"></i>
+        </button>
+      </div>
+
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell"></i><span class="tb-notif-dot"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon"><i data-lucide="bell"></i></span>
+                <span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check"></i><span>Mark all read</span></button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList"></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-teacher-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar faculty">MR</div>
+            <div class="tb-profile-info"><div class="tb-profile-name">Ms. Maria Reyes</div><div class="tb-profile-role">Faculty</div></div>
+            <i data-lucide="chevron-down" class="tb-chevron"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-teacher-profile.html"><i data-lucide="user"></i> My Profile</a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out"></i> Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main sf-main">
+      <div class="sf-workspace">
+        <section class="sf-panel sf-library-panel" aria-labelledby="sfLibraryTitle">
+          <div class="sf-panel-head">
+            <div>
+              <h2 class="sf-panel-title" id="sfLibraryTitle">Template Library</h2>
+              <p class="sf-panel-sub" id="sfTemplateCount">0 templates</p>
+            </div>
+            <button class="top-btn secondary" id="sfOpenImport" type="button"><i data-lucide="file-up"></i> Import template</button>
+          </div>
+
+          <div class="sf-filters">
+            <label class="sf-filter-field" for="sfCodeFilter">
+              <span>Form</span>
+              <select id="sfCodeFilter">
+                <option value="all">All forms</option>
+                <option value="SF1">SF1</option><option value="SF2">SF2</option><option value="SF3">SF3</option>
+                <option value="SF4">SF4</option><option value="SF5">SF5</option><option value="SF6">SF6</option>
+                <option value="SF7">SF7</option><option value="SF8">SF8</option><option value="SF9">SF9</option><option value="SF10">SF10</option>
+              </select>
+            </label>
+            <label class="sf-filter-field" for="sfLevelFilter">
+              <span>School level</span>
+              <select id="sfLevelFilter">
+                <option value="all">All levels</option>
+                <option value="elementary">Elementary</option>
+                <option value="jhs">Junior High School</option>
+                <option value="shs">Senior High School</option>
+              </select>
+            </label>
+            <label class="sf-filter-field" for="sfStatusFilter">
+              <span>Status</span>
+              <select id="sfStatusFilter">
+                <option value="all">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="invalid">Invalid</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="sf-template-columns" role="row">
+            <span role="columnheader">Form</span>
+            <span role="columnheader">File</span>
+            <span role="columnheader">Version</span>
+            <span role="columnheader">Status</span>
+            <span role="columnheader">Actions</span>
+          </div>
+          <div class="sf-template-list" id="sfTemplateList"></div>
+        </section>
+
+        <aside class="sf-panel sf-generator-panel" aria-labelledby="sfGeneratorTitle">
+          <div class="sf-panel-head">
+            <div>
+              <h2 class="sf-panel-title" id="sfGeneratorTitle">Generate form</h2>
+              <p class="sf-panel-sub">Choose an active template and one of your assigned classes.</p>
+            </div>
+          </div>
+          <form class="sf-generator-form" id="sfGeneratorForm">
+            <label class="sf-field" for="sfGenerateTemplate"><span>Template</span><select id="sfGenerateTemplate" disabled><option value="">No active templates</option></select></label>
+            <label class="sf-field" for="sfGenerateSection"><span>Assigned class</span><select id="sfGenerateSection" disabled><option value="">No class selected</option></select></label>
+            <label class="sf-field" for="sfGenerateSchoolYear"><span>School year</span><input id="sfGenerateSchoolYear" type="text" disabled></label>
+            <label class="sf-field" for="sfGeneratePeriod"><span>Academic period</span><select id="sfGeneratePeriod" disabled><option value="">Select a period</option></select></label>
+            <button class="top-btn primary sf-generate-button" id="sfGenerateButton" type="submit" disabled><i data-lucide="wand-sparkles"></i> Generate preview</button>
+          </form>
+          <div class="sf-access-note"><i data-lucide="shield-check"></i><span>Only records from classes assigned to you will be available.</span></div>
+        </aside>
+      </div>
+
+      <section class="sf-panel sf-preview-panel" aria-labelledby="sfPreviewTitle">
+        <div class="sf-panel-head sf-preview-head">
+          <div>
+            <h2 class="sf-panel-title" id="sfPreviewTitle">Workbook preview</h2>
+            <p class="sf-panel-sub" id="sfPreviewSubtitle">Review an imported workbook or generate a populated form.</p>
+          </div>
+          <div class="sf-preview-actions">
+            <button class="top-btn secondary" id="sfEditDraft" type="button" disabled>Edit draft</button>
+            <button class="top-btn primary" id="sfDownloadWorkbook" type="button" disabled><i data-lucide="download"></i> Download XLSX</button>
+          </div>
+        </div>
+        <div class="sf-preview-content" id="sfPreviewContent">
+          <div class="sf-preview-empty" id="sfPreviewEmpty">
+            <div class="sf-preview-empty-icon"><i data-lucide="sheet"></i></div>
+            <strong>No workbook selected</strong>
+            <span>Preview an imported template or generate a populated form.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="sf-toast" id="sfToast" role="status" aria-live="polite"></div>
+  <script src="../../assets/js/teacher/sf-templates.js"></script>
+</body>
+</html>

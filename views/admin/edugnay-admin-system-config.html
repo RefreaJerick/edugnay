@@ -90,7 +90,7 @@
         </div>
         <div class="topbar-context-copy">
           <span>Active term</span>
-          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          <strong data-active-academic-period>Loading academic period...</strong>
         </div>
       </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
@@ -185,17 +185,22 @@
 
       <!-- ── RIGHT: Config panels ── -->
       <div class="config-sections">
-        <!-- Quarter Reopen Requests -->
+        <!-- Grading Period Reopen Requests -->
         <div class="config-panel" id="reopen-requests">
           <div class="config-panel-head">
             <div class="cph-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="unlock" style="width:18px;height:18px;"></i></div>
             <div class="cph-info">
-              <div class="cph-title">Quarter Reopen Requests</div>
-              <div class="cph-sub">Teachers can request a locked quarter be reopened for a specific section and subject.</div>
+              <div class="cph-title">Grading Period Reopen Requests</div>
+              <div class="cph-sub">Teachers can request a closed grading period be reopened for a specific section and subject.</div>
             </div>
             <span class="badge badge-gray" id="reopenPanelCount">0 pending</span>
           </div>
           <div class="config-panel-body" style="padding-top:0;">
+            <div class="reopen-filters" role="tablist" aria-label="Reopen request status">
+              <button class="reopen-filter active" type="button" data-reopen-filter="pending" onclick="setReopenFilter('pending')">Pending</button>
+              <button class="reopen-filter" type="button" data-reopen-filter="active" onclick="setReopenFilter('active')">Active</button>
+              <button class="reopen-filter" type="button" data-reopen-filter="history" onclick="setReopenFilter('history')">History</button>
+            </div>
             <div id="reopenRequestList" aria-live="polite"></div>
           </div>
         </div>
@@ -216,7 +221,7 @@
                 <div class="trigger-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
                 <div class="trigger-info">
                   <div class="trigger-label">Grade Falls Below Threshold</div>
-                  <div class="trigger-desc">Notify parent when a student's final encoded grade for the quarter drops below the set value.</div>
+                  <div class="trigger-desc">Notify parent when a student's final encoded grade for the grading period drops below the set value.</div>
                 </div>
                 <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
               </div>
@@ -288,9 +293,126 @@
   </main>
 </div>
 
+<div class="modal-backdrop" id="approveReopenModal">
+  <div class="modal reopen-action-modal" role="dialog" aria-modal="true" aria-labelledby="approveReopenTitle">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="unlock"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="approveReopenTitle">Approve reopen request</div>
+          <div class="modal-sub">Set the exact deadline for temporary score editing.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeReopenModal('approveReopenModal')" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="reopen-modal-details" id="approveReopenDetails"></div>
+      <div class="form-group">
+        <label class="form-label" for="approveReopenExpiresAt">Editing deadline</label>
+        <input class="form-input" id="approveReopenExpiresAt" type="datetime-local" required>
+        <span class="form-hint">The teacher loses editing access automatically at this date and time.</span>
+      </div>
+      <div class="form-group reopen-modal-last-field">
+        <label class="form-label" for="approveReopenNote">Note to teacher <span class="optional-label">Optional</span></label>
+        <textarea class="form-input reopen-textarea" id="approveReopenNote" rows="3" placeholder="Add instructions or clarify what may be corrected."></textarea>
+      </div>
+      <div class="reopen-modal-error" id="approveReopenError" role="alert" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeReopenModal('approveReopenModal')">Cancel</button>
+      <button class="btn btn-save" type="button" onclick="submitReopenApproval()"><i data-lucide="check"></i> Approve request</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="rejectReopenModal">
+  <div class="modal reopen-action-modal" role="dialog" aria-modal="true" aria-labelledby="rejectReopenTitle">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="x"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="rejectReopenTitle">Reject reopen request</div>
+          <div class="modal-sub">The grading period will remain read-only.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeReopenModal('rejectReopenModal')" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="reopen-modal-details" id="rejectReopenDetails"></div>
+      <div class="form-group reopen-modal-last-field">
+        <label class="form-label" for="rejectReopenNote">Reason <span class="optional-label">Optional</span></label>
+        <textarea class="form-input reopen-textarea" id="rejectReopenNote" rows="3" placeholder="Explain why the request was rejected."></textarea>
+      </div>
+      <div class="reopen-modal-error" id="rejectReopenError" role="alert" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeReopenModal('rejectReopenModal')">Cancel</button>
+      <button class="btn btn-danger" type="button" onclick="submitReopenRejection()"><i data-lucide="x"></i> Reject request</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="extendReopenModal">
+  <div class="modal reopen-action-modal" role="dialog" aria-modal="true" aria-labelledby="extendReopenTitle">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="calendar-plus"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="extendReopenTitle">Extend temporary access</div>
+          <div class="modal-sub">Move the editing deadline while keeping an audit reason.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeReopenModal('extendReopenModal')" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="reopen-current-value"><span>Current deadline</span><strong id="extendCurrentExpiration"></strong></div>
+      <div class="form-group">
+        <label class="form-label" for="extendReopenExpiresAt">New deadline</label>
+        <input class="form-input" id="extendReopenExpiresAt" type="datetime-local" required>
+      </div>
+      <div class="form-group reopen-modal-last-field">
+        <label class="form-label" for="extendReopenReason">Reason for extension</label>
+        <textarea class="form-input reopen-textarea" id="extendReopenReason" rows="3" placeholder="Explain why the teacher needs more time."></textarea>
+      </div>
+      <div class="reopen-modal-error" id="extendReopenError" role="alert" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeReopenModal('extendReopenModal')">Cancel</button>
+      <button class="btn btn-save" type="button" onclick="submitReopenExtension()"><i data-lucide="calendar-plus"></i> Extend access</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="revokeReopenModal">
+  <div class="modal reopen-action-modal" role="dialog" aria-modal="true" aria-labelledby="revokeReopenTitle">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="lock"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="revokeReopenTitle">Revoke temporary access</div>
+          <div class="modal-sub">Score editing will be locked immediately.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeReopenModal('revokeReopenModal')" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="reopen-modal-details" id="revokeReopenDetails"></div>
+      <div class="form-group reopen-modal-last-field">
+        <label class="form-label" for="revokeReopenReason">Reason for revocation</label>
+        <textarea class="form-input reopen-textarea" id="revokeReopenReason" rows="3" placeholder="Explain why editing access is being ended early."></textarea>
+      </div>
+      <div class="reopen-modal-error" id="revokeReopenError" role="alert" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeReopenModal('revokeReopenModal')">Cancel</button>
+      <button class="btn btn-danger" type="button" onclick="submitReopenRevocation()"><i data-lucide="lock"></i> Revoke access</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const NOTIFICATION_TRIGGERS = window.EDUGNAY_CONFIG.withActiveSchool([
-    { icon: 'trending-down', iconBackground: 'var(--red-pale)', iconColor: 'var(--red)', label: 'Grade Falls Below Threshold', description: "Notify parent when a student's final encoded grade for the quarter drops below the set value.", enabled: true },
+    { icon: 'trending-down', iconBackground: 'var(--red-pale)', iconColor: 'var(--red)', label: 'Grade Falls Below Threshold', description: "Notify parent when a student's final encoded grade for the grading period drops below the set value.", enabled: true },
     { icon: 'calendar-x', iconBackground: 'var(--orange-pale)', iconColor: '#d97706', label: 'Consecutive Absences', description: 'Notify parent when a student has this many absences in a row.', enabled: true },
     { icon: 'clipboard-check', iconBackground: 'var(--green-pale)', iconColor: '#16a34a', label: 'Assignment Not Completed', description: 'Notify parent when a student fails to submit this many consecutive assignments.', enabled: false, inputValue: 2, unit: 'tasks' },
     { icon: 'file-text', iconBackground: 'var(--gold-pale)', iconColor: '#92400e', label: 'Narrative Report Released', description: 'Notify parent when a teacher confirms and releases a narrative report.', enabled: true },
@@ -331,81 +453,244 @@
     });
   });
 
-  function saveReopenRequests(list) {
-    localStorage.setItem(REOPEN_STORE_KEY, JSON.stringify(list));
+  const ADMIN_USER_ID = window.EDUGNAY_CONFIG.getUsersByRole('school_admin')[0]?.id || 'admin-1';
+  let reopenFilter = 'pending';
+  let activeReopenRequestId = null;
+  let reopenListTimer = null;
+
+  function formatReopenDate(value) {
+    return value ? window.EDUGNAY_CONFIG.formatDateTime(value) : 'Not set';
+  }
+
+  function toDateTimeInput(value) {
+    const date = new Date(value);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function reopenDetailsHtml(request) {
+    const details = getReopenRequestDetails(request);
+    return `<strong>${window.EDUGNAY_CONFIG.escapeHtml(getReopenPeriodName(request))}</strong><span>${window.EDUGNAY_CONFIG.escapeHtml(details.teacher)} · ${window.EDUGNAY_CONFIG.escapeHtml(details.section)} · ${window.EDUGNAY_CONFIG.escapeHtml(details.subject)}</span>`;
+  }
+
+  function setReopenFilter(filter) {
+    reopenFilter = filter;
+    document.querySelectorAll('[data-reopen-filter]').forEach(button => {
+      const selected = button.dataset.reopenFilter === filter;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-selected', String(selected));
+    });
+    renderReopenRequests();
   }
 
   function renderReopenRequests() {
-    const listEl   = document.getElementById('reopenRequestList');
-    const countEl  = document.getElementById('reopenPanelCount');
+    const listEl = document.getElementById('reopenRequestList');
+    const countEl = document.getElementById('reopenPanelCount');
     const navBadge = document.getElementById('reopenNavBadge');
-    const dot      = document.getElementById('tbNotifDot');
+    const dot = document.getElementById('tbNotifDot');
+    const requests = getReopenRequests();
+    const pending = requests.filter(request => request.status === 'pending');
+    const active = requests.filter(request => window.EDUGNAY_CONFIG.isReopenRequestActive(request));
+    const history = requests.filter(request => request.status !== 'pending' && !window.EDUGNAY_CONFIG.isReopenRequestActive(request));
+    const visible = (reopenFilter === 'active' ? active : reopenFilter === 'history' ? history : pending)
+      .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
 
-    const pending = getReopenRequests()
-      .filter(r => r.status === 'pending')
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    clearTimeout(reopenListTimer);
+    reopenListTimer = null;
+    if (active.length) {
+      const nextExpiration = Math.min(...active.map(request => new Date(request.expiresAt).getTime()));
+      reopenListTimer = setTimeout(renderReopenRequests, Math.min(nextExpiration - Date.now() + 50, 2147483647));
+    }
 
     countEl.textContent = pending.length + ' pending';
     countEl.className = 'badge ' + (pending.length ? 'badge-orange' : 'badge-gray');
     if (navBadge) { navBadge.style.display = pending.length ? '' : 'none'; navBadge.textContent = pending.length; }
     if (dot) dot.style.display = pending.length ? '' : 'none';
 
-    if (!pending.length) {
-      listEl.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'unlock', title: 'No pending reopen requests', text: 'Requests to reopen locked grading periods will appear here.' });
+    if (!visible.length) {
+      const emptyStates = {
+        pending: { icon: 'unlock', title: 'No pending reopen requests', text: 'New requests to reopen locked grading periods will appear here.' },
+        active: { icon: 'clock', title: 'No active temporary access', text: 'Approved requests remain here until their editing deadline.' },
+        history: { icon: 'history', title: 'No reopen request history', text: 'Expired, rejected, and revoked requests will appear here.' }
+      };
+      listEl.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(emptyStates[reopenFilter]);
       return;
     }
 
-    listEl.innerHTML = pending.map(r => {
-      const details = getReopenRequestDetails(r);
-      const dateLabel = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-      return `
-        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--gray-100);">
-          <div style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--gold-pale);color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i data-lucide="unlock" style="width:16px;height:16px;"></i>
-          </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;color:var(--gray-800);">Q${r.quarter.slice(1)} · ${details.section} · ${details.subject}</div>
-            <div style="font-size:12px;color:var(--gray-500);margin:2px 0 6px;">Requested by ${details.teacher} · ${dateLabel}</div>
-            <div style="font-size:12px;color:var(--gray-700);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius-xs);padding:8px 10px;">${r.reason}</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button class="top-btn secondary" style="color:var(--red);border-color:#fecaca;" onclick="denyReopenRequest('${r.id}')"><i data-lucide="x" style="width:13px;height:13px;"></i> Deny</button>
-            <button class="top-btn secondary" style="color:#16a34a;border-color:#bbf7d0;" onclick="approveReopenRequest('${r.id}')"><i data-lucide="check" style="width:13px;height:13px;"></i> Approve</button>
-          </div>
-        </div>`;
+    const statusLabels = { approved: 'Active', expired: 'Expired', rejected: 'Rejected', revoked: 'Revoked' };
+    const statusClasses = { approved: 'badge-green', expired: 'badge-gray', rejected: 'badge-red', revoked: 'badge-red' };
+    listEl.innerHTML = visible.map(request => {
+      const details = getReopenRequestDetails(request);
+      const state = window.EDUGNAY_CONFIG.getReopenRequestState(request);
+      const statusBadge = reopenFilter === 'pending'
+        ? ''
+        : `<span class="badge ${statusClasses[state] || 'badge-gray'}">${statusLabels[state] || state}</span>`;
+      const deadline = state === 'approved' || state === 'expired'
+        ? `<div class="reopen-request-deadline"><i data-lucide="clock"></i>${state === 'approved' ? 'Editable until' : 'Expired'} ${window.EDUGNAY_CONFIG.escapeHtml(formatReopenDate(request.expiresAt))}</div>`
+        : '';
+      const note = request.status === 'revoked'
+        ? request.revokeReason
+        : request.extensionReason || request.adminNote;
+      const actions = reopenFilter === 'pending'
+        ? `<div class="reopen-request-actions"><button class="top-btn secondary reopen-reject-btn" type="button" onclick="openRejectReopenModal('${request.id}')"><i data-lucide="x"></i> Reject</button><button class="top-btn primary" type="button" onclick="openApproveReopenModal('${request.id}')"><i data-lucide="check"></i> Approve</button></div>`
+        : reopenFilter === 'active'
+          ? `<div class="reopen-request-actions"><button class="top-btn secondary" type="button" onclick="openExtendReopenModal('${request.id}')"><i data-lucide="calendar-plus"></i> Extend</button><button class="top-btn secondary reopen-reject-btn" type="button" onclick="openRevokeReopenModal('${request.id}')"><i data-lucide="lock"></i> Revoke</button></div>`
+          : '';
+      return `<div class="reopen-request-row">
+        <div class="reopen-request-icon"><i data-lucide="${state === 'approved' ? 'unlock' : state === 'pending' ? 'clock' : 'history'}"></i></div>
+        <div class="reopen-request-content">
+          <div class="reopen-request-title"><span>${window.EDUGNAY_CONFIG.escapeHtml(getReopenPeriodName(request))} · ${window.EDUGNAY_CONFIG.escapeHtml(details.section)} · ${window.EDUGNAY_CONFIG.escapeHtml(details.subject)}</span>${statusBadge}</div>
+          <div class="reopen-request-meta">Requested by ${window.EDUGNAY_CONFIG.escapeHtml(details.teacher)} · ${window.EDUGNAY_CONFIG.escapeHtml(formatReopenDate(request.requestedAt))}</div>
+          <div class="reopen-request-reason">${window.EDUGNAY_CONFIG.escapeHtml(request.reason)}</div>
+          ${deadline}
+          ${note ? `<div class="reopen-request-note"><strong>${request.status === 'revoked' ? 'Revocation reason:' : 'Admin note:'}</strong> ${window.EDUGNAY_CONFIG.escapeHtml(note)}</div>` : ''}
+        </div>
+        ${actions}
+      </div>`;
     }).join('');
-
     lucide.createIcons();
   }
 
-  function approveReopenRequest(id) {
-    const note = prompt('Optional note to the teacher (e.g. "Reopened until Friday only"):', '');
-    if (note === null) return;
-    const all = getReopenRequests();
-    const req = all.find(r => r.id === id);
-    if (!req) return;
-    req.status = 'approved';
-    req.adminNote = note;
-    saveReopenRequests(all);
-    renderReopenRequests();
+  function getReopenRequestById(id) {
+    return getReopenRequests().find(request => request.id === String(id));
   }
 
-  function denyReopenRequest(id) {
-    const note = prompt('Optional reason for the teacher:', '');
-    if (note === null) return;
-    const all = getReopenRequests();
-    const req = all.find(r => r.id === id);
-    if (!req) return;
-    req.status = 'denied';
-    req.adminNote = note;
-    saveReopenRequests(all);
+  function showReopenModal(id, requestId) {
+    activeReopenRequestId = String(requestId);
+    document.getElementById(id).classList.add('open');
+    lucide.createIcons();
+  }
+
+  function closeReopenModal(id) {
+    document.getElementById(id).classList.remove('open');
+    activeReopenRequestId = null;
+  }
+
+  function setReopenModalError(id, message = '') {
+    const error = document.getElementById(id);
+    error.textContent = message;
+    error.hidden = !message;
+  }
+
+  function openApproveReopenModal(id) {
+    const request = getReopenRequestById(id);
+    if (!request) return;
+    const input = document.getElementById('approveReopenExpiresAt');
+    input.min = toDateTimeInput(Date.now() + 60000);
+    input.value = toDateTimeInput(Date.now() + 86400000);
+    document.getElementById('approveReopenDetails').innerHTML = reopenDetailsHtml(request);
+    document.getElementById('approveReopenNote').value = '';
+    setReopenModalError('approveReopenError');
+    showReopenModal('approveReopenModal', id);
+  }
+
+  function openRejectReopenModal(id) {
+    const request = getReopenRequestById(id);
+    if (!request) return;
+    document.getElementById('rejectReopenDetails').innerHTML = reopenDetailsHtml(request);
+    document.getElementById('rejectReopenNote').value = '';
+    setReopenModalError('rejectReopenError');
+    showReopenModal('rejectReopenModal', id);
+  }
+
+  function openExtendReopenModal(id) {
+    const request = getReopenRequestById(id);
+    if (!request) return;
+    const currentExpiration = new Date(request.expiresAt).getTime();
+    const input = document.getElementById('extendReopenExpiresAt');
+    input.min = toDateTimeInput(currentExpiration + 60000);
+    input.value = toDateTimeInput(currentExpiration + 86400000);
+    document.getElementById('extendCurrentExpiration').textContent = formatReopenDate(request.expiresAt);
+    document.getElementById('extendReopenReason').value = '';
+    setReopenModalError('extendReopenError');
+    showReopenModal('extendReopenModal', id);
+  }
+
+  function openRevokeReopenModal(id) {
+    const request = getReopenRequestById(id);
+    if (!request) return;
+    document.getElementById('revokeReopenDetails').innerHTML = reopenDetailsHtml(request);
+    document.getElementById('revokeReopenReason').value = '';
+    setReopenModalError('revokeReopenError');
+    showReopenModal('revokeReopenModal', id);
+  }
+
+  function finishReopenAction(modalId) {
+    closeReopenModal(modalId);
     renderReopenRequests();
+    renderTopbarNotifs();
+  }
+
+  async function submitReopenApproval() {
+    try {
+      await window.EDUGNAY_CONFIG.approveReopenRequest(activeReopenRequestId, {
+        schoolId: ADMIN_SCHOOL_ID,
+        reviewedBy: ADMIN_USER_ID,
+        expiresAt: document.getElementById('approveReopenExpiresAt').value,
+        adminNote: document.getElementById('approveReopenNote').value
+      });
+      finishReopenAction('approveReopenModal');
+    } catch (error) {
+      setReopenModalError('approveReopenError', error.message);
+    }
+  }
+
+  async function submitReopenRejection() {
+    try {
+      await window.EDUGNAY_CONFIG.rejectReopenRequest(activeReopenRequestId, {
+        schoolId: ADMIN_SCHOOL_ID,
+        reviewedBy: ADMIN_USER_ID,
+        adminNote: document.getElementById('rejectReopenNote').value
+      });
+      finishReopenAction('rejectReopenModal');
+    } catch (error) {
+      setReopenModalError('rejectReopenError', error.message);
+    }
+  }
+
+  async function submitReopenExtension() {
+    try {
+      await window.EDUGNAY_CONFIG.extendReopenRequest(activeReopenRequestId, {
+        schoolId: ADMIN_SCHOOL_ID,
+        extendedBy: ADMIN_USER_ID,
+        expiresAt: document.getElementById('extendReopenExpiresAt').value,
+        reason: document.getElementById('extendReopenReason').value
+      });
+      finishReopenAction('extendReopenModal');
+    } catch (error) {
+      setReopenModalError('extendReopenError', error.message);
+    }
+  }
+
+  async function submitReopenRevocation() {
+    try {
+      await window.EDUGNAY_CONFIG.revokeReopenRequest(activeReopenRequestId, {
+        schoolId: ADMIN_SCHOOL_ID,
+        revokedBy: ADMIN_USER_ID,
+        revokeReason: document.getElementById('revokeReopenReason').value
+      });
+      finishReopenAction('revokeReopenModal');
+    } catch (error) {
+      setReopenModalError('revokeReopenError', error.message);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderNotificationTriggers();
     renderReopenRequests();
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+      backdrop.addEventListener('click', event => {
+        if (event.target === backdrop) closeReopenModal(backdrop.id);
+      });
+    });
     lucide.createIcons();
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key === `edugnay_reopen_requests:${ADMIN_SCHOOL_ID}`) {
+      renderReopenRequests();
+      renderTopbarNotifs();
+    }
   });
 </script>
 

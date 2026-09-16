@@ -77,6 +77,7 @@
           <div class="onboarding-step"><span class="onboarding-step-index">1</span><span>School</span></div>
           <div class="onboarding-step"><span class="onboarding-step-index">2</span><span>Contact</span></div>
           <div class="onboarding-step"><span class="onboarding-step-index">3</span><span>Administrator</span></div>
+          <div class="onboarding-step"><span class="onboarding-step-index">4</span><span>Academic Terms</span></div>
         </div>
 
         <form id="schoolOnboardingForm" onsubmit="submitSchoolOnboarding(event)">
@@ -178,6 +179,31 @@
             </div>
           </section>
 
+          <section class="onboarding-section">
+            <div class="onboarding-section-heading">
+              <span class="onboarding-section-icon" aria-hidden="true"><i data-lucide="calendar-range"></i></span>
+              <div>
+                <h3>Academic terms</h3>
+              </div>
+            </div>
+            <div class="onboarding-grid">
+              <div class="onboarding-field">
+                <label for="schoolYear">School year</label>
+                <input id="schoolYear" name="schoolYear" type="text" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolYearStartDate">School-year start date</label>
+                <input id="schoolYearStartDate" name="schoolYearStartDate" type="date" required />
+              </div>
+              <div class="onboarding-field">
+                <label for="schoolYearEndDate">School-year end date</label>
+                <input id="schoolYearEndDate" name="schoolYearEndDate" type="date" required />
+              </div>
+            </div>
+            <div class="onboarding-term-configurations" id="academicTermConfigurations"></div>
+            <div class="onboarding-level-error" id="academicTermsError" role="alert" hidden></div>
+          </section>
+
           <div class="onboarding-actions">
             <button class="onboarding-submit" type="submit"><i data-lucide="arrow-right" style="width:15px;height:15px;"></i> Create school profile</button>
           </div>
@@ -189,6 +215,8 @@
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
 
+    const termDrafts = {};
+
     function populateSchoolLevels() {
       const options = document.getElementById('schoolLevelOptions');
       options.innerHTML = SCHOOL_LEVELS.map(level => `
@@ -198,6 +226,8 @@
         </label>`).join('');
       options.addEventListener('change', () => {
         document.getElementById('schoolLevelsError').hidden = options.querySelectorAll('input:checked').length > 0;
+        captureAcademicTermDrafts();
+        renderAcademicTermConfigurations();
       });
     }
 
@@ -219,6 +249,118 @@
         reader.onerror = () => reject(new Error('The school logo could not be read.'));
         reader.readAsDataURL(file);
       });
+    }
+
+    function captureAcademicTermDrafts() {
+      document.querySelectorAll('[data-term-level]').forEach(card => {
+        termDrafts[card.dataset.termLevel] = {
+          gradingPeriodType: card.querySelector('[data-period-type]')?.value || 'quarterly',
+          academicPeriods: Array.from(card.querySelectorAll('[data-period-row]')).map(row => ({
+            name: row.querySelector('[data-period-name]').value,
+            plannedStartDate: row.querySelector('[data-period-start]').value,
+            plannedEndDate: row.querySelector('[data-period-end]').value
+          }))
+        };
+      });
+    }
+
+    function renderAcademicTermConfigurations() {
+      const container = document.getElementById('academicTermConfigurations');
+      const levels = selectedSchoolLevels();
+      Object.keys(termDrafts).forEach(level => {
+        if (!levels.includes(level)) delete termDrafts[level];
+      });
+      if (!levels.length) {
+        container.innerHTML = '<p class="onboarding-term-empty">Select the school levels above to configure their grading periods.</p>';
+        return;
+      }
+
+      container.innerHTML = levels.map(level => {
+        const levelInfo = SCHOOL_LEVELS.find(item => item.value === level);
+        const draft = termDrafts[level] || {
+          gradingPeriodType: level === 'shs' ? 'semester' : 'quarterly',
+          academicPeriods: []
+        };
+        const periods = window.EDUGNAY_CONFIG.createAcademicPeriods(draft.gradingPeriodType, draft.academicPeriods);
+        termDrafts[level] = {
+          gradingPeriodType: draft.gradingPeriodType,
+          academicPeriods: periods.map(period => ({
+            name: period.name,
+            plannedStartDate: period.plannedStartDate,
+            plannedEndDate: period.plannedEndDate
+          }))
+        };
+        const typeOptions = Object.values(window.EDUGNAY_CONFIG.academicPeriodTypes).map(type =>
+          `<option value="${type.id}" ${type.id === draft.gradingPeriodType ? 'selected' : ''}>${type.label}</option>`
+        ).join('');
+
+        return `<section class="onboarding-term-card" data-term-level="${level}">
+          <div class="onboarding-term-head">
+            <div><h4>${levelInfo?.label || level}</h4><p>Configure this school level independently.</p></div>
+            <div class="onboarding-field onboarding-term-type">
+              <label for="periodType-${level}">Period structure</label>
+              <select id="periodType-${level}" data-period-type>${typeOptions}</select>
+            </div>
+          </div>
+          <div class="onboarding-period-list">
+            ${periods.map(period => `<div class="onboarding-period-row" data-period-row>
+              <div class="onboarding-field onboarding-period-name">
+                <label>Grading period</label>
+                <input data-period-name value="${period.name}" readonly />
+              </div>
+              <div class="onboarding-field">
+                <label>Start date</label>
+                <input data-period-start type="date" value="${period.plannedStartDate || ''}" required />
+              </div>
+              <div class="onboarding-field">
+                <label>End date</label>
+                <input data-period-end type="date" value="${period.plannedEndDate || ''}" required />
+              </div>
+            </div>`).join('')}
+          </div>
+          <div class="onboarding-level-error" data-term-error role="alert" hidden></div>
+        </section>`;
+      }).join('');
+
+      container.querySelectorAll('[data-period-type]').forEach(select => select.addEventListener('change', () => {
+        const level = select.closest('[data-term-level]').dataset.termLevel;
+        termDrafts[level] = { gradingPeriodType: select.value, academicPeriods: [] };
+        renderAcademicTermConfigurations();
+      }));
+    }
+
+    function collectAcademicTermConfigs(values) {
+      return Array.from(document.querySelectorAll('[data-term-level]')).map(card => ({
+        schoolLevel: card.dataset.termLevel,
+        schoolYear: values.schoolYear.trim(),
+        schoolYearStartDate: values.schoolYearStartDate,
+        schoolYearEndDate: values.schoolYearEndDate,
+        gradingPeriodType: card.querySelector('[data-period-type]').value,
+        academicPeriods: Array.from(card.querySelectorAll('[data-period-row]')).map((row, index) => ({
+          name: row.querySelector('[data-period-name]').value,
+          sequence: index + 1,
+          plannedStartDate: row.querySelector('[data-period-start]').value,
+          plannedEndDate: row.querySelector('[data-period-end]').value
+        }))
+      }));
+    }
+
+    function validateAcademicTermConfigs(configs) {
+      let firstError = '';
+      document.querySelectorAll('[data-term-error]').forEach(error => { error.hidden = true; error.textContent = ''; });
+      configs.forEach(config => {
+        const errors = window.EDUGNAY_CONFIG.validateAcademicTermConfig(config);
+        const error = document.querySelector(`[data-term-level="${config.schoolLevel}"] [data-term-error]`);
+        if (errors.length && error) {
+          error.textContent = errors[0];
+          error.hidden = false;
+          if (!firstError) firstError = errors[0];
+        }
+      });
+      const error = document.getElementById('academicTermsError');
+      error.textContent = firstError;
+      error.hidden = !firstError;
+      return !firstError;
     }
 
     async function previewSchoolLogo(event) {
@@ -268,11 +410,21 @@
         document.querySelector('#schoolLevelOptions input')?.focus();
         return;
       }
+      const academicTermConfigs = collectAcademicTermConfigs(values);
+      if (!validateAcademicTermConfigs(academicTermConfigs)) {
+        document.querySelector('[data-term-error]:not([hidden])')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
       const type = window.EDUGNAY_CONFIG.getSchoolTypeInfo(schoolLevels);
       const activeDivision = schoolLevels.includes('jhs') ? 'jhs' : schoolLevels[0];
       const schoolRecordId = `${slugify(values.schoolName)}-${Date.now()}`;
       const divisions = Object.fromEntries(
-        schoolLevels.map(level => [level, window.EDUGNAY_CONFIG.createDivision(level)])
+        academicTermConfigs.map(config => [config.schoolLevel, window.EDUGNAY_CONFIG.createDivision(config.schoolLevel, {
+          gradingPeriodType: config.gradingPeriodType,
+          academicPeriods: config.academicPeriods,
+          activeAcademicPeriodId: null,
+          periodIdContext: `${schoolRecordId}-${config.schoolLevel}-${config.schoolYear.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+        })])
       );
       const school = {
         id: schoolRecordId,
@@ -287,16 +439,18 @@
         notificationEmail,
         website: values.schoolWebsite.trim() || null,
         logoUrl: null,
-        schoolYear: '2025-2026',
+        schoolYear: values.schoolYear.trim(),
+        schoolYearStartDate: values.schoolYearStartDate,
+        schoolYearEndDate: values.schoolYearEndDate,
         platformStatus: window.EDUGNAY_CONFIG.values.statuses.PENDING,
         submittedAt: new Date().toISOString(),
         approvedAt: null,
         rejectedAt: null,
         rejectionReason: null,
-        gradesPageEnabled: true,
-        narrativeReportsEnabled: true,
-        journalsEnabled: true,
-        journalSubjectId: 'values-education',
+        gradesPageEnabled: false,
+        narrativeReportsEnabled: false,
+        journalsEnabled: false,
+        journalSubjectId: null,
         attendanceRules: window.EDUGNAY_CONFIG.attendanceDefaults,
         activeDivision,
         schoolLevels,
@@ -338,6 +492,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       populateSchoolLevels();
+      renderAcademicTermConfigurations();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
       if (window.lucide) lucide.createIcons();
     });

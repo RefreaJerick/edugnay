@@ -186,6 +186,8 @@ function navigate(page, section, tab) {
   } else if (page === 'reports') {
     if (!teacherCanAccess('reports')) return;
     window.location.href = './edugnay-teacher-reports.html';
+  } else if (page === 'sfTemplates') {
+    window.location.href = './edugnay-teacher-sf-templates.html';
   } else if (page === 'announcements') {
     window.location.href = 'edugnay-teacher-announcements.html';
   } else if (page === 'notifications') {
@@ -209,7 +211,9 @@ function guardTeacherPageAccess() {
     ? 'journals'
     : page === 'edugnay-teacher-reports.html'
       ? 'reports'
-      : '';
+      : page === 'edugnay-teacher-sf-templates.html'
+        ? 'sfTemplates'
+        : '';
 
   if (restrictedFeature && !teacherCanAccess(restrictedFeature)) {
     window.location.replace('./edugnay-teacher-dashboard.html');

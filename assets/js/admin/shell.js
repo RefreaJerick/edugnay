@@ -5,7 +5,7 @@
    with data from GET /admin/notifications
    ══════════════════════════════════════════ */
 
-/* ── REOPEN REQUEST DATA (source: quarter reopen request system) ── */
+/* ── REOPEN REQUEST DATA (source: grading-period reopen request system) ── */
 /* Frontend-only redirect. The backend must also reject access for any
    authenticated school whose platform status is not active. */
 function enforceSchoolAccess() {
@@ -27,15 +27,10 @@ function enforceSchoolAccess() {
 
 enforceSchoolAccess();
 const ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
-const REOPEN_STORE_KEY = `edugnay_reopen_requests:${ADMIN_SCHOOL_ID}`;
 const ADMIN_READ_STORE_KEY = `edugnay_admin_notif_read:${ADMIN_SCHOOL_ID}`;
 
 function getReopenRequests() {
-  try {
-    return (JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || [])
-      .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
-  }
-  catch { return []; }
+  return window.EDUGNAY_CONFIG.getReopenRequests({ schoolId: ADMIN_SCHOOL_ID });
 }
 
 function getReopenRequestDetails(request) {
@@ -49,10 +44,41 @@ function getReopenRequestDetails(request) {
   };
 }
 
+function getReopenPeriodName(request) {
+  const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === request.sectionId);
+  const periodId = request.academicPeriodId || request.quarter?.toLowerCase();
+  return window.EDUGNAY_CONFIG.getAcademicPeriods(ADMIN_SCHOOL_ID, section?.level)
+    .find(period => period.id === periodId)?.name || 'Grading period';
+}
+
 /* ── NOTIFICATIONS DATA ──
    Replace this local array with the signed-in school admin's notification
    response later. Reopen requests remain local for now and are merged below. */
 const ADMIN_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
+
+function getAcademicPeriodNotifications() {
+  const school = window.EDUGNAY_CONFIG.getActiveSchool();
+  return (school?.schoolLevels || []).map(schoolLevel => {
+    const period = window.EDUGNAY_CONFIG.getCurrentAcademicPeriod(ADMIN_SCHOOL_ID, schoolLevel);
+    const reminder = window.EDUGNAY_CONFIG.getAcademicPeriodReminder(period);
+    if (!period || !reminder) return null;
+    const levelLabel = window.EDUGNAY_CONFIG.grades.find(level => level.key === schoolLevel)?.label || schoolLevel;
+
+    return {
+      id: `admin-notif-period-${schoolLevel}-${period.id}-${reminder.label}`,
+      schoolId: ADMIN_SCHOOL_ID,
+      icon: 'calendar-clock',
+      tone: reminder.tone === 'danger' ? 'red' : 'gold',
+      type: 'Academic terms',
+      read: false,
+      title: `${levelLabel} ${period.name}: ${reminder.label}`,
+      message: 'Review the schedule, close the grading period, or extend its planned end date.',
+      link: { page: 'schools', hash: 'academic-terms' },
+      createdAt: new Date().toISOString()
+    };
+  }).filter(Boolean);
+}
+
 const NOTIFICATIONS = [
   ...(ADMIN_NO_CLASS_DAY ? [{
     id: `admin-notif-no-class-${ADMIN_NO_CLASS_DAY.date}`,
@@ -196,9 +222,10 @@ const ADMIN_ACTIVITY = [
   .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
 
 function getAdminNotifItems() {
-  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, ADMIN_READ_STORE_KEY);
+  const currentNotifications = [...getAcademicPeriodNotifications(), ...NOTIFICATIONS];
+  window.EDUGNAY_CONFIG.applyNotificationReadState(currentNotifications, ADMIN_READ_STORE_KEY);
   const readIds = window.EDUGNAY_CONFIG.getNotificationReadIds(ADMIN_READ_STORE_KEY);
-  const localNotifications = NOTIFICATIONS.map(notification => ({ ...notification }));
+  const localNotifications = currentNotifications.map(notification => ({ ...notification }));
   const reopenNotifications = getReopenRequests()
     .filter(r => r.status === 'pending')
     .map(r => {
@@ -209,11 +236,11 @@ function getAdminNotifItems() {
         icon: 'unlock',
         tone: 'gold',
         type: 'Reopen request',
-        title: `Reopen requested: Q${r.quarter.slice(1)}`,
+        title: `Reopen requested: ${getReopenPeriodName(r)}`,
         message: `${details.teacher} - ${details.section} · ${details.subject}`,
         read: readIds.includes(`admin-notif-reopen-${r.id}`),
         link: { page: 'system-config', hash: 'reopen-requests' },
-        createdAt: r.createdAt
+        createdAt: r.requestedAt
       };
     });
 

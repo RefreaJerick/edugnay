@@ -247,14 +247,363 @@
 
 .school-profile-pane form,
 .school-academic-pane form,
+.school-terms-pane form,
 .school-grading-pane form,
 .school-attendance-pane form,
 .school-portal-pane form {
   max-width: 980px;
 }
 
+.school-academic-pane form > .school-section-block:first-child {
+  margin-top: 20px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .school-academic-pane .grade-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.term-config-grid {
+  align-items: start;
+}
+
+.term-tracker-block {
+  margin-top: 22px;
+}
+
+.term-tracker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0;
+  margin-top: 16px;
+}
+
+.term-tracker-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  padding-right: 10px;
+}
+
+.term-tracker-item:not(:last-child)::after {
+  position: absolute;
+  top: 13px;
+  right: 0;
+  left: 28px;
+  z-index: 0;
+  height: 2px;
+  background: var(--gray-200);
+  content: '';
+}
+
+.term-tracker-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--gray-400);
+}
+
+.term-tracker-marker svg {
+  width: 13px;
+  height: 13px;
+}
+
+.term-tracker-item.closed .term-tracker-marker {
+  border-color: var(--green-border);
+  background: var(--green-pale);
+  color: var(--green-darker);
+}
+
+.term-tracker-item.active .term-tracker-marker {
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+  color: var(--white);
+}
+
+.term-tracker-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding-top: 1px;
+  background: var(--white);
+}
+
+.term-tracker-copy strong,
+.term-tracker-copy span,
+.term-tracker-copy small {
+  display: block;
+}
+
+.term-tracker-copy strong {
+  color: var(--gray-800);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.term-tracker-copy span {
+  margin-top: 3px;
+  color: var(--gray-400);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.term-tracker-copy small {
+  margin-top: 5px;
+  color: var(--gray-500);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.term-tracker-item.active .term-tracker-copy small {
+  color: var(--blue-mid);
+}
+
+.term-tracker-item.closed .term-tracker-copy small {
+  color: var(--green-darker);
+}
+
+.term-current-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+}
+
+.term-current-copy {
+  min-width: 0;
+}
+
+.term-current-label {
+  display: block;
+  color: var(--blue-mid);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.term-current-copy strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--gray-800);
+  font-size: 15px;
+}
+
+.term-current-copy p {
+  margin: 4px 0 0;
+  color: var(--gray-500);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.term-current-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.term-reminder {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.term-reminder.warning {
+  background: var(--orange-pale);
+  color: var(--orange-dark);
+}
+
+.term-reminder.danger {
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.term-schedule-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.term-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) repeat(2, minmax(135px, 1fr)) 72px;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.term-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  margin-bottom: 8px;
+  padding: 4px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.term-status.active {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.term-status.closed {
+  background: var(--green-pale);
+  color: var(--green-darker);
+}
+
+.school-term-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease, visibility .16s ease;
+}
+
+.school-term-modal.open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.school-term-modal .modal {
+  width: min(500px, 100%);
+  transform: translateY(8px);
+  transition: transform .16s ease;
+}
+
+.school-term-modal.open .modal {
+  transform: translateY(0);
+}
+
+.term-modal-message {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.term-modal-summary,
+.term-modal-ready,
+.term-modal-alert {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.term-modal-summary span,
+.term-modal-summary strong {
+  display: block;
+}
+
+.term-modal-summary span {
+  color: var(--gray-400);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.term-modal-summary strong {
+  margin-top: 4px;
+  color: var(--gray-700);
+  font-size: 11px;
+}
+
+.term-modal-alert {
+  border-color: var(--orange-border);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.term-modal-ready {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--green-border);
+  background: var(--green-pale);
+  color: var(--green-darker);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.term-modal-ready svg {
+  width: 15px;
+  height: 15px;
+}
+
+.term-readiness-list {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.term-readiness-list li {
+  padding: 9px 10px;
+  border: 1px solid var(--orange-border);
+  border-radius: var(--radius-sm);
+  background: var(--orange-pale);
+  color: var(--orange-dark);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.term-readiness-list li.blocking {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.term-modal-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.school-term-modal .term-modal-fields .form-group {
+  margin: 0;
+}
+
+.school-term-modal .form-textarea {
+  min-height: 88px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
 }
 
 .school-form-grid .full {
@@ -752,6 +1101,39 @@
 
   .school-form-grid .full {
     grid-column: auto;
+  }
+
+  .term-current-card,
+  .term-current-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .term-current-actions .top-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .term-tracker {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .term-tracker-item:not(:last-child)::after {
+    top: 28px;
+    bottom: -10px;
+    left: 13px;
+    width: 2px;
+    height: auto;
+  }
+
+  .term-schedule-row {
+    grid-template-columns: 1fr;
+  }
+
+  .term-status {
+    width: max-content;
+    margin-bottom: 0;
   }
 
   .school-settings-head {

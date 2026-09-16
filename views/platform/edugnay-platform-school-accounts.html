@@ -224,10 +224,19 @@
         : 'Not set';
       const journalSubject = window.EDUGNAY_CONFIG.getJournalSubject(school);
       const portalFeatures = [
-        { label: 'Grades page', enabled: school.gradesPageEnabled !== false },
-        { label: 'AI Reports', enabled: school.narrativeReportsEnabled !== false },
+        { label: 'Grades page', enabled: Boolean(school.gradesPageEnabled) },
+        { label: 'AI Reports', enabled: Boolean(school.narrativeReportsEnabled) },
         { label: 'Journals', enabled: window.EDUGNAY_CONFIG.isJournalsEnabled(school) }
       ];
+      const academicTerms = (school.schoolLevels || []).map(level => {
+        const division = school.divisions?.[level];
+        const periodType = window.EDUGNAY_CONFIG.academicPeriodTypes[division?.gradingPeriodType];
+        return {
+          level: window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level,
+          structure: periodType?.label || 'Not configured',
+          count: division?.academicPeriods?.length || 0
+        };
+      });
 
       document.getElementById('schoolAccountModalBody').innerHTML = `
         <div class="account-review-profile">${schoolLogoMarkup(school, 'account-review-logo')}<div><div class="account-review-name">${escapeHtml(school.name)}</div><div class="account-review-type">${escapeHtml(type)}</div></div></div>
@@ -241,6 +250,18 @@
           <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>
           <div><dt>School email</dt><dd>${escapeHtml(school.email || 'Not set')}</dd></div>
         </dl>
+        <section class="account-review-section" aria-labelledby="account-review-terms-title">
+          <div class="account-review-section-head">
+            <span class="account-review-section-icon" aria-hidden="true"><i data-lucide="calendar-range"></i></span>
+            <div>
+              <div class="account-review-section-title" id="account-review-terms-title">Academic terms</div>
+              <div class="account-review-section-sub">Planned structures for S.Y. ${escapeHtml(school.schoolYear || 'Not set')}.</div>
+            </div>
+          </div>
+          <div class="account-review-feature-list">
+            ${academicTerms.length ? academicTerms.map(item => `<div class="account-review-feature-row"><span class="account-review-feature-label">${escapeHtml(item.level)}</span><span class="account-review-feature-value">${escapeHtml(item.structure)} · ${item.count} period${item.count === 1 ? '' : 's'}</span></div>`).join('') : '<div class="account-review-feature-row"><span class="account-review-feature-label">No term configuration submitted</span></div>'}
+          </div>
+        </section>
         <section class="account-review-section" aria-labelledby="account-review-portal-title">
           <div class="account-review-section-head">
             <span class="account-review-section-icon" aria-hidden="true"><i data-lucide="sliders-horizontal"></i></span>

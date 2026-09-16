@@ -144,7 +144,8 @@ function applyCurrentDateToGradingBanners() {
     announcements: 'edugnay_announcements',
     grades: 'edugnay_grades',
     journals: 'edugnay_journals',
-    reports: 'edugnay_reports'
+    reports: 'edugnay_reports',
+    sfTemplates: 'edugnay_sf_template_records'
   };
 
   // Canonical values used by frontend records and future API responses.
@@ -158,6 +159,7 @@ function applyCurrentDateToGradingBanners() {
     },
     statuses: {
       ACTIVE: 'active',
+      DRAFT: 'draft',
       INACTIVE: 'inactive',
       PENDING: 'pending',
       REJECTED: 'rejected',
@@ -200,11 +202,67 @@ function applyCurrentDateToGradingBanners() {
     { id: 'practical-research', name: 'Practical Research', code: 'PR', levels: ['shs'] }
   ];
 
-  const PERIOD_CATALOG = {
-    elementary: ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'],
-    jhs: ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'],
-    shs: ['1st Semester', '2nd Semester']
+  const ACADEMIC_PERIOD_TYPES = {
+    quarterly: {
+      id: 'quarterly',
+      label: 'Quarterly',
+      periodNames: ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'],
+      idPrefix: 'q'
+    },
+    three_term: {
+      id: 'three_term',
+      label: 'Three-term',
+      periodNames: ['Term 1', 'Term 2', 'Term 3'],
+      idPrefix: 'term'
+    },
+    semester: {
+      id: 'semester',
+      label: 'Semestral',
+      periodNames: ['Semester 1', 'Semester 2'],
+      idPrefix: 'sem'
+    }
   };
+
+  const ACADEMIC_PERIOD_STATUSES = {
+    UPCOMING: 'upcoming',
+    ACTIVE: 'active',
+    CLOSED: 'closed'
+  };
+
+  const REOPEN_REQUEST_STATUSES = {
+    PENDING: 'pending',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    REVOKED: 'revoked'
+  };
+
+  function getDefaultPeriodType(level) {
+    return level === 'shs' ? 'semester' : 'quarterly';
+  }
+
+  function getPeriodType(type) {
+    return ACADEMIC_PERIOD_TYPES[type] || ACADEMIC_PERIOD_TYPES.quarterly;
+  }
+
+  function createAcademicPeriods(type, periods = [], idContext = '') {
+    const definition = getPeriodType(type);
+    return definition.periodNames.map((defaultName, index) => {
+      const values = periods[index] || {};
+      const number = index + 1;
+      return {
+        id: idContext ? `${idContext}-${definition.idPrefix}${number}` : values.id || `${definition.idPrefix}${number}`,
+        name: String(values.name || defaultName).trim(),
+        sequence: number,
+        status: Object.values(ACADEMIC_PERIOD_STATUSES).includes(values.status)
+          ? values.status
+          : ACADEMIC_PERIOD_STATUSES.UPCOMING,
+        plannedStartDate: values.plannedStartDate || null,
+        plannedEndDate: values.plannedEndDate || null,
+        startedAt: values.startedAt || null,
+        closedAt: values.closedAt || null
+      };
+    });
+  }
 
   const DEFAULT_ATTENDANCE_CODES = [
     { id: 'present', name: 'Present', description: 'Student attended class', key: 'P', tone: 'present' },
@@ -239,14 +297,35 @@ function applyCurrentDateToGradingBanners() {
         { id: 'qa', label: 'Quarterly Assessment', weight: level === 'elementary' ? 30 : 20 }
       ];
 
+    const gradingPeriodType = ACADEMIC_PERIOD_TYPES[values.gradingPeriodType]
+      ? values.gradingPeriodType
+      : getDefaultPeriodType(level);
+    const academicPeriods = createAcademicPeriods(
+      gradingPeriodType,
+      values.academicPeriods,
+      values.periodIdContext
+    );
+    const legacyActivePeriod = academicPeriods.find(period => period.name === values.academicPeriod);
+    const requestedActivePeriodId = values.activeAcademicPeriodId || legacyActivePeriod?.id || null;
+    const activePeriod = academicPeriods.find(period => period.id === requestedActivePeriodId)
+      || academicPeriods.find(period => period.status === ACADEMIC_PERIOD_STATUSES.ACTIVE)
+      || null;
+    const activeAcademicPeriodId = activePeriod?.id || null;
+
+    if (activeAcademicPeriodId) {
+      academicPeriods.forEach(period => {
+        if (period.id === activeAcademicPeriodId) period.status = ACADEMIC_PERIOD_STATUSES.ACTIVE;
+        else if (period.status === ACADEMIC_PERIOD_STATUSES.ACTIVE) period.status = ACADEMIC_PERIOD_STATUSES.UPCOMING;
+        if (period.sequence < activePeriod.sequence) period.status = ACADEMIC_PERIOD_STATUSES.CLOSED;
+      });
+    }
+
     return {
       key: level,
       label: catalog?.label || level,
-      academicPeriod: values.academicPeriod || PERIOD_CATALOG[level]?.[0] || 'Quarter 1',
-      periodStartDate: values.periodStartDate || '2025-05-05',
-      periodEndDate: values.periodEndDate || '2025-07-18',
-      gradeEncodingOpen: values.gradeEncodingOpen !== false,
-      lockPreviousPeriods: values.lockPreviousPeriods !== false,
+      gradingPeriodType,
+      activeAcademicPeriodId,
+      academicPeriods,
       enabledGrades: values.enabledGrades || [...(catalog?.grades || [])],
       tracks: values.tracks || [...(catalog?.tracks || [])],
       strands: values.strands || [...(catalog?.strands || [])],
@@ -294,6 +373,8 @@ function applyCurrentDateToGradingBanners() {
       website: 'stcolumban.edu.ph',
       logoUrl: '../../assets/images/st-columban-logo.png',
       schoolYear: '2025-2026',
+      schoolYearStartDate: '2025-03-03',
+      schoolYearEndDate: '2025-12-05',
       platformStatus: RECORD_VALUES.statuses.ACTIVE,
       submittedAt: null,
       notificationEmail: null,
@@ -314,7 +395,13 @@ function applyCurrentDateToGradingBanners() {
       schoolLevels: ['elementary', 'jhs', 'shs'],
       divisions: {
         elementary: createDivision('elementary', {
-          academicPeriod: 'Quarter 2',
+          activeAcademicPeriodId: 'q2',
+          academicPeriods: [
+            { plannedStartDate: '2025-03-03', plannedEndDate: '2025-05-02' },
+            { plannedStartDate: '2025-05-05', plannedEndDate: '2025-07-18' },
+            { plannedStartDate: '2025-07-21', plannedEndDate: '2025-09-26' },
+            { plannedStartDate: '2025-09-29', plannedEndDate: '2025-12-05' }
+          ],
           sections: [
             { id: 'elem-grade4-luke', name: 'St. Luke', grade: 'Grade 4', capacity: 40, enrolled: 32 },
             { id: 'elem-grade5-mark', name: 'St. Mark', grade: 'Grade 5', capacity: 40, enrolled: 35 }
@@ -326,7 +413,13 @@ function applyCurrentDateToGradingBanners() {
           ]
         }),
         jhs: createDivision('jhs', {
-          academicPeriod: 'Quarter 2',
+          activeAcademicPeriodId: 'q2',
+          academicPeriods: [
+            { plannedStartDate: '2025-03-03', plannedEndDate: '2025-05-02' },
+            { plannedStartDate: '2025-05-05', plannedEndDate: '2025-07-18' },
+            { plannedStartDate: '2025-07-21', plannedEndDate: '2025-09-26' },
+            { plannedStartDate: '2025-09-29', plannedEndDate: '2025-12-05' }
+          ],
           sections: [
             { id: 'jhs-grade7-matthew', name: 'St. Matthew', grade: 'Grade 7', capacity: 40, enrolled: 38, adviserId: 'teacher-2' },
             { id: 'jhs-grade7-mark', name: 'St. Mark', grade: 'Grade 7', capacity: 40, enrolled: 34, adviserId: 'teacher-carla-dizon' },
@@ -344,7 +437,11 @@ function applyCurrentDateToGradingBanners() {
           ]
         }),
         shs: createDivision('shs', {
-          academicPeriod: '1st Semester',
+          activeAcademicPeriodId: 'sem1',
+          academicPeriods: [
+            { plannedStartDate: '2025-03-03', plannedEndDate: '2025-07-18' },
+            { plannedStartDate: '2025-07-21', plannedEndDate: '2025-12-05' }
+          ],
           sections: [
             { id: 'shs-grade11-stem-a', name: 'STEM A', grade: 'Grade 11', strand: 'STEM', capacity: 40, enrolled: 28 },
             { id: 'shs-grade11-humss-a', name: 'HUMSS A', grade: 'Grade 11', strand: 'HUMSS', capacity: 40, enrolled: 26 },
@@ -372,16 +469,18 @@ function applyCurrentDateToGradingBanners() {
       website: null,
       logoUrl: '../../assets/images/manghi-logo.jpg',
       schoolYear: '2025-2026',
+      schoolYearStartDate: null,
+      schoolYearEndDate: null,
       platformStatus: RECORD_VALUES.statuses.PENDING,
       submittedAt: '2026-08-30T09:00:00.000Z',
       notificationEmail: null,
       approvedAt: null,
       rejectedAt: null,
       rejectionReason: null,
-      gradesPageEnabled: true,
-      narrativeReportsEnabled: true,
-      journalsEnabled: true,
-      journalSubjectId: 'values-education',
+      gradesPageEnabled: false,
+      narrativeReportsEnabled: false,
+      journalsEnabled: false,
+      journalSubjectId: null,
       attendanceRules: makeAttendanceRules(),
       activeDivision: 'jhs',
       schoolLevels: ['jhs', 'shs'],
@@ -437,6 +536,45 @@ function applyCurrentDateToGradingBanners() {
       : JSON.parse(JSON.stringify(value));
   }
 
+  function normalizeDivisionRecord(level, division = {}, school = {}) {
+    const legacyName = String(division.academicPeriod || '');
+    const gradingPeriodType = ACADEMIC_PERIOD_TYPES[division.gradingPeriodType]
+      ? division.gradingPeriodType
+      : (legacyName.toLowerCase().includes('semester') ? 'semester' : getDefaultPeriodType(level));
+    let periods = Array.isArray(division.academicPeriods) ? division.academicPeriods : [];
+
+    if (!periods.length) {
+      periods = createAcademicPeriods(gradingPeriodType).map(period => ({
+        ...period,
+        plannedStartDate: period.name === legacyName ? division.periodStartDate || null : null,
+        plannedEndDate: period.name === legacyName ? division.periodEndDate || null : null
+      }));
+    }
+
+    const canHaveActivePeriod = school.platformStatus === RECORD_VALUES.statuses.ACTIVE;
+    const legacyActive = canHaveActivePeriod
+      ? periods.find(period => period.name === legacyName)?.id || null
+      : null;
+    const normalized = createDivision(level, {
+      ...division,
+      gradingPeriodType,
+      academicPeriods: periods,
+      activeAcademicPeriodId: canHaveActivePeriod
+        ? division.activeAcademicPeriodId || legacyActive
+        : null
+    });
+
+    if (!canHaveActivePeriod) {
+      normalized.academicPeriods.forEach(period => {
+        period.status = ACADEMIC_PERIOD_STATUSES.UPCOMING;
+        period.startedAt = null;
+        period.closedAt = null;
+      });
+    }
+
+    return normalized;
+  }
+
   function normalizeSchoolRecord(school = {}) {
     const validStatuses = [
       RECORD_VALUES.statuses.ACTIVE,
@@ -445,16 +583,38 @@ function applyCurrentDateToGradingBanners() {
       RECORD_VALUES.statuses.SUSPENDED
     ];
     const administrator = school.initialAdministrator;
+    const platformStatus = validStatuses.includes(school.platformStatus)
+      ? school.platformStatus
+      : RECORD_VALUES.statuses.PENDING;
+    const registrationPending = platformStatus === RECORD_VALUES.statuses.PENDING;
+
+    const schoolLevels = Array.isArray(school.schoolLevels) && school.schoolLevels.length
+      ? school.schoolLevels
+      : (school.schoolType === 'k12' ? GRADE_CATALOG.map(level => level.key) : [school.schoolType || 'jhs']);
+    const divisions = Object.fromEntries(schoolLevels.map(level => [
+      level,
+      normalizeDivisionRecord(level, school.divisions?.[level], school)
+    ]));
 
     return {
       ...school,
+      schoolYear: school.schoolYear || null,
+      schoolYearStartDate: school.schoolYearStartDate || null,
+      schoolYearEndDate: school.schoolYearEndDate || null,
+      gradesPageEnabled: registrationPending ? false : school.gradesPageEnabled === true,
+      narrativeReportsEnabled: registrationPending ? false : school.narrativeReportsEnabled === true,
+      journalsEnabled: registrationPending ? false : school.journalsEnabled === true,
+      journalSubjectId: school.journalSubjectId || null,
+      schoolLevels,
+      divisions,
+      academicPeriodAudit: Array.isArray(school.academicPeriodAudit)
+        ? school.academicPeriodAudit.map(entry => ({ ...entry }))
+        : [],
       email: school.email ? String(school.email).trim().toLowerCase() : null,
       notificationEmail: school.notificationEmail
         ? String(school.notificationEmail).trim().toLowerCase()
         : null,
-      platformStatus: validStatuses.includes(school.platformStatus)
-        ? school.platformStatus
-        : RECORD_VALUES.statuses.PENDING,
+      platformStatus,
       submittedAt: school.submittedAt || null,
       approvedAt: school.approvedAt || null,
       rejectedAt: school.rejectedAt || null,
@@ -522,6 +682,486 @@ function applyCurrentDateToGradingBanners() {
 
   function getActiveSchoolId() {
     return getActiveSchool()?.id || null;
+  }
+
+  function getAcademicPeriods(schoolId = getActiveSchoolId(), schoolLevel) {
+    const school = getSchools().find(record => record.id === schoolId);
+    const level = schoolLevel || school?.activeDivision || school?.schoolLevels?.[0];
+    return clone(school?.divisions?.[level]?.academicPeriods || []);
+  }
+
+  function getCurrentAcademicPeriod(schoolId = getActiveSchoolId(), schoolLevel) {
+    const school = getSchools().find(record => record.id === schoolId);
+    const level = schoolLevel || school?.activeDivision || school?.schoolLevels?.[0];
+    const division = school?.divisions?.[level];
+    return clone(division?.academicPeriods?.find(period => period.id === division.activeAcademicPeriodId) || null);
+  }
+
+  // Replace with GET /api/schools/:schoolId/academic-terms/:schoolLevel.
+  async function getAcademicTermConfig(schoolId, schoolLevel) {
+    const school = getSchools().find(record => record.id === schoolId);
+    const division = school?.divisions?.[schoolLevel];
+    if (!school || !division) return null;
+    return clone({
+      schoolId,
+      schoolLevel,
+      schoolYear: school.schoolYear,
+      schoolYearStartDate: school.schoolYearStartDate,
+      schoolYearEndDate: school.schoolYearEndDate,
+      gradingPeriodType: division.gradingPeriodType,
+      activeAcademicPeriodId: division.activeAcademicPeriodId,
+      academicPeriods: division.academicPeriods
+    });
+  }
+
+  function isValidDateValue(value) {
+    const dateValue = String(value || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return false;
+    const date = new Date(`${dateValue}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === dateValue;
+  }
+
+  function validateAcademicTermConfig(values = {}) {
+    const errors = [];
+    const definition = ACADEMIC_PERIOD_TYPES[values.gradingPeriodType];
+    const periods = Array.isArray(values.academicPeriods) ? values.academicPeriods : [];
+    const schoolYearStartDate = values.schoolYearStartDate || null;
+    const schoolYearEndDate = values.schoolYearEndDate || null;
+
+    const schoolYear = String(values.schoolYear || '').trim();
+    const schoolYearMatch = schoolYear.match(/^(\d{4})-(\d{4})$/);
+    if (!schoolYear) errors.push('Enter the school year.');
+    else if (!schoolYearMatch || Number(schoolYearMatch[2]) !== Number(schoolYearMatch[1]) + 1) {
+      errors.push('Use a consecutive school year such as 2026-2027.');
+    }
+    if (!schoolYearStartDate || !schoolYearEndDate) errors.push('Enter the school-year start and end dates.');
+    else if (!isValidDateValue(schoolYearStartDate) || !isValidDateValue(schoolYearEndDate)) errors.push('Enter valid school-year dates.');
+    else if (schoolYearEndDate <= schoolYearStartDate) errors.push('The school-year end date must be after its start date.');
+    if (!definition) errors.push('Select a valid grading-period structure.');
+    if (definition && periods.length !== definition.periodNames.length) {
+      errors.push(`${definition.label} requires ${definition.periodNames.length} grading periods.`);
+    }
+
+    periods.forEach((period, index) => {
+      const name = String(period.name || '').trim() || `Period ${index + 1}`;
+      const start = period.plannedStartDate;
+      const end = period.plannedEndDate;
+      if (!start || !end) errors.push(`Enter both dates for ${name}.`);
+      else if (!isValidDateValue(start) || !isValidDateValue(end)) errors.push(`Enter valid dates for ${name}.`);
+      else {
+        if (end <= start) errors.push(`${name} must end after it starts.`);
+        if (schoolYearStartDate && start < schoolYearStartDate) errors.push(`${name} starts before the school year.`);
+        if (schoolYearEndDate && end > schoolYearEndDate) errors.push(`${name} ends after the school year.`);
+      }
+      const previousEnd = periods[index - 1]?.plannedEndDate;
+      if (isValidDateValue(start) && isValidDateValue(previousEnd) && start <= previousEnd) errors.push(`${name} overlaps the previous grading period.`);
+    });
+
+    return [...new Set(errors)];
+  }
+
+  // Replace with PUT /api/schools/:schoolId/academic-terms/:schoolLevel.
+  async function saveAcademicTermConfig(schoolId, values = {}) {
+    const schools = getSchools();
+    const schoolIndex = schools.findIndex(record => record.id === schoolId);
+    if (schoolIndex < 0) throw new Error('School not found.');
+
+    const school = schools[schoolIndex];
+    const level = values.schoolLevel;
+    const division = school.divisions?.[level];
+    if (!division) throw new Error('School level not found.');
+
+    const errors = validateAcademicTermConfig(values);
+    if (errors.length) throw new Error(errors[0]);
+
+    const divisionHasStarted = division.academicPeriods.some(period => period.status !== ACADEMIC_PERIOD_STATUSES.UPCOMING);
+    const schoolYearHasStarted = Object.values(school.divisions || {}).some(item =>
+      item.academicPeriods?.some(period => period.status !== ACADEMIC_PERIOD_STATUSES.UPCOMING)
+    );
+    if (schoolYearHasStarted && (
+      String(values.schoolYear).trim() !== school.schoolYear
+      || values.schoolYearStartDate !== school.schoolYearStartDate
+      || values.schoolYearEndDate !== school.schoolYearEndDate
+    )) {
+      throw new Error('The school year cannot change after a grading period has started in any school level.');
+    }
+    if (divisionHasStarted && values.gradingPeriodType !== division.gradingPeriodType) {
+      throw new Error('This school level\'s period structure cannot change after a grading period has started.');
+    }
+
+    const definition = getPeriodType(values.gradingPeriodType);
+    const sameStructure = values.gradingPeriodType === division.gradingPeriodType;
+    const idContext = `${schoolId}-${level}-${String(values.schoolYear).replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+    const periods = definition.periodNames.map((defaultName, index) => {
+      const submitted = values.academicPeriods[index] || {};
+      const existing = sameStructure ? division.academicPeriods.find(period => period.sequence === index + 1) : null;
+      const isLocked = existing && existing.status !== ACADEMIC_PERIOD_STATUSES.UPCOMING;
+      return {
+        id: existing?.id || `${idContext}-${definition.idPrefix}${index + 1}`,
+        name: isLocked ? existing.name : String(submitted.name || defaultName).trim(),
+        sequence: index + 1,
+        status: existing?.status || ACADEMIC_PERIOD_STATUSES.UPCOMING,
+        plannedStartDate: isLocked ? existing.plannedStartDate : submitted.plannedStartDate,
+        plannedEndDate: isLocked ? existing.plannedEndDate : submitted.plannedEndDate,
+        startedAt: existing?.startedAt || null,
+        closedAt: existing?.closedAt || null
+      };
+    });
+
+    school.schoolYear = String(values.schoolYear).trim();
+    school.schoolYearStartDate = values.schoolYearStartDate;
+    school.schoolYearEndDate = values.schoolYearEndDate;
+    division.gradingPeriodType = values.gradingPeriodType;
+    division.academicPeriods = periods;
+    division.activeAcademicPeriodId = periods.find(period => period.status === ACADEMIC_PERIOD_STATUSES.ACTIVE)?.id || null;
+    saveSchools(schools);
+    return getAcademicTermConfig(schoolId, level);
+  }
+
+  function addAcademicPeriodAudit(school, schoolLevel, period, action, details = {}) {
+    school.academicPeriodAudit ||= [];
+    school.academicPeriodAudit.push({
+      id: `academic-period-audit-${Date.now()}`,
+      schoolId: school.id,
+      schoolLevel,
+      academicPeriodId: period.id,
+      action,
+      ...details,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  // Replace with POST /api/schools/:schoolId/academic-periods/:periodId/start.
+  async function startAcademicPeriod(schoolId, schoolLevel, periodId) {
+    const schools = getSchools();
+    const school = schools.find(record => record.id === schoolId);
+    const division = school?.divisions?.[schoolLevel];
+    if (!school || !division) throw new Error('Academic-term configuration not found.');
+    if (school.platformStatus !== RECORD_VALUES.statuses.ACTIVE) {
+      throw new Error('The school registration must be approved before a grading period can start.');
+    }
+    if (division.activeAcademicPeriodId) throw new Error('Close the active grading period before starting another one.');
+
+    const periods = division.academicPeriods;
+    const period = periods.find(item => item.id === periodId);
+    const firstUpcoming = periods.find(item => item.status === ACADEMIC_PERIOD_STATUSES.UPCOMING);
+    if (!period || period.status !== ACADEMIC_PERIOD_STATUSES.UPCOMING) throw new Error('This grading period cannot be started.');
+    if (firstUpcoming?.id !== period.id) throw new Error('Grading periods must be started in order.');
+    if (!period.plannedStartDate || !period.plannedEndDate) throw new Error('Complete the grading-period schedule before starting it.');
+
+    period.status = ACADEMIC_PERIOD_STATUSES.ACTIVE;
+    period.startedAt = new Date().toISOString();
+    division.activeAcademicPeriodId = period.id;
+    addAcademicPeriodAudit(school, schoolLevel, period, 'started');
+    saveSchools(schools);
+    return getAcademicTermConfig(schoolId, schoolLevel);
+  }
+
+  // Replace with GET /api/schools/:schoolId/academic-periods/:periodId/close-readiness.
+  async function getAcademicPeriodCloseReadiness(schoolId, schoolLevel, periodId) {
+    const school = getSchools().find(record => record.id === schoolId);
+    const division = school?.divisions?.[schoolLevel];
+    const period = division?.academicPeriods?.find(item => item.id === periodId);
+    if (!period) throw new Error('Academic period not found.');
+
+    const sectionIds = new Set((division.sections || []).map(section => section.id));
+
+    const reopenRequests = getReopenRequests({ schoolId, academicPeriodId: periodId })
+      .filter(request => sectionIds.has(request.sectionId)
+        && request.status === REOPEN_REQUEST_STATUSES.PENDING);
+    const grades = readJson(schoolStorageKey(STORAGE_KEYS.grades, schoolId), GRADE_DIRECTORY)
+      .filter(record => record.schoolId === schoolId
+        && sectionIds.has(record.sectionId)
+        && record.academicPeriodId === periodId
+        && record.score == null);
+
+    return {
+      academicPeriodId: periodId,
+      canClose: reopenRequests.length === 0,
+      blockingIssues: reopenRequests.length ? [`${reopenRequests.length} reopen request${reopenRequests.length === 1 ? '' : 's'} must be resolved.`] : [],
+      warnings: grades.length ? [`${grades.length} grade record${grades.length === 1 ? '' : 's'} still have no final score.`] : []
+    };
+  }
+
+  // Replace with POST /api/schools/:schoolId/academic-periods/:periodId/close.
+  async function closeAcademicPeriod(schoolId, schoolLevel, periodId) {
+    const readiness = await getAcademicPeriodCloseReadiness(schoolId, schoolLevel, periodId);
+    if (!readiness.canClose) throw new Error(readiness.blockingIssues[0]);
+
+    const schools = getSchools();
+    const school = schools.find(record => record.id === schoolId);
+    const division = school?.divisions?.[schoolLevel];
+    const period = division?.academicPeriods?.find(item => item.id === periodId);
+    if (!period || period.status !== ACADEMIC_PERIOD_STATUSES.ACTIVE) throw new Error('Only the active grading period can be closed.');
+
+    period.status = ACADEMIC_PERIOD_STATUSES.CLOSED;
+    period.closedAt = new Date().toISOString();
+    division.activeAcademicPeriodId = null;
+    addAcademicPeriodAudit(school, schoolLevel, period, 'closed');
+    saveSchools(schools);
+    return getAcademicTermConfig(schoolId, schoolLevel);
+  }
+
+  // Replace with PATCH /api/schools/:schoolId/academic-periods/:periodId/end-date.
+  async function extendAcademicPeriod(schoolId, schoolLevel, periodId, values = {}) {
+    const schools = getSchools();
+    const school = schools.find(record => record.id === schoolId);
+    const division = school?.divisions?.[schoolLevel];
+    const period = division?.academicPeriods?.find(item => item.id === periodId);
+    if (!period || period.status !== ACADEMIC_PERIOD_STATUSES.ACTIVE) throw new Error('Only the active grading period can be extended.');
+
+    const newEndDate = values.plannedEndDate;
+    const reason = String(values.reason || '').trim();
+    const nextPeriod = division.academicPeriods.find(item => item.sequence === period.sequence + 1);
+    if (!isValidDateValue(newEndDate)) throw new Error('Choose a valid new end date.');
+    if (newEndDate <= period.plannedEndDate) throw new Error('Choose an end date after the current end date.');
+    if (school.schoolYearEndDate && newEndDate > school.schoolYearEndDate) throw new Error('The new end date must remain inside the school year.');
+    if (nextPeriod?.plannedStartDate && newEndDate >= nextPeriod.plannedStartDate) throw new Error('The extension overlaps the next grading period. Adjust its dates first.');
+    if (!reason) throw new Error('Enter a reason for the extension.');
+
+    const previousEndDate = period.plannedEndDate;
+    period.plannedEndDate = newEndDate;
+    addAcademicPeriodAudit(school, schoolLevel, period, 'extended', { previousEndDate, newEndDate, reason });
+    saveSchools(schools);
+    return getAcademicTermConfig(schoolId, schoolLevel);
+  }
+
+  function getAcademicPeriodReminder(period, date = new Date()) {
+    if (!period?.plannedEndDate || period.status !== ACADEMIC_PERIOD_STATUSES.ACTIVE) return null;
+    const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const end = new Date(`${period.plannedEndDate}T00:00:00`);
+    const daysRemaining = Math.ceil((end - today) / 86400000);
+    if (daysRemaining < 0) return { tone: 'danger', label: 'Review overdue', daysRemaining };
+    if (daysRemaining === 0) return { tone: 'warning', label: 'Ends today', daysRemaining };
+    if (daysRemaining <= 7) return { tone: 'warning', label: `Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`, daysRemaining };
+    return null;
+  }
+
+  function normalizeReopenRequest(record = {}) {
+    const requestedAt = record.requestedAt || record.createdAt || null;
+    const status = record.status === 'denied' ? REOPEN_REQUEST_STATUSES.REJECTED : record.status;
+    return {
+      id: String(record.id || ''),
+      schoolId: String(record.schoolId || ''),
+      teacherId: String(record.teacherId || ''),
+      sectionId: String(record.sectionId || ''),
+      subjectId: String(record.subjectId || ''),
+      academicPeriodId: String(record.academicPeriodId || record.quarter || '').toLowerCase(),
+      reason: String(record.reason || '').trim(),
+      status: Object.values(REOPEN_REQUEST_STATUSES).includes(status)
+        ? status
+        : REOPEN_REQUEST_STATUSES.PENDING,
+      adminNote: String(record.adminNote || '').trim() || null,
+      requestedAt,
+      reviewedAt: record.reviewedAt || null,
+      reviewedBy: record.reviewedBy || null,
+      expiresAt: record.expiresAt || null,
+      extendedAt: record.extendedAt || null,
+      extendedBy: record.extendedBy || null,
+      extensionReason: String(record.extensionReason || '').trim() || null,
+      previousExpiresAt: record.previousExpiresAt || null,
+      revokedAt: record.revokedAt || null,
+      revokedBy: record.revokedBy || null,
+      revokeReason: String(record.revokeReason || '').trim() || null
+    };
+  }
+
+  function reopenRequestStorageKey(schoolId) {
+    return `edugnay_reopen_requests:${schoolId}`;
+  }
+
+  function getReopenRequests(filters = {}) {
+    const schoolId = String(filters.schoolId || getActiveSchoolId());
+    return readJson(reopenRequestStorageKey(schoolId), [])
+      .map(normalizeReopenRequest)
+      .filter(request => request.schoolId === schoolId)
+      .filter(request => !filters.teacherId || request.teacherId === String(filters.teacherId))
+      .filter(request => !filters.sectionId || request.sectionId === String(filters.sectionId))
+      .filter(request => !filters.subjectId || request.subjectId === String(filters.subjectId))
+      .filter(request => !filters.academicPeriodId || request.academicPeriodId === String(filters.academicPeriodId))
+      .filter(request => !filters.status || request.status === filters.status);
+  }
+
+  function saveReopenRequests(schoolId, requests) {
+    writeJson(reopenRequestStorageKey(schoolId), requests.map(normalizeReopenRequest));
+  }
+
+  function getReopenRequestState(request, now = Date.now()) {
+    if (request?.status === REOPEN_REQUEST_STATUSES.APPROVED) {
+      const expiresAt = new Date(request.expiresAt || '').getTime();
+      return Number.isFinite(expiresAt) && now < expiresAt
+        ? REOPEN_REQUEST_STATUSES.APPROVED
+        : 'expired';
+    }
+    return request?.status || null;
+  }
+
+  function isReopenRequestActive(request, now = Date.now()) {
+    return getReopenRequestState(request, now) === REOPEN_REQUEST_STATUSES.APPROVED;
+  }
+
+  function getReopenRequestContext(request) {
+    const school = getSchools().find(record => record.id === request.schoolId);
+    const section = school && getAssignmentSections(school).find(record => record.id === request.sectionId);
+    const period = section && school.divisions?.[section.level]?.academicPeriods
+      ?.find(record => record.id === request.academicPeriodId);
+    return { school, section, period };
+  }
+
+  function isSchoolAdministrator(userId, schoolId) {
+    const user = getUserById(userId);
+    return user?.schoolId === schoolId && user.role === RECORD_VALUES.roles.SCHOOL_ADMIN;
+  }
+
+  // Replace with POST /api/reopen-requests. The backend must derive the
+  // teacher from the authenticated session instead of trusting teacherId.
+  async function createReopenRequest(values = {}) {
+    const request = normalizeReopenRequest({
+      id: `reopen-request-${Date.now()}`,
+      schoolId: values.schoolId || getActiveSchoolId(),
+      teacherId: values.teacherId,
+      sectionId: values.sectionId,
+      subjectId: values.subjectId,
+      academicPeriodId: values.academicPeriodId,
+      reason: values.reason,
+      status: REOPEN_REQUEST_STATUSES.PENDING,
+      requestedAt: new Date().toISOString()
+    });
+
+    if (!request.schoolId || !request.teacherId || !request.sectionId || !request.subjectId || !request.academicPeriodId) {
+      throw new Error('The teacher, section, subject, and grading period are required.');
+    }
+    if (!request.reason) throw new Error('Enter a reason for reopening the grading period.');
+
+    const { school, section, period } = getReopenRequestContext(request);
+    if (!school || !section || !period) throw new Error('The selected grading period could not be found.');
+    if (period.status !== ACADEMIC_PERIOD_STATUSES.CLOSED) {
+      throw new Error('Only a closed grading period can be reopened.');
+    }
+
+    const teacher = getUserById(request.teacherId);
+    const assignedToSubject = ASSIGNMENT_DIRECTORY.some(record =>
+      record.schoolId === request.schoolId
+      && record.teacherId === request.teacherId
+      && record.sectionId === request.sectionId
+      && record.subjectId === request.subjectId
+    );
+    if (!teacher || teacher.schoolId !== request.schoolId || teacher.role !== RECORD_VALUES.roles.TEACHER || !assignedToSubject) {
+      throw new Error('Only the assigned teacher can request access for this section and subject.');
+    }
+
+    const requests = getReopenRequests({ schoolId: request.schoolId });
+    const duplicate = requests.find(record =>
+      record.teacherId === request.teacherId
+      && record.sectionId === request.sectionId
+      && record.subjectId === request.subjectId
+      && record.academicPeriodId === request.academicPeriodId
+      && (record.status === REOPEN_REQUEST_STATUSES.PENDING || isReopenRequestActive(record))
+    );
+    if (duplicate) throw new Error('A pending or active reopen request already exists for this grading period.');
+
+    requests.push(request);
+    saveReopenRequests(request.schoolId, requests);
+    return request;
+  }
+
+  // Replace with POST /api/reopen-requests/:id/approve.
+  async function approveReopenRequest(requestId, values = {}) {
+    const schoolId = String(values.schoolId || getActiveSchoolId());
+    const requests = getReopenRequests({ schoolId });
+    const request = requests.find(record => record.id === String(requestId));
+    if (!request || request.status !== REOPEN_REQUEST_STATUSES.PENDING) {
+      throw new Error('This request is no longer awaiting approval.');
+    }
+
+    const expiresAt = new Date(values.expiresAt || '').getTime();
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      throw new Error('Choose an expiration date and time later than now.');
+    }
+    const { period } = getReopenRequestContext(request);
+    if (!period || period.status !== ACADEMIC_PERIOD_STATUSES.CLOSED) {
+      throw new Error('Only a closed grading period can be reopened.');
+    }
+    if (!isSchoolAdministrator(values.reviewedBy, schoolId)) {
+      throw new Error('Only a school administrator from this school can approve the request.');
+    }
+
+    request.status = REOPEN_REQUEST_STATUSES.APPROVED;
+    request.adminNote = String(values.adminNote || '').trim() || null;
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = String(values.reviewedBy);
+    request.expiresAt = new Date(expiresAt).toISOString();
+    saveReopenRequests(schoolId, requests);
+    return request;
+  }
+
+  // Replace with POST /api/reopen-requests/:id/reject.
+  async function rejectReopenRequest(requestId, values = {}) {
+    const schoolId = String(values.schoolId || getActiveSchoolId());
+    const requests = getReopenRequests({ schoolId });
+    const request = requests.find(record => record.id === String(requestId));
+    if (!request || request.status !== REOPEN_REQUEST_STATUSES.PENDING) {
+      throw new Error('This request is no longer awaiting review.');
+    }
+    if (!isSchoolAdministrator(values.reviewedBy, schoolId)) {
+      throw new Error('Only a school administrator from this school can reject the request.');
+    }
+
+    request.status = REOPEN_REQUEST_STATUSES.REJECTED;
+    request.adminNote = String(values.adminNote || '').trim() || null;
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = String(values.reviewedBy);
+    request.expiresAt = null;
+    saveReopenRequests(schoolId, requests);
+    return request;
+  }
+
+  // Replace with PATCH /api/reopen-requests/:id/expiration.
+  async function extendReopenRequest(requestId, values = {}) {
+    const schoolId = String(values.schoolId || getActiveSchoolId());
+    const requests = getReopenRequests({ schoolId });
+    const request = requests.find(record => record.id === String(requestId));
+    if (!request || !isReopenRequestActive(request)) throw new Error('Only active reopen access can be extended.');
+
+    const expiresAt = new Date(values.expiresAt || '').getTime();
+    const currentExpiration = new Date(request.expiresAt).getTime();
+    const reason = String(values.reason || '').trim();
+    if (!Number.isFinite(expiresAt) || expiresAt <= currentExpiration) {
+      throw new Error('Choose a deadline later than the current expiration.');
+    }
+    if (!reason) throw new Error('Enter a reason for extending access.');
+    if (!isSchoolAdministrator(values.extendedBy, schoolId)) {
+      throw new Error('Only a school administrator from this school can extend access.');
+    }
+
+    request.previousExpiresAt = request.expiresAt;
+    request.expiresAt = new Date(expiresAt).toISOString();
+    request.extendedAt = new Date().toISOString();
+    request.extendedBy = String(values.extendedBy);
+    request.extensionReason = reason;
+    saveReopenRequests(schoolId, requests);
+    return request;
+  }
+
+  // Replace with POST /api/reopen-requests/:id/revoke.
+  async function revokeReopenRequest(requestId, values = {}) {
+    const schoolId = String(values.schoolId || getActiveSchoolId());
+    const requests = getReopenRequests({ schoolId });
+    const request = requests.find(record => record.id === String(requestId));
+    if (!request || !isReopenRequestActive(request)) throw new Error('Only active reopen access can be revoked.');
+
+    const reason = String(values.revokeReason || '').trim();
+    if (!reason) throw new Error('Enter a reason for revoking access.');
+    if (!isSchoolAdministrator(values.revokedBy, schoolId)) {
+      throw new Error('Only a school administrator from this school can revoke access.');
+    }
+
+    request.status = REOPEN_REQUEST_STATUSES.REVOKED;
+    request.revokedAt = new Date().toISOString();
+    request.revokedBy = String(values.revokedBy);
+    request.revokeReason = reason;
+    saveReopenRequests(schoolId, requests);
+    return request;
   }
 
   function scopeToActiveSchool(records, schoolId = getActiveSchoolId()) {
@@ -643,6 +1283,187 @@ function applyCurrentDateToGradingBanners() {
     });
     if (!savedSchool) return null;
     return getAssignmentSections(savedSchool).find(section => section.id === updatedSection.id) || null;
+  }
+
+  // Replace with GET /api/teacher/sections. The backend must derive the
+  // teacher from the authenticated session and apply the same access rules.
+  async function getMyTeachingSections() {
+    const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
+    if (!teacherId) return [];
+
+    const sectionIds = new Set(
+      ASSIGNMENT_DIRECTORY
+        .filter(record => record.schoolId === getActiveSchoolId() && record.teacherId === teacherId)
+        .map(record => record.sectionId)
+    );
+
+    return getAssignmentSections().filter(section => {
+      const isAdviser = section.adviserId === teacherId;
+      const isSubjectTeacher = (section.teacherAssignments || [])
+        .some(record => record.teacherId === teacherId);
+      return isAdviser || isSubjectTeacher || sectionIds.has(section.id);
+    });
+  }
+
+  function getStoredSfTemplates() {
+    const schoolId = getActiveSchoolId();
+    const records = readJson(schoolStorageKey(STORAGE_KEYS.sfTemplates, schoolId), []);
+    return Array.isArray(records)
+      ? records
+        .filter(record => record.schoolId === schoolId)
+        .map(record => ({
+          ...record,
+          mappingStatus: record.mappingStatus || 'unmapped',
+          workbookSummary: record.workbookSummary || null,
+          sheets: Array.isArray(record.sheets) ? record.sheets : [],
+          validationIssues: Array.isArray(record.validationIssues) ? record.validationIssues : []
+        }))
+      : [];
+  }
+
+  // Replace with GET /api/teacher/sf-templates.
+  async function getSfTemplates() {
+    return getStoredSfTemplates().map(record => ({ ...record }));
+  }
+
+  // Replace with POST /api/teacher/sf-templates/imports/validate.
+  async function validateSfTemplate(file, values = {}) {
+    if (!window.EDUGNAY_SF_WORKBOOK) {
+      return {
+        valid: false,
+        fileHash: null,
+        issues: [{
+          code: 'workbook_service_unavailable',
+          severity: 'error',
+          sheetName: null,
+          cellAddress: null,
+          field: 'file',
+          message: 'Workbook validation is unavailable.'
+        }]
+      };
+    }
+
+    const result = await window.EDUGNAY_SF_WORKBOOK.inspectTemplateFile(file, values);
+    const duplicate = result.fileHash && getStoredSfTemplates()
+      .some(record => record.fileHash === result.fileHash);
+    if (duplicate) {
+      result.issues.push({
+        code: 'duplicate_template_file',
+        severity: 'error',
+        sheetName: null,
+        cellAddress: null,
+        field: 'file',
+        message: 'This workbook has already been imported.'
+      });
+      result.valid = false;
+    }
+    return result;
+  }
+
+  // Replace with POST /api/teacher/sf-templates. IDs, ownership, status, and
+  // timestamps are created here only while the feature remains frontend-only.
+  async function importSfTemplate(file, values = {}) {
+    const validation = await validateSfTemplate(file, values);
+    if (!validation.valid) throw new Error(validation.issues[0]?.message || 'The workbook is invalid.');
+
+    const formCode = String(values.formCode || '').trim().toUpperCase();
+    const formName = String(values.formName || '').trim();
+    const schoolLevel = String(values.schoolLevel || '').trim();
+    const version = String(values.version || '').trim();
+    if (!/^SF(10|[1-9])$/.test(formCode) || !formName || !['elementary', 'jhs', 'shs'].includes(schoolLevel) || !version) {
+      throw new Error('Complete all template details before importing.');
+    }
+
+    const records = getStoredSfTemplates();
+    const versionExists = records.some(record => (
+      record.formCode === formCode &&
+      record.schoolLevel === schoolLevel &&
+      String(record.version || '').toLowerCase() === version.toLowerCase()
+    ));
+    if (versionExists) throw new Error('That form, school level, and version already exists.');
+
+    const schoolId = getActiveSchoolId();
+    const id = `sf-template-${Date.now()}`;
+    const storageKey = `${schoolId}:${id}`;
+    await window.EDUGNAY_SF_WORKBOOK.saveTemplateFile(storageKey, file);
+
+    const record = {
+      id,
+      schoolId,
+      formCode,
+      formName,
+      schoolLevel,
+      version,
+      originalFileName: file.name,
+      fileHash: validation.fileHash,
+      storageKey,
+      status: validation.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : RECORD_VALUES.statuses.DRAFT,
+      mappingStatus: validation.mappingStatus,
+      workbookSummary: validation.workbookSummary,
+      sheets: validation.sheets,
+      validationIssues: validation.issues,
+      uploadedBy: window.EDUGNAY_TEACHER_ACCESS?.teacherId || null,
+      uploadedAt: new Date().toISOString()
+    };
+    records.push(record);
+    writeJson(schoolStorageKey(STORAGE_KEYS.sfTemplates, schoolId), records);
+    return { ...record };
+  }
+
+  // Replace with GET /api/teacher/sf-templates/:templateId/preview.
+  async function getSfTemplatePreview(templateId, sheetName = '') {
+    const template = getStoredSfTemplates().find(record => record.id === String(templateId));
+    if (!template) throw new Error('The selected template could not be found.');
+    const preview = await window.EDUGNAY_SF_WORKBOOK.getStoredTemplatePreview(template.storageKey, sheetName);
+    return {
+      template: { ...template },
+      preview
+    };
+  }
+
+  // Replace with POST /api/teacher/sf-forms/preview. The backend must repeat
+  // the section permission check before returning school or learner records.
+  async function generateSfForm(values = {}) {
+    const template = getStoredSfTemplates().find(record => record.id === String(values.templateId));
+    if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
+      throw new Error('Select an active template with a verified mapping.');
+    }
+
+    const section = (await getMyTeachingSections()).find(record => record.id === String(values.sectionId));
+    if (!section) throw new Error('You do not have access to the selected class.');
+
+    const schoolYear = String(values.schoolYear || '').trim();
+    const academicPeriodId = String(values.academicPeriodId || '').trim();
+    if (!schoolYear || !academicPeriodId) throw new Error('Select a school year and academic period.');
+
+    const school = getActiveSchool();
+    const teacher = getUserById(window.EDUGNAY_TEACHER_ACCESS?.teacherId);
+    if (!school || !teacher) throw new Error('The school or teacher account could not be found.');
+    const students = getStudents().filter(student => student.schoolId === school.id && student.sectionId === section.id);
+    const context = {
+      school,
+      section,
+      teacher,
+      schoolYear,
+      academicPeriodId,
+      students,
+      attendance: getAttendanceRecords({ sectionId: section.id }),
+      grades: students.flatMap(student => getGradesForStudent(student.id, schoolYear))
+        .filter(grade => grade.academicPeriodId === academicPeriodId)
+    };
+
+    const generated = await window.EDUGNAY_SF_WORKBOOK.generateWorkbook(template.storageKey, template, context);
+    const fileName = `${template.formCode}_${section.grade}-${section.name}_${schoolYear}.xlsx`
+      .replace(/[<>:"/\\|?*]+/g, '-')
+      .replace(/\s+/g, '-');
+    return {
+      templateId: template.id,
+      sectionId: section.id,
+      schoolYear,
+      academicPeriodId,
+      fileName,
+      ...generated
+    };
   }
 
   function assignmentWithLabels(record, studentId = null) {
@@ -1008,22 +1829,21 @@ function applyCurrentDateToGradingBanners() {
     const student = getUserById(studentId);
     if (!student || student.role !== RECORD_VALUES.roles.STUDENT) return [];
 
-    const periodLabels = PERIOD_CATALOG[student.schoolLevel] || PERIOD_CATALOG.jhs;
-    const periods = periodLabels.map((label, index) => ({
-      id: student.schoolLevel === 'shs' ? `semester-${index + 1}` : `q${index + 1}`,
-      label,
-      status: 'not-started',
+    const configuredPeriods = getAcademicPeriods(student.schoolId || getActiveSchoolId(), student.schoolLevel);
+    const periods = configuredPeriods.map(period => ({
+      id: period.id,
+      label: period.name,
+      status: period.status === ACADEMIC_PERIOD_STATUSES.CLOSED ? 'final' : period.status,
       subjects: []
     }));
 
     GRADE_DIRECTORY
-      .filter(record => record.schoolId === getActiveSchoolId())
+      .filter(record => record.schoolId === student.schoolId)
       .filter(record => record.studentId === student.id)
       .filter(record => !schoolYear || record.schoolYear === schoolYear)
       .forEach(record => {
         const period = periods.find(item => item.id === record.academicPeriodId);
         if (!period) return;
-        period.label = record.academicPeriodLabel || period.label;
         period.status = record.academicPeriodStatus || 'final';
         period.subjects.push(gradeWithLabels(record));
       });
@@ -1953,7 +2773,7 @@ function applyCurrentDateToGradingBanners() {
       id: 'admin-todo-001',
       schoolId: 'scc',
       userId: 'admin-1',
-      title: 'Review pending quarter reopen requests',
+      title: 'Review pending grading-period reopen requests',
       dueDate: '2026-09-08',
       status: 'pending',
       createdAt: '2026-09-07T08:30:00+08:00',
@@ -2628,7 +3448,28 @@ function applyCurrentDateToGradingBanners() {
     deleteUser,
     saveUsers,
     setParentStudentLinks,
-    periods: PERIOD_CATALOG,
+    academicPeriodTypes: ACADEMIC_PERIOD_TYPES,
+    academicPeriodStatuses: ACADEMIC_PERIOD_STATUSES,
+    reopenRequestStatuses: REOPEN_REQUEST_STATUSES,
+    createAcademicPeriods,
+    getAcademicPeriods,
+    getCurrentAcademicPeriod,
+    getAcademicTermConfig,
+    validateAcademicTermConfig,
+    saveAcademicTermConfig,
+    startAcademicPeriod,
+    getAcademicPeriodCloseReadiness,
+    closeAcademicPeriod,
+    extendAcademicPeriod,
+    getAcademicPeriodReminder,
+    getReopenRequests,
+    getReopenRequestState,
+    isReopenRequestActive,
+    createReopenRequest,
+    approveReopenRequest,
+    rejectReopenRequest,
+    extendReopenRequest,
+    revokeReopenRequest,
     attendanceDefaults: makeAttendanceRules(),
     attendance: ATTENDANCE_DIRECTORY,
     getAttendanceRecords,
@@ -2652,6 +3493,12 @@ function applyCurrentDateToGradingBanners() {
     getAssignmentSections,
     getSections,
     updateSection,
+    getMyTeachingSections,
+    getSfTemplates,
+    validateSfTemplate,
+    importSfTemplate,
+    getSfTemplatePreview,
+    generateSfForm,
     assignments: ASSIGNMENT_DIRECTORY,
     getAssignments,
     getAssignmentsForSection,
@@ -3074,6 +3921,14 @@ function applyActiveSchoolToShell() {
   });
   document.querySelectorAll('[data-school-year]').forEach(element => {
     element.textContent = school.schoolYear;
+  });
+  document.querySelectorAll('[data-active-academic-period]').forEach(element => {
+    const schoolLevel = element.dataset.schoolLevel || school.activeDivision;
+    const activePeriod = config.getCurrentAcademicPeriod(school.id, schoolLevel);
+    const activePeriodLabel = activePeriod
+      ? `${activePeriod.name} · S.Y. ${school.schoolYear}`
+      : `No active grading period · S.Y. ${school.schoolYear}`;
+    element.textContent = activePeriodLabel;
   });
   document.querySelectorAll('.topbar-context-copy span, .admin-topbar-context-copy span').forEach(element => {
     element.textContent = `${typeLabel} · ${school.schoolYear}`;

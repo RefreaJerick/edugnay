@@ -171,7 +171,7 @@
         </div>
         <div class="topbar-context-copy">
           <span>Active term</span>
-          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          <strong data-active-academic-period>Loading academic period...</strong>
         </div>
       </div>
     </div>
@@ -296,7 +296,7 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">22</div><div class="ayc-stat-label">Teachers</div></div>
               </div>
               <div class="ayc-quarters">
-                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="ayc-quarters-title">Grading-period Pass Rates</div>
                 <div class="quarter-rows">
                   <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:93%;"></div></div><span class="quarter-pass">93%</span></div><span class="quarter-date">Jun – Aug 2024</span></div>
                   <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:91%;"></div></div><span class="quarter-pass">91%</span></div><span class="quarter-date">Sep – Nov 2024</span></div>
@@ -334,7 +334,7 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">20</div><div class="ayc-stat-label">Teachers</div></div>
               </div>
               <div class="ayc-quarters">
-                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="ayc-quarters-title">Grading-period Pass Rates</div>
                 <div class="quarter-rows">
                   <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:90%;"></div></div><span class="quarter-pass">90%</span></div><span class="quarter-date">Jun – Aug 2023</span></div>
                   <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div><span class="quarter-date">Sep – Nov 2023</span></div>
@@ -373,7 +373,7 @@
                 <div class="ayc-stat"><div class="ayc-stat-num">18</div><div class="ayc-stat-label">Teachers</div></div>
               </div>
               <div class="ayc-quarters">
-                <div class="ayc-quarters-title">Quarter Pass Rates</div>
+                <div class="ayc-quarters-title">Grading-period Pass Rates</div>
                 <div class="quarter-rows">
                   <div class="quarter-row"><span class="quarter-label">Quarter 1</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:88%;"></div></div><span class="quarter-pass">88%</span></div><span class="quarter-date">Jun – Aug 2022</span></div>
                   <div class="quarter-row"><span class="quarter-label">Quarter 2</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:85%;"></div></div><span class="quarter-pass">85%</span></div><span class="quarter-date">Sep – Nov 2022</span></div>
@@ -414,7 +414,7 @@
 
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">Summary</label>
-              <input class="form-input" type="text" value="284 students · 8 sections · 4 quarters" readonly/>
+              <input class="form-input" type="text" value="284 students · 8 sections · all grading periods" readonly/>
             </div>
 
             <div style="height:1px;background:var(--gray-100);"></div>
@@ -425,7 +425,7 @@
               <div class="checklist" id="archive-checklist">
                 <div class="check-item done">
                   <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
-                  <span class="check-text">All 4 quarters finalized</span>
+                  <span class="check-text">All grading periods finalized</span>
                 </div>
                 <div class="check-item done">
                   <div class="check-icon-wrap"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
@@ -469,7 +469,7 @@
       schoolId: 'scc',
       archivedOn: 'June 28, 2025', latest: true,
       passRate: '92%', attendance: '89%', teachers: 22, sections: 8, students: 271,
-      quarters: [
+      academicPeriods: [
         { label: 'Quarter 1', period: 'Jun – Aug 2024', passRate: 93 },
         { label: 'Quarter 2', period: 'Sep – Nov 2024', passRate: 91 },
         { label: 'Quarter 3', period: 'Jan – Mar 2025', passRate: 90 },
@@ -490,7 +490,7 @@
       schoolId: 'scc',
       archivedOn: 'July 5, 2024',
       passRate: '89%', attendance: '87%', teachers: 20, sections: 8, students: 258,
-      quarters: [
+      academicPeriods: [
         { label: 'Quarter 1', period: 'Jun – Aug 2023', passRate: 90 },
         { label: 'Quarter 2', period: 'Sep – Nov 2023', passRate: 88 },
         { label: 'Quarter 3', period: 'Jan – Mar 2024', passRate: 87 },
@@ -511,7 +511,7 @@
       schoolId: 'scc',
       archivedOn: 'June 30, 2023', oldest: true,
       passRate: '86%', attendance: '85%', teachers: 18, sections: 7, students: 214,
-      quarters: [
+      academicPeriods: [
         { label: 'Quarter 1', period: 'Jun – Aug 2022', passRate: 88 },
         { label: 'Quarter 2', period: 'Sep – Nov 2022', passRate: 85 },
         { label: 'Quarter 3', period: 'Jan – Mar 2023', passRate: 87 },
@@ -546,7 +546,7 @@
   }
 
   const ARCHIVE_CHECKLIST = [
-    'All 4 quarters finalized',
+    'All grading periods finalized',
     'All grades encoded',
     'All parents notified',
     'Attendance records complete'
@@ -558,11 +558,11 @@
     grid.innerHTML = buildArchiveSummaryCards(data).map(card => `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`).join('');
   }
 
-  function renderArchiveQuarterRows(data) {
-    const quarters = Array.isArray(data?.quarters) ? data.quarters : [];
-    return quarters.length
-      ? quarters.map(q => `<div class="quarter-row"><span class="quarter-label">${q.label}</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:${q.passRate}%;"></div></div><span class="quarter-pass">${q.passRate}%</span></div><span class="quarter-date">${q.period}</span></div>`).join('')
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No quarter results', text: 'Quarter pass rates will appear when archived records are available.' });
+  function renderArchivePeriodRows(data) {
+    const periods = Array.isArray(data?.academicPeriods) ? data.academicPeriods : [];
+    return periods.length
+      ? periods.map(period => `<div class="quarter-row"><span class="quarter-label">${period.label}</span><div class="quarter-bar-wrap"><div class="quarter-bar"><div class="quarter-fill" style="width:${period.passRate}%;"></div></div><span class="quarter-pass">${period.passRate}%</span></div><span class="quarter-date">${period.period}</span></div>`).join('')
+      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading-period results', text: 'Pass rates will appear when archived records are available.' });
   }
 
   function renderArchiveYears() {
@@ -572,7 +572,7 @@
     list.innerHTML = years.map(([year, data], index) => `
       <div class="archive-year-card ${index > 0 ? 'collapsed' : ''}" data-year="${year}">
         <div class="ayc-head" onclick="toggleCard(this)"><div class="ayc-icon"><i data-lucide="archive" style="width:18px;height:18px;"></i></div><div class="ayc-info"><div class="ayc-title">S.Y. ${year}</div><div class="ayc-meta">Archived on ${data.archivedOn} · By Sr. Admin</div></div><div class="ayc-right">${data.latest ? '<span class="badge badge-blue">Latest</span>' : ''}${data.oldest ? '<span class="badge badge-gray">Oldest</span>' : ''}<span class="badge badge-green"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Complete</span><div class="collapse-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></div></div></div>
-        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${data.students}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.sections}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.teachers}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Quarter Pass Rates</div><div class="quarter-rows">${renderArchiveQuarterRows(data)}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button><button class="footer-btn view" onclick="openViewModal('${year}')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
+        <div class="ayc-body"><div class="ayc-stats"><div class="ayc-stat"><div class="ayc-stat-num">${data.students}</div><div class="ayc-stat-label">Students</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.sections}</div><div class="ayc-stat-label">Sections</div></div><div class="ayc-stat"><div class="ayc-stat-num">${data.teachers}</div><div class="ayc-stat-label">Teachers</div></div></div><div class="ayc-quarters"><div class="ayc-quarters-title">Grading-period Pass Rates</div><div class="quarter-rows">${renderArchivePeriodRows(data)}</div></div><div class="ayc-footer"><div class="ayc-footer-info"><i data-lucide="lock" style="width:11px;height:11px;"></i> Read-only · No changes allowed</div><div class="ayc-footer-actions"><button class="footer-btn export"><i data-lucide="download" style="width:11px;height:11px;"></i> Export</button><button class="footer-btn view" onclick="openViewModal('${year}')"><i data-lucide="eye" style="width:11px;height:11px;"></i> View Data</button></div></div></div>
       </div>`).join('') + (years.length ? '' : window.EDUGNAY_CONFIG.renderPanelEmptyState({
         icon: 'archive',
         title: 'No archived school years',
@@ -625,12 +625,12 @@
         <td style="color:${s.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${s.passRate}%</td>
       </tr>`).join('') || `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No section records', text: 'There are no archived section records for this school year.' })}</td></tr>`;
 
-    document.getElementById('viewQuartersBody').innerHTML = (data.quarters || []).map(q => `
+    document.getElementById('viewQuartersBody').innerHTML = (data.academicPeriods || []).map(q => `
       <tr>
         <td>${q.label}</td>
         <td>${q.period}</td>
         <td style="color:${q.passRate >= 90 ? '#16a34a' : '#d97706'};font-weight:700;">${q.passRate}%</td>
-      </tr>`).join('') || `<tr class="panel-empty-row"><td colspan="3">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No quarter records', text: 'There are no archived grading periods for this school year.' })}</td></tr>`;
+      </tr>`).join('') || `<tr class="panel-empty-row"><td colspan="3">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading-period records', text: 'There are no archived grading periods for this school year.' })}</td></tr>`;
 
     openModal('viewModal');
     if (window.lucide) lucide.createIcons();

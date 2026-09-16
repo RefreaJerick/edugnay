@@ -490,7 +490,7 @@
           </div>
           <div class="admin-topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period>Loading academic period...</strong>
           </div>
         </div>
       </div>
@@ -578,7 +578,7 @@
               </div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value">2nd Quarter · S.Y. 2024–2025</div>
+                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
               </div>
             </div>
           </div>
@@ -692,7 +692,7 @@
         trendClass: 'trend-neu',
         trend: '— 0%',
         label: 'Faculty',
-        sub: 'Active teachers this quarter',
+        sub: 'Active teachers this grading period',
         records: window.EDUGNAY_CONFIG.getUsersByRole('teacher'),
       },
       {

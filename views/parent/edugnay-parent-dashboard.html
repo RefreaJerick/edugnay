@@ -120,7 +120,7 @@
           </div>
           <div class="topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -207,7 +207,7 @@
               </div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value">2nd Quarter · S.Y. 2025–2026</div>
+                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
               </div>
             </div>
           </div>
@@ -385,6 +385,11 @@
     function updateChildContext() {
       const child = getCurrentChild();
       const data = getCurrentDashboardRecord();
+      const dashboardPeriod = document.querySelector('[data-active-academic-period]');
+      if (dashboardPeriod && child?.schoolLevel) {
+        dashboardPeriod.dataset.schoolLevel = child.schoolLevel;
+        window.refreshEdUgnayShellContext?.();
+      }
       const hero = document.querySelector('.report-hero');
       const showEmptyReport = (title, text) => {
         if (!hero) return;

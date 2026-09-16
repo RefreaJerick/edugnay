@@ -338,7 +338,7 @@
         </div>
       </div>
       <div style="font-size:13px;color:var(--gray-600);line-height:1.7;">
-        <strong style="color:var(--gray-800);">38 students</strong> will have their Q2 final grades published.<br/>
+        <strong style="color:var(--gray-800);">38 students</strong> will have their <span id="publishPeriodName">current grading period</span> final grades published.<br/>
         Missing scores will be treated as <strong style="color:var(--red);">0</strong>.
       </div>
     </div>
@@ -405,8 +405,8 @@
       <div class="modal-heading">
         <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="unlock-keyhole"></i></div>
         <div class="modal-heading-copy">
-        <div class="modal-title">Request Quarter Reopen</div>
-        <div class="modal-sub" id="reopenModalSub">Ask the admin to unlock this quarter for your section.</div>
+        <div class="modal-title">Request Grading Period Reopen</div>
+        <div class="modal-sub" id="reopenModalSub">Ask the admin to unlock this grading period for your section.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal('reopenRequestModal')">
@@ -489,6 +489,10 @@
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Student Journals</span>
         </a>
+        <a class="nav-item" data-teacher-access="sfTemplates" onclick="navigate('sfTemplates')">
+          <div class="nav-icon"><i data-lucide="file-spreadsheet" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">SF Templates</span>
+        </a>
       </div>
 
       <div class="nav-section">
@@ -520,7 +524,7 @@
         </div>
         <div class="topbar-context-copy">
           <span>Active term</span>
-          <strong>2nd Quarter · S.Y. 2024–2025</strong>
+          <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
         </div>
       </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -620,7 +624,7 @@
             </div>
             <div class="section-meta-item">
               <i data-lucide="calendar" style="width:13px;height:13px;"></i>
-              Q2 · S.Y. 2025–2026
+              <span id="sectionPeriodName">Current period</span> · <span data-school-year>2025–2026</span>
             </div>
           </div>
         </div>
@@ -686,7 +690,7 @@
                 <th>Student</th>
                 <th>Email</th>
                 <th>Attendance Rate</th>
-                <th>Q2 Final Grade</th>
+                <th><span id="studentGradePeriodName">Current period</span> Final Grade</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -707,11 +711,11 @@
         <div class="publish-banner-left">
           <div class="publish-banner-icon"><i data-lucide="check-circle" style="width:18px;height:18px;color:var(--blue-mid);"></i></div>
           <div>
-            <div class="publish-info-title">Grades Published: Q2</div>
-            <div class="publish-info-sub">Published on June 10, 2025 · Visible to students and parents · You can still edit and re-publish</div>
+            <div class="publish-info-title">Grades Published: <span id="publishedPeriodName">Current period</span></div>
+            <div class="publish-info-sub" id="publishedPeriodStatus">Published on June 10, 2025 · Visible to students and parents · You can still edit and re-publish</div>
           </div>
         </div>
-        <button class="top-btn success" onclick="openModal('publishModal')">
+        <button class="top-btn success" id="republishGradesButton" onclick="openModal('publishModal')">
           <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Re-publish
         </button>
       </div>
@@ -720,7 +724,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Score Recording: Values Education</div>
-            <div class="panel-sub">Grade 7 – St. Matthew · Q2 · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
+            <div class="panel-sub">Grade 7 – St. Matthew · <span id="scorePanelPeriodName">Current period</span> · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
           </div>
           <div class="panel-head-actions">
             <button class="top-btn secondary" onclick="openModal('addCompModal')">
@@ -734,13 +738,8 @@
 
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--gray-100);">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;">Grading Quarter</span>
-            <select class="form-select" id="quarterSelect" style="width:auto;min-width:157px;" onchange="switchQuarter(this.value)">
-              <option value="Q1">Quarter 1</option>
-              <option value="Q2" selected>Quarter 2 (Active)</option>
-              <option value="Q3">Quarter 3</option>
-              <option value="Q4">Quarter 4</option>
-            </select>
+            <span style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;">Grading Period</span>
+            <select class="form-select" id="academicPeriodSelect" style="width:auto;min-width:157px;" onchange="switchAcademicPeriod(this.value)"></select>
           </div>
           <span class="badge badge-gray" id="quarterLockBadge" style="display:none;">
             <i data-lucide="lock" style="width:10px;height:10px;"></i> Locked
@@ -751,8 +750,8 @@
           <div class="publish-banner-left">
             <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;color:var(--gray-500);"></i></div>
             <div>
-              <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Quarter is Locked</div>
-              <div class="publish-info-sub" id="quarterLockDesc">This quarter is closed. Scores are read-only. Contact the admin to unlock it in System Config.</div>
+              <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Grading period is locked</div>
+              <div class="publish-info-sub" id="quarterLockDesc">This grading period is closed. Scores are read-only.</div>
             </div>
           </div>
           <div id="quarterLockAction"></div>
@@ -785,7 +784,7 @@
             </div>
           </div>
           <div class="score-toolbar-right">
-            <button class="top-btn secondary" onclick="fillAllPresent()">
+            <button class="top-btn secondary" id="fillPerfectScoresButton" onclick="fillAllPresent()">
               <i data-lucide="copy" style="width:13px;height:13px;"></i> Fill Perfect
             </button>
             <button class="top-btn secondary">
@@ -982,10 +981,7 @@
   }
 
   /* ── QUARTER LOCK ── */
-  // Mirrors System Config → Academic Year & Lock Previous Quarters. Wire to real config later.
-  const QUARTER_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
-  const ACTIVE_QUARTER = 'Q2';
-  const LOCK_PREVIOUS_QUARTERS = true;
+  // Mirrors the configured academic-period state. Wire to the server response later.
   // A teaching assignment and an advisership are separate records. A teacher
   // can advise this section even when they have no subject assignment in it.
   const CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
@@ -1005,6 +1001,8 @@
   const CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
   const CURRENT_LEVEL = CURRENT_SECTION_RECORD?.level || 'jhs';
   const CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
+  const ACADEMIC_PERIODS = window.EDUGNAY_CONFIG.getAcademicPeriods(window.EDUGNAY_CONFIG.getActiveSchoolId(), CURRENT_LEVEL);
+  const ACTIVE_ACADEMIC_PERIOD_ID = CURRENT_DIVISION.activeAcademicPeriodId || ACADEMIC_PERIODS.find(period => period.status === 'active')?.id || ACADEMIC_PERIODS[0]?.id || '';
   const CURRENT_GRADING_RULES = CURRENT_DIVISION.gradingRules || [];
   const GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
     ? CURRENT_DIVISION.gradeRounding
@@ -1133,106 +1131,141 @@
   }
 
   const TEACHER_SECTION_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
-  const REOPEN_STORE_KEY = `edugnay_reopen_requests:${TEACHER_SECTION_SCHOOL_ID}`;
-  let pendingReopenQuarter = null;
+  let pendingReopenAcademicPeriodId = null;
+  let reopenExpirationTimer = null;
+
+  function academicPeriodName(periodId) {
+    return ACADEMIC_PERIODS.find(period => period.id === periodId)?.name || 'Grading period';
+  }
 
   function getReopenRequests() {
-    try {
-      return (JSON.parse(localStorage.getItem(REOPEN_STORE_KEY)) || [])
-        .filter(record => record.schoolId === TEACHER_SECTION_SCHOOL_ID);
-    }
-    catch { return []; }
+    return window.EDUGNAY_CONFIG.getReopenRequests({
+      schoolId: TEACHER_SECTION_SCHOOL_ID,
+      teacherId: CURRENT_TEACHER_ID,
+      sectionId: CURRENT_SECTION_ID,
+      subjectId: CURRENT_SUBJECT_ID
+    });
   }
 
-  function saveReopenRequests(list) {
-    localStorage.setItem(REOPEN_STORE_KEY, JSON.stringify(list));
-  }
-
-  function findReopenRequest(quarter) {
+  function findReopenRequest(academicPeriodId) {
     return getReopenRequests()
-      .filter(r => r.teacherId === CURRENT_TEACHER_ID && r.sectionId === CURRENT_SECTION_ID && r.subjectId === CURRENT_SUBJECT_ID && r.quarter === quarter)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      .filter(request => request.academicPeriodId === academicPeriodId)
+      .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt))[0];
   }
 
   function openReopenModal() {
     document.getElementById('reopenModalSub').textContent =
-      'Ask the admin to unlock Quarter ' + pendingReopenQuarter.slice(1) + ' for ' + CURRENT_SECTION + ' · ' + CURRENT_SUBJECT + '.';
+      'Ask the admin to unlock ' + academicPeriodName(pendingReopenAcademicPeriodId) + ' for ' + CURRENT_SECTION + ' · ' + CURRENT_SUBJECT + '.';
     document.getElementById('reopenReasonInput').value = '';
     openModal('reopenRequestModal');
   }
 
-  function submitReopenRequest() {
+  async function submitReopenRequest() {
     const reason = document.getElementById('reopenReasonInput').value.trim();
-    if (!reason) { alert('Please describe why you need this quarter reopened.'); return; }
+    if (!reason) { alert('Please describe why you need this grading period reopened.'); return; }
 
-    const requests = getReopenRequests();
-    requests.push({
-      id: 'RQ-' + Date.now(),
-      schoolId: TEACHER_SECTION_SCHOOL_ID,
-      teacherId: CURRENT_TEACHER_ID,
-      sectionId: CURRENT_SECTION_ID,
-      subjectId: CURRENT_SUBJECT_ID,
-      quarter: pendingReopenQuarter,
-      reason: reason,
-      status: 'pending',
-      adminNote: '',
-      createdAt: new Date().toISOString()
-    });
-    saveReopenRequests(requests);
-
-    closeModal('reopenRequestModal');
-    switchQuarter(pendingReopenQuarter);
+    try {
+      await window.EDUGNAY_CONFIG.createReopenRequest({
+        schoolId: TEACHER_SECTION_SCHOOL_ID,
+        teacherId: CURRENT_TEACHER_ID,
+        sectionId: CURRENT_SECTION_ID,
+        subjectId: CURRENT_SUBJECT_ID,
+        academicPeriodId: pendingReopenAcademicPeriodId,
+        reason
+      });
+      closeModal('reopenRequestModal');
+      switchAcademicPeriod(pendingReopenAcademicPeriodId);
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
-  function renderLockBannerState(q, locked, reopened) {
-    pendingReopenQuarter = q;
-    const req = findReopenRequest(q);
+  function renderLockBannerState(academicPeriodId, reopened) {
+    pendingReopenAcademicPeriodId = academicPeriodId;
+    const req = findReopenRequest(academicPeriodId);
+    const periodName = academicPeriodName(academicPeriodId);
     const titleEl  = document.getElementById('quarterLockTitle');
     const descEl   = document.getElementById('quarterLockDesc');
     const actionEl = document.getElementById('quarterLockAction');
     const banner   = document.getElementById('quarterLockBanner');
+    const adminMessage = req?.extensionReason || req?.adminNote;
 
-    if (reopened) {
+    const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+
+    if (period?.status === 'upcoming') {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = periodName + ' has not started';
+      descEl.textContent = 'Scores become editable after the school administrator starts this grading period.';
+      actionEl.innerHTML = '';
+    } else if (reopened) {
       banner.style.background = '#f0fdf4';
       titleEl.style.color = '#16a34a';
-      titleEl.textContent = 'Quarter ' + q.slice(1) + ' Temporarily Reopened';
-      descEl.textContent = 'The admin approved your reopen request' + (req.adminNote ? ' — "' + req.adminNote + '"' : '') + '. Scores are editable again for this section.';
+      titleEl.textContent = periodName + ' temporarily reopened';
+      descEl.textContent = 'Scores are editable until ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + (adminMessage ? '. Admin note: "' + adminMessage + '"' : '.');
       actionEl.innerHTML = '<span class="badge badge-green"><i data-lucide="unlock" style="width:10px;height:10px;"></i> Reopened</span>';
     } else if (req && req.status === 'pending') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = 'Reopen Requested: Awaiting Admin Response';
-      descEl.textContent = 'You asked to reopen Quarter ' + q.slice(1) + ' on ' +
-        new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '. You\'ll be notified once the admin responds.';
+      descEl.textContent = 'You asked to reopen ' + periodName + ' on ' +
+        new Date(req.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '. You\'ll be notified once the admin responds.';
       actionEl.innerHTML = '<span class="badge badge-gray"><i data-lucide="clock" style="width:10px;height:10px;"></i> Pending</span>';
-    } else if (req && req.status === 'denied') {
+    } else if (req && req.status === 'rejected') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
-      titleEl.textContent = 'Reopen Request Denied';
-      descEl.textContent = req.adminNote ? 'Admin note: "' + req.adminNote + '"' : 'This quarter is closed. Scores are read-only.';
+      titleEl.textContent = 'Reopen Request Rejected';
+      descEl.textContent = req.adminNote ? 'Admin note: "' + req.adminNote + '"' : 'This grading period is closed. Scores are read-only.';
+      actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
+    } else if (req && req.status === 'revoked') {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = 'Temporary Access Revoked';
+      descEl.textContent = req.revokeReason ? 'Admin reason: "' + req.revokeReason + '"' : 'Score editing has been locked by the school administrator.';
+      actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
+    } else if (req && window.EDUGNAY_CONFIG.getReopenRequestState(req) === 'expired') {
+      banner.style.background = 'var(--gray-100)';
+      titleEl.style.color = 'var(--gray-700)';
+      titleEl.textContent = 'Reopen Access Expired';
+      descEl.textContent = req.expiresAt
+        ? 'Temporary editing access ended on ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + '.'
+        : 'This older approval has no expiration and is no longer valid.';
       actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
     } else {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
-      titleEl.textContent = 'Quarter ' + q.slice(1) + ' is Locked';
-      descEl.textContent = 'This quarter is closed. Scores are read-only. You can request the admin to reopen it.';
+      titleEl.textContent = periodName + ' is locked';
+      descEl.textContent = 'This grading period is closed. Scores are read-only. You can request the admin to reopen it.';
       actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Reopen</button>';
     }
     lucide.createIcons();
   }
 
-  function switchQuarter(q) {
-    const isPrevious = QUARTER_ORDER.indexOf(q) < QUARTER_ORDER.indexOf(ACTIVE_QUARTER);
-    const req = findReopenRequest(q);
-    const reopened = !!(req && req.status === 'approved');
-    const locked = isPrevious && LOCK_PREVIOUS_QUARTERS && !reopened;
+  function switchAcademicPeriod(academicPeriodId) {
+    const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+    const req = findReopenRequest(academicPeriodId);
+    const reopened = period?.status === 'closed' && window.EDUGNAY_CONFIG.isReopenRequestActive(req);
+    const locked = period?.status !== 'active' && !reopened;
 
-    renderScoreTable(q);
+    clearTimeout(reopenExpirationTimer);
+    reopenExpirationTimer = null;
+    if (reopened) {
+      const remaining = new Date(req.expiresAt).getTime() - Date.now();
+      reopenExpirationTimer = setTimeout(() => switchAcademicPeriod(academicPeriodId), Math.min(remaining + 50, 2147483647));
+    }
+
+    renderScoreTable(academicPeriodId);
+    document.getElementById('scorePanelPeriodName').textContent = period?.name || 'Grading period';
+    document.getElementById('publishPeriodName').textContent = period?.name || 'current grading period';
+    document.getElementById('publishedPeriodName').textContent = period?.name || 'Grading period';
+    document.getElementById('publishedPeriodStatus').textContent = locked
+      ? 'Published on June 10, 2025 · Visible to students and parents · Scores are read-only'
+      : 'Published on June 10, 2025 · Visible to students and parents · You can still edit and re-publish';
 
     const showBanner = locked || reopened;
     document.getElementById('quarterLockBanner').style.display = showBanner ? 'flex' : 'none';
     document.getElementById('quarterLockBadge').style.display = locked ? 'inline-flex' : 'none';
-    if (showBanner) renderLockBannerState(q, locked, reopened);
+    if (showBanner) renderLockBannerState(academicPeriodId, reopened);
 
     document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(inp => {
       inp.disabled = locked;
@@ -1240,6 +1273,26 @@
 
     const headActions = document.querySelector('#content-scores .panel-head-actions');
     if (headActions) headActions.style.display = locked ? 'none' : 'flex';
+    const republishButton = document.getElementById('republishGradesButton');
+    if (republishButton) republishButton.style.display = locked ? 'none' : 'inline-flex';
+    const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
+    if (fillPerfectButton) fillPerfectButton.style.display = locked ? 'none' : 'inline-flex';
+  }
+
+  function hasScoreEditingAccess(academicPeriodId) {
+    const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+    if (period?.status === 'active') return true;
+    return period?.status === 'closed'
+      && window.EDUGNAY_CONFIG.isReopenRequestActive(findReopenRequest(academicPeriodId));
+  }
+
+  function requireScoreEditingAccess(academicPeriodId) {
+    if (hasScoreEditingAccess(academicPeriodId)) return true;
+    Object.values(scoreSaveTimers).forEach(timer => clearTimeout(timer));
+    scoreSaveTimers = {};
+    switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
+    alert(academicPeriodName(academicPeriodId) + ' is locked. Request temporary access before changing scores.');
+    return false;
   }
 
   /* ── COMPONENT TYPE MODAL ── */
@@ -1295,6 +1348,8 @@
   }
 
   function addComponent() {
+    const periodId = document.getElementById('academicPeriodSelect').value;
+    if (!requireScoreEditingAccess(periodId)) return;
     const name = document.getElementById('compNameInput').value.trim();
     const max  = document.getElementById('compMaxInput').value.trim();
     if (!name || !max) { alert('Please fill in component name and highest score.'); return; }
@@ -1307,8 +1362,8 @@
     CURRENT_GRADING_RULES.map(rule => [String(rule.id).toUpperCase(), Number(rule.weight) / 100 || 0])
   );
 
-  // Stand-in for per-quarter components and scores, replace with real data once backend is wired
-  const QUARTER_DATA = {
+  // Stand-in for grading-period components and scores, replace with real data once backend is wired
+  const PERIOD_SCORE_DATA = {
     Q1: {
       schoolId: TEACHER_SECTION_SCHOOL_ID,
       components: [
@@ -1345,8 +1400,9 @@
     Q4: { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} },
   };
 
-  function renderScoreTable(quarter) {
-    const data = QUARTER_DATA[quarter];
+  function renderScoreTable(academicPeriodId) {
+    const dataKey = String(academicPeriodId || '').toUpperCase();
+    const data = PERIOD_SCORE_DATA[dataKey] || { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} };
     const theadRow = document.getElementById('scoreTheadRow');
     const tbody = document.getElementById('scoreTbody');
     const journalRecords = window.EDUGNAY_CONFIG
@@ -1355,7 +1411,7 @@
         record.schoolId === TEACHER_SECTION_SCHOOL_ID &&
         record.sectionId === CURRENT_SECTION_ID &&
         record.subjectId === CURRENT_SUBJECT_ID &&
-        record.academicPeriodId === quarter.toLowerCase()
+        record.academicPeriodId === academicPeriodId
       );
     const journalWeeks = [];
     journalRecords.forEach(record => {
@@ -1371,7 +1427,7 @@
     }));
     const validCategoryIds = CURRENT_GRADING_RULES.map(rule => String(rule.id).toLowerCase());
     const assignmentRecords = getTeacherAssignments().filter(assignment =>
-      assignment.academicPeriodId === quarter.toLowerCase() &&
+      assignment.academicPeriodId === academicPeriodId &&
       validCategoryIds.includes(String(assignment.categoryId).toLowerCase()) &&
       Number(assignment.maxScore) > 0
     );
@@ -1394,7 +1450,7 @@
     theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
 
     if (!components.length) {
-      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this quarter to begin recording grades.' })}</td></tr>`;
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this grading period to begin recording grades.' })}</td></tr>`;
       return;
     }
 
@@ -1462,7 +1518,7 @@
         } else if (c.assignmentId) {
           cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-assignment-id="' + c.assignmentId + '" oninput="computeRow(this, true)"/></td>';
         } else {
-          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-score-index="' + c.scoreIndex + '" data-quarter="' + quarter + '" oninput="computeRow(this, true)"/></td>';
+          cellsHtml += '<td class="center" data-cat="' + c.cat + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-score-index="' + c.scoreIndex + '" data-academic-period-id="' + academicPeriodId + '" oninput="computeRow(this, true)"/></td>';
         }
       });
 
@@ -1498,10 +1554,12 @@
       const studentId = row.dataset.studentId;
       clearTimeout(scoreSaveTimers[scoreId]);
       scoreSaveTimers[scoreId] = setTimeout(() => {
+        const academicPeriodId = input.dataset.academicPeriodId;
+        if (!requireScoreEditingAccess(academicPeriodId)) return;
         if (input.dataset.assignmentId) {
           window.EDUGNAY_CONFIG.setAssignmentScore(input.dataset.assignmentId, studentId, input.value);
         } else {
-          saveScore(input.value, studentId, Number(input.dataset.scoreIndex), input.dataset.quarter);
+          saveScore(input.value, studentId, Number(input.dataset.scoreIndex), academicPeriodId);
         }
       }, 600);
     }
@@ -1553,11 +1611,13 @@
     }
   }
 
-  function saveScore(value, studentId, compIndex, quarter) {
-    if (!QUARTER_DATA[quarter].scores[studentId]) {
-      QUARTER_DATA[quarter].scores[studentId] = [];
+  function saveScore(value, studentId, compIndex, academicPeriodId) {
+    const dataKey = String(academicPeriodId || '').toUpperCase();
+    PERIOD_SCORE_DATA[dataKey] ||= { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} };
+    if (!PERIOD_SCORE_DATA[dataKey].scores[studentId]) {
+      PERIOD_SCORE_DATA[dataKey].scores[studentId] = [];
     }
-    QUARTER_DATA[quarter].scores[studentId][compIndex] = value === '' ? null : Number(value);
+    PERIOD_SCORE_DATA[dataKey].scores[studentId][compIndex] = value === '' ? null : Number(value);
   }
 
   /* ── ATTENDANCE ── */
@@ -1678,8 +1738,13 @@
 
   /* ── PUBLISH ── */
   function publishGrades() {
+    const periodId = document.getElementById('academicPeriodSelect').value;
+    if (!requireScoreEditingAccess(periodId)) {
+      closeModal('publishModal');
+      return;
+    }
     closeModal('publishModal');
-    alert('Grades published successfully. Students and parents can now view Q2 final grades.');
+    alert('Grades published successfully. Students and parents can now view ' + academicPeriodName(periodId) + ' final grades.');
   }
 
   /* ── ASSIGNMENTS ── */
@@ -1866,6 +1931,7 @@
     const due = document.getElementById('assignDueInput').value;
     const onlineSubmissionEnabled = document.getElementById('assignOnlineSubmissionInput').checked;
     const includeInScoreRecording = document.getElementById('assignGradingInput').checked;
+    const academicPeriodId = document.getElementById('academicPeriodSelect').value;
     const categoryId = includeInScoreRecording ? document.getElementById('assignCategoryInput').value : null;
     const maxScore = includeInScoreRecording ? Number(document.getElementById('assignMaxScoreInput').value) : null;
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
@@ -1873,6 +1939,7 @@
       alert('Please select a grading category and enter the highest possible score.');
       return;
     }
+    if (includeInScoreRecording && !requireScoreEditingAccess(academicPeriodId)) return;
 
     const subjectRecord = window.EDUGNAY_CONFIG.subjects.find(item => item.name === subject) || CURRENT_SUBJECT_RECORD;
     window.EDUGNAY_CONFIG.createAssignment({
@@ -1880,7 +1947,7 @@
       teacherId: CURRENT_TEACHER_ID,
       sectionId: CURRENT_SECTION_ID,
       subjectId: subjectRecord?.id || CURRENT_SUBJECT_ID,
-      academicPeriodId: document.getElementById('quarterSelect').value.toLowerCase(),
+      academicPeriodId,
       title,
       instructions: instructions || null,
       assignedDate: due,
@@ -1898,7 +1965,7 @@
     document.getElementById('assignMaxScoreInput').value = '';
     closeModal('addAssignmentModal');
     renderAssignments();
-    renderScoreTable(document.getElementById('quarterSelect').value);
+    renderScoreTable(document.getElementById('academicPeriodSelect').value);
   }
 
   let activeAssignmentId = null;
@@ -1964,7 +2031,7 @@
     closeModal('editAssignmentModal');
     activeAssignmentId = null;
     renderAssignments();
-    renderScoreTable(document.getElementById('quarterSelect').value);
+    renderScoreTable(document.getElementById('academicPeriodSelect').value);
   }
 
   function openAssignmentSubmissionsModal(assignmentId) {
@@ -1980,7 +2047,7 @@
       const studentName = student?.displayName || 'Unknown student';
       const score = scores.find(record => record.studentId === submission.studentId)?.score ?? '';
       const scoreInput = assignment.categoryId && Number(assignment.maxScore) > 0
-        ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
+        ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
         : '<span class="assignment-file-unavailable">Not graded</span>';
       const fileAction = submission.fileUrl
         ? `<a class="row-btn view" href="${window.EDUGNAY_CONFIG.escapeHtml(submission.fileUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link" style="width:13px;height:13px;"></i> View file</a>`
@@ -1999,6 +2066,11 @@
   }
 
   function saveAssignmentSubmissionScore(assignmentId, studentId, input) {
+    const assignment = getTeacherAssignments().find(item => item.id === String(assignmentId));
+    if (!assignment || !requireScoreEditingAccess(assignment.academicPeriodId)) {
+      openAssignmentSubmissionsModal(assignmentId);
+      return;
+    }
     const score = input.value === '' ? null : Number(input.value);
     const maxScore = Number(input.max);
     if (score !== null && (!Number.isFinite(score) || score < 0 || score > maxScore)) {
@@ -2008,7 +2080,7 @@
     }
 
     window.EDUGNAY_CONFIG.setAssignmentScore(assignmentId, studentId, score);
-    renderScoreTable(document.getElementById('quarterSelect').value);
+    renderScoreTable(document.getElementById('academicPeriodSelect').value);
   }
 
   function openStatusModal(id) {
@@ -2059,13 +2131,25 @@
     renderTeacherStudentList();
     renderTeacherAttendanceRows();
     renderAttendanceHistory();
-    renderScoreTable(ACTIVE_QUARTER);
+    const periodSelect = document.getElementById('academicPeriodSelect');
+    periodSelect.innerHTML = ACADEMIC_PERIODS.map(period => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}" ${period.id === ACTIVE_ACADEMIC_PERIOD_ID ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}${period.status === 'active' ? ' (Active)' : ''}</option>`).join('');
+    periodSelect.disabled = !ACADEMIC_PERIODS.length;
+    document.getElementById('publishedPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
+    document.getElementById('sectionPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
+    document.getElementById('studentGradePeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
+    switchAcademicPeriod(ACTIVE_ACADEMIC_PERIOD_ID);
 
     renderAssignments();
     renderTeacherMaterials();
 
     // Init attendance count
     updateAttCount();
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key === `edugnay_reopen_requests:${TEACHER_SECTION_SCHOOL_ID}`) {
+      switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
+    }
   });
 </script>
 

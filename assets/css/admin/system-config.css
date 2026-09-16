@@ -389,6 +389,206 @@
   background: var(--gray-100);
   color: var(--gray-500);
 }
+.badge-red {
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+/* ── GRADING PERIOD REOPEN REQUESTS ── */
+.reopen-filters {
+  display: flex;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.reopen-filter {
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gray-500);
+  font: 700 11px 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+}
+
+.reopen-filter:hover {
+  background: var(--gray-50);
+  color: var(--gray-700);
+}
+
+.reopen-filter.active {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.reopen-request-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.reopen-request-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.reopen-request-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  background: var(--gold-pale);
+  color: #92400e;
+}
+
+.reopen-request-icon svg,
+.reopen-request-deadline svg {
+  width: 15px;
+  height: 15px;
+}
+
+.reopen-request-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.reopen-request-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reopen-request-meta {
+  margin: 3px 0 7px;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.reopen-request-reason,
+.reopen-request-note {
+  padding: 8px 10px;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-xs);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.reopen-request-note {
+  margin-top: 7px;
+  background: var(--white);
+}
+
+.reopen-request-deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reopen-request-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.reopen-reject-btn {
+  border-color: #fecaca !important;
+  color: var(--red) !important;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.reopen-action-modal {
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+}
+
+.reopen-action-modal .modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.reopen-modal-details,
+.reopen-current-value {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 16px;
+  padding: 11px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+}
+
+.reopen-modal-details strong,
+.reopen-current-value strong {
+  color: var(--gray-800);
+  font-size: 12px;
+}
+
+.reopen-modal-details span,
+.reopen-current-value span {
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.optional-label {
+  color: var(--gray-400);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.reopen-textarea {
+  min-height: 90px !important;
+  resize: vertical;
+}
+
+.reopen-modal-last-field {
+  margin-bottom: 0 !important;
+}
+
+.reopen-modal-error {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-xs);
+  background: var(--red-pale);
+  color: var(--red);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.reopen-modal-error[hidden] {
+  display: none;
+}
+
 @keyframes fadeUp {
   from {
       opacity: 0;
@@ -474,5 +674,25 @@
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+  }
+
+  .reopen-request-row {
+    flex-wrap: wrap;
+  }
+
+  .reopen-request-actions {
+    width: 100%;
+    padding-left: 48px;
+  }
+
+  .reopen-request-actions .top-btn {
+    width: auto;
+  }
+
+  .reopen-action-modal .modal-foot .btn {
+    min-width: 0;
+    flex: 1 1 0;
+    justify-content: center;
+    white-space: nowrap;
   }
 }

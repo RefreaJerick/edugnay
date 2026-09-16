@@ -124,7 +124,7 @@
           </div>
           <div class="topbar-context-copy">
             <span>Active term</span>
-            <strong>2nd Quarter · S.Y. 2024–2025</strong>
+            <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -212,7 +212,7 @@
               </div>
               <div>
                 <div class="grading-period-label">Active grading period</div>
-                <div class="grading-period-value">2nd Quarter · S.Y. 2025–2026</div>
+                <div class="grading-period-value" data-active-academic-period>Loading academic period...</div>
               </div>
             </div>
           </div>
@@ -287,11 +287,15 @@
 
   <script>
     lucide.createIcons();
+    const DASHBOARD_STUDENT_ID = 'jd-004';
+    const dashboardStudent = window.EDUGNAY_CONFIG.getUserById(DASHBOARD_STUDENT_ID);
+    const dashboardPeriod = document.querySelector('[data-active-academic-period]');
+    if (dashboardPeriod && dashboardStudent?.schoolLevel) dashboardPeriod.dataset.schoolLevel = dashboardStudent.schoolLevel;
 
     // The journal prompt comes from the same shared journal source used by the
     // student journal and teacher review pages.
     const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
-    const currentJournal = window.EDUGNAY_CONFIG.getJournalsForStudent('jd-004').find(record => record.isCurrent);
+    const currentJournal = window.EDUGNAY_CONFIG.getJournalsForStudent(DASHBOARD_STUDENT_ID).find(record => record.isCurrent);
     const JOURNAL = currentJournal ? [{
       subject: journalSubjectName,
       title: "This Week's Journal",
@@ -325,7 +329,7 @@
       video: { icon: 'video', tone: 'green' },
       docx: { icon: 'file-text', tone: 'blue' }
     };
-    const MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent('jd-004')
+    const MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(DASHBOARD_STUDENT_ID)
       .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
       .slice(0, 3)
       .map(material => {
@@ -343,7 +347,7 @@
       });
 
     const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
-    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent('jd-004').slice(0, 3);
+    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(DASHBOARD_STUDENT_ID).slice(0, 3);
 
     const DASHBOARD_ASSIGNMENT_STATUS = {
       pending: { label: 'Pending', icon: 'clock-3' },
