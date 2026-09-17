@@ -299,6 +299,22 @@
                 <input id="schoolIdInput" name="schoolId" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolId)}">
               </div>
               <div class="school-field">
+                <label for="profileRegion">Region</label>
+                <input id="profileRegion" name="regionName" placeholder="e.g. IV-A (CALABARZON)" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.regionName)}">
+              </div>
+              <div class="school-field">
+                <label for="profileDivision">Division</label>
+                <input id="profileDivision" name="divisionName" placeholder="e.g. Laguna" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.divisionName)}">
+              </div>
+              <div class="school-field">
+                <label for="profileDistrict">District</label>
+                <input id="profileDistrict" name="districtName" placeholder="e.g. San Pedro District" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.districtName)}">
+              </div>
+              <div class="school-field">
+                <label for="profileSchoolHead">School head</label>
+                <input id="profileSchoolHead" name="schoolHeadName" placeholder="Printed name for official forms" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolHeadName)}">
+              </div>
+              <div class="school-field">
                 <label for="profileAddress">Address</label>
                 <input id="profileAddress" name="address" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.address)}">
               </div>
@@ -638,6 +654,10 @@
         schoolType: type.value,
         typeLabel: type.label,
         schoolId: values.schoolId.trim() || null,
+        regionName: values.regionName.trim() || null,
+        divisionName: values.divisionName.trim() || null,
+        districtName: values.districtName.trim() || null,
+        schoolHeadName: values.schoolHeadName.trim() || null,
         address: values.address.trim(),
         phone: values.phone.trim() || null,
         email: values.email.trim(),

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/teacher/sf-templates.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/vendor/exceljs.min.js"></script>
+  <script src="../../assets/vendor/jszip.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/sf-workbook.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
@@ -167,7 +168,6 @@
             <span role="columnheader">Form</span>
             <span role="columnheader">Workbook</span>
             <span role="columnheader">Version</span>
-            <span role="columnheader">Status</span>
             <span role="columnheader">Actions</span>
           </div>
           <div class="sf-template-list" id="sfTemplateList"></div>
@@ -177,17 +177,16 @@
           <div class="sf-panel-head">
             <div>
               <h2 class="sf-panel-title" id="sfGeneratorTitle">Generate form</h2>
-              <p class="sf-panel-sub">Choose an active template and one of your assigned classes.</p>
+              <p class="sf-panel-sub">Choose an active template and one of your advisory classes.</p>
             </div>
           </div>
           <form class="sf-generator-form" id="sfGeneratorForm">
             <label class="sf-field" for="sfGenerateTemplate"><span>Template</span><select id="sfGenerateTemplate" disabled><option value="">No active templates</option></select></label>
-            <label class="sf-field" for="sfGenerateSection"><span>Assigned class</span><select id="sfGenerateSection" disabled><option value="">No class selected</option></select></label>
+            <label class="sf-field" for="sfGenerateSection"><span>Advisory class</span><select id="sfGenerateSection" disabled><option value="">No class selected</option></select></label>
             <label class="sf-field" for="sfGenerateSchoolYear"><span>School year</span><input id="sfGenerateSchoolYear" type="text" disabled></label>
-            <label class="sf-field" for="sfGeneratePeriod"><span>Academic period</span><select id="sfGeneratePeriod" disabled><option value="">Select a period</option></select></label>
             <button class="top-btn primary sf-generate-button" id="sfGenerateButton" type="submit" disabled><i data-lucide="wand-sparkles"></i> Generate preview</button>
           </form>
-          <div class="sf-access-note"><i data-lucide="shield-check"></i><span>Only records from classes assigned to you will be available.</span></div>
+          <div class="sf-access-note"><i data-lucide="shield-check"></i><span>Only records from your advisory classes will be available.</span></div>
         </aside>
       </div>
 

@@ -122,7 +122,7 @@
 
 .sf-template-columns,
 .sf-template-row {
-  grid-template-columns: 36px minmax(110px, .7fr) minmax(200px, 1.5fr) minmax(90px, .55fr) 72px 64px;
+  grid-template-columns: 36px minmax(110px, .7fr) minmax(200px, 1.5fr) minmax(90px, .55fr) 64px;
 }
 
 .sf-template-columns span:first-child {
@@ -265,6 +265,30 @@
   stroke-width: 1.9;
 }
 
+.sf-validation-summary {
+  margin: 14px 18px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--orange-border);
+  border-radius: var(--radius-sm);
+  background: var(--gold-pale);
+  color: var(--gold-dark);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sf-validation-summary.error {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red-dark);
+}
+
+.sf-validation-summary ul {
+  max-height: 180px;
+  overflow: auto;
+  margin: 6px 0 0 16px;
+  padding: 0;
+}
+
 .sf-main .top-btn > svg {
   width: 14px !important;
   height: 14px !important;
@@ -356,32 +380,119 @@
 
 .sf-workbook-frame {
   max-width: 100%;
-  min-height: 250px;
-  overflow: auto;
+  min-height: 0;
   background: var(--white);
 }
 
 .sf-workbook-frame.compact {
-  min-height: 210px;
-  max-height: 330px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
 }
 
-.sf-workbook-table {
-  width: max-content;
+.sf-workbook-toolbar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.sf-zoom-description {
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sf-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sf-zoom-button,
+.sf-zoom-icon {
+  min-height: 28px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xs);
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.sf-zoom-button {
+  padding: 4px 8px;
+}
+
+.sf-zoom-icon {
+  width: 28px;
+  padding: 0;
+  font-size: 15px;
+}
+
+.sf-zoom-button:hover,
+.sf-zoom-icon:hover,
+.sf-zoom-button.active {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.sf-zoom-button:focus-visible,
+.sf-zoom-icon:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 1px;
+}
+
+.sf-zoom-icon:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.sf-zoom-value {
+  min-width: 38px;
+  color: var(--gray-600);
+  font-size: 10.5px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.sf-workbook-viewport {
+  position: relative;
+  max-height: clamp(420px, 68vh, 720px);
+  overflow: auto;
+  background: var(--white);
+}
+
+.sf-workbook-frame.compact .sf-workbook-viewport {
+  max-height: 330px;
+}
+
+.sf-workbook-sheet {
+  display: flex;
   min-width: 100%;
+  width: max-content;
+  justify-content: center;
+}
+
+.sf-workbook-table {
+  width: var(--sf-sheet-width);
   border-collapse: collapse;
   table-layout: fixed;
   color: var(--gray-700);
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--sf-preview-font-size);
 }
 
 .sf-workbook-table th,
 .sf-workbook-table td {
   overflow: hidden;
-  padding: 4px 6px;
+  padding: var(--sf-cell-padding-y) var(--sf-cell-padding-x);
   border: 1px solid #d5dce6;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -393,7 +504,7 @@
   z-index: 2;
   background: var(--gray-100);
   color: var(--gray-500);
-  font-size: 9px;
+  font-size: max(7px, calc(var(--sf-preview-font-size) - 2px));
   font-weight: 650;
   text-align: center;
 }
@@ -402,13 +513,19 @@
   top: 0;
 }
 
+.sf-workbook-table thead th:first-child {
+  left: 0;
+  z-index: 4;
+  width: var(--sf-row-number-width);
+}
+
 .sf-row-number {
   left: 0;
-  width: 34px;
+  width: var(--sf-row-number-width);
 }
 
 .sf-row-number-column {
-  width: 34px;
+  width: var(--sf-row-number-width);
 }
 
 .sf-workbook-cell.editable {
@@ -492,8 +609,7 @@
   }
 
   .sf-template-file,
-  .sf-template-version,
-  .sf-template-row > .sf-status {
+  .sf-template-version {
     grid-column: 2;
   }
 
@@ -529,6 +645,22 @@
     justify-content: center;
     padding-left: 10px;
     padding-right: 10px;
+  }
+
+  .sf-workbook-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .sf-zoom-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .sf-workbook-viewport {
+    max-height: 60dvh;
   }
 
   .sf-toast {

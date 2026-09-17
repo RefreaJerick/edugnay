@@ -158,8 +158,11 @@ function applyCurrentDateToGradingBanners() {
     grades: 'edugnay_grades',
     journals: 'edugnay_journals',
     reports: 'edugnay_reports',
-    sfTemplates: 'edugnay_sf_template_records',
-    userProfiles: 'edugnay_user_profiles'
+    userProfiles: 'edugnay_user_profiles',
+    userProfileSeedVersion: 'edugnay_user_profile_seed_version',
+    schoolSeedVersion: 'edugnay_school_seed_version',
+    userSeedVersion: 'edugnay_user_seed_version',
+    parentStudentLinkSeedVersion: 'edugnay_parent_student_link_seed_version'
   };
 
   // Canonical values used by frontend records and future API responses.
@@ -384,6 +387,10 @@ function applyCurrentDateToGradingBanners() {
       schoolType: 'k12',
       typeLabel: 'K-12 School',
       schoolId: '305614',
+      regionName: 'Region IV-A',
+      divisionName: 'Laguna',
+      districtName: 'San Pedro City',
+      schoolHeadName: null,
       address: 'San Pedro, Laguna, Philippines',
       phone: '(049) 123 4567',
       email: 'info@stcolumban.edu.ph',
@@ -480,6 +487,10 @@ function applyCurrentDateToGradingBanners() {
       schoolType: 'multi-level',
       typeLabel: 'Junior High School + Senior High School',
       schoolId: null,
+      regionName: null,
+      divisionName: null,
+      districtName: null,
+      schoolHeadName: null,
       address: null,
       phone: null,
       email: null,
@@ -618,6 +629,10 @@ function applyCurrentDateToGradingBanners() {
       schoolYear: school.schoolYear || null,
       schoolYearStartDate: school.schoolYearStartDate || null,
       schoolYearEndDate: school.schoolYearEndDate || null,
+      regionName: school.regionName ? String(school.regionName).trim() : null,
+      divisionName: school.divisionName ? String(school.divisionName).trim() : null,
+      districtName: school.districtName ? String(school.districtName).trim() : null,
+      schoolHeadName: school.schoolHeadName ? String(school.schoolHeadName).trim() : null,
       gradesPageEnabled: registrationPending ? false : school.gradesPageEnabled === true,
       narrativeReportsEnabled: registrationPending ? false : school.narrativeReportsEnabled === true,
       journalsEnabled: registrationPending ? false : school.journalsEnabled === true,
@@ -651,8 +666,28 @@ function applyCurrentDateToGradingBanners() {
 
   function getSchools() {
     const saved = readJson(STORAGE_KEYS.schools, null);
-    const schools = Array.isArray(saved) && saved.length ? saved : clone(DEFAULT_SCHOOLS);
-    return schools.map(normalizeSchoolRecord);
+    const hasSavedSchools = Array.isArray(saved) && saved.length;
+    const schools = hasSavedSchools ? saved : clone(DEFAULT_SCHOOLS);
+    const normalizedSchools = schools.map(normalizeSchoolRecord);
+    const savedSchoolSeedVersion = Number(readJson(STORAGE_KEYS.schoolSeedVersion, 0));
+
+    if (hasSavedSchools && savedSchoolSeedVersion < 1) {
+      const defaultSchoolsById = new Map(DEFAULT_SCHOOLS.map(school => [school.id, school]));
+      let schoolsChanged = false;
+      normalizedSchools.forEach(school => {
+        const defaultSchool = defaultSchoolsById.get(school.id);
+        ['regionName', 'divisionName', 'districtName'].forEach(field => {
+          if (!school[field] && defaultSchool?.[field]) {
+            school[field] = defaultSchool[field];
+            schoolsChanged = true;
+          }
+        });
+      });
+      if (schoolsChanged) writeJson(STORAGE_KEYS.schools, normalizedSchools);
+      writeJson(STORAGE_KEYS.schoolSeedVersion, 1);
+    }
+
+    return normalizedSchools;
   }
 
   function saveSchools(schools) {
@@ -1322,81 +1357,235 @@ function applyCurrentDateToGradingBanners() {
     });
   }
 
-  function getStoredSfTemplates() {
-    const schoolId = getActiveSchoolId();
-    const records = readJson(schoolStorageKey(STORAGE_KEYS.sfTemplates, schoolId), []);
-    return Array.isArray(records)
-      ? records
-        .filter(record => record.schoolId === schoolId)
-        .map(record => ({
-          id: record.id,
-          schoolId: record.schoolId,
-          formCode: record.formCode,
-          formName: record.formName,
-          schoolLevel: record.schoolLevel,
-          version: record.version,
-          fileName: record.fileName || '',
-          templateFileKey: record.templateFileKey || '',
-          source: record.source || '',
-          status: record.status || '',
-          mappingStatus: record.mappingStatus || 'unmapped',
-          sheets: Array.isArray(record.sheets) ? record.sheets : [],
-          updatedAt: record.updatedAt || '',
-          updatedBy: record.updatedBy || ''
-        }))
-      : [];
+  // Replace with GET /api/teacher/advisory-sections.
+  async function getMyAdvisorySections() {
+    const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
+    if (!teacherId) return [];
+    return getAssignmentSections().filter(section => section.adviserId === teacherId);
   }
 
-  // Replace with GET /api/teacher/sf-templates.
+  // Replace this fixed list with GET /api/teacher/sf-templates.
+  const OFFICIAL_SF_TEMPLATES = Object.freeze([
+    {
+      id: 'sf1-school-register-v1',
+      formCode: 'SF1',
+      formName: 'School Register',
+      version: '1.0',
+      schoolLevels: ['elementary', 'jhs', 'shs'],
+      source: 'official',
+      status: RECORD_VALUES.statuses.ACTIVE,
+      mappingStatus: 'ready',
+      fileName: 'SF1.xlsx',
+      templateFileUrl: '../../assets/templates/school-forms/sf1.xlsx',
+      sheetName: 'School Form 1 (SF1)',
+      requiresAcademicPeriod: false,
+      sheets: [{ name: 'School Form 1 (SF1)', hidden: false }],
+      updatedAt: null,
+      updatedBy: null
+    }
+  ]);
+
   async function getSfTemplates() {
-    return getStoredSfTemplates()
+    return OFFICIAL_SF_TEMPLATES
       .filter(record => record.source === 'official' && record.status === RECORD_VALUES.statuses.ACTIVE)
-      .map(record => ({ ...record }));
+      .map(record => ({ ...record, schoolLevels: [...record.schoolLevels], sheets: record.sheets.map(sheet => ({ ...sheet })) }));
   }
 
   // Replace with GET /api/teacher/sf-templates/:templateId/preview.
   async function getSfTemplatePreview(templateId, sheetName = '') {
     const template = (await getSfTemplates()).find(record => record.id === String(templateId));
     if (!template) throw new Error('The selected template could not be found.');
-    const preview = await window.EDUGNAY_SF_WORKBOOK.getStoredTemplatePreview(template.templateFileKey, sheetName);
+    const preview = await window.EDUGNAY_SF_WORKBOOK.getFilePreview(
+      template.templateFileUrl,
+      sheetName || template.sheetName,
+      template
+    );
     return {
       template: { ...template },
       preview
     };
   }
 
+  function formatSfDateValue(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || '').trim());
+    return match ? `${match[2]}/${match[3]}/${match[1]}` : '';
+  }
+
+  function formatSfPersonName(user, profile = {}, lastName = user?.lastName) {
+    if (!user) return '';
+    const middleName = profile.hasNoMiddleName ? '' : profile.middleName;
+    return [lastName, user.firstName, middleName]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  function sfDataIssue(code, severity, field, message) {
+    return {
+      code,
+      severity,
+      sheetName: null,
+      cellAddress: null,
+      field,
+      message
+    };
+  }
+
+  function firstFridayOfJune(schoolYear) {
+    const year = Number(String(schoolYear || '').slice(0, 4));
+    if (!Number.isInteger(year)) return null;
+    const date = new Date(Date.UTC(year, 5, 1));
+    date.setUTCDate(1 + ((5 - date.getUTCDay() + 7) % 7));
+    return date;
+  }
+
+  function ageOnDate(birthDate, referenceDate) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(birthDate || '').trim());
+    if (!match || !referenceDate) return null;
+    const birth = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    let age = referenceDate.getUTCFullYear() - birth.getUTCFullYear();
+    const birthdayPassed = referenceDate.getUTCMonth() > birth.getUTCMonth()
+      || (referenceDate.getUTCMonth() === birth.getUTCMonth() && referenceDate.getUTCDate() >= birth.getUTCDate());
+    if (!birthdayPassed) age -= 1;
+    return age >= 0 ? age : null;
+  }
+
+  function buildSf1Context(school, section, students, schoolYear) {
+    const issues = [];
+    const referenceDate = firstFridayOfJune(schoolYear);
+    const links = getParentStudentLinks();
+    const usedLrns = new Set();
+    const learners = students
+      .slice()
+      .sort((left, right) => [left.lastName, left.firstName, left.id].join('|').localeCompare([right.lastName, right.firstName, right.id].join('|')))
+      .map((student, index) => {
+        const profile = getUserProfile(student.id) || {};
+        const studentName = formatSfPersonName(student, profile);
+        const studentLinks = links.filter(link => link.studentId === student.id);
+        const findParent = relationship => {
+          const matches = studentLinks
+            .filter(link => link.relationship === relationship)
+            .map(link => getUserById(link.parentId))
+            .filter(Boolean);
+          if (matches.length > 1) {
+            issues.push(sfDataIssue(
+              'duplicate_parent_relationship',
+              'warning',
+              `${student.id}.${relationship}`,
+              `${studentName || 'This learner'} has more than one linked ${relationship}; review the SF1 value.`
+            ));
+            return null;
+          }
+          return matches[0] || null;
+        };
+
+        const mother = findParent('mother');
+        const father = findParent('father');
+        const guardian = findParent('guardian');
+        const motherProfile = mother ? getUserProfile(mother.id) || {} : {};
+        const fatherProfile = father ? getUserProfile(father.id) || {} : {};
+        const guardianProfile = guardian ? getUserProfile(guardian.id) || {} : {};
+        const contactSource = [
+          [guardian, guardianProfile],
+          [mother, motherProfile],
+          [father, fatherProfile]
+        ].find(([parent, parentProfile]) => parent && parentProfile.contactNumber);
+        const lrn = String(student.lrn || '').trim();
+        const learner = {
+          rowNumber: index + 1,
+          lrn,
+          name: studentName,
+          sex: profile.sex ? String(profile.sex).slice(0, 1).toUpperCase() : '',
+          birthDate: formatSfDateValue(profile.birthDate),
+          age: ageOnDate(profile.birthDate, referenceDate),
+          birthPlaceProvince: profile.birthPlaceProvince || '',
+          motherTongue: profile.motherTongue || '',
+          indigenousGroup: profile.indigenousGroup || '',
+          religion: profile.religion || '',
+          houseStreet: profile.houseStreet || '',
+          barangay: profile.barangay || '',
+          cityMunicipality: profile.cityMunicipality || '',
+          province: profile.province || '',
+          fatherName: formatSfPersonName(father, fatherProfile),
+          motherMaidenName: mother
+            ? formatSfPersonName(mother, motherProfile, motherProfile.hasNoMaidenName ? mother.lastName : (motherProfile.maidenLastName || mother.lastName))
+            : '',
+          guardianName: formatSfPersonName(guardian, guardianProfile),
+          guardianRelationship: guardian ? 'Guardian' : '',
+          contactNumber: contactSource?.[1]?.contactNumber || '',
+          remarks: ''
+        };
+
+        if (!lrn) issues.push(sfDataIssue('missing_lrn', 'warning', `${student.id}.lrn`, `${studentName || 'A learner'} has no LRN.`));
+        else if (!LRN_PATTERN.test(lrn)) issues.push(sfDataIssue('invalid_lrn', 'error', `${student.id}.lrn`, `${studentName || 'A learner'} has an invalid LRN.`));
+        else if (usedLrns.has(lrn)) issues.push(sfDataIssue('duplicate_lrn', 'error', `${student.id}.lrn`, `LRN ${lrn} appears more than once in this section.`));
+        else usedLrns.add(lrn);
+
+        [
+          ['sex', 'sex'],
+          ['birthDate', 'birth date'],
+          ['birthPlaceProvince', 'birthplace'],
+          ['motherTongue', 'mother tongue'],
+          ['religion', 'religion']
+        ].forEach(([field, label]) => {
+          if (!learner[field]) issues.push(sfDataIssue('missing_learner_field', 'warning', `${student.id}.${field}`, `${studentName || 'A learner'} is missing ${label}.`));
+        });
+        if (!learner.contactNumber) issues.push(sfDataIssue('missing_parent_contact', 'warning', `${student.id}.contactNumber`, `${studentName || 'A learner'} has no parent or guardian contact number.`));
+        if (student.status !== RECORD_VALUES.statuses.ACTIVE) issues.push(sfDataIssue('inactive_learner', 'warning', `${student.id}.status`, `${studentName || 'A learner'} is marked inactive; review the remarks column.`));
+        return learner;
+      });
+
+    const regionName = String(school.regionName || '').trim();
+    const header = {
+      schoolId: school.schoolId || '',
+      region: regionName ? (/^region\b/i.test(regionName) ? regionName : `Region ${regionName}`) : '',
+      division: school.divisionName || '',
+      district: school.districtName || '',
+      schoolName: school.name || '',
+      schoolYear,
+      gradeLevel: section.grade || '',
+      section: section.name || ''
+    };
+    [
+      ['schoolId', 'school ID'],
+      ['region', 'region'],
+      ['division', 'division'],
+      ['district', 'district'],
+      ['schoolName', 'school name'],
+      ['schoolYear', 'school year'],
+      ['gradeLevel', 'grade level'],
+      ['section', 'section']
+    ].forEach(([field, label]) => {
+      if (!header[field]) issues.push(sfDataIssue('missing_header_field', 'warning', `header.${field}`, `The ${label} is not configured.`));
+    });
+
+    return { header, learners, issues };
+  }
+
   // Replace with POST /api/teacher/sf-forms/preview. The backend must repeat
-  // the section permission check before returning school or learner records.
+  // the adviser permission check before returning school or learner records.
   async function generateSfForm(values = {}) {
     const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
       throw new Error('Select an active template with a verified mapping.');
     }
 
-    const section = (await getMyTeachingSections()).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
 
     const schoolYear = String(values.schoolYear || '').trim();
-    const academicPeriodId = String(values.academicPeriodId || '').trim();
-    if (!schoolYear || !academicPeriodId) throw new Error('Select a school year and academic period.');
+    if (!schoolYear) throw new Error('Select a school year.');
 
     const school = getActiveSchool();
     const teacher = getUserById(window.EDUGNAY_TEACHER_ACCESS?.teacherId);
     if (!school || !teacher) throw new Error('The school or teacher account could not be found.');
     const students = getStudents().filter(student => student.schoolId === school.id && student.sectionId === section.id);
-    const context = {
-      school,
-      section,
-      teacher,
-      schoolYear,
-      academicPeriodId,
-      students,
-      attendance: getAttendanceRecords({ sectionId: section.id }),
-      grades: students.flatMap(student => getGradesForStudent(student.id, schoolYear))
-        .filter(grade => grade.academicPeriodId === academicPeriodId)
-    };
+    if (students.length > 49) throw new Error('This section has more than the 49 learner rows available in SF1.');
+    const context = buildSf1Context(school, section, students, schoolYear);
+    const blockingIssue = context.issues.find(record => record.severity === 'error');
+    if (blockingIssue) throw new Error(blockingIssue.message);
 
-    const generated = await window.EDUGNAY_SF_WORKBOOK.generateWorkbook(template.templateFileKey, template, context);
+    const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreview(template, context);
     const fileName = `${template.formCode}_${section.grade}-${section.name}_${schoolYear}.xlsx`
       .replace(/[<>:"/\\|?*]+/g, '-')
       .replace(/\s+/g, '-');
@@ -1404,9 +1593,29 @@ function applyCurrentDateToGradingBanners() {
       templateId: template.id,
       sectionId: section.id,
       schoolYear,
-      academicPeriodId,
       fileName,
+      issues: context.issues,
       ...generated
+    };
+  }
+
+  // Replace with POST /api/teacher/sf-forms/download. The backend will rebuild
+  // mapped values from the authorized generation record before returning XLSX.
+  async function exportSfForm(values = {}) {
+    const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
+    if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
+      throw new Error('The selected SF template is not available for download.');
+    }
+    const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
+    if (!section) throw new Error('You do not have access to the selected class.');
+    const buffer = await window.EDUGNAY_SF_WORKBOOK.exportWorkbook(
+      template,
+      Array.isArray(values.mappedCells) ? values.mappedCells : [],
+      Array.isArray(values.edits) ? values.edits : []
+    );
+    return {
+      buffer,
+      fileName: String(values.fileName || template.fileName)
     };
   }
 
@@ -1932,6 +2141,11 @@ function applyCurrentDateToGradingBanners() {
     { id: "teacher-ana-garcia", schoolId: "scc", role: "teacher", email: "a.garcia.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Ana", lastName: "Garcia", displayName: "Ms. Ana Garcia", initials: "AG", employeeNo: "FAC-2021-0049", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
     { id: "parent-7", schoolId: "scc", role: "parent", email: "r.lim.parents@stcolumban.edu.ph", status: "active", createdAt: "2024-06-05T00:00:00.000Z", honorific: null, firstName: "Rosa", lastName: "Lim", displayName: "Rosa Lim", initials: "RL", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
     { id: "parent-8", schoolId: "scc", role: "parent", email: "e.cruz.parents@stcolumban.edu.ph", status: "inactive", createdAt: "2025-05-24T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Cruz", displayName: "Elena Cruz", initials: "EC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-cm-001", schoolId: "scc", role: "parent", email: "m.mendoza.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Mendoza", displayName: "Maria Mendoza", initials: "MM", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-lr-002", schoolId: "scc", role: "parent", email: "p.reyes.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Pedro", lastName: "Reyes", displayName: "Pedro Reyes", initials: "PR", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-sc-013", schoolId: "scc", role: "parent", email: "a.cruz.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Cruz", displayName: "Ana Cruz", initials: "AC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-gb-014", schoolId: "scc", role: "parent", email: "r.bautista.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Roberto", lastName: "Bautista", displayName: "Roberto Bautista", initials: "RB", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-na-015", schoolId: "scc", role: "parent", email: "e.aquino.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Aquino", displayName: "Elena Aquino", initials: "EA", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
     { id: "teacher-9", schoolId: "scc", role: "teacher", email: "l.villanueva.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Lara", lastName: "Villanueva", displayName: "Ms. Lara Villanueva", initials: "LV", employeeNo: "FAC-2018-0031", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
     { id: "cm-001", schoolId: "scc", role: "student", email: "c.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Carlo", lastName: "Mendoza", displayName: "Carlo Mendoza", initials: "CM", employeeNo: null, lrn: "100201000003", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
     { id: "lr-002", schoolId: "scc", role: "student", email: "l.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liza", lastName: "Reyes", displayName: "Liza Reyes", initials: "LR", employeeNo: null, lrn: "100201000004", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
@@ -1998,6 +2212,186 @@ function applyCurrentDateToGradingBanners() {
     { id: "nb-063", schoolId: "scc", role: "student", email: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: "100201000063", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
     { id: "im-064", schoolId: "scc", role: "student", email: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: "100201000064", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
     { id: "mf-065", schoolId: "scc", role: "student", email: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: "100201000065", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
+  ];
+
+  // Frontend-only profile seed data. Replace this with profile API responses later.
+  const DEFAULT_USER_PROFILES = [
+    ...DEFAULT_USERS
+      .filter(user => user.schoolId === 'scc' && user.role === RECORD_VALUES.roles.STUDENT)
+      .map((user, index) => {
+        const gradeNumber = Number(String(user.gradeLevel || '').replace('Grade ', '')) || 0;
+        const birthYear = gradeNumber ? 2020 - gradeNumber : 2019;
+        const birthMonth = String((index % 12) + 1).padStart(2, '0');
+        const birthDay = String((index % 24) + 1).padStart(2, '0');
+        return {
+          userId: user.id,
+          schoolId: user.schoolId,
+          middleName: index % 2 ? 'Jose' : 'Marie',
+          hasNoMiddleName: false,
+          contactNumber: null,
+          sex: index % 2 ? 'male' : 'female',
+          birthDate: `${birthYear}-${birthMonth}-${birthDay}`,
+          birthPlaceProvince: 'Pangasinan',
+          motherTongue: 'Pangasinense',
+          indigenousGroup: 'Not applicable',
+          religion: 'Catholic',
+          houseStreet: `${index + 1} Rizal Street`,
+          barangay: index % 2 ? 'San Isidro' : 'Poblacion',
+          cityMunicipality: 'Dagupan City',
+          province: 'Pangasinan',
+          maidenLastName: null,
+          hasNoMaidenName: false,
+          profileCompletedAt: '2025-06-10T00:00:00.000Z',
+          updatedAt: '2025-06-10T00:00:00.000Z'
+        };
+      }),
+    {
+      userId: 'parent-7',
+      schoolId: 'scc',
+      middleName: 'Santos',
+      hasNoMiddleName: false,
+      contactNumber: '09171234567',
+      sex: 'female',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '12 Rizal Street',
+      barangay: 'Poblacion',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: 'Santos',
+      hasNoMaidenName: false,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-8',
+      schoolId: 'scc',
+      middleName: 'Garcia',
+      hasNoMiddleName: false,
+      contactNumber: '09181234567',
+      sex: 'female',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '24 Bonifacio Street',
+      barangay: 'San Isidro',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: 'Garcia',
+      hasNoMaidenName: false,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-sf1-cm-001',
+      schoolId: 'scc',
+      middleName: 'Santos',
+      hasNoMiddleName: false,
+      contactNumber: '09191234567',
+      sex: 'female',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '31 Rizal Street',
+      barangay: 'Poblacion',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: 'Mendoza',
+      hasNoMaidenName: false,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-sf1-lr-002',
+      schoolId: 'scc',
+      middleName: 'Garcia',
+      hasNoMiddleName: false,
+      contactNumber: '09201234567',
+      sex: 'male',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '42 Rizal Street',
+      barangay: 'San Isidro',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: null,
+      hasNoMaidenName: true,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-sf1-sc-013',
+      schoolId: 'scc',
+      middleName: 'Santos',
+      hasNoMiddleName: false,
+      contactNumber: '09211234567',
+      sex: 'female',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '53 Rizal Street',
+      barangay: 'Poblacion',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: 'Cruz',
+      hasNoMaidenName: false,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-sf1-gb-014',
+      schoolId: 'scc',
+      middleName: 'Dela Cruz',
+      hasNoMiddleName: false,
+      contactNumber: '09221234567',
+      sex: 'male',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '64 Rizal Street',
+      barangay: 'San Isidro',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: null,
+      hasNoMaidenName: true,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    },
+    {
+      userId: 'parent-sf1-na-015',
+      schoolId: 'scc',
+      middleName: 'Reyes',
+      hasNoMiddleName: false,
+      contactNumber: '09231234567',
+      sex: 'female',
+      birthDate: null,
+      birthPlaceProvince: null,
+      motherTongue: null,
+      indigenousGroup: null,
+      religion: 'Catholic',
+      houseStreet: '75 Rizal Street',
+      barangay: 'Poblacion',
+      cityMunicipality: 'Dagupan City',
+      province: 'Pangasinan',
+      maidenLastName: 'Aquino',
+      hasNoMaidenName: false,
+      profileCompletedAt: '2025-06-10T00:00:00.000Z',
+      updatedAt: '2025-06-10T00:00:00.000Z'
+    }
   ];
 
   const ACTIVE_SCHOOL_ID = getActiveSchoolId();
@@ -3065,12 +3459,25 @@ function applyCurrentDateToGradingBanners() {
 
   const USER_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID);
   const savedUsers = readJson(USER_STORAGE_KEY, null);
+  const USER_SEED_VERSION = 1;
+  const USER_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.userSeedVersion, ACTIVE_SCHOOL_ID);
+  const savedUserSeedVersion = Number(readJson(USER_SEED_VERSION_KEY, 0));
   const USERS = Array.isArray(savedUsers) && savedUsers.length
     ? savedUsers
     : clone(DEFAULT_USERS.filter(user => user.schoolId === ACTIVE_SCHOOL_ID));
 
   // Keep older saved records compatible with the canonical user fields.
   let usersChanged = false;
+  if (Array.isArray(savedUsers) && savedUsers.length && savedUserSeedVersion < USER_SEED_VERSION) {
+    const existingUserIds = new Set(USERS.map(user => user.id));
+    const missingSf1Parents = DEFAULT_USERS.filter(user => (
+      user.id.startsWith('parent-sf1-') && !existingUserIds.has(user.id)
+    ));
+    if (missingSf1Parents.length) {
+      USERS.push(...clone(missingSf1Parents));
+      usersChanged = true;
+    }
+  }
   USERS.forEach(user => {
     const defaultUser = DEFAULT_USERS.find(item => item.id === user.id);
     let savedLrn = user.lrn || defaultUser?.lrn || null;
@@ -3104,16 +3511,34 @@ function applyCurrentDateToGradingBanners() {
   if (Array.isArray(savedUsers) && savedUsers.length && usersChanged) {
     writeJson(USER_STORAGE_KEY, USERS);
   }
+  if (savedUserSeedVersion < USER_SEED_VERSION) {
+    writeJson(USER_SEED_VERSION_KEY, USER_SEED_VERSION);
+  }
 
   const DEFAULT_PARENT_STUDENT_LINKS = [
-    { id: 'parent-student-parent-7-jd-004', schoolId: 'scc', parentId: 'parent-7', studentId: 'jd-004' },
-    { id: 'parent-student-parent-8-mt-012', schoolId: 'scc', parentId: 'parent-8', studentId: 'mt-012' }
+    { id: 'parent-student-parent-7-jd-004', schoolId: 'scc', parentId: 'parent-7', studentId: 'jd-004', relationship: 'mother' },
+    { id: 'parent-student-parent-8-mt-012', schoolId: 'scc', parentId: 'parent-8', studentId: 'mt-012', relationship: 'mother' },
+    { id: 'parent-student-parent-sf1-cm-001-cm-001', schoolId: 'scc', parentId: 'parent-sf1-cm-001', studentId: 'cm-001', relationship: 'mother' },
+    { id: 'parent-student-parent-sf1-lr-002-lr-002', schoolId: 'scc', parentId: 'parent-sf1-lr-002', studentId: 'lr-002', relationship: 'father' },
+    { id: 'parent-student-parent-sf1-sc-013-sc-013', schoolId: 'scc', parentId: 'parent-sf1-sc-013', studentId: 'sc-013', relationship: 'mother' },
+    { id: 'parent-student-parent-sf1-gb-014-gb-014', schoolId: 'scc', parentId: 'parent-sf1-gb-014', studentId: 'gb-014', relationship: 'father' },
+    { id: 'parent-student-parent-sf1-na-015-na-015', schoolId: 'scc', parentId: 'parent-sf1-na-015', studentId: 'na-015', relationship: 'mother' }
   ];
   const PARENT_STUDENT_LINK_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.parentStudentLinks, ACTIVE_SCHOOL_ID);
   const savedParentStudentLinks = readJson(PARENT_STUDENT_LINK_STORAGE_KEY, null);
-  const PARENT_STUDENT_LINKS = (Array.isArray(savedParentStudentLinks)
-    ? savedParentStudentLinks
-    : clone(DEFAULT_PARENT_STUDENT_LINKS))
+  const PARENT_STUDENT_LINK_SEED_VERSION = 1;
+  const PARENT_STUDENT_LINK_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.parentStudentLinkSeedVersion, ACTIVE_SCHOOL_ID);
+  const savedParentStudentLinkSeedVersion = Number(readJson(PARENT_STUDENT_LINK_SEED_VERSION_KEY, 0));
+  const parentStudentLinkSeed = Array.isArray(savedParentStudentLinks)
+    ? savedParentStudentLinks.slice()
+    : clone(DEFAULT_PARENT_STUDENT_LINKS);
+  if (Array.isArray(savedParentStudentLinks) && savedParentStudentLinkSeedVersion < PARENT_STUDENT_LINK_SEED_VERSION) {
+    const existingLinkIds = new Set(parentStudentLinkSeed.map(link => String(link.id || '')));
+    DEFAULT_PARENT_STUDENT_LINKS.forEach(link => {
+      if (!existingLinkIds.has(link.id)) parentStudentLinkSeed.push(link);
+    });
+  }
+  const PARENT_STUDENT_LINKS = parentStudentLinkSeed
     .map(link => ({
       id: String(link.id || `parent-student-${link.parentId}-${link.studentId}`),
       schoolId: link.schoolId || ACTIVE_SCHOOL_ID,
@@ -3127,12 +3552,52 @@ function applyCurrentDateToGradingBanners() {
     && JSON.stringify(savedParentStudentLinks) !== JSON.stringify(PARENT_STUDENT_LINKS)) {
     writeJson(PARENT_STUDENT_LINK_STORAGE_KEY, PARENT_STUDENT_LINKS);
   }
+  if (savedParentStudentLinkSeedVersion < PARENT_STUDENT_LINK_SEED_VERSION) {
+    writeJson(PARENT_STUDENT_LINK_SEED_VERSION_KEY, PARENT_STUDENT_LINK_SEED_VERSION);
+  }
 
   const USER_PROFILE_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.userProfiles, ACTIVE_SCHOOL_ID);
-  const savedUserProfiles = readJson(USER_PROFILE_STORAGE_KEY, []);
-  const USER_PROFILES = (Array.isArray(savedUserProfiles) ? savedUserProfiles : [])
-    .filter(profile => (profile.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
-    .map(profile => normalizeUserProfile(profile.userId, profile));
+  const USER_PROFILE_SEED_VERSION = 2;
+  const USER_PROFILE_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.userProfileSeedVersion, ACTIVE_SCHOOL_ID);
+  const savedUserProfiles = readJson(USER_PROFILE_STORAGE_KEY, null);
+  const savedUserProfileSeedVersion = Number(readJson(USER_PROFILE_SEED_VERSION_KEY, 0));
+  const defaultUserProfiles = DEFAULT_USER_PROFILES
+    .filter(profile => (profile.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID);
+
+  function mergeDefaultProfile(defaultProfile, savedProfile) {
+    const merged = { ...defaultProfile };
+    Object.entries(savedProfile || {}).forEach(([field, value]) => {
+      if (field !== 'userId' && field !== 'schoolId' && value !== null && value !== undefined && value !== '') {
+        merged[field] = value;
+      }
+    });
+    return merged;
+  }
+
+  let userProfilesChanged = false;
+  let USER_PROFILES;
+  if (!Array.isArray(savedUserProfiles)) {
+    USER_PROFILES = defaultUserProfiles.map(profile => normalizeUserProfile(profile.userId, profile));
+    userProfilesChanged = true;
+  } else if (savedUserProfileSeedVersion < USER_PROFILE_SEED_VERSION) {
+    const savedProfilesByUserId = new Map(savedUserProfiles.map(profile => [String(profile.userId || ''), profile]));
+    const defaultProfileIds = new Set(defaultUserProfiles.map(profile => profile.userId));
+    USER_PROFILES = defaultUserProfiles
+      .map(profile => normalizeUserProfile(profile.userId, mergeDefaultProfile(profile, savedProfilesByUserId.get(profile.userId))))
+      .concat(savedUserProfiles
+        .filter(profile => !defaultProfileIds.has(String(profile.userId || '')))
+        .map(profile => normalizeUserProfile(profile.userId, profile)));
+    userProfilesChanged = true;
+  } else {
+    USER_PROFILES = savedUserProfiles
+      .filter(profile => (profile.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
+      .map(profile => normalizeUserProfile(profile.userId, profile));
+  }
+
+  if (userProfilesChanged) writeJson(USER_PROFILE_STORAGE_KEY, USER_PROFILES);
+  if (savedUserProfileSeedVersion < USER_PROFILE_SEED_VERSION) {
+    writeJson(USER_PROFILE_SEED_VERSION_KEY, USER_PROFILE_SEED_VERSION);
+  }
 
   function normalizeUserProfile(userId, values = {}) {
     const profile = {
@@ -3963,9 +4428,11 @@ function applyCurrentDateToGradingBanners() {
     getSections,
     updateSection,
     getMyTeachingSections,
+    getMyAdvisorySections,
     getSfTemplates,
     getSfTemplatePreview,
     generateSfForm,
+    exportSfForm,
     assignments: ASSIGNMENT_DIRECTORY,
     getAssignments,
     getAssignmentsForSection,
