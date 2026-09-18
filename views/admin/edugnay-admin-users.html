@@ -120,6 +120,28 @@
     </div>
   </div>
 
+  <!-- USER DETAILS MODAL -->
+  <div class="modal-backdrop" id="userDetailsModalBackdrop" aria-hidden="true">
+    <section class="modal user-details-modal" role="dialog" aria-modal="true" aria-labelledby="userDetailsModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-round"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="userDetailsModalTitle">User Information</div>
+            <div class="modal-sub">Review account, profile, and role-specific details.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="userDetailsModalClose" aria-label="Close user information" onclick="closeUserDetailsModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="userDetailsModalBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeUserDetailsModal()">Close</button>
+      </div>
+    </section>
+  </div>
+
   <!-- DEACTIVATE / REACTIVATE CONFIRM MODAL -->
   <div class="modal-backdrop" id="deactivateModalBackdrop">
     <div class="modal" style="max-width:400px;">
@@ -599,6 +621,7 @@
 
     const PAGE_SIZE = 10;
     let currentPage = 1;
+    let userDetailsTrigger = null;
 
     const ROLE_META = {
       school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
@@ -763,6 +786,11 @@
       });
     }
 
+    function userDetailItem(label, value) {
+      const displayValue = String(value ?? '').trim() || 'Not provided';
+      return `<div><dt>${window.EDUGNAY_CONFIG.escapeHtml(label)}</dt><dd>${window.EDUGNAY_CONFIG.escapeHtml(displayValue)}</dd></div>`;
+    }
+
     function renderUsers() {
       updateGradeLevelFilter();
       renderSectionFilterOptions();
@@ -808,7 +836,7 @@
           </div>`;
 
         return `
-      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}">
+      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}" tabindex="0" aria-haspopup="dialog" aria-label="View ${window.EDUGNAY_CONFIG.escapeHtml(displayName)}'s information">
         <td class="account-user-cell">
           <div class="user-cell">
             <div class="user-av ${meta.avatarClass}">${initials}</div>
@@ -903,6 +931,17 @@
         btn.addEventListener('click', function () {
           closeUserMenus();
           openDeleteModal(this.closest('tr'));
+        });
+      });
+      document.querySelectorAll('#userTable tbody tr[data-user-id]').forEach(row => {
+        row.addEventListener('click', function (event) {
+          if (event.target.closest('button, a, input, select, textarea, [role="menu"]')) return;
+          openUserDetailsModal(this.dataset.userId, this);
+        });
+        row.addEventListener('keydown', function (event) {
+          if (event.target !== this || !['Enter', ' '].includes(event.key)) return;
+          event.preventDefault();
+          openUserDetailsModal(this.dataset.userId, this);
         });
       });
     }
@@ -1161,7 +1200,159 @@
       if (e.target === this) closeAccountModal();
     });
 
-    /* ── DEACTIVATE MODAL ── */
+    /* USER DETAILS MODAL */
+    async function openUserDetailsModal(userId, trigger) {
+      const user = await window.EDUGNAY_CONFIG.getUserById(userId);
+      if (!user) return;
+
+      const profile = await window.EDUGNAY_CONFIG.getUserProfile(user.id);
+      const sections = ['student', 'parent'].includes(user.role)
+        ? await window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+        : [];
+      const parentLinks = user.role === 'parent'
+        ? (await window.EDUGNAY_CONFIG.getParentStudentLinks()).filter(link => link.parentId === user.id)
+        : [];
+      const meta = ROLE_META[user.role];
+      const initials = ((user.firstName || '?').charAt(0) + (user.lastName || '?').charAt(0)).toUpperCase();
+      const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
+      const statusIcon = user.status === 'active' ? 'circle-check' : 'circle-x';
+      const schoolLevel = window.EDUGNAY_CONFIG.grades.find(level => level.key === user.schoolLevel)?.label || user.schoolLevel;
+      const section = sections.find(item => item.id === user.sectionId);
+      const address = [profile?.houseStreet, profile?.barangay, profile?.cityMunicipality, profile?.province]
+        .filter(Boolean)
+        .join(', ');
+      const setupStatus = ['student', 'parent'].includes(user.role)
+        ? (await window.EDUGNAY_CONFIG.isProfileSetupRequired(user.id) ? 'Required' : 'Complete')
+        : 'Not required';
+
+      const accountDetails = [
+        ['First name', user.firstName],
+        ['Middle name', profile?.hasNoMiddleName ? 'None' : profile?.middleName],
+        ['Last name', user.lastName],
+        ['School email', user.schoolEmail],
+        ['Personal email', user.personalEmail],
+        ['Date added', formatAccountDate(user.createdAt)],
+        ['Profile setup', setupStatus]
+      ];
+      const roleDetails = [];
+      if (['school_admin', 'teacher'].includes(user.role)) {
+        roleDetails.push(['Employee number', user.employeeNo]);
+      }
+      if (user.role === 'student') {
+        roleDetails.push(
+          ['LRN', user.lrn],
+          ['School level', schoolLevel],
+          ['Grade level', user.gradeLevel],
+          ['Section', section ? `${section.grade} / ${section.name}` : 'Unassigned']
+        );
+        if (user.schoolLevel === 'shs') roleDetails.push(['Strand', user.strand]);
+      }
+
+      const personalDetails = [];
+      if (user.role === 'student') {
+        personalDetails.push(
+          ['Sex', profile?.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : null],
+          ['Birth date', profile?.birthDate ? formatAccountDate(profile.birthDate) : null],
+          ['Birthplace province', profile?.birthPlaceProvince],
+          ['Mother tongue', profile?.motherTongue],
+          ['Indigenous group', profile?.indigenousGroup],
+          ['Religion', profile?.religion],
+          ['Address', address]
+        );
+      }
+      if (user.role === 'parent') {
+        personalDetails.push(
+          ['Sex', profile?.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : null],
+          ['Contact number', profile?.contactNumber],
+          ['Religion', profile?.religion],
+          ['Maiden last name', profile?.hasNoMaidenName ? 'None' : profile?.maidenLastName],
+          ['Address', address]
+        );
+      }
+
+      const linkedStudents = parentLinks.map(link => {
+        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        const studentSection = sections.find(item => item.id === student?.sectionId);
+        const relationship = link.relationship
+          ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
+          : 'Not specified';
+        const scope = studentSection
+          ? `${studentSection.grade} / ${studentSection.name}`
+          : student?.gradeLevel || 'Unassigned';
+        return `<div class="user-details-linked-row">
+          <div>
+            <div class="user-details-linked-name">${window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student')}</div>
+            <div class="user-details-linked-meta">${window.EDUGNAY_CONFIG.escapeHtml(scope)}</div>
+          </div>
+          <span>${window.EDUGNAY_CONFIG.escapeHtml(relationship)}</span>
+        </div>`;
+      }).join('');
+
+      const modalBody = document.getElementById('userDetailsModalBody');
+      modalBody.innerHTML = `
+        <div class="user-details-profile">
+          <div class="user-details-avatar ${meta.avatarClass}">${initials}</div>
+          <div class="user-details-profile-copy">
+            <div class="user-details-name">${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)}</div>
+            <div class="user-details-email">${window.EDUGNAY_CONFIG.escapeHtml(user.schoolEmail || 'No school email')}</div>
+            <div class="user-details-badges">
+              <span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}"></i>${meta.label}</span>
+              <span class="user-details-status ${user.status}"><i data-lucide="${statusIcon}"></i>${statusLabel}</span>
+            </div>
+          </div>
+        </div>
+        <section class="user-details-section" aria-labelledby="userDetailsAccountTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="id-card"></i></span>
+            <h3 id="userDetailsAccountTitle">Account details</h3>
+          </div>
+          <dl class="user-details-grid">${accountDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>
+        ${roleDetails.length ? `<section class="user-details-section" aria-labelledby="userDetailsRoleTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="school"></i></span>
+            <h3 id="userDetailsRoleTitle">Role information</h3>
+          </div>
+          <dl class="user-details-grid">${roleDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>` : ''}
+        ${personalDetails.length ? `<section class="user-details-section" aria-labelledby="userDetailsPersonalTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="contact"></i></span>
+            <h3 id="userDetailsPersonalTitle">Personal information</h3>
+          </div>
+          <dl class="user-details-grid">${personalDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
+        </section>` : ''}
+        ${user.role === 'parent' ? `<section class="user-details-section" aria-labelledby="userDetailsLinksTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="users-round"></i></span>
+            <h3 id="userDetailsLinksTitle">Linked students</h3>
+          </div>
+          <div class="user-details-linked-list">${linkedStudents || '<div class="user-details-empty">No linked students</div>'}</div>
+        </section>` : ''}`;
+
+      userDetailsTrigger = trigger || null;
+      const modal = document.getElementById('userDetailsModalBackdrop');
+      modalBody.scrollTop = 0;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+      document.getElementById('userDetailsModalClose').focus();
+    }
+
+    function closeUserDetailsModal() {
+      const modal = document.getElementById('userDetailsModalBackdrop');
+      const wasOpen = modal.classList.contains('open');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      if (wasOpen && userDetailsTrigger?.isConnected) userDetailsTrigger.focus();
+      userDetailsTrigger = null;
+    }
+
+    document.getElementById('userDetailsModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeUserDetailsModal();
+    });
+
+    /* DEACTIVATE / REACTIVATE MODAL */
     function openDeactivateModal(row) {
       const name = row.querySelector('.user-name').textContent.trim();
       const isActive = row.dataset.status === 'active';
@@ -1281,6 +1472,7 @@
       if (e.key === 'Escape') {
         closeUserMenus();
         closeAccountModal();
+        closeUserDetailsModal();
         closeDeactivateModal();
         closeDeleteModal();
       }
