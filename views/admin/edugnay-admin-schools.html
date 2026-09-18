@@ -311,10 +311,6 @@
                 <input id="profileDistrict" name="districtName" placeholder="e.g. San Pedro District" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.districtName)}">
               </div>
               <div class="school-field">
-                <label for="profileSchoolHead">School head</label>
-                <input id="profileSchoolHead" name="schoolHeadName" placeholder="Printed name for official forms" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolHeadName)}">
-              </div>
-              <div class="school-field">
                 <label for="profileAddress">Address</label>
                 <input id="profileAddress" name="address" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.address)}">
               </div>
@@ -657,7 +653,6 @@
         regionName: values.regionName.trim() || null,
         divisionName: values.divisionName.trim() || null,
         districtName: values.districtName.trim() || null,
-        schoolHeadName: values.schoolHeadName.trim() || null,
         address: values.address.trim(),
         phone: values.phone.trim() || null,
         email: values.email.trim(),

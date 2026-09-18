@@ -3053,8 +3053,7 @@ document.getElementById('importStudentsForm').addEventListener('submit', functio
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
       const lrn = String(record.lrn || '').trim();
-      // Accept the old CSV header once, then continue with the canonical field.
-      const schoolEmail = String(record.schoolEmail || record.email || '').trim().toLowerCase();
+      const schoolEmail = String(record.schoolEmail || '').trim().toLowerCase();
       const existingUser = schoolEmail
         ? users.find(user => String(user.schoolEmail || '').toLowerCase() === schoolEmail)
         : null;

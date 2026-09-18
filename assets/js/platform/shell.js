@@ -10,8 +10,6 @@
     role: 'platform_admin',
     schoolEmail: 'platform.admin@academix.local',
     personalEmail: null,
-    // Temporary compatibility alias until the legacy user email field is removed.
-    email: 'platform.admin@academix.local',
     status: 'active',
     createdAt: '2025-01-01T00:00:00.000Z',
     honorific: null,

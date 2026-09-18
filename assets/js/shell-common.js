@@ -382,16 +382,15 @@ function applyCurrentDateToGradingBanners() {
   const DEFAULT_SCHOOLS = [
     {
       id: 'scc',
-      name: "St. Columban's College",
-      shortName: "ST. COLUMBAN'S COLLEGE",
+      name: "Saint Columban's College",
+      shortName: "SAINT COLUMBAN'S COLLEGE",
       schoolType: 'k12',
       typeLabel: 'K-12 School',
-      schoolId: '305614',
-      regionName: 'Region IV-A',
-      divisionName: 'Laguna',
-      districtName: 'San Pedro City',
-      schoolHeadName: null,
-      address: 'San Pedro, Laguna, Philippines',
+      schoolId: '400168',
+      regionName: 'Region I',
+      divisionName: 'Pangasinan I, Lingayen',
+      districtName: 'Lingayen I',
+      address: 'Avenida Rizal, Lingayen, Pangasinan, Philippines',
       phone: '(049) 123 4567',
       email: 'info@stcolumban.edu.ph',
       website: 'stcolumban.edu.ph',
@@ -490,7 +489,6 @@ function applyCurrentDateToGradingBanners() {
       regionName: null,
       divisionName: null,
       districtName: null,
-      schoolHeadName: null,
       address: null,
       phone: null,
       email: null,
@@ -604,6 +602,8 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function normalizeSchoolRecord(school = {}) {
+    const normalizedSchool = { ...school };
+    delete normalizedSchool.schoolHeadName;
     const validStatuses = [
       RECORD_VALUES.statuses.ACTIVE,
       RECORD_VALUES.statuses.PENDING,
@@ -611,6 +611,13 @@ function applyCurrentDateToGradingBanners() {
       RECORD_VALUES.statuses.SUSPENDED
     ];
     const administrator = school.initialAdministrator;
+    const normalizedAdministrator = administrator ? { ...administrator } : null;
+    if (normalizedAdministrator) {
+      normalizedAdministrator.schoolEmail = normalizedAdministrator.schoolEmail || normalizedAdministrator.email
+        ? String(normalizedAdministrator.schoolEmail || normalizedAdministrator.email).trim().toLowerCase()
+        : null;
+      delete normalizedAdministrator.email;
+    }
     const platformStatus = validStatuses.includes(school.platformStatus)
       ? school.platformStatus
       : RECORD_VALUES.statuses.PENDING;
@@ -625,14 +632,13 @@ function applyCurrentDateToGradingBanners() {
     ]));
 
     return {
-      ...school,
+      ...normalizedSchool,
       schoolYear: school.schoolYear || null,
       schoolYearStartDate: school.schoolYearStartDate || null,
       schoolYearEndDate: school.schoolYearEndDate || null,
       regionName: school.regionName ? String(school.regionName).trim() : null,
       divisionName: school.divisionName ? String(school.divisionName).trim() : null,
       districtName: school.districtName ? String(school.districtName).trim() : null,
-      schoolHeadName: school.schoolHeadName ? String(school.schoolHeadName).trim() : null,
       gradesPageEnabled: registrationPending ? false : school.gradesPageEnabled === true,
       narrativeReportsEnabled: registrationPending ? false : school.narrativeReportsEnabled === true,
       journalsEnabled: registrationPending ? false : school.journalsEnabled === true,
@@ -653,14 +659,7 @@ function applyCurrentDateToGradingBanners() {
       rejectionReason: school.rejectionReason
         ? String(school.rejectionReason).trim()
         : null,
-      initialAdministrator: administrator
-        ? {
-          ...administrator,
-          schoolEmail: administrator.schoolEmail || administrator.email
-            ? String(administrator.schoolEmail || administrator.email).trim().toLowerCase()
-            : null
-        }
-        : null
+      initialAdministrator: normalizedAdministrator
     };
   }
 
@@ -671,20 +670,27 @@ function applyCurrentDateToGradingBanners() {
     const normalizedSchools = schools.map(normalizeSchoolRecord);
     const savedSchoolSeedVersion = Number(readJson(STORAGE_KEYS.schoolSeedVersion, 0));
 
-    if (hasSavedSchools && savedSchoolSeedVersion < 1) {
+    if (hasSavedSchools && savedSchoolSeedVersion < 4) {
       const defaultSchoolsById = new Map(DEFAULT_SCHOOLS.map(school => [school.id, school]));
-      let schoolsChanged = false;
       normalizedSchools.forEach(school => {
         const defaultSchool = defaultSchoolsById.get(school.id);
         ['regionName', 'divisionName', 'districtName'].forEach(field => {
           if (!school[field] && defaultSchool?.[field]) {
             school[field] = defaultSchool[field];
-            schoolsChanged = true;
           }
         });
+        if (school.id === 'scc' && defaultSchool) {
+          school.name = defaultSchool.name;
+          school.shortName = defaultSchool.shortName;
+          school.schoolId = defaultSchool.schoolId;
+          school.regionName = defaultSchool.regionName;
+          school.divisionName = defaultSchool.divisionName;
+          school.districtName = defaultSchool.districtName;
+          school.address = defaultSchool.address;
+        }
       });
-      if (schoolsChanged) writeJson(STORAGE_KEYS.schools, normalizedSchools);
-      writeJson(STORAGE_KEYS.schoolSeedVersion, 1);
+      writeJson(STORAGE_KEYS.schools, normalizedSchools);
+      writeJson(STORAGE_KEYS.schoolSeedVersion, 4);
     }
 
     return normalizedSchools;
@@ -2132,86 +2138,86 @@ function applyCurrentDateToGradingBanners() {
   // One direct user source for every school administrator, teacher, student, and parent.
   // Replace this local array with the users API response during backend integration.
   const DEFAULT_USERS = [
-    { id: "admin-1", schoolId: "scc", role: "school_admin", email: "admin.adm@stcolumban.edu.ph", status: "active", createdAt: "2025-01-06T00:00:00.000Z", honorific: null, firstName: "Sr.", lastName: "Admin", displayName: "Sr. Admin", initials: "SA", employeeNo: "ADM-2016-0001", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-2", schoolId: "scc", role: "teacher", email: "m.reyes.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Maria", lastName: "Reyes", displayName: "Ms. Maria Reyes", initials: "MR", employeeNo: "FAC-2019-0042", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-3", schoolId: "scc", role: "teacher", email: "p.tan.fac@stcolumban.edu.ph", status: "active", createdAt: "2025-05-20T00:00:00.000Z", honorific: "Mr.", firstName: "Paolo", lastName: "Tan", displayName: "Mr. Paolo Tan", initials: "PT", employeeNo: "FAC-2021-0017", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-carla-dizon", schoolId: "scc", role: "teacher", email: "c.dizon.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Carla", lastName: "Dizon", displayName: "Ms. Carla Dizon", initials: "CD", employeeNo: "FAC-2020-0028", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-rico-santos", schoolId: "scc", role: "teacher", email: "r.santos.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Mr.", firstName: "Rico", lastName: "Santos", displayName: "Mr. Rico Santos", initials: "RS", employeeNo: "FAC-2019-0064", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-jana-mendez", schoolId: "scc", role: "teacher", email: "j.mendez.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Jana", lastName: "Mendez", displayName: "Ms. Jana Mendez", initials: "JM", employeeNo: "FAC-2022-0013", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-ana-garcia", schoolId: "scc", role: "teacher", email: "a.garcia.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Ana", lastName: "Garcia", displayName: "Ms. Ana Garcia", initials: "AG", employeeNo: "FAC-2021-0049", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-7", schoolId: "scc", role: "parent", email: "r.lim.parents@stcolumban.edu.ph", status: "active", createdAt: "2024-06-05T00:00:00.000Z", honorific: null, firstName: "Rosa", lastName: "Lim", displayName: "Rosa Lim", initials: "RL", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-8", schoolId: "scc", role: "parent", email: "e.cruz.parents@stcolumban.edu.ph", status: "inactive", createdAt: "2025-05-24T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Cruz", displayName: "Elena Cruz", initials: "EC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-sf1-cm-001", schoolId: "scc", role: "parent", email: "m.mendoza.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Mendoza", displayName: "Maria Mendoza", initials: "MM", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-sf1-lr-002", schoolId: "scc", role: "parent", email: "p.reyes.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Pedro", lastName: "Reyes", displayName: "Pedro Reyes", initials: "PR", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-sf1-sc-013", schoolId: "scc", role: "parent", email: "a.cruz.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Cruz", displayName: "Ana Cruz", initials: "AC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-sf1-gb-014", schoolId: "scc", role: "parent", email: "r.bautista.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Roberto", lastName: "Bautista", displayName: "Roberto Bautista", initials: "RB", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "parent-sf1-na-015", schoolId: "scc", role: "parent", email: "e.aquino.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Aquino", displayName: "Elena Aquino", initials: "EA", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "teacher-9", schoolId: "scc", role: "teacher", email: "l.villanueva.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Lara", lastName: "Villanueva", displayName: "Ms. Lara Villanueva", initials: "LV", employeeNo: "FAC-2018-0031", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
-    { id: "cm-001", schoolId: "scc", role: "student", email: "c.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Carlo", lastName: "Mendoza", displayName: "Carlo Mendoza", initials: "CM", employeeNo: null, lrn: "100201000003", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "lr-002", schoolId: "scc", role: "student", email: "l.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liza", lastName: "Reyes", displayName: "Liza Reyes", initials: "LR", employeeNo: null, lrn: "100201000004", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "rc-003", schoolId: "scc", role: "student", email: "r.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rico", lastName: "Cruz", displayName: "Rico Cruz", initials: "RC", employeeNo: null, lrn: "100201000005", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "jd-004", schoolId: "scc", role: "student", email: "j.delacruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Juan", lastName: "Dela Cruz", displayName: "Juan Dela Cruz", initials: "JC", employeeNo: null, lrn: "100201000001", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
-    { id: "et-005", schoolId: "scc", role: "student", email: "e.tan.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ella", lastName: "Tan", displayName: "Ella Tan", initials: "ET", employeeNo: null, lrn: "100201000006", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
-    { id: "ml-006", schoolId: "scc", role: "student", email: "m.lopez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Lopez", displayName: "Maria Lopez", initials: "ML", employeeNo: null, lrn: "100201000007", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
-    { id: "bg-007", schoolId: "scc", role: "student", email: "b.garcia.stud@stcolumban.edu.ph", status: "inactive", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Ben", lastName: "Garcia", displayName: "Ben Garcia", initials: "BG", employeeNo: null, lrn: "100201000008", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
-    { id: "as-008", schoolId: "scc", role: "student", email: "a.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-05-26T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Santos", displayName: "Ana Santos", initials: "AS", employeeNo: null, lrn: "100201000009", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
-    { id: "ks-009", schoolId: "scc", role: "student", email: "k.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Karl", lastName: "Santiago", displayName: "Karl Santiago", initials: "KS", employeeNo: null, lrn: "100201000010", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
-    { id: "pn-010", schoolId: "scc", role: "student", email: "p.nieves.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paula", lastName: "Nieves", displayName: "Paula Nieves", initials: "PN", employeeNo: null, lrn: "100201000011", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
-    { id: "do-011", schoolId: "scc", role: "student", email: "d.ocampo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Dan", lastName: "Ocampo", displayName: "Dan Ocampo", initials: "DO", employeeNo: null, lrn: "100201000012", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
-    { id: "mt-012", schoolId: "scc", role: "student", email: "m.torres.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maya", lastName: "Torres", displayName: "Maya Torres", initials: "MT", employeeNo: null, lrn: "100201000002", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "sc-013", schoolId: "scc", role: "student", email: "s.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Sofia", lastName: "Cruz", displayName: "Sofia Cruz", initials: "SC", employeeNo: null, lrn: "100201000013", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "gb-014", schoolId: "scc", role: "student", email: "g.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Gabriel", lastName: "Bautista", displayName: "Gabriel Bautista", initials: "GB", employeeNo: null, lrn: "100201000014", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "na-015", schoolId: "scc", role: "student", email: "n.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nicole", lastName: "Aquino", displayName: "Nicole Aquino", initials: "NA", employeeNo: null, lrn: "100201000015", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
-    { id: "pr-016", schoolId: "scc", role: "student", email: "p.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paolo", lastName: "Rivera", displayName: "Paolo Rivera", initials: "PR", employeeNo: null, lrn: "100201000016", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "av-017", schoolId: "scc", role: "student", email: "a.villanueva.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Aira", lastName: "Villanueva", displayName: "Aira Villanueva", initials: "AV", employeeNo: null, lrn: "100201000017", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "ld-018", schoolId: "scc", role: "student", email: "l.dizon.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lucas", lastName: "Dizon", displayName: "Lucas Dizon", initials: "LD", employeeNo: null, lrn: "100201000018", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "br-019", schoolId: "scc", role: "student", email: "b.ramos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Beatrice", lastName: "Ramos", displayName: "Beatrice Ramos", initials: "BR", employeeNo: null, lrn: "100201000019", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "mg-020", schoolId: "scc", role: "student", email: "m.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Miguel", lastName: "Garcia", displayName: "Miguel Garcia", initials: "MG", employeeNo: null, lrn: "100201000020", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
-    { id: "ac-021", schoolId: "scc", role: "student", email: "a.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Andrea", lastName: "Castillo", displayName: "Andrea Castillo", initials: "AC", employeeNo: null, lrn: "100201000021", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
-    { id: "eb-022", schoolId: "scc", role: "student", email: "e.bernardo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Bernardo", displayName: "Ethan Bernardo", initials: "EB", employeeNo: null, lrn: "100201000022", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
-    { id: "ch-023", schoolId: "scc", role: "student", email: "c.hernandez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Hernandez", displayName: "Chloe Hernandez", initials: "CH", employeeNo: null, lrn: "100201000023", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
-    { id: "nr-024", schoolId: "scc", role: "student", email: "n.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nathan", lastName: "Reyes", displayName: "Nathan Reyes", initials: "NR", employeeNo: null, lrn: "100201000024", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
-    { id: "is-025", schoolId: "scc", role: "student", email: "i.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Isabella", lastName: "Santos", displayName: "Isabella Santos", initials: "IS", employeeNo: null, lrn: "100201000025", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
-    { id: "lm-026", schoolId: "scc", role: "student", email: "l.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liam", lastName: "Mercado", displayName: "Liam Mercado", initials: "LM", employeeNo: null, lrn: "100201000026", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
-    { id: "gr-027", schoolId: "scc", role: "student", email: "g.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Grace", lastName: "Rivera", displayName: "Grace Rivera", initials: "GR", employeeNo: null, lrn: "100201000027", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
-    { id: "ds-028", schoolId: "scc", role: "student", email: "d.salazar.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Salazar", displayName: "Daniel Salazar", initials: "DS", employeeNo: null, lrn: "100201000028", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
-    { id: "cb-029", schoolId: "scc", role: "student", email: "c.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Camille", lastName: "Bautista", displayName: "Camille Bautista", initials: "CB", employeeNo: null, lrn: "100201000029", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
-    { id: "jr-030", schoolId: "scc", role: "student", email: "j.ramos2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Joshua", lastName: "Ramos", displayName: "Joshua Ramos", initials: "JR", employeeNo: null, lrn: "100201000030", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
-    { id: "rr-031", schoolId: "scc", role: "student", email: "r.robles.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Reina", lastName: "Robles", displayName: "Reina Robles", initials: "RR", employeeNo: null, lrn: "100201000031", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
-    { id: "mp-032", schoolId: "scc", role: "student", email: "m.perez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Marcus", lastName: "Perez", displayName: "Marcus Perez", initials: "MP", employeeNo: null, lrn: "100201000032", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
-    { id: "al-033", schoolId: "scc", role: "student", email: "a.lim.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Alyssa", lastName: "Lim", displayName: "Alyssa Lim", initials: "AL", employeeNo: null, lrn: "100201000033", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
-    { id: "ad-034", schoolId: "scc", role: "student", email: "a.domingo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Adrian", lastName: "Domingo", displayName: "Adrian Domingo", initials: "AD", employeeNo: null, lrn: "100201000034", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
-    { id: "td-035", schoolId: "scc", role: "student", email: "t.david.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Trisha", lastName: "David", displayName: "Trisha David", initials: "TD", employeeNo: null, lrn: "100201000035", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
-    { id: "vp-036", schoolId: "scc", role: "student", email: "v.padilla.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Vincent", lastName: "Padilla", displayName: "Vincent Padilla", initials: "VP", employeeNo: null, lrn: "100201000036", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
-    { id: "hc-037", schoolId: "scc", role: "student", email: "h.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Helena", lastName: "Cruz", displayName: "Helena Cruz", initials: "HC", employeeNo: null, lrn: "100201000037", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
-    { id: "sa-038", schoolId: "scc", role: "student", email: "s.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Samuel", lastName: "Aquino", displayName: "Samuel Aquino", initials: "SA", employeeNo: null, lrn: "100201000038", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
-    { id: "pm-039", schoolId: "scc", role: "student", email: "p.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Patricia", lastName: "Mendoza", displayName: "Patricia Mendoza", initials: "PM", employeeNo: null, lrn: "100201000039", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
-    { id: "ov-040", schoolId: "scc", role: "student", email: "o.valdez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Oliver", lastName: "Valdez", displayName: "Oliver Valdez", initials: "OV", employeeNo: null, lrn: "100201000040", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
-    { id: "bb-041", schoolId: "scc", role: "student", email: "b.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bianca", lastName: "Bautista", displayName: "Bianca Bautista", initials: "BB", employeeNo: null, lrn: "100201000041", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
-    { id: "mm-042", schoolId: "scc", role: "student", email: "m.morales.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Matteo", lastName: "Morales", displayName: "Matteo Morales", initials: "MM", employeeNo: null, lrn: "100201000042", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
-    { id: "cc-043", schoolId: "scc", role: "student", email: "c.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Clarisse", lastName: "Castillo", displayName: "Clarisse Castillo", initials: "CC", employeeNo: null, lrn: "100201000043", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
-    { id: "em-044", schoolId: "scc", role: "student", email: "e.manalo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elijah", lastName: "Manalo", displayName: "Elijah Manalo", initials: "EM", employeeNo: null, lrn: "100201000044", schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
-    { id: "rs-045", schoolId: "scc", role: "student", email: "r.soriano.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rina", lastName: "Soriano", displayName: "Rina Soriano", initials: "RS", employeeNo: null, lrn: "100201000045", schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
-    { id: "ja-046", schoolId: "scc", role: "student", email: "j.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Janelle", lastName: "Aquino", displayName: "Janelle Aquino", initials: "JA", employeeNo: null, lrn: "100201000046", schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
-    { id: "cp-047", schoolId: "scc", role: "student", email: "c.pascual.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Caleb", lastName: "Pascual", displayName: "Caleb Pascual", initials: "CP", employeeNo: null, lrn: "100201000047", schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
-    { id: "ls-048", schoolId: "scc", role: "student", email: "l.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lara", lastName: "Santiago", displayName: "Lara Santiago", initials: "LS", employeeNo: null, lrn: "100201000048", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
-    { id: "km-049", schoolId: "scc", role: "student", email: "k.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Kyle", lastName: "Mendoza", displayName: "Kyle Mendoza", initials: "KM", employeeNo: null, lrn: "100201000049", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
-    { id: "hc-050", schoolId: "scc", role: "student", email: "h.cabrera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Hannah", lastName: "Cabrera", displayName: "Hannah Cabrera", initials: "HC", employeeNo: null, lrn: "100201000050", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
-    { id: "dv-051", schoolId: "scc", role: "student", email: "d.villarama.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Diego", lastName: "Villarama", displayName: "Diego Villarama", initials: "DV", employeeNo: null, lrn: "100201000051", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
-    { id: "ab-052", schoolId: "scc", role: "student", email: "a.bautista2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Amara", lastName: "Bautista", displayName: "Amara Bautista", initials: "AB", employeeNo: null, lrn: "100201000052", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
-    { id: "rg-053", schoolId: "scc", role: "student", email: "r.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rafael", lastName: "Garcia", displayName: "Rafael Garcia", initials: "RG", employeeNo: null, lrn: "100201000053", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
-    { id: "tm-054", schoolId: "scc", role: "student", email: "t.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Talia", lastName: "Mercado", displayName: "Talia Mercado", initials: "TM", employeeNo: null, lrn: "100201000054", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
-    { id: "jn-055", schoolId: "scc", role: "student", email: "j.navarro.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Jonas", lastName: "Navarro", displayName: "Jonas Navarro", initials: "JN", employeeNo: null, lrn: "100201000055", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
-    { id: "ar-056", schoolId: "scc", role: "student", email: "a.ramos.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Arielle", lastName: "Ramos", displayName: "Arielle Ramos", initials: "AR", employeeNo: null, lrn: "100201000056", schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
-    { id: "dm-057", schoolId: "scc", role: "student", email: "d.morales.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Morales", displayName: "Daniel Morales", initials: "DM", employeeNo: null, lrn: "100201000057", schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
-    { id: "cv-058", schoolId: "scc", role: "student", email: "c.villanueva.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Villanueva", displayName: "Chloe Villanueva", initials: "CV", employeeNo: null, lrn: "100201000058", schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
-    { id: "er-059", schoolId: "scc", role: "student", email: "e.reyes.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Reyes", displayName: "Ethan Reyes", initials: "ER", employeeNo: null, lrn: "100201000059", schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
-    { id: "bs-060", schoolId: "scc", role: "student", email: "b.santos.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bea", lastName: "Santos", displayName: "Bea Santos", initials: "BS", employeeNo: null, lrn: "100201000060", schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
-    { id: "lc-061", schoolId: "scc", role: "student", email: "l.cruz.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lorenzo", lastName: "Cruz", displayName: "Lorenzo Cruz", initials: "LC", employeeNo: null, lrn: "100201000061", schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
-    { id: "fg-062", schoolId: "scc", role: "student", email: "f.garcia.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Faith", lastName: "Garcia", displayName: "Faith Garcia", initials: "FG", employeeNo: null, lrn: "100201000062", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
-    { id: "nb-063", schoolId: "scc", role: "student", email: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: "100201000063", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
-    { id: "im-064", schoolId: "scc", role: "student", email: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: "100201000064", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
-    { id: "mf-065", schoolId: "scc", role: "student", email: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: "100201000065", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
+    { id: "admin-1", schoolId: "scc", role: "school_admin", schoolEmail: "admin.adm@stcolumban.edu.ph", status: "active", createdAt: "2025-01-06T00:00:00.000Z", honorific: null, firstName: "Sr.", lastName: "Admin", displayName: "Sr. Admin", initials: "SA", employeeNo: "ADM-2016-0001", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-2", schoolId: "scc", role: "teacher", schoolEmail: "m.reyes.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Maria", lastName: "Reyes", displayName: "Ms. Maria Reyes", initials: "MR", employeeNo: "FAC-2019-0042", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-3", schoolId: "scc", role: "teacher", schoolEmail: "p.tan.fac@stcolumban.edu.ph", status: "active", createdAt: "2025-05-20T00:00:00.000Z", honorific: "Mr.", firstName: "Paolo", lastName: "Tan", displayName: "Mr. Paolo Tan", initials: "PT", employeeNo: "FAC-2021-0017", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-carla-dizon", schoolId: "scc", role: "teacher", schoolEmail: "c.dizon.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Carla", lastName: "Dizon", displayName: "Ms. Carla Dizon", initials: "CD", employeeNo: "FAC-2020-0028", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-rico-santos", schoolId: "scc", role: "teacher", schoolEmail: "r.santos.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Mr.", firstName: "Rico", lastName: "Santos", displayName: "Mr. Rico Santos", initials: "RS", employeeNo: "FAC-2019-0064", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-jana-mendez", schoolId: "scc", role: "teacher", schoolEmail: "j.mendez.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Jana", lastName: "Mendez", displayName: "Ms. Jana Mendez", initials: "JM", employeeNo: "FAC-2022-0013", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-ana-garcia", schoolId: "scc", role: "teacher", schoolEmail: "a.garcia.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Ana", lastName: "Garcia", displayName: "Ms. Ana Garcia", initials: "AG", employeeNo: "FAC-2021-0049", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-7", schoolId: "scc", role: "parent", schoolEmail: "r.lim.parents@stcolumban.edu.ph", status: "active", createdAt: "2024-06-05T00:00:00.000Z", honorific: null, firstName: "Rosa", lastName: "Lim", displayName: "Rosa Lim", initials: "RL", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-8", schoolId: "scc", role: "parent", schoolEmail: "e.cruz.parents@stcolumban.edu.ph", status: "inactive", createdAt: "2025-05-24T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Cruz", displayName: "Elena Cruz", initials: "EC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-cm-001", schoolId: "scc", role: "parent", schoolEmail: "m.mendoza.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Mendoza", displayName: "Maria Mendoza", initials: "MM", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-lr-002", schoolId: "scc", role: "parent", schoolEmail: "p.reyes.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Pedro", lastName: "Reyes", displayName: "Pedro Reyes", initials: "PR", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-sc-013", schoolId: "scc", role: "parent", schoolEmail: "a.cruz.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Cruz", displayName: "Ana Cruz", initials: "AC", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-gb-014", schoolId: "scc", role: "parent", schoolEmail: "r.bautista.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Roberto", lastName: "Bautista", displayName: "Roberto Bautista", initials: "RB", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "parent-sf1-na-015", schoolId: "scc", role: "parent", schoolEmail: "e.aquino.parents@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elena", lastName: "Aquino", displayName: "Elena Aquino", initials: "EA", employeeNo: null, lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "teacher-9", schoolId: "scc", role: "teacher", schoolEmail: "l.villanueva.fac@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: "Ms.", firstName: "Lara", lastName: "Villanueva", displayName: "Ms. Lara Villanueva", initials: "LV", employeeNo: "FAC-2018-0031", lrn: null, schoolLevel: null, gradeLevel: null, strand: null, sectionId: null },
+    { id: "cm-001", schoolId: "scc", role: "student", schoolEmail: "c.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Carlo", lastName: "Mendoza", displayName: "Carlo Mendoza", initials: "CM", employeeNo: null, lrn: "100201000003", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "lr-002", schoolId: "scc", role: "student", schoolEmail: "l.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liza", lastName: "Reyes", displayName: "Liza Reyes", initials: "LR", employeeNo: null, lrn: "100201000004", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "rc-003", schoolId: "scc", role: "student", schoolEmail: "r.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rico", lastName: "Cruz", displayName: "Rico Cruz", initials: "RC", employeeNo: null, lrn: "100201000005", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "jd-004", schoolId: "scc", role: "student", schoolEmail: "j.delacruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Juan", lastName: "Dela Cruz", displayName: "Juan Dela Cruz", initials: "JC", employeeNo: null, lrn: "100201000001", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "et-005", schoolId: "scc", role: "student", schoolEmail: "e.tan.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ella", lastName: "Tan", displayName: "Ella Tan", initials: "ET", employeeNo: null, lrn: "100201000006", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "ml-006", schoolId: "scc", role: "student", schoolEmail: "m.lopez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Lopez", displayName: "Maria Lopez", initials: "ML", employeeNo: null, lrn: "100201000007", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "bg-007", schoolId: "scc", role: "student", schoolEmail: "b.garcia.stud@stcolumban.edu.ph", status: "inactive", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Ben", lastName: "Garcia", displayName: "Ben Garcia", initials: "BG", employeeNo: null, lrn: "100201000008", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "as-008", schoolId: "scc", role: "student", schoolEmail: "a.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-05-26T00:00:00.000Z", honorific: null, firstName: "Ana", lastName: "Santos", displayName: "Ana Santos", initials: "AS", employeeNo: null, lrn: "100201000009", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "ks-009", schoolId: "scc", role: "student", schoolEmail: "k.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Karl", lastName: "Santiago", displayName: "Karl Santiago", initials: "KS", employeeNo: null, lrn: "100201000010", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "pn-010", schoolId: "scc", role: "student", schoolEmail: "p.nieves.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paula", lastName: "Nieves", displayName: "Paula Nieves", initials: "PN", employeeNo: null, lrn: "100201000011", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "do-011", schoolId: "scc", role: "student", schoolEmail: "d.ocampo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Dan", lastName: "Ocampo", displayName: "Dan Ocampo", initials: "DO", employeeNo: null, lrn: "100201000012", schoolLevel: "jhs", gradeLevel: null, strand: null, sectionId: null },
+    { id: "mt-012", schoolId: "scc", role: "student", schoolEmail: "m.torres.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maya", lastName: "Torres", displayName: "Maya Torres", initials: "MT", employeeNo: null, lrn: "100201000002", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "sc-013", schoolId: "scc", role: "student", schoolEmail: "s.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Sofia", lastName: "Cruz", displayName: "Sofia Cruz", initials: "SC", employeeNo: null, lrn: "100201000013", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "gb-014", schoolId: "scc", role: "student", schoolEmail: "g.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Gabriel", lastName: "Bautista", displayName: "Gabriel Bautista", initials: "GB", employeeNo: null, lrn: "100201000014", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "na-015", schoolId: "scc", role: "student", schoolEmail: "n.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nicole", lastName: "Aquino", displayName: "Nicole Aquino", initials: "NA", employeeNo: null, lrn: "100201000015", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
+    { id: "pr-016", schoolId: "scc", role: "student", schoolEmail: "p.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Paolo", lastName: "Rivera", displayName: "Paolo Rivera", initials: "PR", employeeNo: null, lrn: "100201000016", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "av-017", schoolId: "scc", role: "student", schoolEmail: "a.villanueva.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Aira", lastName: "Villanueva", displayName: "Aira Villanueva", initials: "AV", employeeNo: null, lrn: "100201000017", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "ld-018", schoolId: "scc", role: "student", schoolEmail: "l.dizon.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lucas", lastName: "Dizon", displayName: "Lucas Dizon", initials: "LD", employeeNo: null, lrn: "100201000018", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "br-019", schoolId: "scc", role: "student", schoolEmail: "b.ramos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Beatrice", lastName: "Ramos", displayName: "Beatrice Ramos", initials: "BR", employeeNo: null, lrn: "100201000019", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
+    { id: "mg-020", schoolId: "scc", role: "student", schoolEmail: "m.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Miguel", lastName: "Garcia", displayName: "Miguel Garcia", initials: "MG", employeeNo: null, lrn: "100201000020", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "ac-021", schoolId: "scc", role: "student", schoolEmail: "a.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Andrea", lastName: "Castillo", displayName: "Andrea Castillo", initials: "AC", employeeNo: null, lrn: "100201000021", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "eb-022", schoolId: "scc", role: "student", schoolEmail: "e.bernardo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Bernardo", displayName: "Ethan Bernardo", initials: "EB", employeeNo: null, lrn: "100201000022", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "ch-023", schoolId: "scc", role: "student", schoolEmail: "c.hernandez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Hernandez", displayName: "Chloe Hernandez", initials: "CH", employeeNo: null, lrn: "100201000023", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "nr-024", schoolId: "scc", role: "student", schoolEmail: "n.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Nathan", lastName: "Reyes", displayName: "Nathan Reyes", initials: "NR", employeeNo: null, lrn: "100201000024", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "is-025", schoolId: "scc", role: "student", schoolEmail: "i.santos.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Isabella", lastName: "Santos", displayName: "Isabella Santos", initials: "IS", employeeNo: null, lrn: "100201000025", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "lm-026", schoolId: "scc", role: "student", schoolEmail: "l.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liam", lastName: "Mercado", displayName: "Liam Mercado", initials: "LM", employeeNo: null, lrn: "100201000026", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "gr-027", schoolId: "scc", role: "student", schoolEmail: "g.rivera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Grace", lastName: "Rivera", displayName: "Grace Rivera", initials: "GR", employeeNo: null, lrn: "100201000027", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
+    { id: "ds-028", schoolId: "scc", role: "student", schoolEmail: "d.salazar.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Salazar", displayName: "Daniel Salazar", initials: "DS", employeeNo: null, lrn: "100201000028", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "cb-029", schoolId: "scc", role: "student", schoolEmail: "c.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Camille", lastName: "Bautista", displayName: "Camille Bautista", initials: "CB", employeeNo: null, lrn: "100201000029", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "jr-030", schoolId: "scc", role: "student", schoolEmail: "j.ramos2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Joshua", lastName: "Ramos", displayName: "Joshua Ramos", initials: "JR", employeeNo: null, lrn: "100201000030", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "rr-031", schoolId: "scc", role: "student", schoolEmail: "r.robles.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Reina", lastName: "Robles", displayName: "Reina Robles", initials: "RR", employeeNo: null, lrn: "100201000031", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
+    { id: "mp-032", schoolId: "scc", role: "student", schoolEmail: "m.perez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Marcus", lastName: "Perez", displayName: "Marcus Perez", initials: "MP", employeeNo: null, lrn: "100201000032", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "al-033", schoolId: "scc", role: "student", schoolEmail: "a.lim.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Alyssa", lastName: "Lim", displayName: "Alyssa Lim", initials: "AL", employeeNo: null, lrn: "100201000033", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "ad-034", schoolId: "scc", role: "student", schoolEmail: "a.domingo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Adrian", lastName: "Domingo", displayName: "Adrian Domingo", initials: "AD", employeeNo: null, lrn: "100201000034", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "td-035", schoolId: "scc", role: "student", schoolEmail: "t.david.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Trisha", lastName: "David", displayName: "Trisha David", initials: "TD", employeeNo: null, lrn: "100201000035", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
+    { id: "vp-036", schoolId: "scc", role: "student", schoolEmail: "v.padilla.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Vincent", lastName: "Padilla", displayName: "Vincent Padilla", initials: "VP", employeeNo: null, lrn: "100201000036", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "hc-037", schoolId: "scc", role: "student", schoolEmail: "h.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Helena", lastName: "Cruz", displayName: "Helena Cruz", initials: "HC", employeeNo: null, lrn: "100201000037", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "sa-038", schoolId: "scc", role: "student", schoolEmail: "s.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Samuel", lastName: "Aquino", displayName: "Samuel Aquino", initials: "SA", employeeNo: null, lrn: "100201000038", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "pm-039", schoolId: "scc", role: "student", schoolEmail: "p.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Patricia", lastName: "Mendoza", displayName: "Patricia Mendoza", initials: "PM", employeeNo: null, lrn: "100201000039", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-james" },
+    { id: "ov-040", schoolId: "scc", role: "student", schoolEmail: "o.valdez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Oliver", lastName: "Valdez", displayName: "Oliver Valdez", initials: "OV", employeeNo: null, lrn: "100201000040", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "bb-041", schoolId: "scc", role: "student", schoolEmail: "b.bautista.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bianca", lastName: "Bautista", displayName: "Bianca Bautista", initials: "BB", employeeNo: null, lrn: "100201000041", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "mm-042", schoolId: "scc", role: "student", schoolEmail: "m.morales.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Matteo", lastName: "Morales", displayName: "Matteo Morales", initials: "MM", employeeNo: null, lrn: "100201000042", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "cc-043", schoolId: "scc", role: "student", schoolEmail: "c.castillo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Clarisse", lastName: "Castillo", displayName: "Clarisse Castillo", initials: "CC", employeeNo: null, lrn: "100201000043", schoolLevel: "jhs", gradeLevel: "Grade 10", strand: null, sectionId: "jhs-grade10-thomas" },
+    { id: "em-044", schoolId: "scc", role: "student", schoolEmail: "e.manalo.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Elijah", lastName: "Manalo", displayName: "Elijah Manalo", initials: "EM", employeeNo: null, lrn: "100201000044", schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
+    { id: "rs-045", schoolId: "scc", role: "student", schoolEmail: "r.soriano.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rina", lastName: "Soriano", displayName: "Rina Soriano", initials: "RS", employeeNo: null, lrn: "100201000045", schoolLevel: "elementary", gradeLevel: "Grade 4", strand: null, sectionId: "elem-grade4-luke" },
+    { id: "ja-046", schoolId: "scc", role: "student", schoolEmail: "j.aquino.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Janelle", lastName: "Aquino", displayName: "Janelle Aquino", initials: "JA", employeeNo: null, lrn: "100201000046", schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
+    { id: "cp-047", schoolId: "scc", role: "student", schoolEmail: "c.pascual.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Caleb", lastName: "Pascual", displayName: "Caleb Pascual", initials: "CP", employeeNo: null, lrn: "100201000047", schoolLevel: "elementary", gradeLevel: "Grade 5", strand: null, sectionId: "elem-grade5-mark" },
+    { id: "ls-048", schoolId: "scc", role: "student", schoolEmail: "l.santiago.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lara", lastName: "Santiago", displayName: "Lara Santiago", initials: "LS", employeeNo: null, lrn: "100201000048", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
+    { id: "km-049", schoolId: "scc", role: "student", schoolEmail: "k.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Kyle", lastName: "Mendoza", displayName: "Kyle Mendoza", initials: "KM", employeeNo: null, lrn: "100201000049", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "STEM", sectionId: "shs-grade11-stem-a" },
+    { id: "hc-050", schoolId: "scc", role: "student", schoolEmail: "h.cabrera.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Hannah", lastName: "Cabrera", displayName: "Hannah Cabrera", initials: "HC", employeeNo: null, lrn: "100201000050", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
+    { id: "dv-051", schoolId: "scc", role: "student", schoolEmail: "d.villarama.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Diego", lastName: "Villarama", displayName: "Diego Villarama", initials: "DV", employeeNo: null, lrn: "100201000051", schoolLevel: "shs", gradeLevel: "Grade 11", strand: "HUMSS", sectionId: "shs-grade11-humss-a" },
+    { id: "ab-052", schoolId: "scc", role: "student", schoolEmail: "a.bautista2.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Amara", lastName: "Bautista", displayName: "Amara Bautista", initials: "AB", employeeNo: null, lrn: "100201000052", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
+    { id: "rg-053", schoolId: "scc", role: "student", schoolEmail: "r.garcia.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rafael", lastName: "Garcia", displayName: "Rafael Garcia", initials: "RG", employeeNo: null, lrn: "100201000053", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "ABM", sectionId: "shs-grade12-abm-a" },
+    { id: "tm-054", schoolId: "scc", role: "student", schoolEmail: "t.mercado.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Talia", lastName: "Mercado", displayName: "Talia Mercado", initials: "TM", employeeNo: null, lrn: "100201000054", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
+    { id: "jn-055", schoolId: "scc", role: "student", schoolEmail: "j.navarro.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Jonas", lastName: "Navarro", displayName: "Jonas Navarro", initials: "JN", employeeNo: null, lrn: "100201000055", schoolLevel: "shs", gradeLevel: "Grade 12", strand: "TVL", sectionId: "shs-grade12-tvl-a" },
+    { id: "ar-056", schoolId: "scc", role: "student", schoolEmail: "a.ramos.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Arielle", lastName: "Ramos", displayName: "Arielle Ramos", initials: "AR", employeeNo: null, lrn: "100201000056", schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
+    { id: "dm-057", schoolId: "scc", role: "student", schoolEmail: "d.morales.kinder@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Daniel", lastName: "Morales", displayName: "Daniel Morales", initials: "DM", employeeNo: null, lrn: "100201000057", schoolLevel: "elementary", gradeLevel: "Kindergarten", strand: null, sectionId: null },
+    { id: "cv-058", schoolId: "scc", role: "student", schoolEmail: "c.villanueva.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Chloe", lastName: "Villanueva", displayName: "Chloe Villanueva", initials: "CV", employeeNo: null, lrn: "100201000058", schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
+    { id: "er-059", schoolId: "scc", role: "student", schoolEmail: "e.reyes.g1@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ethan", lastName: "Reyes", displayName: "Ethan Reyes", initials: "ER", employeeNo: null, lrn: "100201000059", schoolLevel: "elementary", gradeLevel: "Grade 1", strand: null, sectionId: null },
+    { id: "bs-060", schoolId: "scc", role: "student", schoolEmail: "b.santos.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Bea", lastName: "Santos", displayName: "Bea Santos", initials: "BS", employeeNo: null, lrn: "100201000060", schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
+    { id: "lc-061", schoolId: "scc", role: "student", schoolEmail: "l.cruz.g2@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Lorenzo", lastName: "Cruz", displayName: "Lorenzo Cruz", initials: "LC", employeeNo: null, lrn: "100201000061", schoolLevel: "elementary", gradeLevel: "Grade 2", strand: null, sectionId: null },
+    { id: "fg-062", schoolId: "scc", role: "student", schoolEmail: "f.garcia.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Faith", lastName: "Garcia", displayName: "Faith Garcia", initials: "FG", employeeNo: null, lrn: "100201000062", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
+    { id: "nb-063", schoolId: "scc", role: "student", schoolEmail: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: "100201000063", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
+    { id: "im-064", schoolId: "scc", role: "student", schoolEmail: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: "100201000064", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
+    { id: "mf-065", schoolId: "scc", role: "student", schoolEmail: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: "100201000065", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
   ];
 
   // Frontend-only profile seed data. Replace this with profile API responses later.
@@ -3459,7 +3465,7 @@ function applyCurrentDateToGradingBanners() {
 
   const USER_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID);
   const savedUsers = readJson(USER_STORAGE_KEY, null);
-  const USER_SEED_VERSION = 1;
+  const USER_SEED_VERSION = 2;
   const USER_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.userSeedVersion, ACTIVE_SCHOOL_ID);
   const savedUserSeedVersion = Number(readJson(USER_SEED_VERSION_KEY, 0));
   const USERS = Array.isArray(savedUsers) && savedUsers.length
@@ -3489,7 +3495,8 @@ function applyCurrentDateToGradingBanners() {
         savedLrn = digits;
       }
     }
-    const schoolEmail = String(user.schoolEmail || user.email || '').trim().toLowerCase();
+    const hasLegacyEmail = Object.hasOwn(user, 'email');
+    const schoolEmail = String(user.schoolEmail || (hasLegacyEmail ? user.email : '') || '').trim().toLowerCase();
     const personalEmail = String(user.personalEmail || '').trim().toLowerCase() || null;
     if (user.lrn !== savedLrn) {
       user.lrn = savedLrn;
@@ -3499,8 +3506,8 @@ function applyCurrentDateToGradingBanners() {
       user.schoolEmail = schoolEmail;
       usersChanged = true;
     }
-    if (Object.hasOwn(user, 'email') && user.email !== schoolEmail) {
-      user.email = schoolEmail;
+    if (hasLegacyEmail) {
+      delete user.email;
       usersChanged = true;
     }
     if (user.personalEmail !== personalEmail) {
@@ -3758,7 +3765,6 @@ function applyCurrentDateToGradingBanners() {
     const schoolId = values.schoolId || getActiveSchoolId();
     const lrn = isStudent ? String(values.lrn || '').trim() : null;
     const requestedSchoolEmail = String(values.schoolEmail || '').trim().toLowerCase()
-      || String(values.email || '').trim().toLowerCase()
       || generateSchoolEmail({ ...values, role });
     const personalEmail = String(values.personalEmail || '').trim().toLowerCase() || null;
 
@@ -3790,7 +3796,6 @@ function applyCurrentDateToGradingBanners() {
       id: String(values.studentId || values.id || `${role}-${Date.now()}`),
       schoolId,
       role,
-      email: requestedSchoolEmail,
       schoolEmail: requestedSchoolEmail,
       personalEmail,
       status: values.status || RECORD_VALUES.statuses.ACTIVE,
@@ -3953,7 +3958,6 @@ function applyCurrentDateToGradingBanners() {
         id,
         schoolId: activeSchoolId,
         role: record.role,
-        email: schoolEmail,
         schoolEmail,
         personalEmail: record.personalEmail,
         status: RECORD_VALUES.statuses.ACTIVE,
@@ -4021,9 +4025,7 @@ function applyCurrentDateToGradingBanners() {
       : null;
     const nextSchoolEmail = Object.hasOwn(values, 'schoolEmail')
       ? String(values.schoolEmail || '').trim().toLowerCase()
-      : (Object.hasOwn(values, 'email')
-        ? String(values.email || '').trim().toLowerCase()
-        : String(user.schoolEmail || '').trim().toLowerCase());
+      : String(user.schoolEmail || '').trim().toLowerCase();
     const nextPersonalEmail = Object.hasOwn(values, 'personalEmail')
       ? String(values.personalEmail || '').trim().toLowerCase()
       : String(user.personalEmail || '').trim().toLowerCase();
@@ -4058,16 +4060,15 @@ function applyCurrentDateToGradingBanners() {
     }
 
     const fields = [
-      'role', 'email', 'schoolEmail', 'personalEmail', 'status', 'honorific', 'firstName', 'lastName',
+      'role', 'schoolEmail', 'personalEmail', 'status', 'honorific', 'firstName', 'lastName',
       'displayName', 'initials', 'employeeNo', 'lrn', 'schoolLevel',
       'gradeLevel', 'strand', 'sectionId'
     ];
     fields.forEach(field => {
       if (!Object.hasOwn(values, field)) return;
       if (field === 'role') user.role = nextRole;
-      else if (field === 'email' || field === 'schoolEmail') {
+      else if (field === 'schoolEmail') {
         user.schoolEmail = nextSchoolEmail;
-        user.email = nextSchoolEmail;
       }
       else if (field === 'personalEmail') user.personalEmail = String(values.personalEmail || '').trim().toLowerCase() || null;
       else if (field === 'lrn') user.lrn = nextLrn;
@@ -4176,7 +4177,9 @@ function applyCurrentDateToGradingBanners() {
       throw error;
     }
 
-    const personalEmail = String(values.personalEmail || '').trim().toLowerCase();
+    const personalEmail = Object.hasOwn(values, 'personalEmail')
+      ? String(values.personalEmail || '').trim().toLowerCase()
+      : String(user.personalEmail || '').trim().toLowerCase();
     updateUser(user.id, { personalEmail });
     return updateUserProfile(user.id, {
       ...values,
@@ -4909,7 +4912,7 @@ function applyGradePortalAccess() {
 }
 
 window.refreshEdUgnayShellContext = function refreshEdUgnayShellContext() {
-  applyActiveSchoolToShell();
+  // applyActiveSchoolToShell();
   applyGradePortalAccess();
 };
 
