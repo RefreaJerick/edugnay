@@ -18,7 +18,7 @@
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
 
-<body>
+<body data-page-title="School Settings">
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
     <aside class="sidebar">
@@ -87,13 +87,9 @@
 
     <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-context" aria-label="Current academic period">
-          <div class="topbar-context-icon" aria-hidden="true">
-            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-          </div>
+        <div class="topbar-context" aria-label="School Settings page">
           <div class="topbar-context-copy">
-            <span>Active term</span>
-            <strong data-active-academic-period>Loading academic period...</strong>
+            <strong data-page-title-target>School Settings</strong>
           </div>
         </div>
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)">

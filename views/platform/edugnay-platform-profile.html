@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Platform Profile | Academix</title>
+  <title>My Profile | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,7 +16,7 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
-<body class="platform-profile" data-platform-portal="true">
+<body class="platform-profile" data-platform-portal="true" data-page-title="My Profile">
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
@@ -50,8 +50,10 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-        <div class="admin-topbar-context" aria-label="Platform profile page">
-          <div class="admin-topbar-context-copy"><span>Platform administration</span><strong>My Profile</strong></div>
+        <div class="admin-topbar-context" aria-label="My Profile page">
+          <div class="admin-topbar-context-copy">
+            <strong data-page-title-target>My Profile</strong>
+          </div>
         </div>
       </div>
       <div class="topbar-right">

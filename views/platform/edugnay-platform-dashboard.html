@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Platform Dashboard | Academix</title>
+  <title>Dashboard | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +15,7 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
-<body class="platform-dashboard" data-platform-portal="true">
+<body class="platform-dashboard" data-platform-portal="true" data-page-title="Dashboard">
   <div class="modal-backdrop dashboard-modal-backdrop" id="platformTodoModal" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="platformTodoModalTitle">
       <div class="modal-head">
@@ -108,10 +108,9 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-        <div class="admin-topbar-context" aria-label="Platform Dashboard page">
+        <div class="admin-topbar-context" aria-label="Dashboard page">
           <div class="admin-topbar-context-copy">
-            <span>Platform administration</span>
-            <strong>Dashboard</strong>
+            <strong data-page-title-target>Dashboard</strong>
           </div>
         </div>
       </div>

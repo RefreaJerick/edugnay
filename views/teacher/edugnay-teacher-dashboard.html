@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Academix</title>
+  <title>Dashboard | Academix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
-<body>
+<body data-page-title="Dashboard">
 
 
   <div class="modal-backdrop dashboard-modal-backdrop" id="teacherMaterialUploadModal" aria-hidden="true">
@@ -236,13 +236,9 @@
     <!-- ══════ TOPBAR ══════ -->
     <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-context" aria-label="Current academic period">
-          <div class="topbar-context-icon" aria-hidden="true">
-            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-          </div>
+        <div class="topbar-context" aria-label="Dashboard page">
           <div class="topbar-context-copy">
-            <span>Active term</span>
-            <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
+            <strong data-page-title-target>Dashboard</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -576,7 +572,7 @@
     const dashboardSectionLevel = TEACHER_SECTIONS
       .map(section => TEACHER_SECTION_RECORDS.find(record => record.id === section.sectionId)?.level)
       .find(Boolean);
-    const dashboardPeriod = document.querySelector('[data-active-academic-period]');
+    const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
     if (dashboardPeriod && dashboardSectionLevel) dashboardPeriod.dataset.schoolLevel = dashboardSectionLevel;
 
     TEACHER_SECTIONS.forEach(section => {

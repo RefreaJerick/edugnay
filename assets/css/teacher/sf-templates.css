@@ -4,6 +4,47 @@
   gap: 18px;
 }
 
+.sf-info-banner {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-md);
+  background: var(--blue-xpale);
+}
+
+.sf-info-banner-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--blue-mid);
+  box-shadow: 0 2px 7px rgba(29, 92, 180, 0.09);
+}
+
+.sf-info-banner-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sf-info-banner-title {
+  margin-bottom: 2px;
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sf-info-banner-text {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .sf-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;

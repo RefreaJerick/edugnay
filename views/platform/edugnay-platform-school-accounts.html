@@ -15,7 +15,7 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
-<body class="platform-school-accounts" data-platform-portal="true">
+<body class="platform-school-accounts" data-platform-portal="true" data-page-title="School Accounts">
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
@@ -43,7 +43,11 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
-        <div class="admin-topbar-context" aria-label="School Accounts page"><div class="admin-topbar-context-copy"><span>Platform administration</span><strong>School Accounts</strong></div></div>
+        <div class="admin-topbar-context" aria-label="School Accounts page">
+          <div class="admin-topbar-context-copy">
+            <strong data-page-title-target>School Accounts</strong>
+          </div>
+        </div>
       </div>
       <div class="topbar-right">
         <div class="tb-notif">

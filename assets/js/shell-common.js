@@ -4871,7 +4871,7 @@ function applyActiveSchoolToShell() {
       : `No active grading period · S.Y. ${school.schoolYear}`;
     element.textContent = activePeriodLabel;
   });
-  document.querySelectorAll('.topbar-context-copy span, .admin-topbar-context-copy span').forEach(element => {
+  document.querySelectorAll('[data-school-context]').forEach(element => {
     element.textContent = `${typeLabel} · ${school.schoolYear}`;
   });
   document.body.dataset.activeSchool = school.id;
@@ -4912,22 +4912,30 @@ function applyGradePortalAccess() {
 }
 
 window.refreshEdUgnayShellContext = function refreshEdUgnayShellContext() {
-  // applyActiveSchoolToShell();
+  applyActiveSchoolToShell();
   applyGradePortalAccess();
+  applyPageTitleToTopbar();
 };
 
 function applyPageTitleToTopbar() {
-  const source = document.querySelector('.page-overview-title')
-    || document.querySelector('.nav-item.active .nav-label')
+  const heading = document.querySelector('.page-overview-title, .portal-overview-title');
+  const navigation = document.querySelector('.nav-item.active .nav-label')
     || document.querySelector('.nav-group-toggle.active > span');
-  const title = source?.textContent.trim();
+  const title = document.body?.dataset.pageTitle
+    || heading?.textContent.trim()
+    || navigation?.textContent.trim();
   if (!title) return;
 
-  document.querySelectorAll('.topbar-context, .admin-topbar-context').forEach(context => {
-    const value = context.querySelector('strong');
-    if (value) value.textContent = title;
+  document.querySelectorAll('[data-page-title-target]').forEach(value => {
+    value.textContent = title;
+    const context = value.closest('.topbar-context, .admin-topbar-context');
+    if (!context) return;
     context.setAttribute('aria-label', `${title} page`);
   });
+
+  if (document.title === 'Academix') {
+    document.title = `${title} | Academix`;
+  }
 }
 
 /* Initialize the shared right-edge fade for every horizontally scrollable tab bar. */

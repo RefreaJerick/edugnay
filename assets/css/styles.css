@@ -2136,7 +2136,7 @@ select:not([multiple]):disabled {
   border-color: var(--blue-mid) !important;
 }
 
-/* Shared active academic period context for every portal topbar. */
+/* Shared page-title context for every portal topbar. */
 .topbar-context,
 .admin-topbar-context {
   display: inline-flex;

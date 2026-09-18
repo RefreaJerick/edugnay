@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Academix</title>
+  <title>Dashboard | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
-<body>
+<body data-page-title="Dashboard">
 
   <!--
   ════════════════════════════════════════════════════
@@ -114,13 +114,9 @@
     <!-- ══════ TOPBAR ══════ -->
     <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-context" aria-label="Current academic period">
-          <div class="topbar-context-icon" aria-hidden="true">
-            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-          </div>
+        <div class="topbar-context" aria-label="Dashboard page">
           <div class="topbar-context-copy">
-            <span>Active term</span>
-            <strong data-active-academic-period data-school-level="jhs">Loading academic period...</strong>
+            <strong data-page-title-target>Dashboard</strong>
           </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)">
@@ -385,7 +381,7 @@
     function updateChildContext() {
       const child = getCurrentChild();
       const data = getCurrentDashboardRecord();
-      const dashboardPeriod = document.querySelector('[data-active-academic-period]');
+      const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
       if (dashboardPeriod && child?.schoolLevel) {
         dashboardPeriod.dataset.schoolLevel = child.schoolLevel;
         window.refreshEdUgnayShellContext?.();

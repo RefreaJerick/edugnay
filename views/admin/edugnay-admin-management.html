@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Academix</title>
+  <title>Class Management | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
-<body>
+<body data-page-title="Class Management">
 
 
 <!-- ══════════════════════════════════════════════════════════
@@ -556,13 +556,9 @@
   <!-- ══════ TOPBAR ══════ -->
   <header class="topbar">
     <div class="topbar-left">
-      <div class="topbar-context" aria-label="Current academic period">
-        <div class="topbar-context-icon" aria-hidden="true">
-          <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-        </div>
+      <div class="topbar-context" aria-label="Class Management page">
         <div class="topbar-context-copy">
-          <span>Active term</span>
-          <strong data-active-academic-period>Loading academic period...</strong>
+          <strong data-page-title-target>Class Management</strong>
         </div>
       </div>
       <button class="hamburger" type="button" onclick="toggleDrawer(true)"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
@@ -572,7 +568,7 @@
         <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
           <i data-lucide="bell" style="width:20px;height:20px;"></i>
           <span class="tb-notif-dot" id="tbNotifDot" style="display:none;"></span>
-          
+
         </button>
 
         <div class="tb-notif-panel" id="tbNotifPanel">
@@ -703,7 +699,7 @@
               </tr>
             </thead>
             <tbody>
-              
+
             </tbody>
           </table>
         </div>
@@ -831,7 +827,7 @@
                 </tr>
               </thead>
               <tbody id="enrolledBody">
-                
+
               </tbody>
             </table>
           </div>
@@ -845,7 +841,7 @@
             </div>
           </div>
           <div class="sc-list">
-            
+
           </div>
         </div>
 

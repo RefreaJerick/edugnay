@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Academix</title>
+  <title>Dashboard | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 
-<body>
+<body data-page-title="Dashboard">
 
 
   <!-- ASSIGN STUDENT MODAL -->
@@ -375,13 +375,9 @@
       <div class="topbar-left">
         <button class="hamburger" type="button" aria-label="Open navigation menu" onclick="toggleDrawer(true)"><i
             data-lucide="menu" style="width:18px;height:18px;"></i></button>
-        <div class="admin-topbar-context" aria-label="Current academic period">
-          <div class="admin-topbar-context-icon" aria-hidden="true">
-            <i data-lucide="calendar-range" style="width:15px;height:15px;"></i>
-          </div>
+        <div class="admin-topbar-context" aria-label="Dashboard page">
           <div class="admin-topbar-context-copy">
-            <span>Active term</span>
-            <strong data-active-academic-period>Loading academic period...</strong>
+            <strong data-page-title-target>Dashboard</strong>
           </div>
         </div>
       </div>

@@ -17,7 +17,7 @@
   <script src="../../assets/js/sf-workbook.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
 </head>
-<body>
+<body data-page-title="SF Templates">
   <div class="shell">
     <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -91,9 +91,10 @@
 
     <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-context">
-          <div class="topbar-context-icon"><i data-lucide="file-spreadsheet"></i></div>
-          <div class="topbar-context-copy"><span>Reports</span><strong>SF Templates</strong></div>
+        <div class="topbar-context" aria-label="SF Templates page">
+          <div class="topbar-context-copy">
+            <strong data-page-title-target>SF Templates</strong>
+          </div>
         </div>
         <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
           <i data-lucide="menu"></i>
@@ -134,6 +135,14 @@
     </header>
 
     <main class="main sf-main">
+      <div class="sf-info-banner" role="note">
+        <div class="sf-info-banner-icon"><i data-lucide="info"></i></div>
+        <div>
+          <div class="sf-info-banner-title">Automatic form completion</div>
+          <div class="sf-info-banner-text">The form will be auto-populated using available system records. Any information not stored in the system must be completed manually before downloading.</div>
+        </div>
+      </div>
+
       <div class="sf-workspace">
         <section class="sf-panel sf-library-panel" aria-labelledby="sfLibraryTitle">
           <div class="sf-panel-head">
