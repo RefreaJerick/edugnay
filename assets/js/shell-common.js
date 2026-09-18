@@ -3459,6 +3459,7 @@ function applyCurrentDateToGradingBanners() {
       status: record.status || 'pending',
       atRisk: Boolean(record.atRisk),
       journalEntryCount: Number(record.journalEntryCount || 0),
+      teacherNote: record.teacherNote ? String(record.teacherNote).trim() : null,
       text: String(record.text || ''),
       confirmedAt: record.confirmedAt || null
     }));
@@ -4246,13 +4247,15 @@ function applyCurrentDateToGradingBanners() {
     return entry;
   }
 
-  function reportWithLabels(record) {
+  function reportWithLabels(record, includeTeacherNote = true) {
     const student = getUserById(record.studentId);
     const teacher = getUserById(record.teacherId);
     const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
     const teacherName = teacher?.displayName || '';
+    const reportData = { ...record };
+    if (!includeTeacherNote) delete reportData.teacherNote;
     return {
-      ...record,
+      ...reportData,
       studentName: student?.displayName || '',
       studentEmail: student?.schoolEmail || '',
       sectionLabel: section ? `${section.grade} - ${section.name}` : '',
@@ -4286,7 +4289,7 @@ function applyCurrentDateToGradingBanners() {
     return REPORT_DIRECTORY
       .filter(record => record.studentId === String(studentId) && (!confirmedOnly || record.status === 'confirmed'))
       .sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0))
-      .map(reportWithLabels);
+      .map(report => reportWithLabels(report, false));
   }
 
   function saveReports(records = REPORT_DIRECTORY) {
@@ -4299,6 +4302,49 @@ function applyCurrentDateToGradingBanners() {
     Object.assign(report, values);
     saveReports();
     return report;
+  }
+
+  // Replace this local mock with POST /api/reports/generate. The backend must
+  // derive the teacher and school from the authenticated session.
+  async function generateReports(values = {}) {
+    const sectionId = String(values.sectionId || '');
+    const weekId = String(values.weekId || '');
+    const teacherId = String(window.EDUGNAY_TEACHER_ACCESS?.teacherId || '');
+    const section = getAssignmentSections().find(record => record.id === sectionId);
+    const students = Array.isArray(values.students) ? values.students : [];
+    const studentIds = new Set(
+      getStudents()
+        .filter(student => student.sectionId === sectionId)
+        .map(student => String(student.id))
+    );
+    const notesByStudentId = new Map(
+      students
+        .map(student => [String(student?.studentId || ''), student?.teacherNote ? String(student.teacherNote).trim() : null])
+        .filter(([studentId, teacherNote]) => studentId && studentIds.has(studentId) && (teacherNote === null || teacherNote.length <= 1000))
+    );
+
+    if (!section || section.adviserId !== teacherId || !notesByStudentId.size) return [];
+
+    let changed = false;
+    REPORT_DIRECTORY.forEach(report => {
+      if (
+        report.sectionId !== sectionId ||
+        report.weekId !== weekId ||
+        !notesByStudentId.has(String(report.studentId))
+      ) return;
+
+      const teacherNote = notesByStudentId.get(String(report.studentId));
+      if (report.teacherNote !== teacherNote) {
+        report.teacherNote = teacherNote;
+        changed = true;
+      }
+    });
+
+    if (changed) saveReports();
+
+    return REPORT_DIRECTORY
+      .filter(report => report.sectionId === sectionId && report.weekId === weekId)
+      .map(reportWithLabels);
   }
 
   function getHolidays(school = getActiveSchool()) {
@@ -4477,6 +4523,7 @@ function applyCurrentDateToGradingBanners() {
     getReportsForStudent,
     saveReports,
     updateReport,
+    generateReports,
     formatDateTime,
     getNotificationReadIds,
     saveNotificationReadIds,

@@ -391,6 +391,15 @@
         </div>
       </div>
 
+      <div class="review-section teacher-note-review-section">
+        <div class="review-section-label">
+          <i data-lucide="message-square-text" style="width:11px;height:11px;"></i>
+          Teacher Note Used for Generation
+        </div>
+        <div class="teacher-note-review" id="rm-teacher-note">No teacher note provided.</div>
+        <div class="teacher-note-review-help">Visible to teachers only.</div>
+      </div>
+
       <!-- AI report -->
       <div class="review-section">
         <div class="review-section-label">
@@ -455,14 +464,25 @@
 
     <!-- Confirm view -->
     <div class="gen-progress-wrap" id="gen-confirm-view">
-      <p style="font-size:13px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;text-align:left;">
+      <p class="gen-intro" id="generation-intro">
         This will pull <strong>attendance and assignment completion</strong> across all subjects,
         plus <strong>journal reflections from <span id="generation-journal-subject">Values Education</span></strong>,
         for the week of <strong>June 9–14, 2025</strong>,
         then generate a narrative report for each student in your section.
         Students flagged as at-risk will also have their academic records included.
       </p>
-      <button class="top-btn primary" style="width:100%;justify-content:center;padding:11px;" onclick="startGeneration()">
+      <div class="gen-note-panel">
+        <div class="gen-note-head">
+          <div>
+            <div class="gen-note-title">Optional student notes</div>
+            <div class="gen-note-help">Add relevant classroom observations not already stored in the system. Avoid unnecessary sensitive information.</div>
+          </div>
+          <span class="gen-note-count" id="generation-student-count">0 students</span>
+        </div>
+        <div class="gen-student-notes" id="gen-student-notes"></div>
+      </div>
+
+      <button class="top-btn primary gen-start-button" id="start-generation-button" onclick="startGeneration()">
         <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
         Start Generation
       </button>
@@ -476,7 +496,7 @@
       <div class="gen-bar-track">
         <div class="gen-bar-fill" id="gen-bar-fill"></div>
       </div>
-      <div class="gen-progress-count" id="gen-progress-count">0 of 38 students</div>
+      <div class="gen-progress-count" id="gen-progress-count">0 of 0 students</div>
     </div>
 
     <!-- Done view -->
@@ -484,9 +504,9 @@
       <div class="gen-done-icon">
         <i data-lucide="check" style="width:26px;height:26px;color:var(--green-dark)"></i>
       </div>
-      <div class="gen-progress-title">38 reports generated</div>
+      <div class="gen-progress-title" id="gen-done-title">Reports generated</div>
       <div class="gen-progress-sub" style="margin-bottom:20px;">5 ready for review · 3 students flagged as at-risk</div>
-      <button class="top-btn primary" style="width:100%;justify-content:center;padding:11px;" onclick="closeModal('gen-modal')">
+      <button class="top-btn primary gen-review-button" onclick="closeModal('gen-modal')">
         Review Reports
       </button>
     </div>
@@ -499,7 +519,8 @@
      The page reads the shared report records through getReportsForTeacher().
      During backend integration, replace that getter with the adviser reports
      endpoint; keep the same studentId, sectionId, teacherId, status, metrics,
-     text, and timestamp fields.
+     teacherNote, text, and timestamp fields. Keep teacherNote internal to
+     teacher report-generation and review responses.
   ───────────────────────────────────────────────────── */
 
   // EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
@@ -509,12 +530,73 @@
     atRiskAbsenceThreshold: 3,
     journalSubject: journalSubjectName // subject the journal entries are logged under — may differ from the adviser's own subject
   };
-  const generationJournalSubject = document.getElementById('generation-journal-subject');
-  if (generationJournalSubject) generationJournalSubject.textContent = journalSubjectName;
-
   const REPORT_WEEK_ID = '2025-W23';
   const REPORT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
   const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(REPORT_TEACHER_ID, REPORT_WEEK_ID);
+  const GENERATION_STUDENTS = [...new Map(REPORTS.map(report => [report.studentId, report])).values()];
+
+  function getGenerationContext() {
+    const firstReport = GENERATION_STUDENTS[0];
+    return {
+      sectionId: firstReport?.sectionId || '',
+      sectionLabel: firstReport?.sectionLabel || 'Advisory section',
+      weekLabel: firstReport?.weekLabel || 'current reporting week'
+    };
+  }
+
+  function updateGenerationNoteCount(input) {
+    const count = input.value.length;
+    const counter = input.closest('.gen-student-note-row')?.querySelector('[data-note-count]');
+    if (counter) counter.textContent = `${count}/1000`;
+  }
+
+  function renderGenerationStudents() {
+    const list = document.getElementById('gen-student-notes');
+    const count = document.getElementById('generation-student-count');
+    const modalSub = document.querySelector('#gen-modal .modal-sub.review-modal-sub');
+    const intro = document.getElementById('generation-intro');
+    if (!list || !count) return;
+
+    const context = getGenerationContext();
+    const studentCount = GENERATION_STUDENTS.length;
+    count.textContent = `${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
+    if (modalSub) modalSub.textContent = `${context.sectionLabel} · ${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
+    if (intro) intro.innerHTML = `This will pull <strong>attendance and assignment completion</strong> across all subjects, plus <strong>journal reflections from <span id="generation-journal-subject">${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectName)}</span></strong>, for <strong>${window.EDUGNAY_CONFIG.escapeHtml(context.weekLabel)}</strong>, then generate a narrative report for each student in your section. Students flagged as at-risk will also have their academic records included.`;
+
+    if (!studentCount) {
+      list.innerHTML = '<div class="gen-note-empty">No students are available for this reporting period.</div>';
+      return;
+    }
+
+    list.innerHTML = GENERATION_STUDENTS.map(report => {
+      const inputId = `teacher-note-${window.EDUGNAY_CONFIG.escapeHtml(report.studentId)}`;
+      const studentName = window.EDUGNAY_CONFIG.escapeHtml(report.studentName || 'Unnamed student');
+      const teacherNote = window.EDUGNAY_CONFIG.escapeHtml(report.teacherNote || '');
+      return `
+        <div class="gen-student-note-row">
+          <div class="gen-student-note-head">
+            <label for="${inputId}">${studentName}</label>
+            <span>Optional</span>
+          </div>
+          <textarea class="teacher-note-input" id="${inputId}" data-student-note data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(report.studentId)}" maxlength="1000" rows="2" placeholder="Add a relevant classroom observation...">${teacherNote}</textarea>
+          <div class="gen-student-note-meta">
+            <span>Visible to teachers only</span>
+            <span data-note-count>${(report.teacherNote || '').length}/1000</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-student-note]').forEach(input => {
+      input.addEventListener('input', () => updateGenerationNoteCount(input));
+    });
+  }
+
+  function getTeacherNotes() {
+    return [...document.querySelectorAll('[data-student-note]')].map(input => ({
+      studentId: input.dataset.studentId,
+      teacherNote: input.value.trim() || null
+    }));
+  }
 
   function buildTeacherReportSummaryCards() {
     const pendingReports = REPORTS.filter(report => report.status === 'pending');
@@ -715,6 +797,7 @@
       : `${r.journalEntryCount} entr${r.journalEntryCount === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
     document.getElementById('rm-journal-label').textContent = `Journal · ${SYSTEM_CONFIG.journalSubject}`;
     document.getElementById('rm-report-text').value       = r.text;
+    document.getElementById('rm-teacher-note').textContent = r.teacherNote || 'No teacher note provided.';
 
     const riskBanner   = document.getElementById('rm-at-risk-banner');
     const academicCard = document.getElementById('rm-academic-card');
@@ -777,13 +860,44 @@
 
   /* ── GENERATE MODAL ── */
   function openGenModal() {
+    renderGenerationStudents();
     document.getElementById('gen-confirm-view').style.display  = 'block';
     document.getElementById('gen-progress-view').style.display = 'none';
     document.getElementById('gen-done-view').style.display     = 'none';
+    document.getElementById('start-generation-button').disabled = false;
     openModal('gen-modal');
   }
 
-  function startGeneration() {
+  async function startGeneration() {
+    const context = getGenerationContext();
+    const startButton = document.getElementById('start-generation-button');
+    const notes = getTeacherNotes();
+    startButton.disabled = true;
+
+    let generatedReports;
+    try {
+      generatedReports = await window.EDUGNAY_CONFIG.generateReports({
+        sectionId: context.sectionId,
+        weekId: REPORT_WEEK_ID,
+        students: notes
+      });
+    } catch (error) {
+      startButton.disabled = false;
+      showToast('Reports could not be generated.', 'error');
+      return;
+    }
+
+    if (!generatedReports.length && GENERATION_STUDENTS.length) {
+      startButton.disabled = false;
+      showToast('You do not have access to generate these reports.', 'error');
+      return;
+    }
+
+    generatedReports.forEach(report => {
+      const localReport = REPORTS.find(item => item.id === report.id);
+      if (localReport) localReport.teacherNote = report.teacherNote || null;
+    });
+
     document.getElementById('gen-confirm-view').style.display  = 'none';
     document.getElementById('gen-progress-view').style.display = 'block';
 
@@ -798,10 +912,22 @@
       'Generating AI narrative summaries',
     ];
     let stepIndex = 0, count = 0;
-    const total = 38;
+    const total = GENERATION_STUDENTS.length;
     const bar       = document.getElementById('gen-bar-fill');
     const sub       = document.getElementById('gen-progress-sub');
     const countLbl  = document.getElementById('gen-progress-count');
+    const doneTitle = document.getElementById('gen-done-title');
+    const doneSub   = document.querySelector('#gen-done-view .gen-progress-sub');
+    countLbl.textContent = `0 of ${total} students`;
+    if (doneTitle) doneTitle.textContent = `${total} ${total === 1 ? 'report' : 'reports'} generated`;
+    if (doneSub) doneSub.textContent = 'Ready for review.';
+
+    if (!total) {
+      document.getElementById('gen-progress-view').style.display = 'none';
+      document.getElementById('gen-done-view').style.display = 'block';
+      lucide.createIcons();
+      return;
+    }
 
     const interval = setInterval(() => {
       count += Math.ceil(total / steps.length);
@@ -814,6 +940,8 @@
         setTimeout(() => {
           document.getElementById('gen-progress-view').style.display = 'none';
           document.getElementById('gen-done-view').style.display     = 'block';
+          renderReports();
+          renderTeacherReportSummary();
           lucide.createIcons();
         }, 400);
       }
@@ -851,6 +979,7 @@
     renderTeacherReportSummary();
     renderPipelineSteps();
     renderReports();
+    renderGenerationStudents();
     lucide.createIcons();
   });
 </script>
