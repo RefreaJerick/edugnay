@@ -424,6 +424,7 @@
       padding: 14px 16px;
       margin-top: 10px;
     }
+    .report-card-metrics.without-journal { grid-template-columns: 1fr; }
 
     .rc-metric {
       text-align: center;
@@ -656,6 +657,8 @@
       gap: 10px;
     }
 
+    .data-source-card[hidden] { display: none; }
+
     .ds-icon {
       width: 30px; height: 30px;
       border-radius: var(--radius-sm);
@@ -690,8 +693,6 @@
     .nav-dot { width: 6px; height: 6px; border-radius: var(--radius-circle); flex-shrink: 0; }
 
     /* â”€â”€ DATA SOURCE CARD LAYOUT HELPERS â”€â”€ */
-    .ds-attendance,
-    .ds-assignments { grid-column: 1 / -1; }
     .ds-content { flex: 1; min-width: 0; }
     .ds-detail {
       font-size: 11px;
@@ -1187,6 +1188,13 @@
   font-size: 11px;
   font-weight: 700;
 }
+.gen-student-note-copy { min-width: 0; }
+.gen-student-note-grade {
+  margin-top: 2px;
+  color: var(--gray-500);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
 .gen-student-note-head span,
 .gen-student-note-meta {
   color: var(--gray-400);
@@ -1246,6 +1254,57 @@
   color: var(--gray-400);
   font-size: 9px;
 }
+.recommended-actions-help {
+  margin: -2px 0 9px;
+  color: var(--gray-500);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.recommended-actions-editor {
+  display: grid;
+  gap: 8px;
+}
+.recommended-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: start;
+  gap: 7px;
+}
+.recommended-action-input {
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--gray-700);
+  font: 500 11px/1.5 'Plus Jakarta Sans', sans-serif;
+  resize: vertical;
+}
+.recommended-action-input:focus {
+  outline: none;
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 3px var(--blue-xpale);
+}
+.recommended-action-remove {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xs);
+  background: var(--white);
+  color: var(--gray-500);
+  cursor: pointer;
+}
+.recommended-action-remove:hover {
+  border-color: var(--red-pale);
+  background: var(--red-pale);
+  color: var(--red);
+}
+.recommended-action-add { margin-top: 9px; }
+.recommended-action-add:disabled { cursor: not-allowed; opacity: .55; }
 
 @media (max-width: 1000px) {
   .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }

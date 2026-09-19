@@ -3369,11 +3369,66 @@ function applyCurrentDateToGradingBanners() {
   // Shared AI report records for Adviser and Parent portals. The text is a
   // mock generated summary; source metrics remain structured fields so a
   // future report-generation endpoint can replace this collection directly.
+  function normalizeRecommendedActions(actions) {
+    if (!Array.isArray(actions)) return [];
+    return actions
+      .map(action => String(action || '').trim().slice(0, 250))
+      .filter(Boolean)
+      .flatMap(action => /^Continue the current study routine and encourage consistent participation in Grade \d+\.$/.test(action)
+        ? [
+            'Maintain a regular study schedule and review class notes before the next lesson.',
+            'Encourage the student to continue participating in class and ask questions when support is needed.'
+          ]
+        : [action])
+      .slice(0, 5);
+  }
+
+  // Frontend-only placeholder. The backend will replace this with validated
+  // AI output generated from the authenticated school's report data.
+  function buildMockRecommendedActions(report) {
+    const actions = [];
+    const gradeNumber = Number(String(report.gradeLevel || '').match(/\d+/)?.[0] || 0);
+    const absenceCount = Array.isArray(report.attendance?.absences)
+      ? report.attendance.absences.length
+      : 0;
+    const missingSubjects = Array.isArray(report.assignments?.missing)
+      ? report.assignments.missing.filter(Boolean)
+      : [];
+
+    if (absenceCount) {
+      actions.push(absenceCount === 1
+        ? 'Review the lesson missed during the recent absence and complete any unfinished classwork.'
+        : 'Discuss the recent absences and make a simple plan for consistent attendance next week.');
+    }
+    if (missingSubjects.length) {
+      actions.push(`Create a short catch-up schedule for pending work in ${missingSubjects.join(', ')}.`);
+    }
+    if (report.atRisk) {
+      actions.push('Contact the class adviser to agree on the next steps if the concerns continue.');
+    }
+    if (!actions.length) {
+      if (gradeNumber && gradeNumber <= 6) {
+        actions.push('Set aside a short daily review period and check that schoolwork is completed.');
+      } else if (gradeNumber >= 11) {
+        actions.push('Maintain a weekly study schedule and monitor upcoming requirements and deadlines.');
+      } else {
+        actions.push('Maintain a regular study schedule and review class notes before the next lesson.');
+      }
+      actions.push('Encourage the student to continue participating in class and ask questions when support is needed.');
+    }
+
+    return normalizeRecommendedActions(actions);
+  }
+
   const DEFAULT_REPORT_DIRECTORY = [
     {
       id: 'report-cm-001-2025-w23', schoolId: 'scc', studentId: 'cm-001', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Maintain a regular study schedule and review class notes before the next lesson.',
+        'Encourage the student to continue participating in class and group activities.'
+      ],
       text: 'Carlo had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress and noted enjoyment in group activities. No concerns to report this week - keep up the encouragement at home.',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
     },
@@ -3381,6 +3436,10 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-lr-002-2025-w23', schoolId: 'scc', studentId: 'lr-002', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Continue the regular study routine and recognize the student\'s consistent effort.',
+        'Review quiz feedback together and encourage questions about difficult topics.'
+      ],
       text: 'Liza continues to show consistent effort this week. She was present for all sessions and submitted all assignments on schedule. Her journal entry mentioned feeling more confident after a recent quiz. No concerns at this time.',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: '2025-06-14T08:02:00+08:00'
     },
@@ -3388,6 +3447,10 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-jd-004-2025-w23', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-9',
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Continue regular Algebra practice and review class notes before the next lesson.',
+        'Encourage the student to keep participating in group activities and supporting classmates.'
+      ],
       text: 'Juan had a strong week across all his subjects. He attended all sessions and completed all 4 tracked assignments on time. His journal entry reflected positively on his progress in Algebra and noted enjoyment in group activities. No concerns to report this week. Keep up the encouragement at home!',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: '2025-06-14T08:02:00+08:00'
     },
@@ -3399,6 +3462,11 @@ function applyCurrentDateToGradingBanners() {
         { subject: 'Science', day: 'Tue' }, { subject: 'Science', day: 'Wed' }, { subject: 'Science', day: 'Thu' },
         { subject: 'English', day: 'Tue' }, { subject: 'English', day: 'Thu' }
       ] }, assignments: { total: '1/4', missing: ['Mathematics', 'Science', 'English'] }, journalEntryCount: 0,
+      recommendedActions: [
+        'Discuss the recent absences and make a simple plan for consistent attendance next week.',
+        'Create a short catch-up schedule for pending work in Mathematics, Science, and English.',
+        'Contact the class adviser to agree on the next steps if the concerns continue.'
+      ],
       text: 'Maria is flagged as at-risk this week with multiple absences across subjects and only 1 of 4 assignments completed. Academic records show scores trending below the passing threshold. No journal entry was submitted. We strongly recommend reaching out to discuss what may be affecting her attendance and engagement.',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
     },
@@ -3407,6 +3475,11 @@ function applyCurrentDateToGradingBanners() {
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: true,
       attendance: { total: '26/30', absences: [{ subject: 'Mathematics', day: 'Wed' }, { subject: 'Science', day: 'Wed' }, { subject: 'English', day: 'Wed' }] },
       assignments: { total: '2/4', missing: ['Mathematics', 'English'] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Discuss the recent absences and make a simple plan for consistent attendance next week.',
+        'Create a short catch-up schedule for pending work in Mathematics and English.',
+        'Contact the class adviser to agree on the next steps if the concerns continue.'
+      ],
       text: 'Ben is flagged as at-risk this week. He was absent in several subjects on Wednesday and completed only 2 of 4 assignments, continuing a pattern from prior weeks. His journal described feeling overwhelmed. We recommend a supportive conversation at home about pacing.',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
     },
@@ -3414,6 +3487,9 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-as-008-2025-w23', schoolId: 'scc', studentId: 'as-008', sectionId: 'jhs-grade10-james', teacherId: 'teacher-3',
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'pending', atRisk: false,
       attendance: { total: '29/30', absences: [{ subject: 'Science', day: 'Mon' }] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Review the Science lesson missed during the recent absence and complete any unfinished classwork.'
+      ],
       text: 'Ana had a good week with one absence in Science on Monday but completed all assignments regardless. Her journal entry mentioned working through a difficult topic with help from peers. No concerns at this time.',
       generatedAt: '2025-06-14T08:02:00+08:00', confirmedAt: null
     },
@@ -3421,6 +3497,10 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-mt-012-2025-w23', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
       weekId: '2025-W23', weekLabel: 'Week of June 9 to 14, 2025', dateRange: 'Jun 9 to Jun 14', status: 'confirmed', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Maintain the habit of completing assignments on or ahead of schedule.',
+        'Encourage the student to continue participating in discussions and supporting classmates.'
+      ],
       text: 'Maya had a wonderful week. She participated actively in class discussions and completed all her assignments ahead of schedule. Her teacher noted she helped a classmate with a Math problem during group work. It was a lovely display of kindness.',
       generatedAt: '2025-06-14T09:15:00+08:00', confirmedAt: '2025-06-14T09:15:00+08:00'
     },
@@ -3428,6 +3508,11 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-jd-004-2025-w22', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-9',
       weekId: '2025-W22', weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', status: 'confirmed', atRisk: true,
       attendance: { total: '28/30', absences: [{ subject: 'All subjects', day: 'Tue' }, { subject: 'All subjects', day: 'Thu' }] }, assignments: { total: '2/4', missing: ['Science', 'Filipino'] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Discuss the recent absences and make a simple plan for consistent attendance next week.',
+        'Create a short catch-up schedule for pending work in Science and Filipino.',
+        'Contact the class adviser to agree on the next steps if the concerns continue.'
+      ],
       text: 'Juan is flagged as at-risk this week. He was absent on Tuesday and Thursday and completed only 2 of 4 assignments. We recommend a check-in at home regarding his recent attendance and a brief conversation about any challenges he may be facing.',
       generatedAt: '2025-06-07T07:45:00+08:00', confirmedAt: '2025-06-07T07:45:00+08:00'
     },
@@ -3435,6 +3520,10 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-jd-004-2025-w21', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', teacherId: 'teacher-9',
       weekId: '2025-W21', weekLabel: 'Week of May 26 to 31, 2025', dateRange: 'May 26 to May 31', status: 'confirmed', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '3/4', missing: ['Science'] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Create a short catch-up schedule for the pending Science activity.',
+        'Review the related Science lesson and ask the teacher about any unclear parts.'
+      ],
       text: 'Juan had a solid week overall. He attended every class day and completed 3 of his 4 assignments, with one activity still pending. His journal reflection was thoughtful and showed good self-awareness about managing his time.',
       generatedAt: '2025-05-31T08:10:00+08:00', confirmedAt: '2025-05-31T08:10:00+08:00'
     },
@@ -3442,6 +3531,10 @@ function applyCurrentDateToGradingBanners() {
       id: 'report-mt-012-2025-w22', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', teacherId: 'teacher-2',
       weekId: '2025-W22', weekLabel: 'Week of June 2 to 7, 2025', dateRange: 'Jun 2 to Jun 7', status: 'confirmed', atRisk: false,
       attendance: { total: '30/30', absences: [] }, assignments: { total: '4/4', missing: [] }, journalEntryCount: 1,
+      recommendedActions: [
+        'Maintain consistent attendance and submit schoolwork on time.',
+        'Encourage the student to set one learning goal for the coming week.'
+      ],
       text: 'Maya continues to do well this week. She was present every day and submitted all her work on time. No concerns at this time. She remains one of the more engaged students in class.',
       generatedAt: '2025-06-07T08:30:00+08:00', confirmedAt: '2025-06-07T08:30:00+08:00'
     }
@@ -3459,7 +3552,15 @@ function applyCurrentDateToGradingBanners() {
       status: record.status || 'pending',
       atRisk: Boolean(record.atRisk),
       journalEntryCount: Number(record.journalEntryCount || 0),
+      schoolLevel: record.schoolLevel ? String(record.schoolLevel).trim() : null,
+      gradeLevel: record.gradeLevel ? String(record.gradeLevel).trim() : null,
+      strand: record.strand ? String(record.strand).trim() : null,
       teacherNote: record.teacherNote ? String(record.teacherNote).trim() : null,
+      recommendedActions: normalizeRecommendedActions(
+        Array.isArray(record.recommendedActions)
+          ? record.recommendedActions
+          : buildMockRecommendedActions(record)
+      ),
       text: String(record.text || ''),
       confirmedAt: record.confirmedAt || null
     }));
@@ -4247,18 +4348,32 @@ function applyCurrentDateToGradingBanners() {
     return entry;
   }
 
+  function getReportAcademicContext(record, preferSnapshot = true) {
+    const student = getUserById(record.studentId);
+    const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
+    return {
+      schoolLevel: (preferSnapshot && record.schoolLevel) || student?.schoolLevel || section?.level || null,
+      gradeLevel: (preferSnapshot && record.gradeLevel) || student?.gradeLevel || section?.grade || null,
+      strand: (preferSnapshot && record.strand) || student?.strand || section?.strand || null
+    };
+  }
+
   function reportWithLabels(record, includeTeacherNote = true) {
     const student = getUserById(record.studentId);
     const teacher = getUserById(record.teacherId);
     const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
     const teacherName = teacher?.displayName || '';
+    const academicContext = getReportAcademicContext(record);
     const reportData = { ...record };
     if (!includeTeacherNote) delete reportData.teacherNote;
     return {
       ...reportData,
+      ...academicContext,
       studentName: student?.displayName || '',
       studentEmail: student?.schoolEmail || '',
-      sectionLabel: section ? `${section.grade} - ${section.name}` : '',
+      sectionLabel: section
+        ? `${academicContext.gradeLevel || 'Grade level not available'} - ${section.name}`
+        : '',
       teacherName,
       teacherInitials: record.teacherInitials || getInitials(teacherName),
       generatedAtLabel: formatDateTime(record.generatedAt),
@@ -4299,7 +4414,11 @@ function applyCurrentDateToGradingBanners() {
   function updateReport(reportId, values = {}) {
     const report = REPORT_DIRECTORY.find(record => record.id === String(reportId));
     if (!report) return null;
-    Object.assign(report, values);
+    const nextValues = { ...values };
+    if (Object.prototype.hasOwnProperty.call(nextValues, 'recommendedActions')) {
+      nextValues.recommendedActions = normalizeRecommendedActions(nextValues.recommendedActions);
+    }
+    Object.assign(report, nextValues);
     saveReports();
     return report;
   }
@@ -4333,9 +4452,24 @@ function applyCurrentDateToGradingBanners() {
         !notesByStudentId.has(String(report.studentId))
       ) return;
 
+      const academicContext = getReportAcademicContext({
+        studentId: report.studentId,
+        sectionId: report.sectionId
+      }, false);
       const teacherNote = notesByStudentId.get(String(report.studentId));
-      if (report.teacherNote !== teacherNote) {
+      const recommendedActions = buildMockRecommendedActions({ ...report, ...academicContext });
+      if (
+        report.schoolLevel !== academicContext.schoolLevel ||
+        report.gradeLevel !== academicContext.gradeLevel ||
+        report.strand !== academicContext.strand ||
+        report.teacherNote !== teacherNote ||
+        JSON.stringify(report.recommendedActions) !== JSON.stringify(recommendedActions)
+      ) {
+        report.schoolLevel = academicContext.schoolLevel;
+        report.gradeLevel = academicContext.gradeLevel;
+        report.strand = academicContext.strand;
         report.teacherNote = teacherNote;
+        report.recommendedActions = recommendedActions;
         changed = true;
       }
     });

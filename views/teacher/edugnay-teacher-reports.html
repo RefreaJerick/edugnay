@@ -237,12 +237,6 @@
           <div class="flow-step-sub">At-risk only</div>
         </div>
         <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
-        <div class="flow-step">
-          <div class="flow-step-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-          <div class="flow-step-label">Journal</div>
-          <div class="flow-step-sub">Values Ed</div>
-        </div>
-        <i data-lucide="chevron-right" style="width:14px;height:14px;" class="flow-arrow"></i>
         <div class="flow-step ai">
           <div class="flow-step-icon"><i data-lucide="sparkles" style="width:16px;height:16px;"></i></div>
           <div class="flow-step-label">AI Synthesis</div>
@@ -379,7 +373,7 @@
               <div class="ds-label">Academic records</div>
             </div>
           </div>
-          <div class="data-source-card">
+          <div class="data-source-card" id="rm-journal-card" hidden>
             <div class="ds-icon icon-purple">
               <i data-lucide="notebook-pen" style="width:14px;height:14px;"></i>
             </div>
@@ -409,7 +403,7 @@
         <!--
           EJS: value="<%= report.generatedText %>"
           In production this textarea is editable before confirming.
-          POST the edited value to /adviser/reports/:reportId/confirm
+          POST the edited values to /api/reports/:reportId/confirm
         -->
         <textarea
           class="ai-report-text"
@@ -422,6 +416,19 @@
             Regenerate
           </button>
         </div>
+      </div>
+
+      <div class="review-section">
+        <div class="review-section-label">
+          <i data-lucide="list-checks" style="width:11px;height:11px;"></i>
+          Recommended Actions for Parent
+        </div>
+        <div class="recommended-actions-help">Review, edit, add, or remove these suggestions before sending the report.</div>
+        <div class="recommended-actions-editor" id="rm-recommended-actions"></div>
+        <button class="btn-sm primary recommended-action-add" id="add-recommended-action" type="button" onclick="addRecommendedAction()">
+          <i data-lucide="plus" style="width:12px;height:12px;"></i>
+          Add action
+        </button>
       </div>
 
     </div>
@@ -466,7 +473,6 @@
     <div class="gen-progress-wrap" id="gen-confirm-view">
       <p class="gen-intro" id="generation-intro">
         This will pull <strong>attendance and assignment completion</strong> across all subjects,
-        plus <strong>journal reflections from <span id="generation-journal-subject">Values Education</span></strong>,
         for the week of <strong>June 9–14, 2025</strong>,
         then generate a narrative report for each student in your section.
         Students flagged as at-risk will also have their academic records included.
@@ -519,12 +525,16 @@
      The page reads the shared report records through getReportsForTeacher().
      During backend integration, replace that getter with the adviser reports
      endpoint; keep the same studentId, sectionId, teacherId, status, metrics,
-     teacherNote, text, and timestamp fields. Keep teacherNote internal to
-     teacher report-generation and review responses.
+     schoolLevel, gradeLevel, strand, teacherNote, recommendedActions, text,
+     and timestamp fields.
+     Keep teacherNote internal to teacher report-generation and review responses.
   ───────────────────────────────────────────────────── */
 
   // EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
-  const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Values Education';
+  const JOURNALS_ENABLED = window.EDUGNAY_CONFIG?.isJournalsEnabled?.() === true;
+  const journalSubjectName = JOURNALS_ENABLED
+    ? window.EDUGNAY_CONFIG.getJournalSubject()?.name || ''
+    : '';
   const SYSTEM_CONFIG = {
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
     atRiskAbsenceThreshold: 3,
@@ -534,6 +544,7 @@
   const REPORT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
   const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(REPORT_TEACHER_ID, REPORT_WEEK_ID);
   const GENERATION_STUDENTS = [...new Map(REPORTS.map(report => [report.studentId, report])).values()];
+  const MAX_RECOMMENDED_ACTIONS = 5;
 
   function getGenerationContext() {
     const firstReport = GENERATION_STUDENTS[0];
@@ -542,6 +553,56 @@
       sectionLabel: firstReport?.sectionLabel || 'Advisory section',
       weekLabel: firstReport?.weekLabel || 'current reporting week'
     };
+  }
+
+  function getAcademicContextLabel(report) {
+    return [report.gradeLevel, report.strand].filter(Boolean).join(' · ') || 'Grade level not available';
+  }
+
+  function recommendedActionMarkup(action = '') {
+    return `
+      <div class="recommended-action-row">
+        <textarea class="recommended-action-input" maxlength="250" rows="2" placeholder="Enter a practical action for the parent or student.">${window.EDUGNAY_CONFIG.escapeHtml(action)}</textarea>
+        <button class="recommended-action-remove" type="button" aria-label="Remove recommended action" onclick="removeRecommendedAction(this)">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>`;
+  }
+
+  function updateRecommendedActionButton() {
+    const list = document.getElementById('rm-recommended-actions');
+    const button = document.getElementById('add-recommended-action');
+    if (list && button) button.disabled = list.children.length >= MAX_RECOMMENDED_ACTIONS;
+  }
+
+  function renderRecommendedActions(actions = []) {
+    const list = document.getElementById('rm-recommended-actions');
+    if (!list) return;
+    const values = Array.isArray(actions) ? actions.slice(0, MAX_RECOMMENDED_ACTIONS) : [];
+    list.innerHTML = values.map(recommendedActionMarkup).join('');
+    updateRecommendedActionButton();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function addRecommendedAction() {
+    const list = document.getElementById('rm-recommended-actions');
+    if (!list || list.children.length >= MAX_RECOMMENDED_ACTIONS) return;
+    list.insertAdjacentHTML('beforeend', recommendedActionMarkup());
+    list.lastElementChild?.querySelector('.recommended-action-input')?.focus();
+    updateRecommendedActionButton();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function removeRecommendedAction(button) {
+    button.closest('.recommended-action-row')?.remove();
+    updateRecommendedActionButton();
+  }
+
+  function collectRecommendedActions() {
+    return [...document.querySelectorAll('#rm-recommended-actions .recommended-action-input')]
+      .map(input => input.value.trim())
+      .filter(Boolean)
+      .slice(0, MAX_RECOMMENDED_ACTIONS);
   }
 
   function updateGenerationNoteCount(input) {
@@ -561,7 +622,10 @@
     const studentCount = GENERATION_STUDENTS.length;
     count.textContent = `${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
     if (modalSub) modalSub.textContent = `${context.sectionLabel} · ${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
-    if (intro) intro.innerHTML = `This will pull <strong>attendance and assignment completion</strong> across all subjects, plus <strong>journal reflections from <span id="generation-journal-subject">${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectName)}</span></strong>, for <strong>${window.EDUGNAY_CONFIG.escapeHtml(context.weekLabel)}</strong>, then generate a narrative report for each student in your section. Students flagged as at-risk will also have their academic records included.`;
+    const journalSource = JOURNALS_ENABLED
+      ? `, plus <strong>journal reflections from <span id="generation-journal-subject">${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectName)}</span></strong>`
+      : '';
+    if (intro) intro.innerHTML = `This will pull <strong>attendance and assignment completion</strong> across all subjects${journalSource}, for <strong>${window.EDUGNAY_CONFIG.escapeHtml(context.weekLabel)}</strong>, then generate a narrative report for each student in your section. Students flagged as at-risk will also have their academic records included.`;
 
     if (!studentCount) {
       list.innerHTML = '<div class="gen-note-empty">No students are available for this reporting period.</div>';
@@ -571,11 +635,15 @@
     list.innerHTML = GENERATION_STUDENTS.map(report => {
       const inputId = `teacher-note-${window.EDUGNAY_CONFIG.escapeHtml(report.studentId)}`;
       const studentName = window.EDUGNAY_CONFIG.escapeHtml(report.studentName || 'Unnamed student');
+      const academicContext = window.EDUGNAY_CONFIG.escapeHtml(getAcademicContextLabel(report));
       const teacherNote = window.EDUGNAY_CONFIG.escapeHtml(report.teacherNote || '');
       return `
         <div class="gen-student-note-row">
           <div class="gen-student-note-head">
-            <label for="${inputId}">${studentName}</label>
+            <div class="gen-student-note-copy">
+              <label for="${inputId}">${studentName}</label>
+              <div class="gen-student-note-grade">${academicContext}</div>
+            </div>
             <span>Optional</span>
           </div>
           <textarea class="teacher-note-input" id="${inputId}" data-student-note data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(report.studentId)}" maxlength="1000" rows="2" placeholder="Add a relevant classroom observation...">${teacherNote}</textarea>
@@ -615,7 +683,7 @@
     { icon: 'user-check', label: 'Attendance', sub: 'All subjects' },
     { icon: 'clipboard-check', label: 'Assignments', sub: 'All subjects' },
     { icon: 'bar-chart-2', label: 'Academic', sub: 'At-risk only' },
-    { icon: 'notebook-pen', label: 'Journal', sub: journalSubjectName },
+    ...(JOURNALS_ENABLED ? [{ icon: 'notebook-pen', label: 'Journal', sub: journalSubjectName }] : []),
     { icon: 'sparkles', label: 'AI Synthesis', sub: 'Welfare check', className: 'ai' },
     { icon: 'send', label: 'To Parent', sub: 'After confirm', className: 'final' }
   ];
@@ -715,9 +783,13 @@
       const absentCount = r.attendance.absences.length;
       const attDetail = formatAbsences(r.attendance.absences);
       const sc = asnClass(r);
-      const jc = r.journalEntryCount === 0 ? 'bad' : 'good';
       const excerpt = r.text.slice(0, 120) + (r.text.length > 120 ? '…' : '');
       const isPending = r.status === 'pending';
+      const journalMetric = JOURNALS_ENABLED ? `
+            <div class="rc-metric ${r.journalEntryCount === 0 ? 'bad' : 'good'}">
+              <div class="rc-metric-val">${r.journalEntryCount}</div>
+              <div class="rc-metric-label">Journal</div>
+            </div>` : '';
 
       return `
         <div class="report-card${r.atRisk ? ' at-risk' : ''}">
@@ -731,7 +803,7 @@
             ${r.atRisk ? `<div class="at-risk-flag"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> At-Risk</div>` : ''}
           </div>
 
-          <div class="report-card-metrics">
+          <div class="report-card-metrics${JOURNALS_ENABLED ? '' : ' without-journal'}">
             <div class="rc-metric wide ${ac}">
               <div class="rc-metric-row">
                 <span class="rc-metric-val">${absentCount}</span>
@@ -744,10 +816,7 @@
               <div class="rc-metric-val">${r.assignments.total}</div>
               <div class="rc-metric-label">Assignments</div>
             </div>
-            <div class="rc-metric ${jc}">
-              <div class="rc-metric-val">${r.journalEntryCount}</div>
-              <div class="rc-metric-label">Journal</div>
-            </div>
+            ${journalMetric}
           </div>
 
           <div class="report-card-excerpt">
@@ -792,12 +861,17 @@
     document.getElementById('rm-attendance-detail').innerHTML = formatAbsencesBySubject(r.attendance.absences);
     document.getElementById('rm-assignments').textContent = `${r.assignments.total} completed`;
     document.getElementById('rm-assignments-detail').innerHTML = formatAssignmentGaps(r.assignments.missing);
-    document.getElementById('rm-journal').textContent = r.journalEntryCount === 0
-      ? `No entry submitted (${SYSTEM_CONFIG.journalSubject})`
-      : `${r.journalEntryCount} entr${r.journalEntryCount === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
-    document.getElementById('rm-journal-label').textContent = `Journal · ${SYSTEM_CONFIG.journalSubject}`;
+    const journalCard = document.getElementById('rm-journal-card');
+    if (journalCard) journalCard.hidden = !JOURNALS_ENABLED;
+    if (JOURNALS_ENABLED) {
+      document.getElementById('rm-journal').textContent = r.journalEntryCount === 0
+        ? `No entry submitted (${SYSTEM_CONFIG.journalSubject})`
+        : `${r.journalEntryCount} entr${r.journalEntryCount === 1 ? 'y' : 'ies'} submitted (${SYSTEM_CONFIG.journalSubject})`;
+      document.getElementById('rm-journal-label').textContent = `Journal · ${SYSTEM_CONFIG.journalSubject}`;
+    }
     document.getElementById('rm-report-text').value       = r.text;
     document.getElementById('rm-teacher-note').textContent = r.teacherNote || 'No teacher note provided.';
+    renderRecommendedActions(r.recommendedActions);
 
     const riskBanner   = document.getElementById('rm-at-risk-banner');
     const academicCard = document.getElementById('rm-academic-card');
@@ -824,33 +898,49 @@
     openModal('review-modal');
   }
 
-  function regenerateReport() {
+  async function regenerateReport() {
+    const report = REPORTS.find(item => item.id === activeReportId);
     const textarea = document.getElementById('rm-report-text');
-    textarea.value    = 'Regenerating…';
+    if (!report || !textarea) return;
+
     textarea.disabled = true;
-    /* TODO: replace setTimeout with actual API call:
-       POST /adviser/reports/:id/regenerate → returns { text: '...' } */
-    setTimeout(() => {
-      const r = REPORTS.find(x => x.id === activeReportId);
-      textarea.value    = r.text;
-      textarea.disabled = false;
+    try {
+      const generatedReports = await window.EDUGNAY_CONFIG.generateReports({
+        sectionId: report.sectionId,
+        weekId: report.weekId,
+        students: [{ studentId: report.studentId, teacherNote: report.teacherNote }]
+      });
+      const generatedReport = generatedReports.find(item => item.id === report.id);
+      if (!generatedReport) throw new Error('Report could not be regenerated.');
+
+      report.text = generatedReport.text;
+      report.recommendedActions = [...(generatedReport.recommendedActions || [])];
+      textarea.value = report.text;
+      renderRecommendedActions(report.recommendedActions);
       showToast('Report regenerated', 'success');
-    }, 1100);
+    } catch (error) {
+      showToast(error.message || 'Report could not be regenerated.', 'error');
+    } finally {
+      textarea.disabled = false;
+    }
   }
 
   function confirmReport() {
-    /* TODO: POST /adviser/reports/:id/confirm with body { reportText: textarea.value }
+    /* TODO: POST /api/reports/:id/confirm with body { text, recommendedActions }
        On success: update local REPORTS array and re-render */
     const r = REPORTS.find(x => x.id === activeReportId);
     if (r) {
       const reportText = document.getElementById('rm-report-text').value;
+      const recommendedActions = collectRecommendedActions();
       window.EDUGNAY_CONFIG.updateReport(r.id, {
         status: 'confirmed',
         text: reportText,
+        recommendedActions,
         confirmedAt: new Date().toISOString()
       });
       r.status = 'confirmed';
       r.text = reportText;
+      r.recommendedActions = recommendedActions;
     }
     closeModal('review-modal');
     renderReports();
@@ -895,18 +985,21 @@
 
     generatedReports.forEach(report => {
       const localReport = REPORTS.find(item => item.id === report.id);
-      if (localReport) localReport.teacherNote = report.teacherNote || null;
+      if (localReport) {
+        localReport.teacherNote = report.teacherNote || null;
+        localReport.recommendedActions = [...(report.recommendedActions || [])];
+      }
     });
 
     document.getElementById('gen-confirm-view').style.display  = 'none';
     document.getElementById('gen-progress-view').style.display = 'block';
 
-    /* TODO: replace this simulation with a POST /adviser/reports/generate
+    /* TODO: replace this simulation with POST /api/reports/generate
        that returns progress via SSE or polling, then show gen-done-view on completion */
     const steps = [
       'Pulling attendance records across all subjects',
       'Checking assignment completion per subject',
-      'Reading journal reflections',
+      ...(JOURNALS_ENABLED ? ['Reading journal reflections'] : []),
       'Identifying at-risk patterns',
       'Pulling academic records for flagged students',
       'Generating AI narrative summaries',

@@ -53,7 +53,7 @@
   PARTIALS: same sidebar/topbar/profile dropdown as parent-dashboard.html
   and the reports page (activeNav='reports').
 
-  ROUTING: GET /parent/reports?child=:id once converted — paginate or lazy-load
+  ROUTING: GET /api/parent/reports?studentId=:id once converted — paginate or lazy-load
   the timeline if report history grows long across a school year.
 -->
 
@@ -236,6 +236,7 @@
           </div>
         </div>
         <div class="rm-text" id="rm-text"></div>
+        <div id="rm-recommended-actions"></div>
       </div>
       <div class="rm-foot">
         <div class="rm-foot-meta">
@@ -253,7 +254,7 @@
 
     /*
       Reports are read from the shared school-scoped report source. On conversion,
-      replace getReportsForStudent() with GET /parent/reports?studentId=:id; the
+      replace getReportsForStudent() with GET /api/parent/reports?studentId=:id; the
       server should return only confirmed reports for the linked child.
     */
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
@@ -262,6 +263,21 @@
     function getReportRecord(studentId) {
       const reports = window.EDUGNAY_CONFIG.getReportsForStudent(studentId, true);
       return reports.length ? { studentId, reports } : null;
+    }
+
+    function renderRecommendedActions(actions) {
+      const values = Array.isArray(actions)
+        ? actions.map(action => String(action || '').trim()).filter(Boolean).slice(0, 5)
+        : [];
+      if (!values.length) return '';
+      return `
+        <section class="parent-recommended-actions">
+          <div class="parent-recommended-actions-title">
+            <i data-lucide="list-checks" style="width:14px;height:14px;"></i>
+            Recommended actions
+          </div>
+          <ul>${values.map(action => `<li>${window.EDUGNAY_CONFIG.escapeHtml(action)}</li>`).join('')}</ul>
+        </section>`;
     }
 
     const requestedChild = new URLSearchParams(window.location.search).get('studentId');
@@ -332,6 +348,7 @@
       </div>
       <div class="lr-quote-mark">"</div>
       <div class="lr-text">${latest.text}</div>
+      ${renderRecommendedActions(latest.recommendedActions)}
       <div class="lr-foot">
         <div class="lr-meta">
           <span class="lr-teacher-avatar">${latest.teacherInitials || window.EDUGNAY_CONFIG.getInitials(latest.teacherName)}</span>
@@ -417,6 +434,7 @@
       const section = PARENT_SECTIONS.find(record => record.id === child.sectionId);
       document.getElementById('rm-child').textContent = `${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       document.getElementById('rm-text').textContent = r.text;
+      document.getElementById('rm-recommended-actions').innerHTML = renderRecommendedActions(r.recommendedActions);
       document.getElementById('rm-foot-avatar').textContent = r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName);
       document.getElementById('rm-foot-meta-text').textContent = `Sent by ${r.teacherName} · ${r.confirmedAtLabel}`;
 
