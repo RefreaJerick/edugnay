@@ -2156,7 +2156,7 @@ function applyCurrentDateToGradingBanners() {
     { id: "cm-001", schoolId: "scc", role: "student", schoolEmail: "c.mendoza.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Carlo", lastName: "Mendoza", displayName: "Carlo Mendoza", initials: "CM", employeeNo: null, lrn: "100201000003", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
     { id: "lr-002", schoolId: "scc", role: "student", schoolEmail: "l.reyes.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Liza", lastName: "Reyes", displayName: "Liza Reyes", initials: "LR", employeeNo: null, lrn: "100201000004", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
     { id: "rc-003", schoolId: "scc", role: "student", schoolEmail: "r.cruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Rico", lastName: "Cruz", displayName: "Rico Cruz", initials: "RC", employeeNo: null, lrn: "100201000005", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-mark" },
-    { id: "jd-004", schoolId: "scc", role: "student", schoolEmail: "j.delacruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Juan", lastName: "Dela Cruz", displayName: "Juan Dela Cruz", initials: "JC", employeeNo: null, lrn: "100201000001", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-luke" },
+    { id: "jd-004", schoolId: "scc", role: "student", schoolEmail: "j.delacruz.stud@stcolumban.edu.ph", status: "active", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Juan", lastName: "Dela Cruz", displayName: "Juan Dela Cruz", initials: "JC", employeeNo: null, lrn: "100201000001", schoolLevel: "jhs", gradeLevel: "Grade 7", strand: null, sectionId: "jhs-grade7-matthew" },
     { id: "et-005", schoolId: "scc", role: "student", schoolEmail: "e.tan.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ella", lastName: "Tan", displayName: "Ella Tan", initials: "ET", employeeNo: null, lrn: "100201000006", schoolLevel: "jhs", gradeLevel: "Grade 8", strand: null, sectionId: "jhs-grade8-john" },
     { id: "ml-006", schoolId: "scc", role: "student", schoolEmail: "m.lopez.stud@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Maria", lastName: "Lopez", displayName: "Maria Lopez", initials: "ML", employeeNo: null, lrn: "100201000007", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-peter" },
     { id: "bg-007", schoolId: "scc", role: "student", schoolEmail: "b.garcia.stud@stcolumban.edu.ph", status: "inactive", createdAt: "2024-06-03T00:00:00.000Z", honorific: null, firstName: "Ben", lastName: "Garcia", displayName: "Ben Garcia", initials: "BG", employeeNo: null, lrn: "100201000008", schoolLevel: "jhs", gradeLevel: "Grade 9", strand: null, sectionId: "jhs-grade9-paul" },
@@ -3587,7 +3587,7 @@ function applyCurrentDateToGradingBanners() {
 
   const USER_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID);
   const savedUsers = readJson(USER_STORAGE_KEY, null);
-  const USER_SEED_VERSION = 2;
+  const USER_SEED_VERSION = 3;
   const USER_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.userSeedVersion, ACTIVE_SCHOOL_ID);
   const savedUserSeedVersion = Number(readJson(USER_SEED_VERSION_KEY, 0));
   const USERS = Array.isArray(savedUsers) && savedUsers.length
@@ -3620,6 +3620,14 @@ function applyCurrentDateToGradingBanners() {
     ));
     if (missingSf1Parents.length) {
       USERS.push(...clone(missingSf1Parents));
+      usersChanged = true;
+    }
+
+    const juan = USERS.find(user => user.id === 'jd-004');
+    if (juan?.gradeLevel === 'Grade 8' && juan.sectionId === 'jhs-grade8-luke') {
+      juan.schoolLevel = 'jhs';
+      juan.gradeLevel = 'Grade 7';
+      juan.sectionId = 'jhs-grade7-matthew';
       usersChanged = true;
     }
   }

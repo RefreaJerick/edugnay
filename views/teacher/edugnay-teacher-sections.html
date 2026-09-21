@@ -1154,17 +1154,17 @@
 
   // Shared learner identities. Score data remains page-specific; attendance
   // records come from the shared attendance source in shell-common.
-  const CURRENT_SECTION_STUDENT_IDS = ['cm-001', 'lr-002', 'mt-012', 'sc-013', 'gb-014'];
-  const STUDENTS = CURRENT_SECTION_STUDENT_IDS
-    .map(id => window.EDUGNAY_CONFIG.getUserById(id))
-    .filter(student => student?.role === 'student');
+  const STUDENTS = window.EDUGNAY_CONFIG
+    .getUsersByRole(window.EDUGNAY_CONFIG.values.roles.STUDENT)
+    .filter(student => student.sectionId === CURRENT_SECTION_ID);
 
   const STUDENT_PROGRESS = window.EDUGNAY_CONFIG.withActiveSchool([
     { studentId: 'cm-001', attendanceRate: '96%', grade: 88, status: 'Passing', tone: 'green' },
     { studentId: 'lr-002', attendanceRate: '100%', grade: 92, status: 'Passing', tone: 'green' },
     { studentId: 'mt-012', attendanceRate: '72%', grade: 71, status: 'Failing', tone: 'red' },
     { studentId: 'sc-013', attendanceRate: '94%', grade: 85, status: 'Passing', tone: 'green' },
-    { studentId: 'gb-014', attendanceRate: '80%', grade: 76, status: 'Near Failing', tone: 'orange' }
+    { studentId: 'gb-014', attendanceRate: '80%', grade: 76, status: 'Near Failing', tone: 'orange' },
+    { studentId: 'jd-004', attendanceRate: '93%', grade: 86, status: 'Passing', tone: 'green' }
   ]).map(progress => {
     const records = getTeacherAttendanceRecords().filter(record => record.studentId === progress.studentId);
     const attended = records.filter(record => ['present', 'late', 'excused'].includes(record.status)).length;
