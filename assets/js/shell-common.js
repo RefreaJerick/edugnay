@@ -2218,7 +2218,14 @@ function applyCurrentDateToGradingBanners() {
     { id: "nb-063", schoolId: "scc", role: "student", schoolEmail: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: "100201000063", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
     { id: "im-064", schoolId: "scc", role: "student", schoolEmail: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: "100201000064", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
     { id: "mf-065", schoolId: "scc", role: "student", schoolEmail: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: "100201000065", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
-  ].map(user => ({ ...user, attendanceQrToken: null }));
+  // Stable demo tokens allow the same seeded student QR to work across browsers.
+  // The backend will replace these with server-managed opaque tokens.
+  ].map(user => ({
+    ...user,
+    attendanceQrToken: user.role === 'student'
+      ? `edugnay-demo-${user.schoolId}-${user.id}-v1`
+      : null
+  }));
 
   // Frontend-only profile seed data. Replace this with profile API responses later.
   const DEFAULT_USER_PROFILES = [
@@ -3587,7 +3594,7 @@ function applyCurrentDateToGradingBanners() {
 
   const USER_STORAGE_KEY = schoolStorageKey(STORAGE_KEYS.users, ACTIVE_SCHOOL_ID);
   const savedUsers = readJson(USER_STORAGE_KEY, null);
-  const USER_SEED_VERSION = 3;
+  const USER_SEED_VERSION = 4;
   const USER_SEED_VERSION_KEY = schoolStorageKey(STORAGE_KEYS.userSeedVersion, ACTIVE_SCHOOL_ID);
   const savedUserSeedVersion = Number(readJson(USER_SEED_VERSION_KEY, 0));
   const USERS = Array.isArray(savedUsers) && savedUsers.length
@@ -3630,6 +3637,14 @@ function applyCurrentDateToGradingBanners() {
       juan.sectionId = 'jhs-grade7-matthew';
       usersChanged = true;
     }
+
+    USERS.forEach(user => {
+      const defaultUser = DEFAULT_USERS.find(item => item.id === user.id);
+      if (defaultUser?.attendanceQrToken && user.attendanceQrToken !== defaultUser.attendanceQrToken) {
+        user.attendanceQrToken = defaultUser.attendanceQrToken;
+        usersChanged = true;
+      }
+    });
   }
   USERS.forEach(user => {
     const defaultUser = DEFAULT_USERS.find(item => item.id === user.id);
