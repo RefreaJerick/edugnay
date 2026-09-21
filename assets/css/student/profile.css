@@ -601,6 +601,79 @@
   flex-shrink: 0;
 }
 
+.student-security-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.student-attendance-qr-body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  padding: 22px 24px;
+}
+
+.student-attendance-qr-preview {
+  width: 180px;
+  height: 180px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+
+.student-attendance-qr-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.student-attendance-qr-placeholder {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--gray-400);
+  font-size: 11px;
+  text-align: center;
+}
+
+.student-attendance-qr-placeholder[hidden] {
+  display: none;
+}
+
+.student-attendance-qr-placeholder svg {
+  width: 24px;
+  height: 24px;
+}
+
+.student-attendance-qr-copy p {
+  margin: 0 0 12px;
+  color: var(--gray-700);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.student-attendance-qr-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.student-attendance-qr-note svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--blue-mid);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -743,6 +816,22 @@
     grid-template-columns: 1fr;
   }
 
+}
+
+@media (max-width: 600px) {
+  .student-attendance-qr-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 18px;
+  }
+
+  .student-attendance-qr-copy {
+    text-align: center;
+  }
+
+  .student-attendance-qr-note {
+    text-align: left;
+  }
 }
 
 @media (max-width: 640px) {

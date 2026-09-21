@@ -15,6 +15,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
+  <script src="../../assets/vendor/zxing/zxing-browser.min.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
 <body data-page-title="My Sections">
@@ -428,6 +429,105 @@
   </div>
 </div>
 
+<!-- QR ATTENDANCE SESSION -->
+<div class="modal-backdrop" id="qrAttendanceModal" aria-hidden="true">
+  <section class="modal qr-attendance-launch-modal" role="dialog" aria-modal="true" aria-labelledby="qrAttendanceModalTitle" aria-describedby="qrAttendanceRuleText">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="scan-line"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="qrAttendanceModalTitle">QR Attendance</div>
+          <div class="modal-sub">Prepare a current-day attendance session.</div>
+        </div>
+      </div>
+      <button type="button" class="modal-close" aria-label="Close QR attendance" onclick="closeModal('qrAttendanceModal')">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <dl class="qr-attendance-context">
+        <div><dt>Section</dt><dd id="qrAttendanceSection"></dd></div>
+        <div><dt>Attendance date</dt><dd id="qrAttendanceDate"></dd></div>
+      </dl>
+      <div class="qr-attendance-rule">
+        <i data-lucide="info" aria-hidden="true"></i>
+        <div>
+          <strong>Current-day attendance only</strong>
+          <span id="qrAttendanceRuleText">QR attendance records scanned students as present for today. The roster must still be reviewed before attendance is saved.</span>
+        </div>
+      </div>
+      <div class="qr-attendance-workspace">
+        <div class="qr-scanner-column">
+          <div class="qr-scanner" id="qrScanner">
+            <video id="qrScannerVideo" muted playsinline aria-label="QR attendance camera preview"></video>
+            <div class="qr-scanner-frame" aria-hidden="true"></div>
+            <div class="qr-scanner-empty" id="qrScannerEmpty">
+              <i data-lucide="camera"></i>
+              <strong>Camera is off</strong>
+              <span>Start the camera and place a student's attendance QR inside the frame.</span>
+            </div>
+          </div>
+          <div class="qr-scanner-status" id="qrScannerStatus" role="status" aria-live="polite">
+            Camera access has not started.
+          </div>
+        </div>
+
+        <section class="qr-attendance-review" aria-labelledby="qrAttendanceReviewTitle">
+          <div class="qr-attendance-review-head">
+            <div>
+              <h3 id="qrAttendanceReviewTitle">Attendance review</h3>
+              <p>Review the complete roster before confirming.</p>
+            </div>
+            <span class="qr-attendance-progress" id="qrAttendanceProgress" role="status" aria-live="polite">0 of 0 scanned</span>
+          </div>
+          <div class="qr-attendance-scan-groups" id="qrAttendanceScanGroups">
+            <div class="qr-attendance-group">
+              <div class="qr-attendance-group-head">
+                <span>Scanned</span>
+                <span id="qrScannedCount">0</span>
+              </div>
+              <div class="qr-attendance-list" id="qrScannedStudents"></div>
+            </div>
+            <div class="qr-attendance-group">
+              <div class="qr-attendance-group-head">
+                <span>Not scanned</span>
+                <span id="qrUnscannedCount">0</span>
+              </div>
+              <div class="qr-attendance-list" id="qrUnscannedStudents"></div>
+            </div>
+          </div>
+          <div class="qr-attendance-final" id="qrAttendanceFinalReview" hidden>
+            <div class="qr-attendance-final-note">
+              Scanned students default to Present. Unscanned students default to Absent until reviewed.
+            </div>
+            <div class="qr-attendance-final-list" id="qrAttendanceFinalList"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel qr-attendance-close" onclick="closeModal('qrAttendanceModal')">Close</button>
+      <div class="qr-attendance-actions">
+        <button type="button" class="btn btn-save" id="qrScannerStartButton" onclick="startQrScanner()">
+          <i data-lucide="camera"></i> Start camera
+        </button>
+        <button type="button" class="btn btn-cancel" id="qrScannerStopButton" onclick="stopQrScanner()" hidden>
+          <i data-lucide="camera-off"></i> Stop camera
+        </button>
+        <button type="button" class="btn btn-cancel" id="qrAttendanceReviewButton" onclick="openQrAttendanceFinalReview()">
+          Review attendance
+        </button>
+        <button type="button" class="btn btn-cancel" id="qrAttendanceBackButton" onclick="returnToQrScanning()" hidden>
+          Back to scanning
+        </button>
+        <button type="button" class="btn btn-save" id="qrAttendanceApplyButton" onclick="confirmQrAttendance()" hidden>
+          <i data-lucide="check"></i> Confirm attendance
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <div class="shell">
   <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
 
@@ -815,6 +915,9 @@
             <div class="panel-sub">Grade 7 – St. Matthew</div>
           </div>
           <div class="panel-head-actions">
+            <button class="top-btn secondary" id="qrAttendanceButton" type="button" onclick="openQrAttendance()">
+              <i data-lucide="scan-line" style="width:14px;height:14px;"></i> Check attendance via QR
+            </button>
             <button class="top-btn secondary" onclick="markAll('P')">
               <i data-lucide="check-circle" style="width:14px;height:14px;"></i> All Present
             </button>
@@ -950,10 +1053,25 @@
   lucide.createIcons();
 
   /* ── MODALS ── */
-  function openModal(id)  { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function openModal(id)  {
+    const modal = document.getElementById(id);
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (id === 'qrAttendanceModal') {
+      if (qrAttendanceSaving) return;
+      stopQrScanner();
+    }
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    if (id === 'qrAttendanceModal') {
+      window.setTimeout(() => qrAttendanceReturnFocus?.focus(), 0);
+    }
+  }
   document.querySelectorAll('.modal-backdrop').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
   });
 
   /* ── TABS ── */
@@ -1619,8 +1737,30 @@
   /* ── ATTENDANCE ── */
 
   // Mirrors System Config → Attendance settings. Wire to real config values later.
-  const APP_TODAY = '2025-06-10';
+  function getCurrentAttendanceDate() {
+    const date = new Date();
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')
+    ].join('-');
+  }
+
+  let APP_TODAY = getCurrentAttendanceDate();
   const ALLOW_EDIT_PAST_ATTENDANCE = true; // flip to test the lock
+  let qrAttendanceContext = null;
+  let qrScannerStream = null;
+  let qrScannerDetector = null;
+  let qrScannerFallbackReader = null;
+  let qrScannerFallbackControls = null;
+  let qrScannerFrameId = null;
+  let qrScannerActive = false;
+  let qrScannerSessionId = 0;
+  let lastDetectedQrValue = '';
+  let qrAttendanceScans = [];
+  let qrAttendanceDraft = [];
+  let qrAttendanceSaving = false;
+  let qrAttendanceReturnFocus = null;
 
   function formatAttDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -1661,10 +1801,397 @@
       remarksInput.disabled = locked;
     });
 
-    document.querySelector('#content-attendance .top-btn.secondary').disabled = locked; // All Present
+    document.querySelector('#content-attendance .top-btn.secondary:not(#qrAttendanceButton)').disabled = locked; // All Present
     document.querySelector('#content-attendance .top-btn.primary').disabled = locked;   // Save Attendance
+    document.getElementById('qrAttendanceButton').disabled = dateStr !== APP_TODAY || !CURRENT_TEACHER_ASSIGNMENT.isAdviser;
 
     updateAttCount();
+  }
+
+  function openQrAttendance() {
+    if (!CURRENT_TEACHER_ASSIGNMENT.isAdviser) {
+      alert('Only the section adviser can start QR attendance for this section.');
+      return;
+    }
+    if (!STUDENTS.length) {
+      alert('This section has no students available for attendance.');
+      return;
+    }
+
+    APP_TODAY = getCurrentAttendanceDate();
+
+    const dateInput = document.getElementById('attDate');
+    dateInput.max = APP_TODAY;
+    if (dateInput.value !== APP_TODAY) {
+      dateInput.value = APP_TODAY;
+      loadAttendanceForDate(APP_TODAY);
+    }
+
+    qrAttendanceContext = {
+      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
+      sectionId: CURRENT_SECTION_ID,
+      subjectId: CURRENT_SUBJECT_ID,
+      teacherId: CURRENT_TEACHER_ID,
+      date: APP_TODAY
+    };
+
+    document.getElementById('qrAttendanceSection').textContent = CURRENT_SECTION;
+    document.getElementById('qrAttendanceDate').textContent = formatAttDate(qrAttendanceContext.date);
+    qrAttendanceReturnFocus = document.activeElement;
+    resetQrScanner();
+    openModal('qrAttendanceModal');
+    lucide.createIcons();
+    document.querySelector('#qrAttendanceModal .modal-close')?.focus();
+  }
+
+  function setQrScannerStatus(message, tone = '') {
+    const status = document.getElementById('qrScannerStatus');
+    status.textContent = message;
+    status.className = `qr-scanner-status${tone ? ` ${tone}` : ''}`;
+  }
+
+  function resetQrScanner() {
+    stopQrScanner();
+    lastDetectedQrValue = '';
+    qrAttendanceScans = [];
+    qrAttendanceDraft = [];
+    qrAttendanceSaving = false;
+    document.getElementById('qrScannerEmpty').hidden = false;
+    document.getElementById('qrAttendanceApplyButton').disabled = false;
+    setQrScannerStatus('Camera access has not started.');
+    showQrAttendanceReviewMode(false);
+    renderQrAttendanceReview();
+  }
+
+  function renderQrAttendanceReview() {
+    const scannedIds = new Set(qrAttendanceScans.map(scan => scan.studentId));
+    const scannedStudents = STUDENTS.filter(student => scannedIds.has(student.id));
+    const unscannedStudents = STUDENTS.filter(student => !scannedIds.has(student.id));
+
+    document.getElementById('qrAttendanceProgress').textContent = `${scannedStudents.length} of ${STUDENTS.length} scanned`;
+    document.getElementById('qrScannedCount').textContent = scannedStudents.length;
+    document.getElementById('qrUnscannedCount').textContent = unscannedStudents.length;
+
+    const renderStudents = (students, scanned) => students.length
+      ? students.map(student => `
+          <div class="qr-attendance-student">
+            <span class="qr-attendance-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</span>
+            <span class="qr-attendance-student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</span>
+            <span class="qr-attendance-state ${scanned ? 'present' : 'waiting'}">
+              <i data-lucide="${scanned ? 'check' : 'clock-3'}"></i>
+              ${scanned ? 'Present' : 'Not scanned'}
+            </span>
+          </div>
+        `).join('')
+      : `<div class="qr-attendance-empty">${scanned ? 'No students scanned yet.' : 'All students have been scanned.'}</div>`;
+
+    document.getElementById('qrScannedStudents').innerHTML = renderStudents(scannedStudents, true);
+    document.getElementById('qrUnscannedStudents').innerHTML = renderStudents(unscannedStudents, false);
+    lucide.createIcons();
+  }
+
+  function showQrAttendanceReviewMode(reviewing) {
+    document.querySelector('.qr-attendance-workspace').classList.toggle('reviewing', reviewing);
+    document.getElementById('qrAttendanceScanGroups').hidden = reviewing;
+    document.getElementById('qrAttendanceFinalReview').hidden = !reviewing;
+    const startButton = document.getElementById('qrScannerStartButton');
+    const reviewButton = document.getElementById('qrAttendanceReviewButton');
+    startButton.hidden = reviewing || qrScannerActive;
+    document.getElementById('qrScannerStopButton').hidden = reviewing || !qrScannerActive;
+    reviewButton.hidden = reviewing;
+    document.getElementById('qrAttendanceBackButton').hidden = !reviewing;
+    document.getElementById('qrAttendanceApplyButton').hidden = !reviewing;
+    startButton.classList.toggle('btn-save', !qrScannerActive);
+    startButton.classList.toggle('btn-cancel', qrScannerActive);
+    reviewButton.classList.toggle('btn-save', qrScannerActive);
+    reviewButton.classList.toggle('btn-cancel', !qrScannerActive);
+  }
+
+  function openQrAttendanceFinalReview() {
+    stopQrScanner();
+    const scansByStudent = Object.fromEntries(qrAttendanceScans.map(scan => [scan.studentId, scan]));
+
+    qrAttendanceDraft = STUDENTS.map(student => ({
+      schoolId: qrAttendanceContext.schoolId,
+      sectionId: qrAttendanceContext.sectionId,
+      subjectId: qrAttendanceContext.subjectId,
+      teacherId: qrAttendanceContext.teacherId,
+      studentId: student.id,
+      date: qrAttendanceContext.date,
+      status: scansByStudent[student.id] ? 'present' : 'absent',
+      scannedAt: scansByStudent[student.id]?.scannedAt || null,
+      source: 'qr'
+    }));
+
+    showQrAttendanceReviewMode(true);
+    renderQrAttendanceDraft();
+  }
+
+  function renderQrAttendanceDraft() {
+    document.getElementById('qrAttendanceProgress').textContent = `${qrAttendanceDraft.length} students to review`;
+    document.getElementById('qrAttendanceFinalList').innerHTML = qrAttendanceDraft.map(record => {
+      const student = STUDENTS.find(item => item.id === record.studentId);
+      const name = window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student');
+      const initials = window.EDUGNAY_CONFIG.escapeHtml(student?.initials || '--');
+      return `
+        <label class="qr-attendance-final-row">
+          <span class="qr-attendance-avatar">${initials}</span>
+          <span class="qr-attendance-student-name">${name}</span>
+          <select data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(record.studentId)}" aria-label="Attendance status for ${name}" onchange="updateQrAttendanceDraftStatus(this.dataset.studentId, this.value)">
+            <option value="present" ${record.status === 'present' ? 'selected' : ''}>Present</option>
+            <option value="absent" ${record.status === 'absent' ? 'selected' : ''}>Absent</option>
+            <option value="excused" ${record.status === 'excused' ? 'selected' : ''}>Excused</option>
+          </select>
+        </label>
+      `;
+    }).join('');
+  }
+
+  function updateQrAttendanceDraftStatus(studentId, status) {
+    if (!['present', 'absent', 'excused'].includes(status)) return;
+    const record = qrAttendanceDraft.find(item => item.studentId === studentId);
+    if (record) record.status = status;
+  }
+
+  function returnToQrScanning() {
+    qrAttendanceDraft = [];
+    showQrAttendanceReviewMode(false);
+    renderQrAttendanceReview();
+  }
+
+  async function confirmQrAttendance() {
+    if (qrAttendanceSaving) return;
+    const validStatuses = ['present', 'absent', 'excused'];
+    const studentIds = new Set(qrAttendanceDraft.map(record => record.studentId));
+    const validDraft = qrAttendanceContext?.date === getCurrentAttendanceDate() &&
+      CURRENT_TEACHER_ASSIGNMENT.isAdviser &&
+      qrAttendanceDraft.length === STUDENTS.length &&
+      studentIds.size === STUDENTS.length &&
+      STUDENTS.every(student => studentIds.has(student.id)) &&
+      qrAttendanceDraft.every(record => validStatuses.includes(record.status));
+    if (!validDraft) return;
+
+    const button = document.getElementById('qrAttendanceApplyButton');
+    qrAttendanceSaving = true;
+    button.disabled = true;
+    const recordedAt = new Date().toISOString();
+    const rowsByStudent = Object.fromEntries(
+      Array.from(document.querySelectorAll('#attTbody tr')).map(row => [row.dataset.studentId, row])
+    );
+    const records = qrAttendanceDraft.map(record => ({
+      schoolId: qrAttendanceContext.schoolId,
+      sectionId: qrAttendanceContext.sectionId,
+      subjectId: qrAttendanceContext.subjectId,
+      teacherId: qrAttendanceContext.teacherId,
+      studentId: record.studentId,
+      date: qrAttendanceContext.date,
+      status: record.status,
+      remark: rowsByStudent[record.studentId]?.querySelector('[data-attendance-remark]')?.value.trim() || null,
+      source: 'qr',
+      scannedAt: record.scannedAt || null,
+      recordedAt
+    }));
+
+    try {
+      const savedRecords = await window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
+      if (savedRecords.length !== records.length) throw new Error('Attendance records were incomplete.');
+      qrAttendanceSaving = false;
+      loadAttendanceForDate(APP_TODAY);
+      renderAttendanceHistory();
+      closeModal('qrAttendanceModal');
+      showAttendanceSavedState();
+    } catch {
+      qrAttendanceSaving = false;
+      button.disabled = false;
+      alert('Attendance could not be saved. Please try again.');
+    }
+  }
+
+  async function supportsNativeQrScanner() {
+    const NativeBarcodeDetector = window.BarcodeDetector;
+    if (!NativeBarcodeDetector) return false;
+    if (typeof NativeBarcodeDetector.getSupportedFormats !== 'function') return true;
+
+    try {
+      const formats = await NativeBarcodeDetector.getSupportedFormats();
+      return formats.includes('qr_code');
+    } catch {
+      return false;
+    }
+  }
+
+  function handleDetectedQrValue(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value || value === lastDetectedQrValue) return;
+    lastDetectedQrValue = value;
+    handleQrAttendanceScan(value);
+  }
+
+  async function startQrScanner() {
+    if (qrScannerActive) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setQrScannerStatus('Camera access is not supported in this browser or connection.', 'error');
+      return;
+    }
+
+    const startButton = document.getElementById('qrScannerStartButton');
+    const nativeSupported = await supportsNativeQrScanner();
+    const fallbackSupported = Boolean(window.ZXingBrowser?.BrowserQRCodeReader);
+    if (!nativeSupported && !fallbackSupported) {
+      setQrScannerStatus('QR scanning is not available in this browser.', 'error');
+      return;
+    }
+
+    const sessionId = ++qrScannerSessionId;
+    startButton.disabled = true;
+    setQrScannerStatus('Requesting camera access...');
+
+    try {
+      qrScannerStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+
+      if (sessionId !== qrScannerSessionId) {
+        qrScannerStream.getTracks().forEach(track => track.stop());
+        qrScannerStream = null;
+        return;
+      }
+
+      const video = document.getElementById('qrScannerVideo');
+      video.srcObject = qrScannerStream;
+      await video.play();
+      qrScannerActive = true;
+      document.getElementById('qrScannerEmpty').hidden = true;
+      startButton.disabled = false;
+      showQrAttendanceReviewMode(false);
+      setQrScannerStatus('Camera active. Hold a student QR inside the frame.', 'active');
+
+      if (nativeSupported) {
+        qrScannerDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        scanQrCameraFrame();
+        return;
+      }
+
+      qrScannerFallbackReader = new window.ZXingBrowser.BrowserQRCodeReader();
+      qrScannerFallbackControls = await qrScannerFallbackReader.decodeFromStream(
+        qrScannerStream,
+        video,
+        result => handleDetectedQrValue(result?.getText())
+      );
+
+      if (sessionId !== qrScannerSessionId) {
+        qrScannerFallbackControls?.stop();
+      }
+    } catch (error) {
+      const staleSession = sessionId !== qrScannerSessionId;
+      stopQrScanner();
+      if (staleSession) return;
+      setQrScannerStatus(error?.name === 'NotAllowedError'
+        ? 'Camera permission was not granted.'
+        : 'The camera could not be started.', 'error');
+    }
+  }
+
+  async function scanQrCameraFrame() {
+    if (!qrScannerActive || !qrScannerDetector) return;
+
+    const video = document.getElementById('qrScannerVideo');
+    try {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const codes = await qrScannerDetector.detect(video);
+        handleDetectedQrValue(codes[0]?.rawValue);
+      }
+    } catch {
+      setQrScannerStatus('The camera is active, but the QR image could not be read.', 'error');
+    }
+
+    if (qrScannerActive) qrScannerFrameId = requestAnimationFrame(scanQrCameraFrame);
+  }
+
+  function validateQrAttendanceScan(rawValue) {
+    if (!qrAttendanceContext || qrAttendanceContext.date !== getCurrentAttendanceDate()) {
+      return { valid: false, message: 'This QR attendance session is no longer current.' };
+    }
+
+    const token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(rawValue);
+    if (!token) return { valid: false, message: 'This is not a valid edUgnay attendance QR.' };
+
+    const student = window.EDUGNAY_CONFIG.getStudentByAttendanceQrToken(token);
+    if (!student) return { valid: false, message: 'This attendance QR is unknown or no longer valid.' };
+    if (student.status !== window.EDUGNAY_CONFIG.values.statuses.ACTIVE) {
+      return { valid: false, message: `${student.displayName}'s account is inactive.` };
+    }
+    if (student.sectionId !== qrAttendanceContext?.sectionId) {
+      return { valid: false, message: `${student.displayName} is not assigned to this section.` };
+    }
+    if (!STUDENTS.some(record => record.id === student.id)) {
+      return { valid: false, message: `${student.displayName} is not included in this attendance roster.` };
+    }
+    if (qrAttendanceScans.some(scan => scan.studentId === student.id)) {
+      return { valid: false, duplicate: true, message: `${student.displayName} has already been scanned.` };
+    }
+
+    return { valid: true, student };
+  }
+
+  function handleQrAttendanceScan(rawValue) {
+    const result = validateQrAttendanceScan(rawValue);
+    if (!result.valid) {
+      setQrScannerStatus(result.message, result.duplicate ? 'active' : 'error');
+      window.setTimeout(() => {
+        if (lastDetectedQrValue === rawValue) lastDetectedQrValue = '';
+      }, 1200);
+      return;
+    }
+
+    const student = result.student;
+    qrAttendanceScans.push({
+      schoolId: qrAttendanceContext.schoolId,
+      sectionId: qrAttendanceContext.sectionId,
+      subjectId: qrAttendanceContext.subjectId,
+      teacherId: qrAttendanceContext.teacherId,
+      studentId: student.id,
+      date: qrAttendanceContext.date,
+      status: 'present',
+      scannedAt: new Date().toISOString()
+    });
+    renderQrAttendanceReview();
+    setQrScannerStatus(`${student.displayName} scanned successfully. ${qrAttendanceScans.length} student${qrAttendanceScans.length === 1 ? '' : 's'} scanned.`, 'success');
+  }
+
+  function stopQrScanner() {
+    const wasActive = qrScannerActive || Boolean(qrScannerStream) || Boolean(qrScannerFallbackControls);
+    qrScannerSessionId += 1;
+    qrScannerActive = false;
+    if (qrScannerFrameId) cancelAnimationFrame(qrScannerFrameId);
+    qrScannerFrameId = null;
+    qrScannerFallbackControls?.stop();
+    qrScannerFallbackControls = null;
+    qrScannerFallbackReader = null;
+    qrScannerStream?.getTracks().forEach(track => track.stop());
+    qrScannerStream = null;
+    qrScannerDetector = null;
+
+    const video = document.getElementById('qrScannerVideo');
+    if (video) video.srcObject = null;
+    const startButton = document.getElementById('qrScannerStartButton');
+    const stopButton = document.getElementById('qrScannerStopButton');
+    const reviewButton = document.getElementById('qrAttendanceReviewButton');
+    const emptyState = document.getElementById('qrScannerEmpty');
+    if (startButton) {
+      startButton.hidden = false;
+      startButton.disabled = false;
+      startButton.classList.add('btn-save');
+      startButton.classList.remove('btn-cancel');
+    }
+    if (stopButton) stopButton.hidden = true;
+    if (reviewButton) {
+      reviewButton.classList.add('btn-cancel');
+      reviewButton.classList.remove('btn-save');
+    }
+    if (emptyState) emptyState.hidden = false;
+    if (wasActive) setQrScannerStatus('Camera stopped. Start it again to continue scanning.');
   }
 
   function setAtt(btn, status) {
@@ -1696,23 +2223,33 @@
 
   function saveAttendance() {
     const date = document.getElementById('attDate').value;
-
-    document.querySelectorAll('#attTbody tr').forEach(row => {
+    const recordedAt = new Date().toISOString();
+    const records = Array.from(document.querySelectorAll('#attTbody tr')).map(row => {
       const studentId = row.dataset.studentId;
       const selectedBtn = row.querySelector('.att-btn.selected');
       const code = selectedBtn ? ['P', 'A', 'L', 'E'].find(status => selectedBtn.classList.contains(status)) : null;
-      window.EDUGNAY_CONFIG.upsertAttendanceRecord({
+      return {
         schoolId: TEACHER_SECTION_SCHOOL_ID,
         studentId,
         sectionId: CURRENT_SECTION_ID,
         subjectId: CURRENT_SUBJECT_ID,
         date,
         status: ATTENDANCE_STATUS_BY_CODE[code] || 'pending',
-        remark: row.querySelector('[data-attendance-remark]')?.value.trim() || null
-      });
+        remark: row.querySelector('[data-attendance-remark]')?.value.trim() || null,
+        teacherId: CURRENT_TEACHER_ID,
+        source: 'manual',
+        scannedAt: null,
+        recordedAt
+      };
     });
 
+    window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
+
     renderAttendanceHistory();
+    showAttendanceSavedState();
+  }
+
+  function showAttendanceSavedState() {
     const btn = document.querySelector('#content-attendance .top-btn.primary');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Saved';
@@ -1762,7 +2299,10 @@
   });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closeAssignmentMenus();
+    if (event.key !== 'Escape') return;
+    closeAssignmentMenus();
+    const openModalBackdrop = document.querySelector('.modal-backdrop.open');
+    if (openModalBackdrop) closeModal(openModalBackdrop.id);
   });
 
   function renderAssignments() {
@@ -2138,8 +2678,16 @@
     renderAssignments();
     renderTeacherMaterials();
 
-    // Init attendance count
-    updateAttCount();
+    const attendanceDateInput = document.getElementById('attDate');
+    attendanceDateInput.value = APP_TODAY;
+    attendanceDateInput.max = APP_TODAY;
+    loadAttendanceForDate(APP_TODAY);
+
+    const pageParams = new URLSearchParams(window.location.search);
+    if (pageParams.get('tab') === 'attendance') {
+      switchTab('attendance');
+      if (pageParams.get('action') === 'qr') openQrAttendance();
+    }
   });
 
   window.addEventListener('storage', event => {
@@ -2147,6 +2695,24 @@
       switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
     }
   });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopQrScanner();
+      return;
+    }
+
+    const currentDate = getCurrentAttendanceDate();
+    if (currentDate !== APP_TODAY) {
+      APP_TODAY = currentDate;
+      document.getElementById('attDate').max = APP_TODAY;
+      if (document.getElementById('qrAttendanceModal').classList.contains('open')) {
+        closeModal('qrAttendanceModal');
+      }
+    }
+  });
+
+  window.addEventListener('pagehide', stopQrScanner);
 </script>
 
 </body>

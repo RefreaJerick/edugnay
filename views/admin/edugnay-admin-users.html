@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/users.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="../../assets/vendor/qrcode/qrcode.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -118,6 +119,89 @@
         <button type="submit" form="accountForm" class="btn btn-save" id="accountSaveBtn">Create Account</button>
       </div>
     </div>
+  </div>
+
+  <!-- CREDENTIAL DELIVERY PREVIEW -->
+  <div class="modal-backdrop" id="credentialDeliveryModalBackdrop" aria-hidden="true">
+    <section class="modal credential-delivery-modal" role="dialog" aria-modal="true" aria-labelledby="credentialDeliveryModalTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="mail-check"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="credentialDeliveryModalTitle">Account credentials prepared</div>
+            <div class="modal-sub" id="credentialDeliveryModalSub">Review the credentials prepared for delivery.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" aria-label="Close credential preview" onclick="closeCredentialDeliveryModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="credential-delivery-notice">
+          <i data-lucide="info" aria-hidden="true"></i>
+          <p id="credentialDeliveryNotice"></p>
+        </div>
+
+        <div id="credentialSingleView">
+          <dl class="credential-details">
+            <div><dt>School email</dt><dd id="credentialSchoolEmail"></dd></div>
+            <div><dt>Temporary password</dt><dd id="credentialTemporaryPassword"></dd></div>
+          </dl>
+
+          <section class="credential-qr-section" id="credentialQrSection" hidden>
+            <img id="credentialQrImage" alt="Student attendance QR code" />
+            <div>
+              <div class="credential-qr-label">Student Attendance QR</div>
+              <p>Save or print this QR code and present it to the teacher when QR attendance is checked.</p>
+              <span>The QR contains an attendance token only. It does not contain personal details or login credentials.</span>
+            </div>
+          </section>
+        </div>
+
+        <div id="credentialBatchView" hidden>
+          <div class="credential-batch-summary" id="credentialBatchSummary"></div>
+          <div class="credential-batch-list" id="credentialBatchList"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeCredentialDeliveryModal()">Close</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- REISSUE STUDENT ATTENDANCE QR -->
+  <div class="modal-backdrop" id="regenerateAttendanceQrModalBackdrop" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="regenerateAttendanceQrModalTitle" style="max-width:440px;">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="refresh-cw"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="regenerateAttendanceQrModalTitle">Reissue attendance QR?</div>
+            <div class="modal-sub">The student's current QR will stop working.</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" aria-label="Close QR reissue confirmation" onclick="closeRegenerateAttendanceQrModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-context">
+          <div class="ctx-icon"><i data-lucide="qr-code"></i></div>
+          <div>
+            <div class="ctx-label">Student</div>
+            <div class="ctx-val" id="regenerateAttendanceQrStudentName"></div>
+          </div>
+        </div>
+        <p class="regenerate-attendance-qr-warning">Only reissue the QR if the existing copy was lost, shared, or compromised. Download the replacement after confirming.</p>
+        <form id="regenerateAttendanceQrForm">
+          <input type="hidden" id="regenerateAttendanceQrStudentId" name="studentId" />
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeRegenerateAttendanceQrModal()">Cancel</button>
+        <button type="submit" form="regenerateAttendanceQrForm" class="btn btn-save">Reissue QR</button>
+      </div>
+    </section>
   </div>
 
   <!-- USER DETAILS MODAL -->
@@ -622,6 +706,7 @@
     const PAGE_SIZE = 10;
     let currentPage = 1;
     let userDetailsTrigger = null;
+    let userDetailsAttendanceQrDataUrl = '';
 
     const ROLE_META = {
       school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
@@ -1028,6 +1113,68 @@
       return '';
     }
 
+    async function openCredentialDeliveryModal(accounts) {
+      const users = (Array.isArray(accounts) ? accounts : [accounts]).filter(Boolean);
+      const deliveries = users
+        .map(user => ({ user, delivery: window.EDUGNAY_CONFIG.prepareCredentialDelivery(user.id) }))
+        .filter(item => item.delivery);
+      if (!deliveries.length) return;
+
+      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
+      const singleView = document.getElementById('credentialSingleView');
+      const batchView = document.getElementById('credentialBatchView');
+      const notice = document.getElementById('credentialDeliveryNotice');
+      const single = deliveries.length === 1;
+
+      singleView.hidden = !single;
+      batchView.hidden = single;
+      notice.textContent = 'This is a frontend delivery preview. The backend will email these credentials and each student attendance QR to the personal email when delivery is connected.';
+
+      if (single) {
+        const { user, delivery } = deliveries[0];
+        const qrSection = document.getElementById('credentialQrSection');
+        document.getElementById('credentialDeliveryModalSub').textContent = `Prepared for ${delivery.personalEmail || 'the account owner'}.`;
+        document.getElementById('credentialSchoolEmail').textContent = delivery.schoolEmail || 'Not set';
+        document.getElementById('credentialTemporaryPassword').textContent = delivery.temporaryPassword;
+        qrSection.hidden = !delivery.attendanceQrToken;
+
+        if (delivery.attendanceQrToken) {
+          document.getElementById('credentialQrImage').src = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(delivery.attendanceQrToken);
+        } else {
+          document.getElementById('credentialQrImage').removeAttribute('src');
+        }
+      } else {
+        const studentCount = deliveries.filter(item => item.delivery.attendanceQrToken).length;
+        document.getElementById('credentialDeliveryModalSub').textContent = `${deliveries.length} account deliveries prepared.`;
+        document.getElementById('credentialBatchSummary').textContent = studentCount
+          ? `${studentCount} student delivery${studentCount === 1 ? '' : 'ies'} include a Student Attendance QR.`
+          : 'The account credentials are ready for backend email delivery.';
+        document.getElementById('credentialBatchList').innerHTML = deliveries.map(({ user, delivery }) => `
+          <div class="credential-batch-row">
+            <div>
+              <strong>${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)}</strong>
+              <span>${window.EDUGNAY_CONFIG.escapeHtml(delivery.personalEmail || 'No personal email')}</span>
+            </div>
+            ${delivery.attendanceQrToken ? '<div class="credential-batch-qr">Attendance QR included</div>' : ''}
+          </div>
+        `).join('');
+      }
+
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closeCredentialDeliveryModal() {
+      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    document.getElementById('credentialDeliveryModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeCredentialDeliveryModal();
+    });
+
     document.getElementById('accountForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       const data = getAccountFormData();
@@ -1056,9 +1203,11 @@
 
         closeAccountModal();
         renderUsers();
-        alert(data.userId
-          ? 'Account updated.'
-          : `Account created. School email: ${user.schoolEmail}`);
+        if (data.userId) {
+          alert('Account updated.');
+        } else {
+          await openCredentialDeliveryModal(user);
+        }
       } catch (error) {
         alert(error.message || 'The account could not be saved.');
       }
@@ -1120,7 +1269,7 @@
         const result = await window.EDUGNAY_CONFIG.importUsers(validation.accountRecords);
         closeImportModal();
         renderUsers();
-        alert(`${result.accountCount} account(s) added.`);
+        await openCredentialDeliveryModal(result.accounts);
       } catch (error) {
         submitButton.disabled = false;
         submitButton.textContent = 'Import Accounts';
@@ -1289,6 +1438,7 @@
       }).join('');
 
       const modalBody = document.getElementById('userDetailsModalBody');
+      document.getElementById('regenerateAttendanceQrStudentId').value = user.role === 'student' ? user.id : '';
       modalBody.innerHTML = `
         <div class="user-details-profile">
           <div class="user-details-avatar ${meta.avatarClass}">${initials}</div>
@@ -1322,6 +1472,23 @@
           </div>
           <dl class="user-details-grid">${personalDetails.map(item => userDetailItem(item[0], item[1])).join('')}</dl>
         </section>` : ''}
+        ${user.role === 'student' ? `<section class="user-details-section" aria-labelledby="userDetailsQrTitle">
+          <div class="user-details-section-head">
+            <span aria-hidden="true"><i data-lucide="qr-code"></i></span>
+            <h3 id="userDetailsQrTitle">Student Attendance QR</h3>
+          </div>
+          <div class="user-details-qr">
+            <img id="userDetailsAttendanceQrImage" alt="${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)} attendance QR code" />
+            <div class="user-details-qr-copy">
+              <p>Download a replacement copy or reissue the token if the current QR is no longer secure.</p>
+              <div class="user-details-qr-actions">
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrDownload" onclick="downloadUserDetailsAttendanceQr()" disabled><i data-lucide="download"></i>Download QR</button>
+                <button type="button" class="top-btn secondary" onclick="openRegenerateAttendanceQrModal()"><i data-lucide="refresh-cw"></i>Reissue QR</button>
+              </div>
+              <div class="user-details-qr-status" id="userDetailsAttendanceQrStatus" role="status" hidden>Replacement QR generated. The previous QR is no longer valid.</div>
+            </div>
+          </div>
+        </section>` : ''}
         ${user.role === 'parent' ? `<section class="user-details-section" aria-labelledby="userDetailsLinksTitle">
           <div class="user-details-section-head">
             <span aria-hidden="true"><i data-lucide="users-round"></i></span>
@@ -1335,6 +1502,7 @@
       modalBody.scrollTop = 0;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
+      if (user.role === 'student') await renderUserDetailsAttendanceQr(user);
       lucide.createIcons();
       document.getElementById('userDetailsModalClose').focus();
     }
@@ -1347,6 +1515,65 @@
       if (wasOpen && userDetailsTrigger?.isConnected) userDetailsTrigger.focus();
       userDetailsTrigger = null;
     }
+
+    async function renderUserDetailsAttendanceQr(student) {
+      const image = document.getElementById('userDetailsAttendanceQrImage');
+      const button = document.getElementById('userDetailsAttendanceQrDownload');
+      userDetailsAttendanceQrDataUrl = '';
+      button.disabled = true;
+      if (!student?.attendanceQrToken) return;
+
+      userDetailsAttendanceQrDataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(student.attendanceQrToken);
+      image.src = userDetailsAttendanceQrDataUrl;
+      button.disabled = false;
+    }
+
+    function downloadUserDetailsAttendanceQr() {
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = window.EDUGNAY_CONFIG.getUserById(studentId);
+      if (!userDetailsAttendanceQrDataUrl || !student) return;
+
+      const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-');
+      const link = document.createElement('a');
+      link.href = userDetailsAttendanceQrDataUrl;
+      link.download = `${name}-attendance-qr.png`;
+      link.click();
+    }
+
+    function openRegenerateAttendanceQrModal() {
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = window.EDUGNAY_CONFIG.getUserById(studentId);
+      if (!student || student.role !== 'student') return;
+
+      document.getElementById('regenerateAttendanceQrStudentName').textContent = student.displayName;
+      const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
+    function closeRegenerateAttendanceQrModal() {
+      const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.getElementById('regenerateAttendanceQrForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
+      const student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
+      if (!student) return;
+
+      closeRegenerateAttendanceQrModal();
+      await renderUserDetailsAttendanceQr(student);
+      document.getElementById('userDetailsAttendanceQrStatus').hidden = false;
+    });
+
+    document.getElementById('regenerateAttendanceQrModalBackdrop').addEventListener('click', function (event) {
+      if (event.target === this) closeRegenerateAttendanceQrModal();
+    });
 
     document.getElementById('userDetailsModalBackdrop').addEventListener('click', function (event) {
       if (event.target === this) closeUserDetailsModal();

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/student/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/vendor/qrcode/qrcode.min.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -506,6 +507,7 @@
 
     <!-- ── ACCOUNT & SECURITY TAB ── -->
     <div class="profile-pane" id="pane-security">
+      <div class="student-security-stack">
       <div class="panel">
         <div class="panel-head">
           <div class="panel-head-title-group">
@@ -521,6 +523,38 @@
             <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
           </button>
         </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title-group">
+            <div class="panel-title-icon"><i data-lucide="qr-code" style="width:16px;height:16px;"></i></div>
+            <div>
+              <div class="panel-title">Student Attendance QR</div>
+              <div class="panel-sub">Use this code when your teacher checks attendance through QR.</div>
+            </div>
+          </div>
+        </div>
+        <div class="student-attendance-qr-body">
+          <div class="student-attendance-qr-preview">
+            <img id="student-attendance-qr-image" alt="Student attendance QR code" hidden />
+            <div class="student-attendance-qr-placeholder" id="student-attendance-qr-placeholder">
+              <i data-lucide="loader-circle"></i>
+              <span>Preparing QR code...</span>
+            </div>
+          </div>
+          <div class="student-attendance-qr-copy">
+            <p>Present this QR code to your teacher when QR attendance is being checked.</p>
+            <div class="student-attendance-qr-note">
+              <i data-lucide="shield-check"></i>
+              <span>This QR contains only your attendance token. It does not contain your personal information or login credentials.</span>
+            </div>
+            <button type="button" class="top-btn secondary" id="student-attendance-qr-download" onclick="downloadStudentAttendanceQr()" disabled>
+              <i data-lucide="download" style="width:14px;height:14px;"></i> Download QR
+            </button>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -585,6 +619,7 @@ const STUDENT_ID = window.EDUGNAY_STUDENT?.currentUser?.id
   || null;
 const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
 let studentSetupRequired = false;
+let studentAttendanceQrDataUrl = '';
 
 function setStudentText(id, value, fallback = 'Not provided') {
   const element = document.getElementById(id);
@@ -656,7 +691,48 @@ function renderStudentProfile() {
   const topbarInitials = document.getElementById('student-topbar-initials');
   if (topbarInitials) topbarInitials.textContent = student.initials || '';
   renderStudentLinkedParents(student.id);
+  renderStudentAttendanceQr(student);
   applyStudentProfileSetupState();
+}
+
+async function renderStudentAttendanceQr(student) {
+  const image = document.getElementById('student-attendance-qr-image');
+  const placeholder = document.getElementById('student-attendance-qr-placeholder');
+  const downloadButton = document.getElementById('student-attendance-qr-download');
+  studentAttendanceQrDataUrl = '';
+  image.hidden = true;
+  placeholder.hidden = false;
+  downloadButton.disabled = true;
+
+  if (!student?.attendanceQrToken) {
+    placeholder.innerHTML = '<i data-lucide="qr-code"></i><span>QR code unavailable</span>';
+    lucide.createIcons();
+    return;
+  }
+
+  try {
+    studentAttendanceQrDataUrl = await STUDENT_CONFIG.generateAttendanceQrDataUrl(student.attendanceQrToken);
+    image.src = studentAttendanceQrDataUrl;
+    image.hidden = false;
+    placeholder.hidden = true;
+    downloadButton.disabled = false;
+  } catch {
+    placeholder.innerHTML = '<i data-lucide="triangle-alert"></i><span>QR code could not be generated</span>';
+    lucide.createIcons();
+  }
+}
+
+function downloadStudentAttendanceQr() {
+  const student = STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
+  if (!studentAttendanceQrDataUrl || !student) return;
+
+  const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
+  const link = document.createElement('a');
+  link.href = studentAttendanceQrDataUrl;
+  link.download = `${name}-attendance-qr.png`;
+  link.click();
 }
 
 function updateStudentProfileChoices() {

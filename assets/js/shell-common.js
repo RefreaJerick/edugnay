@@ -2218,7 +2218,7 @@ function applyCurrentDateToGradingBanners() {
     { id: "nb-063", schoolId: "scc", role: "student", schoolEmail: "n.bautista.g3@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Noah", lastName: "Bautista", displayName: "Noah Bautista", initials: "NB", employeeNo: null, lrn: "100201000063", schoolLevel: "elementary", gradeLevel: "Grade 3", strand: null, sectionId: null },
     { id: "im-064", schoolId: "scc", role: "student", schoolEmail: "i.mercado.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Ivy", lastName: "Mercado", displayName: "Ivy Mercado", initials: "IM", employeeNo: null, lrn: "100201000064", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
     { id: "mf-065", schoolId: "scc", role: "student", schoolEmail: "m.flores.g6@stcolumban.edu.ph", status: "active", createdAt: "2025-06-10T00:00:00.000Z", honorific: null, firstName: "Mateo", lastName: "Flores", displayName: "Mateo Flores", initials: "MF", employeeNo: null, lrn: "100201000065", schoolLevel: "elementary", gradeLevel: "Grade 6", strand: null, sectionId: null },
-  ];
+  ].map(user => ({ ...user, attendanceQrToken: null }));
 
   // Frontend-only profile seed data. Replace this with profile API responses later.
   const DEFAULT_USER_PROFILES = [
@@ -2742,7 +2742,11 @@ function applyCurrentDateToGradingBanners() {
       subjectId: record.subjectId || null,
       date: record.date || null,
       status: record.status || 'pending',
-      remark: record.remark || null
+      remark: record.remark || null,
+      teacherId: record.teacherId || null,
+      source: record.source || 'manual',
+      scannedAt: record.scannedAt || null,
+      recordedAt: record.recordedAt || null
     }));
 
   function getAttendanceRecords(filters = {}) {
@@ -2763,28 +2767,44 @@ function applyCurrentDateToGradingBanners() {
     writeJson(schoolStorageKey(STORAGE_KEYS.attendance), Array.isArray(records) ? records : []);
   }
 
-  function upsertAttendanceRecord(values = {}) {
-    const record = {
-      id: String(values.id || `attendance-${values.studentId}-${values.date}-${values.subjectId || 'all'}`),
-      schoolId: values.schoolId || getActiveSchoolId(),
-      studentId: String(values.studentId || ''),
-      sectionId: values.sectionId || null,
-      subjectId: values.subjectId || null,
-      date: values.date || null,
-      status: values.status || 'pending',
-      remark: values.remark || null
-    };
-    const existing = ATTENDANCE_DIRECTORY.find(item =>
-      item.schoolId === record.schoolId &&
-      item.studentId === record.studentId &&
-      item.sectionId === record.sectionId &&
-      item.subjectId === record.subjectId &&
-      item.date === record.date
-    );
-    if (existing) Object.assign(existing, record, { id: existing.id });
-    else ATTENDANCE_DIRECTORY.push(record);
-    saveAttendanceRecords();
-    return existing || record;
+  function upsertAttendanceRecords(records = []) {
+    if (!Array.isArray(records)) return [];
+    const validStatuses = ['present', 'absent', 'late', 'excused', 'pending'];
+    const validSources = ['manual', 'qr'];
+    const savedRecords = records.filter(values =>
+      values?.studentId &&
+      values?.date &&
+      validStatuses.includes(values.status || 'pending') &&
+      validSources.includes(values.source || 'manual')
+    ).map(values => {
+      const record = {
+        id: String(values.id || `attendance-${values.studentId}-${values.date}-${values.subjectId || 'all'}`),
+        schoolId: values.schoolId || getActiveSchoolId(),
+        studentId: String(values.studentId || ''),
+        sectionId: values.sectionId || null,
+        subjectId: values.subjectId || null,
+        date: values.date || null,
+        status: values.status || 'pending',
+        remark: values.remark || null,
+        teacherId: values.teacherId || null,
+        source: values.source || 'manual',
+        scannedAt: values.scannedAt || null,
+        recordedAt: values.recordedAt || null
+      };
+      const existing = ATTENDANCE_DIRECTORY.find(item =>
+        item.schoolId === record.schoolId &&
+        item.studentId === record.studentId &&
+        item.sectionId === record.sectionId &&
+        item.subjectId === record.subjectId &&
+        item.date === record.date
+      );
+      if (existing) Object.assign(existing, record, { id: existing.id });
+      else ATTENDANCE_DIRECTORY.push(record);
+      return existing || record;
+    });
+
+    if (savedRecords.length) saveAttendanceRecords();
+    return savedRecords;
   }
 
   // Shared assignment records for Teacher, Student, and Parent portals.
@@ -3574,6 +3594,23 @@ function applyCurrentDateToGradingBanners() {
     ? savedUsers
     : clone(DEFAULT_USERS.filter(user => user.schoolId === ACTIVE_SCHOOL_ID));
 
+  const usedAttendanceQrTokens = new Set();
+
+  // Frontend-only token generation. The backend will generate and validate
+  // attendance QR tokens after integration.
+  function createAttendanceQrToken() {
+    let token;
+    do {
+      token = globalThis.crypto?.randomUUID?.()
+        || `qr-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    } while (
+      usedAttendanceQrTokens.has(token)
+      || USERS.some(user => user.attendanceQrToken === token)
+    );
+    usedAttendanceQrTokens.add(token);
+    return token;
+  }
+
   // Keep older saved records compatible with the canonical user fields.
   let usersChanged = false;
   if (Array.isArray(savedUsers) && savedUsers.length && savedUserSeedVersion < USER_SEED_VERSION) {
@@ -3600,6 +3637,12 @@ function applyCurrentDateToGradingBanners() {
     const hasLegacyEmail = Object.hasOwn(user, 'email');
     const schoolEmail = String(user.schoolEmail || (hasLegacyEmail ? user.email : '') || '').trim().toLowerCase();
     const personalEmail = String(user.personalEmail || '').trim().toLowerCase() || null;
+    const isStudent = user.role === RECORD_VALUES.roles.STUDENT;
+    let attendanceQrToken = isStudent ? String(user.attendanceQrToken || '').trim() : null;
+    if (isStudent && (!attendanceQrToken || usedAttendanceQrTokens.has(attendanceQrToken))) {
+      attendanceQrToken = createAttendanceQrToken();
+    }
+    if (attendanceQrToken) usedAttendanceQrTokens.add(attendanceQrToken);
     if (user.lrn !== savedLrn) {
       user.lrn = savedLrn;
       usersChanged = true;
@@ -3616,8 +3659,12 @@ function applyCurrentDateToGradingBanners() {
       user.personalEmail = personalEmail;
       usersChanged = true;
     }
+    if (user.attendanceQrToken !== attendanceQrToken) {
+      user.attendanceQrToken = attendanceQrToken;
+      usersChanged = true;
+    }
   });
-  if (Array.isArray(savedUsers) && savedUsers.length && usersChanged) {
+  if (usersChanged) {
     writeJson(USER_STORAGE_KEY, USERS);
   }
   if (savedUserSeedVersion < USER_SEED_VERSION) {
@@ -3762,8 +3809,77 @@ function applyCurrentDateToGradingBanners() {
     return USERS.find(user => user.id === String(userId)) || null;
   }
 
+  function getStudentByAttendanceQrToken(token) {
+    const normalizedToken = String(token || '').trim();
+    if (!normalizedToken) return null;
+    return USERS.find(user => (
+      user.schoolId === getActiveSchoolId()
+      && user.role === RECORD_VALUES.roles.STUDENT
+      && user.attendanceQrToken === normalizedToken
+    )) || null;
+  }
+
   function saveUsers() {
     writeJson(USER_STORAGE_KEY, USERS);
+  }
+
+  function regenerateStudentAttendanceQr(studentId) {
+    const student = getUserById(studentId);
+    if (!student
+      || student.schoolId !== getActiveSchoolId()
+      || student.role !== RECORD_VALUES.roles.STUDENT) return null;
+
+    student.attendanceQrToken = createAttendanceQrToken();
+    saveUsers();
+    return student;
+  }
+
+  function createTemporaryPassword() {
+    const value = globalThis.crypto?.randomUUID?.()
+      || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    return `Edu-${value.replace(/-/g, '').slice(0, 8)}!`;
+  }
+
+  function prepareCredentialDelivery(userId) {
+    const user = getUserById(userId);
+    if (!user || user.schoolId !== getActiveSchoolId()) return null;
+
+    return {
+      userId: user.id,
+      personalEmail: user.personalEmail,
+      schoolEmail: user.schoolEmail,
+      temporaryPassword: createTemporaryPassword(),
+      attendanceQrToken: user.role === RECORD_VALUES.roles.STUDENT
+        ? user.attendanceQrToken
+        : null
+    };
+  }
+
+  function getAttendanceQrPayload(token) {
+    const normalizedToken = String(token || '').trim();
+    return normalizedToken ? `edugnay:attendance:${normalizedToken}` : '';
+  }
+
+  function parseAttendanceQrPayload(payload) {
+    const value = String(payload || '').trim();
+    const prefix = 'edugnay:attendance:';
+    if (!value.startsWith(prefix)) return null;
+
+    const token = value.slice(prefix.length).trim();
+    return token && !token.includes(':') ? token : null;
+  }
+
+  async function generateAttendanceQrDataUrl(token) {
+    const payload = getAttendanceQrPayload(token);
+    if (!payload) return null;
+    if (!globalThis.QRCode?.toDataURL) throw new Error('QR generation is unavailable.');
+
+    return globalThis.QRCode.toDataURL(payload, {
+      width: 240,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#0b1f3a', light: '#ffffff' }
+    });
   }
 
   function getParentStudentLinks() {
@@ -3914,7 +4030,8 @@ function applyCurrentDateToGradingBanners() {
       schoolLevel: isStudent ? values.schoolLevel ?? values.level ?? null : null,
       gradeLevel: isStudent ? values.gradeLevel ?? values.grade ?? null : null,
       strand: isStudent ? values.strand ?? null : null,
-      sectionId: isStudent ? values.sectionId ?? null : null
+      sectionId: isStudent ? values.sectionId ?? null : null,
+      attendanceQrToken: isStudent ? createAttendanceQrToken() : null
     };
 
     USERS.push(user);
@@ -4074,7 +4191,8 @@ function applyCurrentDateToGradingBanners() {
         schoolLevel: null,
         gradeLevel: null,
         strand: null,
-        sectionId: null
+        sectionId: null,
+        attendanceQrToken: isStudent ? createAttendanceQrToken() : null
       };
 
       createdUsers.push(user);
@@ -4195,6 +4313,9 @@ function applyCurrentDateToGradingBanners() {
     user.gradeLevel = isStudent ? user.gradeLevel ?? null : null;
     user.strand = isStudent ? user.strand ?? null : null;
     user.sectionId = isStudent ? user.sectionId ?? null : null;
+    user.attendanceQrToken = isStudent
+      ? (String(user.attendanceQrToken || '').trim() || createAttendanceQrToken())
+      : null;
 
     saveUsers();
     if (values.profile && typeof values.profile === 'object') updateUserProfile(user.id, values.profile);
@@ -4551,6 +4672,11 @@ function applyCurrentDateToGradingBanners() {
     getUsersByRole,
     getStudents,
     getUserById,
+    getStudentByAttendanceQrToken,
+    regenerateStudentAttendanceQr,
+    prepareCredentialDelivery,
+    parseAttendanceQrPayload,
+    generateAttendanceQrDataUrl,
     getUserProfile,
     updateUserProfile,
     getMissingProfileFields,
@@ -4591,8 +4717,7 @@ function applyCurrentDateToGradingBanners() {
     attendance: ATTENDANCE_DIRECTORY,
     getAttendanceRecords,
     getAttendanceForStudent,
-    saveAttendanceRecords,
-    upsertAttendanceRecord,
+    upsertAttendanceRecords,
     getSchools,
     saveSchools,
     createSchoolRegistration,

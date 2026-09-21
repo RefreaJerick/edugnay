@@ -757,7 +757,8 @@
     }
 
     const TEACHER_QUICK_ACTIONS = [
-      { icon: 'file-up', title: 'Upload Learning Material', desc: 'Share a file with a specific grade and section', action: "openTeacherMaterialModal(); return false;" }
+      { icon: 'file-up', title: 'Upload Learning Material', desc: 'Share a file with a specific grade and section', action: "openTeacherMaterialModal(); return false;" },
+      { icon: 'scan-line', title: 'Check Attendance via QR', desc: 'Scan student QR codes for today\'s attendance', action: "window.location.href='./edugnay-teacher-sections.html?tab=attendance&action=qr'; return false;" }
     ];
 
     const TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section =>
