@@ -339,7 +339,7 @@
         </div>
       </div>
       <div style="font-size:13px;color:var(--gray-600);line-height:1.7;">
-        <strong style="color:var(--gray-800);">38 students</strong> will have their <span id="publishPeriodName">current grading period</span> final grades published.<br/>
+        <strong style="color:var(--gray-800);" id="publishStudentCount">0 students</strong> will have their <span id="publishPeriodName">current grading period</span> final grades published.<br/>
         Missing scores will be treated as <strong style="color:var(--red);">0</strong>.
       </div>
     </div>
@@ -707,39 +707,43 @@
     </section>
 
     <!-- Section header -->
-    <div class="section-header">
+    <section class="section-header" aria-labelledby="sectionHeaderName">
       <div class="section-header-left">
-        <div class="section-badge">G7</div>
+        <div class="section-badge" id="sectionGradeBadge" aria-hidden="true">G7</div>
         <div class="section-info">
-          <div class="section-name">Grade 7 – St. Matthew</div>
+          <h2 class="section-name" id="sectionHeaderName">Grade 7 – St. Matthew</h2>
+          <div class="section-subject">
+            <i data-lucide="book-open"></i>
+            <span>Subject:</span>
+            <strong id="sectionSubjectName">Values Education</strong>
+          </div>
           <div class="section-meta">
+            <div class="section-meta-item">
+              <i data-lucide="users"></i>
+              <strong id="sectionStudentCount">0</strong> students
+            </div>
             <div class="section-meta-item" id="sectionAdviserMeta">
-              <i data-lucide="book-open" style="width:13px;height:13px;"></i>
-              Subject: <strong>Values Education</strong>
-            </div>
-            <div class="section-meta-item">
-              <i data-lucide="users" style="width:13px;height:13px;"></i>
-              <strong>38</strong> students
-            </div>
-            <div class="section-meta-item">
-              <i data-lucide="star" style="width:13px;height:13px;"></i>
+              <i data-lucide="star"></i>
               Class Adviser
             </div>
             <div class="section-meta-item">
-              <i data-lucide="calendar" style="width:13px;height:13px;"></i>
+              <i data-lucide="calendar"></i>
               <span id="sectionPeriodName">Current period</span> · <span data-school-year>2025–2026</span>
             </div>
           </div>
         </div>
       </div>
-      <div class="section-header-right">
-        <span class="badge badge-green">
-          <i data-lucide="check-circle" style="width:10px;height:10px;"></i>
-          Grades Published
-        </span>
-        <span class="badge badge-blue">38/38 Encoded</span>
+      <div class="section-header-status" aria-label="Grade recording status">
+        <div class="section-status-item is-published" data-publication-status="published">
+          <i data-lucide="check-circle"></i>
+          <span id="sectionPublicationStatus">Grades published</span>
+        </div>
+        <div class="section-status-item">
+          <i data-lucide="clipboard-check"></i>
+          <span id="sectionEncodingStatus">Encoding not started</span>
+        </div>
       </div>
-    </div>
+    </section>
 
     <!-- Tab bar -->
     <div class="tab-bar">
@@ -915,27 +919,30 @@
 
     <!-- ══════ TAB 3: ATTENDANCE ══════ -->
     <div class="tab-content" id="content-attendance">
-      <div class="panel">
-        <div class="panel-head">
+      <div class="panel attendance-entry-panel">
+        <div class="panel-head attendance-entry-head">
           <div>
             <div class="panel-title" id="attPanelTitle">Attendance: Today</div>
             <div class="panel-sub">Grade 7 – St. Matthew</div>
           </div>
-          <div class="panel-head-actions">
+          <div class="panel-head-actions attendance-entry-actions">
             <button class="top-btn secondary" id="qrAttendanceButton" type="button" onclick="openQrAttendance()">
               <i data-lucide="scan-line" style="width:14px;height:14px;"></i> Check attendance via QR
             </button>
-            <button class="top-btn secondary" onclick="markAll('P')">
+            <button class="top-btn secondary" type="button" onclick="markAll('P')">
               <i data-lucide="check-circle" style="width:14px;height:14px;"></i> All Present
             </button>
-            <button class="top-btn primary" onclick="saveAttendance()">
+            <button class="top-btn primary" type="button" onclick="saveAttendance()">
               <i data-lucide="save" style="width:14px;height:14px;"></i> Save Attendance
             </button>
           </div>
         </div>
 
-        <div class="att-toolbar">
-          <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
+        <div class="att-toolbar attendance-entry-toolbar">
+          <label class="attendance-date-field" for="attDate">
+            <span>Attendance date</span>
+            <input class="date-input" type="date" id="attDate" value="2025-06-10" max="2025-06-10" onchange="loadAttendanceForDate(this.value)"/>
+          </label>
           <div class="att-summary">
             <div class="att-summary-item"><div class="att-dot present"></div><span style="color:#16a34a;">Present: <strong id="countP">0</strong></span></div>
             <div class="att-summary-item"><div class="att-dot absent"></div><span style="color:var(--red);">Absent: <strong id="countA">0</strong></span></div>
@@ -954,8 +961,8 @@
           </div>
         </div>
 
-        <div class="table-wrap">
-          <table id="attTable">
+        <div class="table-wrap attendance-entry-table-wrap">
+          <table class="attendance-entry-table" id="attTable">
             <thead>
               <tr>
                 <th>#</th>
@@ -967,7 +974,7 @@
             <tbody id="attTbody"></tbody>
           </table>
         </div>
-        <div style="padding:12px 24px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100);" id="attendanceListFooter">
+        <div class="attendance-list-footer" id="attendanceListFooter">
           Showing 0 students
         </div>
       </div>
@@ -1140,8 +1147,6 @@
     return Number(GRADING_RULES_BY_ID[String(category).toLowerCase()]?.weight) || 0;
   }
 
-  document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
-
   // Attendance rows come from the shared attendance source. Replace its
   // getter with an API request later without changing the table markup.
   const ATTENDANCE_STATUS_BY_CODE = { P: 'present', A: 'absent', L: 'late', E: 'excused' };
@@ -1201,7 +1206,7 @@
 
     const count = String(STUDENTS.length);
     document.getElementById('studentCount').textContent = count;
-    document.getElementById('studentListMeta').textContent = `Grade 7 – St. Matthew · ${count} enrolled students`;
+    document.getElementById('studentListMeta').textContent = `${CURRENT_SECTION} · ${count} enrolled students`;
     document.getElementById('studentListFooter').textContent = `Showing ${count} students`;
   }
 
@@ -1212,15 +1217,16 @@
 
     tbody.innerHTML = STUDENTS.length ? STUDENTS.map((student, index) => {
       const status = ATTENDANCE_CODE_BY_STATUS[recordByStudent[student.id]?.status] || 'P';
+      const labels = { P: 'Present', A: 'Absent', L: 'Late', E: 'Excused' };
       const buttons = ['P', 'A', 'L', 'E'].map(code => (
-        `<button class="att-btn ${code} ${status === code ? 'selected' : ''}" onclick="setAtt(this,'${code}')">${code}</button>`
+        `<button type="button" class="att-btn ${code} ${status === code ? 'selected' : ''}" title="${labels[code]}" aria-label="Mark ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)} ${labels[code].toLowerCase()}" aria-pressed="${status === code}" onclick="setAtt(this,'${code}')">${code}</button>`
       )).join('');
       return `
-        <tr data-student-id="${student.id}">
-          <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
-          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${student.initials}</div><div class="student-name">${student.displayName}</div></div></td>
-          <td class="center"><div class="att-btn-group" style="justify-content:center;">${buttons}</div></td>
-          <td><input style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-xs);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;background:var(--gray-50);" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" data-attendance-remark></td>
+        <tr class="attendance-entry-row" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}">
+          <td class="attendance-number-cell">${index + 1}</td>
+          <td class="attendance-student-cell"><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></td>
+          <td class="center attendance-status-cell"><div class="att-btn-group">${buttons}</div></td>
+          <td class="attendance-remarks-cell"><input class="attendance-remarks-input" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" placeholder="Optional remark" aria-label="Optional attendance remark for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}" data-attendance-remark></td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="4">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance roster', text: 'Students assigned to this section will appear here for attendance.' })}</td></tr>`;
     document.getElementById('attendanceListFooter').textContent = `Showing ${STUDENTS.length} students`;
@@ -1521,6 +1527,27 @@
     Q4: { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} },
   };
 
+  function updateSectionHeader(academicPeriodId) {
+    const studentCount = STUDENTS.length;
+    const gradeNumber = String(CURRENT_SECTION_RECORD?.grade || '').match(/\d+/)?.[0];
+    const scoreRows = [...document.querySelectorAll('#scoreTbody tr[data-student-id]')];
+    const encodedCount = scoreRows.filter(row => {
+      const scoreInputs = [...row.querySelectorAll('.score-input')];
+      return scoreInputs.length && scoreInputs.every(input => input.value !== '');
+    }).length;
+
+    document.getElementById('sectionHeaderName').textContent = CURRENT_SECTION;
+    document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
+    document.getElementById('sectionSubjectName').textContent = CURRENT_SUBJECT;
+    document.getElementById('sectionStudentCount').textContent = studentCount;
+    document.getElementById('publishStudentCount').textContent = `${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
+    document.getElementById('sectionPeriodName').textContent = academicPeriodName(academicPeriodId);
+    document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
+    document.getElementById('sectionEncodingStatus').textContent = encodedCount
+      ? `${encodedCount} of ${studentCount} encoded`
+      : 'Encoding not started';
+  }
+
   function renderScoreTable(academicPeriodId) {
     const dataKey = String(academicPeriodId || '').toUpperCase();
     const data = PERIOD_SCORE_DATA[dataKey] || { schoolId: TEACHER_SECTION_SCHOOL_ID, components: [], scores: {} };
@@ -1572,6 +1599,7 @@
 
     if (!components.length) {
       tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this grading period to begin recording grades.' })}</td></tr>`;
+      updateSectionHeader(academicPeriodId);
       return;
     }
 
@@ -1659,6 +1687,7 @@
     }
 
     tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
+    updateSectionHeader(academicPeriodId);
   }
 
   let scoreSaveTimers = {};
@@ -1683,6 +1712,7 @@
           saveScore(input.value, studentId, Number(input.dataset.scoreIndex), academicPeriodId);
         }
       }, 600);
+      updateSectionHeader(input.dataset.academicPeriodId || document.getElementById('academicPeriodSelect').value);
     }
 
     const groups = Object.fromEntries(
@@ -1804,10 +1834,14 @@
 
       group.querySelectorAll('.att-btn').forEach(b => {
         b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
         b.disabled = locked;
       });
       const match = group.querySelector('.att-btn.' + status);
-      if (match) match.classList.add('selected');
+      if (match) {
+        match.classList.add('selected');
+        match.setAttribute('aria-pressed', 'true');
+      }
 
       remarksInput.value = recordByStudent[studentId]?.remark || '';
       remarksInput.disabled = locked;
@@ -2289,8 +2323,12 @@
 
   function setAtt(btn, status) {
     const group = btn.closest('.att-btn-group');
-    group.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
+    group.querySelectorAll('.att-btn').forEach(b => {
+      b.classList.remove('selected');
+      b.setAttribute('aria-pressed', 'false');
+    });
     btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
     updateAttCount();
   }
 
@@ -2308,8 +2346,13 @@
 
   function markAll(status) {
     document.querySelectorAll('#attTbody .att-btn-group').forEach(group => {
-      group.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
-      group.querySelector('.att-btn.' + status).classList.add('selected');
+      group.querySelectorAll('.att-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      const button = group.querySelector('.att-btn.' + status);
+      button.classList.add('selected');
+      button.setAttribute('aria-pressed', 'true');
     });
     updateAttCount();
   }
