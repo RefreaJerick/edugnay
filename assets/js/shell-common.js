@@ -5274,6 +5274,7 @@ function applyPageTitleToTopbar() {
 function initScrollFades() {
   const selector = [
     '.child-switcher',
+    '.onboarding-feature-tabs',
     '.subject-tab-bar',
     '.profile-tab-bar',
     '.mgmt-tabs',

@@ -14,45 +14,35 @@
   <script src="../../assets/js/shell-common.js"></script>
 </head>
 <body>
-  <main class="onboarding-page">
-    <section class="onboarding-brand" aria-label="Academix school onboarding">
-      <img class="login-brand-watermark" src="../../assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
-      <div class="login-brand-content">
-        <div class="system-mark">
-          <div class="system-crest">
-            <img src="../../assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
-          </div>
-          <div class="brand-name">Acade<span>Mix</span></div>
-        </div>
-        <div class="login-brand-copy">
-          <div class="login-brand-kicker">School onboarding</div>
-          <h1 class="login-brand-heading">Your registration is under review.</h1>
-          <p class="login-brand-description">Platform Admin will review your school details before the school administrator account becomes available.</p>
-        </div>
-      </div>
-    </section>
+  <main class="onboarding-page onboarding-pending-page">
+    <header class="onboarding-topbar">
+      <a class="onboarding-topbar-brand" href="../../index.html" aria-label="Academix home">
+        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" aria-hidden="true" />
+        <span>Acade<span>Mix</span></span>
+      </a>
+      <nav class="onboarding-topbar-actions" aria-label="Confirmation navigation">
+        <a class="onboarding-topbar-signin" href="../../index.html">Back to sign in</a>
+      </nav>
+    </header>
 
-    <section class="onboarding-form-area">
-      <div class="login-mobile-brand onboarding-mobile-brand" aria-label="Academix">
-        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" />
-      </div>
-      <div class="login-brand-copy onboarding-mobile-copy">
-        <div class="login-brand-kicker">School onboarding</div>
-        <h1 class="login-brand-heading">Your registration is under review.</h1>
+    <section class="onboarding-pending" aria-labelledby="pendingRegistrationTitle">
+      <div class="onboarding-pending-intro">
+        <p class="onboarding-showcase-kicker">School onboarding</p>
+        <h1 id="pendingRegistrationTitle">Registration submitted</h1>
+        <p>Your school registration is awaiting Platform Admin review.</p>
       </div>
 
       <div class="onboarding-card pending-registration-card">
-    <div class="onboarding-form-head">
-      <div class="onboarding-form-heading">
-        <div>
-          <h2>Registration submitted</h2>
-          <p>Your school registration is awaiting Platform Admin review.</p>
+        <div class="onboarding-form-head">
+          <div class="pending-registration-heading">
+            <span class="onboarding-section-icon" aria-hidden="true">
+              <i data-lucide="clock-3"></i>
+            </span>
+            <div>
+              <h2>Review in progress</h2>
+              <p>Platform Admin will review the submitted school details before access is activated.</p>
             </div>
           </div>
-          <a class="onboarding-back" href="../../index.html">
-            <i data-lucide="arrow-left" aria-hidden="true"></i>
-            <span>Back to sign in</span>
-          </a>
         </div>
 
         <div class="pending-registration-content">

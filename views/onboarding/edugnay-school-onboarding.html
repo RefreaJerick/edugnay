@@ -14,64 +14,120 @@
   <script src="../../assets/js/shell-common.js"></script>
 </head>
 <body>
-  <main class="onboarding-page">
-    <section class="onboarding-brand" aria-label="Academix organization onboarding">
-      <img class="login-brand-watermark" src="../../assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
-      <div class="login-brand-content">
-        <div class="system-mark">
-          <div class="system-crest">
-            <img src="../../assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
-          </div>
-          <div class="brand-name">Acade<span>Mix</span></div>
+  <main class="onboarding-page onboarding-registration-page">
+    <header class="onboarding-topbar">
+      <a class="onboarding-topbar-brand" href="../../index.html" aria-label="Academix home">
+        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" aria-hidden="true" />
+        <span>Acade<span>Mix</span></span>
+      </a>
+      <nav class="onboarding-topbar-actions" aria-label="Onboarding navigation">
+        <a class="onboarding-topbar-signin" href="../../index.html">Sign in</a>
+      </nav>
+    </header>
+
+    <section class="onboarding-showcase-shell" id="onboardingShowcase" aria-labelledby="onboardingShowcaseTitle">
+      <div class="onboarding-showcase-inner" id="onboardingFeatures">
+        <p class="onboarding-showcase-kicker">School onboarding</p>
+        <h1 id="onboardingShowcaseTitle">Manage learning, records, and family communication in one place.</h1>
+        <p class="onboarding-showcase-description">Academix gives school administrators, teachers, students, and parents one connected platform for everyday school work.</p>
+        <div class="onboarding-showcase-actions">
+          <a class="onboarding-showcase-action onboarding-showcase-action-primary" href="#schoolRegistration">
+            Register your school
+            <i data-lucide="arrow-down" aria-hidden="true"></i>
+          </a>
+          <a class="onboarding-showcase-action onboarding-showcase-action-secondary" href="#onboardingFeatures">
+            Explore features
+          </a>
         </div>
-        <div class="onboarding-brand-body">
-          <div class="onboarding-preview" aria-label="Academix portal previews">
-            <div class="onboarding-preview-desktop">
-              <div class="onboarding-preview-shot onboarding-preview-shot-admin">
-                <img src="../../assets/images/onboarding/admin-dashboard.png" alt="Academix School Admin dashboard preview" decoding="async" />
-              </div>
-              <div class="onboarding-preview-shot onboarding-preview-shot-teacher">
-                <img src="../../assets/images/onboarding/teacher-sections.png" alt="Academix teacher My Sections preview" decoding="async" />
-              </div>
-            </div>
-            <div class="onboarding-preview-mobile">
-              <div class="onboarding-preview-shot onboarding-preview-shot-student">
-                <img src="../../assets/images/onboarding/student-dashboard-mobile.png" alt="Academix student dashboard mobile preview" decoding="async" />
-              </div>
-              <div class="onboarding-preview-shot onboarding-preview-shot-parent">
-                <img src="../../assets/images/onboarding/parent-dashboard-mobile.png" alt="Academix parent dashboard mobile preview" decoding="async" />
-              </div>
-            </div>
+
+        <div class="onboarding-feature-tabs" role="tablist" aria-label="Academix platform features. Use Left and Right Arrow keys to change the selected feature.">
+          <button class="onboarding-feature-tab" id="onboardingFeatureTab-school-management" type="button" role="tab" aria-controls="onboardingFeaturePreview" aria-selected="true" tabindex="0" onclick="selectOnboardingFeature('school-management')" onkeydown="handleOnboardingFeatureTabKeydown(event)">
+            <i data-lucide="school" aria-hidden="true"></i>
+            <span>School Management</span>
+          </button>
+          <button class="onboarding-feature-tab" id="onboardingFeatureTab-teaching-tools" type="button" role="tab" aria-controls="onboardingFeaturePreview" aria-selected="false" tabindex="-1" onclick="selectOnboardingFeature('teaching-tools')" onkeydown="handleOnboardingFeatureTabKeydown(event)">
+            <i data-lucide="scan-line" aria-hidden="true"></i>
+            <span>Teaching Tools</span>
+          </button>
+          <button class="onboarding-feature-tab" id="onboardingFeatureTab-student-progress" type="button" role="tab" aria-controls="onboardingFeaturePreview" aria-selected="false" tabindex="-1" onclick="selectOnboardingFeature('student-progress')" onkeydown="handleOnboardingFeatureTabKeydown(event)">
+            <i data-lucide="file-text" aria-hidden="true"></i>
+            <span>Student Progress</span>
+          </button>
+          <button class="onboarding-feature-tab" id="onboardingFeatureTab-ai-reports" type="button" role="tab" aria-controls="onboardingFeaturePreview" aria-selected="false" tabindex="-1" onclick="selectOnboardingFeature('ai-reports')" onkeydown="handleOnboardingFeatureTabKeydown(event)">
+            <i data-lucide="sparkles" aria-hidden="true"></i>
+            <span>AI Reports</span>
+          </button>
+          <button class="onboarding-feature-tab" id="onboardingFeatureTab-school-forms" type="button" role="tab" aria-controls="onboardingFeaturePreview" aria-selected="false" tabindex="-1" onclick="selectOnboardingFeature('school-forms')" onkeydown="handleOnboardingFeatureTabKeydown(event)">
+            <i data-lucide="sheet" aria-hidden="true"></i>
+            <span>School Forms</span>
+          </button>
+        </div>
+
+        <div class="onboarding-showcase-preview" id="onboardingFeaturePreview" role="tabpanel" aria-labelledby="onboardingFeatureTab-school-management" aria-live="polite" tabindex="0">
+          <div class="onboarding-showcase-preview-copy">
+            <span class="onboarding-showcase-preview-index" id="onboardingFeaturePreviewIndex">01 / 05</span>
+            <h2 id="onboardingFeaturePreviewTitle">Configure and operate your school</h2>
+            <p id="onboardingFeaturePreviewDescription">Manage accounts, sections, academic periods, grading rules, and portal access from one school workspace.</p>
           </div>
-          <div class="login-brand-copy">
-            <div class="login-brand-kicker">School onboarding</div>
-            <h1 class="login-brand-heading">Bring your school community into one clear view.</h1>
+          <div class="onboarding-showcase-preview-stage">
+            <img class="onboarding-showcase-preview-image" id="onboardingFeaturePreviewImage" alt="" decoding="async" hidden />
+            <div class="onboarding-showcase-placeholder" id="onboardingFeaturePlaceholder" role="img" aria-label="School Management screenshot placeholder">
+              <i data-lucide="image" aria-hidden="true"></i>
+              <strong id="onboardingFeaturePreviewLabel">School Management preview</strong>
+              <span>Screenshot will be added here.</span>
+            </div>
           </div>
         </div>
+
+        <ul class="onboarding-showcase-benefits" aria-label="Academix platform benefits">
+          <li>
+            <i data-lucide="users-round" aria-hidden="true"></i>
+            <span>Role-based portals</span>
+          </li>
+          <li>
+            <i data-lucide="calendar-range" aria-hidden="true"></i>
+            <span>Configurable academic periods</span>
+          </li>
+          <li>
+            <i data-lucide="database" aria-hidden="true"></i>
+            <span>Centralized student records</span>
+          </li>
+        </ul>
       </div>
     </section>
 
-    <section class="onboarding-form-area">
-      <div class="login-mobile-brand onboarding-mobile-brand" aria-label="Academix">
-        <img src="../../assets/images/edUgnay-logo-circle.png" alt="" />
+    <section class="onboarding-registration-transition" aria-labelledby="registrationTransitionTitle">
+      <div>
+        <p class="onboarding-showcase-kicker">School onboarding</p>
+        <h2 id="registrationTransitionTitle">Ready to bring your school into Academix?</h2>
+        <p>Start with your school details and academic structure. A Platform Admin will review the registration before access is activated.</p>
+        <a class="onboarding-registration-link" href="#schoolRegistration">
+          Start registration
+          <i data-lucide="arrow-down" aria-hidden="true"></i>
+        </a>
       </div>
-      <div class="login-brand-copy onboarding-mobile-copy">
-        <div class="login-brand-kicker">School onboarding</div>
-        <h1 class="login-brand-heading">Bring your school community into one clear view.</h1>
+    </section>
+
+    <section class="onboarding-registration" id="schoolRegistration" aria-labelledby="schoolRegistrationTitle">
+      <div class="onboarding-registration-intro">
+        <p class="onboarding-showcase-kicker">School onboarding</p>
+        <h2 id="schoolRegistrationTitle">Register your school</h2>
+        <p>Submit your school information for Platform Admin review. We will send the decision to your notification email.</p>
       </div>
-      <div class="onboarding-card">
+      <div class="onboarding-form-area">
+        <div class="onboarding-card">
           <div class="onboarding-form-head">
             <div class="onboarding-form-heading">
               <div>
-                <h2>Create a school account</h2>
-              <p>Provide the core details first. You can add staff, learners, sections, and templates later.</p>
+                <p class="onboarding-form-title">Registration details</p>
+                <p>Provide the school, administrator, and academic-term details needed to review your registration.</p>
+              </div>
             </div>
+            <a class="onboarding-back" href="../../index.html">
+              <i data-lucide="arrow-left" aria-hidden="true"></i>
+              <span>Back to sign in</span>
+            </a>
           </div>
-          <a class="onboarding-back" href="../../index.html">
-            <i data-lucide="arrow-left" aria-hidden="true"></i>
-            <span>Back to sign in</span>
-          </a>
-        </div>
 
         <div class="onboarding-steps" aria-label="Onboarding sections">
           <div class="onboarding-step"><span class="onboarding-step-index">1</span><span>School</span></div>
@@ -97,13 +153,13 @@
                 <label for="schoolId">School ID</label>
                 <input id="schoolId" name="schoolId" type="text" placeholder="Optional DepEd school ID" />
               </div>
-              <div class="onboarding-field">
+              <div class="onboarding-field full">
                 <label>School levels served</label>
                 <div class="onboarding-level-options" id="schoolLevelOptions" role="group" aria-label="School levels served"></div>
                 <small>Select every level offered by the school.</small>
                 <div class="onboarding-level-error" id="schoolLevelsError" role="alert" hidden>Select at least one school level.</div>
               </div>
-              <div class="onboarding-field">
+              <div class="onboarding-field full">
                 <label for="schoolAddress">Address</label>
                 <input id="schoolAddress" name="schoolAddress" type="text" placeholder="Street, barangay, municipality, province" />
               </div>
@@ -126,11 +182,11 @@
                 <label for="schoolPhone">Contact number</label>
                 <input id="schoolPhone" name="schoolPhone" type="tel" placeholder="(049) 123 4567" />
               </div>
-              <div class="onboarding-field">
+              <div class="onboarding-field full">
                 <label for="schoolWebsite">Website</label>
                 <input id="schoolWebsite" name="schoolWebsite" type="url" placeholder="https://school.edu.ph" />
               </div>
-              <div class="onboarding-field">
+              <div class="onboarding-field full">
                 <label for="schoolLogo">Logo or branding image</label>
                 <div class="onboarding-logo-preview">
                   <span class="onboarding-logo-placeholder" id="schoolLogoPlaceholder" aria-hidden="true">
@@ -186,7 +242,7 @@
                 <h3>Academic terms</h3>
               </div>
             </div>
-            <div class="onboarding-grid">
+            <div class="onboarding-grid onboarding-academic-grid">
               <div class="onboarding-field">
                 <label for="schoolYear">School year</label>
                 <input id="schoolYear" name="schoolYear" type="text" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required />
@@ -209,13 +265,108 @@
           </div>
         </form>
       </div>
+      </div>
     </section>
   </main>
 
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
+    const ONBOARDING_FEATURES = [
+      {
+        id: 'school-management',
+        title: 'Configure and operate your school',
+        description: 'Manage accounts, sections, academic periods, grading rules, and portal access from one school workspace.',
+        previewLabel: 'School Management preview',
+        imageSrc: '../../assets/images/onboarding/class-management.png',
+        imageAlt: ''
+      },
+      {
+        id: 'teaching-tools',
+        title: 'Handle daily classroom work',
+        description: 'Teachers can manage sections, assignments, score recording, and reviewable QR attendance in one workflow.',
+        previewLabel: 'Teaching Tools preview',
+        imageSrc: '../../assets/images/onboarding/teacher-attendance.png',
+        imageAlt: ''
+      },
+      {
+        id: 'student-progress',
+        title: 'Keep families informed',
+        description: 'Turn stored attendance, grades, assignments, and teacher insights into reviewable student progress reports.',
+        previewLabel: 'Student Progress preview',
+        imageSrc: '../../assets/images/onboarding/parent-narrative-report.png',
+        imageAlt: ''
+      },
+      {
+        id: 'ai-reports',
+        title: 'Prepare reviewable AI reports',
+        description: 'Teachers can use stored student records and their own notes to prepare AI-assisted narrative reports before sharing them with families.',
+        previewLabel: 'AI Reports preview',
+        imageSrc: '../../assets/images/onboarding/ai-report-review.png',
+        imageAlt: ''
+      },
+      {
+        id: 'school-forms',
+        title: 'Prepare standardized school forms',
+        description: 'Use data already stored in the system to prepare supported school forms for preview and XLSX download.',
+        previewLabel: 'School Forms preview',
+        imageSrc: '../../assets/images/onboarding/sf-templates.png',
+        imageAlt: ''
+      }
+    ];
 
     const termDrafts = {};
+
+    function selectOnboardingFeature(featureId) {
+      const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
+      const selectedTab = document.getElementById(`onboardingFeatureTab-${featureId}`);
+      if (!feature || !selectedTab) return;
+
+      const featureIndex = String(ONBOARDING_FEATURES.indexOf(feature) + 1).padStart(2, '0');
+      const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
+      document.getElementById('onboardingFeaturePreviewIndex').textContent = `${featureIndex} / ${featureCount}`;
+      document.getElementById('onboardingFeaturePreviewTitle').textContent = feature.title;
+      document.getElementById('onboardingFeaturePreviewDescription').textContent = feature.description;
+      document.getElementById('onboardingFeaturePreviewLabel').textContent = feature.previewLabel;
+      const previewImage = document.getElementById('onboardingFeaturePreviewImage');
+      const placeholder = document.getElementById('onboardingFeaturePlaceholder');
+      const hasPreviewImage = Boolean(feature.imageSrc);
+
+      previewImage.hidden = !hasPreviewImage;
+      placeholder.hidden = hasPreviewImage;
+      if (hasPreviewImage) {
+        previewImage.src = feature.imageSrc;
+        previewImage.alt = feature.imageAlt || `${feature.previewLabel} screenshot`;
+      } else {
+        previewImage.removeAttribute('src');
+        previewImage.alt = '';
+        placeholder.setAttribute('aria-label', `${feature.previewLabel} screenshot placeholder`);
+      }
+      document.getElementById('onboardingFeaturePreview').setAttribute('aria-labelledby', selectedTab.id);
+
+      document.querySelectorAll('.onboarding-feature-tab').forEach(tab => {
+        const selected = tab === selectedTab;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+    }
+
+    function handleOnboardingFeatureTabKeydown(event) {
+      if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+
+      event.preventDefault();
+      const tabs = Array.from(document.querySelectorAll('.onboarding-feature-tab'));
+      const currentIndex = tabs.indexOf(event.currentTarget);
+      let nextIndex = currentIndex;
+
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+      if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = tabs.length - 1;
+
+      const nextTab = tabs[nextIndex];
+      nextTab.focus();
+      selectOnboardingFeature(nextTab.id.replace('onboardingFeatureTab-', ''));
+    }
 
     function populateSchoolLevels() {
       const options = document.getElementById('schoolLevelOptions');
@@ -491,6 +642,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      selectOnboardingFeature('school-management');
       populateSchoolLevels();
       renderAcademicTermConfigurations();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
