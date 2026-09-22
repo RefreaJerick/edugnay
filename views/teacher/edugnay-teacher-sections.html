@@ -1928,29 +1928,44 @@
   }
 
   function renderQrAttendanceDraft() {
+    const statuses = [
+      { code: 'P', value: 'present', label: 'Present' },
+      { code: 'A', value: 'absent', label: 'Absent' },
+      { code: 'L', value: 'late', label: 'Late' },
+      { code: 'E', value: 'excused', label: 'Excused' }
+    ];
     document.getElementById('qrAttendanceProgress').textContent = `${qrAttendanceDraft.length} students to review`;
     document.getElementById('qrAttendanceFinalList').innerHTML = qrAttendanceDraft.map(record => {
       const student = STUDENTS.find(item => item.id === record.studentId);
       const name = window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student');
       const initials = window.EDUGNAY_CONFIG.escapeHtml(student?.initials || '--');
+      const studentId = window.EDUGNAY_CONFIG.escapeHtml(record.studentId);
+      const buttons = statuses.map(status => {
+        const selected = record.status === status.value;
+        return `<button type="button" class="att-btn ${status.code}${selected ? ' selected' : ''}" data-student-id="${studentId}" data-status="${status.value}" title="${status.label}" aria-label="Mark ${name} ${status.label.toLowerCase()}" aria-pressed="${selected}" onclick="updateQrAttendanceDraftStatus(this.dataset.studentId, this.dataset.status, this)">${status.code}</button>`;
+      }).join('');
       return `
-        <label class="qr-attendance-final-row">
+        <div class="qr-attendance-final-row">
           <span class="qr-attendance-avatar">${initials}</span>
           <span class="qr-attendance-student-name">${name}</span>
-          <select data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(record.studentId)}" aria-label="Attendance status for ${name}" onchange="updateQrAttendanceDraftStatus(this.dataset.studentId, this.value)">
-            <option value="present" ${record.status === 'present' ? 'selected' : ''}>Present</option>
-            <option value="absent" ${record.status === 'absent' ? 'selected' : ''}>Absent</option>
-            <option value="excused" ${record.status === 'excused' ? 'selected' : ''}>Excused</option>
-          </select>
-        </label>
+          <div class="att-btn-group" role="group" aria-label="Attendance status for ${name}">${buttons}</div>
+        </div>
       `;
     }).join('');
   }
 
-  function updateQrAttendanceDraftStatus(studentId, status) {
-    if (!['present', 'absent', 'excused'].includes(status)) return;
+  function updateQrAttendanceDraftStatus(studentId, status, button) {
+    if (!['present', 'absent', 'late', 'excused'].includes(status)) return;
     const record = qrAttendanceDraft.find(item => item.studentId === studentId);
-    if (record) record.status = status;
+    if (!record) return;
+
+    record.status = status;
+    const group = button.closest('.att-btn-group');
+    group.querySelectorAll('.att-btn').forEach(item => {
+      const selected = item === button;
+      item.classList.toggle('selected', selected);
+      item.setAttribute('aria-pressed', String(selected));
+    });
   }
 
   function returnToQrScanning() {
@@ -1961,7 +1976,7 @@
 
   async function confirmQrAttendance() {
     if (qrAttendanceSaving) return;
-    const validStatuses = ['present', 'absent', 'excused'];
+    const validStatuses = ['present', 'absent', 'late', 'excused'];
     const studentIds = new Set(qrAttendanceDraft.map(record => record.studentId));
     const validDraft = qrAttendanceContext?.date === getCurrentAttendanceDate() &&
       CURRENT_TEACHER_ASSIGNMENT.isAdviser &&

@@ -1849,7 +1849,7 @@ thead tr:hover .comp-delete-btn {
 
 .qr-attendance-final-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 112px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   padding: 8px;
@@ -1858,27 +1858,15 @@ thead tr:hover .comp-delete-btn {
   background: var(--gray-50);
 }
 
-.qr-attendance-final-row select {
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 28px 6px 9px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background-color: var(--white);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  color: var(--gray-700);
-  font: inherit;
-  font-size: 10.5px;
-  appearance: none;
-  cursor: pointer;
+.qr-attendance-final-row .att-btn-group {
+  justify-content: flex-end;
 }
 
-.qr-attendance-final-row select:focus {
-  border-color: var(--blue-mid);
-  outline: 2px solid var(--blue-pale);
-  outline-offset: 1px;
+.qr-attendance-final-row .att-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
 }
 
 @media (max-width: 760px) {
@@ -1970,11 +1958,18 @@ thead tr:hover .comp-delete-btn {
   }
 
   .qr-attendance-final-row {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 6px;
   }
 
-  .qr-attendance-final-row select {
-    grid-column: 1 / -1;
+  .qr-attendance-final-row .att-btn-group {
+    gap: 3px;
+  }
+
+  .qr-attendance-final-row .att-btn {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
   }
 }
 
