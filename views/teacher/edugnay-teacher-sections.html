@@ -467,8 +467,15 @@
               <span>Start the camera and place a student's attendance QR inside the frame.</span>
             </div>
           </div>
-          <div class="qr-scanner-status" id="qrScannerStatus" role="status" aria-live="polite">
-            Camera access has not started.
+          <div class="qr-scanner-feedback">
+            <div class="qr-scanner-status" id="qrScannerStatus" role="status" aria-live="polite">
+              Camera access has not started.
+            </div>
+            <label class="qr-scanner-sound-toggle">
+              <i data-lucide="volume-2" aria-hidden="true"></i>
+              <span>Sound</span>
+              <input type="checkbox" id="qrScannerSoundToggle" aria-label="Enable QR scanner sounds" onchange="setQrScannerSoundEnabled(this.checked)" checked>
+            </label>
           </div>
         </div>
 
@@ -1761,6 +1768,11 @@
   let qrAttendanceDraft = [];
   let qrAttendanceSaving = false;
   let qrAttendanceReturnFocus = null;
+  const QR_SCANNER_SOUND_STORAGE_KEY = 'edugnay_qr_scanner_sound_enabled';
+  let qrScannerSoundEnabled = localStorage.getItem(QR_SCANNER_SOUND_STORAGE_KEY) !== 'false';
+  let qrScannerAudioContext = null;
+  let lastQrScannerToneValue = '';
+  let lastQrScannerToneAt = 0;
 
   function formatAttDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -1837,6 +1849,9 @@
 
     document.getElementById('qrAttendanceSection').textContent = CURRENT_SECTION;
     document.getElementById('qrAttendanceDate').textContent = formatAttDate(qrAttendanceContext.date);
+    const soundToggle = document.getElementById('qrScannerSoundToggle');
+    soundToggle.checked = qrScannerSoundEnabled;
+    soundToggle.disabled = !Boolean(window.AudioContext || window.webkitAudioContext);
     qrAttendanceReturnFocus = document.activeElement;
     resetQrScanner();
     openModal('qrAttendanceModal');
@@ -1850,9 +1865,69 @@
     status.className = `qr-scanner-status${tone ? ` ${tone}` : ''}`;
   }
 
+  function setQrScannerSoundEnabled(enabled) {
+    qrScannerSoundEnabled = Boolean(enabled);
+    localStorage.setItem(QR_SCANNER_SOUND_STORAGE_KEY, String(qrScannerSoundEnabled));
+    if (qrScannerSoundEnabled) prepareQrScannerAudio();
+  }
+
+  function prepareQrScannerAudio() {
+    if (!qrScannerSoundEnabled) return null;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+
+    try {
+      if (!qrScannerAudioContext) qrScannerAudioContext = new AudioContext();
+      if (qrScannerAudioContext.state === 'suspended') {
+        qrScannerAudioContext.resume().catch(() => {});
+      }
+      return qrScannerAudioContext;
+    } catch {
+      return null;
+    }
+  }
+
+  function playQrScannerTone(type, scannedValue = '') {
+    if (!['success', 'error'].includes(type)) return;
+    const now = Date.now();
+    if (scannedValue && scannedValue === lastQrScannerToneValue && now - lastQrScannerToneAt < 3000) return;
+    const context = prepareQrScannerAudio();
+    if (!context || context.state !== 'running') return;
+    lastQrScannerToneValue = scannedValue;
+    lastQrScannerToneAt = now;
+
+    const tones = type === 'success'
+      ? [{ frequency: 660, delay: 0, duration: .08 }, { frequency: 880, delay: .09, duration: .1 }]
+      : [{ frequency: 220, delay: 0, duration: .16 }];
+
+    try {
+      tones.forEach(tone => {
+        const start = context.currentTime + tone.delay;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type === 'success' ? 'sine' : 'triangle';
+        oscillator.frequency.setValueAtTime(tone.frequency, start);
+        gain.gain.setValueAtTime(.035, start);
+        gain.gain.linearRampToValueAtTime(0, start + tone.duration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.addEventListener('ended', () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        }, { once: true });
+        oscillator.start(start);
+        oscillator.stop(start + tone.duration);
+      });
+    } catch {
+      // Visual scanner feedback remains available when audio playback fails.
+    }
+  }
+
   function resetQrScanner() {
     stopQrScanner();
     lastDetectedQrValue = '';
+    lastQrScannerToneValue = '';
+    lastQrScannerToneAt = 0;
     qrAttendanceScans = [];
     qrAttendanceDraft = [];
     qrAttendanceSaving = false;
@@ -2049,6 +2124,7 @@
       return;
     }
 
+    prepareQrScannerAudio();
     const startButton = document.getElementById('qrScannerStartButton');
     const nativeSupported = await supportsNativeQrScanner();
     const fallbackSupported = Boolean(window.ZXingBrowser?.BrowserQRCodeReader);
@@ -2154,6 +2230,7 @@
     const result = validateQrAttendanceScan(rawValue);
     if (!result.valid) {
       setQrScannerStatus(result.message, result.duplicate ? 'active' : 'error');
+      playQrScannerTone('error', rawValue);
       window.setTimeout(() => {
         if (lastDetectedQrValue === rawValue) lastDetectedQrValue = '';
       }, 1200);
@@ -2173,6 +2250,7 @@
     });
     renderQrAttendanceReview();
     setQrScannerStatus(`${student.displayName} scanned successfully. ${qrAttendanceScans.length} student${qrAttendanceScans.length === 1 ? '' : 's'} scanned.`, 'success');
+    playQrScannerTone('success', rawValue);
   }
 
   function stopQrScanner() {
