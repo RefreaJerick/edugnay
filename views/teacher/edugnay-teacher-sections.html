@@ -711,7 +711,7 @@
       <div class="section-header-left">
         <div class="section-badge" id="sectionGradeBadge" aria-hidden="true">G7</div>
         <div class="section-info">
-          <h2 class="section-name" id="sectionHeaderName">Grade 7 – St. Matthew</h2>
+          <h2 class="section-name" id="sectionHeaderName">St. Matthew</h2>
           <div class="section-subject">
             <i data-lucide="book-open"></i>
             <span>Subject:</span>
@@ -1536,7 +1536,7 @@
       return scoreInputs.length && scoreInputs.every(input => input.value !== '');
     }).length;
 
-    document.getElementById('sectionHeaderName').textContent = CURRENT_SECTION;
+    document.getElementById('sectionHeaderName').textContent = CURRENT_SECTION_RECORD?.name || 'Section';
     document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
     document.getElementById('sectionSubjectName').textContent = CURRENT_SUBJECT;
     document.getElementById('sectionStudentCount').textContent = studentCount;
