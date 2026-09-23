@@ -26,7 +26,7 @@
     </header>
 
     <section class="onboarding-showcase-shell" id="onboardingShowcase" aria-labelledby="onboardingShowcaseTitle">
-      <div class="onboarding-showcase-inner" id="onboardingFeatures">
+      <div class="onboarding-showcase-inner onboarding-hero-reveal" id="onboardingFeatures">
         <p class="onboarding-showcase-kicker">School onboarding</p>
         <h1 id="onboardingShowcaseTitle">Manage learning, records, and family communication in one place.</h1>
         <p class="onboarding-showcase-description">Academix gives school administrators, teachers, students, and parents one connected platform for everyday school work.</p>
@@ -34,9 +34,6 @@
           <a class="onboarding-showcase-action onboarding-showcase-action-primary" href="#schoolRegistration">
             Register your school
             <i data-lucide="arrow-down" aria-hidden="true"></i>
-          </a>
-          <a class="onboarding-showcase-action onboarding-showcase-action-secondary" href="#onboardingFeatures">
-            Explore features
           </a>
         </div>
 
@@ -64,19 +61,7 @@
         </div>
 
         <div class="onboarding-showcase-preview" id="onboardingFeaturePreview" role="tabpanel" aria-labelledby="onboardingFeatureTab-school-management" aria-live="polite" tabindex="0">
-          <div class="onboarding-showcase-preview-copy">
-            <span class="onboarding-showcase-preview-index" id="onboardingFeaturePreviewIndex">01 / 05</span>
-            <h2 id="onboardingFeaturePreviewTitle">Configure and operate your school</h2>
-            <p id="onboardingFeaturePreviewDescription">Manage accounts, sections, academic periods, grading rules, and portal access from one school workspace.</p>
-          </div>
-          <div class="onboarding-showcase-preview-stage">
-            <img class="onboarding-showcase-preview-image" id="onboardingFeaturePreviewImage" alt="" decoding="async" hidden />
-            <div class="onboarding-showcase-placeholder" id="onboardingFeaturePlaceholder" role="img" aria-label="School Management screenshot placeholder">
-              <i data-lucide="image" aria-hidden="true"></i>
-              <strong id="onboardingFeaturePreviewLabel">School Management preview</strong>
-              <span>Screenshot will be added here.</span>
-            </div>
-          </div>
+          <div class="onboarding-showcase-preview-track" id="onboardingFeaturePreviewTrack"></div>
         </div>
 
         <ul class="onboarding-showcase-benefits" aria-label="Academix platform benefits">
@@ -97,7 +82,7 @@
     </section>
 
     <section class="onboarding-registration-transition" aria-labelledby="registrationTransitionTitle">
-      <div>
+      <div class="onboarding-reveal">
         <p class="onboarding-showcase-kicker">School onboarding</p>
         <h2 id="registrationTransitionTitle">Ready to bring your school into Academix?</h2>
         <p>Start with your school details and academic structure. A Platform Admin will review the registration before access is activated.</p>
@@ -108,7 +93,7 @@
       </div>
     </section>
 
-    <section class="onboarding-registration" id="schoolRegistration" aria-labelledby="schoolRegistrationTitle">
+    <section class="onboarding-registration onboarding-reveal" id="schoolRegistration" aria-labelledby="schoolRegistrationTitle">
       <div class="onboarding-registration-intro">
         <p class="onboarding-showcase-kicker">School onboarding</p>
         <h2 id="schoolRegistrationTitle">Register your school</h2>
@@ -316,37 +301,83 @@
 
     const termDrafts = {};
 
-    function selectOnboardingFeature(featureId) {
+    function renderOnboardingFeaturePreviews() {
+      const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
+      const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
+
+      previewTrack.innerHTML = ONBOARDING_FEATURES.map((feature, index) => {
+        const featureIndex = String(index + 1).padStart(2, '0');
+        const hasPreviewImage = Boolean(feature.imageSrc);
+        const previewContent = hasPreviewImage
+          ? `<img class="onboarding-showcase-preview-image" src="${feature.imageSrc}" alt="${feature.imageAlt || `${feature.previewLabel} screenshot`}" decoding="async" />`
+          : `<div class="onboarding-showcase-placeholder" role="img" aria-label="${feature.previewLabel} screenshot placeholder">
+              <i data-lucide="image" aria-hidden="true"></i>
+              <strong>${feature.previewLabel}</strong>
+              <span>Screenshot will be added here.</span>
+            </div>`;
+
+        return `<article class="onboarding-showcase-preview-slide" id="onboardingFeatureSlide-${feature.id}" data-feature-id="${feature.id}" aria-label="Feature ${featureIndex} of ${featureCount}: ${feature.previewLabel}">
+          <div class="onboarding-showcase-preview-copy">
+            <span class="onboarding-showcase-preview-index">${featureIndex} / ${featureCount}</span>
+            <h2>${feature.title}</h2>
+            <p>${feature.description}</p>
+          </div>
+          <div class="onboarding-showcase-preview-stage">${previewContent}</div>
+        </article>`;
+      }).join('');
+    }
+
+    function selectOnboardingFeature(featureId, shouldScrollPreview = true) {
       const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
       const selectedTab = document.getElementById(`onboardingFeatureTab-${featureId}`);
-      if (!feature || !selectedTab) return;
+      const selectedSlide = Array.from(document.querySelectorAll('.onboarding-showcase-preview-slide'))
+        .find(slide => slide.dataset.featureId === featureId);
+      if (!feature || !selectedTab || !selectedSlide) return;
 
       const featureIndex = String(ONBOARDING_FEATURES.indexOf(feature) + 1).padStart(2, '0');
       const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
-      document.getElementById('onboardingFeaturePreviewIndex').textContent = `${featureIndex} / ${featureCount}`;
-      document.getElementById('onboardingFeaturePreviewTitle').textContent = feature.title;
-      document.getElementById('onboardingFeaturePreviewDescription').textContent = feature.description;
-      document.getElementById('onboardingFeaturePreviewLabel').textContent = feature.previewLabel;
-      const previewImage = document.getElementById('onboardingFeaturePreviewImage');
-      const placeholder = document.getElementById('onboardingFeaturePlaceholder');
-      const hasPreviewImage = Boolean(feature.imageSrc);
-
-      previewImage.hidden = !hasPreviewImage;
-      placeholder.hidden = hasPreviewImage;
-      if (hasPreviewImage) {
-        previewImage.src = feature.imageSrc;
-        previewImage.alt = feature.imageAlt || `${feature.previewLabel} screenshot`;
-      } else {
-        previewImage.removeAttribute('src');
-        previewImage.alt = '';
-        placeholder.setAttribute('aria-label', `${feature.previewLabel} screenshot placeholder`);
-      }
-      document.getElementById('onboardingFeaturePreview').setAttribute('aria-labelledby', selectedTab.id);
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const preview = document.getElementById('onboardingFeaturePreview');
+      preview.setAttribute('aria-labelledby', selectedTab.id);
 
       document.querySelectorAll('.onboarding-feature-tab').forEach(tab => {
         const selected = tab === selectedTab;
         tab.setAttribute('aria-selected', String(selected));
         tab.tabIndex = selected ? 0 : -1;
+      });
+
+      document.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
+        slide.classList.toggle('is-active', slide === selectedSlide);
+      });
+
+      selectedTab.scrollIntoView({
+        behavior: reducedMotion ? 'auto' : 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+
+      if (shouldScrollPreview && window.matchMedia('(max-width: 760px)').matches) {
+        selectedSlide.scrollIntoView({
+          behavior: reducedMotion ? 'auto' : 'smooth',
+          block: 'nearest',
+          inline: 'start'
+        });
+      }
+    }
+
+    function initOnboardingFeaturePreviewSwipe() {
+      const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
+      if (!previewTrack || !('IntersectionObserver' in window)) return;
+
+      const slideObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
+          selectOnboardingFeature(entry.target.dataset.featureId, false);
+        });
+      }, { root: previewTrack, threshold: 0.6 });
+
+      previewTrack.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
+        slideObserver.observe(slide);
       });
     }
 
@@ -366,6 +397,28 @@
       const nextTab = tabs[nextIndex];
       nextTab.focus();
       selectOnboardingFeature(nextTab.id.replace('onboardingFeatureTab-', ''));
+    }
+
+    function initOnboardingReveal() {
+      const revealItems = document.querySelectorAll('.onboarding-reveal');
+      if (!revealItems.length) return;
+
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion || !('IntersectionObserver' in window)) {
+        revealItems.forEach(item => item.classList.add('is-visible'));
+        return;
+      }
+
+      document.body.classList.add('onboarding-reveal-ready');
+      const revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+      revealItems.forEach(item => revealObserver.observe(item));
     }
 
     function populateSchoolLevels() {
@@ -642,7 +695,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      selectOnboardingFeature('school-management');
+      initOnboardingReveal();
+      renderOnboardingFeaturePreviews();
+      selectOnboardingFeature('school-management', false);
+      initOnboardingFeaturePreviewSwipe();
       populateSchoolLevels();
       renderAcademicTermConfigurations();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);

@@ -990,6 +990,38 @@ body:has(.onboarding-pending-page) {
   text-align: center;
 }
 
+.onboarding-hero-reveal {
+  animation: onboarding-hero-fade-up 650ms ease both;
+}
+
+@keyframes onboarding-hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+body.onboarding-reveal-ready .onboarding-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 650ms ease, transform 650ms ease;
+}
+
+body.onboarding-reveal-ready .onboarding-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .onboarding-showcase-kicker {
   margin: 0 0 8px;
   color: var(--blue-mid);
@@ -1057,17 +1089,6 @@ body:has(.onboarding-pending-page) {
   border-color: var(--blue);
   background: var(--blue);
   color: var(--white);
-}
-
-.onboarding-showcase-action-secondary {
-  background: var(--white);
-  color: var(--blue-mid);
-}
-
-.onboarding-showcase-action-secondary:hover,
-.onboarding-showcase-action-secondary:focus-visible {
-  border-color: var(--blue-pale);
-  background: var(--blue-xpale);
 }
 
 .onboarding-showcase-action:focus-visible {
@@ -1139,8 +1160,6 @@ body:has(.onboarding-pending-page) {
 }
 
 .onboarding-showcase-preview {
-  display: grid;
-  grid-template-columns: minmax(220px, .34fr) minmax(0, 1fr);
   max-width: 1080px;
   margin: clamp(30px, 5vw, 50px) auto 0;
   overflow: hidden;
@@ -1149,6 +1168,23 @@ body:has(.onboarding-pending-page) {
   background: var(--white);
   box-shadow: 0 10px 26px rgba(15, 37, 69, .08);
   text-align: left;
+}
+
+.onboarding-showcase-preview-track {
+  display: grid;
+  min-width: 0;
+}
+
+.onboarding-showcase-preview-slide {
+  display: grid;
+  grid-template-columns: minmax(220px, .34fr) minmax(0, 1fr);
+  min-width: 0;
+  background: var(--white);
+  text-align: left;
+}
+
+.onboarding-showcase-preview-slide:not(.is-active) {
+  display: none;
 }
 
 .onboarding-showcase-preview-copy {
@@ -1189,7 +1225,7 @@ body:has(.onboarding-pending-page) {
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
-  height: 440px
+  height: 440px;
   min-width: 0;
   padding: clamp(14px, 3vw, 24px);
   overflow: hidden;
@@ -1246,6 +1282,21 @@ body:has(.onboarding-pending-page) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body.onboarding-reveal-ready .onboarding-reveal,
+  body.onboarding-reveal-ready .onboarding-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .onboarding-hero-reveal {
+    animation: none;
+  }
+
+  .onboarding-showcase-preview-track {
+    scroll-behavior: auto;
+  }
+
   .onboarding-topbar-signin,
   .onboarding-showcase-action,
   .onboarding-feature-tab {
@@ -1499,8 +1550,28 @@ body:has(.onboarding-pending-page) {
     margin-left: auto;
   }
 
-  .onboarding-showcase-preview {
+  .onboarding-showcase-preview-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .onboarding-showcase-preview-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .onboarding-showcase-preview-slide,
+  .onboarding-showcase-preview-slide:not(.is-active) {
+    display: grid;
     grid-template-columns: 1fr;
+    flex: 0 0 100%;
+    min-width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
   }
 
   .onboarding-showcase-preview-copy {
@@ -1588,7 +1659,6 @@ body:has(.onboarding-pending-page) {
   }
 
   .onboarding-showcase-preview {
-    grid-template-columns: 1fr;
     margin-top: 34px;
   }
 
@@ -1601,8 +1671,8 @@ body:has(.onboarding-pending-page) {
   }
 
   .onboarding-showcase-preview-stage {
-    /* height: clamp(230px, 70vw, 340px);
-    padding: 12px; */
+    height: 300px;
+    padding: 12px;
   }
 
   .onboarding-showcase-benefits {
@@ -1657,5 +1727,12 @@ body:has(.onboarding-pending-page) {
     grid-template-columns: 1fr;
     gap: 5px;
     padding: 12px 14px;
+  }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .onboarding-showcase-preview-track {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
   }
 }
