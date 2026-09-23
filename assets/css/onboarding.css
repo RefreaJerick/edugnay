@@ -1225,11 +1225,18 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
-  height: 440px;
   min-width: 0;
   padding: clamp(14px, 3vw, 24px);
   overflow: hidden;
   background: var(--gray-100);
+}
+
+.onboarding-showcase-preview-media {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 
 .onboarding-showcase-placeholder {
@@ -1239,7 +1246,9 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   flex: 1;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
   min-height: 0;
+  aspect-ratio: 1897 / 1198;
   border: 1px dashed var(--gray-300);
   border-radius: var(--radius-sm);
   background: var(--white);
@@ -1250,19 +1259,49 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 .onboarding-showcase-preview-image {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-width: 0;
-  flex: 1;
+  aspect-ratio: 1897 / 1198;
+  flex: 0 0 auto;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--gray-100);
-  object-fit: cover;
-  object-position: top;
+  object-fit: contain;
+  object-position: center;
 }
 
-.onboarding-showcase-preview-image[hidden],
-.onboarding-showcase-placeholder[hidden] {
-  display: none;
+.onboarding-showcase-preview-expand {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--button-radius);
+  background: var(--white);
+  color: var(--blue-mid);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.onboarding-showcase-preview-expand svg {
+  width: 14px;
+  height: 14px;
+}
+
+.onboarding-showcase-preview-expand:hover {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
+}
+
+.onboarding-showcase-preview-expand:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
 .onboarding-showcase-placeholder svg {
@@ -1281,6 +1320,130 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   font-size: 11px;
 }
 
+body.onboarding-preview-modal-open {
+  overflow: hidden;
+}
+
+.onboarding-preview-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 37, 69, .7);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, visibility .2s ease;
+}
+
+.onboarding-preview-modal.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.onboarding-preview-modal-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1160px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--panel-radius);
+  background: var(--white);
+  box-shadow: 0 24px 72px rgba(15, 37, 69, .28);
+  transform: translateY(16px);
+  transition: transform .2s ease;
+}
+
+.onboarding-preview-modal.open .onboarding-preview-modal-dialog {
+  transform: translateY(0);
+}
+
+.onboarding-preview-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.onboarding-preview-modal-head > div {
+  min-width: 0;
+}
+
+.onboarding-preview-modal-index {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--blue-mid);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .8px;
+}
+
+.onboarding-preview-modal-head h2 {
+  margin: 0;
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.35px;
+}
+
+.onboarding-preview-modal-head p {
+  margin: 5px 0 0;
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.onboarding-preview-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--button-radius);
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.onboarding-preview-modal-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.onboarding-preview-modal-close:hover {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+}
+
+.onboarding-preview-modal-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+.onboarding-preview-modal-media {
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--gray-100);
+}
+
+.onboarding-preview-modal-media img {
+  display: block;
+  width: max(100%, 900px);
+  max-width: none;
+  height: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+
 @media (prefers-reduced-motion: reduce) {
   body.onboarding-reveal-ready .onboarding-reveal,
   body.onboarding-reveal-ready .onboarding-reveal.is-visible {
@@ -1295,6 +1458,11 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 
   .onboarding-showcase-preview-track {
     scroll-behavior: auto;
+  }
+
+  .onboarding-preview-modal,
+  .onboarding-preview-modal-dialog {
+    transition: none;
   }
 
   .onboarding-topbar-signin,
@@ -1671,8 +1839,11 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   }
 
   .onboarding-showcase-preview-stage {
-    height: 300px;
     padding: 12px;
+  }
+
+  .onboarding-showcase-preview-expand {
+    align-self: stretch;
   }
 
   .onboarding-showcase-benefits {
@@ -1727,6 +1898,30 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
     grid-template-columns: 1fr;
     gap: 5px;
     padding: 12px 14px;
+  }
+
+  .onboarding-preview-modal {
+    padding: 10px;
+  }
+
+  .onboarding-preview-modal-dialog {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .onboarding-preview-modal-head {
+    padding: 16px;
+  }
+
+  .onboarding-preview-modal-head h2 {
+    font-size: 18px;
+  }
+
+  .onboarding-preview-modal-media {
+    padding: 12px;
+  }
+
+  .onboarding-preview-modal-media img {
+    width: 760px;
   }
 }
 
