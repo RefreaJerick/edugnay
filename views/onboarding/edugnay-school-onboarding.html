@@ -60,7 +60,7 @@
           </button>
         </div>
 
-        <div class="onboarding-showcase-preview" id="onboardingFeaturePreview" role="tabpanel" aria-labelledby="onboardingFeatureTab-school-management" aria-live="polite" tabindex="0">
+        <div class="onboarding-showcase-preview" id="onboardingFeaturePreview" role="tabpanel" aria-labelledby="onboardingFeatureTab-school-management" aria-live="off" tabindex="0">
           <div class="onboarding-showcase-preview-track" id="onboardingFeaturePreviewTrack"></div>
         </div>
 
@@ -317,7 +317,10 @@
       }
     ];
 
+    const FEATURE_PREVIEW_INTERVAL = 6000;
     const termDrafts = {};
+    let featurePreviewTimer = null;
+    let featurePreviewAutoPlayStopped = false;
 
     function renderOnboardingFeaturePreviews() {
       const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
@@ -328,10 +331,14 @@
         const hasPreviewImage = Boolean(feature.imageSrc);
         const previewContent = hasPreviewImage
           ? `<div class="onboarding-showcase-preview-media">
-              <img class="onboarding-showcase-preview-image" src="${feature.imageSrc}" alt="${feature.imageAlt || `${feature.previewLabel} screenshot`}" decoding="async" />
-              <button class="onboarding-showcase-preview-expand" type="button" aria-label="View full ${feature.previewLabel}" onclick="openOnboardingFeaturePreview('${feature.id}')">
-                <i data-lucide="maximize-2" aria-hidden="true"></i>
-                <span>View full preview</span>
+              <button class="onboarding-showcase-preview-trigger" type="button" aria-label="Open full ${feature.previewLabel}" onclick="openOnboardingFeaturePreview('${feature.id}')">
+                <img class="onboarding-showcase-preview-image" src="${feature.imageSrc}" alt="${feature.imageAlt || `${feature.previewLabel} screenshot`}" decoding="async" />
+                <span class="onboarding-showcase-preview-overlay" aria-hidden="true">
+                  <span class="onboarding-showcase-preview-hint">
+                    <i data-lucide="maximize-2" aria-hidden="true"></i>
+                    <span>View full preview</span>
+                  </span>
+                </span>
               </button>
             </div>`
           : `<div class="onboarding-showcase-placeholder" role="img" aria-label="${feature.previewLabel} screenshot placeholder">
@@ -356,6 +363,8 @@
     function openOnboardingFeaturePreview(featureId) {
       const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
       if (!feature?.imageSrc) return;
+
+      stopOnboardingFeatureAutoPlay();
 
       const featureIndex = String(ONBOARDING_FEATURES.indexOf(feature) + 1).padStart(2, '0');
       const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
@@ -446,7 +455,7 @@
 
       const slideObserver = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
+          if (!window.matchMedia('(max-width: 760px)').matches || !entry.isIntersecting || entry.intersectionRatio < 0.6) return;
           selectOnboardingFeature(entry.target.dataset.featureId, false);
         });
       }, { root: previewTrack, threshold: 0.6 });
@@ -454,6 +463,39 @@
       previewTrack.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
         slideObserver.observe(slide);
       });
+    }
+
+    function showNextOnboardingFeature() {
+      const activeTab = document.querySelector('.onboarding-feature-tab[aria-selected="true"]');
+      const currentIndex = ONBOARDING_FEATURES.findIndex(feature => activeTab?.id === `onboardingFeatureTab-${feature.id}`);
+      const nextFeature = ONBOARDING_FEATURES[(currentIndex + 1) % ONBOARDING_FEATURES.length];
+
+      selectOnboardingFeature(nextFeature.id);
+    }
+
+    function stopOnboardingFeatureAutoPlay() {
+      if (featurePreviewTimer) window.clearInterval(featurePreviewTimer);
+      featurePreviewTimer = null;
+      featurePreviewAutoPlayStopped = true;
+    }
+
+    function startOnboardingFeatureAutoPlay() {
+      if (featurePreviewAutoPlayStopped || featurePreviewTimer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      featurePreviewTimer = window.setInterval(showNextOnboardingFeature, FEATURE_PREVIEW_INTERVAL);
+    }
+
+    function initOnboardingFeatureAutoPlay() {
+      const featureTabs = document.querySelector('.onboarding-feature-tabs');
+      const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
+
+      featureTabs?.addEventListener('pointerdown', stopOnboardingFeatureAutoPlay);
+      featureTabs?.addEventListener('focusin', stopOnboardingFeatureAutoPlay);
+      previewTrack?.addEventListener('pointerdown', stopOnboardingFeatureAutoPlay);
+      window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => {
+        if (event.matches) stopOnboardingFeatureAutoPlay();
+      });
+      startOnboardingFeatureAutoPlay();
     }
 
     function handleOnboardingFeatureTabKeydown(event) {
@@ -774,6 +816,7 @@
       renderOnboardingFeaturePreviews();
       selectOnboardingFeature('school-management', false);
       initOnboardingFeaturePreviewSwipe();
+      initOnboardingFeatureAutoPlay();
       document.addEventListener('keydown', handleOnboardingPreviewKeydown);
       populateSchoolLevels();
       renderAcademicTermConfigurations();
