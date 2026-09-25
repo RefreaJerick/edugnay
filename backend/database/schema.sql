@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   session_token_hash VARCHAR(255) NOT NULL UNIQUE,
   expires_at DATETIME NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_user_sessions_expires (expires_at),
   CONSTRAINT fk_user_sessions_user
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

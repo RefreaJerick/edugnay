@@ -91,23 +91,23 @@ INSERT INTO users (
   account_status, honorific, first_name, last_name, display_name, initials,
   setup_completed_at
 ) VALUES
-  (1, NULL, 'platform_admin', 'platform.admin@academix.test', 'platform.admin@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (1, NULL, 'platform_admin', 'platform.admin@academix.test', 'platform.admin@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Platform', 'Admin', 'Platform Admin', 'PA', '2025-01-01 08:00:00'),
-  (2, 1, 'school_admin', 'admin.adm@stcolumban.edu.ph', 'admin@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (2, 1, 'school_admin', 'admin.adm@stcolumban.edu.ph', 'admin@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', 'Sr.', 'Admin', 'Admin', 'Sr. Admin', 'SA', '2025-01-06 08:00:00'),
-  (3, 1, 'teacher', 'm.reyes.fac@stcolumban.edu.ph', 'maria.reyes@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (3, 1, 'teacher', 'm.reyes.fac@stcolumban.edu.ph', 'maria.reyes@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', 'Ms.', 'Maria', 'Reyes', 'Ms. Maria Reyes', 'MR', '2025-06-03 08:00:00'),
-  (4, 1, 'student', 'carlo.mendoza.stud@stcolumban.edu.ph', 'carlo.mendoza@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (4, 1, 'student', 'carlo.mendoza.stud@stcolumban.edu.ph', 'carlo.mendoza@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Carlo', 'Mendoza', 'Carlo Mendoza', 'CM', '2025-06-10 08:00:00'),
-  (5, 1, 'student', 'liza.reyes.stud@stcolumban.edu.ph', 'liza.reyes@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (5, 1, 'student', 'liza.reyes.stud@stcolumban.edu.ph', 'liza.reyes@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Liza', 'Reyes', 'Liza Reyes', 'LR', '2025-06-10 08:00:00'),
-  (6, 1, 'student', 'juan.delacruz.stud@stcolumban.edu.ph', 'juan.delacruz@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (6, 1, 'student', 'juan.delacruz.stud@stcolumban.edu.ph', 'juan.delacruz@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Juan', 'Dela Cruz', 'Juan Dela Cruz', 'JC', '2025-06-10 08:00:00'),
-  (7, 1, 'student', 'maya.torres.stud@stcolumban.edu.ph', 'maya.torres@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (7, 1, 'student', 'maya.torres.stud@stcolumban.edu.ph', 'maya.torres@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Maya', 'Torres', 'Maya Torres', 'MT', '2025-06-10 08:00:00'),
-  (8, 1, 'student', 'sofia.cruz.stud@stcolumban.edu.ph', 'sofia.cruz@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (8, 1, 'student', 'sofia.cruz.stud@stcolumban.edu.ph', 'sofia.cruz@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Sofia', 'Cruz', 'Sofia Cruz', 'SC', '2025-06-10 08:00:00'),
-  (9, 1, 'parent', 'rosa.lim.par@stcolumban.edu.ph', 'rosa.lim@example.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWyS2e',
+  (9, 1, 'parent', 'rosa.lim.par@stcolumban.edu.ph', 'rosa.lim@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Rosa', 'Lim', 'Rosa Lim', 'RL', '2025-06-10 08:00:00');
 
 INSERT INTO school_admin_profiles (user_id, employee_number) VALUES (2, 'ADM-2016-0001');
