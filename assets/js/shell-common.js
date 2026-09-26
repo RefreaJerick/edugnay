@@ -1,6 +1,33 @@
 /* Shared shell behavior for every portal role. */
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
+const EDUGNAY_API_BASE_URL = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
+  ? `${window.location.protocol}//${window.location.hostname}:3000/api`
+  : '';
+
+async function requestApi(path, options = {}) {
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+
+  const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
+    credentials: 'include',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(data?.message || 'The request could not be completed.');
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+window.EDUGNAY_API = { request: requestApi };
 
 function readFrontendSession() {
   try {
@@ -12,6 +39,67 @@ function readFrontendSession() {
 }
 
 window.EDUGNAY_SESSION = window.EDUGNAY_SESSION || readFrontendSession();
+
+function saveFrontendSession(session) {
+  window.EDUGNAY_SESSION = session;
+  try {
+    sessionStorage.setItem(EDUGNAY_SESSION_STORAGE_KEY, JSON.stringify(session));
+  } catch {
+    // The backend cookie remains the source of authentication when storage is unavailable.
+  }
+}
+
+async function getCurrentUser() {
+  if (!EDUGNAY_API_BASE_URL) return window.EDUGNAY_SESSION;
+
+  const response = await requestApi('/auth/me');
+  const user = response.user;
+  const existing = readFrontendSession() || {};
+  const session = {
+    ...existing,
+    apiUserId: user.id,
+    apiSchoolId: user.schoolId,
+    role: user.role,
+    schoolEmail: user.schoolEmail,
+    displayName: user.displayName,
+    initials: user.initials,
+    setupCompletedAt: user.setupCompletedAt
+  };
+  saveFrontendSession(session);
+  return session;
+}
+
+function applyCurrentUserToShell(session) {
+  if (!session) return;
+  const roleLabels = {
+    platform_admin: 'Platform Administrator',
+    school_admin: 'Administrator',
+    teacher: 'Faculty',
+    student: 'Student',
+    parent: 'Parent'
+  };
+  const roleLabel = roleLabels[session.role] || '';
+  document.querySelectorAll('[data-current-user-name]').forEach(element => {
+    element.textContent = session.displayName || '';
+  });
+  document.querySelectorAll('[data-current-user-initials]').forEach(element => {
+    element.textContent = session.initials || '';
+  });
+  document.querySelectorAll('[data-current-user-role]').forEach(element => {
+    element.textContent = roleLabel;
+  });
+  document.querySelectorAll('.tb-profile-name').forEach(element => {
+    element.textContent = session.displayName || element.textContent;
+  });
+  document.querySelectorAll('.tb-profile-role').forEach(element => {
+    element.textContent = roleLabel || element.textContent;
+  });
+  document.querySelectorAll('.tb-avatar').forEach(element => {
+    element.textContent = session.initials || element.textContent;
+  });
+}
+
+window.EDUGNAY_API.getCurrentUser = getCurrentUser;
 
 /* Small rendering helpers shared by pages that build HTML from local records. */
 function escapeHtml(value) {
@@ -5159,9 +5247,15 @@ function toggleDrawer(open) {
   refreshSidebarScrollbars();
 }
 
-function confirmLogout() {
-  // TODO on backend conversion: replace with POST /auth/logout,
-  // clear session cookie, then redirect
+async function confirmLogout() {
+  if (EDUGNAY_API_BASE_URL) {
+    try {
+      await requestApi('/auth/logout', { method: 'POST' });
+    } catch {
+      // Clear the frontend session even when the server session has expired.
+    }
+  }
+
   try {
     sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY);
   } catch {
@@ -5459,6 +5553,15 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (EDUGNAY_API_BASE_URL) {
+    try {
+      applyCurrentUserToShell(await getCurrentUser());
+    } catch (error) {
+      if (error.status === 401) {
+        try { sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY); } catch {}
+      }
+    }
+  }
   applyCurrentDateToGradingBanners();
   applyActiveSchoolToShell();
   applyGradePortalAccess();

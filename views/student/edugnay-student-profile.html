@@ -518,7 +518,7 @@
           </div>
         </div>
         <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:13px;color:var(--gray-600);">Password last changed 3 months ago</div>
+          <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
           <button class="top-btn secondary" onclick="openPasswordModal()">
             <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
           </button>
@@ -580,11 +580,11 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
-        <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••"/>
+        <input class="form-input" type="password" name="currentPassword" id="currentPasswordInput" required placeholder="••••••••"/>
       </div>
       <div class="form-group">
         <label class="form-label">New Password</label>
-        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="12" placeholder="••••••••"/>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Confirm New Password</label>
@@ -620,6 +620,8 @@ const STUDENT_ID = window.EDUGNAY_STUDENT?.currentUser?.id
 const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
 let studentSetupRequired = false;
 let studentAttendanceQrDataUrl = '';
+const STUDENT_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+let studentApiUser = null;
 
 function setStudentText(id, value, fallback = 'Not provided') {
   const element = document.getElementById(id);
@@ -628,7 +630,7 @@ function setStudentText(id, value, fallback = 'Not provided') {
 
 function setStudentInput(id, value) {
   const element = document.getElementById(id);
-  if (element) element.value = value || '';
+  if (element) element.value = id === 'student-birth-date' && value ? String(value).slice(0, 10) : value || '';
 }
 
 function renderStudentProfile() {
@@ -647,27 +649,29 @@ function renderStudentProfile() {
     return;
   }
 
-  const profile = STUDENT_CONFIG.getUserProfile(student.id);
+  const savedUser = studentApiUser || student;
+  const profile = studentApiUser?.profile || STUDENT_CONFIG.getUserProfile(student.id);
   const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student.sectionId);
   const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
-  const schoolEmail = student.schoolEmail || '';
-  const displayName = student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ');
+  const schoolEmail = savedUser.schoolEmail || '';
+  const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
+  const lrn = profile?.lrn || student.lrn;
   const placement = [student.gradeLevel, section?.name].filter(Boolean).join(' – ');
 
   setStudentText('student-profile-name', displayName);
   setStudentText('student-topbar-name', displayName);
-  setStudentText('student-profile-lrn', student.lrn, 'Not available');
+  setStudentText('student-profile-lrn', lrn, 'Not available');
   setStudentText('student-profile-placement', placement, 'Unassigned');
   setStudentText('student-profile-school-email', schoolEmail);
-  setStudentText('student-record-lrn', student.lrn, 'Not available');
+  setStudentText('student-record-lrn', lrn, 'Not available');
   setStudentText('student-record-placement', placement, 'Unassigned');
   setStudentText('student-record-adviser', adviser?.displayName, 'Not assigned');
   setStudentText('student-record-school-year', STUDENT_CONFIG.getActiveSchool()?.schoolYear, 'Not available');
 
-  setStudentInput('student-first-name', student.firstName);
-  setStudentInput('student-last-name', student.lastName);
+  setStudentInput('student-first-name', savedUser.firstName);
+  setStudentInput('student-last-name', savedUser.lastName);
   setStudentInput('student-school-email', schoolEmail);
-  setStudentInput('student-personal-email', student.personalEmail);
+  setStudentInput('student-personal-email', savedUser.personalEmail);
   setStudentInput('student-middle-name', profile.middleName);
   setStudentInput('student-contact-number', profile.contactNumber);
   setStudentInput('student-sex', profile.sex);
@@ -684,6 +688,12 @@ function renderStudentProfile() {
   document.getElementById('student-no-middle-name').checked = profile.hasNoMiddleName;
   document.getElementById('student-no-indigenous-group').checked = profile.indigenousGroup === 'not_applicable';
   document.getElementById('student-no-religion').checked = profile.religion === 'prefer_not_to_provide';
+  const personalEmail = document.getElementById('student-personal-email');
+  personalEmail.readOnly = STUDENT_PROFILE_API_ENABLED;
+  if (STUDENT_PROFILE_API_ENABLED) {
+    const personalEmailHint = personalEmail.closest('.form-group')?.querySelector('.form-hint');
+    if (personalEmailHint) personalEmailHint.textContent = 'Managed through your school account record.';
+  }
   updateStudentProfileChoices();
 
   const initials = document.getElementById('avatarInitials');
@@ -861,6 +871,7 @@ function renderStudentSubjects() {
 document.addEventListener('DOMContentLoaded', () => {
   renderStudentSubjects();
   renderStudentProfile();
+  loadStudentProfile();
   document.getElementById('student-no-middle-name').addEventListener('change', updateStudentProfileChoices);
   document.getElementById('student-no-indigenous-group').addEventListener('change', function () {
     if (this.checked) document.getElementById('student-indigenous-group').value = '';
@@ -871,6 +882,20 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStudentProfileChoices();
   });
 });
+
+async function loadStudentProfile() {
+  if (!STUDENT_PROFILE_API_ENABLED) return;
+
+  try {
+    const response = await window.EDUGNAY_API.request('/users/me/profile');
+    if (response.user.role === 'student') {
+      studentApiUser = response.user;
+      renderStudentProfile();
+    }
+  } catch (error) {
+    console.warn('Unable to load the saved profile.', error.message);
+  }
+}
 
 function handleAvatarUpload(event) {
   const file = event.target.files[0];
@@ -903,18 +928,33 @@ function closePasswordModal() {
   document.getElementById('changePasswordModal').classList.remove('open');
   document.getElementById('passwordForm').reset();
 }
-function submitPasswordChange(event) {
+async function submitPasswordChange(event) {
   event.preventDefault();
+  const currentPass = document.getElementById('currentPasswordInput').value;
   const newPass = document.getElementById('newPasswordInput').value;
   const confirmPass = document.getElementById('confirmPasswordInput').value;
+  if (newPass.length < 12) {
+    alert('Use a password with at least 12 characters.');
+    return false;
+  }
   if (newPass !== confirmPass) {
     alert('New password and confirmation do not match.');
     return false;
   }
-  const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
-  // fetch('/student/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-  alert('Password updated.');
-  closePasswordModal();
+  if (!STUDENT_PROFILE_API_ENABLED) {
+    alert('Password updates require the local backend.');
+    return false;
+  }
+  try {
+    await window.EDUGNAY_API.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+    });
+    closePasswordModal();
+    alert('Password updated. You have been signed out on other devices.');
+  } catch (error) {
+    alert(error.message || 'Unable to update your password.');
+  }
   return false;
 }
 
@@ -999,6 +1039,17 @@ async function submitProfile(event) {
   };
 
   try {
+    if (STUDENT_PROFILE_API_ENABLED) {
+      const response = await window.EDUGNAY_API.request('/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(profileData)
+      });
+      studentApiUser = response.user;
+      renderStudentProfile();
+      alert('Profile updated.');
+      return false;
+    }
+
     if (studentSetupRequired) {
       await STUDENT_CONFIG.completeProfileSetup(student.id, { personalEmail, ...profileData });
       alert('Profile setup complete.');

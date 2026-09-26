@@ -316,7 +316,7 @@
         </div>
       </div>
       <div class="config-panel-body teacher-security-body">
-        <div class="teacher-security-copy">Password last changed on May 12, 2025</div>
+        <div class="teacher-security-copy">Use a unique password with at least 12 characters.</div>
         <button class="top-btn secondary" onclick="openModal('changePasswordModal')">
           <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
         </button>
@@ -347,11 +347,11 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
-        <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••"/>
+        <input class="form-input" type="password" name="currentPassword" id="currentPasswordInput" required placeholder="••••••••"/>
       </div>
       <div class="form-group">
         <label class="form-label">New Password</label>
-        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="12" placeholder="••••••••"/>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Confirm New Password</label>
@@ -372,6 +372,33 @@
   const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([{
     sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
   }]);
+  const TEACHER_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  let teacherApiUser = null;
+
+  function renderTeacherProfile(user) {
+    if (!user) return;
+
+    const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
+    document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
+    document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
+    document.querySelectorAll('[name="employeeNo"]').forEach(input => { input.value = user.profile?.employeeNumber || ''; });
+    document.querySelectorAll('.profile-header-name, .tb-profile-name').forEach(element => { element.textContent = displayName; });
+    document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
+  }
+
+  async function loadTeacherProfile() {
+    if (!TEACHER_PROFILE_API_ENABLED) return;
+
+    try {
+      const response = await window.EDUGNAY_API.request('/users/me/profile');
+      if (response.user.role === 'teacher') {
+        teacherApiUser = response.user;
+        renderTeacherProfile(teacherApiUser);
+      }
+    } catch (error) {
+      console.warn('Unable to load the saved profile.', error.message);
+    }
+  }
 
   function renderEmploymentDetails() {
     const panel = document.getElementById('teacher-employment-details');
@@ -384,6 +411,7 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderEmploymentDetails();
+    await loadTeacherProfile();
     lucide.createIcons();
   });
 
@@ -393,18 +421,33 @@
     document.getElementById('passwordForm').reset();
   }
 
-  function submitPasswordChange(event) {
+  async function submitPasswordChange(event) {
     event.preventDefault();
+    const currentPass = document.getElementById('currentPasswordInput').value;
     const newPass = document.getElementById('newPasswordInput').value;
     const confirmPass = document.getElementById('confirmPasswordInput').value;
+    if (newPass.length < 12) {
+      alert('Use a password with at least 12 characters.');
+      return false;
+    }
     if (newPass !== confirmPass) {
       alert('New password and confirmation do not match.');
       return false;
     }
-    const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
-    // fetch('/teacher/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-    alert('Password updated.');
-    closeModal('changePasswordModal');
+    if (!TEACHER_PROFILE_API_ENABLED) {
+      alert('Password updates require the local backend.');
+      return false;
+    }
+    try {
+      await window.EDUGNAY_API.request('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+      });
+      closeModal('changePasswordModal');
+      alert('Password updated. You have been signed out on other devices.');
+    } catch (error) {
+      alert(error.message || 'Unable to update your password.');
+    }
     return false;
   }
   document.querySelectorAll('.modal-backdrop').forEach(m => {
@@ -476,17 +519,28 @@
     closeAvatarMenu();
   }
 
-  function submitProfile(event) {
+  async function submitProfile(event) {
     event.preventDefault();
-    const form = document.getElementById('profileForm');
-    const body = Object.fromEntries(new FormData(form).entries());
-    // fetch('/teacher/profile', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-    alert('Contact number updated.');
+    const contactNumber = document.getElementById('contactNumberInput').value.trim();
+
+    try {
+      if (TEACHER_PROFILE_API_ENABLED) {
+        const response = await window.EDUGNAY_API.request('/users/me/profile', {
+          method: 'PATCH',
+          body: JSON.stringify({ contactNumber })
+        });
+        teacherApiUser = response.user;
+        renderTeacherProfile(teacherApiUser);
+      }
+      alert('Contact number updated.');
+    } catch (error) {
+      alert(error.message || 'Unable to update your profile.');
+    }
     return false;
   }
 
   function resetProfile() {
-    document.getElementById('contactNumberInput').value = '0917 123 4567';
+    document.getElementById('contactNumberInput').value = teacherApiUser?.profile?.contactNumber || '0917 123 4567';
   }
 </script>
 

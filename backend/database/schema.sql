@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 CREATE TABLE IF NOT EXISTS school_admin_profiles (
   user_id BIGINT UNSIGNED PRIMARY KEY,
   employee_number VARCHAR(60) NULL,
+  contact_number VARCHAR(30) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_school_admin_profiles_user
@@ -229,6 +230,8 @@ CREATE TABLE IF NOT EXISTS parent_profiles (
   maiden_last_name VARCHAR(100) NULL,
   has_no_middle_name BOOLEAN NOT NULL DEFAULT FALSE,
   has_no_maiden_name BOOLEAN NOT NULL DEFAULT FALSE,
+  sex VARCHAR(20) NULL,
+  religion VARCHAR(120) NULL,
   contact_number VARCHAR(30) NULL,
   house_street VARCHAR(255) NULL,
   barangay VARCHAR(120) NULL,

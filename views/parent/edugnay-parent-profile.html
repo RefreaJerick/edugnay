@@ -413,7 +413,7 @@
             </div>
           </div>
           <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
-            <div style="font-size:13px;color:var(--gray-600);">Password last changed 3 months ago</div>
+            <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
             <button class="top-btn secondary" onclick="openPasswordModal()">
               <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
             </button>
@@ -443,11 +443,11 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Current Password</label>
-            <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••" />
+            <input class="form-input" type="password" name="currentPassword" id="currentPasswordInput" required placeholder="••••••••" />
           </div>
           <div class="form-group">
             <label class="form-label">New Password</label>
-            <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8"
+            <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="12"
               placeholder="••••••••" />
           </div>
           <div class="form-group" style="margin-bottom:0;">
@@ -472,6 +472,8 @@
 
     const escapeProfileHtml = PARENT_CONFIG.escapeHtml;
     let parentSetupRequired = false;
+    const PARENT_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    let parentApiUser = null;
 
     function setParentText(id, value, fallback = 'Not provided') {
       const element = document.getElementById(id);
@@ -497,19 +499,20 @@
         return;
       }
 
-      const profile = PARENT_CONFIG.getUserProfile(parent.id);
+      const savedUser = parentApiUser || parent;
+      const profile = parentApiUser?.profile || PARENT_CONFIG.getUserProfile(parent.id);
       const links = getParentLinks();
-      const schoolEmail = parent.schoolEmail || '';
-      const displayName = parent.displayName || [parent.firstName, parent.lastName].filter(Boolean).join(' ');
+      const schoolEmail = savedUser.schoolEmail || '';
+      const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
 
       setParentText('parent-profile-name', displayName);
       setParentText('parent-profile-child-count', `Parent · ${links.length} linked ${links.length === 1 ? 'child' : 'children'}`);
       setParentText('parent-profile-school-email', schoolEmail);
 
-      setParentInput('parent-first-name', parent.firstName);
-      setParentInput('parent-last-name', parent.lastName);
+      setParentInput('parent-first-name', savedUser.firstName);
+      setParentInput('parent-last-name', savedUser.lastName);
       setParentInput('parent-school-email', schoolEmail);
-      setParentInput('parent-personal-email', parent.personalEmail);
+      setParentInput('parent-personal-email', savedUser.personalEmail);
       setParentInput('parent-middle-name', profile.middleName);
       setParentInput('parent-contact-number', profile.contactNumber);
       setParentInput('parent-sex', profile.sex);
@@ -527,6 +530,12 @@
       setParentInput('parent-maiden-name', isMother ? profile.maidenLastName : '');
       document.getElementById('parent-no-middle-name').checked = profile.hasNoMiddleName;
       document.getElementById('parent-no-religion').checked = profile.religion === 'prefer_not_to_provide';
+      const personalEmail = document.getElementById('parent-personal-email');
+      personalEmail.readOnly = PARENT_PROFILE_API_ENABLED;
+      if (PARENT_PROFILE_API_ENABLED) {
+        const personalEmailHint = personalEmail.closest('.form-group')?.querySelector('.form-hint');
+        if (personalEmailHint) personalEmailHint.textContent = 'Managed through your school account record.';
+      }
       updateParentProfileChoices();
 
       const initials = document.getElementById('avatarInitials');
@@ -626,6 +635,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderParentProfile();
+      loadParentProfile();
       document.getElementById('parent-no-middle-name').addEventListener('change', updateParentProfileChoices);
       document.getElementById('parent-no-maiden-name').addEventListener('change', function () {
         if (this.checked) document.getElementById('parent-maiden-name').value = '';
@@ -636,6 +646,20 @@
         updateParentProfileChoices();
       });
     });
+
+    async function loadParentProfile() {
+      if (!PARENT_PROFILE_API_ENABLED) return;
+
+      try {
+        const response = await window.EDUGNAY_API.request('/users/me/profile');
+        if (response.user.role === 'parent') {
+          parentApiUser = response.user;
+          renderParentProfile();
+        }
+      } catch (error) {
+        console.warn('Unable to load the saved profile.', error.message);
+      }
+    }
 
     /* ── AVATAR UPLOAD ── */
     function handleAvatarUpload(event) {
@@ -669,18 +693,33 @@
       document.getElementById('changePasswordModal').classList.remove('open');
       document.getElementById('passwordForm').reset();
     }
-    function submitPasswordChange(event) {
+    async function submitPasswordChange(event) {
       event.preventDefault();
+      const currentPass = document.getElementById('currentPasswordInput').value;
       const newPass = document.getElementById('newPasswordInput').value;
       const confirmPass = document.getElementById('confirmPasswordInput').value;
+      if (newPass.length < 12) {
+        alert('Use a password with at least 12 characters.');
+        return false;
+      }
       if (newPass !== confirmPass) {
         alert('New password and confirmation do not match.');
         return false;
       }
-      const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
-      // fetch('/parent/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-      alert('Password updated.');
-      closePasswordModal();
+      if (!PARENT_PROFILE_API_ENABLED) {
+        alert('Password updates require the local backend.');
+        return false;
+      }
+      try {
+        await window.EDUGNAY_API.request('/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+        });
+        closePasswordModal();
+        alert('Password updated. You have been signed out on other devices.');
+      } catch (error) {
+        alert(error.message || 'Unable to update your password.');
+      }
       return false;
     }
 
@@ -762,6 +801,17 @@
       };
 
       try {
+        if (PARENT_PROFILE_API_ENABLED) {
+          const response = await window.EDUGNAY_API.request('/users/me/profile', {
+            method: 'PATCH',
+            body: JSON.stringify(profileData)
+          });
+          parentApiUser = response.user;
+          renderParentProfile();
+          alert('Profile updated.');
+          return false;
+        }
+
         if (parentSetupRequired) {
           await PARENT_CONFIG.completeProfileSetup(parent.id, { personalEmail, ...profileData });
           alert('Profile setup complete.');

@@ -161,12 +161,6 @@
         flex-wrap: nowrap;
         gap: 8px;
       }
-      .remember {
-        min-width: 0;
-        gap: 6px;
-        font-size: 12px;
-        white-space: nowrap;
-      }
       .form-bottom .forgot {
         flex: 0 0 auto;
         font-size: 12px;
@@ -248,9 +242,6 @@
     </div>
 
     <div class="form-bottom">
-      <label class="remember" for="rememberMe">
-        <input type="checkbox" id="rememberMe" name="remember" value="yes"/> Keep me signed in
-      </label>
       <button type="button" class="forgot" onclick="openForgotPassword()">Forgot password?</button>
     </div>
 
@@ -326,13 +317,13 @@
         <div class="form-group">
           <label class="form-label" for="newPasswordInput">New Password</label>
           <div class="input-wrap">
-            <input class="form-input" type="password" id="newPasswordInput" name="password" autocomplete="new-password" minlength="8" required/>
+            <input class="form-input" type="password" id="newPasswordInput" name="password" autocomplete="new-password" minlength="12" required/>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label" for="confirmPasswordInput">Confirm Password</label>
           <div class="input-wrap">
-            <input class="form-input" type="password" id="confirmPasswordInput" name="confirmPassword" autocomplete="new-password" minlength="8" required/>
+            <input class="form-input" type="password" id="confirmPasswordInput" name="confirmPassword" autocomplete="new-password" minlength="12" required/>
           </div>
         </div>
         <p class="password-guidance">Use at least 8 characters. Both password fields must match.</p>
@@ -358,8 +349,13 @@
 
 <script>
 
+  const API_BASE_URL = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
+    ? `${window.location.protocol}//${window.location.hostname}:3000/api`
+    : '';
+
   const AUTH_CONFIG = {
     frontendOnly: true,
+    apiBaseUrl: API_BASE_URL,
     endpoints: {
       requestPasswordReset: '/api/auth/password-reset/request',
       confirmPasswordReset: '/api/auth/password-reset/confirm'
@@ -367,13 +363,27 @@
   };
 
   const AUTH_VIEWS = ['signin', 'forgot', 'sent', 'reset', 'complete'];
-  const FRONTEND_ACCOUNT_ROUTES = [
-    { identifier: 'adm', userId: 'admin-1', role: 'school_admin', schoolId: 'scc', dashboard: './views/admin/edugnay-admin-dashboard.html' },
-    { identifier: 'fac', userId: 'teacher-2', role: 'teacher', schoolId: 'scc', dashboard: './views/teacher/edugnay-teacher-dashboard.html' },
-    { identifier: 'stud', userId: 'jd-004', role: 'student', schoolId: 'scc', dashboard: './views/student/edugnay-student-dashboard.html' },
-    { identifier: 'par', userId: 'parent-7', role: 'parent', schoolId: 'scc', dashboard: './views/parent/edugnay-parent-dashboard.html' },
-    { identifier: 'plat', userId: 'platform-1', role: 'platform_admin', schoolId: null, dashboard: './views/platform/edugnay-platform-dashboard.html' }
-  ];
+  const DASHBOARD_BY_ROLE = {
+    school_admin: './views/admin/edugnay-admin-dashboard.html',
+    teacher: './views/teacher/edugnay-teacher-dashboard.html',
+    student: './views/student/edugnay-student-dashboard.html',
+    parent: './views/parent/edugnay-parent-dashboard.html',
+    platform_admin: './views/platform/edugnay-platform-dashboard.html'
+  };
+
+  // Temporary bridge while portal pages still read their local demonstration arrays.
+  // The backend user ID remains in apiUserId; a later phase removes legacyUserId.
+  const LEGACY_USER_ID_BY_EMAIL = {
+    'admin.adm@stcolumban.edu.ph': 'admin-1',
+    'm.reyes.fac@stcolumban.edu.ph': 'teacher-2',
+    'carlo.mendoza.stud@stcolumban.edu.ph': 'cm-001',
+    'liza.reyes.stud@stcolumban.edu.ph': 'lr-002',
+    'juan.delacruz.stud@stcolumban.edu.ph': 'jd-004',
+    'maya.torres.stud@stcolumban.edu.ph': 'mt-012',
+    'sofia.cruz.stud@stcolumban.edu.ph': 'sc-013',
+    'rosa.lim.par@stcolumban.edu.ph': 'parent-7',
+    'platform.admin@academix.test': 'platform-1'
+  };
   const AUTH_STATE = {
     pendingSchoolEmail: '',
     resetToken: new URLSearchParams(window.location.search).get('token')
@@ -423,13 +433,15 @@
   }
 
   async function postAuthData(endpoint, payload) {
-    const response = await fetch(endpoint, {
+    const response = await fetch(`${AUTH_CONFIG.apiBaseUrl}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error('The request could not be completed.');
-    return response.status === 204 ? {} : response.json();
+    const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || 'The request could not be completed.');
+    return data;
   }
 
   async function requestPasswordReset(event) {
@@ -445,13 +457,16 @@
       return;
     }
 
+    if (AUTH_CONFIG.frontendOnly) {
+      setAuthMessage('forgotMessage', 'Password recovery will be available after verified email delivery is configured.', true);
+      return;
+    }
+
     setAuthMessage('forgotMessage', '');
     setSubmitting(submitButton, true, 'Preparing Reset...');
 
     try {
-      if (!AUTH_CONFIG.frontendOnly) {
-        await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { schoolEmail });
-      }
+      await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { schoolEmail });
       AUTH_STATE.pendingSchoolEmail = schoolEmail;
       document.getElementById('resetEmailSummary').textContent = schoolEmail;
       showAuthView('sent');
@@ -463,9 +478,7 @@
   }
 
   function openResetPassword() {
-    if (AUTH_CONFIG.frontendOnly && !AUTH_STATE.resetToken) {
-      AUTH_STATE.resetToken = 'frontend-reset-token';
-    }
+    if (AUTH_CONFIG.frontendOnly) return;
     document.getElementById('resetPasswordForm').reset();
     setAuthMessage('resetPasswordMessage', '');
     showAuthView('reset');
@@ -482,8 +495,8 @@
     const confirmation = document.getElementById('confirmPasswordInput').value;
     const submitButton = form.querySelector('button[type="submit"]');
 
-    if (password.length < 8) {
-      setAuthMessage('resetPasswordMessage', 'Your password must contain at least 8 characters.', true);
+    if (password.length < 12) {
+      setAuthMessage('resetPasswordMessage', 'Your password must contain at least 12 characters.', true);
       return;
     }
     if (password !== confirmation) {
@@ -525,31 +538,53 @@
     showAuthView('signin');
   }
 
-  function checkEmail(event) {
+  async function checkEmail(event) {
     if (event) event.preventDefault();
-    const identifier = document.getElementById('emailInput').value.trim();
-    const account = FRONTEND_ACCOUNT_ROUTES.find(item => item.identifier === identifier);
+    const form = document.getElementById('signInForm');
+    const schoolEmailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const schoolEmail = schoolEmailInput.value.trim();
+    const password = passwordInput.value;
+    const submitButton = form.querySelector('button[type="submit"]');
 
-    if (!identifier) {
+    if (!schoolEmail || !schoolEmailInput.checkValidity()) {
       setAuthMessage('signInMessage', 'Enter your school email.', true);
       return;
     }
-    if (!account) {
-      setAuthMessage('signInMessage', 'The email or password you entered is incorrect.', true);
+    if (!password) {
+      setAuthMessage('signInMessage', 'Enter your password.', true);
+      passwordInput.focus();
       return;
     }
 
     setAuthMessage('signInMessage', '');
+    setSubmitting(submitButton, true, 'Signing in...');
     try {
+      if (!AUTH_CONFIG.apiBaseUrl) {
+        throw new Error('Sign in is available only when the local backend is running.');
+      }
+
+      const { user } = await postAuthData('/auth/login', { schoolEmail, password });
+      const dashboard = DASHBOARD_BY_ROLE[user.role];
+      if (!dashboard) throw new Error('This account does not have a portal route.');
+
+      const legacyUserId = LEGACY_USER_ID_BY_EMAIL[user.schoolEmail] || String(user.id);
       sessionStorage.setItem('edugnay_session', JSON.stringify({
-        userId: account.userId,
-        role: account.role,
-        schoolId: account.schoolId
+        userId: legacyUserId,
+        apiUserId: user.id,
+        role: user.role,
+        schoolId: user.schoolId === 1 ? 'scc' : user.schoolId,
+        apiSchoolId: user.schoolId,
+        schoolEmail: user.schoolEmail
       }));
-    } catch {
-      // Portal pages keep their current frontend fallback when storage is unavailable.
+
+      window.location.href = dashboard;
+    } catch (error) {
+      setAuthMessage('signInMessage', error.message || 'Unable to sign in right now. Please try again.', true);
+      passwordInput.focus();
+    } finally {
+      setSubmitting(submitButton, false, 'Sign In');
     }
-    window.location.href = account.dashboard;
   }
 
   document.addEventListener('DOMContentLoaded', () => {

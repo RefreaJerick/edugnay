@@ -26,6 +26,10 @@ function getDatabase() {
   throw error;
 }
 
+function isDatabaseConfigured() {
+  return Boolean(database);
+}
+
 async function checkDatabaseConnection() {
   if (!database) return false;
 
@@ -42,4 +46,4 @@ async function checkDatabaseConnection() {
   }
 }
 
-module.exports = { checkDatabaseConnection, getDatabase };
+module.exports = { checkDatabaseConnection, getDatabase, isDatabaseConfigured };

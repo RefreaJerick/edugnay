@@ -110,7 +110,7 @@ INSERT INTO users (
   (9, 1, 'parent', 'rosa.lim.par@stcolumban.edu.ph', 'rosa.lim@example.com', '$2b$12$sKIVkqkgk14ioDKjEywNDOVFPzjvUdriqJuDbpXiEIybKcryrfRx6',
    'active', NULL, 'Rosa', 'Lim', 'Rosa Lim', 'RL', '2025-06-10 08:00:00');
 
-INSERT INTO school_admin_profiles (user_id, employee_number) VALUES (2, 'ADM-2016-0001');
+INSERT INTO school_admin_profiles (user_id, employee_number, contact_number) VALUES (2, 'ADM-2016-0001', '09175552210');
 INSERT INTO teacher_profiles (user_id, employee_number, contact_number) VALUES (3, 'FAC-2019-0042', '09171230000');
 
 INSERT INTO student_profiles (
@@ -126,10 +126,10 @@ INSERT INTO student_profiles (
 
 INSERT INTO parent_profiles (
   user_id, middle_name, maiden_last_name, has_no_middle_name,
-  has_no_maiden_name, contact_number, house_street, barangay,
+  has_no_maiden_name, sex, religion, contact_number, house_street, barangay,
   city_municipality, province
 ) VALUES
-  (9, 'Santos', 'Santos', FALSE, FALSE, '09171234567', '12 Rizal Street', 'Poblacion', 'Dagupan City', 'Pangasinan');
+  (9, 'Santos', 'Santos', FALSE, FALSE, 'female', 'Catholic', '09171234567', '12 Rizal Street', 'Poblacion', 'Dagupan City', 'Pangasinan');
 
 INSERT INTO student_parent_links (student_user_id, parent_user_id, relationship)
 VALUES

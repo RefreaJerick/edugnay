@@ -307,7 +307,7 @@
             </div>
           </div>
           <div class="config-panel-body" style="display:flex;align-items:center;justify-content:space-between;">
-            <div style="font-size:13px;color:var(--gray-600);">Password last changed on April 2, 2025</div>
+            <div style="font-size:13px;color:var(--gray-600);">Use a unique password with at least 12 characters.</div>
             <button class="top-btn secondary" onclick="openModal()">
               <i data-lucide="lock" style="width:14px;height:14px;"></i> Change Password
             </button>
@@ -338,11 +338,11 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Current Password</label>
-        <input class="form-input" type="password" name="currentPassword" required placeholder="••••••••"/>
+        <input class="form-input" type="password" name="currentPassword" id="currentPasswordInput" required placeholder="••••••••"/>
       </div>
       <div class="form-group">
         <label class="form-label">New Password</label>
-        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="8" placeholder="••••••••"/>
+        <input class="form-input" type="password" name="newPassword" id="newPasswordInput" required minlength="12" placeholder="••••••••"/>
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">Confirm New Password</label>
@@ -360,24 +360,67 @@
 </div>
 
 <script>
+  const ADMIN_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  let adminApiUser = null;
+
+  function renderAdminProfile(user) {
+    if (!user) return;
+
+    const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
+    document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
+    document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
+    document.getElementById('adminEmployeeNoInput').value = user.profile?.employeeNumber || '';
+    document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
+    document.querySelectorAll('.profile-header-name, .tb-profile-name').forEach(element => { element.textContent = displayName; });
+  }
+
+  async function loadAdminProfile() {
+    if (!ADMIN_PROFILE_API_ENABLED) return;
+
+    try {
+      const response = await window.EDUGNAY_API.request('/users/me/profile');
+      if (response.user.role === 'school_admin') {
+        adminApiUser = response.user;
+        renderAdminProfile(adminApiUser);
+      }
+    } catch (error) {
+      console.warn('Unable to load the saved profile.', error.message);
+    }
+  }
+
   function openModal() { document.getElementById('changePasswordModal').classList.add('open'); }
   function closeModal() {
     document.getElementById('changePasswordModal').classList.remove('open');
     document.getElementById('passwordForm').reset();
   }
 
-  function submitPasswordChange(event) {
+  async function submitPasswordChange(event) {
     event.preventDefault();
+    const currentPass = document.getElementById('currentPasswordInput').value;
     const newPass = document.getElementById('newPasswordInput').value;
     const confirmPass = document.getElementById('confirmPasswordInput').value;
+    if (newPass.length < 12) {
+      alert('Use a password with at least 12 characters.');
+      return false;
+    }
     if (newPass !== confirmPass) {
       alert('New password and confirmation do not match.');
       return false;
     }
-    const body = Object.fromEntries(new FormData(document.getElementById('passwordForm')).entries());
-    // fetch('/admin/profile/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-    alert('Password updated.');
-    closeModal();
+    if (!ADMIN_PROFILE_API_ENABLED) {
+      alert('Password updates require the local backend.');
+      return false;
+    }
+    try {
+      await window.EDUGNAY_API.request('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+      });
+      closeModal();
+      alert('Password updated. You have been signed out on other devices.');
+    } catch (error) {
+      alert(error.message || 'Unable to update your password.');
+    }
     return false;
   }
   document.getElementById('changePasswordModal').addEventListener('click', function(e) {
@@ -450,12 +493,23 @@
     closeAvatarMenu();
   }
 
-  function submitProfile(event) {
+  async function submitProfile(event) {
     event.preventDefault();
-    const form = document.getElementById('profileForm');
-    const body = Object.fromEntries(new FormData(form).entries());
-    // fetch('/admin/profile', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-    alert('Contact info updated.');
+    const contactNumber = document.getElementById('contactNumberInput').value.trim();
+
+    try {
+      if (ADMIN_PROFILE_API_ENABLED) {
+        const response = await window.EDUGNAY_API.request('/users/me/profile', {
+          method: 'PATCH',
+          body: JSON.stringify({ contactNumber })
+        });
+        adminApiUser = response.user;
+        renderAdminProfile(adminApiUser);
+      }
+      alert('Contact info updated.');
+    } catch (error) {
+      alert(error.message || 'Unable to update your profile.');
+    }
     return false;
   }
 
@@ -488,12 +542,13 @@
   }
 
   function resetProfile() {
-    document.getElementById('contactNumberInput').value = '0917 555 2210';
+    document.getElementById('contactNumberInput').value = adminApiUser?.profile?.contactNumber || '0917 555 2210';
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderAdminAccessDetails();
     renderAdminEmployeeNumber();
+    await loadAdminProfile();
     lucide.createIcons();
   });
 </script>

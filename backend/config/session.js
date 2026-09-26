@@ -41,6 +41,11 @@ async function deleteSession(token) {
   await database.execute('DELETE FROM user_sessions WHERE session_token_hash = ?', [hashSessionToken(token)]);
 }
 
+async function deleteSessionsForUser(userId) {
+  const database = getDatabase();
+  await database.execute('DELETE FROM user_sessions WHERE user_id = ?', [userId]);
+}
+
 async function getSessionUser(token) {
   if (!token) return null;
 
@@ -93,6 +98,7 @@ module.exports = {
   clearSessionCookie,
   createSession,
   deleteSession,
+  deleteSessionsForUser,
   getSessionToken,
   getSessionUser,
   setSessionCookie
