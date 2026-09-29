@@ -150,26 +150,28 @@
 
       <div class="child-switcher" id="parentGradeChildSwitcher" aria-label="Select a student"></div>
 
-      <div class="grade-controls" aria-label="Select school year and grading period">
-        <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period"></div>
-        <label class="grade-year-control" for="parentGradeYearSelect">
-          <span>School year</span>
-          <select id="parentGradeYearSelect" aria-label="School year" disabled></select>
-        </label>
-      </div>
+      <div class="grades-workspace">
+        <div class="grade-controls" aria-label="Select school year and grading period">
+          <label class="grade-year-control" for="parentGradeYearSelect">
+            <span>School year</span>
+            <select id="parentGradeYearSelect" aria-label="School year" disabled></select>
+          </label>
+          <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period"></div>
+        </div>
 
-      <section class="panel grades-subject-panel" aria-labelledby="parentSubjectGradesTitle">
-        <div class="panel-head">
-          <div class="panel-head-title-group">
-            <div class="panel-title-icon" aria-hidden="true"><i data-lucide="book-open-check" style="width:17px;height:17px;"></i></div>
-            <div>
-              <div class="panel-title" id="parentSubjectGradesTitle">Subject grades</div>
-              <div class="panel-sub" id="parentSubjectGradesSub">Final marks by subject</div>
+        <section class="panel grades-subject-panel" aria-labelledby="parentSubjectGradesTitle">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="book-open-check" style="width:17px;height:17px;"></i></div>
+              <div>
+                <div class="panel-title" id="parentSubjectGradesTitle">Subject grades</div>
+                <div class="panel-sub" id="parentSubjectGradesSub">Final marks by subject</div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="grade-subject-list" id="parentGradeSubjectList"></div>
-      </section>
+          <div class="grade-subject-list" id="parentGradeSubjectList"></div>
+        </section>
+      </div>
 
       <div class="grades-note" role="note">
         <div class="grades-note-icon" aria-hidden="true"><i data-lucide="info" style="width:15px;height:15px;"></i></div>
@@ -485,6 +487,11 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       const switcher = document.getElementById('parentGradeChildSwitcher');
+      const gradeTabs = document.getElementById('parentGradeTabs');
+      const wideGradeLayout = window.matchMedia('(min-width: 1280px)');
+      const updateGradeTabOrientation = () => gradeTabs.setAttribute('aria-orientation', wideGradeLayout.matches ? 'vertical' : 'horizontal');
+      updateGradeTabOrientation();
+      wideGradeLayout.addEventListener('change', updateGradeTabOrientation);
       document.getElementById('parentGradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
       switcher.setAttribute('role', 'status');
       switcher.textContent = 'Loading linked children...';

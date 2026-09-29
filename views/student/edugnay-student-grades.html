@@ -151,26 +151,28 @@
         </div>
       </section>
 
-      <div class="grade-controls" aria-label="Select school year and grading period">
-        <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period"></div>
-        <label class="grade-year-control" for="gradeYearSelect">
-          <span>School year</span>
-          <select id="gradeYearSelect" aria-label="School year" disabled></select>
-        </label>
-      </div>
+      <div class="grades-workspace">
+        <div class="grade-controls" aria-label="Select school year and grading period">
+          <label class="grade-year-control" for="gradeYearSelect">
+            <span>School year</span>
+            <select id="gradeYearSelect" aria-label="School year" disabled></select>
+          </label>
+          <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period"></div>
+        </div>
 
-      <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
-        <div class="panel-head">
-          <div class="panel-head-title-group">
-            <div class="panel-title-icon" aria-hidden="true"><i data-lucide="book-open-check" style="width:17px;height:17px;"></i></div>
-            <div>
-              <div class="panel-title" id="subjectGradesTitle">Subject grades</div>
-              <div class="panel-sub">Final marks by subject</div>
+        <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
+          <div class="panel-head">
+            <div class="panel-head-title-group">
+              <div class="panel-title-icon" aria-hidden="true"><i data-lucide="book-open-check" style="width:17px;height:17px;"></i></div>
+              <div>
+                <div class="panel-title" id="subjectGradesTitle">Subject grades</div>
+                <div class="panel-sub">Final marks by subject</div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="grade-subject-list" id="gradeSubjectList" aria-live="polite"></div>
-      </section>
+          <div class="grade-subject-list" id="gradeSubjectList" aria-live="polite"></div>
+        </section>
+      </div>
 
       <div class="grades-note" role="note">
         <div class="grades-note-icon" aria-hidden="true"><i data-lucide="info" style="width:15px;height:15px;"></i></div>
@@ -374,6 +376,11 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       const list = document.getElementById('gradeSubjectList');
+      const gradeTabs = document.getElementById('gradeTabs');
+      const wideGradeLayout = window.matchMedia('(min-width: 1280px)');
+      const updateGradeTabOrientation = () => gradeTabs.setAttribute('aria-orientation', wideGradeLayout.matches ? 'vertical' : 'horizontal');
+      updateGradeTabOrientation();
+      wideGradeLayout.addEventListener('change', updateGradeTabOrientation);
       document.getElementById('gradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
       list.textContent = 'Loading published grades...';
       list.setAttribute('role', 'status');
