@@ -1,5 +1,5 @@
-const crypto = require('crypto');
 const { getDatabase } = require('../config/database');
+const { createQrPayload, createQrToken, decryptQrToken, encryptQrToken, hashQrToken } = require('../config/qrCredentials');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -27,8 +27,13 @@ function getCurrentDate() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function hashQrToken(token) {
-  return crypto.createHash('sha256').update(token).digest('hex');
+function normalizeQrToken(value) {
+  const token = typeof value === 'string' ? value.trim() : '';
+  const prefixes = ['academix:attendance:', 'edugnay:attendance:'];
+  const prefix = prefixes.find(item => token.startsWith(item));
+  const result = prefix ? token.slice(prefix.length) : token;
+  if (!result || result.length > 500) throw createError('QR data is invalid.');
+  return result;
 }
 
 function normalizeRecords(records) {
@@ -57,15 +62,32 @@ function normalizeRecords(records) {
   });
 }
 
-async function getAdvisorySection(database, teacherId, sectionId) {
+async function getTeachingSection(database, teacher, sectionId, subjectId) {
   const [sections] = await database.execute(
-    `SELECT sections.id, sections.school_id AS schoolId, sections.name
-    FROM sections
-    WHERE sections.id = ? AND sections.adviser_user_id = ? AND sections.status = 'active'
+    `SELECT sections.id, sections.school_id AS schoolId, sections.name,
+      DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
+      DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate
+    FROM sections INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
+      AND academic_years.status = 'active'
+      AND EXISTS (
+        SELECT 1 FROM section_teachers
+        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+        WHERE section_teachers.section_id = sections.id
+          AND section_teachers.teacher_user_id = ?
+          AND section_teachers.subject_id = ?
+          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
+      )
     LIMIT 1`,
-    [sectionId, teacherId]
+    [sectionId, teacher.schoolId, teacher.id, subjectId]
   );
   return sections[0] || null;
+}
+
+function assertQrAttendanceDate(section, attendanceDate) {
+  if (attendanceDate < section.academicYearStartDate || attendanceDate > section.academicYearEndDate) {
+    throw createError('QR attendance must be recorded within the section academic year.');
+  }
 }
 
 async function assertAttendanceFeatureEnabled(database, schoolId) {
@@ -89,7 +111,7 @@ async function getActiveStudentIds(database, sectionId) {
   return students.map(student => student.studentId);
 }
 
-async function getQrAttendanceData(database, section, attendanceDate) {
+async function getQrAttendanceData(database, section, subjectId, attendanceDate) {
   const [sessions] = await database.execute(
     `SELECT
       id,
@@ -98,9 +120,9 @@ async function getQrAttendanceData(database, section, attendanceDate) {
       confirmed_by_user_id AS confirmedByUserId,
       confirmed_at AS confirmedAt
     FROM attendance_sessions
-    WHERE section_id = ? AND subject_id IS NULL AND attendance_date = ?
+    WHERE section_id = ? AND subject_id = ? AND attendance_date = ? AND method = 'qr'
     LIMIT 1`,
-    [section.id, attendanceDate]
+    [section.id, subjectId, attendanceDate]
   );
   const session = sessions[0] || null;
   const [students] = await database.execute(
@@ -140,6 +162,7 @@ async function getQrAttendanceData(database, section, attendanceDate) {
   }));
   return {
     section: { id: section.id, schoolId: section.schoolId, name: section.name },
+    subjectId,
     attendanceDate,
     session: session && {
       id: session.id,
@@ -157,12 +180,14 @@ async function getQrAttendanceData(database, section, attendanceDate) {
 async function getCurrentQrAttendance(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
+    const subjectId = parseId(req.params.subjectId, 'subject ID');
     const database = getDatabase();
-    const section = await getAdvisorySection(database, req.user.id, sectionId);
+    const section = await getTeachingSection(database, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
     await assertAttendanceFeatureEnabled(database, section.schoolId);
-
-    res.status(200).json(await getQrAttendanceData(database, section, getCurrentDate()));
+    const attendanceDate = getCurrentDate();
+    assertQrAttendanceDate(section, attendanceDate);
+    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate));
   } catch (error) {
     next(error);
   }
@@ -172,21 +197,23 @@ async function startQrAttendance(req, res, next) {
   let connection;
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
+    const subjectId = parseId(req.params.subjectId, 'subject ID');
     const attendanceDate = getCurrentDate();
     const database = getDatabase();
     connection = await database.getConnection();
     await connection.beginTransaction();
 
-    const section = await getAdvisorySection(connection, req.user.id, sectionId);
+    const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
     await assertAttendanceFeatureEnabled(connection, section.schoolId);
+    assertQrAttendanceDate(section, attendanceDate);
 
     const [sessions] = await connection.execute(
       `SELECT id, method, status
       FROM attendance_sessions
-      WHERE section_id = ? AND subject_id IS NULL AND attendance_date = ?
+      WHERE section_id = ? AND subject_id = ? AND attendance_date = ?
       FOR UPDATE`,
-      [sectionId, attendanceDate]
+      [sectionId, subjectId, attendanceDate]
     );
     const existingSession = sessions[0];
     if (existingSession?.status === 'confirmed') {
@@ -199,54 +226,69 @@ async function startQrAttendance(req, res, next) {
       await connection.execute(
         `INSERT INTO attendance_sessions (
           school_id, section_id, subject_id, attendance_date, method, status, created_by_user_id
-        ) VALUES (?, ?, NULL, ?, 'qr', 'draft', ?)`,
-        [section.schoolId, sectionId, attendanceDate, req.user.id]
+        ) VALUES (?, ?, ?, ?, 'qr', 'draft', ?)`,
+        [section.schoolId, sectionId, subjectId, attendanceDate, req.user.id]
       );
     }
 
     await connection.commit();
-    res.status(200).json(await getQrAttendanceData(database, section, attendanceDate));
+    res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate));
   } catch (error) {
     if (connection) await connection.rollback();
+    if (error.code === 'ER_DUP_ENTRY') error = createError('A QR session already exists for this subject today. Reload attendance.', 409);
     next(error);
   } finally {
     connection?.release();
   }
 }
 
-async function getActiveQrSession(database, teacherId, sessionId, lockSession = false) {
+async function getActiveQrSession(database, teacher, sessionId, lockSession = false) {
   const [sessions] = await database.execute(
     `SELECT
       attendance_sessions.id,
       attendance_sessions.school_id AS schoolId,
       attendance_sessions.section_id AS sectionId,
+      attendance_sessions.subject_id AS subjectId,
       sections.name AS sectionName
     FROM attendance_sessions
     INNER JOIN sections ON sections.id = attendance_sessions.section_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
     WHERE attendance_sessions.id = ?
       AND attendance_sessions.method = 'qr'
       AND attendance_sessions.status = 'draft'
       AND attendance_sessions.attendance_date = ?
-      AND sections.adviser_user_id = ?
+      AND sections.school_id = ?
       AND sections.status = 'active'
+      AND academic_years.status = 'active'
+      AND EXISTS (
+        SELECT 1 FROM section_teachers
+        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+        WHERE section_teachers.section_id = sections.id
+          AND section_teachers.subject_id = attendance_sessions.subject_id
+          AND section_teachers.teacher_user_id = ?
+          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
+      )
+      AND attendance_sessions.attendance_date BETWEEN academic_years.start_date AND academic_years.end_date
     LIMIT 1${lockSession ? ' FOR UPDATE' : ''}`,
-    [sessionId, getCurrentDate(), teacherId]
+    [sessionId, getCurrentDate(), teacher.schoolId, teacher.id]
   );
   return sessions[0] || null;
 }
 
 async function scanQrAttendance(req, res, next) {
+  let connection;
   try {
     const sessionId = parseId(req.params.sessionId, 'attendance session ID');
-    const qrToken = typeof req.body.qrToken === 'string' ? req.body.qrToken.trim() : '';
-    if (!qrToken || qrToken.length > 500) throw createError('QR data is invalid.');
+    const qrToken = normalizeQrToken(req.body.qrToken);
 
     const database = getDatabase();
-    const session = await getActiveQrSession(database, req.user.id, sessionId);
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    const session = await getActiveQrSession(connection, req.user, sessionId, true);
     if (!session) throw createError('QR attendance session not found.', 404);
-    await assertAttendanceFeatureEnabled(database, session.schoolId);
+    await assertAttendanceFeatureEnabled(connection, session.schoolId);
 
-    const [credentials] = await database.execute(
+    const [credentials] = await connection.execute(
       `SELECT
         student_qr_credentials.id,
         student_qr_credentials.student_user_id AS studentId,
@@ -261,41 +303,44 @@ async function scanQrAttendance(req, res, next) {
     );
     const credential = credentials[0];
     if (!credential || credential.credentialStatus !== 'active') {
-      await database.execute(
+      await connection.execute(
         `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
         VALUES (?, ?, ?, ?, ?)`,
         [sessionId, credential?.id || null, credential?.studentId || null, req.user.id, credential ? 'revoked' : 'unknown']
       );
-      throw createError('This attendance QR is unknown or no longer valid.', 422);
+      await connection.commit();
+      return res.status(422).json({ message: 'This attendance QR is unknown or no longer valid.' });
     }
 
-    const [enrollments] = await database.execute(
+    const [enrollments] = await connection.execute(
       `SELECT 1 FROM section_students
       WHERE section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL
       LIMIT 1`,
       [session.sectionId, credential.studentId]
     );
     if (!enrollments[0]) {
-      await database.execute(
+      await connection.execute(
         `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
         VALUES (?, ?, ?, ?, 'not_enrolled')`,
         [sessionId, credential.id, credential.studentId, req.user.id]
       );
-      throw createError('This student is not enrolled in the selected section.', 422);
+      await connection.commit();
+      return res.status(422).json({ message: 'This student is not enrolled in the selected section.' });
     }
 
-    const [acceptedScans] = await database.execute(
+    const [acceptedScans] = await connection.execute(
       `SELECT id FROM qr_scan_events
       WHERE attendance_session_id = ? AND scanned_student_user_id = ? AND scan_result = 'accepted'
-      LIMIT 1`,
+      LIMIT 1 FOR UPDATE`,
       [sessionId, credential.studentId]
     );
     const isDuplicate = Boolean(acceptedScans[0]);
-    await database.execute(
+    await connection.execute(
       `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
       VALUES (?, ?, ?, ?, ?)`,
       [sessionId, credential.id, credential.studentId, req.user.id, isDuplicate ? 'duplicate' : 'accepted']
     );
+    await connection.commit();
 
     res.status(200).json({
       scanned: !isDuplicate,
@@ -303,7 +348,10 @@ async function scanQrAttendance(req, res, next) {
       student: { id: credential.studentId, displayName: credential.displayName, initials: credential.initials }
     });
   } catch (error) {
+    if (connection) await connection.rollback();
     next(error);
+  } finally {
+    connection?.release();
   }
 }
 
@@ -316,7 +364,7 @@ async function confirmQrAttendance(req, res, next) {
     connection = await database.getConnection();
     await connection.beginTransaction();
 
-    const session = await getActiveQrSession(connection, req.user.id, sessionId, true);
+    const session = await getActiveQrSession(connection, req.user, sessionId, true);
     if (!session) throw createError('QR attendance session not found.', 404);
     await assertAttendanceFeatureEnabled(connection, session.schoolId);
 
@@ -347,8 +395,8 @@ async function confirmQrAttendance(req, res, next) {
     );
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'method', 'qr'))`,
-      [session.schoolId, req.user.id, sessionId, getCurrentDate()]
+      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'qr'))`,
+      [session.schoolId, req.user.id, sessionId, getCurrentDate(), session.subjectId]
     );
 
     await connection.commit();
@@ -356,7 +404,7 @@ async function confirmQrAttendance(req, res, next) {
       id: session.sectionId,
       schoolId: session.schoolId,
       name: session.sectionName
-    }, getCurrentDate()));
+    }, session.subjectId, getCurrentDate()));
   } catch (error) {
     if (connection) await connection.rollback();
     next(error);
@@ -365,9 +413,54 @@ async function confirmQrAttendance(req, res, next) {
   }
 }
 
+async function findQrStudent(connection, user, studentId) {
+  if (user.role === 'student' && user.id !== studentId) throw createError('You do not have access to this QR credential.', 403);
+  if (!['student', 'school_admin'].includes(user.role)) throw createError('You do not have access to this QR credential.', 403);
+  const [students] = await connection.execute("SELECT users.id, users.school_id AS schoolId FROM users WHERE users.id = ? AND users.school_id = ? AND users.role = 'student' AND users.account_status = 'active' LIMIT 1", [studentId, user.schoolId]);
+  if (!students.length) throw createError('Student was not found.', 404);
+  return students[0];
+}
+
+async function getStudentQr(req, res, next) {
+  try {
+    const studentId = parseId(req.params.studentId, 'student ID');
+    const database = getDatabase();
+    await findQrStudent(database, req.user, studentId);
+    const [credentials] = await database.execute('SELECT id, credential_status AS credentialStatus, token_ciphertext AS tokenCiphertext, issued_at AS issuedAt, revoked_at AS revokedAt FROM student_qr_credentials WHERE student_user_id = ? LIMIT 1', [studentId]);
+    const credential = credentials[0];
+    const token = credential?.credentialStatus === 'active' ? decryptQrToken(credential.tokenCiphertext) : null;
+    res.json({
+      credential: credential && { id: credential.id, status: credential.credentialStatus, issuedAt: credential.issuedAt, revokedAt: credential.revokedAt },
+      qrPayload: token ? createQrPayload(token) : null,
+      requiresRegeneration: !token
+    });
+  } catch (error) { next(error); }
+}
+
+async function regenerateStudentQr(req, res, next) {
+  let connection;
+  try {
+    const studentId = parseId(req.params.studentId, 'student ID');
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const student = await findQrStudent(connection, req.user, studentId);
+    const token = createQrToken();
+    await connection.execute(`INSERT INTO student_qr_credentials (student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at) VALUES (?, ?, ?, 'active', NOW(), NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash), token_ciphertext=VALUES(token_ciphertext), credential_status='active', issued_at=NOW(), revoked_at=NULL`, [studentId, hashQrToken(token), encryptQrToken(token)]);
+    const [credentials] = await connection.execute('SELECT id, credential_status AS credentialStatus, issued_at AS issuedAt FROM student_qr_credentials WHERE student_user_id = ? LIMIT 1', [studentId]);
+    await connection.execute(`INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details) VALUES (?, ?, 'qr_credential_regenerated', 'student_qr_credential', ?, JSON_OBJECT('student_id', ?))`, [student.schoolId, req.user.id, credentials[0].id, studentId]);
+    await connection.commit();
+    res.json({ credential: { id: credentials[0].id, status: credentials[0].credentialStatus, issuedAt: credentials[0].issuedAt }, qrPayload: createQrPayload(token), requiresRegeneration: false });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    next(error);
+  } finally { connection?.release(); }
+}
+
 module.exports = {
   confirmQrAttendance,
   getCurrentQrAttendance,
+  getStudentQr,
+  regenerateStudentQr,
   scanQrAttendance,
   startQrAttendance
 };

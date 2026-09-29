@@ -1,6 +1,4 @@
-/* Shared grades page surface for the student and parent portals.
-   Records are rendered by each page script so this presentation can later
-   receive the same shape from an API response. */
+/* Shared Grades page styling for the student and parent portals. */
 
 .grades-page {
   min-width: 0;
@@ -9,16 +7,82 @@
   gap: 20px;
 }
 
-/* Quarter navigation uses the shared tab-bar system from modal-system.css.
-   The page stack owns the vertical rhythm so the student and parent layouts
-   use the same spacing between the overview, tabs, panel, and note. */
+/* Grade controls combine the shared period tabs and year selector. The page
+   stack owns vertical rhythm so student and parent layouts stay aligned. */
 .grades-page :is(.portal-overview, .child-switcher, .grade-tabs, .grades-subject-panel) {
   margin-bottom: 0;
+}
+
+.grade-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.grade-controls > .scroll-fade-wrap {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.grade-controls .grade-tabs {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.grade-year-control {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 190px);
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.grade-year-control select {
+  width: 100%;
+  min-width: 0;
 }
 
 .grades-page .grade-tab {
   cursor: pointer;
   user-select: none;
+}
+
+.grades-page .grade-tab:disabled,
+.grades-page .grade-tab:disabled:hover {
+  border-color: transparent !important;
+  background: var(--gray-50) !important;
+  color: var(--gray-400) !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+.grade-tab-status {
+  display: block;
+  margin-top: 2px;
+  color: var(--gray-400);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.grade-tab-status-icon {
+  display: inline-flex;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  color: var(--gray-400);
+  vertical-align: middle;
 }
 
 .grades-subject-panel .panel-head-title-group {
@@ -118,6 +182,11 @@
   color: var(--blue-mid);
 }
 
+.grade-subject-score.is-published .grade-score-value,
+.grade-subject-score.is-published .grade-score-remark {
+  color: var(--blue-mid);
+}
+
 .grade-subject-score.is-review .grade-score-value,
 .grade-subject-score.is-review .grade-score-remark {
   color: var(--orange-dark);
@@ -175,6 +244,23 @@
 }
 
 @media (max-width: 760px) {
+  .grade-controls {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .grade-year-control {
+    order: -1;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .grade-controls > .scroll-fade-wrap {
+    width: 100%;
+  }
+
   .grades-subject-panel .panel-head {
     align-items: flex-start;
   }

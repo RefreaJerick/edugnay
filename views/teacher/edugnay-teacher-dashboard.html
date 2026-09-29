@@ -177,19 +177,8 @@
               <span>My Sections</span>
               <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
             </div>
-            <div class="nav-children">
-              <a class="nav-child" onclick="navigate('section', '7-matthew')">
-                <span class="dot-7" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-                Grade 7 – St. Matthew
-              </a>
-              <a class="nav-child" onclick="navigate('section', '8-luke')">
-                <span class="dot-8" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-                Grade 8 – St. Luke
-              </a>
-              <a class="nav-child" onclick="navigate('section', '9-peter')">
-                <span class="dot-9" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-                Grade 9 – St. Peter
-              </a>
+            <div class="nav-children" data-teacher-sections-nav>
+              <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
             </div>
           </div>
 
@@ -561,6 +550,7 @@
     const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
     const journalSubjectName = journalSubject?.name || 'Values Education';
     const DASHBOARD_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
+    let DASHBOARD_TEACHER_TODOS = null;
     const TEACHER_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections();
     const TEACHER_SECTIONS = window.EDUGNAY_CONFIG.withActiveSchool([
       { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName },
@@ -605,7 +595,8 @@
       { studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
       { studentId: 'ml-006', sectionId: 'jhs-grade9-peter', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
       { studentId: 'as-008', sectionId: 'jhs-grade10-james', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
-    ]).filter(flag => HANDLED_SECTION_IDS.includes(flag.sectionId));
+    ]).filter(flag => HANDLED_SECTION_IDS.includes(flag.sectionId)
+      && (!window.EDUGNAY_API?.isBackendAvailable || flag.kind !== 'attendance'));
 
     const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
@@ -641,7 +632,13 @@
           }
     ];
 
-    const TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
+    let TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
+
+    function getTeacherTodos() {
+      return Array.isArray(DASHBOARD_TEACHER_TODOS)
+        ? DASHBOARD_TEACHER_TODOS
+        : window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID);
+    }
 
     function openTeacherMaterialModal() {
       const modal = document.getElementById('teacherMaterialUploadModal');
@@ -664,7 +661,7 @@
       if (!modal || !form) return;
       form.reset();
       const todo = todoId
-        ? window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID).find(item => item.id === String(todoId))
+        ? getTeacherTodos().find(item => item.id === String(todoId))
         : null;
       document.getElementById('teacherTodoId').value = todo?.id || '';
       document.getElementById('teacherTodoTitle').value = todo?.title || '';
@@ -692,36 +689,49 @@
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
 
-      if (todoId) {
-        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
-      } else {
-        window.EDUGNAY_CONFIG.createTodo({
-          schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-          userId: DASHBOARD_TEACHER_ID,
-          title,
-          dueDate
-        });
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        const request = todoId
+          ? window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
+          : window.EDUGNAY_API.createTask({ title, dueDate });
+        request.then(todo => {
+          if (!todo) return;
+          const index = DASHBOARD_TEACHER_TODOS?.findIndex(item => item.id === todo.id) ?? -1;
+          if (index >= 0) DASHBOARD_TEACHER_TODOS[index] = todo;
+          else DASHBOARD_TEACHER_TODOS = [...(DASHBOARD_TEACHER_TODOS || []), todo];
+          closeTeacherTodoModal();
+          renderTeacherTodos();
+        }).catch(error => alert(error.message));
+        return false;
       }
 
+      if (todoId) window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
+      else window.EDUGNAY_CONFIG.createTodo({ schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), userId: DASHBOARD_TEACHER_ID, title, dueDate });
       closeTeacherTodoModal();
       renderTeacherTodos();
       return false;
     }
 
     function toggleTeacherTodo(todoId) {
-      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+      const todo = getTeacherTodos()
         .find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
-      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
-        status: completed ? 'completed' : 'pending',
-        completedAt: completed ? new Date().toISOString() : null
-      });
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
+          .then(updated => {
+            const index = DASHBOARD_TEACHER_TODOS.findIndex(item => item.id === todo.id);
+            if (index >= 0) DASHBOARD_TEACHER_TODOS[index] = updated;
+            renderTeacherTodos();
+          })
+          .catch(error => alert(error.message));
+        return;
+      }
+      window.EDUGNAY_CONFIG.updateTodo(todo.id, { status: completed ? 'completed' : 'pending', completedAt: completed ? new Date().toISOString() : null });
       renderTeacherTodos();
     }
 
     function openTeacherTodoDeleteModal(todoId) {
-      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+      const todo = getTeacherTodos()
         .find(item => item.id === String(todoId));
       const modal = document.getElementById('teacherTodoDeleteModal');
       if (!todo || !modal) return;
@@ -743,6 +753,16 @@
     function confirmDeleteTeacherTodo() {
       const todoId = document.getElementById('teacherTodoDeleteId').value;
       if (!todoId) return;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        window.EDUGNAY_API.deleteTask(todoId)
+          .then(() => {
+            DASHBOARD_TEACHER_TODOS = DASHBOARD_TEACHER_TODOS.filter(item => item.id !== String(todoId));
+            closeTeacherTodoDeleteModal();
+            renderTeacherTodos();
+          })
+          .catch(error => alert(error.message));
+        return;
+      }
       window.EDUGNAY_CONFIG.deleteTodo(todoId);
       closeTeacherTodoDeleteModal();
       renderTeacherTodos();
@@ -846,7 +866,7 @@
       const list = document.getElementById('teacher-todo-list');
       if (!list) return;
 
-      const todos = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID)
+      const todos = getTeacherTodos()
         .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
 
       if (!todos.length) {
@@ -1026,6 +1046,11 @@
       }
     }
     document.addEventListener('DOMContentLoaded', async () => {
+      await window.EDUGNAY_COMMUNICATION_READY;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        DASHBOARD_TEACHER_TODOS = window.EDUGNAY_COMMUNICATION.tasks;
+        TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+      }
       renderTeacherDashboardData();
       renderTeacherTodos();
       initTeacherMaterialTargets();

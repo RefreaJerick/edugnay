@@ -48,12 +48,16 @@
 
 .journal-prompt-text {
   margin: 14px 0 0;
+  max-width: 80ch;
   font-size: 14px;
   color: var(--gray-700);
   line-height: 1.7;
-  font-style: normal;
-  padding: 2px 2px 0;
-  max-width: 720px;
+  font-style: italic;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow-wrap: anywhere;
 }
 
 .journal-prompt-deadline {
@@ -62,7 +66,12 @@
   gap: 6px;
   font-size: 11.5px;
   color: var(--gray-500);
-  margin-top: 14px;
+  margin-top: 12px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  flex-wrap: wrap;
 }
 
 .journal-prompt-deadline strong {
@@ -203,54 +212,18 @@
 }
 
 /* ── Submitted/locked state ── */
-.submitted-block {
-  padding: 20px 22px;
-}
-
-.submitted-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: var(--green-pale);
-  border: 1px solid #bbf7d0;
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  margin-bottom: 16px;
-}
-
-.submitted-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: #16a34a;
-  color: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.submitted-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #15803d;
-}
-
-.submitted-sub {
-  font-size: 11.5px;
-  color: #166534;
-  margin-top: 2px;
-}
-
 .submitted-entry {
+  max-width: 80ch;
   font-size: 13.5px;
   color: var(--gray-700);
   line-height: 1.7;
-  background: var(--gray-50);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  border: 1px solid var(--gray-100);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
 }
 
 .submitted-meta {
@@ -277,8 +250,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--orange-pale);
-  color: #92400e;
+  background: var(--gray-100);
+  color: var(--gray-600);
   font-size: 12px;
   font-weight: 700;
   padding: 5px 12px;
@@ -287,19 +260,36 @@
 
 .score-given-chip {
   display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  background: var(--green-pale);
-  color: #15803d;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--gray-600);
   font-size: 12px;
   font-weight: 700;
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
+  padding: 0;
+  border-radius: 0;
+}
+
+.score-given-chip strong,
+.history-reviewed-score strong {
+  color: var(--navy);
+  font-size: 13px;
 }
 
 .score-given-chip .score-max {
   font-weight: 600;
-  opacity: 0.7;
+  color: var(--gray-500);
+  opacity: 1;
+}
+
+.history-reviewed-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── Window closed state ── */
@@ -339,14 +329,29 @@
   display: flex;
   align-items: center;
   gap: 13px;
+  width: 100%;
   padding: 13px 22px;
   border-bottom: 1px solid var(--gray-100);
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   transition: background 0.15s;
   cursor: pointer;
 }
 
 .history-row:hover {
   background: var(--gray-50);
+}
+
+.history-row:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--blue-mid);
+  outline-offset: -2px;
 }
 
 .history-row:last-child {
@@ -368,15 +373,18 @@
 .history-info {
   flex: 1;
   min-width: 0;
+  display: block;
 }
 
 .history-week {
+  display: block;
   font-size: 13px;
   font-weight: 700;
   color: var(--gray-800);
 }
 
 .history-excerpt {
+  display: block;
   font-size: 11.5px;
   color: var(--gray-400);
   margin-top: 2px;
@@ -399,16 +407,6 @@
   padding: 3px 9px;
   border-radius: var(--radius-pill);
   white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
 }
 
 .badge-gray {
@@ -561,14 +559,6 @@
   }
 }
 
-@media (max-width: 520px) {
-  .submitted-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-}
-
 /* Journal page refinements */
 #current-week-panel,
 .journal-history-panel {
@@ -581,8 +571,7 @@
   padding: 19px 22px;
 }
 
-.composer-body,
-.submitted-block {
+.composer-body {
   padding: 20px 22px 22px;
 }
 
@@ -627,8 +616,31 @@
   line-height: 1.35;
 }
 
-.submitted-entry {
-  background: #fbfdff;
+.journal-submission {
+  min-width: 0;
+  padding: 20px 22px 22px;
+}
+
+.journal-submission-head .panel-title {
+  margin: 0;
+}
+
+.journal-submission-head .panel-sub {
+  margin-top: 4px;
+}
+
+.journal-submission-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0;
+  color: var(--gray-500);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.journal-submission-note svg {
+  flex: 0 0 auto;
 }
 
 .entry-modal-backdrop {
@@ -692,8 +704,11 @@
     padding: 16px;
   }
 
-  .composer-body,
-  .submitted-block {
+  .composer-body {
+    padding: 16px;
+  }
+
+  .journal-submission {
     padding: 16px;
   }
 
@@ -750,10 +765,6 @@
   .btn-submit {
     width: 100%;
     justify-content: center;
-  }
-
-  .history-score {
-    display: none;
   }
 
   .history-excerpt {

@@ -707,6 +707,7 @@
     let currentPage = 1;
     let userDetailsTrigger = null;
     let userDetailsAttendanceQrDataUrl = '';
+    let userDetailsQrStudent = null;
 
     const ROLE_META = {
       school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
@@ -719,10 +720,56 @@
     const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
     const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
 
-    // Shared account and user read services. Replace the service internals
-    // with fetch('/api/users') later without changing this page's rendering.
-    const USERS = window.EDUGNAY_CONFIG.getUsers();
+    const ADMIN_USERS_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
+    const LOCAL_USERS = window.EDUGNAY_CONFIG.getUsers();
+    let USERS = LOCAL_USERS;
+    let backendParentChildren = new Map();
+    let usersApiActive = false;
+    let usersLoading = false;
+    let usersLoadError = '';
     let importState = { role: '', parsed: null, validation: null };
+
+    function findManagedUser(userId) {
+      return USERS.find(user => String(user.id) === String(userId))
+        || (!usersApiActive ? window.EDUGNAY_CONFIG.getUserById(userId) : null);
+    }
+
+    async function getManagedUser(userId) {
+      if (usersApiActive) return window.EDUGNAY_API.getUser(userId);
+      return findManagedUser(userId);
+    }
+
+    async function loadManagedUsers() {
+      usersLoading = true;
+      usersLoadError = '';
+      renderUsers();
+
+      if (!ADMIN_USERS_API_ENABLED) {
+        usersLoading = false;
+        renderUsers();
+        return;
+      }
+
+      try {
+        const response = await window.EDUGNAY_API.getUsers({ limit: 100 });
+        USERS = response.users;
+        backendParentChildren = new Map(await Promise.all(USERS.filter(user => user.role === 'parent').map(async parent => [
+          String(parent.id), await window.EDUGNAY_API.getParentChildren(parent.id)
+        ])));
+        usersApiActive = true;
+      } catch (error) {
+        usersApiActive = false;
+        USERS = [];
+        backendParentChildren.clear();
+        usersLoadError = error.status === 401 || error.status === 403
+          ? 'Sign in as a school administrator to load user accounts.'
+          : 'User accounts could not be loaded from the backend.';
+        console.warn(usersLoadError, error.message);
+      } finally {
+        usersLoading = false;
+        renderUsers();
+      }
+    }
 
     function formatGradeLevel(value) {
       const raw = String(value || '').trim();
@@ -745,6 +792,9 @@
 
     function getLinkedStudents(user) {
       if (user?.role !== 'parent') return [];
+      if (usersApiActive) return (backendParentChildren.get(String(user.id)) || []).map(child => ({
+        studentId: child.studentId, relationship: child.relationship
+      }));
       return window.EDUGNAY_CONFIG.getParentStudentLinks()
         .filter(link => link.parentId === user.id)
         .map(link => ({
@@ -758,7 +808,11 @@
         const linkedStudents = getLinkedStudents(user);
         if (!linkedStudents.length) return 'No linked students';
         return 'Linked: ' + linkedStudents.map(link => {
-          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          if (usersApiActive) {
+            const child = (backendParentChildren.get(String(user.id)) || []).find(item => item.studentId === link.studentId);
+            return child ? child.displayName + (child.gradeLevel ? ` (${child.gradeLevel})` : '') : 'Student';
+          }
+          const student = usersApiActive ? findManagedUser(link.studentId) : window.EDUGNAY_CONFIG.getUserById(link.studentId);
           if (!student) return 'Student';
           const gradeLevel = getLinkedStudentGrade(link);
           return student.displayName + (gradeLevel ? ` (${gradeLevel})` : '');
@@ -783,7 +837,11 @@
         if (!linkedStudents.length) return 'No linked students';
         const sections = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
         return 'Linked: ' + linkedStudents.map(link => {
-          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          if (usersApiActive) {
+            const child = (backendParentChildren.get(String(user.id)) || []).find(item => item.studentId === link.studentId);
+            return child ? `${child.displayName} (${[child.gradeLevel, child.sectionName].filter(Boolean).join(' / ') || 'Unassigned'})` : 'Student';
+          }
+          const student = usersApiActive ? findManagedUser(link.studentId) : window.EDUGNAY_CONFIG.getUserById(link.studentId);
           const section = sections.find(record => record.id === student?.sectionId);
           return (student?.displayName || 'Student') + (section ? ` (${section.grade} / ${section.name})` : '');
         }).join(', ');
@@ -880,6 +938,16 @@
       updateGradeLevelFilter();
       renderSectionFilterOptions();
       const tbody = document.getElementById('tableBody');
+      if (usersLoading || usersLoadError) {
+        const message = usersLoading ? 'Loading user accounts…' : usersLoadError;
+        tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: usersLoading ? 'loader-circle' : 'triangle-alert', title: message, text: usersLoading ? 'Reading accounts from the school workspace.' : 'Refresh the page after confirming your account access.' })}</td></tr>`;
+        updateRoleSummary();
+        renderPagination(0, 1);
+        document.getElementById('rowCount').textContent = '0';
+        document.getElementById('totalUserCount').textContent = '0';
+        lucide.createIcons();
+        return;
+      }
       const filtered = getFilteredUsers();
       const showGradeLinkColumn = !['school_admin', 'teacher'].includes(activeRole);
       document.getElementById('gradeLinkHeading').hidden = !showGradeLinkColumn;
@@ -892,7 +960,9 @@
 
       tbody.innerHTML = pageUsers.length ? pageUsers.map(u => {
         const meta = ROLE_META[u.role];
-        const displayName = u.displayName;
+        const displayName = u.displayName || [u.firstName, u.lastName].filter(Boolean).join(' ');
+        const safeDisplayName = window.EDUGNAY_CONFIG.escapeHtml(displayName || 'Unnamed user');
+        const safeSchoolEmail = window.EDUGNAY_CONFIG.escapeHtml(u.schoolEmail || 'No school email');
         const initials = ((u.firstName || '?').charAt(0) + (u.lastName || '?').charAt(0)).toUpperCase();
         const statusBadge = u.status === 'active'
           ? '<span class="badge badge-green">● Active</span>'
@@ -921,18 +991,18 @@
           </div>`;
 
         return `
-      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}" tabindex="0" aria-haspopup="dialog" aria-label="View ${window.EDUGNAY_CONFIG.escapeHtml(displayName)}'s information">
+      <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}" tabindex="0" aria-haspopup="dialog" aria-label="View ${safeDisplayName}'s information">
         <td class="account-user-cell">
           <div class="user-cell">
             <div class="user-av ${meta.avatarClass}">${initials}</div>
             <div>
-              <div class="user-name">${displayName}</div>
-              <div class="user-email">${u.schoolEmail}</div>
+              <div class="user-name">${safeDisplayName}</div>
+              <div class="user-email">${safeSchoolEmail}</div>
             </div>
           </div>
         </td>
         <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
-        ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${getGradeLinkDisplay(u)}</span></td>` : ''}
+        ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${window.EDUGNAY_CONFIG.escapeHtml(getGradeLinkDisplay(u))}</span></td>` : ''}
         <td class="account-status-cell">${statusBadge}</td>
         <td class="date-cell account-date-cell">${formatAccountDate(u.createdAt)}</td>
         <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
@@ -1165,6 +1235,27 @@
       lucide.createIcons();
     }
 
+    function openBackendCredentialDeliveryModal(user, emailDelivery) {
+      if (!user) return;
+
+      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
+      document.getElementById('credentialSingleView').hidden = false;
+      document.getElementById('credentialBatchView').hidden = true;
+      document.getElementById('credentialDeliveryModalSub').textContent = `Prepared for ${user.personalEmail || user.schoolEmail || 'the account owner'}.`;
+      document.getElementById('credentialDeliveryNotice').textContent = emailDelivery?.status === 'sent'
+        ? 'The backend generated the temporary password and sent the account credentials by email.'
+        : 'The account was created, but the credential email was not sent. Check the backend SMTP configuration before the user signs in.';
+      document.getElementById('credentialSchoolEmail').textContent = user.schoolEmail || 'Not set';
+      document.getElementById('credentialTemporaryPassword').textContent = emailDelivery?.status === 'sent'
+        ? 'Sent securely by email'
+        : 'Not delivered';
+      document.getElementById('credentialQrSection').hidden = true;
+      document.getElementById('credentialQrImage').removeAttribute('src');
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      lucide.createIcons();
+    }
+
     function closeCredentialDeliveryModal() {
       const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
       backdrop.classList.remove('open');
@@ -1193,41 +1284,75 @@
       };
       if (data.employeeNo !== undefined) payload.employeeNo = data.employeeNo;
       if (data.lrn !== undefined) payload.lrn = data.lrn;
-      if (data.parentLinks !== undefined) payload.parentLinks = data.parentLinks;
+      if (data.parentLinks !== undefined && (!data.userId ||
+        data.parentLinks.length !== originalLinkedStudents.length ||
+        data.parentLinks.some(link => !originalLinkedStudents.some(saved => saved.studentId === link.studentId && saved.relationship === link.relationship)))) {
+        payload.parentLinks = data.parentLinks;
+      }
 
       try {
-        const user = data.userId
-          ? await window.EDUGNAY_CONFIG.updateUser(data.userId, payload)
-          : await window.EDUGNAY_CONFIG.createUser(payload);
-        if (!user) throw new Error('The account could not be saved.');
+        if (ADMIN_USERS_API_ENABLED && !usersApiActive) {
+          throw new Error('User accounts are unavailable from the backend. Refresh the page and try again.');
+        }
 
-        closeAccountModal();
-        renderUsers();
-        if (data.userId) {
-          alert('Account updated.');
+        if (usersApiActive) {
+          const result = data.userId
+            ? await window.EDUGNAY_API.updateUser(data.userId, payload)
+            : await window.EDUGNAY_API.createUser(payload);
+          if (!result.user) throw new Error('The account could not be saved.');
+
+          closeAccountModal();
+          await loadManagedUsers();
+          if (data.userId) {
+            alert('Account updated.');
+          } else {
+            openBackendCredentialDeliveryModal(result.user, result.emailDelivery);
+          }
         } else {
-          await openCredentialDeliveryModal(user);
+          const user = data.userId
+            ? await window.EDUGNAY_CONFIG.updateUser(data.userId, payload)
+            : await window.EDUGNAY_CONFIG.createUser(payload);
+          if (!user) throw new Error('The account could not be saved.');
+
+          closeAccountModal();
+          renderUsers();
+          if (data.userId) alert('Account updated.');
+          else await openCredentialDeliveryModal(user);
         }
       } catch (error) {
         alert(error.message || 'The account could not be saved.');
       }
     });
 
-    document.getElementById('deactivateForm').addEventListener('submit', function (e) {
+    document.getElementById('deactivateForm').addEventListener('submit', async function (e) {
       e.preventDefault();
 
       const userId = document.getElementById('deactivateUserId').value;
       const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
-      const user = window.EDUGNAY_CONFIG.getUserById(userId);
-      if (user) window.EDUGNAY_CONFIG.updateUser(user.id, { status: action === 'deactivate' ? 'inactive' : 'active' });
-
-      closeDeactivateModal();
-      renderUsers();
+      try {
+        if (usersApiActive) {
+          await window.EDUGNAY_API.setUserStatus(userId, action === 'deactivate' ? 'inactive' : 'active');
+          await loadManagedUsers();
+        } else {
+          const user = findManagedUser(userId);
+          if (user) window.EDUGNAY_CONFIG.updateUser(user.id, { status: action === 'deactivate' ? 'inactive' : 'active' });
+          renderUsers();
+        }
+        closeDeactivateModal();
+      } catch (error) {
+        alert(error.message || 'The account status could not be updated.');
+      }
 
     });
 
     document.getElementById('deleteForm').addEventListener('submit', function (e) {
       e.preventDefault();
+
+      if (usersApiActive) {
+        closeDeleteModal();
+        alert('Account deletion is planned for a later backend phase. Deactivate the account for now.');
+        return;
+      }
 
       const userId = document.getElementById('deleteUserId').value;
       const user = window.EDUGNAY_CONFIG.getUserById(userId);
@@ -1284,6 +1409,10 @@
     /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
 
     function openAddModal() {
+      if (ADMIN_USERS_API_ENABLED && (!usersApiActive || usersLoading)) {
+        alert('User accounts are still loading. Please try again in a moment.');
+        return;
+      }
       const form = document.getElementById('accountForm');
       form.reset();
 
@@ -1309,7 +1438,7 @@
 
     function openEditModal(row) {
       const userId = row.dataset.userId;
-      const user = window.EDUGNAY_CONFIG.getUserById(userId);
+      const user = findManagedUser(userId);
       if (!user) return;
 
       const form = document.getElementById('accountForm');
@@ -1332,6 +1461,7 @@
       setAccountRoleOptions(roleOptValue, true);
       document.getElementById('accountLRN').value = user.lrn || '';
       linkedStudents = getLinkedStudents(user);
+      originalLinkedStudents = linkedStudents.map(link => ({ ...link }));
       renderLinkedStudents();
       updateAccountModalFields();
 
@@ -1351,16 +1481,28 @@
 
     /* USER DETAILS MODAL */
     async function openUserDetailsModal(userId, trigger) {
-      const user = await window.EDUGNAY_CONFIG.getUserById(userId);
+      const user = await getManagedUser(userId);
       if (!user) return;
 
-      const profile = await window.EDUGNAY_CONFIG.getUserProfile(user.id);
+      const profile = user.profile || await window.EDUGNAY_CONFIG.getUserProfile(user.id);
       const sections = ['student', 'parent'].includes(user.role)
         ? await window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
         : [];
-      const parentLinks = user.role === 'parent'
-        ? (await window.EDUGNAY_CONFIG.getParentStudentLinks()).filter(link => link.parentId === user.id)
-        : [];
+      let parentLinks = [];
+      if (user.role === 'parent') {
+        if (usersApiActive) {
+          try {
+            parentLinks = await window.EDUGNAY_API.getParentChildren(user.id);
+            backendParentChildren.set(String(user.id), parentLinks);
+          } catch (error) {
+            alert(error.message || 'Linked students could not be loaded.');
+            return;
+          }
+        } else {
+          parentLinks = (await window.EDUGNAY_CONFIG.getParentStudentLinks())
+            .filter(link => String(link.parentId) === String(user.id));
+        }
+      }
       const meta = ROLE_META[user.role];
       const initials = ((user.firstName || '?').charAt(0) + (user.lastName || '?').charAt(0)).toUpperCase();
       const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
@@ -1371,7 +1513,7 @@
         .filter(Boolean)
         .join(', ');
       const setupStatus = ['student', 'parent'].includes(user.role)
-        ? (await window.EDUGNAY_CONFIG.isProfileSetupRequired(user.id) ? 'Required' : 'Complete')
+        ? (usersApiActive ? (user.setupCompletedAt ? 'Complete' : 'Required') : (await window.EDUGNAY_CONFIG.isProfileSetupRequired(user.id) ? 'Required' : 'Complete'))
         : 'Not required';
 
       const accountDetails = [
@@ -1420,14 +1562,14 @@
       }
 
       const linkedStudents = parentLinks.map(link => {
-        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        const student = usersApiActive ? link : window.EDUGNAY_CONFIG.getUserById(link.studentId);
         const studentSection = sections.find(item => item.id === student?.sectionId);
         const relationship = link.relationship
           ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
           : 'Not specified';
-        const scope = studentSection
-          ? `${studentSection.grade} / ${studentSection.name}`
-          : student?.gradeLevel || 'Unassigned';
+        const scope = usersApiActive
+          ? [student?.gradeLevel, student?.sectionName].filter(Boolean).join(' / ') || 'Unassigned'
+          : studentSection ? `${studentSection.grade} / ${studentSection.name}` : student?.gradeLevel || 'Unassigned';
         return `<div class="user-details-linked-row">
           <div>
             <div class="user-details-linked-name">${window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student')}</div>
@@ -1498,6 +1640,7 @@
         </section>` : ''}`;
 
       userDetailsTrigger = trigger || null;
+      userDetailsQrStudent = user.role === 'student' ? user : null;
       const modal = document.getElementById('userDetailsModalBackdrop');
       modalBody.scrollTop = 0;
       modal.classList.add('open');
@@ -1521,16 +1664,24 @@
       const button = document.getElementById('userDetailsAttendanceQrDownload');
       userDetailsAttendanceQrDataUrl = '';
       button.disabled = true;
-      if (!student?.attendanceQrToken) return;
+      let token = student?.attendanceQrToken || '';
+      if (usersApiActive && student?.apiId) {
+        let response = await window.EDUGNAY_API.getStudentQr(student.apiId);
+        if (response?.requiresRegeneration) {
+          response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId);
+        }
+        token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+      }
+      if (!token) return;
 
-      userDetailsAttendanceQrDataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(student.attendanceQrToken);
+      userDetailsAttendanceQrDataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(token);
       image.src = userDetailsAttendanceQrDataUrl;
       button.disabled = false;
     }
 
     function downloadUserDetailsAttendanceQr() {
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
-      const student = window.EDUGNAY_CONFIG.getUserById(studentId);
+      const student = userDetailsQrStudent || window.EDUGNAY_CONFIG.getUserById(studentId);
       if (!userDetailsAttendanceQrDataUrl || !student) return;
 
       const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
@@ -1544,7 +1695,7 @@
 
     function openRegenerateAttendanceQrModal() {
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
-      const student = window.EDUGNAY_CONFIG.getUserById(studentId);
+      const student = userDetailsQrStudent || findManagedUser(studentId);
       if (!student || student.role !== 'student') return;
 
       document.getElementById('regenerateAttendanceQrStudentName').textContent = student.displayName;
@@ -1563,8 +1714,21 @@
     document.getElementById('regenerateAttendanceQrForm').addEventListener('submit', async function (event) {
       event.preventDefault();
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
-      const student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
+      let student = userDetailsQrStudent || findManagedUser(studentId);
       if (!student) return;
+
+      if (usersApiActive) {
+        try {
+          await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
+          student = await window.EDUGNAY_API.getUser(student.apiId || student.id) || student;
+          userDetailsQrStudent = student;
+        } catch (error) {
+          alert(error.message || 'The attendance QR could not be reissued.');
+          return;
+        }
+      } else {
+        student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
+      }
 
       closeRegenerateAttendanceQrModal();
       await renderUserDetailsAttendanceQr(student);
@@ -1794,11 +1958,21 @@
     function updateSchoolEmailPreview() {
       const schoolEmail = document.getElementById('accountSchoolEmail');
       if (!schoolEmail || document.getElementById('accountUserId').value) return;
-      schoolEmail.value = window.EDUGNAY_CONFIG.generateSchoolEmail({
+      const values = {
         firstName: accountFieldValue('accountFirstName'),
         lastName: accountFieldValue('accountLastName'),
         role: ROLE_OPT_TO_TABLE[document.getElementById('accountRole').value]
-      });
+      };
+      let candidate = window.EDUGNAY_CONFIG.generateSchoolEmail(values);
+      if (usersApiActive && candidate.includes('@')) {
+        const [localPart, domain] = candidate.split('@');
+        let suffix = 2;
+        while (USERS.some(user => String(user.schoolEmail || '').toLowerCase() === candidate.toLowerCase())) {
+          candidate = `${localPart}${suffix}@${domain}`;
+          suffix += 1;
+        }
+      }
+      schoolEmail.value = candidate;
     }
 
     function updateAccountModalFields() {
@@ -1846,13 +2020,19 @@
 
     // Parent links keep canonical IDs and relationship fields only.
     let linkedStudents = []; // [{ studentId, relationship }]
+    let originalLinkedStudents = [];
+
+    function getManagedStudents() {
+      return USERS.filter(user => user.role === 'student');
+    }
 
     function handleStudentSearch(query) {
       const dropdown = document.getElementById('studentDropdown');
       if (!query.trim()) { dropdown.style.display = 'none'; return; }
 
-      const results = window.EDUGNAY_CONFIG.getStudents().filter(student =>
-        student.displayName.toLowerCase().includes(query.toLowerCase()) &&
+      const searchText = query.toLowerCase();
+      const results = getManagedStudents().filter(student =>
+        String(student.displayName || `${student.firstName || ''} ${student.lastName || ''}`).toLowerCase().includes(searchText) &&
         !linkedStudents.find(link => link.studentId === student.id)
       );
 
@@ -1879,7 +2059,7 @@
 
     function addLinkedStudent(studentId) {
       if (linkedStudents.find(link => link.studentId === studentId)) return;
-      if (!window.EDUGNAY_CONFIG.getUserById(studentId)) return;
+      if (!findManagedUser(studentId)) return;
       linkedStudents.push({ studentId, relationship: '' });
       renderLinkedStudents();
 
@@ -1913,7 +2093,7 @@
       const relationshipLabels = { mother: 'Mother', father: 'Father', guardian: 'Guardian' };
 
       list.innerHTML = linkedStudents.map(link => {
-        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        const student = findManagedUser(link.studentId);
         if (!student) return '';
         return `
       <div class="linked-student-row">
@@ -2325,7 +2505,11 @@
 
 
     document.addEventListener('DOMContentLoaded', () => {
-      renderUsers();
+      if (ADMIN_USERS_API_ENABLED) {
+        loadManagedUsers();
+      } else {
+        renderUsers();
+      }
       if (new URLSearchParams(window.location.search).get('action') === 'add') {
         openAddModal();
         window.history.replaceState(null, '', window.location.pathname);

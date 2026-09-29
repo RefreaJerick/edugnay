@@ -59,6 +59,11 @@ function normalizeLevels(values) {
   return levelCodes;
 }
 
+function schoolTypeForLevels(levelCodes) {
+  if (levelCodes.length === Object.keys(LEVEL_DEFAULTS).length) return 'k12';
+  return levelCodes.length === 1 ? levelCodes[0] : 'multi-level';
+}
+
 async function getSchoolRecord(database, schoolId) {
   const [rows] = await database.execute(
     `SELECT schools.id, schools.school_code AS schoolCode, schools.name, schools.short_name AS shortName,
@@ -76,7 +81,8 @@ async function getSchoolRecord(database, schoolId) {
 
 async function getStructure(database, schoolId) {
   const [levels] = await database.execute(
-    `SELECT id, level_code AS levelCode, display_name AS displayName, grading_period_type AS gradingPeriodType, is_enabled AS isEnabled
+    `SELECT id, level_code AS levelCode, display_name AS displayName, grading_period_type AS gradingPeriodType,
+      grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold, is_enabled AS isEnabled
     FROM school_levels WHERE school_id = ? ORDER BY id`, [schoolId]
   );
   const [grades] = await database.execute(
@@ -93,6 +99,7 @@ async function getStructure(database, schoolId) {
   return levels.map(level => ({
     ...level,
     isEnabled: Boolean(level.isEnabled),
+    passingGradeThreshold: Number(level.passingGradeThreshold),
     gradeLevels: grades.filter(grade => grade.schoolLevelId === level.id).map(grade => ({ ...grade, isEnabled: Boolean(grade.isEnabled) })),
     tracks: tracks.filter(track => track.schoolLevelId === level.id).map(track => ({ ...track, isEnabled: Boolean(track.isEnabled) }))
   }));
@@ -109,6 +116,11 @@ async function getFeatures(database, schoolId) {
 
 function requireSchoolAdminSchool(req) {
   if (req.user.role !== 'school_admin' || !req.user.schoolId) throw createError('You do not have access to this resource.', 403);
+  return req.user.schoolId;
+}
+
+function requireAuthenticatedSchool(req) {
+  if (!req.user?.schoolId) throw createError('You do not have access to a school workspace.', 403);
   return req.user.schoolId;
 }
 
@@ -190,8 +202,14 @@ async function registerSchool(req, res, next) {
     await connection.execute('INSERT INTO school_admin_profiles (user_id) VALUES (?)', [adminResult.insertId]);
     await connection.commit();
     const school = await getSchoolRecord(database, schoolId);
-    const [platformAdmins] = await database.execute(`SELECT display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail FROM users WHERE role = 'platform_admin' AND account_status = 'active'`);
-    await Promise.all(platformAdmins.map(user => sendSchoolRegistrationSubmittedEmail(user, school)));
+    const [platformAdmins] = await database.execute(`SELECT id, display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail FROM users WHERE role = 'platform_admin' AND account_status = 'active'`);
+    await Promise.all(platformAdmins.map(async user => {
+      await database.execute(
+        `INSERT INTO notifications (user_id, type, title, message, target_path) VALUES (?, 'school_account', ?, ?, ?)` ,
+        [user.id, 'School account awaiting review', `${school.name} submitted a new registration.`, '/views/platform/edugnay-platform-school-accounts.html']
+      );
+      await sendSchoolRegistrationSubmittedEmail(user, school);
+    }));
     res.status(201).json({ school: { id: school.id, name: school.name, registrationStatus: school.registrationStatus, notificationEmail } });
   } catch (error) {
     if (connection) await connection.rollback();
@@ -220,8 +238,14 @@ async function reviewSchool(req, res, next) {
     );
     await connection.execute('UPDATE users SET account_status = ? WHERE school_id = ? AND role = \'school_admin\' AND account_status = \'pending\'', [approved ? 'active' : 'inactive', schoolId]);
     await connection.commit();
-    const [administrators] = await database.execute(`SELECT display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail FROM users WHERE school_id = ? AND role = 'school_admin'`, [schoolId]);
-    await Promise.all(administrators.map(user => sendSchoolRegistrationDecisionEmail(user, school, approved, reason)));
+    const [administrators] = await database.execute(`SELECT id, display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail FROM users WHERE school_id = ? AND role = 'school_admin'`, [schoolId]);
+    await Promise.all(administrators.map(async user => {
+      await database.execute(
+        `INSERT INTO notifications (user_id, type, title, message, target_path) VALUES (?, 'school_account', ?, ?, ?)` ,
+        [user.id, approved ? 'School account approved' : 'School account rejected', approved ? `${school.name} is ready for your school community.` : `${school.name} registration was rejected.`, '/views/admin/edugnay-admin-dashboard.html']
+      );
+      await sendSchoolRegistrationDecisionEmail(user, school, approved, reason);
+    }));
     res.status(200).json({ school: await getSchoolRecord(database, schoolId) });
   } catch (error) {
     if (connection) await connection.rollback();
@@ -267,7 +291,7 @@ async function updateSchoolSettings(req, res, next) {
 }
 
 async function getPortalFeatures(req, res, next) {
-  try { res.status(200).json({ features: await getFeatures(getDatabase(), requireSchoolAdminSchool(req)) }); } catch (error) { next(error); }
+  try { res.status(200).json({ features: await getFeatures(getDatabase(), requireAuthenticatedSchool(req)) }); } catch (error) { next(error); }
 }
 
 async function updatePortalFeatures(req, res, next) {
@@ -331,6 +355,7 @@ async function updateAcademicStructure(req, res, next) {
         }
       }
     }
+    await connection.execute('UPDATE schools SET school_type = ? WHERE id = ?', [schoolTypeForLevels(codes), schoolId]);
     await connection.execute(`UPDATE school_levels SET is_enabled = FALSE WHERE school_id = ? AND level_code NOT IN (${codes.map(() => '?').join(', ')})`, [schoolId, ...codes]);
     await connection.commit();
     res.status(200).json({ levels: await getStructure(getDatabase(), schoolId) });

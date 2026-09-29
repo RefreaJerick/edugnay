@@ -354,11 +354,11 @@
     : '';
 
   const AUTH_CONFIG = {
-    frontendOnly: true,
+    frontendOnly: false,
     apiBaseUrl: API_BASE_URL,
     endpoints: {
-      requestPasswordReset: '/api/auth/password-reset/request',
-      confirmPasswordReset: '/api/auth/password-reset/confirm'
+      requestPasswordReset: '/auth/password-reset/request',
+      confirmPasswordReset: '/auth/password-reset/confirm'
     }
   };
 

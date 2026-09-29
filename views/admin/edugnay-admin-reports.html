@@ -448,7 +448,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Rate</div>
-            <span style="font-size:11px;color:var(--gray-400);">Per Section · <span data-report-period-label>Current period</span></span>
+            <span style="font-size:11px;color:var(--gray-400);">Per Section · Current school year</span>
           </div>
           <div class="bar-chart grouped" id="attendance-rate-chart">
 
@@ -515,7 +515,7 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Breakdown</div>
-            <span style="font-size:11px;color:var(--gray-400);">All Sections · <span data-report-period-label>Current period</span></span>
+            <span style="font-size:11px;color:var(--gray-400);">All Sections · Current school year</span>
           </div>
           <div class="donut-wrap" id="attendance-breakdown-donut">
             <div class="donut">
@@ -639,14 +639,7 @@
     */
     function buildAttendanceReportData() {
       const source = window.EDUGNAY_CONFIG.getAttendanceRecords()
-        .filter(record => record.status !== 'pending');
-      const dailyRecords = new Map();
-
-      source.forEach(record => {
-        const key = [record.sectionId, record.studentId, record.date].join('|');
-        const current = dailyRecords.get(key);
-        if (!current || (!current.subjectId && record.subjectId)) dailyRecords.set(key, record);
-      });
+        .filter(record => record.status !== 'pending' && record.subjectId);
 
       const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
       const sectionGroups = {};
@@ -654,7 +647,7 @@
       const absenceCounts = {};
       const lateStudents = new Set();
 
-      dailyRecords.forEach(record => {
+      source.forEach(record => {
         const section = sections.find(item => item.id === record.sectionId);
         if (!section) return;
 
@@ -665,7 +658,7 @@
           attended: 0
         });
         group.total += 1;
-        if (record.status === 'present' || record.status === 'late' || record.status === 'excused') group.attended += 1;
+        if (record.status === 'present' || record.status === 'late') group.attended += 1;
         statusCounts[record.status] = (statusCounts[record.status] || 0) + 1;
         if (record.status === 'absent') absenceCounts[record.studentId] = (absenceCounts[record.studentId] || 0) + 1;
         if (record.status === 'late') lateStudents.add(record.studentId);
@@ -683,7 +676,7 @@
       });
 
       const total = Object.values(statusCounts).reduce((sum, value) => sum + value, 0);
-      const present = statusCounts.present + statusCounts.excused;
+      const present = statusCounts.present;
       const presentRate = total ? Math.round((present / total) * 100) : 0;
       const lateRate = total ? Math.round((statusCounts.late / total) * 100) : 0;
       return {
@@ -691,16 +684,20 @@
         attendanceBreakdown: total ? [
           { label: 'Present', value: presentRate, color: 'var(--green)' },
           { label: 'Late / Tardy', value: lateRate, color: 'var(--orange)' },
-          { label: 'Absent', value: Math.max(0, 100 - presentRate - lateRate), color: 'var(--red)' }
+          { label: 'Absent', value: total ? Math.round(statusCounts.absent / total * 100) : 0, color: 'var(--red)' },
+          { label: 'Excused', value: total ? Math.round(statusCounts.excused / total * 100) : 0, color: 'var(--blue-mid)' }
         ] : [],
         absenceTriggers: [
-          { label: 'Students with 3+ absences', value: Object.values(absenceCounts).filter(count => count >= 3).length, tone: 'red' },
-          { label: 'Students with late records', value: lateStudents.size, tone: 'orange' }
+          { label: 'Students with 3+ subject absences', value: Object.values(absenceCounts).filter(count => count >= 3).length, tone: 'red' },
+          { label: 'Students with late subject records', value: lateStudents.size, tone: 'orange' }
         ]
       };
     }
 
-    const ATTENDANCE_REPORT_DATA = buildAttendanceReportData();
+    const ATTENDANCE_REPORT_DATA = window.EDUGNAY_API?.isBackendAvailable
+      ? { attendanceByGrade: [], attendanceBreakdown: [], absenceTriggers: [] }
+      : buildAttendanceReportData();
+    let attendanceSummaryError = '';
     const REPORTS_DATA = {
       schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
       subjectPerformance: [
@@ -730,7 +727,7 @@
       const sectionCount = (data.attendanceByGrade || []).reduce((total, group) => total + group.rows.length, 0);
       return [
         { tone: 'green', icon: 'check-circle', badge: 'On track', trend: 'trend-up', value: `${passingRate}%`, label: 'Passing rate', sub: `${outcome.passing} of ${outcome.total} students · ${reportPeriodLabel}` },
-        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: `${attendanceRate}%`, label: 'Attendance rate', sub: `Across ${sectionCount} sections · ${reportPeriodLabel}` },
+        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: `${attendanceRate}%`, label: 'Subject attendance rate', sub: `Across ${sectionCount} sections · confirmed subject records` },
         { tone: 'red', icon: 'alert-triangle', badge: 'Needs review', trend: 'trend-down', value: (data.flaggedStudents || []).length, label: 'Flagged students', sub: 'Absences or grades below threshold' },
       ];
     }
@@ -767,6 +764,12 @@
   }
 
   function renderAttendance(data = REPORTS_DATA) {
+    if (attendanceSummaryError) {
+      ['attendance-rate-chart', 'attendance-breakdown-donut'].forEach(id => {
+        document.getElementById(id).textContent = attendanceSummaryError;
+      });
+      return;
+    }
     const byGrade = Array.isArray(data.attendanceByGrade) ? data.attendanceByGrade : [];
     const breakdown = Array.isArray(data.attendanceBreakdown) ? data.attendanceBreakdown : [];
     const triggers = Array.isArray(data.absenceTriggers) ? data.absenceTriggers : [];
@@ -849,6 +852,16 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      if (window.EDUGNAY_API?.isBackendAvailable) {
+        try {
+          Object.assign(REPORTS_DATA, await window.EDUGNAY_API.getSchoolAttendanceSummary());
+        } catch (error) {
+          attendanceSummaryError = error?.message || 'Attendance summary could not be loaded.';
+        }
+        REPORTS_DATA.flaggedStudents = REPORTS_DATA.flaggedStudents
+          .map(student => ({ ...student, reasons: student.reasons.filter(reason => reason.type !== 'absences') }))
+          .filter(student => student.reasons.length);
+      }
       const school = window.EDUGNAY_CONFIG.getActiveSchool();
       const periods = window.EDUGNAY_CONFIG.getAcademicPeriods(school.id, school.activeDivision);
       const activePeriod = periods.find(period => period.id === school.divisions?.[school.activeDivision]?.activeAcademicPeriodId);

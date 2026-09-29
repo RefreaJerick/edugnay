@@ -19,16 +19,7 @@
 
 <body data-page-title="My Grades">
 
-  <!--
-    EJS CONVERSION MAP
-    student                    -> authenticated student record
-    gradeRecords[]             -> shared records grouped by academic period
-    gradeRecords[].subjects[]  -> structured subject marks from the gradebook
-
-    The page reads the shared local source for now. Replace that getter with
-    the student grades response later and keep these render functions as the
-    view layer. Grade visibility must still be enforced by the server.
-  -->
+  <!-- Backend mode loads published grades for the authenticated student. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -160,7 +151,13 @@
         </div>
       </section>
 
-      <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Academic grading period"></div>
+      <div class="grade-controls" aria-label="Select school year and grading period">
+        <div class="grade-tabs" id="gradeTabs" role="tablist" aria-label="Grading period"></div>
+        <label class="grade-year-control" for="gradeYearSelect">
+          <span>School year</span>
+          <select id="gradeYearSelect" aria-label="School year" disabled></select>
+        </label>
+      </div>
 
       <section class="panel grades-subject-panel" aria-labelledby="subjectGradesTitle">
         <div class="panel-head">
@@ -172,7 +169,7 @@
             </div>
           </div>
         </div>
-        <div class="grade-subject-list" id="gradeSubjectList"></div>
+        <div class="grade-subject-list" id="gradeSubjectList" aria-live="polite"></div>
       </section>
 
       <div class="grades-note" role="note">
@@ -185,37 +182,91 @@
   <script>
     lucide.createIcons();
 
-    // Replace the shared getter with GET /student/grades later without
-    // changing the grade tabs or subject-row renderer.
-    const STUDENT_ID = 'jd-004';
-    const STUDENT_RECORD = window.EDUGNAY_CONFIG.getUserById(STUDENT_ID);
-    const STUDENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
-    const STUDENT_GRADE_RECORDS = window.EDUGNAY_CONFIG.getGradesForStudent(STUDENT_ID, STUDENT_SCHOOL_YEAR);
+    let STUDENT_GRADE_YEARS = [];
+    let STUDENT_GRADE_PERIODS = [];
+    let activeAcademicYearId = null;
+    let activeAcademicPeriodId = null;
+    let gradeLoading = true;
+    let gradeLoadError = '';
+    let gradeAccessDenied = false;
+    let gradeAccessRedirecting = false;
 
-    let activeAcademicPeriodId = window.EDUGNAY_CONFIG.getCurrentAcademicPeriod(STUDENT_RECORD?.schoolId, STUDENT_RECORD?.schoolLevel)?.id || STUDENT_GRADE_RECORDS[0]?.id || null;
-
-    function getSelectedAcademicPeriod() {
-      return STUDENT_GRADE_RECORDS.find(record => record.id === activeAcademicPeriodId) || STUDENT_GRADE_RECORDS[0];
+    function getDefaultAcademicYear(years) {
+      return years.find(year => year.status === 'active') || years[0] || null;
+    }
+    function getDefaultAcademicPeriod(periods) {
+      return periods.find(period => period.status === 'active')
+        || [...periods].reverse().find(period => period.status === 'closed')
+        || periods.find(period => period.status === 'history')
+        || null;
     }
 
-    function scoreClass(score) {
-      if (!isRecorded(score)) return 'is-pending';
-      if (Number(score) >= 90) return 'is-outstanding';
-      if (Number(score) >= 85) return 'is-satisfactory';
-      return 'is-review';
+    function getSelectedAcademicYear() {
+      return STUDENT_GRADE_YEARS.find(year => year.id === activeAcademicYearId) || null;
+    }
+
+    function getSelectedAcademicPeriod() {
+      return STUDENT_GRADE_PERIODS.find(record => record.id === activeAcademicPeriodId) || null;
+    }
+
+    function selectAcademicYear(yearId) {
+      const year = STUDENT_GRADE_YEARS.find(item => item.id === String(yearId));
+      if (!year) return;
+      activeAcademicYearId = year.id;
+      STUDENT_GRADE_PERIODS = year.periods;
+      activeAcademicPeriodId = getDefaultAcademicPeriod(STUDENT_GRADE_PERIODS)?.id || null;
+      renderGrades();
+    }
+
+    function renderAcademicYearSelect() {
+      const select = document.getElementById('gradeYearSelect');
+      select.innerHTML = STUDENT_GRADE_YEARS.map(year =>
+        '<option value="' + escapeHtml(year.id) + '">' + escapeHtml(year.label) + '</option>'
+      ).join('');
+      select.disabled = gradeLoading || !STUDENT_GRADE_YEARS.length || Boolean(gradeLoadError);
+      if (activeAcademicYearId) select.value = activeAcademicYearId;
     }
 
     function renderAcademicPeriodTabs() {
       const tabs = document.getElementById('gradeTabs');
-      tabs.innerHTML = STUDENT_GRADE_RECORDS.length ? STUDENT_GRADE_RECORDS.map(record => {
-        return `<button class="grade-tab ${record.id === activeAcademicPeriodId ? 'active' : ''}" type="button" role="tab" aria-selected="${record.id === activeAcademicPeriodId}" data-academic-period-id="${record.id}">
-          <span>${escapeHtml(record.label)}</span>
-        </button>`;
-      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
+      tabs.innerHTML = STUDENT_GRADE_PERIODS.map(record => {
+        const isActive = record.id === activeAcademicPeriodId;
+        const isUpcoming = record.status === 'upcoming';
+        const stateLabel = record.status === 'unconfigured' ? 'Not configured' : '';
+        return '<button class="grade-tab ' + (isActive ? 'active' : '') + '" type="button" role="tab" aria-selected="' + isActive + '"' +
+          (isUpcoming ? ' aria-label="' + escapeHtml(record.label + ', not started') + '"' : '') +
+          (record.disabled ? ' aria-disabled="true" disabled' : ' data-academic-period-id="' + escapeHtml(record.id) + '"') + '>' +
+          '<span>' + escapeHtml(record.label) + '</span>' +
+          (isUpcoming ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : '') +
+          (stateLabel ? '<small class="grade-tab-status">' + stateLabel + '</small>' : '') +
+        '</button>';
+      }).join('');
       tabs.querySelectorAll('[data-academic-period-id]').forEach(button => button.addEventListener('click', function () {
         activeAcademicPeriodId = this.dataset.academicPeriodId;
         renderGrades();
       }));
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function formatPublishedInfo(subject) {
+      const details = [];
+      if (subject.sectionName) details.push(subject.sectionName);
+      if (subject.publishedAt) {
+        const date = new Date(subject.publishedAt);
+        if (!Number.isNaN(date.getTime())) {
+          details.push('Published ' + date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }));
+        }
+      }
+      return details.join(' · ') || 'Published result';
+    }
+
+    function renderEmptyState(container, icon, title, text) {
+      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon,
+        title,
+        text: escapeHtml(text)
+      });
+      if (window.lucide) lucide.createIcons();
     }
 
     function renderSubjectGrades(record) {
@@ -223,27 +274,23 @@
       const list = document.getElementById('gradeSubjectList');
 
       if (!subjects.length) {
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'book-open-check',
-          title: 'No grades available yet',
-          text: 'Subject marks will appear here when this grading period is opened.'
-        });
-        if (window.lucide) lucide.createIcons();
+        renderEmptyState(list, 'book-open-check', 'No subjects available', 'Subjects assigned for this school year will appear here.');
         return;
       }
 
       list.innerHTML = subjects.map(subject => {
-        const recorded = isRecorded(subject.score);
-        return `<article class="grade-subject-row">
-          <div class="grade-subject-copy">
-            <div class="grade-subject-name">${escapeHtml(subject.name)}</div>
-            <div class="grade-subject-teacher">${escapeHtml(subject.teacher)}</div>
-          </div>
-          <div class="grade-subject-score ${scoreClass(subject.score)}">
-            <div class="grade-score-value">${recorded ? Number(subject.score).toFixed(1) : 'Not set'}</div>
-            <span class="grade-score-remark">${escapeHtml(subject.remark || (recorded ? 'Recorded' : 'Pending'))}</span>
-          </div>
-        </article>`;
+        const recorded = subject.finalGrade !== null && subject.finalGrade !== undefined && Number.isFinite(Number(subject.finalGrade));
+        const subtitle = recorded ? formatPublishedInfo(subject) : 'Not published';
+        return '<article class="grade-subject-row">' +
+          '<div class="grade-subject-copy">' +
+            '<div class="grade-subject-name">' + escapeHtml(subject.subjectName || 'Subject') + '</div>' +
+            '<div class="grade-subject-teacher">' + escapeHtml(subtitle) + '</div>' +
+          '</div>' +
+          '<div class="grade-subject-score ' + (recorded ? 'is-published' : 'is-pending') + '">' +
+            '<div class="grade-score-value">' + (recorded ? Number(subject.finalGrade).toFixed(1) : '—') + '</div>' +
+            '<span class="grade-score-remark">' + (recorded ? 'Published' : 'Not published') + '</span>' +
+          '</div>' +
+        '</article>';
       }).join('');
     }
 
@@ -252,22 +299,94 @@
       const tabs = document.getElementById('gradeTabs');
       const list = document.getElementById('gradeSubjectList');
       const note = document.getElementById('gradesNoteCopy');
-      if (!record) {
-        tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a grading period is released.' });
+      renderAcademicYearSelect();
+
+      if (gradeLoadError) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'circle-alert', 'Grades could not be loaded', gradeLoadError);
         note.textContent = '';
-        lucide.createIcons();
+        return;
+      }
+      if (gradeAccessDenied) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'lock-keyhole', 'Student access required', 'Sign in with a student account to view this page.');
+        note.textContent = '';
+        return;
+      }
+      const year = getSelectedAcademicYear();
+      if (!year) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'calendar', 'No school years available', 'Your enrolled school years will appear here.');
+        note.textContent = '';
         return;
       }
       renderAcademicPeriodTabs();
+      if (!STUDENT_GRADE_PERIODS.length) {
+        renderEmptyState(list, 'calendar', 'No grading periods available', 'The school has not configured grading periods for this school year.');
+        note.textContent = '';
+        return;
+      }
+      if (!record) {
+        renderEmptyState(
+          list,
+          'calendar',
+          'No grading period is active yet',
+          'The grading periods for ' + year.label + ' will be available after the school activates one.'
+        );
+        note.textContent = 'Grading periods will appear here when they are configured.';
+        return;
+      }
       renderSubjectGrades(record);
-      note.innerHTML = record.status === 'final'
-        ? '<strong>Final grading-period results.</strong> Contact your subject teacher for score details or corrections.'
-        : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the grading period is released.';
+      const heading = document.createElement('strong');
+      heading.textContent = 'Final grade status.';
+      const detail = ' Subject marks for ' + record.label + ' in ' + year.label + ' appear here when published.';
+      note.replaceChildren(heading, document.createTextNode(detail));
       lucide.createIcons();
     }
 
+    async function loadStudentGradesFromApi() {
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        throw new Error('The grades service is unavailable. Connect to the backend and reload this page.');
+      }
+      const session = await window.EDUGNAY_API.getCurrentUser();
+      if (session?.role !== 'student') {
+        gradeAccessDenied = true;
+        return;
+      }
+
+      const portal = await window.EDUGNAY_API.getPortalFeatures();
+      if (!portal?.features || !Object.hasOwn(portal.features, 'gradesEnabled')) {
+        throw new Error('Grade access could not be confirmed.');
+      }
+      if (!portal.features.gradesEnabled) {
+        gradeAccessRedirecting = true;
+        window.location.replace('./edugnay-student-dashboard.html');
+        return;
+      }
+
+      const overview = await window.EDUGNAY_API.getFinalGradesOverview();
+      STUDENT_GRADE_YEARS = window.EDUGNAY_CONFIG.buildFinalGradeYears(overview);
+      const year = getDefaultAcademicYear(STUDENT_GRADE_YEARS);
+      activeAcademicYearId = year?.id || null;
+      STUDENT_GRADE_PERIODS = year?.periods || [];
+      activeAcademicPeriodId = getDefaultAcademicPeriod(STUDENT_GRADE_PERIODS)?.id || null;
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+      const list = document.getElementById('gradeSubjectList');
+      document.getElementById('gradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
+      list.textContent = 'Loading published grades...';
+      list.setAttribute('role', 'status');
+
+      try {
+        await loadStudentGradesFromApi();
+      } catch (error) {
+        gradeLoadError = error.message || 'Published grades could not be loaded.';
+      }
+      gradeLoading = false;
+      if (gradeAccessRedirecting) return;
+
+      list.removeAttribute('role');
       renderGrades();
     });
   </script>

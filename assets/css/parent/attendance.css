@@ -280,6 +280,10 @@
   background: #16a34a;
 }
 
+.cal-day.recorded .cal-day-dot {
+  background: var(--blue-mid);
+}
+
 .cal-day.absent {
   background: var(--red-pale);
 }
@@ -1143,6 +1147,11 @@
 .attendance-calendar-panel .cal-day.present {
   border-color: #c8ead2;
   background: #f7fcf8;
+}
+
+.attendance-calendar-panel .cal-day.recorded {
+  border-color: var(--blue-pale);
+  background: var(--blue-xpale);
 }
 
 .attendance-calendar-panel .cal-day.absent {

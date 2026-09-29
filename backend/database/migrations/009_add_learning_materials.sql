@@ -1,0 +1,27 @@
+-- Apply once to existing databases. Fresh installs receive this table from schema.sql.
+CREATE TABLE IF NOT EXISTS learning_materials (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  academic_term_id BIGINT UNSIGNED NULL,
+  teacher_user_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description VARCHAR(500) NULL,
+  original_file_name VARCHAR(255) NOT NULL,
+  stored_file_name VARCHAR(100) NOT NULL,
+  file_type VARCHAR(10) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size_bytes BIGINT UNSIGNED NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  posted_at DATETIME NULL,
+  archived_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_materials_section_subject_status (section_id, subject_id, status),
+  CONSTRAINT fk_materials_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL,
+  CONSTRAINT fk_materials_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;

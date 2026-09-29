@@ -559,7 +559,14 @@
     // Shared frontend data services. Replace their internals with fetched data
     // later, then call renderAdminDashboard().
     const DASHBOARD_ADMIN_ID = 'admin-1';
+    let DASHBOARD_ADMIN_TODOS = null;
     let ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
+
+    function getAdminTodos() {
+      return Array.isArray(DASHBOARD_ADMIN_TODOS)
+        ? DASHBOARD_ADMIN_TODOS
+        : window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID);
+    }
 
     const ADMIN_SUMMARY_CARDS = [
       {
@@ -823,7 +830,7 @@
       if (!modal || !form) return;
       form.reset();
       const todo = todoId
-        ? window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID).find(item => item.id === String(todoId))
+        ? getAdminTodos().find(item => item.id === String(todoId))
         : null;
       document.getElementById('adminTodoId').value = todo?.id || '';
       document.getElementById('adminTodoTitle').value = todo?.title || '';
@@ -851,36 +858,49 @@
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
 
-      if (todoId) {
-        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
-      } else {
-        window.EDUGNAY_CONFIG.createTodo({
-          schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-          userId: DASHBOARD_ADMIN_ID,
-          title,
-          dueDate
-        });
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        const request = todoId
+          ? window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
+          : window.EDUGNAY_API.createTask({ title, dueDate });
+        request.then(todo => {
+          if (!todo) return;
+          const index = DASHBOARD_ADMIN_TODOS?.findIndex(item => item.id === todo.id) ?? -1;
+          if (index >= 0) DASHBOARD_ADMIN_TODOS[index] = todo;
+          else DASHBOARD_ADMIN_TODOS = [...(DASHBOARD_ADMIN_TODOS || []), todo];
+          closeAdminTodoModal();
+          renderAdminTodos();
+        }).catch(error => alert(error.message));
+        return false;
       }
 
+      if (todoId) window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
+      else window.EDUGNAY_CONFIG.createTodo({ schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), userId: DASHBOARD_ADMIN_ID, title, dueDate });
       closeAdminTodoModal();
       renderAdminTodos();
       return false;
     }
 
     function toggleAdminTodo(todoId) {
-      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+      const todo = getAdminTodos()
         .find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
-      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
-        status: completed ? 'completed' : 'pending',
-        completedAt: completed ? new Date().toISOString() : null
-      });
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
+          .then(updated => {
+            const index = DASHBOARD_ADMIN_TODOS.findIndex(item => item.id === todo.id);
+            if (index >= 0) DASHBOARD_ADMIN_TODOS[index] = updated;
+            renderAdminTodos();
+          })
+          .catch(error => alert(error.message));
+        return;
+      }
+      window.EDUGNAY_CONFIG.updateTodo(todo.id, { status: completed ? 'completed' : 'pending', completedAt: completed ? new Date().toISOString() : null });
       renderAdminTodos();
     }
 
     function openAdminTodoDeleteModal(todoId) {
-      const todo = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+      const todo = getAdminTodos()
         .find(item => item.id === String(todoId));
       const modal = document.getElementById('adminTodoDeleteModal');
       if (!todo || !modal) return;
@@ -902,6 +922,16 @@
     function confirmDeleteAdminTodo() {
       const todoId = document.getElementById('adminTodoDeleteId').value;
       if (!todoId) return;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        window.EDUGNAY_API.deleteTask(todoId)
+          .then(() => {
+            DASHBOARD_ADMIN_TODOS = DASHBOARD_ADMIN_TODOS.filter(item => item.id !== String(todoId));
+            closeAdminTodoDeleteModal();
+            renderAdminTodos();
+          })
+          .catch(error => alert(error.message));
+        return;
+      }
       window.EDUGNAY_CONFIG.deleteTodo(todoId);
       closeAdminTodoDeleteModal();
       renderAdminTodos();
@@ -911,7 +941,7 @@
       const list = document.getElementById('admin-todo-list');
       if (!list) return;
 
-      const todos = window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID)
+      const todos = getAdminTodos()
         .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed'));
 
       if (!todos.length) {
@@ -950,6 +980,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      await window.EDUGNAY_COMMUNICATION_READY;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        DASHBOARD_ADMIN_TODOS = window.EDUGNAY_COMMUNICATION.tasks;
+      }
       renderAdminDashboard();
       renderAdminTodos();
       document.getElementById('addAdminTodoButton')?.addEventListener('click', () => openAdminTodoModal());
@@ -1080,13 +1114,39 @@
       document.getElementById('modalPriorityValue').value = value;
     }
 
-    function saveDashboardAnnouncementDraft() {
+    function getDashboardAnnouncementValues(status) {
       const form = document.getElementById('postAnnouncementForm');
       const formData = new FormData(form);
-      formData.append('isDraft', 'true');
+      const audiences = Array.from(form.querySelectorAll('input[name="audience"]:checked')).map(input => input.value);
+      return {
+        title: String(formData.get('title') || '').trim(),
+        body: String(formData.get('content') || '').trim(),
+        priority: String(formData.get('priority') || 'normal') === 'low' ? 'normal' : String(formData.get('priority') || 'normal'),
+        audiences: audiences.length ? audiences : ['all'],
+        status
+      };
+    }
 
-      // TODO on backend conversion: submit this payload with isDraft=true.
-      console.log('Saving announcement draft:', Object.fromEntries(formData));
+    async function saveDashboardAnnouncement(status) {
+      const form = document.getElementById('postAnnouncementForm');
+      const values = getDashboardAnnouncementValues(status);
+      if (!values.title || !values.body) {
+        alert('Enter an announcement title and content.');
+        return;
+      }
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        await window.EDUGNAY_API.createAnnouncement(values);
+      } else {
+        window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
+      }
+      form.reset();
+      document.getElementById('modalPriorityValue').value = 'normal';
+      closeAnnouncementModal();
+      alert(status === 'draft' ? 'Announcement saved as a draft.' : 'Announcement posted.');
+    }
+
+    function saveDashboardAnnouncementDraft() {
+      saveDashboardAnnouncement('draft').catch(error => alert(error.message));
     }
 
     const modalAudienceCheckboxes = Array.from(
@@ -1108,6 +1168,11 @@
           input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
         });
       });
+    });
+
+    document.getElementById('postAnnouncementForm')?.addEventListener('submit', event => {
+      event.preventDefault();
+      saveDashboardAnnouncement('published').catch(error => alert(error.message));
     });
 
     function handleImagePreview(input, previewWrapId, placeholderId) {

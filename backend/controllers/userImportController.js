@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
 const { getDatabase } = require('../config/database');
 const { sendAccountCreatedEmail } = require('../config/email');
+const { issueStudentQrCredential } = require('../config/qrCredentials');
 
 const ROLE_ALIASES = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
 const EXPECTED_COLUMNS = {
@@ -302,7 +303,10 @@ async function importUsers(req, res, next) {
         [schoolId, role, account.schoolEmail, account.personalEmail, passwordHash, account.firstName, account.lastName, displayName, initials]
       );
       account.id = result.insertId;
-      if (role === 'student') await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [account.id, account.lrn]);
+      if (role === 'student') {
+        await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [account.id, account.lrn]);
+        await issueStudentQrCredential(connection, account.id);
+      }
       if (role === 'parent') {
         await connection.execute('INSERT INTO parent_profiles (user_id) VALUES (?)', [account.id]);
         for (const link of account.links) {

@@ -9,8 +9,8 @@ async function requestApi(path, options = {}) {
   if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
-    credentials: 'include',
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {})
@@ -21,13 +21,1314 @@ async function requestApi(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data?.message || 'The request could not be completed.');
     error.status = response.status;
+    error.data = data;
     throw error;
   }
 
   return data;
 }
 
-window.EDUGNAY_API = { request: requestApi };
+async function requestApiFile(path, options = {}) {
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+
+  const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
+    ...options,
+    credentials: 'include',
+    headers: options.headers || {}
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    const error = new Error(data?.message || 'The file could not be downloaded.');
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  return {
+    buffer: await response.arrayBuffer(),
+    fileName: response.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || '',
+    contentType: response.headers.get('Content-Type') || ''
+  };
+}
+
+async function requestApiMultipart(path, formData, options = {}) {
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+
+  const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
+    ...options,
+    method: options.method || 'POST',
+    body: formData,
+    credentials: 'include'
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(data?.message || 'The upload could not be completed.');
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+}
+
+function normalizeApiUser(user) {
+  if (!user || typeof user !== 'object') return null;
+
+  const profile = user.profile && typeof user.profile === 'object' ? user.profile : {};
+  return {
+    ...user,
+    id: String(user.id),
+    apiId: Number(user.id),
+    status: user.accountStatus || 'active',
+    employeeNo: profile.employeeNumber || null,
+    lrn: profile.lrn || null,
+    profile
+  };
+}
+
+async function getApiUsers(filters = {}) {
+  const params = new URLSearchParams();
+  ['role', 'status', 'search', 'page', 'limit', 'schoolId'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/users${query ? `?${query}` : ''}`);
+  return {
+    users: Array.isArray(response?.users) ? response.users.map(normalizeApiUser).filter(Boolean) : [],
+    pagination: response?.pagination || null
+  };
+}
+
+async function getApiUser(userId) {
+  const numericId = Number(userId);
+  if (!Number.isInteger(numericId) || numericId < 1) return null;
+  const response = await requestApi(`/users/${numericId}`);
+  return normalizeApiUser(response?.user);
+}
+
+async function getApiParentChildren(parentId) {
+  const path = parentId == null ? '/users/me/children' : `/users/${Number(parentId)}/children`;
+  const response = await requestApi(path);
+  return Array.isArray(response?.children) ? response.children : [];
+}
+
+async function getApiStudentParents() {
+  const response = await requestApi('/users/me/parents');
+  return Array.isArray(response?.parents) ? response.parents : [];
+}
+
+async function createApiUser(values = {}) {
+  const response = await requestApi('/users', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+  return {
+    user: normalizeApiUser(response?.user),
+    emailDelivery: response?.emailDelivery || null
+  };
+}
+
+async function updateApiUser(userId, values = {}) {
+  const numericId = Number(userId);
+  if (!Number.isInteger(numericId) || numericId < 1) throw new Error('The user ID is invalid.');
+  const response = await requestApi(`/users/${numericId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return {
+    user: normalizeApiUser(response?.user),
+    emailDelivery: response?.emailDelivery || null
+  };
+}
+
+async function setApiUserStatus(userId, status) {
+  const numericId = Number(userId);
+  if (!Number.isInteger(numericId) || numericId < 1) throw new Error('The user ID is invalid.');
+  const action = status === 'active' ? 'activate' : 'deactivate';
+  const response = await requestApi(`/users/${numericId}/${action}`, { method: 'POST' });
+  return {
+    user: normalizeApiUser(response?.user),
+    emailDelivery: response?.emailDelivery || null
+  };
+}
+
+async function getApiSchoolSettings() {
+  const response = await requestApi('/school/settings');
+  return response?.school || null;
+}
+
+async function updateApiSchoolSettings(values = {}) {
+  const response = await requestApi('/school/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return response?.school || null;
+}
+
+async function getApiPortalFeatures() {
+  const response = await requestApi('/school/portal-features');
+  return {
+    features: response?.features || {},
+    journalSubjectId: response?.journalSubjectId || null
+  };
+}
+
+async function updateApiPortalFeatures(values = {}) {
+  const response = await requestApi('/school/portal-features', {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return {
+    features: response?.features || {},
+    journalSubjectId: response?.journalSubjectId || null
+  };
+}
+
+async function getApiAcademicStructure() {
+  const response = await requestApi('/school/academic-structure');
+  return Array.isArray(response?.levels) ? response.levels : [];
+}
+
+async function updateApiAcademicStructure(levels = []) {
+  const response = await requestApi('/school/academic-structure', {
+    method: 'PATCH',
+    body: JSON.stringify({ levels })
+  });
+  return Array.isArray(response?.levels) ? response.levels : [];
+}
+
+async function getApiAcademicYears() {
+  const response = await requestApi('/academic-years');
+  return Array.isArray(response?.academicYears)
+    ? response.academicYears.map(normalizeApiAcademicYear)
+    : [];
+}
+
+async function getApiAcademicTerms(filters = {}) {
+  const params = new URLSearchParams();
+  ['academicYearId', 'schoolLevelId', 'status'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/academic-terms${query ? `?${query}` : ''}`);
+  return Array.isArray(response?.academicTerms)
+    ? response.academicTerms.map(normalizeApiAcademicTerm)
+    : [];
+}
+
+function normalizeApiDate(value) {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value || '').trim());
+  return match ? match[1] : (value || null);
+}
+
+function normalizeApiAcademicYear(year) {
+  return year ? {
+    ...year,
+    startDate: normalizeApiDate(year.startDate),
+    endDate: normalizeApiDate(year.endDate)
+  } : null;
+}
+
+function normalizeApiAcademicTerm(term) {
+  return term ? {
+    ...term,
+    plannedStartDate: normalizeApiDate(term.plannedStartDate),
+    plannedEndDate: normalizeApiDate(term.plannedEndDate)
+  } : null;
+}
+
+async function createApiAcademicYear(values = {}) {
+  const response = await requestApi('/academic-years', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+  return normalizeApiAcademicYear(response?.academicYear);
+}
+
+async function updateApiAcademicYear(yearId, values = {}) {
+  const response = await requestApi(`/academic-years/${Number(yearId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return normalizeApiAcademicYear(response?.academicYear);
+}
+
+async function createApiAcademicTerm(values = {}) {
+  const response = await requestApi('/academic-terms', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+  return normalizeApiAcademicTerm(response?.academicTerm);
+}
+
+async function updateApiAcademicTerm(termId, values = {}) {
+  const response = await requestApi(`/academic-terms/${Number(termId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return normalizeApiAcademicTerm(response?.academicTerm);
+}
+
+async function activateApiAcademicTerm(termId) {
+  const response = await requestApi(`/academic-terms/${Number(termId)}/activate`, { method: 'POST' });
+  return normalizeApiAcademicTerm(response?.academicTerm);
+}
+
+async function completeApiAcademicTerm(termId) {
+  const response = await requestApi(`/academic-terms/${Number(termId)}/complete`, { method: 'POST' });
+  return normalizeApiAcademicTerm(response?.academicTerm);
+}
+
+async function extendApiAcademicTerm(termId, values = {}) {
+  const response = await requestApi(`/academic-terms/${Number(termId)}/extend`, {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+  return normalizeApiAcademicTerm(response?.academicTerm);
+}
+
+function normalizeApiAssignment(record) {
+  if (!record) return null;
+  const dueDate = String(record.dueAt || '').slice(0, 10) || null;
+  return {
+    ...record,
+    id: String(record.id),
+    apiId: Number(record.id),
+    schoolId: Number(record.schoolId) === 1 ? 'scc' : String(record.schoolId || ''),
+    sectionId: String(record.sectionId),
+    subjectId: String(record.subjectId),
+    teacherId: String(record.teacherUserId || ''),
+    teacher: record.teacherName || '',
+    subject: record.subjectName || '',
+    subjectName: record.subjectName || '',
+    academicPeriodId: record.academicTermId ? String(record.academicTermId) : null,
+    categoryId: record.gradingCategoryCode || (record.gradingCategoryId ? String(record.gradingCategoryId) : null),
+    instructions: record.description || null,
+    assignedDate: dueDate,
+    dueDate,
+    onlineSubmissionEnabled: record.onlineSubmissionEnabled === undefined
+      ? true
+      : Boolean(record.onlineSubmissionEnabled),
+    maxScore: record.maxScore === null || record.maxScore === undefined ? null : Number(record.maxScore)
+  };
+}
+
+async function getApiAssignments(filters = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'subjectId', 'status'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/assignments${query ? `?${query}` : ''}`);
+  return (response?.assignments || []).map(normalizeApiAssignment).filter(Boolean);
+}
+
+async function getApiParentAssignmentActivity(studentId, date) {
+  const numericStudentId = Number(studentId);
+  if (!Number.isSafeInteger(numericStudentId) || numericStudentId < 1) throw new Error('The student ID is invalid.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) throw new Error('The activity date is invalid.');
+  const params = new URLSearchParams({ studentId: String(numericStudentId), date });
+  const response = await requestApi(`/assignments/activity?${params.toString()}`);
+  return Array.isArray(response?.assignments) ? response.assignments.map(assignment => ({
+    ...assignment,
+    id: String(assignment.id),
+    subjectId: String(assignment.subjectId),
+    subject: assignment.subjectName || '',
+    task: assignment.title || '',
+    status: assignment.submissionStatus || 'pending'
+  })) : [];
+}
+
+function normalizeApiJournalPrompt(prompt) {
+  return prompt ? {
+    ...prompt,
+    id: String(prompt.id),
+    journalSubjectId: String(prompt.journalSubjectId),
+    subjectId: String(prompt.subjectId),
+    sectionId: String(prompt.sectionId),
+    gradingItemId: prompt.gradingItemId ? String(prompt.gradingItemId) : null,
+    maxScore: prompt.maxScore === null || prompt.maxScore === undefined ? null : Number(prompt.maxScore),
+    minWords: Number(prompt.minWords),
+    allowLate: prompt.allowLate === true || Number(prompt.allowLate) === 1,
+    createdByUserId: String(prompt.createdByUserId)
+  } : null;
+}
+
+function normalizeApiJournalEntry(entry) {
+  return entry ? {
+    ...entry,
+    id: String(entry.id),
+    promptId: entry.promptId ? String(entry.promptId) : null,
+    journalSubjectId: String(entry.journalSubjectId),
+    studentId: String(entry.studentId),
+    sectionId: String(entry.sectionId),
+    isLate: entry.isLate === true || Number(entry.isLate) === 1,
+    score: entry.score === null || entry.score === undefined ? null : Number(entry.score),
+    maxScore: entry.maxScore === null || entry.maxScore === undefined ? null : Number(entry.maxScore),
+    submitted: true,
+    reviewed: entry.status === 'reviewed'
+  } : null;
+}
+
+async function getApiJournalSubjects() {
+  const response = await requestApi('/journal-subjects');
+  return (response?.journalSubjects || []).map(subject => ({
+    ...subject,
+    id: String(subject.id),
+    subjectId: String(subject.subjectId)
+  }));
+}
+
+async function getApiJournalSections() {
+  const response = await requestApi('/journal-sections');
+  return (response?.sections || []).map(section => ({
+    ...section,
+    id: String(section.id),
+    schoolId: String(section.schoolId),
+    academicYearId: String(section.academicYearId),
+    studentCount: Number(section.studentCount)
+  }));
+}
+
+async function getApiJournalPrompts(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.sectionId) params.set('sectionId', String(filters.sectionId));
+  const query = params.toString();
+  const response = await requestApi(`/journal-prompts${query ? `?${query}` : ''}`);
+  return (response?.journalPrompts || []).map(normalizeApiJournalPrompt).filter(Boolean);
+}
+
+async function createApiJournalPrompt(values = {}) {
+  const response = await requestApi('/journal-prompts', {
+    method: 'POST',
+    body: JSON.stringify({
+      sectionId: Number(values.sectionId),
+      gradingItemId: values.gradingItemId ? Number(values.gradingItemId) : null,
+      weekStartDate: values.weekStartDate,
+      promptText: values.promptText,
+      opensAt: values.opensAt,
+      dueAt: values.dueAt,
+      minWords: Number(values.minWords),
+      allowLate: Boolean(values.allowLate)
+    })
+  });
+  return normalizeApiJournalPrompt(response?.journalPrompt);
+}
+
+async function updateApiJournalPrompt(promptId, values = {}) {
+  const response = await requestApi(`/journal-prompts/${Number(promptId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      gradingItemId: values.gradingItemId ? Number(values.gradingItemId) : null,
+      promptText: values.promptText,
+      opensAt: values.opensAt,
+      dueAt: values.dueAt,
+      minWords: Number(values.minWords),
+      allowLate: Boolean(values.allowLate)
+    })
+  });
+  return normalizeApiJournalPrompt(response?.journalPrompt);
+}
+
+async function getApiJournalEntries(filters = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'promptId'].forEach(name => {
+    if (filters[name]) params.set(name, String(filters[name]));
+  });
+  const query = params.toString();
+  const response = await requestApi(`/journal-entries${query ? `?${query}` : ''}`);
+  return (response?.entries || []).map(normalizeApiJournalEntry).filter(Boolean);
+}
+
+async function submitApiJournalEntry(values = {}) {
+  const response = await requestApi('/journal-entries', {
+    method: 'POST',
+    body: JSON.stringify({ promptId: Number(values.promptId), entryText: values.entryText })
+  });
+  return normalizeApiJournalEntry(response?.entry);
+}
+
+async function reviewApiJournalEntry(entryId, score) {
+  const response = await requestApi(`/journal-entries/${Number(entryId)}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ score: Number(score) })
+  });
+  return normalizeApiJournalEntry(response?.entry);
+}
+
+async function createApiAssignment(values = {}) {
+  const dueAt = values.dueAt || values.dueDate;
+  const response = await requestApi('/assignments', {
+    method: 'POST',
+    body: JSON.stringify({
+      sectionId: Number(values.sectionId),
+      subjectId: Number(values.subjectId),
+      academicTermId: values.academicTermId ? Number(values.academicTermId) : null,
+      gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
+      title: values.title,
+      description: values.description ?? values.instructions ?? null,
+      dueAt: dueAt ? `${String(dueAt).slice(0, 10)}T23:59:00` : null,
+      maxScore: values.maxScore ?? null,
+      status: values.status || 'published',
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled === true
+    })
+  });
+  return normalizeApiAssignment(response?.assignment);
+}
+
+async function updateApiAssignment(assignmentId, values = {}) {
+  const response = await requestApi(`/assignments/${Number(assignmentId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      academicTermId: values.academicTermId === undefined ? undefined : (values.academicTermId ? Number(values.academicTermId) : null),
+      gradingCategoryId: values.gradingCategoryId === undefined ? undefined : (values.gradingCategoryId ? Number(values.gradingCategoryId) : null),
+      title: values.title,
+      description: values.description ?? values.instructions,
+      dueAt: values.dueAt || values.dueDate ? `${String(values.dueAt || values.dueDate).slice(0, 10)}T23:59:00` : null,
+      maxScore: values.maxScore ?? null,
+      status: values.status,
+      onlineSubmissionEnabled: values.onlineSubmissionEnabled
+    })
+  });
+  return normalizeApiAssignment(response?.assignment);
+}
+
+async function updateApiAssignmentStudentStatus(assignmentId, studentId, status) {
+  const assignment = Number(assignmentId);
+  const student = Number(studentId);
+  if (!Number.isSafeInteger(assignment) || assignment < 1 || !Number.isSafeInteger(student) || student < 1) {
+    throw new Error('The assignment or student ID is invalid.');
+  }
+  if (!['pending', 'submitted', 'not_submitted'].includes(status)) throw new Error('The submission status is invalid.');
+
+  const response = await requestApi(`/assignments/${assignment}/students/${student}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  });
+  return response ? {
+    ...response,
+    assignmentId: String(response.assignmentId),
+    studentId: String(response.studentId),
+    status: response.submissionStatus || status
+  } : null;
+}
+
+async function deleteApiAssignment(assignmentId) {
+  await requestApi(`/assignments/${Number(assignmentId)}`, { method: 'DELETE' });
+  return true;
+}
+
+function normalizeApiGradingItem(record) {
+  if (!record) return null;
+  return {
+    ...record,
+    id: String(record.id),
+    apiId: Number(record.id),
+    sectionId: String(record.sectionId),
+    subjectId: String(record.subjectId),
+    academicTermId: String(record.academicTermId),
+    academicPeriodId: String(record.academicTermId),
+    gradingCategoryId: String(record.gradingCategoryId),
+    categoryId: record.gradingCategoryCode || String(record.gradingCategoryId),
+    cat: String(record.gradingCategoryCode || record.gradingCategoryName || '').slice(0, 3).toUpperCase(),
+    name: record.title || '',
+    max: Number(record.maxScore),
+    maxScore: Number(record.maxScore)
+  };
+}
+
+async function getApiGradingItems(filters = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'studentId'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/grading-items${query ? `?${query}` : ''}`);
+  return (response?.gradingItems || []).map(normalizeApiGradingItem).filter(Boolean);
+}
+
+async function createApiGradingItem(values = {}) {
+  const response = await requestApi('/grading-items', {
+    method: 'POST',
+    body: JSON.stringify({
+      sectionId: Number(values.sectionId),
+      subjectId: Number(values.subjectId),
+      academicTermId: Number(values.academicTermId),
+      gradingCategoryId: Number(values.gradingCategoryId),
+      title: values.title,
+      maxScore: values.maxScore
+    })
+  });
+  return normalizeApiGradingItem(response?.gradingItem);
+}
+
+async function updateApiGradingItem(gradingItemId, values = {}) {
+  const response = await requestApi(`/grading-items/${Number(gradingItemId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: values.title, maxScore: values.maxScore })
+  });
+  return normalizeApiGradingItem(response?.gradingItem);
+}
+
+function normalizeApiStudentScore(record) {
+  return record ? {
+    ...record,
+    id: String(record.id),
+    apiId: Number(record.id),
+    gradingItemId: String(record.gradingItemId),
+    studentId: String(record.studentId),
+    score: record.score === null || record.score === undefined ? null : Number(record.score)
+  } : null;
+}
+
+async function getApiStudentScores(filters = {}) {
+  const params = new URLSearchParams();
+  ['gradingItemId', 'studentId'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/student-scores${query ? `?${query}` : ''}`);
+  return (response?.studentScores || response?.scores || []).map(normalizeApiStudentScore).filter(Boolean);
+}
+
+async function saveApiStudentScore(values = {}) {
+  const response = await requestApi('/student-scores', {
+    method: 'POST',
+    body: JSON.stringify({
+      gradingItemId: Number(values.gradingItemId),
+      studentId: Number(values.studentId),
+      score: values.score === '' ? null : values.score,
+      remarks: values.remarks || null
+    })
+  });
+  return normalizeApiStudentScore(response?.studentScore || response?.score);
+}
+
+async function getApiFinalGradePreview(scope = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'subjectId', 'academicTermId'].forEach(name => {
+    if (scope[name] !== undefined && scope[name] !== null && String(scope[name]).trim()) {
+      params.set(name, String(scope[name]).trim());
+    }
+  });
+  const response = await requestApi(`/final-grades/preview?${params.toString()}`);
+  if (!response?.preview) throw new Error('The grade preview could not be loaded.');
+  return response.preview;
+}
+
+async function publishApiFinalGrades(scope = {}) {
+  const response = await requestApi('/final-grades/publish', {
+    method: 'POST',
+    body: JSON.stringify({
+      sectionId: String(scope.sectionId || ''),
+      subjectId: String(scope.subjectId || ''),
+      academicTermId: String(scope.academicTermId || '')
+    })
+  });
+  if (!response?.published) throw new Error('The grades were not published.');
+  return response;
+}
+
+function normalizeApiFinalGrade(record) {
+  return record ? {
+    ...record,
+    id: String(record.id),
+    schoolId: String(record.schoolId),
+    studentId: String(record.studentId),
+    sectionId: String(record.sectionId),
+    subjectId: String(record.subjectId),
+    academicTermId: String(record.academicTermId),
+    academicYearId: String(record.academicYearId),
+    finalGrade: Number(record.finalGrade)
+  } : null;
+}
+
+function buildApiFinalGradeYears(overview) {
+  const grades = Array.isArray(overview?.publishedGrades) ? overview.publishedGrades : [];
+  const years = Array.isArray(overview?.academicYears) ? overview.academicYears.map(year => ({ ...year })) : [];
+
+  grades.forEach(grade => {
+    if (!years.some(year => year.id === grade.academicYearId)) {
+      years.push({
+        id: grade.academicYearId,
+        label: grade.academicYearLabel,
+        status: grade.academicYearStatus || 'closed',
+        sections: []
+      });
+    }
+  });
+
+  return years.map(year => {
+    const periodsByKey = new Map();
+    (year.sections || []).forEach(section => {
+      const termsBySequence = new Map((section.terms || []).map(term => [Number(term.sequenceNumber), term]));
+      const counts = { quarterly: 4, semestral: 2, semester: 2, trimestral: 3, three_term: 3 };
+      const configuredCount = counts[section.gradingPeriodType] || 0;
+      const periodCount = year.status === 'closed' && termsBySequence.size
+        ? termsBySequence.size
+        : Math.max(configuredCount, termsBySequence.size);
+
+      for (let sequenceNumber = 1; sequenceNumber <= periodCount; sequenceNumber += 1) {
+        const term = termsBySequence.get(sequenceNumber);
+        const periodType = section.gradingPeriodType || 'period';
+        const periodKey = periodType + ':' + sequenceNumber;
+        if (!periodsByKey.has(periodKey)) {
+          const names = { quarterly: 'Quarter', semestral: 'Semester', semester: 'Semester', trimestral: 'Trimester', three_term: 'Term' };
+          periodsByKey.set(periodKey, {
+            id: year.id + ':' + periodKey,
+            label: term?.name || (names[periodType] || 'Period') + ' ' + sequenceNumber,
+            sequenceNumber,
+            status: 'unconfigured',
+            disabled: true,
+            termIds: [],
+            subjects: []
+          });
+        }
+
+        const period = periodsByKey.get(periodKey);
+        if (!term) continue;
+        if (!period.termIds.includes(term.id)) period.termIds.push(term.id);
+        if (term.status === 'active') {
+          period.status = 'active';
+          period.disabled = false;
+        } else if (term.status === 'closed' && period.status !== 'active') {
+          period.status = 'closed';
+          period.disabled = false;
+        } else if (term.status === 'upcoming' && period.status === 'unconfigured') {
+          period.status = 'upcoming';
+        }
+
+        (section.subjects || []).forEach(subject => {
+          const grade = grades.find(item => item.sectionId === section.id
+            && item.academicYearId === year.id
+            && item.academicTermId === term.id
+            && item.subjectId === subject.subjectId);
+          period.subjects.push({
+            sectionId: section.id,
+            subjectId: subject.subjectId,
+            subjectName: subject.subjectName,
+            sectionName: section.name,
+            finalGrade: grade ? grade.finalGrade : null,
+            publishedAt: grade?.publishedAt || null
+          });
+        });
+      }
+    });
+
+    grades.filter(grade => grade.academicYearId === year.id).forEach(grade => {
+      const periodType = grade.gradingPeriodType || 'period';
+      const sequenceNumber = Number(grade.academicTermSequenceNumber || 1);
+      const periodKey = periodType + ':' + sequenceNumber;
+      let period = Array.from(periodsByKey.values()).find(item => item.termIds.includes(grade.academicTermId));
+      if (!period) {
+        const names = { quarterly: 'Quarter', semestral: 'Semester', semester: 'Semester', trimestral: 'Trimester', three_term: 'Term' };
+        period = {
+          id: year.id + ':' + periodKey,
+          label: grade.academicTermName || (names[periodType] || 'Period') + ' ' + sequenceNumber,
+          sequenceNumber,
+          status: 'history',
+          disabled: false,
+          termIds: [grade.academicTermId],
+          subjects: []
+        };
+        periodsByKey.set(periodKey, period);
+      }
+      if (period.subjects.some(subject => subject.sectionId === grade.sectionId && subject.subjectId === grade.subjectId)) return;
+      period.subjects.push({
+        sectionId: grade.sectionId,
+        subjectId: grade.subjectId,
+        subjectName: grade.subjectName,
+        sectionName: grade.sectionName,
+        finalGrade: grade.finalGrade,
+        publishedAt: grade.publishedAt
+      });
+    });
+
+    return {
+      ...year,
+      periods: Array.from(periodsByKey.values()).sort((first, second) => first.sequenceNumber - second.sequenceNumber)
+    };
+  }).sort((first, second) => new Date(second.startDate || 0) - new Date(first.startDate || 0));
+}
+
+async function getApiFinalGrades(filters = {}) {
+  const params = new URLSearchParams();
+  ['studentId', 'sectionId', 'subjectId', 'academicTermId', 'academicYearId'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/final-grades${query ? `?${query}` : ''}`);
+  return Array.isArray(response?.finalGrades)
+    ? response.finalGrades.map(normalizeApiFinalGrade).filter(Boolean)
+    : [];
+}
+
+async function getApiFinalGradesOverview(studentId) {
+  const params = new URLSearchParams();
+  if (studentId !== undefined && studentId !== null) params.set('studentId', String(studentId));
+  const query = params.toString();
+  const response = await requestApi(`/final-grades/overview${query ? `?${query}` : ''}`);
+  const overview = response?.overview;
+  if (!overview) return null;
+
+  return {
+    student: overview.student ? {
+      ...overview.student,
+      id: String(overview.student.id)
+    } : null,
+    academicYears: (overview.academicYears || []).map(year => ({
+      ...year,
+      id: String(year.id),
+      sections: (year.sections || []).map(section => ({
+        ...section,
+        id: String(section.id),
+        schoolLevelId: String(section.schoolLevelId),
+        terms: (section.terms || []).map(term => ({
+          ...term,
+          id: String(term.id),
+          sequenceNumber: Number(term.sequenceNumber)
+        })),
+        subjects: (section.subjects || []).map(subject => ({
+          ...subject,
+          subjectId: String(subject.subjectId)
+        }))
+      }))
+    })),
+    current: overview.current ? {
+      ...overview.current,
+      sectionId: String(overview.current.sectionId),
+      academicYearId: String(overview.current.academicYearId),
+      schoolLevelId: String(overview.current.schoolLevelId),
+      terms: (overview.current.terms || []).map(term => ({
+        ...term,
+        id: String(term.id),
+        sequenceNumber: Number(term.sequenceNumber)
+      })),
+      subjects: (overview.current.subjects || []).map(subject => ({
+        ...subject,
+        subjectId: String(subject.subjectId)
+      }))
+    } : null,
+    publishedGrades: (overview.publishedGrades || []).map(grade => ({
+      ...grade,
+      id: String(grade.id),
+      sectionId: String(grade.sectionId),
+      subjectId: String(grade.subjectId),
+      academicTermId: String(grade.academicTermId),
+      academicYearId: String(grade.academicYearId),
+      academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
+      finalGrade: Number(grade.finalGrade)
+    }))
+  };
+}
+
+async function getApiAssignmentSubmissions(assignmentId) {
+  const response = await requestApi(`/assignments/${Number(assignmentId)}/submissions`);
+  return Array.isArray(response?.submissions) ? response.submissions.map(record => ({
+    ...record,
+    id: String(record.id),
+    assignmentId: String(record.assignmentId),
+    studentId: String(record.studentId),
+    fileUrl: record.fileUrl || null,
+    fileSize: record.fileSizeBytes,
+    submittedAt: record.submittedAt || record.updatedAt || null,
+    status: record.submissionStatus || 'pending'
+  })) : [];
+}
+
+function getApiAssignmentSubmissionDownloadUrl(assignmentId, submissionId) {
+  const assignment = Number(assignmentId);
+  const submission = Number(submissionId);
+  if (!EDUGNAY_API_BASE_URL || !Number.isSafeInteger(assignment) || assignment < 1
+    || !Number.isSafeInteger(submission) || submission < 1) return null;
+
+  return `${EDUGNAY_API_BASE_URL}/assignments/${assignment}/submissions/${submission}/download`;
+}
+
+async function getApiAssignmentSubmissionPreview(assignmentId, submissionId) {
+  const assignment = Number(assignmentId);
+  const submission = Number(submissionId);
+  if (!Number.isSafeInteger(assignment) || assignment < 1 || !Number.isSafeInteger(submission) || submission < 1) {
+    throw new Error('The submitted file could not be identified.');
+  }
+  return requestApiFile(`/assignments/${assignment}/submissions/${submission}/preview`);
+}
+
+async function submitApiAssignment(assignmentId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await requestApiMultipart(`/assignments/${Number(assignmentId)}/submissions`, formData);
+  return response ? {
+    ...response,
+    assignmentId: String(response.assignmentId),
+    studentId: String(response.studentId),
+    fileSize: response.fileSizeBytes,
+    status: response.submissionStatus || 'submitted'
+  } : null;
+}
+
+async function getApiGradingCategories(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.schoolLevelId) params.set('schoolLevelId', String(filters.schoolLevelId));
+  const query = params.toString();
+  const response = await requestApi(`/grading-categories${query ? `?${query}` : ''}`);
+  return Array.isArray(response?.gradingCategories)
+    ? response.gradingCategories.map(category => ({ ...category, weight: Number(category.weight) }))
+    : [];
+}
+
+async function updateApiGradingCategories(values = {}) {
+  const response = await requestApi('/grading-categories', {
+    method: 'PATCH',
+    body: JSON.stringify(values)
+  });
+  return {
+    ...response,
+    passingGradeThreshold: Number(response?.passingGradeThreshold),
+    gradingCategories: Array.isArray(response?.gradingCategories)
+      ? response.gradingCategories.map(category => ({ ...category, weight: Number(category.weight) }))
+      : []
+  };
+}
+
+function normalizeApiAttendanceData(data) {
+  if (!data) return null;
+  return {
+    ...data,
+    subjectId: data.subjectId == null ? null : String(data.subjectId),
+    attendanceDate: normalizeApiDate(data.attendanceDate),
+    currentDate: normalizeApiDate(data.currentDate),
+    canEdit: data.canEdit === true,
+    session: data.session ? {
+      ...data.session,
+      id: String(data.session.id),
+      status: data.session.status || 'draft'
+    } : null,
+    students: Array.isArray(data.students) ? data.students.map(student => ({
+      ...student,
+      id: String(student.id || student.studentId),
+      studentId: String(student.studentId || student.id),
+      displayName: student.displayName || '',
+      initials: student.initials || '',
+      attendanceStatus: student.attendanceStatus || null,
+      remark: student.remarks || student.remark || null,
+      isScanned: Boolean(student.isScanned)
+    })) : []
+  };
+}
+
+async function getApiSectionAttendance(sectionId, subjectId, date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}${query}`);
+  return normalizeApiAttendanceData(response);
+}
+
+async function getApiSectionAttendanceHistory(sectionId, subjectId) {
+  const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/history`);
+  return {
+    section: response?.section || null,
+    sessions: Array.isArray(response?.sessions)
+      ? response.sessions.map(session => normalizeApiAttendanceData({ ...session, section: response.section, subjectId: response.subjectId }))
+      : []
+  };
+}
+
+async function saveApiSectionAttendance(sectionId, subjectId, values = {}) {
+  const response = await requestApi(`/attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      attendanceDate: values.attendanceDate,
+      records: (values.records || []).map(record => ({
+        studentId: Number(record.studentId),
+        status: record.status,
+        remarks: record.remarks ?? record.remark ?? null
+      }))
+    })
+  });
+  return normalizeApiAttendanceData(response);
+}
+
+async function getApiQrAttendance(sectionId, subjectId) {
+  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}`);
+  return normalizeApiAttendanceData(response);
+}
+
+async function startApiQrAttendance(sectionId, subjectId) {
+  const response = await requestApi(`/qr-attendance/sections/${Number(sectionId)}/subjects/${Number(subjectId)}/start`, { method: 'POST' });
+  return normalizeApiAttendanceData(response);
+}
+
+async function scanApiQrAttendance(sessionId, qrToken) {
+  const response = await requestApi(`/qr-attendance/sessions/${Number(sessionId)}/scan`, {
+    method: 'POST',
+    body: JSON.stringify({ qrToken })
+  });
+  return response ? {
+    ...response,
+    student: response.student ? {
+      ...response.student,
+      id: String(response.student.id)
+    } : null
+  } : null;
+}
+
+async function confirmApiQrAttendance(sessionId, records = []) {
+  const response = await requestApi(`/qr-attendance/sessions/${Number(sessionId)}/confirm`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      records: records.map(record => ({
+        studentId: Number(record.studentId),
+        status: record.status,
+        remarks: record.remarks ?? record.remark ?? null
+      }))
+    })
+  });
+  return normalizeApiAttendanceData(response);
+}
+
+async function getApiParentAttendance() {
+  return requestApi('/attendance/children');
+}
+
+async function getApiSchoolAttendanceSummary() {
+  return requestApi('/attendance/school-summary');
+}
+
+async function getApiStudentQr(studentId) {
+  const response = await requestApi(`/qr-attendance/students/${Number(studentId)}/qr`);
+  return response || null;
+}
+
+async function regenerateApiStudentQr(studentId) {
+  const response = await requestApi(`/qr-attendance/students/${Number(studentId)}/qr/regenerate`, { method: 'POST' });
+  return response || null;
+}
+
+const API_NOTIFICATION_PAGE_BY_TYPE = {
+  announcement: 'announcements',
+  assignment: 'assignments',
+  grade: 'grades',
+  attendance: 'attendance',
+  report: 'reports',
+  journal: 'journal',
+  task: 'dashboard'
+};
+
+function formatApiAnnouncementTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+}
+
+function normalizeApiAnnouncement(record) {
+  if (!record) return null;
+  const audiences = Array.isArray(record.audiences) ? record.audiences : [];
+  const audienceKeys = audiences.map(audience => {
+    if (audience.type === 'school_admin') return 'admins';
+    if (audience.type === 'teacher') return 'teachers';
+    if (audience.type === 'student') return 'students';
+    if (audience.type === 'parent') return 'parents';
+    if (audience.type === 'section') return 'section';
+    return 'all';
+  });
+  const primaryAudience = audienceKeys.includes('all') ? 'all' : audienceKeys[0] || 'all';
+  const audienceMeta = {
+    all: { label: 'All Users', className: 'aud-all', icon: 'users' },
+    admins: { label: 'School Admins', className: 'aud-all', icon: 'shield-check' },
+    teachers: { label: 'Teachers', className: 'aud-teacher', icon: 'book-open' },
+    students: { label: 'Students', className: 'aud-student', icon: 'graduation-cap' },
+    parents: { label: 'Parents', className: 'aud-parent', icon: 'heart-handshake' },
+    section: { label: 'Assigned section', className: 'aud-all', icon: 'school' }
+  }[primaryAudience];
+  const priority = ['normal', 'high', 'event'].includes(record.priority) ? record.priority : 'normal';
+  const publishedAt = record.publishedAt || record.createdAt;
+
+  return {
+    id: String(record.id),
+    apiId: Number(record.id),
+    schoolId: Number(record.schoolId) === 1 ? 'scc' : String(record.schoolId || ''),
+    title: String(record.title || ''),
+    body: String(record.body || ''),
+    priority,
+    status: record.status,
+    draft: record.status === 'draft',
+    audienceKeys,
+    audienceKey: audienceKeys.join('-'),
+    audience: audiences.map(audience => {
+      if (audience.type === 'section') return 'Assigned section';
+      const key = audience.type === 'school_admin' ? 'admins'
+        : audience.type === 'teacher' ? 'teachers'
+          : audience.type === 'student' ? 'students'
+            : audience.type === 'parent' ? 'parents' : 'all';
+      return ({
+        all: 'All Users',
+        admins: 'School Admins',
+        teachers: 'Teachers',
+        students: 'Students',
+        parents: 'Parents'
+      })[key];
+    }).join(' & ') || audienceMeta.label,
+    audienceClass: audienceMeta.className,
+    audienceIcon: audienceMeta.icon,
+    author: record.authorName || '',
+    authorId: record.authorUserId ? String(record.authorUserId) : null,
+    time: formatApiAnnouncementTime(publishedAt),
+    tag: priority === 'high' ? 'Urgent' : priority === 'event' ? 'Event' : 'Normal',
+    tagClass: priority === 'high' ? 'badge-red' : priority === 'event' ? 'badge-gold' : 'badge-blue',
+    seen: record.status === 'draft' ? 'Not yet published' : 'Not yet viewed',
+    read: Boolean(record.isRead),
+    pinned: false,
+    icon: priority === 'high' ? 'alert-triangle' : priority === 'event' ? 'calendar-days' : 'megaphone',
+    iconClass: priority === 'high' ? 'icon-urgent' : priority === 'event' ? 'icon-event' : 'icon-normal',
+    imageUrl: record.imagePath || null,
+    createdAt: record.createdAt,
+    publishedAt: record.publishedAt || null,
+    access: null
+  };
+}
+
+async function getApiAnnouncements() {
+  const response = await requestApi('/announcements');
+  return (response?.announcements || []).map(normalizeApiAnnouncement).filter(Boolean);
+}
+
+async function createApiAnnouncement(values = {}) {
+  const response = await requestApi('/announcements', {
+    method: 'POST',
+    body: JSON.stringify({
+      title: values.title,
+      body: values.body,
+      priority: values.priority || 'normal',
+      status: values.status || 'published',
+      audiences: values.audiences || values.audience || ['all']
+    })
+  });
+  return normalizeApiAnnouncement(response?.announcement);
+}
+
+async function updateApiAnnouncement(announcementId, values = {}) {
+  const response = await requestApi(`/announcements/${Number(announcementId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      title: values.title,
+      body: values.body,
+      priority: values.priority,
+      status: values.status,
+      audiences: values.audiences || values.audience
+    })
+  });
+  return normalizeApiAnnouncement(response?.announcement);
+}
+
+async function deleteApiAnnouncement(announcementId) {
+  const id = Number(announcementId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid announcement ID.');
+  return requestApi(`/announcements/${id}`, { method: 'DELETE' });
+}
+
+async function markApiAnnouncementRead(announcementId) {
+  return requestApi(`/announcements/${Number(announcementId)}/read`, { method: 'POST' });
+}
+
+function normalizeApiNotification(record) {
+  if (!record) return null;
+  const type = String(record.type || 'notification').toLowerCase();
+  const page = API_NOTIFICATION_PAGE_BY_TYPE[type] || 'notifications';
+  const visual = {
+    announcement: { icon: 'megaphone', tone: 'gold', label: 'Announcement' },
+    assignment: { icon: 'clipboard-list', tone: 'blue', label: 'Assignment' },
+    grade: { icon: 'clipboard-pen', tone: 'orange', label: 'Grades' },
+    attendance: { icon: 'user-check', tone: 'red', label: 'Attendance' },
+    report: { icon: 'file-text', tone: 'orange', label: 'Report' },
+    journal: { icon: 'notebook-pen', tone: 'purple', label: 'Journal' },
+    task: { icon: 'list-checks', tone: 'blue', label: 'Task' }
+  }[type] || { icon: 'bell', tone: 'gray', label: 'Notification' };
+  return {
+    id: String(record.id),
+    apiId: Number(record.id),
+    icon: visual.icon,
+    tone: visual.tone,
+    type: visual.label,
+    read: Boolean(record.isRead),
+    title: String(record.title || ''),
+    message: String(record.message || ''),
+    link: { page },
+    createdAt: record.createdAt
+  };
+}
+
+async function getApiNotifications(limit = 50) {
+  const response = await requestApi(`/notifications?limit=${Number(limit) || 50}`);
+  return (response?.notifications || []).map(normalizeApiNotification).filter(Boolean);
+}
+
+async function markApiNotificationRead(notificationId) {
+  return requestApi(`/notifications/${Number(notificationId)}/read`, { method: 'POST' });
+}
+
+async function markAllApiNotificationsRead() {
+  return requestApi('/notifications/read-all', { method: 'POST' });
+}
+
+function normalizeApiTask(record) {
+  if (!record) return null;
+  return {
+    id: String(record.id),
+    apiId: Number(record.id),
+    title: String(record.title || ''),
+    dueDate: record.dueDate || null,
+    status: record.status === 'completed' ? 'completed' : 'pending',
+    completedAt: record.completedAt || null,
+    createdAt: record.createdAt || null,
+    updatedAt: record.updatedAt || null
+  };
+}
+
+async function getApiTasks() {
+  const response = await requestApi('/tasks');
+  return (response?.tasks || []).map(normalizeApiTask).filter(Boolean);
+}
+
+async function createApiTask(values = {}) {
+  const response = await requestApi('/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ title: values.title, dueDate: values.dueDate || null, status: values.status || 'pending' })
+  });
+  return normalizeApiTask(response?.task);
+}
+
+async function updateApiTask(taskId, values = {}) {
+  const response = await requestApi(`/tasks/${Number(taskId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      title: values.title,
+      dueDate: values.dueDate === undefined ? undefined : (values.dueDate || null),
+      status: values.status
+    })
+  });
+  return normalizeApiTask(response?.task);
+}
+
+async function deleteApiTask(taskId) {
+  return requestApi(`/tasks/${Number(taskId)}`, { method: 'DELETE' });
+}
+
+async function loadApiCommunication(role) {
+  if (!EDUGNAY_API_BASE_URL) return { backend: false, notifications: [], announcements: [], tasks: [] };
+  const [notifications, tasks, announcements] = await Promise.all([
+    getApiNotifications(),
+    getApiTasks(),
+    role === 'platform_admin' ? Promise.resolve([]) : getApiAnnouncements()
+  ]);
+  return { backend: true, notifications, announcements, tasks };
+}
+
+function setApiSchoolContext(school, features = null) {
+  window.EDUGNAY_API_SCHOOL_CONTEXT = school || null;
+  window.EDUGNAY_API_PORTAL_FEATURES = features || null;
+}
+
+function setApiPortalFeatures(features) {
+  window.EDUGNAY_API_PORTAL_FEATURES = features || null;
+}
+
+window.EDUGNAY_API = {
+  request: requestApi,
+  requestFile: requestApiFile,
+  requestMultipart: requestApiMultipart,
+  isBackendAvailable: Boolean(EDUGNAY_API_BASE_URL),
+  normalizeUser: normalizeApiUser,
+  getUsers: getApiUsers,
+  getUser: getApiUser,
+  createUser: createApiUser,
+  updateUser: updateApiUser,
+  setUserStatus: setApiUserStatus,
+  getSchoolSettings: getApiSchoolSettings,
+  updateSchoolSettings: updateApiSchoolSettings,
+  getPortalFeatures: getApiPortalFeatures,
+  updatePortalFeatures: updateApiPortalFeatures,
+  getAcademicStructure: getApiAcademicStructure,
+  updateAcademicStructure: updateApiAcademicStructure,
+  getAcademicYears: getApiAcademicYears,
+  getAcademicTerms: getApiAcademicTerms,
+  createAcademicYear: createApiAcademicYear,
+  updateAcademicYear: updateApiAcademicYear,
+  createAcademicTerm: createApiAcademicTerm,
+  updateAcademicTerm: updateApiAcademicTerm,
+  activateAcademicTerm: activateApiAcademicTerm,
+  completeAcademicTerm: completeApiAcademicTerm,
+  extendAcademicTerm: extendApiAcademicTerm,
+  getAssignments: getApiAssignments,
+  getParentAssignmentActivity: getApiParentAssignmentActivity,
+  getJournalSubjects: getApiJournalSubjects,
+  getJournalSections: getApiJournalSections,
+  getJournalPrompts: getApiJournalPrompts,
+  createJournalPrompt: createApiJournalPrompt,
+  updateJournalPrompt: updateApiJournalPrompt,
+  getJournalEntries: getApiJournalEntries,
+  submitJournalEntry: submitApiJournalEntry,
+  reviewJournalEntry: reviewApiJournalEntry,
+  createAssignment: createApiAssignment,
+  updateAssignment: updateApiAssignment,
+  updateAssignmentStudentStatus: updateApiAssignmentStudentStatus,
+  deleteAssignment: deleteApiAssignment,
+  getGradingItems: getApiGradingItems,
+  createGradingItem: createApiGradingItem,
+  updateGradingItem: updateApiGradingItem,
+  getStudentScores: getApiStudentScores,
+  saveStudentScore: saveApiStudentScore,
+  getFinalGradePreview: getApiFinalGradePreview,
+  publishFinalGrades: publishApiFinalGrades,
+  getFinalGrades: getApiFinalGrades,
+  getFinalGradesOverview: getApiFinalGradesOverview,
+  getAssignmentSubmissions: getApiAssignmentSubmissions,
+  getAssignmentSubmissionDownloadUrl: getApiAssignmentSubmissionDownloadUrl,
+  getAssignmentSubmissionPreview: getApiAssignmentSubmissionPreview,
+  submitAssignment: submitApiAssignment,
+  getGradingCategories: getApiGradingCategories,
+  updateGradingCategories: updateApiGradingCategories,
+  getSectionAttendance: getApiSectionAttendance,
+  getSectionAttendanceHistory: getApiSectionAttendanceHistory,
+  saveSectionAttendance: saveApiSectionAttendance,
+  getQrAttendance: getApiQrAttendance,
+  startQrAttendance: startApiQrAttendance,
+  scanQrAttendance: scanApiQrAttendance,
+  confirmQrAttendance: confirmApiQrAttendance,
+  getParentAttendance: getApiParentAttendance,
+  getParentChildren: getApiParentChildren,
+  getStudentParents: getApiStudentParents,
+  getSchoolAttendanceSummary: getApiSchoolAttendanceSummary,
+  getStudentQr: getApiStudentQr,
+  regenerateStudentQr: regenerateApiStudentQr,
+  getAnnouncements: getApiAnnouncements,
+  createAnnouncement: createApiAnnouncement,
+  updateAnnouncement: updateApiAnnouncement,
+  deleteAnnouncement: deleteApiAnnouncement,
+  markAnnouncementRead: markApiAnnouncementRead,
+  getNotifications: getApiNotifications,
+  markNotificationRead: markApiNotificationRead,
+  markAllNotificationsRead: markAllApiNotificationsRead,
+  getTasks: getApiTasks,
+  createTask: createApiTask,
+  updateTask: updateApiTask,
+  deleteTask: deleteApiTask,
+  loadCommunication: loadApiCommunication,
+  setSchoolContext: setApiSchoolContext,
+  setPortalFeatures: setApiPortalFeatures
+};
 
 function readFrontendSession() {
   try {
@@ -53,16 +1354,23 @@ async function getCurrentUser() {
   if (!EDUGNAY_API_BASE_URL) return window.EDUGNAY_SESSION;
 
   const response = await requestApi('/auth/me');
-  const user = response.user;
+  const user = response?.user;
+  if (!user?.id || !user.role) throw new Error('The session response is invalid.');
   const existing = readFrontendSession() || {};
   const session = {
     ...existing,
     apiUserId: user.id,
     apiSchoolId: user.schoolId,
+    userId: existing.userId || String(user.id),
+    schoolId: Number(user.schoolId) === 1 ? 'scc' : String(user.schoolId || existing.schoolId || ''),
     role: user.role,
     schoolEmail: user.schoolEmail,
+    personalEmail: user.personalEmail,
+    firstName: user.firstName,
+    lastName: user.lastName,
     displayName: user.displayName,
     initials: user.initials,
+    accountStatus: user.accountStatus,
     setupCompletedAt: user.setupCompletedAt
   };
   saveFrontendSession(session);
@@ -100,6 +1408,32 @@ function applyCurrentUserToShell(session) {
 }
 
 window.EDUGNAY_API.getCurrentUser = getCurrentUser;
+
+async function enforceBackendProfileSetup(profilePage, expectedRole) {
+  if (!EDUGNAY_API_BASE_URL) return false;
+
+  try {
+    const [session, response] = await Promise.all([
+      getCurrentUser(),
+      requestApi('/account-setup/status')
+    ]);
+    const setup = response?.setup;
+    if (session?.role !== expectedRole || !setup?.required || setup.complete) return false;
+
+    const currentPage = window.location.pathname.split('/').pop().toLowerCase();
+    const targetPage = String(profilePage || '').split('/').pop().toLowerCase();
+    if (targetPage && currentPage !== targetPage) {
+      window.location.replace(`./${targetPage}?setup=required`);
+      return true;
+    }
+  } catch (error) {
+    console.warn('Unable to verify backend account setup status.', error.message);
+  }
+
+  return false;
+}
+
+window.EDUGNAY_API.enforceProfileSetup = enforceBackendProfileSetup;
 
 /* Small rendering helpers shared by pages that build HTML from local records. */
 function escapeHtml(value) {
@@ -180,6 +1514,51 @@ function markAllNotificationsRead(storageKey, records = []) {
   return values;
 }
 
+async function markCurrentNotificationRead(id) {
+  const context = window.EDUGNAY_NOTIFICATION_CONTEXT;
+  if (!context) return null;
+  const items = typeof context.getItems === 'function'
+    ? context.getItems()
+    : (Array.isArray(context.records) ? context.records : []);
+  const record = items.find(item => String(item.id) === String(id)) || null;
+
+  if (window.EDUGNAY_COMMUNICATION?.backend) {
+    const apiNotificationId = Number(id);
+    if (!Number.isSafeInteger(apiNotificationId) || apiNotificationId < 1 || !window.EDUGNAY_API?.markNotificationRead) return null;
+    try {
+      await window.EDUGNAY_API.markNotificationRead(apiNotificationId);
+      if (record) record.read = true;
+      return record;
+    } catch (error) {
+      window.alert(error?.message || 'The notification could not be marked as read.');
+      return null;
+    }
+  }
+
+  return markNotificationRead(context.storageKey, id, items);
+}
+
+async function markCurrentNotificationsRead() {
+  const context = window.EDUGNAY_NOTIFICATION_CONTEXT;
+  if (!context) return [];
+  const items = typeof context.getItems === 'function'
+    ? context.getItems()
+    : (Array.isArray(context.records) ? context.records : []);
+
+  if (window.EDUGNAY_COMMUNICATION?.backend) {
+    if (!window.EDUGNAY_API?.markAllNotificationsRead) return items;
+    try {
+      await window.EDUGNAY_API.markAllNotificationsRead();
+      items.forEach(item => { item.read = true; });
+    } catch (error) {
+      window.alert(error?.message || 'Notifications could not be marked as read.');
+    }
+    return items;
+  }
+
+  return markAllNotificationsRead(context.storageKey, items);
+}
+
 function formatDateGroup(dateValue) {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return '';
@@ -237,14 +1616,11 @@ function applyCurrentDateToGradingBanners() {
     parentStudentLinks: 'edugnay_parent_student_links',
     attendance: 'edugnay_attendance',
     assignments: 'edugnay_assignments',
-    assignmentScores: 'edugnay_assignment_scores',
     assignmentStatuses: 'edugnay_assignment_statuses',
     assignmentSubmissions: 'edugnay_assignment_submissions',
     materials: 'edugnay_learning_materials',
     todos: 'edugnay_user_todos',
     announcements: 'edugnay_announcements',
-    grades: 'edugnay_grades',
-    journals: 'edugnay_journals',
     reports: 'edugnay_reports',
     userProfiles: 'edugnay_user_profiles',
     userProfileSeedVersion: 'edugnay_user_profile_seed_version',
@@ -1015,17 +2391,11 @@ function applyCurrentDateToGradingBanners() {
     const reopenRequests = getReopenRequests({ schoolId, academicPeriodId: periodId })
       .filter(request => sectionIds.has(request.sectionId)
         && request.status === REOPEN_REQUEST_STATUSES.PENDING);
-    const grades = readJson(schoolStorageKey(STORAGE_KEYS.grades, schoolId), GRADE_DIRECTORY)
-      .filter(record => record.schoolId === schoolId
-        && sectionIds.has(record.sectionId)
-        && record.academicPeriodId === periodId
-        && record.score == null);
-
     return {
       academicPeriodId: periodId,
       canClose: reopenRequests.length === 0,
       blockingIssues: reopenRequests.length ? [`${reopenRequests.length} reopen request${reopenRequests.length === 1 ? '' : 's'} must be resolved.`] : [],
-      warnings: grades.length ? [`${grades.length} grade record${grades.length === 1 ? '' : 's'} still have no final score.`] : []
+      warnings: []
     };
   }
 
@@ -1330,10 +2700,16 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function isGradesPageEnabled(school = getActiveSchool()) {
+    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'gradesEnabled')) {
+      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.gradesEnabled);
+    }
     return Boolean(school?.gradesPageEnabled);
   }
 
   function isNarrativeReportsEnabled(school = getActiveSchool()) {
+    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'narrativeReportsEnabled')) {
+      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.narrativeReportsEnabled);
+    }
     return Boolean(school?.narrativeReportsEnabled);
   }
 
@@ -1358,6 +2734,9 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function isJournalsEnabled(school = getActiveSchool()) {
+    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'journalsEnabled')) {
+      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.journalsEnabled && getJournalSubject(school));
+    }
     return Boolean(school?.journalsEnabled && getJournalSubject(school));
   }
 
@@ -1371,12 +2750,154 @@ function applyCurrentDateToGradingBanners() {
     );
   }
 
-  // Replace this local getter with GET /api/sections during backend integration.
+  function normalizeApiSection(record) {
+    return {
+      ...record,
+      id: String(record.id),
+      schoolId: Number(record.schoolId) === 1 ? 'scc' : String(record.schoolId || ''),
+      level: record.schoolLevelCode,
+      grade: record.gradeLevelName,
+      academicYear: record.academicYearLabel || '',
+      academicYearStatus: record.academicYearStatus || '',
+      adviserId: record.adviserUserId ? String(record.adviserUserId) : null,
+      adviserName: record.adviserName || '',
+      strand: record.strandName || '',
+      teacherAssignments: Array.isArray(record.teacherAssignments) ? record.teacherAssignments : []
+    };
+  }
+
+  async function getApiSections() {
+    const response = await requestApi('/sections');
+    return (response.sections || []).map(normalizeApiSection);
+  }
+
+  function normalizeApiSectionStudent(record) {
+    return record ? {
+      ...record,
+      id: String(record.id),
+      apiId: Number(record.id),
+      displayName: record.displayName || `${record.firstName || ''} ${record.lastName || ''}`.trim(),
+      initials: record.initials || '',
+      schoolEmail: record.schoolEmail || '',
+      lrn: record.lrn || null
+    } : null;
+  }
+
+  function normalizeApiSectionTeacher(record) {
+    return record ? {
+      ...record,
+      assignmentId: String(record.assignmentId),
+      teacherId: String(record.teacherId),
+      teacherName: record.teacherName || '',
+      teacherEmail: record.teacherEmail || '',
+      subjectId: String(record.subjectId),
+      subjectCode: record.subjectCode || '',
+      subjectName: record.subjectName || ''
+    } : null;
+  }
+
+  function normalizeApiSubject(record) {
+    return record ? {
+      ...record,
+      id: String(record.id),
+      apiId: Number(record.id),
+      schoolId: Number(record.schoolId) === 1 ? 'scc' : String(record.schoolId || ''),
+      code: record.subjectCode || '',
+      name: record.name || '',
+      schoolLevelCode: record.schoolLevelCode || '',
+      gradeCode: record.gradeCode || '',
+      isActive: record.isActive !== false
+    } : null;
+  }
+
+  async function getApiSectionStudents(sectionId) {
+    const response = await requestApi(`/sections/${Number(sectionId)}/students`);
+    return {
+      section: normalizeApiSection(response?.section),
+      students: (response?.students || []).map(normalizeApiSectionStudent).filter(Boolean)
+    };
+  }
+
+  async function getApiSectionTeachers(sectionId) {
+    const response = await requestApi(`/sections/${Number(sectionId)}/teachers`);
+    return {
+      section: normalizeApiSection(response?.section),
+      teachers: (response?.teachers || []).map(normalizeApiSectionTeacher).filter(Boolean)
+    };
+  }
+
+  async function getApiSubjects(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.schoolLevelId) params.set('schoolLevelId', String(filters.schoolLevelId));
+    const query = params.toString();
+    const response = await requestApi(`/subjects${query ? `?${query}` : ''}`);
+    return (response?.subjects || []).map(normalizeApiSubject).filter(Boolean);
+  }
+
+  async function createApiSection(values = {}) {
+    const response = await requestApi('/sections', { method: 'POST', body: JSON.stringify(values) });
+    return normalizeApiSection(response?.section);
+  }
+
+  async function updateApiSection(sectionId, values = {}) {
+    const response = await requestApi(`/sections/${Number(sectionId)}`, { method: 'PATCH', body: JSON.stringify(values) });
+    return normalizeApiSection(response?.section);
+  }
+
+  async function createApiSubject(values = {}) {
+    const response = await requestApi('/subjects', { method: 'POST', body: JSON.stringify(values) });
+    return normalizeApiSubject(response?.subject);
+  }
+
+  async function updateApiSubject(subjectId, values = {}) {
+    const response = await requestApi(`/subjects/${Number(subjectId)}`, { method: 'PATCH', body: JSON.stringify(values) });
+    return normalizeApiSubject(response?.subject);
+  }
+
+  async function enrollApiStudent(sectionId, studentId) {
+    return requestApi(`/sections/${Number(sectionId)}/students`, {
+      method: 'POST',
+      body: JSON.stringify({ studentId: Number(studentId) })
+    });
+  }
+
+  async function moveApiStudent(sectionId, studentId, targetSectionId) {
+    return requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ targetSectionId: Number(targetSectionId) })
+    });
+  }
+
+  async function withdrawApiStudent(sectionId, studentId) {
+    await requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}`, { method: 'DELETE' });
+    return true;
+  }
+
+  async function assignApiTeacher(sectionId, teacherId, subjectId) {
+    return requestApi(`/sections/${Number(sectionId)}/teachers`, {
+      method: 'POST',
+      body: JSON.stringify({ teacherId: Number(teacherId), subjectId: Number(subjectId) })
+    });
+  }
+
+  async function removeApiTeacherAssignment(sectionId, assignmentId) {
+    await requestApi(`/sections/${Number(sectionId)}/teachers/${Number(assignmentId)}`, { method: 'DELETE' });
+    return true;
+  }
+
+  async function updateApiTeacherAssignment(sectionId, assignmentId, teacherId) {
+    return requestApi(`/sections/${Number(sectionId)}/teachers/${Number(assignmentId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ teacherId: Number(teacherId) })
+    });
+  }
+
+  // Local compatibility fallback for pages that have not migrated to the API yet.
   async function getSections() {
     return getAssignmentSections();
   }
 
-  // Replace this localStorage implementation with PATCH /api/sections/:id.
+  // Local compatibility fallback for pages that have not migrated to the API yet.
   async function updateSection(sectionId, values = {}) {
     const school = getActiveSchool();
     if (!school?.id || !sectionId) return null;
@@ -1431,9 +2952,9 @@ function applyCurrentDateToGradingBanners() {
     return getAssignmentSections(savedSchool).find(section => section.id === updatedSection.id) || null;
   }
 
-  // Replace with GET /api/teacher/sections. The backend must derive the
-  // teacher from the authenticated session and apply the same access rules.
   async function getMyTeachingSections() {
+    if (EDUGNAY_API_BASE_URL) return getApiSections();
+
     const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
     if (!teacherId) return [];
 
@@ -1451,11 +2972,48 @@ function applyCurrentDateToGradingBanners() {
     });
   }
 
-  // Replace with GET /api/teacher/advisory-sections.
   async function getMyAdvisorySections() {
+    if (EDUGNAY_API_BASE_URL) {
+      const session = await getCurrentUser();
+      const teacherId = String(session?.apiUserId || '');
+      return (await getApiSections()).filter(section => section.adviserId === teacherId);
+    }
+
     const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
     if (!teacherId) return [];
     return getAssignmentSections().filter(section => section.adviserId === teacherId);
+  }
+
+  async function getApiMaterials(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.sectionId) params.set('sectionId', filters.sectionId);
+    if (filters.subjectId) params.set('subjectId', filters.subjectId);
+    const response = await requestApi(`/materials${params.size ? `?${params}` : ''}`);
+    return response.materials || [];
+  }
+
+  async function uploadApiMaterial(sectionId, subjectId, values) {
+    const form = new FormData();
+    form.set('file', values.file);
+    form.set('title', values.title);
+    form.set('status', values.status);
+    const response = await requestApiMultipart(`/materials/sections/${encodeURIComponent(sectionId)}/subjects/${encodeURIComponent(subjectId)}`, form);
+    return response.material;
+  }
+
+  async function updateApiMaterial(materialId, status) {
+    const response = await requestApi(`/materials/${encodeURIComponent(materialId)}`, {
+      method: 'PATCH', body: JSON.stringify({ status })
+    });
+    return response.material;
+  }
+
+  async function deleteApiMaterial(materialId) {
+    return requestApi(`/materials/${encodeURIComponent(materialId)}`, { method: 'DELETE' });
+  }
+
+  function apiMaterialFileUrl(materialId) {
+    return `${EDUGNAY_API_BASE_URL}/materials/${encodeURIComponent(materialId)}/file`;
   }
 
   // Replace this fixed list with GET /api/teacher/sf-templates.
@@ -1480,15 +3038,37 @@ function applyCurrentDateToGradingBanners() {
   ]);
 
   async function getSfTemplates() {
+    if (EDUGNAY_API_BASE_URL) {
+      const response = await requestApi('/sf-templates');
+      return (response.templates || []).map(record => ({
+        id: record.formCode === 'SF1' ? 'sf1-school-register-v1' : `sf-${record.id}`,
+        apiId: String(record.id),
+        formCode: record.formCode,
+        formName: record.formName,
+        version: record.version,
+        schoolLevels: ['elementary', 'jhs', 'shs'],
+        source: 'official',
+        status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
+        mappingStatus: record.mappingStatus,
+        fileName: `${record.formCode}.xlsx`,
+        templateFileUrl: '../../assets/templates/school-forms/sf1.xlsx',
+        sheetName: record.sheetName,
+        requiresAcademicPeriod: Boolean(record.requiresAcademicTerm),
+        sheets: [{ name: record.sheetName, hidden: false }],
+        updatedAt: null,
+        updatedBy: null
+      }));
+    }
+
     return OFFICIAL_SF_TEMPLATES
       .filter(record => record.source === 'official' && record.status === RECORD_VALUES.statuses.ACTIVE)
       .map(record => ({ ...record, schoolLevels: [...record.schoolLevels], sheets: record.sheets.map(sheet => ({ ...sheet })) }));
   }
 
-  // Replace with GET /api/teacher/sf-templates/:templateId/preview.
   async function getSfTemplatePreview(templateId, sheetName = '') {
     const template = (await getSfTemplates()).find(record => record.id === String(templateId));
     if (!template) throw new Error('The selected template could not be found.');
+    if (EDUGNAY_API_BASE_URL) await requestApi(`/sf-templates/${template.apiId}`);
     const preview = await window.EDUGNAY_SF_WORKBOOK.getFilePreview(
       template.templateFileUrl,
       sheetName || template.sheetName,
@@ -1656,8 +3236,6 @@ function applyCurrentDateToGradingBanners() {
     return { header, learners, issues };
   }
 
-  // Replace with POST /api/teacher/sf-forms/preview. The backend must repeat
-  // the adviser permission check before returning school or learner records.
   async function generateSfForm(values = {}) {
     const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
@@ -1669,6 +3247,28 @@ function applyCurrentDateToGradingBanners() {
 
     const schoolYear = String(values.schoolYear || '').trim();
     if (!schoolYear) throw new Error('Select a school year.');
+
+    if (EDUGNAY_API_BASE_URL) {
+      const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}`);
+      const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
+        template,
+        response.mappedCells || [],
+        []
+      );
+      return {
+        templateId: template.id,
+        apiTemplateId: template.apiId,
+        sectionId: section.id,
+        schoolYear,
+        fileName: `${template.formCode}_${section.grade}-${section.name}_${schoolYear}.xlsx`
+          .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
+        issues: response.issues || [],
+        previewFingerprint: response.previewFingerprint,
+        hasBlockingIssues: (response.issues || []).some(issue => issue.severity === 'error'),
+        exportId: null,
+        ...generated
+      };
+    }
 
     const school = getActiveSchool();
     const teacher = getUserById(window.EDUGNAY_TEACHER_ACCESS?.teacherId);
@@ -1693,8 +3293,6 @@ function applyCurrentDateToGradingBanners() {
     };
   }
 
-  // Replace with POST /api/teacher/sf-forms/download. The backend will rebuild
-  // mapped values from the authorized generation record before returning XLSX.
   async function exportSfForm(values = {}) {
     const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
@@ -1702,6 +3300,23 @@ function applyCurrentDateToGradingBanners() {
     }
     const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
+    if (EDUGNAY_API_BASE_URL) {
+      let exportId = values.exportId;
+      if (!exportId) {
+        const response = await requestApi(`/sf-templates/${template.apiId}/generate`, {
+          method: 'POST',
+          body: JSON.stringify({
+            sectionId: Number(section.id),
+            previewFingerprint: values.previewFingerprint,
+            edits: Array.isArray(values.edits) ? values.edits : []
+          })
+        });
+        exportId = response.export.id;
+      }
+      const file = await requestApiFile(`/sf-exports/${encodeURIComponent(exportId)}/download`);
+      return { buffer: file.buffer, fileName: file.fileName || String(values.fileName || template.fileName), exportId };
+    }
+
     const buffer = await window.EDUGNAY_SF_WORKBOOK.exportWorkbook(
       template,
       Array.isArray(values.mappedCells) ? values.mappedCells : [],
@@ -1791,17 +3406,6 @@ function applyCurrentDateToGradingBanners() {
       const maxScore = Number(maxScoreValue);
       const gradingRemoved = !categoryId || !(maxScore > 0);
 
-      if (!gradingRemoved) {
-        const highestScore = ASSIGNMENT_SCORE_RECORDS
-          .filter(record =>
-            record.schoolId === getActiveSchoolId() &&
-            record.assignmentId === assignment.id &&
-            record.score !== null
-          )
-          .reduce((highest, record) => Math.max(highest, Number(record.score) || 0), 0);
-        if (maxScore < highestScore) return null;
-      }
-
       nextCategoryId = gradingRemoved ? null : categoryId;
       nextMaxScore = gradingRemoved ? null : maxScore;
     }
@@ -1876,65 +3480,6 @@ function applyCurrentDateToGradingBanners() {
     return record;
   }
 
-  function getAssignmentScores(filters = {}) {
-    const schoolId = filters.schoolId || getActiveSchoolId();
-    return ASSIGNMENT_SCORE_RECORDS.filter(record =>
-      record.schoolId === schoolId &&
-      (!filters.assignmentId || record.assignmentId === String(filters.assignmentId)) &&
-      (!filters.studentId || record.studentId === String(filters.studentId))
-    );
-  }
-
-  function saveAssignmentScores() {
-    writeJson(schoolStorageKey(STORAGE_KEYS.assignmentScores), ASSIGNMENT_SCORE_RECORDS);
-  }
-
-  function setAssignmentScore(assignmentId, studentId, score) {
-    const schoolId = getActiveSchoolId();
-    const assignment = ASSIGNMENT_DIRECTORY.find(record =>
-      record.id === String(assignmentId) && record.schoolId === schoolId
-    );
-    const student = getUserById(studentId);
-    const scoreValue = score === '' || score === null ? null : Number(score);
-
-    if (
-      !assignment ||
-      !student ||
-      student.role !== RECORD_VALUES.roles.STUDENT ||
-      student.schoolId !== schoolId ||
-      student.sectionId !== assignment.sectionId ||
-      !assignment.categoryId ||
-      !(Number(assignment.maxScore) > 0) ||
-      (scoreValue !== null && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > Number(assignment.maxScore)))
-    ) return null;
-
-    let record = ASSIGNMENT_SCORE_RECORDS.find(item =>
-      item.schoolId === schoolId &&
-      item.assignmentId === assignment.id &&
-      item.studentId === String(studentId)
-    );
-    if (!record && scoreValue === null) return null;
-    const updatedAt = new Date().toISOString();
-
-    if (record) {
-      record.score = scoreValue;
-      record.updatedAt = updatedAt;
-    } else {
-      record = {
-        id: `assignment-score-${assignment.id}-${studentId}`,
-        schoolId,
-        assignmentId: assignment.id,
-        studentId: String(studentId),
-        score: scoreValue,
-        updatedAt
-      };
-      ASSIGNMENT_SCORE_RECORDS.push(record);
-    }
-
-    saveAssignmentScores();
-    return record;
-  }
-
   function learningMaterialWithLabels(record) {
     const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
     const teacher = getUserById(record.teacherId);
@@ -1946,6 +3491,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function getLearningMaterials(filters = {}) {
+    if (EDUGNAY_API_BASE_URL) return [];
     return LEARNING_MATERIAL_DIRECTORY
       .filter(record => record.schoolId === getActiveSchoolId())
       .filter(record => !filters.sectionId || record.sectionId === String(filters.sectionId))
@@ -1972,10 +3518,12 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function saveLearningMaterials(records = LEARNING_MATERIAL_DIRECTORY) {
+    if (EDUGNAY_API_BASE_URL) throw new Error('Learning materials must be saved through the API.');
     writeJson(schoolStorageKey(STORAGE_KEYS.materials), Array.isArray(records) ? records : []);
   }
 
   function createLearningMaterial(values = {}) {
+    if (EDUGNAY_API_BASE_URL) throw new Error('Learning materials must be uploaded through the API.');
     const material = {
       id: String(values.id || `material-${Date.now()}`),
       schoolId: values.schoolId || getActiveSchoolId(),
@@ -1983,7 +3531,6 @@ function applyCurrentDateToGradingBanners() {
       subjectId: values.subjectId ? String(values.subjectId) : null,
       teacherId: values.teacherId ? String(values.teacherId) : null,
       title: String(values.title || '').trim(),
-      description: values.description ? String(values.description).trim() : null,
       type: String(values.type || 'file'),
       schoolYear: values.schoolYear || '2025-2026',
       academicPeriodId: values.academicPeriodId || null,
@@ -2060,42 +3607,6 @@ function applyCurrentDateToGradingBanners() {
     const [todo] = USER_TODOS.splice(index, 1);
     saveTodos();
     return todo;
-  }
-
-  function gradeWithLabels(record) {
-    const subject = SUBJECT_CATALOG.find(item => item.id === record.subjectId);
-    const teacher = getUserById(record.teacherId);
-    return {
-      ...record,
-      name: subject?.name || record.subjectName || '',
-      teacher: teacher?.displayName || ''
-    };
-  }
-
-  function getGradesForStudent(studentId, schoolYear = null) {
-    const student = getUserById(studentId);
-    if (!student || student.role !== RECORD_VALUES.roles.STUDENT) return [];
-
-    const configuredPeriods = getAcademicPeriods(student.schoolId || getActiveSchoolId(), student.schoolLevel);
-    const periods = configuredPeriods.map(period => ({
-      id: period.id,
-      label: period.name,
-      status: period.status === ACADEMIC_PERIOD_STATUSES.CLOSED ? 'final' : period.status,
-      subjects: []
-    }));
-
-    GRADE_DIRECTORY
-      .filter(record => record.schoolId === student.schoolId)
-      .filter(record => record.studentId === student.id)
-      .filter(record => !schoolYear || record.schoolYear === schoolYear)
-      .forEach(record => {
-        const period = periods.find(item => item.id === record.academicPeriodId);
-        if (!period) return;
-        period.status = record.academicPeriodStatus || 'final';
-        period.subjects.push(gradeWithLabels(record));
-      });
-
-    return periods;
   }
 
   const ANNOUNCEMENT_AUDIENCE_META = {
@@ -2995,31 +4506,6 @@ function applyCurrentDateToGradingBanners() {
     ? savedAssignmentStatuses.filter(record => record.schoolId === ACTIVE_SCHOOL_ID)
     : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_STATUS_RECORDS, ACTIVE_SCHOOL_ID));
 
-  const DEFAULT_ASSIGNMENT_SCORE_RECORDS = [
-    { id: 'assignment-score-assignment-001-cm-001', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'cm-001', score: 18, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-001-lr-002', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'lr-002', score: 20, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-001-mt-012', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'mt-012', score: 12, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-001-sc-013', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'sc-013', score: 17, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-001-gb-014', schoolId: 'scc', assignmentId: 'assignment-001', studentId: 'gb-014', score: 14, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-002-cm-001', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'cm-001', score: 45, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-002-lr-002', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'lr-002', score: 50, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-002-mt-012', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'mt-012', score: 30, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-002-sc-013', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'sc-013', score: 42, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-002-gb-014', schoolId: 'scc', assignmentId: 'assignment-002', studentId: 'gb-014', score: 38, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-003-cm-001', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'cm-001', score: 28, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-003-lr-002', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'lr-002', score: 30, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-003-mt-012', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'mt-012', score: 18, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-003-sc-013', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'sc-013', score: 25, updatedAt: '2025-06-13T00:00:00.000Z' },
-    { id: 'assignment-score-assignment-003-gb-014', schoolId: 'scc', assignmentId: 'assignment-003', studentId: 'gb-014', score: 20, updatedAt: '2025-06-13T00:00:00.000Z' }
-  ];
-  const savedAssignmentScores = readJson(
-    schoolStorageKey(STORAGE_KEYS.assignmentScores, ACTIVE_SCHOOL_ID),
-    null
-  );
-  const ASSIGNMENT_SCORE_RECORDS = Array.isArray(savedAssignmentScores)
-    ? savedAssignmentScores.filter(record => record.schoolId === ACTIVE_SCHOOL_ID)
-    : clone(scopeToActiveSchool(DEFAULT_ASSIGNMENT_SCORE_RECORDS, ACTIVE_SCHOOL_ID));
-
   // One submission record belongs to one student and one assignment. The file
   // itself will be stored by the backend later; the frontend keeps metadata.
   const DEFAULT_ASSIGNMENT_SUBMISSIONS = [
@@ -3135,8 +4621,8 @@ function applyCurrentDateToGradingBanners() {
     { id: 'material-section-values-005', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Values Poster Visual Aid.png', type: 'png', academicPeriodId: 'q2', postedAt: '2025-05-10T00:00:00+08:00', fileSize: '0.4 MB', status: 'published', visibleToStudents: true, views: 19 },
     { id: 'material-section-values-006', schoolId: 'scc', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education', teacherId: 'teacher-2', title: 'Q2 Study Guide.docx', type: 'docx', academicPeriodId: 'q2', postedAt: '2025-06-08T00:00:00+08:00', fileSize: '0.6 MB', status: 'draft', visibleToStudents: false, views: 0 }
   ];
-  const savedLearningMaterials = readJson(schoolStorageKey(STORAGE_KEYS.materials, ACTIVE_SCHOOL_ID), null);
-  const learningMaterialSeed = Array.isArray(savedLearningMaterials)
+  const savedLearningMaterials = EDUGNAY_API_BASE_URL ? null : readJson(schoolStorageKey(STORAGE_KEYS.materials, ACTIVE_SCHOOL_ID), null);
+  const learningMaterialSeed = EDUGNAY_API_BASE_URL ? [] : Array.isArray(savedLearningMaterials)
     ? savedLearningMaterials
     : clone(scopeToActiveSchool(DEFAULT_LEARNING_MATERIAL_DIRECTORY, ACTIVE_SCHOOL_ID));
   const LEARNING_MATERIAL_DIRECTORY = learningMaterialSeed
@@ -3148,7 +4634,6 @@ function applyCurrentDateToGradingBanners() {
       subjectId: record.subjectId || null,
       teacherId: record.teacherId || null,
       title: String(record.title || ''),
-      description: record.description || null,
       type: String(record.type || 'file'),
       schoolYear: record.schoolYear || '2025-2026',
       academicPeriodId: record.academicPeriodId || null,
@@ -3350,135 +4835,6 @@ function applyCurrentDateToGradingBanners() {
       pinned: record.pinned === true,
       imageUrl: record.imageUrl || null,
       access: record.access || null
-    }));
-
-  // Shared final grade records for Student and Parent portals. Each row uses
-  // stable IDs so the local source can later be replaced by a grades API.
-  const DEFAULT_GRADE_DIRECTORY = [
-    { id: 'grade-jd-004-q1-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q1-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: 'teacher-3', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 87, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q1-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: 'teacher-jana-mendez', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 89, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q2-mathematics', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92.5, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-english', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-science', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 88.5, remark: 'Very Satisfactory' },
-    { id: 'grade-jd-004-q2-values-education', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'values-education', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 94, remark: 'Outstanding' },
-    { id: 'grade-jd-004-q2-araling-panlipunan', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'araling-panlipunan', teacherId: 'teacher-3', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
-    { id: 'grade-jd-004-q2-mapeh', schoolId: 'scc', studentId: 'jd-004', sectionId: 'jhs-grade8-luke', subjectId: 'mapeh', teacherId: 'teacher-jana-mendez', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: null, remark: 'Pending release' },
-    { id: 'grade-mt-012-q1-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q1-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 88, remark: 'Very Satisfactory' },
-    { id: 'grade-mt-012-q1-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q1', academicPeriodLabel: 'Quarter 1', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-mathematics', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'mathematics', teacherId: 'teacher-2', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 92, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-english', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'english', teacherId: 'teacher-9', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 90, remark: 'Outstanding' },
-    { id: 'grade-mt-012-q2-science', schoolId: 'scc', studentId: 'mt-012', sectionId: 'jhs-grade7-matthew', subjectId: 'science', teacherId: 'teacher-rico-santos', schoolYear: '2025-2026', academicPeriodId: 'q2', academicPeriodLabel: 'Quarter 2', academicPeriodStatus: 'final', score: 91, remark: 'Outstanding' },
-  ];
-  const savedGrades = readJson(schoolStorageKey(STORAGE_KEYS.grades, ACTIVE_SCHOOL_ID), null);
-  const gradeSeed = Array.isArray(savedGrades)
-    ? savedGrades
-    : clone(scopeToActiveSchool(DEFAULT_GRADE_DIRECTORY, ACTIVE_SCHOOL_ID));
-  const GRADE_DIRECTORY = gradeSeed
-    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
-    .map(record => ({ ...record, schoolId: record.schoolId || ACTIVE_SCHOOL_ID }));
-
-  // Shared journal records for Student and Teacher portals. Each row belongs
-  // to one student, section, teacher, subject, and journal week. The local
-  // collection can later be replaced with the journal API response.
-  const DEFAULT_JOURNAL_DIRECTORY = [
-    {
-      id: 'journal-cm-001-2025-w23', schoolId: 'scc', studentId: 'cm-001', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: true, late: false, reviewed: true, score: 40,
-      entryText: 'This week I had a hard time understanding how to solve equations with variables on both sides. At first I kept making errors moving terms to the other side. I asked my seatmate for help and we practiced a few examples together during break, and it finally clicked after the third try. I felt proud when I got the seatwork right on my own.',
-      submittedAt: '2025-06-13T13:00:00+08:00'
-    },
-    {
-      id: 'journal-lr-002-2025-w23', schoolId: 'scc', studentId: 'lr-002', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: true, late: false, reviewed: true, score: 45,
-      entryText: 'I struggled with staying focused during our long discussion about rational expressions. I kept losing track of the steps. I tried writing each step down as the teacher explained and that helped a lot. By the end of class I felt more confident about the topic.',
-      submittedAt: '2025-06-13T14:00:00+08:00'
-    },
-    {
-      id: 'journal-mt-012-2025-w23', schoolId: 'scc', studentId: 'mt-012', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
-    },
-    {
-      id: 'journal-sc-013-2025-w23', schoolId: 'scc', studentId: 'sc-013', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: true, late: true, reviewed: false, score: null,
-      entryText: 'The challenge I faced was finishing my activity on time. I tend to overthink each problem and I run out of time. This week I tried setting a time limit for each item, and I managed to finish before the bell. I will keep practicing this.',
-      submittedAt: '2025-06-14T09:00:00+08:00'
-    },
-    {
-      id: 'journal-gb-014-2025-w23', schoolId: 'scc', studentId: 'gb-014', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
-    },
-    {
-      id: 'journal-na-015-2025-w23', schoolId: 'scc', studentId: 'na-015', teacherId: 'teacher-2', sectionId: 'jhs-grade7-matthew', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a challenge you faced this week in class and how you handled it.', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: true, late: false, reviewed: true, score: 50,
-      entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality when you divide by a negative. I reviewed my notes after class and now I understand when to flip the sign and when not to.',
-      submittedAt: '2025-06-13T15:00:00+08:00'
-    },
-    {
-      id: 'journal-jd-004-2025-w23', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W23', week: 'Week 3', dateRange: 'June 9 to 14, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you. What did you learn from that experience?', isCurrent: true, isOpen: true, minWords: 50, dueLabel: 'due Friday',
-      submitted: false, late: false, reviewed: false, score: null, entryText: '', submittedAt: null
-    },
-    {
-      id: 'journal-jd-004-2025-w22', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W22', week: 'Week 2', dateRange: 'June 2 to 7, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Talk about a challenge you faced this week and how you tried to overcome it.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
-      submitted: true, late: false, reviewed: true, score: 50,
-      entryText: 'I found the quiz on linear inequalities confusing because of the direction of the inequality sign. At first I kept flipping it the wrong way whenever I multiplied or divided by a negative number. Instead of giving up, I asked Ms. Reyes to explain it again after class, and I also practiced with extra problems from the textbook. By the end of the week I felt a lot more confident, and I even helped my seatmate understand the same concept during our group activity.',
-      submittedAt: '2025-06-06T21:42:00+08:00'
-    },
-    {
-      id: 'journal-jd-004-2025-w21', schoolId: 'scc', studentId: 'jd-004', teacherId: 'teacher-2', sectionId: 'jhs-grade8-luke', subjectId: 'values-education',
-      academicPeriodId: 'q2', weekId: '2025-W21', week: 'Week 1', dateRange: 'May 26 to 31, 2025',
-      categoryId: 'pt', maxScore: 50,
-      prompt: 'Describe a moment this week when you helped a classmate or a classmate helped you.', isCurrent: false, isOpen: false, minWords: 50, dueLabel: '',
-      submitted: true, late: false, reviewed: true, score: 45,
-      entryText: "This week I had a hard time understanding how to solve equations with variables on both sides. My classmate Andrea noticed I was stuck during seatwork and took the time to walk me through the steps using a simpler example first. It made a big difference because she explained it in a way that made more sense to me than the textbook did. I learned that asking for help isn't something to be embarrassed about, and that classmates can be great teachers too.",
-      submittedAt: '2025-05-30T19:15:00+08:00'
-    }
-  ];
-  const savedJournals = readJson(schoolStorageKey(STORAGE_KEYS.journals, ACTIVE_SCHOOL_ID), null);
-  const journalSeed = Array.isArray(savedJournals)
-    ? savedJournals
-    : clone(scopeToActiveSchool(DEFAULT_JOURNAL_DIRECTORY, ACTIVE_SCHOOL_ID));
-  const JOURNAL_DIRECTORY = journalSeed
-    .filter(record => (record.schoolId || ACTIVE_SCHOOL_ID) === ACTIVE_SCHOOL_ID)
-    .map(record => ({
-      ...record,
-      schoolId: record.schoolId || ACTIVE_SCHOOL_ID,
-      academicPeriodId: record.academicPeriodId || 'q2',
-      categoryId: record.categoryId || 'pt',
-      maxScore: Number(record.maxScore) || 50,
-      submitted: Boolean(record.submitted),
-      reviewed: Boolean(record.reviewed),
-      late: Boolean(record.late),
-      score: record.score ?? null,
-      entryText: String(record.entryText || record.entry || '')
     }));
 
   // Shared AI report records for Adviser and Parent portals. The text is a
@@ -3976,8 +5332,8 @@ function applyCurrentDateToGradingBanners() {
 
   function parseAttendanceQrPayload(payload) {
     const value = String(payload || '').trim();
-    const prefix = 'edugnay:attendance:';
-    if (!value.startsWith(prefix)) return null;
+    const prefix = ['edugnay:attendance:', 'academix:attendance:'].find(item => value.startsWith(item));
+    if (!prefix) return null;
 
     const token = value.slice(prefix.length).trim();
     return token && !token.includes(':') ? token : null;
@@ -4551,38 +5907,6 @@ function applyCurrentDateToGradingBanners() {
       date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
-  function getJournals() {
-    return JOURNAL_DIRECTORY;
-  }
-
-  function getJournalsForStudent(studentId) {
-    return JOURNAL_DIRECTORY
-      .filter(record => record.studentId === String(studentId))
-      .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
-  }
-
-  function getJournalsForTeacher(teacherId, sectionId = null) {
-    return JOURNAL_DIRECTORY.filter(record =>
-      record.schoolId === getActiveSchoolId() &&
-      record.teacherId === String(teacherId) &&
-      (!sectionId || record.sectionId === String(sectionId))
-    );
-  }
-
-  function saveJournals(records = JOURNAL_DIRECTORY) {
-    writeJson(schoolStorageKey(STORAGE_KEYS.journals), Array.isArray(records) ? records : []);
-  }
-
-  function updateJournalEntry(entryId, values = {}) {
-    const entry = JOURNAL_DIRECTORY.find(record =>
-      record.id === String(entryId) && record.schoolId === getActiveSchoolId()
-    );
-    if (!entry) return null;
-    Object.assign(entry, values);
-    saveJournals();
-    return entry;
-  }
-
   function getReportAcademicContext(record, preferSnapshot = true) {
     const student = getUserById(record.studentId);
     const section = getAssignmentSections(getActiveSchool()).find(item => item.id === record.sectionId);
@@ -4684,6 +6008,7 @@ function applyCurrentDateToGradingBanners() {
       if (
         report.sectionId !== sectionId ||
         report.weekId !== weekId ||
+        report.status === 'confirmed' ||
         !notesByStudentId.has(String(report.studentId))
       ) return;
 
@@ -4772,6 +6097,28 @@ function applyCurrentDateToGradingBanners() {
     return `<div class="panel-empty-state" role="status"><div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="${icon}"></i></div><div class="panel-empty-state-title">${escapeHtml(title)}</div><div class="panel-empty-state-text">${escapeHtml(text)}</div></div>`;
   }
 
+  Object.assign(window.EDUGNAY_API, {
+    getMaterials: getApiMaterials,
+    uploadMaterial: uploadApiMaterial,
+    updateMaterial: updateApiMaterial,
+    deleteMaterial: deleteApiMaterial,
+    materialFileUrl: apiMaterialFileUrl,
+    getSections: getApiSections,
+    getSectionStudents: getApiSectionStudents,
+    getSectionTeachers: getApiSectionTeachers,
+    getSubjects: getApiSubjects,
+    createSection: createApiSection,
+    updateSection: updateApiSection,
+    createSubject: createApiSubject,
+    updateSubject: updateApiSubject,
+    enrollStudent: enrollApiStudent,
+    moveStudent: moveApiStudent,
+    withdrawStudent: withdrawApiStudent,
+    assignTeacher: assignApiTeacher,
+    removeTeacherAssignment: removeApiTeacherAssignment,
+    updateTeacherAssignment: updateApiTeacherAssignment
+  });
+
   window.EDUGNAY_CONFIG = {
     values: RECORD_VALUES,
     getActiveSchoolId,
@@ -4839,6 +6186,7 @@ function applyCurrentDateToGradingBanners() {
     updateSchool,
     getActiveSchool,
     getSchoolTypeInfo,
+    buildFinalGradeYears: buildApiFinalGradeYears,
     isGradesPageEnabled,
     isNarrativeReportsEnabled,
     getSubjectAssignments,
@@ -4868,9 +6216,6 @@ function applyCurrentDateToGradingBanners() {
     getAssignmentStatuses,
     saveAssignmentStatuses,
     setAssignmentStatus,
-    getAssignmentScores,
-    saveAssignmentScores,
-    setAssignmentScore,
     learningMaterials: LEARNING_MATERIAL_DIRECTORY,
     getLearningMaterials,
     getLearningMaterialsForSection,
@@ -4882,14 +6227,6 @@ function applyCurrentDateToGradingBanners() {
     createTodo,
     updateTodo,
     deleteTodo,
-    gradeRecords: GRADE_DIRECTORY,
-    getGradesForStudent,
-    journals: JOURNAL_DIRECTORY,
-    getJournals,
-    getJournalsForStudent,
-    getJournalsForTeacher,
-    saveJournals,
-    updateJournalEntry,
     reports: REPORT_DIRECTORY,
     getReports,
     getReportsForTeacher,
@@ -5210,13 +6547,9 @@ function toggleNotifDropdown() {
 }
 
 function markAllNotifRead() {
-  const context = window.EDUGNAY_NOTIFICATION_CONTEXT;
-  if (!context) return;
-  const items = typeof context.getItems === 'function'
-    ? context.getItems()
-    : (Array.isArray(context.records) ? context.records : []);
-  markAllNotificationsRead(context.storageKey, items);
-  if (typeof renderTopbarNotifs === 'function') renderTopbarNotifs();
+  markCurrentNotificationsRead().finally(() => {
+    if (typeof renderTopbarNotifs === 'function') renderTopbarNotifs();
+  });
 }
 
 function getProfileControls() {
@@ -5271,7 +6604,7 @@ function applyActiveSchoolToShell() {
   if (document.body?.dataset.platformPortal === 'true') return;
 
   const config = window.EDUGNAY_CONFIG;
-  const school = config.getActiveSchool();
+  const school = window.EDUGNAY_API_SCHOOL_CONTEXT || config.getActiveSchool();
   if (!school) return;
   const typeLabel = config.getSchoolTypeInfo(school.schoolLevels).label;
 
@@ -5553,12 +6886,22 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  let apiSession = null;
   if (EDUGNAY_API_BASE_URL) {
     try {
-      applyCurrentUserToShell(await getCurrentUser());
+      apiSession = await getCurrentUser();
+      applyCurrentUserToShell(apiSession);
     } catch (error) {
       if (error.status === 401) {
         try { sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY); } catch {}
+      }
+    }
+    if (apiSession?.apiSchoolId) {
+      try {
+        const portal = await getApiPortalFeatures();
+        setApiPortalFeatures(portal.features);
+      } catch (error) {
+        console.warn('Unable to load school portal features.', error.message);
       }
     }
   }

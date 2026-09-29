@@ -317,10 +317,6 @@
   margin-bottom: 12px;
 }
 
-.settings-row-single {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .settings-row-2 .settings-select,
 .settings-row-2 .settings-input {
   width: 180px;

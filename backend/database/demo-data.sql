@@ -27,7 +27,7 @@ INSERT INTO schools (
 
 INSERT INTO school_settings (school_id, notification_email, current_school_year_label)
 VALUES
-  (1, 'info@stcolumban.edu.ph', '2025-2026'),
+  (1, 'info@stcolumban.edu.ph', '2026-2027'),
   (2, NULL, '2025-2026');
 
 INSERT INTO school_portal_features (
@@ -54,7 +54,8 @@ INSERT INTO attendance_status_codes (
 
 INSERT INTO academic_years (id, school_id, label, start_date, end_date, status)
 VALUES
-  (1, 1, '2025-2026', '2025-03-03', '2025-12-05', 'active');
+  (1, 1, '2025-2026', '2025-03-03', '2025-12-05', 'closed'),
+  (2, 1, '2026-2027', '2026-05-01', '2027-04-30', 'active');
 
 INSERT INTO school_levels (id, school_id, level_code, display_name, grading_period_type, is_enabled)
 VALUES
@@ -142,18 +143,38 @@ VALUES
 
 INSERT INTO academic_terms (
   id, academic_year_id, school_level_id, name, sequence_number,
-  planned_start_date, planned_end_date, status, activated_at
+  planned_start_date, planned_end_date, status, activated_at, completed_at
 ) VALUES
-  (1, 1, 2, 'Quarter 1', 1, '2025-03-03', '2025-05-02', 'closed', '2025-03-03 08:00:00'),
-  (2, 1, 2, 'Quarter 2', 2, '2025-05-05', '2025-07-18', 'active', '2025-05-05 08:00:00'),
-  (3, 1, 3, 'Semester 1', 1, '2025-03-03', '2025-07-18', 'active', '2025-03-03 08:00:00');
+  (1, 1, 2, 'Quarter 1', 1, '2025-03-03', '2025-05-02', 'closed', '2025-03-03 08:00:00', '2025-05-02 17:00:00'),
+  (2, 1, 2, 'Quarter 2', 2, '2025-05-05', '2025-07-18', 'closed', '2025-05-05 08:00:00', '2025-07-18 17:00:00'),
+  (3, 1, 3, 'Semester 1', 1, '2025-03-03', '2025-07-18', 'closed', '2025-03-03 08:00:00', '2025-07-18 17:00:00'),
+  (4, 2, 1, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
+  (5, 2, 1, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
+  (6, 2, 1, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
+  (7, 2, 1, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
+  (8, 2, 2, 'Quarter 1', 1, '2026-05-01', '2026-07-31', 'closed', '2026-05-01 08:00:00', '2026-07-31 17:00:00'),
+  (9, 2, 2, 'Quarter 2', 2, '2026-08-01', '2026-10-31', 'active', '2026-08-01 08:00:00', NULL),
+  (10, 2, 2, 'Quarter 3', 3, '2026-11-01', '2027-01-31', 'upcoming', NULL, NULL),
+  (11, 2, 2, 'Quarter 4', 4, '2027-02-01', '2027-04-30', 'upcoming', NULL, NULL),
+  (12, 2, 3, 'Semester 1', 1, '2026-05-01', '2026-10-31', 'active', '2026-05-01 08:00:00', NULL),
+  (13, 2, 3, 'Semester 2', 2, '2026-11-01', '2027-04-30', 'upcoming', NULL, NULL);
 
 INSERT INTO academic_term_actions (
   academic_term_id, action_type, performed_by_user_id, performed_at
 ) VALUES
   (1, 'activated', 2, '2025-03-03 08:00:00'),
   (1, 'completed', 2, '2025-05-02 17:00:00'),
-  (2, 'activated', 2, '2025-05-05 08:00:00');
+  (2, 'activated', 2, '2025-05-05 08:00:00'),
+  (2, 'completed', 2, '2025-07-18 17:00:00'),
+  (3, 'activated', 2, '2025-03-03 08:00:00'),
+  (3, 'completed', 2, '2025-07-18 17:00:00'),
+  (4, 'activated', 2, '2026-05-01 08:00:00'),
+  (4, 'completed', 2, '2026-07-31 17:00:00'),
+  (5, 'activated', 2, '2026-08-01 08:00:00'),
+  (8, 'activated', 2, '2026-05-01 08:00:00'),
+  (8, 'completed', 2, '2026-07-31 17:00:00'),
+  (9, 'activated', 2, '2026-08-01 08:00:00'),
+  (12, 'activated', 2, '2026-05-01 08:00:00');
 
 INSERT INTO subjects (id, school_id, subject_code, name, school_level_id, grade_level_id)
 VALUES
@@ -171,14 +192,17 @@ INSERT INTO sections (
   id, school_id, academic_year_id, school_level_id, grade_level_id,
   name, capacity, adviser_user_id, status
 ) VALUES
-  (1, 1, 1, 2, 3, 'St. Matthew', 40, 3, 'active'),
-  (2, 1, 1, 2, 4, 'St. Luke', 40, NULL, 'active');
+  (1, 1, 1, 2, 3, 'St. Matthew', 40, 3, 'archived'),
+  (2, 1, 1, 2, 4, 'St. Luke', 40, NULL, 'archived'),
+  (3, 1, 2, 2, 3, 'St. Matthew', 40, 3, 'active');
 
 INSERT INTO section_students (section_id, student_user_id)
-VALUES (1, 4), (1, 5), (1, 6), (1, 7), (1, 8);
+VALUES (1, 4), (1, 5), (1, 6), (1, 7), (1, 8),
+  (3, 4), (3, 5), (3, 6), (3, 7), (3, 8);
 
 INSERT INTO section_teachers (section_id, teacher_user_id, subject_id)
-VALUES (1, 3, 1), (1, 3, 2), (1, 3, 3), (1, 3, 4);
+VALUES (1, 3, 1), (1, 3, 2), (1, 3, 3), (1, 3, 4),
+  (3, 3, 1), (3, 3, 2), (3, 3, 3), (3, 3, 4);
 
 INSERT INTO grading_categories (id, school_id, school_level_id, code, name, weight)
 VALUES
@@ -193,10 +217,10 @@ VALUES
 INSERT INTO assignments (
   id, school_id, section_id, subject_id, academic_term_id,
   grading_category_id, teacher_user_id, title, description, due_at,
-  max_score, status
+  max_score, online_submission_enabled, status
 ) VALUES
-  (1, 1, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 'Complete the Values Education activity.', '2025-06-13 23:59:00', 20.00, 'published'),
-  (2, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 'Review the core values lesson.', '2025-06-11 23:59:00', 25.00, 'published');
+  (1, 1, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 'Complete the Values Education activity.', '2025-06-13 23:59:00', 20.00, 1, 'published'),
+  (2, 1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 'Review the core values lesson.', '2025-06-11 23:59:00', 25.00, 1, 'published');
 
 INSERT INTO assignment_submissions (
   assignment_id, student_user_id, file_name, file_path, file_size_bytes,
@@ -211,12 +235,20 @@ INSERT INTO grading_items (
   teacher_user_id, title, max_score, recorded_at
 ) VALUES
   (1, 1, 1, 2, 1, 3, 'Quiz 1: Core Values', 25.00, '2025-06-11 14:00:00'),
-  (2, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 20.00, '2025-06-13 14:00:00');
+  (2, 1, 1, 2, 2, 3, 'Seatwork 1: Kindness and Respect', 20.00, '2025-06-13 14:00:00'),
+  (3, 3, 1, 9, 2, 3, 'Weekly Journal: Week of September 21, 2026', 50.00, '2026-09-21 08:00:00');
+
+INSERT INTO journal_prompts (
+  id, journal_subject_id, section_id, grading_item_id, week_start_date,
+  prompt_text, opens_at, due_at, min_words, allow_late, prompt_status, created_by_user_id
+) VALUES
+  (1, 1, 3, 3, '2026-09-21', 'Describe one way you showed responsibility in class this week and what you learned from it.', '2026-09-21 08:00:00', '2026-10-02 23:59:00', 50, FALSE, 'open', 3);
 
 INSERT INTO student_scores (grading_item_id, student_user_id, score, recorded_by_user_id)
 VALUES
   (1, 4, 24.00, 3), (1, 5, 23.00, 3), (1, 6, 22.00, 3), (1, 7, 25.00, 3), (1, 8, 21.00, 3),
-  (2, 4, 19.00, 3), (2, 5, 18.00, 3), (2, 6, 20.00, 3), (2, 7, 20.00, 3), (2, 8, 17.00, 3);
+  (2, 4, 19.00, 3), (2, 5, 18.00, 3), (2, 6, 20.00, 3), (2, 7, 20.00, 3), (2, 8, 17.00, 3),
+  (3, 4, 46.00, 3);
 
 INSERT INTO attendance_sessions (
   id, school_id, section_id, subject_id, attendance_date, method, status,
@@ -262,10 +294,10 @@ VALUES (1, 'teacher'), (1, 'school_admin');
 INSERT INTO announcement_reads (announcement_id, user_id, read_at)
 VALUES (1, 3, '2025-06-12 08:30:00');
 
-INSERT INTO notifications (user_id, type, title, message, target_path)
+INSERT INTO notifications (announcement_id, user_id, type, title, message, target_path)
 VALUES
-  (3, 'announcement', 'New announcement', 'Q2 Grade Encoding Deadline', '/views/teacher/edugnay-teacher-announcements.html'),
-  (9, 'report', 'Weekly report ready', 'Juan Dela Cruz''s weekly report is ready.', '/views/parent/edugnay-parent-reports.html');
+  (1, 3, 'announcement', 'New announcement', 'Q2 Grade Encoding Deadline', '/views/teacher/edugnay-teacher-announcements.html'),
+  (NULL, 9, 'report', 'Weekly report ready', 'Juan Dela Cruz''s weekly report is ready.', '/views/parent/edugnay-parent-reports.html');
 
 INSERT INTO user_tasks (user_id, title, due_date, task_status)
 VALUES
@@ -273,11 +305,13 @@ VALUES
   (3, 'Review Grade 7 journal entries', '2025-06-14', 'pending');
 
 INSERT INTO student_journal_entries (
-  id, journal_subject_id, student_user_id, section_id, prompt_text,
+  id, journal_subject_id, student_user_id, section_id, journal_prompt_id, prompt_text,
   entry_text, entry_status, submitted_at
 ) VALUES
-  (1, 1, 4, 1, 'Describe a moment this week when you helped a classmate.', 'I helped a classmate understand the group activity.', 'submitted', '2025-06-12 13:00:00'),
-  (2, 1, 6, 1, 'Describe a moment this week when you helped a classmate.', 'I enjoyed working with my group during the activity.', 'submitted', '2025-06-12 13:05:00');
+  (1, 1, 4, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I helped a classmate understand the group activity.', 'submitted', '2025-06-12 13:00:00'),
+  (2, 1, 6, 1, NULL, 'Describe a moment this week when you helped a classmate.', 'I enjoyed working with my group during the activity.', 'submitted', '2025-06-12 13:05:00'),
+  (3, 1, 4, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I prepared my materials before class and finished my part of the group activity on time. I learned that being ready helps the whole group work better.', 'reviewed', '2026-09-24 10:00:00'),
+  (4, 1, 6, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I remembered to bring my notebook every day this week and completed my class reflection before going home.', 'submitted', '2026-09-25 14:00:00');
 
 INSERT INTO journal_feedback (journal_entry_id, teacher_user_id, feedback_text)
 VALUES (1, 3, 'Thank you for showing kindness and cooperation.');
@@ -349,10 +383,34 @@ INSERT INTO school_form_templates (
 INSERT INTO school_form_template_mappings (
   school_form_template_id, field_key, worksheet_name, cell_reference, data_source
 ) VALUES
-  (1, 'schoolName', 'School Form 1 (SF1)', 'F6', 'schools.name'),
   (1, 'schoolId', 'School Form 1 (SF1)', 'F4', 'schools.deped_school_id'),
-  (1, 'studentLrn', 'School Form 1 (SF1)', 'B10', 'student_profiles.lrn'),
-  (1, 'studentName', 'School Form 1 (SF1)', 'E10', 'users.last_name, users.first_name, student_profiles.middle_name');
+  (1, 'region', 'School Form 1 (SF1)', 'H4', 'schools.region_name'),
+  (1, 'division', 'School Form 1 (SF1)', 'N4', 'schools.division_name'),
+  (1, 'district', 'School Form 1 (SF1)', 'U4', 'schools.district_name'),
+  (1, 'schoolName', 'School Form 1 (SF1)', 'F6', 'schools.name'),
+  (1, 'schoolYear', 'School Form 1 (SF1)', 'P6', 'academic_years.label'),
+  (1, 'gradeLevel', 'School Form 1 (SF1)', 'U6', 'school_grade_levels.display_name'),
+  (1, 'section', 'School Form 1 (SF1)', 'X6', 'sections.name'),
+  (1, 'rowNumber', 'School Form 1 (SF1)', 'A10', 'generated.learner_row_number'),
+  (1, 'lrn', 'School Form 1 (SF1)', 'B10', 'student_profiles.lrn'),
+  (1, 'name', 'School Form 1 (SF1)', 'C10', 'users.last_name, users.first_name, student_profiles.middle_name'),
+  (1, 'sex', 'School Form 1 (SF1)', 'G10', 'student_profiles.sex'),
+  (1, 'birthDate', 'School Form 1 (SF1)', 'H10', 'student_profiles.birth_date'),
+  (1, 'age', 'School Form 1 (SF1)', 'I10', 'generated.age_as_of_first_friday_of_june'),
+  (1, 'birthPlaceProvince', 'School Form 1 (SF1)', 'J10', 'student_profiles.birth_place_province'),
+  (1, 'motherTongue', 'School Form 1 (SF1)', 'L10', 'student_profiles.mother_tongue'),
+  (1, 'indigenousGroup', 'School Form 1 (SF1)', 'M10', 'student_profiles.indigenous_group'),
+  (1, 'religion', 'School Form 1 (SF1)', 'N10', 'student_profiles.religion'),
+  (1, 'houseStreet', 'School Form 1 (SF1)', 'O10', 'student_profiles.house_street'),
+  (1, 'barangay', 'School Form 1 (SF1)', 'P10', 'student_profiles.barangay'),
+  (1, 'cityMunicipality', 'School Form 1 (SF1)', 'Q10', 'student_profiles.city_municipality'),
+  (1, 'province', 'School Form 1 (SF1)', 'R10', 'student_profiles.province'),
+  (1, 'fatherName', 'School Form 1 (SF1)', 'T10', 'student_parent_links.father'),
+  (1, 'motherMaidenName', 'School Form 1 (SF1)', 'V10', 'student_parent_links.mother'),
+  (1, 'guardianName', 'School Form 1 (SF1)', 'X10', 'student_parent_links.guardian'),
+  (1, 'guardianRelationship', 'School Form 1 (SF1)', 'Y10', 'student_parent_links.relationship'),
+  (1, 'contactNumber', 'School Form 1 (SF1)', 'Z10', 'parent_profiles.contact_number'),
+  (1, 'remarks', 'School Form 1 (SF1)', 'AA10', 'teacher.edit');
 
 INSERT INTO school_form_exports (
   id, school_form_template_id, school_id, section_id, academic_term_id,
@@ -375,17 +433,19 @@ VALUES
 
 -- Continue normal auto-increment values after the fixed demo IDs above.
 ALTER TABLE schools AUTO_INCREMENT = 3;
-ALTER TABLE academic_years AUTO_INCREMENT = 2;
+ALTER TABLE academic_years AUTO_INCREMENT = 3;
 ALTER TABLE school_levels AUTO_INCREMENT = 6;
 ALTER TABLE school_grade_levels AUTO_INCREMENT = 9;
 ALTER TABLE school_shs_tracks AUTO_INCREMENT = 5;
 ALTER TABLE users AUTO_INCREMENT = 10;
-ALTER TABLE academic_terms AUTO_INCREMENT = 4;
+ALTER TABLE academic_terms AUTO_INCREMENT = 14;
 ALTER TABLE subjects AUTO_INCREMENT = 5;
-ALTER TABLE sections AUTO_INCREMENT = 3;
+ALTER TABLE sections AUTO_INCREMENT = 4;
 ALTER TABLE grading_categories AUTO_INCREMENT = 4;
 ALTER TABLE assignments AUTO_INCREMENT = 3;
-ALTER TABLE grading_items AUTO_INCREMENT = 3;
+ALTER TABLE grading_items AUTO_INCREMENT = 4;
+ALTER TABLE journal_prompts AUTO_INCREMENT = 2;
+ALTER TABLE student_journal_entries AUTO_INCREMENT = 5;
 ALTER TABLE attendance_sessions AUTO_INCREMENT = 2;
 ALTER TABLE student_qr_credentials AUTO_INCREMENT = 6;
 ALTER TABLE announcements AUTO_INCREMENT = 2;

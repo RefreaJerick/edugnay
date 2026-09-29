@@ -252,17 +252,69 @@
   <script>
     lucide.createIcons();
 
-    /*
-      Reports are read from the shared school-scoped report source. On conversion,
-      replace getReportsForStudent() with GET /api/parent/reports?studentId=:id; the
-      server should return only confirmed reports for the linked child.
-    */
-    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
-    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
+    const USE_PARENT_REPORT_API = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    let PARENT_CHILDREN = [];
+    let currentChildId = null;
+    let parentSchoolApiId = null;
+    let parentDataError = '';
+    let reportAccessRedirecting = false;
 
-    function getReportRecord(studentId) {
-      const reports = window.EDUGNAY_CONFIG.getReportsForStudent(studentId, true);
-      return reports.length ? { studentId, reports } : null;
+    const DEMO_REPORT_CHILDREN = {
+      '1:6': { studentId: 'jd-004', displayName: 'Juan Dela Cruz' },
+      '1:7': { studentId: 'mt-012', displayName: 'Maya Torres' }
+    };
+
+    function getDemoReportStudentId(child) {
+      if (!child) return null;
+      if (!USE_PARENT_REPORT_API) return String(child.mockStudentId || child.studentId);
+
+      const mapping = DEMO_REPORT_CHILDREN[String(parentSchoolApiId) + ':' + String(child.studentId)];
+      const childName = String(child.displayName || '').trim().toLowerCase();
+      return mapping && childName === mapping.displayName.toLowerCase()
+        ? mapping.studentId
+        : null;
+    }
+
+    function getReportRecord(child) {
+      const reportStudentId = getDemoReportStudentId(child);
+      if (!reportStudentId) return null;
+      return {
+        studentId: child.studentId,
+        reports: window.EDUGNAY_CONFIG.getReportsForStudent(reportStudentId, true)
+      };
+    }
+
+    function getActiveChild() {
+      return PARENT_CHILDREN.find(child => child.studentId === currentChildId) || null;
+    }
+
+    function makeDemoParentChildren() {
+      const config = window.EDUGNAY_CONFIG;
+      const sections = config.getAssignmentSections();
+      return (window.EDUGNAY_PARENT?.children || []).map(link => {
+        const student = config.getUserById(link.studentId);
+        if (!student || student.role !== config.values.roles.STUDENT) return null;
+        const section = sections.find(record => String(record.id) === String(student.sectionId));
+        return {
+          studentId: String(student.id),
+          mockStudentId: String(student.id),
+          displayName: student.displayName,
+          initials: student.initials,
+          gradeLevel: student.gradeLevel,
+          sectionName: section?.name || 'Unassigned'
+        };
+      }).filter(Boolean);
+    }
+
+    function renderReportEmpty(container, wrapperClass, title, text) {
+      container.innerHTML = '<div class="' + wrapperClass + '">' +
+        window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'notebook-pen',
+          title,
+          text: window.EDUGNAY_CONFIG.escapeHtml(text)
+        }) +
+      '</div>';
+      if (window.lucide) lucide.createIcons();
     }
 
     function renderRecommendedActions(actions) {
@@ -280,43 +332,76 @@
         </section>`;
     }
 
-    const requestedChild = new URLSearchParams(window.location.search).get('studentId');
-    let currentChild = PARENT_CHILDREN.some(child => child.studentId === requestedChild)
-      ? requestedChild
-      : PARENT_CHILDREN[0]?.studentId || null;
     let activeReportId = null;
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_CHILDREN.length
-        ? PARENT_CHILDREN.map(link => {
-          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-          if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
-          const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}</div></div></div>`;
-        }).join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+      if (parentDataError) {
+        switcher.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'circle-alert',
+          title: 'Parent data could not be loaded',
+          text: window.EDUGNAY_CONFIG.escapeHtml(parentDataError)
+        });
+        switcher.removeAttribute('role');
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+      if (!PARENT_CHILDREN.length) {
+        switcher.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'users',
+          title: 'No linked children',
+          text: 'Children linked to this parent account will appear here.'
+        });
+        switcher.removeAttribute('role');
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      switcher.innerHTML = PARENT_CHILDREN.map(child => {
+        const isActive = child.studentId === currentChildId;
+        return `<div class="child-card ${isActive ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${isActive}"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(child.initials || '--')}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student')}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned')}</div></div></div>`;
+      }).join('');
+      switcher.removeAttribute('role');
+      switcher.querySelectorAll('[data-child]').forEach(card => {
+        card.addEventListener('click', () => switchChild(card.dataset.child));
+        card.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            switchChild(card.dataset.child);
+          }
+        });
+      });
       lucide.createIcons();
     }
 
-    function switchChild(childKey, el) {
-      currentChild = childKey;
-      document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
+    function switchChild(childId) {
+      const child = PARENT_CHILDREN.find(item => item.studentId === String(childId));
+      if (!child) return;
+      currentChildId = child.studentId;
+      activeReportId = null;
+      document.getElementById('report-modal').classList.remove('open');
       document.getElementById('search-input').value = '';
       document.getElementById('risk-filter').value = 'all';
+      renderChildSwitcher();
       renderLatest();
       renderTimeline();
     }
 
     function renderLatest() {
-      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
-      const reportRecord = getReportRecord(currentChild);
+      const child = getActiveChild();
+      const reportRecord = getReportRecord(child);
       const wrap = document.getElementById('latest-report-wrap');
-      if (!child || !reportRecord) {
-        wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Weekly reports will appear here when a child account is linked.' })}</div>`;
-        lucide.createIcons();
+      if (parentDataError) {
+        renderReportEmpty(wrap, 'latest-report-hero is-empty', 'Reports are unavailable', parentDataError);
+        return;
+      }
+      if (!child) {
+        renderReportEmpty(wrap, 'latest-report-hero is-empty', 'No reports available', 'Weekly reports will appear here when a child account is linked.');
+        return;
+      }
+      if (!reportRecord) {
+        renderReportEmpty(wrap, 'latest-report-hero is-empty', 'No demo report available', 'A report has not been added for this linked child yet.');
         return;
       }
       const latest = reportRecord.reports[0];
@@ -324,12 +409,7 @@
       // EJS: <% if (latestReport) { %>
       if (!latest) {
         const firstName = child.displayName.split(' ')[0];
-        wrap.innerHTML = `<div class="latest-report-hero is-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'notebook-pen',
-          title: 'Weekly report not ready yet',
-          text: `${firstName}'s teacher is still preparing this week's report. You'll see it here as soon as it's confirmed and sent.`
-        })}</div>`;
-        lucide.createIcons();
+        renderReportEmpty(wrap, 'latest-report-hero is-empty', 'Weekly report not ready yet', `${firstName}'s teacher is still preparing this week's report. You'll see it here as soon as it's confirmed.`);
         return;
       }
       // EJS: <% } else { %>
@@ -341,18 +421,18 @@
           <div class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
           <div>
             <div class="lr-eyebrow">Weekly Report</div>
-            <div class="lr-week">${latest.weekLabel}</div>
+            <div class="lr-week">${window.EDUGNAY_CONFIG.escapeHtml(latest.weekLabel)}</div>
           </div>
         </div>
         ${latest.atRisk ? `<span class="lr-risk-pill"><i data-lucide="alert-triangle" style="width:11px;height:11px;"></i> Flagged for attention</span>` : ''}
       </div>
       <div class="lr-quote-mark">"</div>
-      <div class="lr-text">${latest.text}</div>
+      <div class="lr-text">${window.EDUGNAY_CONFIG.escapeHtml(latest.text)}</div>
       ${renderRecommendedActions(latest.recommendedActions)}
       <div class="lr-foot">
         <div class="lr-meta">
-          <span class="lr-teacher-avatar">${latest.teacherInitials || window.EDUGNAY_CONFIG.getInitials(latest.teacherName)}</span>
-          <span>Sent by ${latest.teacherName} · ${latest.confirmedAtLabel}</span>
+          <span class="lr-teacher-avatar">${window.EDUGNAY_CONFIG.escapeHtml(latest.teacherInitials || window.EDUGNAY_CONFIG.getInitials(latest.teacherName))}</span>
+          <span>Confirmed by ${window.EDUGNAY_CONFIG.escapeHtml(latest.teacherName)} · ${window.EDUGNAY_CONFIG.escapeHtml(latest.confirmedAtLabel)}</span>
         </div>
       </div>
     </div>`;
@@ -361,15 +441,22 @@
     }
 
     function renderTimeline() {
-      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
-      const reportRecord = getReportRecord(currentChild);
+      const child = getActiveChild();
+      const reportRecord = getReportRecord(child);
       const query = document.getElementById('search-input').value.toLowerCase();
       const riskFilter = document.getElementById('risk-filter').value;
       const wrap = document.getElementById('timeline-wrap');
 
-      if (!child || !reportRecord) {
-        wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No reports available', text: 'Confirmed reports will appear here when a child account is linked.' })}</div>`;
-        lucide.createIcons();
+      if (parentDataError) {
+        renderReportEmpty(wrap, 'report-timeline-empty', 'Reports are unavailable', parentDataError);
+        return;
+      }
+      if (!child) {
+        renderReportEmpty(wrap, 'report-timeline-empty', 'No reports available', 'Confirmed reports will appear here when a child account is linked.');
+        return;
+      }
+      if (!reportRecord) {
+        renderReportEmpty(wrap, 'report-timeline-empty', 'No demo reports available', 'Reports will appear here when content is available for this linked child.');
         return;
       }
 
@@ -384,9 +471,11 @@
         wrap.innerHTML = `<div class="report-timeline-empty">${window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'notebook-pen',
           title: 'No past reports to show',
-          text: reportRecord.reports.length <= 1
-            ? 'This is the first confirmed report for ' + child.displayName.split(' ')[0] + '.'
-            : 'Try adjusting your search or filter.'
+          text: reportRecord.reports.length === 0
+            ? 'Reports will appear here once the teacher confirms them.'
+            : reportRecord.reports.length === 1
+              ? 'This is the first confirmed report for ' + window.EDUGNAY_CONFIG.escapeHtml(child.displayName.split(' ')[0]) + '.'
+              : 'Try adjusting your search or filter.'
         })}</div>`;
         if (window.lucide) lucide.createIcons();
         return;
@@ -397,23 +486,23 @@
       ${pastReports.map(r => `
         <div class="timeline-entry ${r.atRisk ? 'at-risk' : ''}">
           <div class="timeline-dot"><div class="timeline-dot-inner"></div></div>
-          <div class="report-card ${r.atRisk ? 'at-risk' : ''}" onclick="openReportModal('${r.id}')">
+          <div class="report-card ${r.atRisk ? 'at-risk' : ''}" data-report-id="${window.EDUGNAY_CONFIG.escapeHtml(r.id)}" onclick="openReportModal(this.dataset.reportId)">
             <div class="rc-head">
               <div>
-                <div class="rc-week-label">${r.weekLabel}</div>
-                <div class="rc-date-range">${r.dateRange}, 2025</div>
+                <div class="rc-week-label">${window.EDUGNAY_CONFIG.escapeHtml(r.weekLabel)}</div>
+                <div class="rc-date-range">${window.EDUGNAY_CONFIG.escapeHtml(r.dateRange)}, ${window.EDUGNAY_CONFIG.escapeHtml(r.weekId.slice(0, 4))}</div>
               </div>
               <div class="rc-badges">
                 ${r.atRisk ? `<span class="badge badge-red"><i data-lucide="alert-triangle" style="width:9px;height:9px;"></i> Flagged</span>` : `<span class="badge badge-blue">Confirmed</span>`}
               </div>
             </div>
-            <div class="rc-excerpt">${r.text}</div>
+            <div class="rc-excerpt">${window.EDUGNAY_CONFIG.escapeHtml(r.text)}</div>
             <div class="rc-foot">
               <div class="rc-foot-left">
-                <span class="rc-teacher-avatar">${r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName)}</span>
-                <span>${r.teacherName} · ${r.confirmedAtLabel}</span>
+                <span class="rc-teacher-avatar">${window.EDUGNAY_CONFIG.escapeHtml(r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName))}</span>
+                <span>${window.EDUGNAY_CONFIG.escapeHtml(r.teacherName)} · ${window.EDUGNAY_CONFIG.escapeHtml(r.confirmedAtLabel)}</span>
               </div>
-              <button class="rc-read-link" onclick="event.stopPropagation(); openReportModal('${r.id}')">
+              <button class="rc-read-link" data-report-id="${window.EDUGNAY_CONFIG.escapeHtml(r.id)}" onclick="event.stopPropagation(); openReportModal(this.dataset.reportId)">
                 Read full report <i data-lucide="arrow-right" style="width:11px;height:11px;"></i>
               </button>
             </div>
@@ -424,19 +513,19 @@
     }
 
     function openReportModal(id) {
-      const child = window.EDUGNAY_CONFIG.getUserById(currentChild);
-      const reportRecord = getReportRecord(currentChild);
+      const child = getActiveChild();
+      const reportRecord = getReportRecord(child);
       const r = reportRecord?.reports.find(report => report.id === String(id));
       if (!child || !r) return;
       activeReportId = String(id);
 
       document.getElementById('rm-week').textContent = r.weekLabel;
-      const section = PARENT_SECTIONS.find(record => record.id === child.sectionId);
+      const section = { name: child.sectionName || 'Unassigned' };
       document.getElementById('rm-child').textContent = `${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       document.getElementById('rm-text').textContent = r.text;
       document.getElementById('rm-recommended-actions').innerHTML = renderRecommendedActions(r.recommendedActions);
       document.getElementById('rm-foot-avatar').textContent = r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName);
-      document.getElementById('rm-foot-meta-text').textContent = `Sent by ${r.teacherName} · ${r.confirmedAtLabel}`;
+      document.getElementById('rm-foot-meta-text').textContent = `Confirmed by ${r.teacherName} · ${r.confirmedAtLabel}`;
 
       const riskBanner = document.getElementById('rm-risk-banner');
       riskBanner.style.display = r.atRisk ? 'flex' : 'none';
@@ -448,6 +537,42 @@
     function closeReportModal() {
       document.getElementById('report-modal').classList.remove('open');
     }
+
+    async function loadParentReportChildren() {
+      const session = await window.EDUGNAY_API.getCurrentUser();
+      if (session?.role !== 'parent') {
+        parentDataError = 'Sign in with a parent account to view reports.';
+        return;
+      }
+
+      parentSchoolApiId = String(session.apiSchoolId || '');
+      const portal = await window.EDUGNAY_API.getPortalFeatures();
+      if (!portal?.features || !Object.hasOwn(portal.features, 'narrativeReportsEnabled')) {
+        throw new Error('Report access could not be confirmed.');
+      }
+      if (!portal.features.narrativeReportsEnabled) {
+        reportAccessRedirecting = true;
+        window.location.replace('./edugnay-parent-dashboard.html');
+        return;
+      }
+
+      const children = await window.EDUGNAY_API.getParentChildren();
+      PARENT_CHILDREN = children
+        .filter(child => child?.studentId !== null && child?.studentId !== undefined)
+        .map(child => ({
+          ...child,
+          studentId: String(child.studentId),
+          sectionId: child.sectionId == null ? null : String(child.sectionId)
+        }));
+    }
+
+    function setInitialChild() {
+      const requestedChildId = new URLSearchParams(window.location.search).get('studentId');
+      currentChildId = PARENT_CHILDREN.some(child => child.studentId === requestedChildId)
+        ? requestedChildId
+        : PARENT_CHILDREN[0]?.studentId || null;
+    }
+
     document.getElementById('report-modal').addEventListener('click', function (e) {
       if (e.target === this) closeReportModal();
     });
@@ -466,6 +591,24 @@
 
     /* ── INIT ── */
     document.addEventListener('DOMContentLoaded', async () => {
+      const switcher = document.getElementById('child-switcher');
+      switcher.setAttribute('role', 'status');
+      switcher.textContent = 'Loading linked children...';
+      document.getElementById('latest-report-wrap').textContent = 'Loading reports...';
+      document.getElementById('timeline-wrap').textContent = 'Loading reports...';
+
+      if (USE_PARENT_REPORT_API) {
+        try {
+          await loadParentReportChildren();
+        } catch (error) {
+          parentDataError = error.message || 'Parent data could not be loaded.';
+        }
+        if (reportAccessRedirecting) return;
+      } else {
+        PARENT_CHILDREN = makeDemoParentChildren();
+      }
+
+      setInitialChild();
       renderChildSwitcher();
       renderLatest();
       renderTimeline();

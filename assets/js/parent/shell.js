@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    PARENT SHELL — shared across all parent pages
    Nav, topbar, notif dropdown, profile dropdown
-   TODO on backend conversion: replace NOTIFICATIONS with
-   data from GET /parent/notifications
+   Communication data uses the backend when it is available and keeps the
+   local array as an offline fallback.
    ══════════════════════════════════════════ */
 
 /* ── LINKED CHILDREN DATA ── */
@@ -10,15 +10,18 @@ const PARENT_CONFIG = window.EDUGNAY_CONFIG;
 const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
 const PARENT_NO_CLASS_DAY = PARENT_CONFIG.getNoClassDay();
 const PARENT_USERS = PARENT_CONFIG.getUsersByRole(PARENT_CONFIG.values.roles.PARENT);
-const PARENT_CURRENT_USER = PARENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
+const PARENT_BACKEND_MODE = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+const PARENT_CURRENT_USER = PARENT_BACKEND_MODE ? null : (
+  PARENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
   || PARENT_USERS.find(user => user.id === 'parent-7')
   || PARENT_USERS.find(user => user.status === PARENT_CONFIG.values.statuses.ACTIVE)
   || PARENT_USERS[0]
-  || null;
+  || null
+);
 
 // Parent-child links stay as relationship records. Pages resolve the student
 // with getUserById(link.studentId) when they need display details.
-const PARENT_CHILD_DIRECTORY = PARENT_CONFIG.getParentStudentLinks()
+const PARENT_CHILD_DIRECTORY = (PARENT_BACKEND_MODE ? [] : PARENT_CONFIG.getParentStudentLinks())
   .filter(link => (
     (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID
     && link.parentId === PARENT_CURRENT_USER?.id
@@ -52,7 +55,7 @@ function renderParentIdentity() {
 }
 
 /* ── NOTIFICATIONS DATA ── */
-const NOTIFICATIONS = [
+let NOTIFICATIONS = [
   ...(PARENT_NO_CLASS_DAY ? [{
     id: `parent-notif-no-class-${PARENT_NO_CLASS_DAY.date}`,
     schoolId: PARENT_SCHOOL_ID,
@@ -104,6 +107,8 @@ const NOTIFICATIONS = [
   .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === PARENT_SCHOOL_ID);
 
+let BACKEND_COMMUNICATION = false;
+
 const PARENT_READ_STORE_KEY = `edugnay_parent_notif_read:${PARENT_SCHOOL_ID}`;
 
 function getParentVisibleNotifications() {
@@ -113,7 +118,9 @@ function getParentVisibleNotifications() {
 
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, PARENT_READ_STORE_KEY);
+  if (!BACKEND_COMMUNICATION) {
+    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, PARENT_READ_STORE_KEY);
+  }
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -146,9 +153,9 @@ function renderTopbarNotifs() {
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-head">
-          <div class="tb-notif-title">${n.title}</div>
+          <div class="tb-notif-title">${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</div>
         </div>
-        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
         <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
@@ -161,8 +168,7 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  window.EDUGNAY_CONFIG.markNotificationRead(PARENT_READ_STORE_KEY, id, NOTIFICATIONS);
-  navigate(link.page);
+  markCurrentNotificationRead(id).finally(() => navigate(link.page));
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -170,6 +176,28 @@ window.EDUGNAY_NOTIFICATION_CONTEXT = {
   records: NOTIFICATIONS,
   getItems: getParentVisibleNotifications
 };
+
+async function loadParentCommunication() {
+  try {
+    const data = await window.EDUGNAY_API.loadCommunication('parent');
+    if (!data.backend) return;
+    NOTIFICATIONS = data.notifications;
+    window.EDUGNAY_COMMUNICATION = data;
+    BACKEND_COMMUNICATION = true;
+  } catch (error) {
+    BACKEND_COMMUNICATION = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    if (BACKEND_COMMUNICATION) NOTIFICATIONS = [];
+    window.EDUGNAY_COMMUNICATION = {
+      backend: BACKEND_COMMUNICATION,
+      notifications: NOTIFICATIONS,
+      announcements: [],
+      tasks: [],
+      error: error?.message || 'School communications could not be loaded.'
+    };
+  }
+}
+
+window.EDUGNAY_COMMUNICATION_READY = loadParentCommunication();
 
 
 /* ── NAVIGATION ── */
@@ -223,8 +251,18 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT ── */
-document.addEventListener('DOMContentLoaded', () => {
-  if (PARENT_CONFIG.enforceProfileSetup(PARENT_CURRENT_USER?.id, 'edugnay-parent-profile.html')) return;
+document.addEventListener('DOMContentLoaded', async () => {
+  await window.EDUGNAY_COMMUNICATION_READY;
+  if (PARENT_BACKEND_MODE) {
+    if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-parent-profile.html', 'parent')) return;
+    try {
+      const user = await window.EDUGNAY_API.getCurrentUser();
+      if (user?.role !== 'parent') return;
+      window.EDUGNAY_PARENT.currentUser = user;
+    } catch (error) {
+      console.warn('Parent identity could not be loaded.', error.message);
+    }
+  } else if (PARENT_CONFIG.enforceProfileSetup(PARENT_CURRENT_USER?.id, 'edugnay-parent-profile.html')) return;
   renderParentIdentity();
   applyParentReportAccess();
   renderTopbarNotifs();

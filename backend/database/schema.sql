@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS school_levels (
   level_code VARCHAR(30) NOT NULL,
   display_name VARCHAR(80) NOT NULL,
   grading_period_type VARCHAR(30) NOT NULL DEFAULT 'quarterly',
+  grade_rounding ENUM('round', 'roundup', 'truncate') NOT NULL DEFAULT 'round',
+  passing_grade_threshold DECIMAL(5,2) NOT NULL DEFAULT 75.00,
   is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -418,6 +420,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   description TEXT NULL,
   due_at DATETIME NULL,
   max_score DECIMAL(8,2) NULL,
+  online_submission_enabled TINYINT(1) NOT NULL DEFAULT 0,
   status VARCHAR(30) NOT NULL DEFAULT 'published',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -487,6 +490,29 @@ CREATE TABLE IF NOT EXISTS student_scores (
   CONSTRAINT fk_student_scores_user FOREIGN KEY (recorded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+-- Stores the latest published snapshot for each student, subject, section, and term.
+CREATE TABLE IF NOT EXISTS published_final_grades (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  academic_term_id BIGINT UNSIGNED NOT NULL,
+  student_user_id BIGINT UNSIGNED NOT NULL,
+  final_grade DECIMAL(5,2) NOT NULL,
+  published_by_user_id BIGINT UNSIGNED NOT NULL,
+  published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_published_final_grades_scope (student_user_id, section_id, subject_id, academic_term_id),
+  KEY idx_published_final_grades_section_subject_term (section_id, subject_id, academic_term_id),
+  CONSTRAINT fk_published_final_grades_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_final_grades_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_final_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_final_grades_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_final_grades_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_published_final_grades_publisher FOREIGN KEY (published_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS attendance_sessions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
@@ -528,6 +554,7 @@ CREATE TABLE IF NOT EXISTS student_qr_credentials (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_user_id BIGINT UNSIGNED NOT NULL,
   token_hash VARCHAR(255) NOT NULL UNIQUE,
+  token_ciphertext TEXT NULL,
   credential_status VARCHAR(30) NOT NULL DEFAULT 'active',
   issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   revoked_at DATETIME NULL,
@@ -593,6 +620,7 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
 
 CREATE TABLE IF NOT EXISTS notifications (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  announcement_id BIGINT UNSIGNED NULL,
   user_id BIGINT UNSIGNED NOT NULL,
   type VARCHAR(50) NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -601,7 +629,35 @@ CREATE TABLE IF NOT EXISTS notifications (
   read_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_user_read (user_id, read_at),
+  KEY idx_notifications_announcement (announcement_id),
+  CONSTRAINT fk_notifications_announcement FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
   CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS learning_materials (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  academic_term_id BIGINT UNSIGNED NULL,
+  teacher_user_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  original_file_name VARCHAR(255) NOT NULL,
+  stored_file_name VARCHAR(100) NOT NULL,
+  file_type VARCHAR(10) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size_bytes BIGINT UNSIGNED NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  posted_at DATETIME NULL,
+  archived_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_materials_section_subject_status (section_id, subject_id, status),
+  CONSTRAINT fk_materials_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_materials_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL,
+  CONSTRAINT fk_materials_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_tasks (
@@ -629,20 +685,47 @@ CREATE TABLE IF NOT EXISTS journal_subjects (
   CONSTRAINT fk_journal_subjects_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS journal_prompts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  journal_subject_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  grading_item_id BIGINT UNSIGNED NULL,
+  week_start_date DATE NOT NULL,
+  prompt_text TEXT NOT NULL,
+  opens_at DATETIME NOT NULL,
+  due_at DATETIME NOT NULL,
+  min_words SMALLINT UNSIGNED NOT NULL DEFAULT 50,
+  allow_late BOOLEAN NOT NULL DEFAULT FALSE,
+  prompt_status VARCHAR(20) NOT NULL DEFAULT 'open',
+  created_by_user_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_journal_prompts_section_week (journal_subject_id, section_id, week_start_date),
+  UNIQUE KEY uq_journal_prompts_grading_item (grading_item_id),
+  KEY idx_journal_prompts_section_status (section_id, prompt_status, week_start_date),
+  CONSTRAINT fk_journal_prompts_subject FOREIGN KEY (journal_subject_id) REFERENCES journal_subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_journal_prompts_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_journal_prompts_grading_item FOREIGN KEY (grading_item_id) REFERENCES grading_items(id) ON DELETE SET NULL,
+  CONSTRAINT fk_journal_prompts_creator FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS student_journal_entries (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   journal_subject_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
+  journal_prompt_id BIGINT UNSIGNED NULL,
   prompt_text TEXT NOT NULL,
   entry_text TEXT NOT NULL,
   entry_status VARCHAR(30) NOT NULL DEFAULT 'submitted',
   submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_journal_entry_prompt_student (journal_prompt_id, student_user_id),
   CONSTRAINT fk_student_journal_entries_subject FOREIGN KEY (journal_subject_id) REFERENCES journal_subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_student_journal_entries_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_student_journal_entries_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT
+  CONSTRAINT fk_student_journal_entries_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_student_journal_entries_prompt FOREIGN KEY (journal_prompt_id) REFERENCES journal_prompts(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS journal_feedback (

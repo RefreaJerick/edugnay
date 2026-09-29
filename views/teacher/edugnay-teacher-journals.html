@@ -149,10 +149,14 @@
             <input class="settings-input" type="time" id="settings-deadline" value="23:59"/>
           </div>
         </div>
-        <div class="settings-row-2 settings-row-single">
+        <div class="settings-row-2">
           <div class="settings-field">
             <label class="settings-field-label">Min. Words</label>
             <input class="settings-input" type="number" id="settings-minwords" value="50" min="10"/>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label" for="settings-grading-item">Gradebook item</label>
+            <select class="settings-select" id="settings-grading-item" required></select>
           </div>
         </div>
       </div>
@@ -231,19 +235,8 @@
             <span>My Sections</span>
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
-          <div class="nav-children">
-            <a class="nav-child" onclick="navigate('section', '7-matthew')">
-              <span class="dot-7" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 7 – St. Matthew
-            </a>
-            <a class="nav-child" onclick="navigate('section', '8-luke')">
-              <span class="dot-8" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 8 – St. Luke
-            </a>
-            <a class="nav-child" onclick="navigate('section', '9-peter')">
-              <span class="dot-9" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 9 – St. Peter
-            </a>
+          <div class="nav-children" data-teacher-sections-nav>
+            <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
           </div>
         </div>
 
@@ -377,25 +370,14 @@
 
     <!-- Section tabs -->
     <div class="section-tab-bar" id="journal-section-tabs">
-      <button class="section-tab active" onclick="switchSection('7-matthew', this)" id="tab-7-matthew">
-        Grade 7 – St. Matthew
-        <span class="tab-count">38</span>
-      </button>
-      <button class="section-tab" onclick="switchSection('8-luke', this)" id="tab-8-luke">
-        Grade 8 – St. Luke
-        <span class="tab-count">36</span>
-      </button>
-      <button class="section-tab" onclick="switchSection('9-peter', this)" id="tab-9-peter">
-        Grade 9 – St. Peter
-        <span class="tab-count">34</span>
-      </button>
+      <div class="panel-empty-state" role="status">Loading your journal sections…</div>
     </div>
 
     <!-- Journal entries panel -->
     <div class="panel">
       <div class="panel-head">
         <div>
-          <div class="panel-title" id="panel-title">Journal Entries: Grade 7 – St. Matthew</div>
+          <div class="panel-title" id="panel-title">Journal Entries</div>
         </div>
         <div class="panel-head-right">
           <!-- EJS: render only when this teacher teaches the configured journal subject -->
@@ -403,11 +385,7 @@
             <i data-lucide="settings-2" style="width:14px;height:14px;"></i>
             <span>Journal Settings</span>
           </button>
-          <select class="filter-select" id="week-filter" onchange="renderTable()">
-            <option value="3">Week 3: June 9–14</option>
-            <option value="2">Week 2: June 2–7</option>
-            <option value="1">Week 1: May 26–31</option>
-          </select>
+          <select class="filter-select" id="week-filter" onchange="selectJournalPrompt(this.value)" aria-label="Select journal week"></select>
         </div>
       </div>
 
@@ -457,59 +435,88 @@
 lucide.createIcons();
 
 /* ══════ DATA ══════ */
-// Journal entries are shared with the student portal. Replace this getter
-// with the teacher journal API response later.
-const CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
-const JOURNAL_ENTRY_STATE = window.EDUGNAY_CONFIG.getJournalsForTeacher(CURRENT_TEACHER_ID)
-  .filter(record => record.isCurrent);
+let SECTIONS = {};
+let SECTION_TABS = [];
+let STUDENT_BY_ID = {};
+let currentSection = '';
+let currentPromptId = '';
+let settingsWeekStart = '';
+let editingPromptId = '';
+let activeStudentIds = [];
+let activeStudentIndex = 0;
+const JOURNAL_SETTINGS = { day: 'Friday', deadline: '23:59', minWords: 50, allowLate: false };
 
-const SECTIONS = {
-  '7-matthew': {
-    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    sectionId: 'jhs-grade7-matthew',
-    label: 'Grade 7 – St. Matthew',
-    hasPrompt: true,
-    prompt: JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade7-matthew')?.prompt || '',
-    students: JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade7-matthew')
-  },
-  '8-luke': {
-    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    sectionId: 'jhs-grade8-luke',
-    label: 'Grade 8 – St. Luke',
-    hasPrompt: Boolean(JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade8-luke')),
-    prompt: JOURNAL_ENTRY_STATE.find(record => record.sectionId === 'jhs-grade8-luke')?.prompt || '',
-    students: JOURNAL_ENTRY_STATE.filter(record => record.sectionId === 'jhs-grade8-luke' && record.isCurrent)
-  },
-  '9-peter': {
-    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    sectionId: 'jhs-grade9-peter',
-    label: 'Grade 9 – St. Peter',
-    hasPrompt: false,
-    prompt: '',
-    students: []
-  }
-};
+function localDate(value) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
 
-const JOURNAL_SETTINGS = {
-  schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-  day: 'Friday',
-  deadline: '23:59',
-  minWords: Number(JOURNAL_ENTRY_STATE.find(record => record.isCurrent)?.minWords) || 50,
-  allowLate: false,
-};
+function dateInputValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function mondayDate(date = new Date()) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return monday;
+}
+
+function dateTimeInputValue(value) {
+  const date = localDate(value);
+  return `${dateInputValue(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatJournalDate(value) {
+  const input = String(value || '');
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(input) ? `${input}T00:00:00` : input.replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function dueDateForWeek(weekStart, dayName, time) {
+  const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
+  const date = localDate(`${weekStart}T00:00:00`);
+  date.setDate(date.getDate() + ((dayIndex + 6) % 7));
+  const [hours, minutes] = time.split(':').map(Number);
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date;
+}
 
 function openSettingsDrawer() {
   const sec = SECTIONS[currentSection];
+  if (!sec) return;
+  const prompt = sec.prompts.find(item => item.id === currentPromptId) || null;
+  const hasSubmissions = prompt && sec.entries.some(entry => entry.promptId === prompt.id);
+  editingPromptId = prompt && prompt.status === 'open' && !hasSubmissions ? prompt.id : '';
+  if (editingPromptId) {
+    settingsWeekStart = prompt.weekStartDate;
+  } else {
+    const latestPrompt = sec.prompts[0] || null;
+    const base = latestPrompt ? localDate(`${latestPrompt.weekStartDate}T00:00:00`) : mondayDate();
+    if (latestPrompt) base.setDate(base.getDate() + 7);
+    settingsWeekStart = dateInputValue(mondayDate(base));
+  }
+
+  const promptInput = document.getElementById('settings-prompt-input');
+  promptInput.value = editingPromptId ? prompt.promptText : '';
   document.getElementById('settings-section-name').textContent = sec.label;
-  document.getElementById('settings-prompt-input').value = sec.prompt.replace(/^"|"$/g, '');
   updatePromptCounter();
 
-  document.getElementById('settings-day').value = JOURNAL_SETTINGS.day;
-  document.getElementById('settings-deadline').value = JOURNAL_SETTINGS.deadline;
-  document.getElementById('settings-minwords').value = JOURNAL_SETTINGS.minWords;
+  const deadline = editingPromptId ? localDate(prompt.dueAt) : null;
+  document.getElementById('settings-day').value = deadline
+    ? deadline.toLocaleDateString('en-US', { weekday: 'long' })
+    : JOURNAL_SETTINGS.day;
+  document.getElementById('settings-deadline').value = deadline
+    ? `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`
+    : JOURNAL_SETTINGS.deadline;
+  document.getElementById('settings-minwords').value = editingPromptId ? prompt.minWords : JOURNAL_SETTINGS.minWords;
+  setToggle('toggle-allow-late', editingPromptId ? prompt.allowLate : JOURNAL_SETTINGS.allowLate);
 
-  setToggle('toggle-allow-late', JOURNAL_SETTINGS.allowLate);
-
+  const gradingSelect = document.getElementById('settings-grading-item');
+  const items = sec.gradingItems.filter(item => item.subjectId === sec.subjectId);
+  gradingSelect.replaceChildren(new Option(items.length ? 'Choose gradebook item' : 'Create a score item first', ''));
+  items.forEach(item => gradingSelect.add(new Option(`${item.name} · ${item.max}`, item.id)));
+  gradingSelect.value = editingPromptId ? (prompt.gradingItemId || '') : '';
+  gradingSelect.disabled = items.length === 0;
   document.getElementById('settingsBackdrop').classList.add('open');
   lucide.createIcons();
 }
@@ -523,54 +530,74 @@ function setToggle(id, isOn) {
 }
 
 function updatePromptCounter() {
-  document.getElementById('prompt-char-count').textContent =
-    document.getElementById('settings-prompt-input').value.length;
+  document.getElementById('prompt-char-count').textContent = document.getElementById('settings-prompt-input').value.length;
 }
 
-function saveJournalSettings() {
+async function saveJournalSettings() {
   const sec = SECTIONS[currentSection];
   const newPrompt = document.getElementById('settings-prompt-input').value.trim();
-  if (newPrompt) sec.prompt = `"${newPrompt}"`;
+  const minWords = Number(document.getElementById('settings-minwords').value);
+  const gradingItemId = document.getElementById('settings-grading-item').value;
+  const day = document.getElementById('settings-day').value;
+  const deadline = document.getElementById('settings-deadline').value;
+  const allowLate = document.getElementById('toggle-allow-late').classList.contains('on');
+  if (!sec || !newPrompt || !gradingItemId || !deadline || !Number.isInteger(minWords) || minWords < 10 || minWords > 2000) {
+    showToast('Enter a prompt, minimum word count, deadline, and gradebook item.', 'error');
+    return;
+  }
 
-  JOURNAL_SETTINGS.day        = document.getElementById('settings-day').value;
-  JOURNAL_SETTINGS.deadline   = document.getElementById('settings-deadline').value;
-  JOURNAL_SETTINGS.minWords   = parseInt(document.getElementById('settings-minwords').value) || 50;
-  JOURNAL_SETTINGS.allowLate  = document.getElementById('toggle-allow-late').classList.contains('on');
+  const dueDate = dueDateForWeek(settingsWeekStart, day, deadline);
+  let opensAt = new Date();
+  if (editingPromptId) opensAt = localDate(sec.prompts.find(item => item.id === editingPromptId)?.opensAt);
+  if (dueDate <= opensAt && editingPromptId) {
+    showToast('The deadline must be after the opening time.', 'error');
+    return;
+  }
+  if (dueDate <= opensAt) {
+    let nextWeek = mondayDate();
+    if (dueDateForWeek(dateInputValue(nextWeek), day, deadline) <= opensAt) nextWeek.setDate(nextWeek.getDate() + 7);
+    settingsWeekStart = dateInputValue(nextWeek);
+  }
+  const finalDueDate = dueDateForWeek(settingsWeekStart, day, deadline);
+  if (finalDueDate <= opensAt) {
+    showToast('The deadline must be after the opening time.', 'error');
+    return;
+  }
+  const payload = {
+    sectionId: sec.id,
+    gradingItemId,
+    weekStartDate: settingsWeekStart,
+    promptText: newPrompt,
+    opensAt: dateTimeInputValue(opensAt),
+    dueAt: dateTimeInputValue(finalDueDate),
+    minWords,
+    allowLate
+  };
 
-  JOURNAL_ENTRY_STATE
-    .filter(record => record.sectionId === sec.sectionId && record.isCurrent)
-    .forEach(record => window.EDUGNAY_CONFIG.updateJournalEntry(record.id, {
-      prompt: sec.prompt.replace(/^"|"$/g, ''),
-      minWords: JOURNAL_SETTINGS.minWords,
-      dueLabel: `due ${JOURNAL_SETTINGS.day.toLowerCase()}`
-    }));
-
-  closeSettingsDrawer();
-  showToast('Journal settings updated', 'success');
+  try {
+    if (editingPromptId) await window.EDUGNAY_API.updateJournalPrompt(editingPromptId, payload);
+    else await window.EDUGNAY_API.createJournalPrompt(payload);
+    closeSettingsDrawer();
+    showToast('Journal prompt saved.', 'success');
+    await loadTeacherJournals();
+  } catch (error) {
+    showToast(error.message || 'Unable to save journal prompt.', 'error');
+  }
 }
 
-let currentSection = '7-matthew';
-let activeStudentIds = [];
-let activeStudentIndex = 0;
-
 function buildJournalSummaryCards() {
-  const students = Object.values(SECTIONS).flatMap(section => section.students);
+  const rosters = Object.values(SECTIONS).flatMap(section => section.roster || []);
+  const students = Object.values(SECTIONS).flatMap(section => section.prompt ? section.students : []);
   const submittedStudents = students.filter(student => student.submitted);
   const pendingReviewStudents = submittedStudents.filter(student => !student.reviewed);
   const notSubmittedStudents = students.filter(student => !student.submitted);
   return [
-    { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', records: students, label: 'Total students', sub: 'Students in your sections' },
+    { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', records: rosters, label: 'Total students', sub: 'Students in your sections' },
     { tone: 'green', icon: 'send', trend: 'On track', trendClass: 'trend-up', records: submittedStudents, label: 'Submitted this week', sub: 'Entries received so far' },
     { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', records: pendingReviewStudents, label: 'Pending review', sub: 'Entries waiting for feedback' },
     { tone: 'red', icon: 'circle-x', trend: 'Needs follow up', trendClass: 'trend-down', records: notSubmittedStudents, label: 'Not submitted', sub: 'Students to remind' },
   ];
 }
-
-const SECTION_TABS = Object.entries(SECTIONS).map(([key, section]) => ({
-  key,
-  label: section.label,
-  count: section.students.length,
-}));
 
 function renderJournalSummary() {
   const strip = document.getElementById('journal-summary-strip');
@@ -582,35 +609,82 @@ function renderJournalSummary() {
 function renderJournalSectionTabs() {
   const tabs = document.getElementById('journal-section-tabs');
   if (!tabs) return;
+  SECTION_TABS = Object.entries(SECTIONS).map(([key, section]) => ({ key, label: section.label, count: section.roster.length }));
   tabs.innerHTML = SECTION_TABS.length
-    ? SECTION_TABS.map(section => `<button class="section-tab ${section.key === currentSection ? 'active' : ''}" onclick="switchSection('${section.key}', this)" id="tab-${section.key}">${section.label}<span class="tab-count">${section.count}</span></button>`).join('')
+    ? SECTION_TABS.map(section => `<button class="section-tab ${section.key === currentSection ? 'active' : ''}" onclick="switchSection('${section.key}')" id="tab-${section.key}">${window.EDUGNAY_CONFIG.escapeHtml(section.label)}<span class="tab-count">${section.count}</span></button>`).join('')
     : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to you will appear here.' });
   lucide.createIcons();
 }
 
 /* ══════ SECTION SWITCH ══════ */
-function switchSection(sectionKey, btn) {
+function selectSectionPrompt(section, promptId) {
+  section.prompt = section.prompts.find(prompt => prompt.id === promptId) || null;
+  currentPromptId = section.prompt?.id || '';
+  section.students = section.roster.map(student => {
+    const entry = section.prompt
+      ? section.entries.find(record => record.promptId === section.prompt.id && record.studentId === student.id)
+      : null;
+    return {
+      studentId: student.id,
+      entryId: entry?.id || null,
+      promptId: section.prompt?.id || '',
+      promptText: section.prompt?.promptText || '',
+      week: section.prompt ? `Week of ${formatJournalDate(section.prompt.weekStartDate)}` : '',
+      dateRange: section.prompt ? `Due ${formatJournalDate(section.prompt.dueAt)}` : '',
+      submitted: Boolean(entry),
+      reviewed: entry?.reviewed || false,
+      late: entry?.isLate || false,
+      score: entry?.score ?? null,
+      maxScore: entry?.maxScore || section.prompt?.maxScore || 50,
+      entryText: entry?.entryText || '',
+      submittedAt: entry?.submittedAt || null
+    };
+  });
+}
+
+function renderPromptOptions(section) {
+  const select = document.getElementById('week-filter');
+  select.innerHTML = section.prompts.map(prompt => {
+    const label = `Week of ${formatJournalDate(prompt.weekStartDate)}`;
+    return `<option value="${prompt.id}">${window.EDUGNAY_CONFIG.escapeHtml(label)}</option>`;
+  }).join('');
+  select.value = currentPromptId;
+  select.hidden = section.prompts.length < 2;
+}
+
+function switchSection(sectionKey) {
   currentSection = sectionKey;
   document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+  document.getElementById(`tab-${sectionKey}`)?.classList.add('active');
 
   const sec = SECTIONS[sectionKey];
   if (!sec) return;
   document.getElementById('panel-title').textContent = `Journal Entries: ${sec.label}`;
   document.getElementById('search-input').value = '';
   document.getElementById('status-filter').value = 'all';
+  currentPromptId = sec.prompts[0]?.id || '';
+  selectSectionPrompt(sec, currentPromptId);
+  renderPromptOptions(sec);
+  renderTable();
+}
+
+function selectJournalPrompt(promptId) {
+  const sec = SECTIONS[currentSection];
+  if (!sec) return;
+  selectSectionPrompt(sec, promptId);
   renderTable();
 }
 
 /* ══════ RENDER TABLE ══════ */
 function renderTable() {
   const sec = SECTIONS[currentSection];
+  if (!sec) return;
   const noPromptEl = document.getElementById('noPromptState');
   const toolbar = document.querySelector('.toolbar');
   const tableWrap = document.querySelector('.table-wrap');
   const tableFooter = document.getElementById('table-footer');
 
-  if (!sec.hasPrompt) {
+  if (!sec.prompt) {
       if (!noPromptEl.innerHTML.trim()) {
         noPromptEl.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({
         icon: 'notebook-pen',
@@ -631,12 +705,11 @@ function renderTable() {
   tableWrap.style.display = 'block';
   tableFooter.style.display = 'block';
 
-  // ...rest of existing renderTable body continues unchanged
   const query = document.getElementById('search-input').value.toLowerCase();
   const statusFilter = document.getElementById('status-filter').value;
 
   const filtered = sec.students.filter(s => {
-    const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+    const student = STUDENT_BY_ID[s.studentId];
     if (!student) return false;
     if (query && !student.displayName.toLowerCase().includes(query)) return false;
     if (statusFilter === 'submitted' && !s.submitted) return false;
@@ -658,16 +731,17 @@ function renderTable() {
   }
 
   tbody.innerHTML = filtered.map((s, i) => {
-    const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+    const student = STUDENT_BY_ID[s.studentId];
     if (!student) return '';
-    const excerpt = s.submitted && s.entryText ? s.entryText.slice(0, 90) + (s.entryText.length > 90 ? '…' : '') : '—';
+    const excerpt = s.submitted && s.entryText ? window.EDUGNAY_CONFIG.escapeHtml(s.entryText.slice(0, 90) + (s.entryText.length > 90 ? '…' : '')) : '—';
 
     let scoreCellHtml;
     if (!s.submitted) {
       scoreCellHtml = `<span class="score-none">—</span>`;
     } else if (s.score !== null) {
-      const cls = s.score >= 40 ? 'score-pass' : s.score >= 30 ? 'score-warn' : 'score-fail';
-      scoreCellHtml = `<span class="score-chip"><span class="score-val ${cls}">${s.score}</span><span class="score-max">/50</span></span>`;
+      const percentage = s.maxScore ? s.score / s.maxScore : 0;
+      const cls = percentage >= 0.8 ? 'score-pass' : percentage >= 0.6 ? 'score-warn' : 'score-fail';
+      scoreCellHtml = `<span class="score-chip"><span class="score-val ${cls}">${s.score}</span><span class="score-max">/${s.maxScore}</span></span>`;
     } else {
       scoreCellHtml = `<span class="score-none">Not scored</span>`;
     }
@@ -686,9 +760,9 @@ function renderTable() {
         <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
         <td>
           <div class="student-cell">
-            <div class="student-av av-${String.fromCharCode(97 + (i % 6))}">${student.initials}</div>
+            <div class="student-av av-${String.fromCharCode(97 + (i % 6))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div>
             <div>
-              <div class="student-name">${student.displayName}</div>
+              <div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div>
             </div>
           </div>
         </td>
@@ -731,14 +805,14 @@ function openEntry(studentId) {
 
 function populateModal(s) {
   const sec = SECTIONS[currentSection];
-  const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
+  const student = STUDENT_BY_ID[s.studentId];
   if (!student) return;
 
   document.getElementById('modal-avatar').textContent = student.initials;
   document.getElementById('modal-avatar').className = 'modal-avatar av-a';
   document.getElementById('modal-student-name').textContent = student.displayName;
   document.getElementById('modal-meta').textContent = `${sec.label} · ${s.week || 'Journal'} · ${s.dateRange || ''}`;
-  document.getElementById('modal-prompt').textContent = sec.prompt;
+  document.getElementById('modal-prompt').textContent = s.promptText || sec.prompt?.promptText || 'Journal prompt unavailable';
 
   const entryEl = document.getElementById('modal-entry-body');
   if (s.submitted && s.entryText) {
@@ -754,6 +828,7 @@ function populateModal(s) {
   scoreInput.max = maxScore;
   scoreInput.value = s.score !== null ? s.score : '';
   scoreInput.disabled = !s.submitted;
+  document.getElementById('markReviewedBtn').disabled = !s.submitted;
   document.querySelector('.score-max-label').textContent = maxScore;
   document.querySelector('.score-hint').textContent = `Graded out of ${maxScore} points`;
 
@@ -786,7 +861,7 @@ function navigateEntry(dir) {
 }
 
 /* ══════ MARK REVIEWED ══════ */
-function markReviewed() {
+async function markReviewed() {
   const sec = SECTIONS[currentSection];
   const studentId = activeStudentIds[activeStudentIndex];
   const s = sec.students.find(x => x.studentId === studentId);
@@ -804,21 +879,26 @@ function markReviewed() {
 
   scoreInput.style.borderColor = '';
 
-  if (s.submitted && !isNaN(scoreVal)) {
-    const maxScore = Number(s.maxScore) || 50;
-    s.score = Math.min(maxScore, Math.max(0, scoreVal));
+  const maxScore = Number(s.maxScore) || 50;
+  if (scoreVal > maxScore) {
+    scoreInput.style.borderColor = 'var(--red)';
+    scoreInput.focus();
+    showToast(`Score cannot exceed ${maxScore}.`, 'error');
+    return;
   }
-  s.reviewed = true;
-  window.EDUGNAY_CONFIG.updateJournalEntry(s.id, {
-    score: s.score,
-    reviewed: true
-  });
-
-  renderTable();
-  renderJournalSummary();
-  populateModal(s);
-  const student = window.EDUGNAY_CONFIG.getUserById(s.studentId);
-  showToast(`${student?.displayName || 'Student'} · marked as reviewed`, 'success');
+  scoreInput.style.borderColor = '';
+  const button = document.getElementById('markReviewedBtn');
+  button.disabled = true;
+  try {
+    await window.EDUGNAY_API.reviewJournalEntry(s.entryId, scoreVal);
+    await loadTeacherJournals();
+    const refreshed = SECTIONS[currentSection]?.students.find(student => student.studentId === s.studentId);
+    if (refreshed) populateModal(refreshed);
+    showToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · score saved and reviewed`, 'success');
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message || 'Unable to save this journal review.', 'error');
+  }
 }
 
 /* ══════ MODAL HELPERS ══════ */
@@ -844,12 +924,74 @@ function showToast(msg, type = 'success') {
   setTimeout(() => t.remove(), 3000);
 }
 
+async function loadTeacherJournals() {
+  const tabs = document.getElementById('journal-section-tabs');
+  const noPrompt = document.getElementById('noPromptState');
+  const previousSection = currentSection;
+  const previousPromptId = currentPromptId;
+  tabs.innerHTML = '<div class="panel-empty-state" role="status">Loading your journal sections…</div>';
+  try {
+    const [user, subjects, sections, prompts] = await Promise.all([
+      window.EDUGNAY_API.getCurrentUser(),
+      window.EDUGNAY_API.getJournalSubjects(),
+      window.EDUGNAY_API.getJournalSections(),
+      window.EDUGNAY_API.getJournalPrompts()
+    ]);
+    if (user?.role !== 'teacher') throw new Error('Only teacher accounts can review journal entries.');
+    if (!subjects.length) throw new Error('Journals are not configured for this school.');
+
+    STUDENT_BY_ID = {};
+    const sectionRecords = await Promise.all(sections.map(async section => {
+      const [rosterResult, entries, gradingItems] = await Promise.all([
+        window.EDUGNAY_API.getSectionStudents(section.id),
+        window.EDUGNAY_API.getJournalEntries({ sectionId: section.id }),
+        window.EDUGNAY_API.getGradingItems({ sectionId: section.id })
+      ]);
+      const roster = rosterResult.students || [];
+      roster.forEach(student => { STUDENT_BY_ID[student.id] = student; });
+      return [section.id, {
+        ...section,
+        subjectId: subjects[0].subjectId,
+        prompts: prompts.filter(prompt => prompt.sectionId === section.id),
+        entries,
+        roster,
+        gradingItems,
+        students: []
+      }];
+    }));
+
+    SECTIONS = Object.fromEntries(sectionRecords);
+    Object.values(SECTIONS).forEach(section => selectSectionPrompt(section, section.prompts[0]?.id || ''));
+    currentSection = SECTIONS[previousSection] ? previousSection : sectionRecords[0]?.[0] || '';
+    const activeSection = SECTIONS[currentSection];
+    if (activeSection) {
+      currentPromptId = activeSection.prompts.some(prompt => prompt.id === previousPromptId)
+        ? previousPromptId
+        : activeSection.prompts[0]?.id || '';
+      selectSectionPrompt(activeSection, currentPromptId);
+      document.getElementById('panel-title').textContent = `Journal Entries: ${activeSection.label}`;
+      renderPromptOptions(activeSection);
+    }
+    renderJournalSectionTabs();
+    renderJournalSummary();
+    renderTable();
+    lucide.createIcons();
+  } catch (error) {
+    SECTIONS = {};
+    tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal sections unavailable', text: error.message || 'Please refresh and try again.' });
+    noPrompt.innerHTML = '';
+    noPrompt.style.display = 'none';
+    document.querySelector('.toolbar').style.display = 'none';
+    document.querySelector('.table-wrap').style.display = 'none';
+    document.getElementById('table-footer').style.display = 'none';
+    renderJournalSummary();
+    lucide.createIcons();
+  }
+}
+
 /* ══════ INIT ══════ */
 document.addEventListener('DOMContentLoaded', async () => {
-  renderJournalSummary();
-  renderJournalSectionTabs();
-  lucide.createIcons();
-  renderTable();
+  await loadTeacherJournals();
 });
 </script>
 </body>

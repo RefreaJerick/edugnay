@@ -226,8 +226,8 @@
           </div>
           <div class="form-group" id="assignmentSubmissionForm">
             <label class="form-label" for="assignmentSubmissionFile">File</label>
-            <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4">
-            <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, Excel, image, or video.</span>
+            <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
+            <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, or Excel.</span>
           </div>
         </div>
       </div>
@@ -243,11 +243,50 @@
   <script>
     lucide.createIcons();
 
-    // The authenticated student's ID will come from the session later.
-    const STUDENT_ID = 'jd-004';
-    let ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
-    let STUDENT_SUBMISSIONS = window.EDUGNAY_CONFIG.getAssignmentSubmissions()
+    const BACKEND_ASSIGNMENTS_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    let STUDENT_ID = BACKEND_ASSIGNMENTS_ENABLED ? null : 'jd-004';
+    let ASSIGNMENTS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
+    let STUDENT_SUBMISSIONS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentSubmissions()
       .filter(function (record) { return record.studentId === STUDENT_ID; });
+    let backendAssignmentsLoading = BACKEND_ASSIGNMENTS_ENABLED;
+    let backendAssignmentsError = '';
+
+    async function loadBackendAssignments() {
+      if (!window.EDUGNAY_API?.isBackendAvailable) return false;
+      try {
+        const session = await window.EDUGNAY_API.getCurrentUser();
+        if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
+        STUDENT_ID = String(session.apiUserId || session.userId);
+        if (!STUDENT_ID || STUDENT_ID === 'undefined') throw new Error('Your student account could not be identified.');
+        const assignments = await window.EDUGNAY_API.getAssignments();
+        const submissions = (await Promise.all(assignments.map(function (assignment) {
+          return window.EDUGNAY_API.getAssignmentSubmissions(assignment.id);
+        }))).flat();
+        const todayDate = new Date();
+        const today = [todayDate.getFullYear(), String(todayDate.getMonth() + 1).padStart(2, '0'), String(todayDate.getDate()).padStart(2, '0')].join('-');
+        STUDENT_SUBMISSIONS = submissions.filter(function (record) {
+          return String(record.studentId) === STUDENT_ID;
+        });
+        ASSIGNMENTS = assignments.map(function (assignment) {
+          const submission = STUDENT_SUBMISSIONS.find(function (record) {
+            return String(record.assignmentId) === String(assignment.id);
+          });
+          const submitted = submission?.status === 'submitted' && submission.fileName;
+          const pastDue = assignment.dueDate && assignment.dueDate < today;
+          return { ...assignment, status: submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending' };
+        });
+        backendAssignmentsError = '';
+        return true;
+      } catch (error) {
+        console.warn('Unable to load student assignments.', error.message);
+        backendAssignmentsError = 'Assignments could not be loaded. Please refresh and try again.';
+        ASSIGNMENTS = [];
+        STUDENT_SUBMISSIONS = [];
+        return false;
+      } finally {
+        backendAssignmentsLoading = false;
+      }
+    }
 
     const ASSIGNMENT_FILTERS = [
       { key: 'all', label: 'All' },
@@ -303,6 +342,16 @@
 
     function renderAssignments() {
       const list = document.getElementById('assignmentList');
+      if (BACKEND_ASSIGNMENTS_ENABLED && backendAssignmentsLoading) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Reading assignments from your classes.' });
+        lucide.createIcons();
+        return;
+      }
+      if (BACKEND_ASSIGNMENTS_ENABLED && backendAssignmentsError) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Assignments unavailable', text: backendAssignmentsError });
+        lucide.createIcons();
+        return;
+      }
       const visible = getVisibleAssignments();
 
       if (!visible.length) {
@@ -400,7 +449,7 @@
 
       const fileInput = document.getElementById('assignmentSubmissionFile');
       fileInput.value = '';
-      document.getElementById('assignmentSubmissionFileHint').textContent = 'PDF, Word, PowerPoint, Excel, image, or video.';
+      document.getElementById('assignmentSubmissionFileHint').textContent = 'PDF, Word, PowerPoint, or Excel.';
       document.getElementById('assignmentSubmissionFileHint').style.color = '';
 
       const modal = document.getElementById('assignmentSubmissionModal');
@@ -420,7 +469,7 @@
       const fileInput = document.getElementById('assignmentSubmissionFile');
       const hint = document.getElementById('assignmentSubmissionFileHint');
       const file = fileInput.files[0];
-      const supportedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'mp4'];
+      const supportedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
       const extension = file?.name.split('.').pop().toLowerCase();
 
       if (!file) {
@@ -436,15 +485,30 @@
         return false;
       }
 
-      hint.textContent = 'PDF, Word, PowerPoint, Excel, image, or video.';
+      hint.textContent = 'PDF, Word, PowerPoint, or Excel.';
       hint.style.color = '';
       return true;
     }
 
-    function submitStudentAssignment() {
+    async function submitStudentAssignment() {
       if (!activeSubmissionAssignmentId || !validateAssignmentSubmission()) return;
 
       const file = document.getElementById('assignmentSubmissionFile').files[0];
+      if (BACKEND_ASSIGNMENTS_ENABLED) {
+        try {
+          await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
+          const refreshed = await loadBackendAssignments();
+          if (!refreshed) alert('Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.');
+        } catch (error) {
+          alert(error.message);
+          return;
+        }
+        closeAssignmentSubmissionModal();
+        renderFilterTabs();
+        renderAssignments();
+        return;
+      }
+
       const type = file.name.split('.').pop().toLowerCase();
       const submission = window.EDUGNAY_CONFIG.submitAssignment({
         assignmentId: activeSubmissionAssignmentId,
@@ -466,6 +530,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      await loadBackendAssignments();
       populateSubjectFilter();
       renderFilterTabs();
       renderAssignments();

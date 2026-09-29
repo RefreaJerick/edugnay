@@ -222,6 +222,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       renderActivityList();
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
       if (window.lucide) window.lucide.createIcons();
     });

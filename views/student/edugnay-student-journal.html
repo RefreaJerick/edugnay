@@ -35,7 +35,7 @@
                          allowLateSubmissions }
   - currentEntry      → student's entry for the CURRENT week, if any:
                        { text, submittedAt, score (null until teacher reviews), reviewed }
-                       If currentEntry exists → render submitted-block (read-only),
+                       If currentEntry exists → render a read-only submission panel,
                        not the composer. A student should never be able to edit a
                        submitted entry from this page (teacher already reviews it
                        in the teacher portal's journal review modal).
@@ -248,94 +248,105 @@
 
   <script>
     lucide.createIcons();
-    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
+    const escapeJournalHtml = window.EDUGNAY_CONFIG.escapeHtml;
+    let currentPrompt = null;
+    let currentEntry = null;
+    let pastEntries = [];
+    let journalWindowOpen = false;
+    let minimumWords = 50;
 
-    /*
-      EJS NOTE: these two objects are client-side placeholders. On conversion:
-      - JOURNAL_WINDOW + CURRENT_ENTRY come from the page's initial server render
-        (no client fetch needed for the current week — render directly via EJS).
-      - PAST_ENTRIES likewise renders server-side as a simple loop; the only
-        remaining client-side JS should be the minimum-word helper on the composer.
-    */
-    // The current student and all journal entries come from the shared source.
-    // Replace the getter with the student journal API response later.
-    const STUDENT_ID = 'jd-004';
-    const JOURNAL_RECORDS = window.EDUGNAY_CONFIG.getJournalsForStudent(STUDENT_ID);
-    const currentJournal = JOURNAL_RECORDS.find(record => record.isCurrent);
-    const journalPromptMarkup = currentJournal ? `
-      <div class="journal-prompt">
+    function formatJournalDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? 'Date unavailable'
+        : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatJournalDateTime(value) {
+      return window.EDUGNAY_CONFIG.formatDateTime(value);
+    }
+
+    function formatJournalDateRange(startValue, endValue) {
+      const start = new Date(`${String(startValue).slice(0, 10)}T00:00:00`);
+      const end = new Date(endValue);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'Dates unavailable';
+      const startOptions = { month: 'short', day: 'numeric' };
+      const endOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+      if (start.getFullYear() !== end.getFullYear()) startOptions.year = 'numeric';
+      return `${start.toLocaleDateString('en-US', startOptions)} – ${end.toLocaleDateString('en-US', endOptions)}`;
+    }
+
+    function promptWeekLabel(prompt) {
+      return `Week of ${formatJournalDate(`${prompt.weekStartDate}T00:00:00`)}`;
+    }
+
+    function isPromptOpen(prompt) {
+      const now = Date.now();
+      return prompt?.status === 'open' && new Date(prompt.opensAt).getTime() <= now &&
+        (new Date(prompt.dueAt).getTime() >= now || prompt.allowLate);
+    }
+
+    function renderJournalPrompt(prompt) {
+      if (!prompt) return '';
+      const subjectName = prompt.subjectName || 'Journal';
+      const dateRange = formatJournalDateRange(prompt.weekStartDate, prompt.dueAt);
+      return `
+      <section class="journal-prompt" aria-label="Weekly journal prompt">
         <div class="journal-prompt-heading">
           <div class="journal-prompt-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
           <div class="journal-prompt-copy">
-            <div class="journal-prompt-eyebrow">${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectName)} · Weekly Journal</div>
-            <div class="journal-prompt-period">${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.week)} · ${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.dateRange)}</div>
+            <div class="journal-prompt-eyebrow">${escapeJournalHtml(subjectName)} · Weekly Journal</div>
+            <div class="journal-prompt-period">${escapeJournalHtml(dateRange)}</div>
           </div>
         </div>
-        <p class="journal-prompt-text">&quot;${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.prompt)}&quot;</p>
+        <p class="journal-prompt-text">${escapeJournalHtml(prompt.promptText)}</p>
         <div class="journal-prompt-deadline">
           <i data-lucide="clock" style="width:13px;height:13px;"></i>
-          <span>Submit before <strong>${window.EDUGNAY_CONFIG.escapeHtml(currentJournal.dueLabel || 'Friday, 11:59 PM')}</strong></span>
+          <span>Submit before <strong>${escapeJournalHtml(formatJournalDateTime(prompt.dueAt))}</strong></span>
         </div>
-      </div>` : '';
-    const JOURNAL_WINDOW = {
-      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-      isOpen: currentJournal?.isOpen === true,
-      minWords: Number(currentJournal?.minWords) || 50,
-    };
-    const CURRENT_ENTRY = currentJournal?.submitted
-      ? { ...currentJournal, text: currentJournal.entryText, submittedAt: window.EDUGNAY_CONFIG.formatDateTime(currentJournal.submittedAt) }
-      : null;
-    const PAST_ENTRIES = JOURNAL_RECORDS
-      .filter(record => !record.isCurrent && record.submitted)
-      .map(record => ({
-        ...record,
-        text: record.entryText,
-        excerpt: record.entryText.slice(0, 90) + (record.entryText.length > 90 ? '…' : ''),
-        submittedAt: window.EDUGNAY_CONFIG.formatDateTime(record.submittedAt)
-      }));
+      </section>`;
+    }
+
     function wordCount(text) {
       return text.trim().split(/\s+/).filter(Boolean).length;
     }
 
     function renderCurrentWeekPanel() {
       const panel = document.getElementById('current-week-panel');
+      const journalPromptMarkup = renderJournalPrompt(currentPrompt);
 
-      if (CURRENT_ENTRY) {
-        // Already submitted — read-only, locked
-        const scoreBlock = CURRENT_ENTRY.score !== null
-          ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${CURRENT_ENTRY.score} <span class="score-max">/ 50</span></span>`
-          : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
+      if (currentEntry) {
+        // Submitted entries are read-only.
+        const scoreBlock = currentEntry.score !== null
+          ? `<span class="score-given-chip" aria-label="Score ${currentEntry.score} out of ${currentEntry.maxScore || currentPrompt?.maxScore || 'unknown'}"><span>Score</span><strong>${currentEntry.score}</strong><span class="score-max">/ ${currentEntry.maxScore || currentPrompt?.maxScore || '—'}</span></span>`
+          : `<span class="score-pending-chip" role="status"><i data-lucide="hourglass" aria-hidden="true" style="width:12px;height:12px;"></i> Awaiting review</span>`;
 
         panel.innerHTML = `${journalPromptMarkup}
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">This Week's Entry</div>
-          <div class="panel-sub">Submitted ${CURRENT_ENTRY.submittedAt}</div>
-        </div>
-      </div>
-      <div class="submitted-block">
-        <div class="submitted-banner">
-          <div class="submitted-icon"><i data-lucide="check" style="width:16px;height:16px;"></i></div>
-          <div>
-            <div class="submitted-title">Entry submitted</div>
-            <div class="submitted-sub">You can't edit this entry once submitted. Your teacher will review it soon.</div>
-          </div>
-        </div>
-        <div class="submitted-entry">${CURRENT_ENTRY.text}</div>
-        <div class="submitted-meta">
-          ${scoreBlock}
-        </div>
-      </div>`;
+          <section class="journal-submission" aria-labelledby="current-entry-title">
+            <div class="journal-submission-head">
+              <h2 class="panel-title" id="current-entry-title">Your entry</h2>
+              <p class="panel-sub">Submitted ${escapeJournalHtml(formatJournalDateTime(currentEntry.submittedAt))}</p>
+            </div>
+            <p class="journal-submission-note"><i data-lucide="lock-keyhole" aria-hidden="true" style="width:13px;height:13px;"></i> This entry is read-only after submission.</p>
+            <div class="submitted-entry" aria-label="Your submitted journal entry">${escapeJournalHtml(currentEntry.entryText)}</div>
+            <div class="submitted-meta">${scoreBlock}</div>
+          </section>`;
         lucide.createIcons();
         return;
       }
 
-      if (!JOURNAL_WINDOW.isOpen) {
+      if (!currentPrompt) {
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No journal prompt yet', text: 'A journal prompt will appear here when your teacher publishes one.' });
+        lucide.createIcons();
+        return;
+      }
+
+      if (!journalWindowOpen) {
         panel.innerHTML = `${journalPromptMarkup}
       <div class="closed-state">
         <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
         <div class="closed-title">Submission window closed</div>
-        <div class="closed-sub">This week's journal entry is no longer accepting submissions.<br/>A new prompt opens next week.</div>
+      <div class="closed-sub">This week's journal entry is no longer accepting submissions.</div>
       </div>`;
         lucide.createIcons();
         return;
@@ -346,7 +357,7 @@
     <div class="panel-head">
       <div>
         <div class="panel-title">Write Your Entry</div>
-      <div class="panel-sub">${JOURNAL_WINDOW.minWords} words minimum</div>
+      <div class="panel-sub">${minimumWords} words minimum</div>
       </div>
     </div>
     <div class="composer-body">
@@ -369,55 +380,58 @@
       const textarea = document.getElementById('entry-textarea');
       const label = document.getElementById('word-count-label');
       const submitBtn = document.getElementById('submit-btn');
+      if (!textarea || !label || !submitBtn) return;
       const count = wordCount(textarea.value);
 
       label.textContent = `${count} words`;
       label.className = 'word-count';
-      if (count > 0 && count < JOURNAL_WINDOW.minWords) {
+      if (count > 0 && count < minimumWords) {
         label.classList.add('under');
-        label.textContent = `${count} words · need ${JOURNAL_WINDOW.minWords - count} more`;
-      } else if (count >= JOURNAL_WINDOW.minWords) {
+        label.textContent = `${count} words · need ${minimumWords - count} more`;
+      } else if (count >= minimumWords) {
         label.classList.add('ok');
       }
 
-      submitBtn.disabled = count < JOURNAL_WINDOW.minWords;
+      submitBtn.disabled = count < minimumWords;
     }
 
-    function submitEntry() {
+    async function submitEntry() {
       const textarea = document.getElementById('entry-textarea');
-      if (!currentJournal) return;
-      window.EDUGNAY_CONFIG.updateJournalEntry(currentJournal.id, {
-        entryText: textarea.value.trim(),
-        submitted: true,
-        isOpen: false,
-        submittedAt: new Date().toISOString()
-      });
-      showToast('Journal entry submitted!', 'success');
-      setTimeout(() => location.reload(), 900);
+      const submitBtn = document.getElementById('submit-btn');
+      if (!currentPrompt || !textarea || !submitBtn || wordCount(textarea.value) < minimumWords) return;
+      submitBtn.disabled = true;
+      try {
+        await window.EDUGNAY_API.submitJournalEntry({ promptId: currentPrompt.id, entryText: textarea.value.trim() });
+        showToast('Journal entry submitted!', 'success');
+        await loadStudentJournals();
+      } catch (error) {
+        showToast(error.message || 'Unable to submit this journal entry.', 'error');
+        submitBtn.disabled = false;
+      }
     }
 
     function renderHistory() {
       const list = document.getElementById('history-list');
 
-      if (PAST_ENTRIES.length === 0) {
+      if (pastEntries.length === 0) {
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'No past entries yet', text: 'Submitted journal entries will appear here.' });
         lucide.createIcons();
         return;
       }
 
-      list.innerHTML = PAST_ENTRIES.map(e => {
+      list.innerHTML = pastEntries.map(e => {
         const scoreBadge = e.score !== null
-          ? `<span class="badge badge-green"><i data-lucide="star" style="width:9px;height:9px;"></i> ${e.score}/50</span>`
-          : `<span class="badge badge-orange">Pending</span>`;
+          ? `<span class="history-reviewed-score"><span>Reviewed</span><strong>${e.score}/${e.maxScore || '—'}</strong></span>`
+          : `<span class="badge badge-gray"><i data-lucide="hourglass" aria-hidden="true" style="width:10px;height:10px;"></i> Awaiting review</span>`;
         return `
-      <div class="history-row" onclick="openEntryModal('${e.id}')">
-        <div class="history-icon"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></div>
-        <div class="history-info">
-          <div class="history-week">${e.week} · ${e.dateRange}</div>
-          <div class="history-excerpt">${e.excerpt}</div>
-        </div>
-        <div class="history-score">${scoreBadge}</div>
-      </div>`;
+      <button class="history-row" type="button" aria-label="View journal entry: ${escapeJournalHtml(e.week)}" onclick="openEntryModal('${e.id}')">
+        <span class="history-icon" aria-hidden="true"><i data-lucide="notebook-pen" style="width:17px;height:17px;"></i></span>
+        <span class="history-info">
+          <span class="history-week">${escapeJournalHtml(e.week)}</span>
+          <span class="history-excerpt">${escapeJournalHtml(e.excerpt)}</span>
+        </span>
+        <span class="history-score">${scoreBadge}</span>
+      </button>`;
       }).join('');
       lucide.createIcons();
     }
@@ -431,17 +445,17 @@
     }
 
     function openEntryModal(id) {
-      const e = PAST_ENTRIES.find(entry => entry.id === String(id));
+      const e = pastEntries.find(entry => entry.id === String(id));
       if (!e) return;
       document.getElementById('entryModalWeek').textContent = e.week;
       document.getElementById('entryModalDate').textContent = e.dateRange;
       document.getElementById('entryModalPrompt').textContent = e.prompt;
-      document.getElementById('entryModalText').textContent = e.text;
-      document.getElementById('entryModalSubmitted').textContent = e.submittedAt;
+      document.getElementById('entryModalText').textContent = e.entryText;
+      document.getElementById('entryModalSubmitted').textContent = formatJournalDateTime(e.submittedAt);
 
       const scoreEl = document.getElementById('entryModalScore');
       scoreEl.innerHTML = e.score !== null
-        ? `<span class="score-given-chip"><i data-lucide="star" style="width:12px;height:12px;"></i> ${e.score} <span class="score-max">/ 50</span></span>`
+        ? `<span class="score-given-chip"><span>Score</span><strong>${e.score}</strong><span class="score-max">/ ${e.maxScore || '—'}</span></span>`
         : `<span class="score-pending-chip"><i data-lucide="hourglass" style="width:12px;height:12px;"></i> Awaiting score</span>`;
 
       document.getElementById('entryModalBackdrop').classList.add('open');
@@ -452,9 +466,60 @@
       document.getElementById('entryModalBackdrop').classList.remove('open');
     }
 
+    async function loadStudentJournals() {
+      const panel = document.getElementById('current-week-panel');
+      const list = document.getElementById('history-list');
+      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading journal', text: 'Your journal entries are being loaded.' });
+      list.innerHTML = '';
+      try {
+        const [user, portal] = await Promise.all([
+          window.EDUGNAY_API.getCurrentUser(),
+          window.EDUGNAY_API.getPortalFeatures()
+        ]);
+        if (user?.role !== 'student') throw new Error('Only student accounts can view journal entries.');
+        if (!portal.features.journalsEnabled) throw new Error('Journals are disabled for this school.');
+        const [subjects, prompts, entries] = await Promise.all([
+          window.EDUGNAY_API.getJournalSubjects(),
+          window.EDUGNAY_API.getJournalPrompts(),
+          window.EDUGNAY_API.getJournalEntries()
+        ]);
+        if (!subjects.length) throw new Error('Journals are not configured for this school.');
+
+        currentPrompt = prompts[0] || null;
+        currentEntry = currentPrompt
+          ? entries.find(entry => entry.promptId === currentPrompt.id) || null
+          : null;
+        minimumWords = Number(currentPrompt?.minWords) || 50;
+        journalWindowOpen = currentPrompt ? isPromptOpen(currentPrompt) : false;
+
+        const historicalEntries = currentPrompt
+          ? entries.filter(entry => entry.id !== currentEntry?.id)
+          : entries;
+        pastEntries = historicalEntries.map(entry => {
+          const prompt = prompts.find(item => item.id === entry.promptId);
+          const weekDate = prompt?.weekStartDate || entry.submittedAt;
+          const week = prompt
+            ? formatJournalDateRange(prompt.weekStartDate, prompt.dueAt)
+            : `Week of ${formatJournalDate(weekDate)}`;
+          return {
+            ...entry,
+            week,
+            dateRange: formatJournalDate(entry.submittedAt),
+            prompt: prompt?.promptText || entry.promptText || 'Journal prompt unavailable',
+            excerpt: entry.entryText.length > 96 ? `${entry.entryText.slice(0, 96)}…` : entry.entryText
+          };
+        });
+        renderCurrentWeekPanel();
+        renderHistory();
+      } catch (error) {
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Unable to load journal', text: error.message || 'Please refresh and try again.' });
+        list.innerHTML = '';
+        lucide.createIcons();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
-      renderCurrentWeekPanel();
-      renderHistory();
+      await loadStudentJournals();
     });
 
   </script>

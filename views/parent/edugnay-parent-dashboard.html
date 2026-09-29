@@ -292,7 +292,7 @@
 
 
   <script>
-    const DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
+    let DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
 
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
@@ -300,9 +300,9 @@
       const visibleAnnouncements = DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false);
       list.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
-          <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+          <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
           ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
-          <div class="ann-item-body">${item.body}</div>
+          <div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div>
           <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
         </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       lucide.createIcons();
@@ -317,7 +317,13 @@
     ];
 
     const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
+    if (window.EDUGNAY_API?.isBackendAvailable) PARENT_CHILDREN.splice(0);
     const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
+    let backendAttendanceRecords = null;
+    let backendAssignments = false;
+    let backendCurrentDate = '';
+    let attendanceLoadError = '';
+    let assignmentsRequestId = 0;
 
     const ATTENDANCE_SUBJECT_META = {
       mathematics: { name: 'Mathematics', color: 'var(--blue-mid)' },
@@ -327,29 +333,23 @@
     };
 
     function getDashboardAttendance(studentId, date) {
-      const records = window.EDUGNAY_CONFIG.getAttendanceRecords({ studentId, date });
+      const records = backendAttendanceRecords
+        ? backendAttendanceRecords.filter(record => record.studentId === studentId && record.date === date)
+        : window.EDUGNAY_CONFIG.getAttendanceRecords({ studentId, date });
       if (!records.length) return null;
 
-      const dailyRecords = records.some(record => !record.subjectId)
-        ? records.filter(record => !record.subjectId)
-        : records;
-      const subjects = dailyRecords.map(record => {
-        const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: 'All Subjects', color: 'var(--blue-mid)' };
-        return { name: subject.name, status: record.status, color: subject.color };
+      const subjects = records.filter(record => record.subjectId).map(record => {
+        const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: record.subjectName || 'Subject', color: 'var(--blue-mid)' };
+        return { name: record.subjectName || subject.name, status: record.status, color: subject.color };
       });
-      const statuses = subjects.map(subject => subject.status);
-      const status = statuses.includes('absent') ? 'absent'
-        : statuses.includes('late') ? 'late'
-        : statuses.some(value => value === 'present' || value === 'excused') ? 'present'
-        : 'pending';
-      return { status, subjects };
+      return { subjects };
     }
 
     const CHILD_DASHBOARD_RECORDS = PARENT_CHILDREN.map(child => ({
       studentId: child.studentId,
       attendance: Object.fromEntries(DAYS.map(day => [
         day.key,
-        getDashboardAttendance(child.studentId, '2025-06-' + String(day.date).padStart(2, '0'))
+        getDashboardAttendance(child.studentId, day.isoDate || '2025-06-' + String(day.date).padStart(2, '0'))
       ]))
     }));
 
@@ -358,7 +358,7 @@
 
     function getCurrentChild() {
       const link = PARENT_CHILDREN.find(child => child.studentId === currentChild);
-      return link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null;
+      return link?.profile || (link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null);
     }
 
     function getCurrentDashboardRecord() {
@@ -369,11 +369,11 @@
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
       switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
-        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-        if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
+        const student = link.profile || window.EDUGNAY_CONFIG.getUserById(link.studentId);
+        if (!student || (!link.profile && student.role !== PARENT_CONFIG.values.roles.STUDENT)) return '';
         const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-        const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
-        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${student.id}" onclick="switchChild('${student.id}', this)"><div class="child-avatar">${student.initials}</div><div class="child-info"><div class="child-name">${student.displayName}</div><div class="child-section">${sectionLabel}</div></div></div>`;
+        const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${student.sectionName || section?.name || 'Unassigned'}`;
+        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" onclick="switchChild('${window.EDUGNAY_CONFIG.escapeHtml(student.id)}', this)"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(sectionLabel)}</div></div></div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       if (window.lucide) lucide.createIcons();
     }
@@ -448,6 +448,11 @@
 
     function renderAttendanceDetail() {
       const container = document.getElementById('attendance-detail');
+      if (attendanceLoadError) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Attendance could not be loaded', text: 'Try again after the connection is restored.' });
+        lucide.createIcons();
+        return;
+      }
       const child = getCurrentChild();
       const data = getCurrentDashboardRecord();
       if (!child || !data) {
@@ -463,34 +468,21 @@
         return;
       }
 
-      const bannerClass = att.status === 'present' ? 'present' : 'absent';
-      const bannerIcon = att.status === 'present' ? 'check-circle' : 'circle-x';
-      const bannerTitle = att.status === 'present' ? 'Present' : 'Absent';
-      const bannerSub = att.status === 'present'
-        ? `${child.displayName} attended school on this day.`
-        : `${child.displayName} was marked absent for this day. Contact the adviser if this seems incorrect.`;
       const subjects = Array.isArray(att.subjects) ? att.subjects : [];
 
       container.innerHTML = `
-    <div class="daily-status-banner ${bannerClass}">
-      <div class="daily-status-icon" style="background:${att.status === 'present' ? 'rgba(22,163,74,0.12)' : 'rgba(239,68,68,0.12)'};color:${att.status === 'present' ? '#16a34a' : 'var(--red)'};">
-        <i data-lucide="${bannerIcon}" style="width:18px;height:18px;"></i>
-      </div>
-      <div>
-        <div class="daily-status-title">${bannerTitle}</div>
-        <div class="daily-status-sub">${bannerSub}</div>
-      </div>
-    </div>
     <div>
       ${subjects.length ? subjects.map(s => {
         const badge = s.status === 'present'
           ? '<span class="badge badge-green"><i data-lucide="check" style="width:8px;height:8px;"></i> Present</span>'
           : s.status === 'late'
             ? '<span class="badge badge-orange"><i data-lucide="clock" style="width:8px;height:8px;"></i> Late</span>'
-            : '<span class="badge badge-red"><i data-lucide="x" style="width:8px;height:8px;"></i> Absent</span>';
+            : s.status === 'excused'
+              ? '<span class="badge badge-blue">Excused</span>'
+              : '<span class="badge badge-red"><i data-lucide="x" style="width:8px;height:8px;"></i> Absent</span>';
         return `
           <div class="subject-att-row">
-            <div class="subject-att-name"><span class="subject-dot" style="background:${s.color};"></span> ${s.name}</div>
+            <div class="subject-att-name"><span class="subject-dot" style="background:${s.color};"></span> ${window.EDUGNAY_CONFIG.escapeHtml(s.name)}</div>
             ${badge}
           </div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subject details', text: 'Subject attendance details have not been recorded.' })}
@@ -498,10 +490,13 @@
       lucide.createIcons();
     }
 
-    function getParentAssignments(studentId, dayKey) {
+    async function getParentAssignments(studentId, dayKey) {
       const day = DAYS.find(item => item.key === dayKey);
       if (!day) return [];
-      const assignedDate = `2025-06-${String(day.date).padStart(2, '0')}`;
+      const assignedDate = day.isoDate || `2025-06-${String(day.date).padStart(2, '0')}`;
+      if (backendAssignments) {
+        return window.EDUGNAY_API.getParentAssignmentActivity(studentId, assignedDate);
+      }
       return window.EDUGNAY_CONFIG.getAssignmentsForStudent(studentId)
         .filter(assignment => assignment.assignedDate === assignedDate)
         .map(assignment => ({
@@ -512,51 +507,49 @@
         }));
     }
 
-    function renderAssignmentsDetail() {
+    async function renderAssignmentsDetail() {
       const container = document.getElementById('assignments-detail');
-      const data = getCurrentDashboardRecord();
-      if (!data) {
+      const requestId = ++assignmentsRequestId;
+      const selectedChild = currentChild;
+      const selectedDay = currentDay;
+      if (!selectedChild) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignment data', text: 'Assignments will appear here when a child account is linked.' });
         lucide.createIcons();
         return;
       }
-      const tasks = getParentAssignments(currentChild, currentDay);
+
+      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while this day is checked.' });
+      lucide.createIcons();
+
+      let tasks;
+      try {
+        tasks = await getParentAssignments(selectedChild, selectedDay);
+      } catch {
+        if (requestId !== assignmentsRequestId || selectedChild !== currentChild || selectedDay !== currentDay) return;
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Assignments could not be loaded', text: 'Try again after the connection is restored.' });
+        lucide.createIcons();
+        return;
+      }
+      if (requestId !== assignmentsRequestId || selectedChild !== currentChild || selectedDay !== currentDay) return;
 
       if (tasks.length === 0) {
-        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No tasks recorded', text: 'No assignments were recorded for this day.' });
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'clipboard-check', title: 'No assignments due',
+          text: 'No published assignments are due on this day.'
+        });
         lucide.createIcons();
         return;
       }
 
-      const submittedCount = tasks.filter(task => task.status === 'submitted').length;
-      const pendingCount = tasks.filter(task => task.status === 'pending').length;
-      const notSubmittedCount = tasks.filter(task => task.status === 'not_submitted').length;
-
-      let bannerSub = 'Across all subjects for this day.';
-      if (notSubmittedCount > 0) {
-        bannerSub = `${notSubmittedCount} task${notSubmittedCount === 1 ? '' : 's'} marked not submitted.`;
-      } else if (pendingCount > 0) {
-        bannerSub = `${pendingCount} task${pendingCount === 1 ? '' : 's'} pending teacher update.`;
-      }
-
       container.innerHTML = `
-    <div class="daily-status-banner present" style="background:var(--blue-xpale);">
-      <div class="daily-status-icon" style="background:rgba(37,99,235,0.12);color:var(--blue-mid);">
-        <i data-lucide="clipboard-check" style="width:18px;height:18px;"></i>
-      </div>
-      <div>
-        <div class="daily-status-title">${submittedCount} of ${tasks.length} tasks submitted</div>
-        <div class="daily-status-sub">${bannerSub}</div>
-      </div>
-    </div>
     <div>
       ${tasks.map(t => {
         const status = t.status;
-        const visual = {
+        const visual = ({
           submitted: { bg: 'var(--green-pale)', color: '#16a34a', icon: 'check', badge: '<span class="badge badge-green">Submitted</span>' },
           pending: { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' },
           not_submitted: { bg: 'var(--red-pale)', color: 'var(--red)', icon: 'x', badge: '<span class="badge badge-red">Not submitted</span>' }
-        }[status];
+        })[status] || { bg: 'var(--orange-pale)', color: '#d97706', icon: 'clock', badge: '<span class="badge badge-orange">Pending</span>' };
 
         const dueLabel = new Date(t.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -566,8 +559,8 @@
               <i data-lucide="${visual.icon}" style="width:15px;height:15px;"></i>
             </div>
             <div class="assignment-info">
-              <div class="assignment-subject">${t.subject}</div>
-              <div class="assignment-task">${t.task} · Due ${dueLabel}</div>
+              <div class="assignment-subject">${window.EDUGNAY_CONFIG.escapeHtml(t.subject || '')}</div>
+              <div class="assignment-task">${window.EDUGNAY_CONFIG.escapeHtml(t.task || '')} · Due ${window.EDUGNAY_CONFIG.escapeHtml(dueLabel)}</div>
             </div>
             ${visual.badge}
           </div>`;
@@ -581,6 +574,7 @@
       document.querySelectorAll('.mini-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('pane-' + tabKey).classList.add('active');
+      if (tabKey === 'assignments') renderAssignmentsDetail();
     }
 
     function renderWeekCalendar() {
@@ -621,6 +615,55 @@
 
     /* ── INIT — runs once on page load, selects Juan and renders everything ── */
     document.addEventListener('DOMContentLoaded', async () => {
+      if (window.EDUGNAY_API?.isBackendAvailable) {
+        document.getElementById('attendance-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading attendance', text: 'Please wait while records are loaded.' });
+        document.getElementById('assignments-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while records are loaded.' });
+      }
+      await window.EDUGNAY_COMMUNICATION_READY;
+      if (window.EDUGNAY_API?.isBackendAvailable) {
+        backendAssignments = true;
+        try {
+          const children = await window.EDUGNAY_API.getParentChildren();
+          PARENT_CHILDREN.splice(0, PARENT_CHILDREN.length, ...children.map(child => ({
+            studentId: child.studentId,
+            profile: { ...child, id: child.studentId }
+          })));
+          try {
+            const attendance = await window.EDUGNAY_API.getParentAttendance();
+            backendAttendanceRecords = attendance.records || [];
+            backendCurrentDate = attendance.currentDate || '';
+          } catch (error) {
+            attendanceLoadError = error?.message || 'Attendance could not be loaded.';
+            backendAttendanceRecords = [];
+          }
+          const [year, month, day] = backendCurrentDate.split('-').map(Number);
+          const today = year && month && day ? new Date(year, month - 1, day) : new Date();
+          const monday = new Date(today);
+          monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+          DAYS.splice(0, DAYS.length, ...['mon', 'tue', 'wed', 'thu', 'fri'].map((key, index) => {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + index);
+            return { key, label: key[0].toUpperCase() + key.slice(1), date: date.getDate(),
+              isoDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
+          }));
+          currentDay = DAYS[Math.min((today.getDay() + 6) % 7, 4)].key;
+          currentChild = PARENT_CHILDREN[0]?.studentId || null;
+          CHILD_DASHBOARD_RECORDS.splice(0, CHILD_DASHBOARD_RECORDS.length, ...PARENT_CHILDREN.map(child => ({
+            studentId: child.studentId,
+            attendance: Object.fromEntries(DAYS.map(day => [day.key, getDashboardAttendance(child.studentId, day.isoDate)]))
+          })));
+        } catch (error) {
+          attendanceLoadError = error?.message || 'Linked children could not be loaded.';
+          backendAttendanceRecords = [];
+          backendAssignments = true;
+          PARENT_CHILDREN.splice(0);
+          CHILD_DASHBOARD_RECORDS.splice(0);
+          currentChild = null;
+        }
+      }
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+      }
       renderDashboardAnnouncements();
       renderChildSwitcher();
       updateChildContext();

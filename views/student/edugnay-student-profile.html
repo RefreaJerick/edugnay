@@ -619,9 +619,17 @@ const STUDENT_ID = window.EDUGNAY_STUDENT?.currentUser?.id
   || null;
 const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
 let studentSetupRequired = false;
+let studentSetupStatus = null;
 let studentAttendanceQrDataUrl = '';
-const STUDENT_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+const STUDENT_PROFILE_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
 let studentApiUser = null;
+let studentProfileLoading = STUDENT_PROFILE_API_ENABLED;
+let studentClassSection = null;
+let studentClassLoading = STUDENT_PROFILE_API_ENABLED;
+let studentClassError = '';
+let studentLinkedParents = [];
+let studentLinkedParentsLoading = STUDENT_PROFILE_API_ENABLED;
+let studentLinkedParentsError = '';
 
 function setStudentText(id, value, fallback = 'Not provided') {
   const element = document.getElementById(id);
@@ -634,39 +642,32 @@ function setStudentInput(id, value) {
 }
 
 function renderStudentProfile() {
-  const student = STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
+  const localStudent = !STUDENT_PROFILE_API_ENABLED && STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
+  const student = studentApiUser || localStudent;
   if (!student) {
-    setStudentText('student-profile-name', 'Profile unavailable');
-    setStudentText('student-topbar-name', 'Profile unavailable');
+    const profileMessage = studentProfileLoading ? 'Loading profile...' : 'Profile unavailable';
+    setStudentText('student-profile-name', profileMessage);
+    setStudentText('student-topbar-name', profileMessage);
     setStudentText('student-profile-lrn', 'Not available');
-    setStudentText('student-profile-placement', 'Not available');
+    renderStudentClassContext(null);
     setStudentText('student-profile-school-email', 'Not available');
     setStudentText('student-record-lrn', 'Not available');
-    setStudentText('student-record-placement', 'Not available');
-    setStudentText('student-record-adviser', 'Not available');
-    setStudentText('student-record-school-year', 'Not available');
     renderStudentLinkedParents('');
     return;
   }
 
   const savedUser = studentApiUser || student;
-  const profile = studentApiUser?.profile || STUDENT_CONFIG.getUserProfile(student.id);
-  const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student.sectionId);
-  const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
+  const profile = STUDENT_PROFILE_API_ENABLED ? (studentApiUser?.profile || {}) : STUDENT_CONFIG.getUserProfile(student.id);
   const schoolEmail = savedUser.schoolEmail || '';
   const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
   const lrn = profile?.lrn || student.lrn;
-  const placement = [student.gradeLevel, section?.name].filter(Boolean).join(' – ');
 
   setStudentText('student-profile-name', displayName);
   setStudentText('student-topbar-name', displayName);
   setStudentText('student-profile-lrn', lrn, 'Not available');
-  setStudentText('student-profile-placement', placement, 'Unassigned');
+  renderStudentClassContext(student);
   setStudentText('student-profile-school-email', schoolEmail);
   setStudentText('student-record-lrn', lrn, 'Not available');
-  setStudentText('student-record-placement', placement, 'Unassigned');
-  setStudentText('student-record-adviser', adviser?.displayName, 'Not assigned');
-  setStudentText('student-record-school-year', STUDENT_CONFIG.getActiveSchool()?.schoolYear, 'Not available');
 
   setStudentInput('student-first-name', savedUser.firstName);
   setStudentInput('student-last-name', savedUser.lastName);
@@ -705,6 +706,41 @@ function renderStudentProfile() {
   applyStudentProfileSetupState();
 }
 
+function renderStudentClassContext(student) {
+  if (STUDENT_PROFILE_API_ENABLED) {
+    if (studentClassLoading) {
+      setStudentText('student-profile-placement', 'Loading class placement...');
+      setStudentText('student-record-placement', 'Loading...');
+      setStudentText('student-record-adviser', 'Loading...');
+      setStudentText('student-record-school-year', 'Loading...');
+      return;
+    }
+    if (studentClassError) {
+      setStudentText('student-profile-placement', 'Class placement unavailable');
+      setStudentText('student-record-placement', 'Unavailable');
+      setStudentText('student-record-adviser', 'Unavailable');
+      setStudentText('student-record-school-year', 'Unavailable');
+      return;
+    }
+
+    const section = studentClassSection;
+    const placement = section ? [section.grade, section.name].filter(Boolean).join(' – ') : 'Unassigned';
+    setStudentText('student-profile-placement', placement, 'Unassigned');
+    setStudentText('student-record-placement', placement, 'Unassigned');
+    setStudentText('student-record-adviser', section?.adviserName, 'Not assigned');
+    setStudentText('student-record-school-year', section?.academicYear, 'Not available');
+    return;
+  }
+
+  const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student?.sectionId);
+  const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
+  const placement = [student?.gradeLevel, section?.name].filter(Boolean).join(' – ');
+  setStudentText('student-profile-placement', placement, 'Unassigned');
+  setStudentText('student-record-placement', placement, 'Unassigned');
+  setStudentText('student-record-adviser', adviser?.displayName, 'Not assigned');
+  setStudentText('student-record-school-year', STUDENT_CONFIG.getActiveSchool()?.schoolYear, 'Not available');
+}
+
 async function renderStudentAttendanceQr(student) {
   const image = document.getElementById('student-attendance-qr-image');
   const placeholder = document.getElementById('student-attendance-qr-placeholder');
@@ -714,14 +750,22 @@ async function renderStudentAttendanceQr(student) {
   placeholder.hidden = false;
   downloadButton.disabled = true;
 
-  if (!student?.attendanceQrToken) {
-    placeholder.innerHTML = '<i data-lucide="qr-code"></i><span>QR code unavailable</span>';
-    lucide.createIcons();
-    return;
-  }
-
   try {
-    studentAttendanceQrDataUrl = await STUDENT_CONFIG.generateAttendanceQrDataUrl(student.attendanceQrToken);
+    let token = student?.attendanceQrToken || '';
+    const apiStudentId = Number(student?.apiId || student?.id);
+    if (STUDENT_PROFILE_API_ENABLED && Number.isInteger(apiStudentId) && apiStudentId > 0) {
+      let response = await window.EDUGNAY_API.getStudentQr(apiStudentId);
+      if (response?.requiresRegeneration) {
+        response = await window.EDUGNAY_API.regenerateStudentQr(apiStudentId);
+      }
+      token = STUDENT_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+    }
+    if (!token) {
+      placeholder.innerHTML = '<i data-lucide="qr-code"></i><span>QR code unavailable</span>';
+      lucide.createIcons();
+      return;
+    }
+    studentAttendanceQrDataUrl = await STUDENT_CONFIG.generateAttendanceQrDataUrl(token);
     image.src = studentAttendanceQrDataUrl;
     image.hidden = false;
     placeholder.hidden = true;
@@ -733,7 +777,7 @@ async function renderStudentAttendanceQr(student) {
 }
 
 function downloadStudentAttendanceQr() {
-  const student = STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
+  const student = studentApiUser || (STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null);
   if (!studentAttendanceQrDataUrl || !student) return;
 
   const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
@@ -756,18 +800,26 @@ function updateStudentProfileChoices() {
   middleName.disabled = noMiddleName.checked;
   indigenousGroup.disabled = noIndigenousGroup.checked;
   religion.disabled = noReligion.checked;
-  middleName.required = studentSetupRequired && !noMiddleName.checked;
-  indigenousGroup.required = studentSetupRequired && !noIndigenousGroup.checked;
-  religion.required = studentSetupRequired && !noReligion.checked;
-  middleName.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
-  indigenousGroup.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
-  religion.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+  middleName.required = studentFieldRequired('middleName') && !noMiddleName.checked;
+  indigenousGroup.required = studentFieldRequired('indigenousGroup') && !noIndigenousGroup.checked;
+  religion.required = studentFieldRequired('religion') && !noReligion.checked;
+  middleName.closest('.form-group')?.classList.toggle('profile-required-field', middleName.required);
+  indigenousGroup.closest('.form-group')?.classList.toggle('profile-required-field', indigenousGroup.required);
+  religion.closest('.form-group')?.classList.toggle('profile-required-field', religion.required);
+}
+
+function studentFieldRequired(field) {
+  if (!studentSetupRequired) return false;
+  if (STUDENT_PROFILE_API_ENABLED && studentSetupStatus) {
+    return Array.isArray(studentSetupStatus.missingFields) && studentSetupStatus.missingFields.includes(field);
+  }
+  return true;
 }
 
 function applyStudentProfileSetupState() {
-  studentSetupRequired = STUDENT_ID
-    ? STUDENT_CONFIG.isProfileSetupRequired(STUDENT_ID)
-    : false;
+  studentSetupRequired = STUDENT_PROFILE_API_ENABLED && studentSetupStatus
+    ? Boolean(studentSetupStatus.required && !studentSetupStatus.complete)
+    : (STUDENT_ID ? STUDENT_CONFIG.isProfileSetupRequired(STUDENT_ID) : false);
 
   document.body.classList.toggle('profile-setup-required', studentSetupRequired);
   document.getElementById('student-profile-setup-notice').hidden = !studentSetupRequired;
@@ -776,21 +828,22 @@ function applyStudentProfileSetupState() {
     ? 'Complete setup'
     : 'Save Changes';
 
-  [
-    'student-personal-email',
-    'student-sex',
-    'student-birth-date',
-    'student-birthplace-province',
-    'student-mother-tongue',
-    'student-house-street',
-    'student-barangay',
-    'student-city',
-    'student-province'
-  ].forEach(id => {
+  const requiredFields = {
+    'student-personal-email': 'personalEmail',
+    'student-sex': 'sex',
+    'student-birth-date': 'birthDate',
+    'student-birthplace-province': 'birthPlaceProvince',
+    'student-mother-tongue': 'motherTongue',
+    'student-house-street': 'houseStreet',
+    'student-barangay': 'barangay',
+    'student-city': 'cityMunicipality',
+    'student-province': 'province'
+  };
+  Object.entries(requiredFields).forEach(([id, field]) => {
     const input = document.getElementById(id);
     if (!input) return;
-    input.required = studentSetupRequired;
-    input.closest('.form-group')?.classList.toggle('profile-required-field', studentSetupRequired);
+    input.required = studentFieldRequired(field);
+    input.closest('.form-group')?.classList.toggle('profile-required-field', input.required);
   });
 
   document.querySelectorAll('[data-profile-tab]').forEach(tab => {
@@ -813,10 +866,23 @@ function renderStudentLinkedParents(studentId) {
   const list = document.getElementById('student-linked-parent-list');
   if (!list) return;
 
-  const links = STUDENT_CONFIG.getParentStudentLinks()
-    .filter(link => link.studentId === String(studentId))
-    .map(link => ({ link, parent: STUDENT_CONFIG.getUserById(link.parentId) }))
-    .filter(record => record.parent?.role === 'parent');
+  if (STUDENT_PROFILE_API_ENABLED && (studentLinkedParentsLoading || studentLinkedParentsError)) {
+    const loading = studentLinkedParentsLoading;
+    list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
+      icon: loading ? 'loader-circle' : 'circle-alert',
+      title: loading ? 'Loading linked parents' : 'Linked parents could not be loaded',
+      text: loading ? 'Reading parent links from your school account.' : studentLinkedParentsError
+    });
+    lucide.createIcons();
+    return;
+  }
+
+  const links = STUDENT_PROFILE_API_ENABLED
+    ? studentLinkedParents.map(parent => ({ link: parent, parent }))
+    : STUDENT_CONFIG.getParentStudentLinks()
+      .filter(link => link.studentId === String(studentId))
+      .map(link => ({ link, parent: STUDENT_CONFIG.getUserById(link.parentId) }))
+      .filter(record => record.parent?.role === 'parent');
 
   if (!links.length) {
     list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
@@ -829,7 +895,7 @@ function renderStudentLinkedParents(studentId) {
   }
 
   list.innerHTML = links.map(({ link, parent }) => {
-    const profile = STUDENT_CONFIG.getUserProfile(parent.id);
+    const profile = parent.profile || (!STUDENT_PROFILE_API_ENABLED ? STUDENT_CONFIG.getUserProfile(parent.id) : null);
     const relationship = link.relationship
       ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
       : 'Relationship not set';
@@ -839,7 +905,7 @@ function renderStudentLinkedParents(studentId) {
         <div class="guardian-info">
           <div class="guardian-name">${escapeProfileHtml(parent.displayName || '')}</div>
           <div class="guardian-meta-row"><span class="badge badge-blue">${escapeProfileHtml(relationship)}</span></div>
-          <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> ${escapeProfileHtml(profile?.contactNumber || 'Not provided')}</div>
+          <div class="guardian-contact-row"><i data-lucide="phone" style="width:12px;height:12px;"></i> ${escapeProfileHtml(parent.contactNumber || profile?.contactNumber || 'Not provided')}</div>
           <div class="guardian-contact-row"><i data-lucide="mail" style="width:12px;height:12px;"></i> ${escapeProfileHtml(parent.personalEmail || 'Not provided')}</div>
         </div>
       </div>
@@ -848,7 +914,7 @@ function renderStudentLinkedParents(studentId) {
   lucide.createIcons();
 }
 
-const STUDENT_SUBJECTS = STUDENT_CONFIG.withActiveSchool([
+let studentSubjects = STUDENT_PROFILE_API_ENABLED ? [] : STUDENT_CONFIG.withActiveSchool([
   { subjectId: 'mathematics', teacherId: 'teacher-2', adviserId: 'teacher-2' },
   { subjectId: 'english', teacherId: 'teacher-3' },
   { subjectId: 'science', teacherId: 'teacher-rico-santos' },
@@ -860,11 +926,22 @@ const STUDENT_SUBJECTS = STUDENT_CONFIG.withActiveSchool([
 function renderStudentSubjects() {
   const list = document.getElementById('student-subject-list');
   if (!list) return;
-  list.innerHTML = STUDENT_SUBJECTS.length ? STUDENT_SUBJECTS.map(assignment => {
-    const subject = window.EDUGNAY_CONFIG.subjects.find(record => record.id === assignment.subjectId);
-    const teacher = window.EDUGNAY_CONFIG.getUserById(assignment.teacherId);
-    return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${subject?.name || 'Subject'}</div><div class="subject-teacher">${teacher?.displayName || 'Teacher not assigned'}</div></div>${assignment.adviserId === assignment.teacherId ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;
+  if (STUDENT_PROFILE_API_ENABLED && studentClassLoading) {
+    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading subjects', text: 'Reading your class assignments.' });
+  } else if (STUDENT_PROFILE_API_ENABLED && studentClassError) {
+    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Subjects could not be loaded', text: studentClassError });
+  } else {
+    list.innerHTML = studentSubjects.length ? studentSubjects.map(assignment => {
+      const subjectName = STUDENT_PROFILE_API_ENABLED
+        ? assignment.subjectName
+        : window.EDUGNAY_CONFIG.subjects.find(record => record.id === assignment.subjectId)?.name;
+      const teacherName = STUDENT_PROFILE_API_ENABLED
+        ? assignment.teacherName
+        : window.EDUGNAY_CONFIG.getUserById(assignment.teacherId)?.displayName;
+      const isAdviser = String(studentClassSection?.adviserId || assignment.adviserId || '') === String(assignment.teacherId || '');
+      return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${escapeProfileHtml(subjectName || 'Subject')}</div><div class="subject-teacher">${escapeProfileHtml(teacherName || 'Teacher not assigned')}</div></div>${isAdviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;
   }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
+  }
   lucide.createIcons();
 }
 
@@ -872,6 +949,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStudentSubjects();
   renderStudentProfile();
   loadStudentProfile();
+  loadStudentClassData();
+  loadStudentLinkedParents();
   document.getElementById('student-no-middle-name').addEventListener('change', updateStudentProfileChoices);
   document.getElementById('student-no-indigenous-group').addEventListener('change', function () {
     if (this.checked) document.getElementById('student-indigenous-group').value = '';
@@ -883,17 +962,57 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+async function loadStudentLinkedParents() {
+  if (!STUDENT_PROFILE_API_ENABLED) return;
+
+  try {
+    studentLinkedParents = await window.EDUGNAY_API.getStudentParents();
+  } catch (error) {
+    studentLinkedParentsError = error.message || 'Parent links could not be loaded.';
+  } finally {
+    studentLinkedParentsLoading = false;
+    renderStudentLinkedParents(studentApiUser?.id || STUDENT_ID);
+  }
+}
+
 async function loadStudentProfile() {
   if (!STUDENT_PROFILE_API_ENABLED) return;
 
   try {
-    const response = await window.EDUGNAY_API.request('/users/me/profile');
-    if (response.user.role === 'student') {
-      studentApiUser = response.user;
-      renderStudentProfile();
+    const [profileResponse, setupResponse] = await Promise.all([
+      window.EDUGNAY_API.request('/users/me/profile'),
+      window.EDUGNAY_API.request('/account-setup/status')
+    ]);
+    if (profileResponse.user.role === 'student') {
+      studentApiUser = profileResponse.user;
+      studentSetupStatus = setupResponse.setup || null;
     }
   } catch (error) {
     console.warn('Unable to load the saved profile.', error.message);
+  } finally {
+    studentProfileLoading = false;
+    renderStudentProfile();
+  }
+}
+
+async function loadStudentClassData() {
+  if (!STUDENT_PROFILE_API_ENABLED) return;
+
+  try {
+    const sections = await window.EDUGNAY_API.getSections();
+    studentClassSection = sections.find(section => section.status === 'active' && section.academicYearStatus === 'active') || null;
+    if (studentClassSection) {
+      const response = await window.EDUGNAY_API.getSectionTeachers(studentClassSection.id);
+      studentClassSection = response.section || studentClassSection;
+      studentSubjects = response.teachers;
+    }
+  } catch (error) {
+    console.warn('Unable to load the student class context.', error.message);
+    studentClassError = 'Class information could not be loaded.';
+  } finally {
+    studentClassLoading = false;
+    renderStudentClassContext(studentApiUser);
+    renderStudentSubjects();
   }
 }
 
@@ -1002,8 +1121,9 @@ function switchTab(tabKey, btn) {
 
 async function submitProfile(event) {
   event.preventDefault();
-  const student = STUDENT_CONFIG.getUserById(STUDENT_ID);
+  const student = studentApiUser || (STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null);
   if (!student) return false;
+  const wasSetupRequired = studentSetupRequired;
 
   const personalEmail = document.getElementById('student-personal-email').value.trim();
   const birthDate = document.getElementById('student-birth-date').value;
@@ -1040,13 +1160,24 @@ async function submitProfile(event) {
 
   try {
     if (STUDENT_PROFILE_API_ENABLED) {
-      const response = await window.EDUGNAY_API.request('/users/me/profile', {
+      const endpoint = wasSetupRequired ? '/account-setup/student' : '/users/me/profile';
+      await window.EDUGNAY_API.request(endpoint, {
         method: 'PATCH',
         body: JSON.stringify(profileData)
       });
-      studentApiUser = response.user;
+      const [profileResponse, setupResponse] = await Promise.all([
+        window.EDUGNAY_API.request('/users/me/profile'),
+        window.EDUGNAY_API.request('/account-setup/status')
+      ]);
+      studentApiUser = profileResponse.user;
+      studentSetupStatus = setupResponse.setup || null;
       renderStudentProfile();
-      alert('Profile updated.');
+      if (wasSetupRequired && !studentSetupRequired) {
+        alert('Profile setup complete.');
+        window.location.replace('./edugnay-student-dashboard.html');
+      } else {
+        alert('Profile updated.');
+      }
       return false;
     }
 

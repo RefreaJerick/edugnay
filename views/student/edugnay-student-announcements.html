@@ -271,15 +271,6 @@
         <!-- RIGHT: Info rail -->
         <div class="info-rail">
 
-          <!-- Deadlines & Events -->
-          <div class="rail-card">
-            <div class="rail-head">
-              <div class="rail-title">Upcoming Deadlines</div>
-              <i data-lucide="calendar-clock" style="width:15px;height:15px;color:var(--gray-400);"></i>
-            </div>
-            <div class="rail-body" id="student-deadlines"></div>
-          </div>
-
           <!-- Posted by info -->
           <div class="rail-card">
             <div class="rail-head">
@@ -305,7 +296,7 @@
     /* ── FILTER ── */
     // Read the shared school announcement source; replace the getter with the
     // announcements endpoint later without changing this page's renderer.
-    const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
+    let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
 
     function renderStudentAnnouncements() {
       const list = document.getElementById('annList');
@@ -314,24 +305,9 @@
       list.innerHTML = visibleAnnouncements.map((ann, index) => `
         <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-read="${ann.read}" onclick="openAnnModal(this)">
           ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
-          <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div></div><div class="ann-content" data-full="${ann.body}">${ann.body}</div>${ann.imageUrl ? `<div class="ann-image-wrap"><img class="ann-image" src="${window.EDUGNAY_CONFIG.escapeHtml(ann.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}" loading="lazy" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div><div class="ann-footer"><div class="ann-footer-left"><i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by ${ann.author}</div><div class="ann-footer-right"><button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))"><i data-lucide="eye" style="width:11px;height:11px;"></i> Read</button></div></div>
+          <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.time)}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.author)}</span></div></div></div></div><div class="ann-content" data-full="${window.EDUGNAY_CONFIG.escapeHtml(ann.body)}">${window.EDUGNAY_CONFIG.escapeHtml(ann.body)}</div>${ann.imageUrl ? `<div class="ann-image-wrap"><img class="ann-image" src="${window.EDUGNAY_CONFIG.escapeHtml(ann.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}" loading="lazy" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.audience)}</span></div></div><div class="ann-footer"><div class="ann-footer-left"><i data-lucide="clock" style="width:12px;height:12px;"></i> Posted by ${window.EDUGNAY_CONFIG.escapeHtml(ann.author)}</div><div class="ann-footer-right"><button class="footer-btn read" onclick="event.stopPropagation(); openAnnModal(this.closest('.ann-card'))"><i data-lucide="eye" style="width:11px;height:11px;"></i> Read</button></div></div>
         </div>`).join('');
       lucide.createIcons();
-    }
-
-    const UPCOMING_DEADLINES = window.EDUGNAY_CONFIG.withActiveSchool([
-      { title: 'Values Journal Entry', date: 'Friday · 11:59 PM', tag: 'Soon', tagClass: 'badge-purple', color: 'var(--purple)', shadow: 'box-shadow:0 0 5px rgba(124,58,237,0.4);', access: 'journals' },
-      { title: 'Foundation Day', date: 'June 20, 2025', tag: 'Event', tagClass: 'badge-gold', color: 'var(--gold)' },
-      { title: 'Intramurals Sign-up', date: 'Closes Friday', tag: 'Soon', tagClass: 'badge-blue', color: 'var(--blue-mid)' }
-    ]);
-
-    function renderStudentDeadlines() {
-      const rail = document.getElementById('student-deadlines');
-      if (!rail) return;
-      const visibleDeadlines = UPCOMING_DEADLINES.filter(item => !item.access || studentCanAccess(item.access));
-      rail.innerHTML = visibleDeadlines.length
-        ? visibleDeadlines.map(item => `<div class="deadline-item"><div class="deadline-dot" style="background:${item.color};${item.shadow || ''}"></div><div class="deadline-info" style="flex:1;"><div class="deadline-title">${item.title}</div><div class="deadline-date">${item.date}</div></div><span class="deadline-badge badge ${item.tagClass}">${item.tag}</span></div>`).join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-clock', title: 'No upcoming deadlines', text: 'Upcoming events and due dates will appear here.' });
     }
 
     function filterCards() {
@@ -384,7 +360,7 @@
       // Title & meta
       document.getElementById('modalAnnTitle').textContent = title;
       document.getElementById('modalPostedAt').textContent = 'Posted · ' + postedAt;
-      document.getElementById('modalAnnContent').innerHTML = content;
+      document.getElementById('modalAnnContent').textContent = content;
 
       // Audience
       const modalAud = document.getElementById('modalAudienceTag');
@@ -418,9 +394,24 @@
     });
 
     /* ── MARK AS READ ── */
-    function markAsRead(card) {
-      if (card.dataset.read === 'true') return;
+    async function markAsRead(card) {
+      if (card.dataset.read === 'true' || card.dataset.markingRead === 'true') return;
+      card.dataset.markingRead = 'true';
+
+      try {
+        if (window.EDUGNAY_COMMUNICATION?.backend) {
+          await window.EDUGNAY_API.markAnnouncementRead(card.dataset.id);
+        }
+      } catch (error) {
+        window.alert(error?.message || 'The announcement could not be marked as read.');
+        return;
+      } finally {
+        delete card.dataset.markingRead;
+      }
+
       card.dataset.read = 'true';
+      const announcement = ANNOUNCEMENTS.find(item => String(item.id) === card.dataset.id);
+      if (announcement) announcement.read = true;
 
       // Decrement the sidebar unread badge
       const countEl = document.getElementById('unreadCount');
@@ -437,13 +428,14 @@
         }
       }
 
-      // EJS/backend: POST /student/announcements/:id/read (mark as read for current student)
-      // fetch(`/student/announcements/${card.dataset.id}/read`, { method: 'POST' }).catch(() => {});
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      await window.EDUGNAY_COMMUNICATION_READY;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+      }
       renderStudentAnnouncements();
-      renderStudentDeadlines();
       filterCards();
     });
 

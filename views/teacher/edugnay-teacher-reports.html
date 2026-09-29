@@ -50,19 +50,8 @@
             <span>My Sections</span>
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
-          <div class="nav-children">
-            <a class="nav-child" onclick="navigate('section', '7-matthew')">
-              <span class="nav-dot dot-7"></span>
-              Grade 7 – St. Matthew
-            </a>
-            <a class="nav-child" onclick="navigate('section', '8-luke')">
-              <span class="nav-dot dot-8"></span>
-              Grade 8 – St. Luke
-            </a>
-            <a class="nav-child" onclick="navigate('section', '9-peter')">
-              <span class="nav-dot dot-9"></span>
-              Grade 9 – St. Peter
-            </a>
+          <div class="nav-children" data-teacher-sections-nav>
+            <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
           </div>
         </div>
 
@@ -730,7 +719,7 @@
     });
     return DAY_ORDER
       .filter(d => byDay[d])
-      .map(d => `<strong>${d}:</strong> ${byDay[d].join(', ')}`)
+      .map(d => `<strong>${d}:</strong> ${byDay[d].map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}`)
       .join('<br>');
   }
 
@@ -745,13 +734,13 @@
     });
     return DAY_ORDER
       .filter(d => byDay[d])
-      .map(d => `<span class="ds-detail-item"><strong>${d}:</strong> ${byDay[d].join(', ')}</span>`)
+      .map(d => `<span class="ds-detail-item"><strong>${d}:</strong> ${byDay[d].map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</span>`)
       .join('');
   }
 
   function formatAssignmentGaps(missing) {
     if (!missing || missing.length === 0) return 'All subjects up to date';
-    return `<strong>Incomplete:</strong> ${missing.join(', ')}`;
+    return `<strong>Incomplete:</strong> ${missing.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}`;
   }
 
   /* ── RENDER CARDS ── */
@@ -795,10 +784,10 @@
         <div class="report-card${r.atRisk ? ' at-risk' : ''}">
 
           <div class="report-card-head">
-            <div class="report-avatar">${window.EDUGNAY_CONFIG.getInitials(r.studentName)}</div>
+            <div class="report-avatar">${window.EDUGNAY_CONFIG.escapeHtml(window.EDUGNAY_CONFIG.getInitials(r.studentName))}</div>
             <div style="flex:1;min-width:0;">
-              <div class="report-card-name">${r.studentName}</div>
-              <div class="report-card-meta">${r.studentEmail || 'Email not available'}</div>
+              <div class="report-card-name">${window.EDUGNAY_CONFIG.escapeHtml(r.studentName)}</div>
+              <div class="report-card-meta">${window.EDUGNAY_CONFIG.escapeHtml(r.studentEmail || 'Email not available')}</div>
             </div>
             ${r.atRisk ? `<div class="at-risk-flag"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> At-Risk</div>` : ''}
           </div>
@@ -824,7 +813,7 @@
               <i data-lucide="sparkles" style="width:10px;height:10px;"></i>
               AI Summary
             </div>
-            <div class="excerpt-text${!r.text ? ' pending' : ''}">${r.text ? excerpt : 'No report generated yet.'}</div>
+            <div class="excerpt-text${!r.text ? ' pending' : ''}">${r.text ? window.EDUGNAY_CONFIG.escapeHtml(excerpt) : 'No report generated yet.'}</div>
           </div>
 
           <div class="report-card-foot">
@@ -833,7 +822,7 @@
               ${isPending ? 'Awaiting Review' : 'Confirmed'}
             </span>
             <div class="report-card-actions">
-              <button class="btn-sm ghost" onclick="openReview('${r.id}')">
+              <button class="btn-sm ghost" data-report-id="${window.EDUGNAY_CONFIG.escapeHtml(r.id)}" onclick="openReview(this.dataset.reportId)">
                 <i data-lucide="eye" style="width:11px;height:11px;"></i>
                 Review
               </button>
@@ -872,6 +861,7 @@
     document.getElementById('rm-report-text').value       = r.text;
     document.getElementById('rm-teacher-note').textContent = r.teacherNote || 'No teacher note provided.';
     renderRecommendedActions(r.recommendedActions);
+    document.querySelector('#review-modal .regenerate-row button').disabled = r.status === 'confirmed';
 
     const riskBanner   = document.getElementById('rm-at-risk-banner');
     const academicCard = document.getElementById('rm-academic-card');
@@ -901,7 +891,7 @@
   async function regenerateReport() {
     const report = REPORTS.find(item => item.id === activeReportId);
     const textarea = document.getElementById('rm-report-text');
-    if (!report || !textarea) return;
+    if (!report || !textarea || report.status === 'confirmed') return;
 
     textarea.disabled = true;
     try {
@@ -930,7 +920,11 @@
        On success: update local REPORTS array and re-render */
     const r = REPORTS.find(x => x.id === activeReportId);
     if (r) {
-      const reportText = document.getElementById('rm-report-text').value;
+      const reportText = document.getElementById('rm-report-text').value.trim();
+      if (!reportText) {
+        showToast('Enter a report before confirming it.', 'error');
+        return;
+      }
       const recommendedActions = collectRecommendedActions();
       window.EDUGNAY_CONFIG.updateReport(r.id, {
         status: 'confirmed',

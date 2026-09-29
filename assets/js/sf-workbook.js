@@ -489,10 +489,43 @@
     };
   }
 
+  async function generatePreviewFromMappedCells(template, mappedCells = [], edits = []) {
+    const source = await fetchTemplate(template.templateFileUrl);
+    await validateTemplatePackage(source, template);
+    const workbook = await loadWorkbook(source);
+    const mapping = validateDefinition(workbook, template);
+    if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF1 template mapping is invalid.');
+
+    const worksheet = workbook.getWorksheet(template.sheetName);
+    const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
+    const allowed = new Set(editableAddresses(template));
+    const applyCell = record => {
+      const address = String(record.cellAddress || '').toUpperCase();
+      if (!address) return;
+      const cell = worksheet.getCell(address);
+      if (record.type === 'date') cell.value = dateValue(record.value);
+      else if (record.type === 'number') cell.value = record.value === null || record.value === '' ? null : Number(record.value);
+      else cell.value = record.value === null || record.value === undefined ? '' : String(record.value);
+    };
+
+    mappedCells.forEach(applyCell);
+    edits.filter(record => allowed.has(String(record.cellAddress || '').toUpperCase())).forEach(record => applyCell({
+      ...record,
+      type: types.get(String(record.cellAddress || '').toUpperCase()) || 'text'
+    }));
+    return {
+      preview: worksheetPreview(worksheet, template),
+      editableCells: editableAddresses(template),
+      mappedCells,
+      edits
+    };
+  }
+
   window.EDUGNAY_SF_WORKBOOK = {
     getTemplateDefinition,
     getFilePreview,
     generatePreview,
+    generatePreviewFromMappedCells,
     exportWorkbook
   };
 })();

@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    TEACHER SHELL — shared across all teacher pages
    Nav, topbar, notif dropdown, profile dropdown
-   TODO on backend conversion: replace NOTIFICATIONS with
-   data from GET /teacher/notifications (see notifications page comment)
+   Communication data uses the backend when it is available and keeps the
+   local array as an offline fallback.
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
@@ -48,7 +48,7 @@ function teacherCanAccess(feature) {
   return true;
 }
 
-const NOTIFICATIONS = [
+let NOTIFICATIONS = [
   ...(TEACHER_NO_CLASS_DAY ? [{
     id: `teacher-notif-no-class-${TEACHER_NO_CLASS_DAY.date}`,
     schoolId: TEACHER_SCHOOL_ID,
@@ -107,6 +107,8 @@ const NOTIFICATIONS = [
   .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === TEACHER_SCHOOL_ID);
 
+let BACKEND_COMMUNICATION = false;
+
 /* ── READ STATE (localStorage; swap for DB column later) ── */
 const TEACHER_READ_STORE_KEY = `edugnay_teacher_notif_read:${TEACHER_SCHOOL_ID}`;
 
@@ -116,7 +118,9 @@ function getTeacherVisibleNotifications() {
 
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
+  if (!BACKEND_COMMUNICATION) {
+    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
+  }
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -149,8 +153,8 @@ function renderTopbarNotifs() {
         <i data-lucide="${n.icon}" style="width:15px;height:15px;"></i>
       </div>
       <div class="tb-notif-body">
-        <div class="tb-notif-title">${n.title}</div>
-        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-title">${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</div>
+        <div class="tb-notif-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
         <div class="${teacherDashboardPanel ? 'teacher-notif-time' : 'tb-notif-time'}"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
@@ -163,8 +167,7 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  window.EDUGNAY_CONFIG.markNotificationRead(TEACHER_READ_STORE_KEY, id, NOTIFICATIONS);
-  navigate(link.page, link.section, link.tab);
+  markCurrentNotificationRead(id).finally(() => navigate(link.page, link.section, link.tab));
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -172,6 +175,94 @@ window.EDUGNAY_NOTIFICATION_CONTEXT = {
   records: NOTIFICATIONS,
   getItems: getTeacherVisibleNotifications
 };
+
+async function loadTeacherCommunication() {
+  try {
+    const data = await window.EDUGNAY_API.loadCommunication('teacher');
+    if (!data.backend) return;
+    NOTIFICATIONS = data.notifications;
+    window.EDUGNAY_COMMUNICATION = data;
+    BACKEND_COMMUNICATION = true;
+  } catch (error) {
+    BACKEND_COMMUNICATION = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    if (BACKEND_COMMUNICATION) NOTIFICATIONS = [];
+    window.EDUGNAY_COMMUNICATION = {
+      backend: BACKEND_COMMUNICATION,
+      notifications: NOTIFICATIONS,
+      announcements: [],
+      tasks: [],
+      error: error?.message || 'School communications could not be loaded.'
+    };
+  }
+}
+
+window.EDUGNAY_COMMUNICATION_READY = loadTeacherCommunication();
+
+
+/* ── ASSIGNED SECTION NAVIGATION ── */
+function setTeacherSectionNavMessage(container, message) {
+  const status = document.createElement('div');
+  status.className = 'teacher-section-nav-message';
+  status.setAttribute('role', 'status');
+  status.textContent = message;
+  container.replaceChildren(status);
+}
+
+async function renderTeacherSectionsNavigation() {
+  const containers = document.querySelectorAll('[data-teacher-sections-nav]');
+  if (!containers.length) return;
+
+  containers.forEach(container => setTeacherSectionNavMessage(container, 'Loading assigned sections…'));
+
+  try {
+    if (window.EDUGNAY_API?.isBackendAvailable) {
+      const session = await window.EDUGNAY_API.getCurrentUser();
+      if (session?.role !== 'teacher') {
+        containers.forEach(container => setTeacherSectionNavMessage(container, 'No active sections assigned'));
+        return;
+      }
+    }
+
+    const sections = await window.EDUGNAY_CONFIG.getMyTeachingSections();
+    const activeSections = sections.filter(section =>
+      (!section.status || section.status === 'active')
+      && (!section.academicYearStatus || section.academicYearStatus === 'active')
+    );
+    const params = new URLSearchParams(window.location.search);
+    const requestedSectionId = params.get('sectionId');
+    const isSectionsPage = window.location.pathname.endsWith('edugnay-teacher-sections.html');
+    const activeSectionId = requestedSectionId || (isSectionsPage ? activeSections[0]?.id : '');
+
+    if (!activeSections.length) {
+      containers.forEach(container => setTeacherSectionNavMessage(container, 'No active sections assigned'));
+      return;
+    }
+
+    containers.forEach(container => {
+      const links = activeSections.map(section => {
+        const link = document.createElement('a');
+        const sectionId = String(section.id);
+        const grade = String(section.grade || section.gradeLevelName || '').trim();
+        const name = String(section.name || '').trim();
+        const label = grade && name ? `${grade} – ${name}` : (name || grade || 'Section');
+        const target = new URL('./edugnay-teacher-sections.html', window.location.href);
+
+        target.searchParams.set('sectionId', sectionId);
+        link.className = `nav-child${sectionId === String(activeSectionId) ? ' active' : ''}`;
+        link.href = `${target.pathname}${target.search}`;
+
+        const dot = document.createElement('span');
+        dot.className = 'teacher-section-nav-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        link.append(dot, document.createTextNode(label));
+        return link;
+      });
+      container.replaceChildren(...links);
+    });
+  } catch (error) {
+    containers.forEach(container => setTeacherSectionNavMessage(container, 'Assigned sections could not be loaded'));
+  }
+}
 
 
 /* ── NAVIGATION ── */
@@ -182,7 +273,14 @@ function navigate(page, section, tab) {
     if (!teacherCanAccess('journals')) return;
     window.location.href = './edugnay-teacher-journals.html';
   } else if (page === 'section') {
-    window.location.href = './edugnay-teacher-sections.html';
+    const params = new URLSearchParams();
+    const sectionId = String(section || '');
+    if (/^\d+$/.test(sectionId) || /^(jhs|shs|elementary)-/i.test(sectionId)) {
+      params.set('sectionId', sectionId);
+    }
+    if (tab) params.set('tab', String(tab));
+    const query = params.toString();
+    window.location.href = `./edugnay-teacher-sections.html${query ? `?${query}` : ''}`;
   } else if (page === 'reports') {
     if (!teacherCanAccess('reports')) return;
     window.location.href = './edugnay-teacher-reports.html';
@@ -230,6 +328,9 @@ document.addEventListener('keydown', e => {
 /* ── INIT ── */
 if (!guardTeacherPageAccess()) {
   document.addEventListener('DOMContentLoaded', async () => {
+    const sectionNavigationReady = renderTeacherSectionsNavigation();
+    await window.EDUGNAY_COMMUNICATION_READY;
+    await sectionNavigationReady;
     applyTeacherAccess();
     renderTopbarNotifs();
   });

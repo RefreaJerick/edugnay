@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    ADMIN SHELL — shared across all admin pages
    Nav, topbar, notif dropdown, profile dropdown
-   TODO on backend conversion: replace NOTIFICATIONS and getReopenRequests()
-   with data from GET /admin/notifications
+   API notifications are used when the backend is available; local alerts remain
+   only as the frontend-only fallback.
    ══════════════════════════════════════════ */
 
 /* ── REOPEN REQUEST DATA (source: grading-period reopen request system) ── */
@@ -79,7 +79,7 @@ function getAcademicPeriodNotifications() {
   }).filter(Boolean);
 }
 
-const NOTIFICATIONS = [
+let NOTIFICATIONS = [
   ...(ADMIN_NO_CLASS_DAY ? [{
     id: `admin-notif-no-class-${ADMIN_NO_CLASS_DAY.date}`,
     schoolId: ADMIN_SCHOOL_ID,
@@ -117,6 +117,8 @@ const NOTIFICATIONS = [
 ]
   .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
+
+let BACKEND_COMMUNICATION = false;
 
 /* ── ADMIN ACTIVITY DATA (shared by the dashboard and activity page) ──
    TODO on backend conversion: replace this local array with records from
@@ -222,6 +224,10 @@ const ADMIN_ACTIVITY = [
   .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
 
 function getAdminNotifItems() {
+  if (BACKEND_COMMUNICATION) {
+    return [...NOTIFICATIONS].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
   const currentNotifications = [...getAcademicPeriodNotifications(), ...NOTIFICATIONS];
   window.EDUGNAY_CONFIG.applyNotificationReadState(currentNotifications, ADMIN_READ_STORE_KEY);
   const readIds = window.EDUGNAY_CONFIG.getNotificationReadIds(ADMIN_READ_STORE_KEY);
@@ -279,9 +285,9 @@ function renderTopbarNotifs() {
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-head">
-          <div class="tb-notif-title">${n.title}</div>
+          <div class="tb-notif-title">${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</div>
         </div>
-        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
         <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatTime(n.createdAt)}</span></div>
       </div>
     </a>
@@ -294,8 +300,7 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  window.EDUGNAY_CONFIG.markNotificationRead(ADMIN_READ_STORE_KEY, id, getAdminNotifItems());
-  navigate(link?.page, link?.hash);
+  markCurrentNotificationRead(id).finally(() => navigate(link?.page, link?.hash));
 }
 
 function navigate(page, hash) {
@@ -323,6 +328,28 @@ window.EDUGNAY_NOTIFICATION_CONTEXT = {
   storageKey: ADMIN_READ_STORE_KEY,
   getItems: getAdminNotifItems
 };
+
+async function loadAdminCommunication() {
+  try {
+    const data = await window.EDUGNAY_API.loadCommunication('school_admin');
+    if (!data.backend) return;
+    NOTIFICATIONS = data.notifications;
+    window.EDUGNAY_COMMUNICATION = data;
+    BACKEND_COMMUNICATION = true;
+  } catch (error) {
+    BACKEND_COMMUNICATION = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    if (BACKEND_COMMUNICATION) NOTIFICATIONS = [];
+    window.EDUGNAY_COMMUNICATION = {
+      backend: BACKEND_COMMUNICATION,
+      notifications: NOTIFICATIONS,
+      announcements: [],
+      tasks: [],
+      error: error?.message || 'School communications could not be loaded.'
+    };
+  }
+}
+
+window.EDUGNAY_COMMUNICATION_READY = loadAdminCommunication();
 
 function toggleNavGroup(group) {
   group.classList.toggle('open');
@@ -359,6 +386,7 @@ function ensureAdminConfigurationNav() {
 
 /* ── ACTIVE NAV ITEM ON CLICK ── */
 document.addEventListener('DOMContentLoaded', async () => {
+  await window.EDUGNAY_COMMUNICATION_READY;
   ensureAdminConfigurationNav();
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function () {

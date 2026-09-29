@@ -22,14 +22,6 @@
 
 <body data-page-title="Grades">
 
-  <!--
-    EJS CONVERSION MAP
-    parentGradeRecords[] is grouped from the shared school grade source for
-    the selected children. Replace its getter with GET /parent/grades?studentId=:id
-    later. Keep the render functions as the view layer and enforce the
-    school's grade visibility setting on the server during conversion.
-  -->
-
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
@@ -158,7 +150,13 @@
 
       <div class="child-switcher" id="parentGradeChildSwitcher" aria-label="Select a student"></div>
 
-      <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Academic grading period"></div>
+      <div class="grade-controls" aria-label="Select school year and grading period">
+        <div class="grade-tabs" id="parentGradeTabs" role="tablist" aria-label="Grading period"></div>
+        <label class="grade-year-control" for="parentGradeYearSelect">
+          <span>School year</span>
+          <select id="parentGradeYearSelect" aria-label="School year" disabled></select>
+        </label>
+      </div>
 
       <section class="panel grades-subject-panel" aria-labelledby="parentSubjectGradesTitle">
         <div class="panel-head">
@@ -183,59 +181,87 @@
   <script>
     lucide.createIcons();
 
-    // Each child's periods come from the shared grade source. Replace the
-    // getter with GET /parent/grades?child=:id later.
-    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
-    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
-    const PARENT_SCHOOL_YEAR = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '2025-2026';
-    const PARENT_GRADE_RECORDS = PARENT_CHILDREN.map(child => ({
-      studentId: child.studentId,
-      schoolYear: PARENT_SCHOOL_YEAR,
-      academicPeriods: window.EDUGNAY_CONFIG.getGradesForStudent(child.studentId, PARENT_SCHOOL_YEAR)
-    }));
+    let PARENT_CHILDREN = [];
+    let PARENT_GRADE_YEARS = [];
+    let PARENT_GRADE_PERIODS = [];
+    let activeChildId = null;
+    let activeAcademicYearId = null;
+    let activeAcademicPeriodId = null;
+    let childLoadError = '';
+    let gradeLoadError = '';
+    let gradeLoading = false;
+    let gradeAccessRedirecting = false;
 
-    let activeChildId = PARENT_CHILDREN[0]?.studentId || null;
-    const firstChild = window.EDUGNAY_CONFIG.getUserById(activeChildId);
-    let activeAcademicPeriodId = window.EDUGNAY_CONFIG.getCurrentAcademicPeriod(firstChild?.schoolId, firstChild?.schoolLevel)?.id || PARENT_GRADE_RECORDS[0]?.academicPeriods?.[0]?.id || null;
-
-    function getActiveChild() {
-      const link = PARENT_CHILDREN.find(child => child.studentId === activeChildId);
-      return link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null;
+    function getDefaultAcademicYear(years) {
+      return years.find(year => year.status === 'active') || years[0] || null;
+    }
+    function getDefaultAcademicPeriod(periods) {
+      return periods.find(period => period.status === 'active')
+        || [...periods].reverse().find(period => period.status === 'closed')
+        || periods.find(period => period.status === 'history')
+        || null;
     }
 
-    function getActiveGradeRecord() {
-      return PARENT_GRADE_RECORDS.find(record => record.studentId === activeChildId);
+    function getActiveChild() {
+      return PARENT_CHILDREN.find(child => child.studentId === activeChildId) || null;
+    }
+
+    function getSelectedAcademicYear() {
+      return PARENT_GRADE_YEARS.find(year => year.id === activeAcademicYearId) || null;
     }
 
     function getSelectedAcademicPeriod() {
-      const gradeRecord = getActiveGradeRecord();
-      const periods = Array.isArray(gradeRecord?.academicPeriods) ? gradeRecord.academicPeriods : [];
-      return periods.find(period => period.id === activeAcademicPeriodId) || periods[0];
+      return PARENT_GRADE_PERIODS.find(period => period.id === activeAcademicPeriodId) || null;
     }
 
-    function scoreClass(score) {
-      if (!isRecorded(score)) return 'is-pending';
-      if (Number(score) >= 90) return 'is-outstanding';
-      if (Number(score) >= 85) return 'is-satisfactory';
-      return 'is-review';
+    function selectAcademicYear(yearId) {
+      const year = PARENT_GRADE_YEARS.find(item => item.id === String(yearId));
+      if (!year) return;
+      activeAcademicYearId = year.id;
+      PARENT_GRADE_PERIODS = year.periods;
+      activeAcademicPeriodId = getDefaultAcademicPeriod(PARENT_GRADE_PERIODS)?.id || null;
+      renderGrades();
+    }
+
+    function renderAcademicYearSelect() {
+      const select = document.getElementById('parentGradeYearSelect');
+      select.innerHTML = PARENT_GRADE_YEARS.map(year =>
+        '<option value="' + window.EDUGNAY_CONFIG.escapeHtml(year.id) + '">' + window.EDUGNAY_CONFIG.escapeHtml(year.label) + '</option>'
+      ).join('');
+      select.disabled = gradeLoading || !PARENT_GRADE_YEARS.length || Boolean(gradeLoadError || childLoadError);
+      if (activeAcademicYearId) select.value = activeAcademicYearId;
+    }
+
+    function renderEmptyState(container, icon, title, text) {
+      container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon,
+        title,
+        text: window.EDUGNAY_CONFIG.escapeHtml(text)
+      });
+      if (window.lucide) lucide.createIcons();
     }
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('parentGradeChildSwitcher');
-      if (!switcher) return;
-      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
-        const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-        if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
-        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-        return `
-        <div class="child-card ${student.id === activeChildId ? 'active' : ''}" data-student-id="${escapeHtml(student.id)}" role="button" tabindex="0" aria-pressed="${student.id === activeChildId}">
-          <div class="child-avatar">${escapeHtml(student.initials)}</div>
+      switcher.removeAttribute('role');
+      if (childLoadError) {
+        renderEmptyState(switcher, 'circle-alert', 'Children could not be loaded', childLoadError);
+        return;
+      }
+      if (!PARENT_CHILDREN.length) {
+        renderEmptyState(switcher, 'users', 'No linked children', 'Children linked to this parent account will appear here.');
+        return;
+      }
+
+      switcher.innerHTML = PARENT_CHILDREN.map(child => `
+        <div class="child-card ${child.studentId === activeChildId ? 'active' : ''}" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${child.studentId === activeChildId}">
+          <div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(child.initials || '--')}</div>
           <div class="child-info">
-            <div class="child-name">${escapeHtml(student.displayName)}</div>
-            <div class="child-section">${escapeHtml(student.gradeLevel || 'Unassigned')} – ${escapeHtml(section?.name || 'Unassigned')}</div>
+            <div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student')}</div>
+            <div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned')}</div>
           </div>
-        </div>`;
-      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+        </div>`).join('');
+
       switcher.querySelectorAll('[data-student-id]').forEach(card => {
         const selectChild = () => switchChild(card.dataset.studentId);
         card.addEventListener('click', selectChild);
@@ -249,41 +275,55 @@
     }
 
     function updateChildSwitcherState() {
-      const switcher = document.getElementById('parentGradeChildSwitcher');
-      if (!switcher) return;
-      switcher.querySelectorAll('[data-student-id]').forEach(card => {
+      document.querySelectorAll('#parentGradeChildSwitcher [data-student-id]').forEach(card => {
         const isActive = card.dataset.studentId === activeChildId;
         card.classList.toggle('active', isActive);
         card.setAttribute('aria-pressed', String(isActive));
       });
     }
 
-    function switchChild(studentId) {
-      const gradeRecord = PARENT_GRADE_RECORDS.find(record => record.studentId === studentId);
-      if (!gradeRecord) return;
-      activeChildId = studentId;
-      const student = window.EDUGNAY_CONFIG.getUserById(studentId);
-      const currentPeriodId = window.EDUGNAY_CONFIG.getCurrentAcademicPeriod(student?.schoolId, student?.schoolLevel)?.id;
-      activeAcademicPeriodId = gradeRecord.academicPeriods.some(period => period.id === currentPeriodId)
-        ? currentPeriodId
-        : gradeRecord.academicPeriods[0]?.id || null;
+    async function switchChild(studentId) {
+      const child = PARENT_CHILDREN.find(item => item.studentId === String(studentId));
+      if (!child || child.studentId === activeChildId) return;
+      activeChildId = child.studentId;
+      PARENT_GRADE_YEARS = [];
+      PARENT_GRADE_PERIODS = [];
+      activeAcademicYearId = null;
+      activeAcademicPeriodId = null;
+      gradeLoadError = '';
+      gradeLoading = true;
       updateChildSwitcherState();
       renderGrades();
+      await loadParentGradeOverview(child.studentId);
     }
 
-    function renderAcademicPeriodTabs(child) {
+    function renderAcademicPeriodTabs() {
       const tabs = document.getElementById('parentGradeTabs');
-      const periods = child?.academicPeriods || [];
-      tabs.innerHTML = periods.length ? periods.map(period => {
-        const isActive = period.id === activeAcademicPeriodId;
-        return `<button class="grade-tab ${isActive ? 'active' : ''}" type="button" role="tab" aria-selected="${isActive}" data-academic-period-id="${escapeHtml(period.id)}">
-          <span>${escapeHtml(period.label)}</span>
-        </button>`;
-      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No grading periods available', text: 'Grading periods will appear here when the school configures them.' });
+      const periods = PARENT_GRADE_PERIODS;
+      if (!periods.length) {
+        tabs.replaceChildren();
+        return;
+      }
+
+      tabs.innerHTML = periods.map(period => `
+        <button class="grade-tab ${period.id === activeAcademicPeriodId ? 'active' : ''}" type="button" role="tab" aria-selected="${period.id === activeAcademicPeriodId}" ${period.status === 'upcoming' ? `aria-label="${window.EDUGNAY_CONFIG.escapeHtml(period.label + ', not started')}"` : ''} ${period.disabled ? 'aria-disabled="true" disabled' : `data-academic-period-id="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}"`}>
+          <span>${window.EDUGNAY_CONFIG.escapeHtml(period.label)}</span>
+          ${period.status === 'upcoming' ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : ''}
+          ${period.status === 'unconfigured' ? '<small class="grade-tab-status">Not configured</small>' : ''}
+        </button>`).join('');
       tabs.querySelectorAll('[data-academic-period-id]').forEach(button => button.addEventListener('click', () => {
         activeAcademicPeriodId = button.dataset.academicPeriodId;
         renderGrades();
       }));
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function formatPublishedDate(value) {
+      if (!value) return 'Published result';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? 'Published result'
+        : `Published ${date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}`;
     }
 
     function renderSubjectGrades(child, period) {
@@ -291,26 +331,30 @@
       const list = document.getElementById('parentGradeSubjectList');
       document.getElementById('parentSubjectGradesSub').textContent = `${child.displayName}'s marks by subject`;
 
+      if (gradeLoadError) {
+        renderEmptyState(list, 'circle-alert', 'Grades could not be loaded', gradeLoadError);
+        return;
+      }
       if (!subjects.length) {
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'book-open-check',
-          title: 'No grades available yet',
-          text: 'Subject marks will appear here when this grading period is opened.'
-        });
-        if (window.lucide) lucide.createIcons();
+        renderEmptyState(list, 'book-open-check', 'No subjects available', 'Subjects assigned to this student’s section will appear here.');
         return;
       }
 
       list.innerHTML = subjects.map(subject => {
-        const recorded = isRecorded(subject.score);
+        const recorded = subject.finalGrade !== null && subject.finalGrade !== undefined
+          && Number.isFinite(Number(subject.finalGrade));
+        const gradeValue = recorded
+          ? Number(subject.finalGrade).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+          : '—';
+        const subtitle = recorded ? formatPublishedDate(subject.publishedAt) : 'Not published';
         return `<article class="grade-subject-row">
           <div class="grade-subject-copy">
-            <div class="grade-subject-name">${escapeHtml(subject.name)}</div>
-            <div class="grade-subject-teacher">${escapeHtml(subject.teacher)}</div>
+            <div class="grade-subject-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.subjectName || 'Subject')}</div>
+            <div class="grade-subject-teacher">${window.EDUGNAY_CONFIG.escapeHtml(subtitle || '')}</div>
           </div>
-          <div class="grade-subject-score ${scoreClass(subject.score)}">
-            <div class="grade-score-value">${recorded ? Number(subject.score).toFixed(1) : 'Not set'}</div>
-            <span class="grade-score-remark">${escapeHtml(subject.remark || (recorded ? 'Recorded' : 'Pending'))}</span>
+          <div class="grade-subject-score ${recorded ? 'is-published' : 'is-pending'}">
+            <div class="grade-score-value">${gradeValue}</div>
+            <span class="grade-score-remark">${recorded ? 'Published' : 'Not published'}</span>
           </div>
         </article>`;
       }).join('');
@@ -318,36 +362,142 @@
 
     function renderGrades() {
       const child = getActiveChild();
-      const gradeRecord = getActiveGradeRecord();
+      const year = getSelectedAcademicYear();
       const period = getSelectedAcademicPeriod();
       const tabs = document.getElementById('parentGradeTabs');
       const list = document.getElementById('parentGradeSubjectList');
       const note = document.getElementById('parentGradesNoteCopy');
-      if (!child || !gradeRecord) {
-        tabs.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Grades will appear here when a child account is linked.' });
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a child account is linked.' });
+      renderAcademicYearSelect();
+
+      if (childLoadError) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'circle-alert', 'Grades are unavailable', childLoadError);
         note.textContent = '';
-        lucide.createIcons();
+        return;
+      }
+      if (!child) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'book-open-check', 'No grades available', 'Grades will appear here when a child account is linked.');
+        note.textContent = '';
+        return;
+      }
+      document.getElementById('parentSubjectGradesSub').textContent = `${child.displayName}'s marks by subject`;
+      if (gradeLoading) {
+        tabs.replaceChildren();
+        list.setAttribute('role', 'status');
+        list.textContent = 'Loading grades...';
+        note.textContent = '';
+        return;
+      }
+      list.removeAttribute('role');
+      if (gradeLoadError) {
+        tabs.replaceChildren();
+        document.getElementById('parentSubjectGradesSub').textContent = `${child.displayName}'s marks by subject`;
+        renderEmptyState(list, 'circle-alert', 'Grades could not be loaded', gradeLoadError);
+        note.textContent = '';
+        return;
+      }
+      if (!year) {
+        tabs.replaceChildren();
+        renderEmptyState(list, 'calendar', 'No school years available', 'The selected student’s enrolled school years will appear here.');
+        note.textContent = '';
+        return;
+      }
+      renderAcademicPeriodTabs();
+      if (!PARENT_GRADE_PERIODS.length) {
+        renderEmptyState(list, 'calendar', 'No grading periods available', 'The school has not configured grading periods for ' + year.label + '.');
+        note.textContent = '';
         return;
       }
       if (!period) {
-        renderAcademicPeriodTabs(gradeRecord);
-        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open-check', title: 'No grades available', text: 'Subject marks will appear here when a grading period is released.' });
+        renderEmptyState(list, 'calendar', 'No grading period is active yet', 'The grading periods for ' + year.label + ' will be available after the school activates one.');
         note.textContent = '';
-        lucide.createIcons();
         return;
       }
-      renderAcademicPeriodTabs(gradeRecord);
+
       renderSubjectGrades(child, period);
-      const firstName = child.displayName.split(' ')[0];
-      note.innerHTML = period.status === 'final'
-        ? `<strong>Final grading-period results.</strong> Contact the subject teacher if ${escapeHtml(firstName)}'s record needs correction.`
-        : '<strong>Grades are still being prepared.</strong> Final marks will appear here after the grading period is released.';
-      lucide.createIcons();
+      const heading = document.createElement('strong');
+      heading.textContent = 'Final grade status';
+      const detail = ` for ${child.displayName} in ${period.label}, ${year.label}. Subject marks appear here when published.`;
+      note.replaceChildren(heading, document.createTextNode(detail));
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function loadBackendParentChildren() {
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        childLoadError = 'The grades service is unavailable. Connect to the backend and reload this page.';
+        gradeLoadError = childLoadError;
+        return;
+      }
+      try {
+        const portal = await window.EDUGNAY_API.getPortalFeatures();
+        if (!portal?.features?.gradesEnabled) {
+          gradeAccessRedirecting = true;
+          window.location.replace('./edugnay-parent-dashboard.html');
+          return;
+        }
+      } catch (error) {
+        childLoadError = error.message || 'Grade access could not be confirmed.';
+        gradeLoadError = childLoadError;
+        return;
+      }
+
+      try {
+        const children = await window.EDUGNAY_API.getParentChildren();
+        PARENT_CHILDREN = children.map(child => ({
+          ...child,
+          studentId: String(child.studentId),
+          sectionId: child.sectionId == null ? null : String(child.sectionId)
+        }));
+      } catch (error) {
+        childLoadError = error.message || 'Linked children could not be loaded.';
+        gradeLoadError = childLoadError;
+        return;
+      }
+
+    }
+
+    async function loadParentGradeOverview(studentId) {
+      try {
+        const overview = await window.EDUGNAY_API.getFinalGradesOverview(studentId);
+        if (activeChildId !== studentId) return;
+        PARENT_GRADE_YEARS = window.EDUGNAY_CONFIG.buildFinalGradeYears(overview);
+        const year = getDefaultAcademicYear(PARENT_GRADE_YEARS);
+        activeAcademicYearId = year?.id || null;
+        PARENT_GRADE_PERIODS = year?.periods || [];
+        activeAcademicPeriodId = getDefaultAcademicPeriod(PARENT_GRADE_PERIODS)?.id || null;
+      } catch (error) {
+        if (activeChildId === studentId) gradeLoadError = error.message || 'Grades could not be loaded.';
+      } finally {
+        if (activeChildId === studentId) {
+          gradeLoading = false;
+          renderGrades();
+        }
+      }
+    }
+
+    function setInitialSelection() {
+      const requestedChildId = new URLSearchParams(window.location.search).get('studentId');
+      activeChildId = PARENT_CHILDREN.some(child => child.studentId === requestedChildId)
+        ? requestedChildId
+        : PARENT_CHILDREN[0]?.studentId || null;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      const switcher = document.getElementById('parentGradeChildSwitcher');
+      document.getElementById('parentGradeYearSelect').addEventListener('change', event => selectAcademicYear(event.target.value));
+      switcher.setAttribute('role', 'status');
+      switcher.textContent = 'Loading linked children...';
+      document.getElementById('parentGradeSubjectList').setAttribute('aria-live', 'polite');
+      document.getElementById('parentGradeSubjectList').textContent = 'Loading published grades...';
+      await loadBackendParentChildren();
+      if (gradeAccessRedirecting) return;
+      setInitialSelection();
       renderChildSwitcher();
+      if (activeChildId) {
+        gradeLoading = true;
+        await loadParentGradeOverview(activeChildId);
+      }
       renderGrades();
     });
   </script>

@@ -219,7 +219,26 @@
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
     const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
-    const state = { school: initialSchool, division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs', tab: 'profile', logoData: '', termDraft: null, termAction: null, termTrigger: null };
+    const SCHOOL_SETTINGS_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
+    const state = {
+      school: initialSchool,
+      division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs',
+      tab: 'profile',
+      logoData: '',
+      termDraft: null,
+      termAction: null,
+      termTrigger: null,
+      apiActive: false,
+      apiLoading: false,
+      apiError: '',
+      apiSchoolId: null,
+      apiFeatures: null,
+      apiStructure: [],
+      apiGradingCategories: [],
+      apiAcademicYears: [],
+      apiAcademicYear: null,
+      apiTerms: []
+    };
 
     function activeSchool() { return state.school; }
     function setSettingsHeading(title, subtitle) { document.getElementById('settingsTitle').textContent = title; document.getElementById('settingsSubtitle').textContent = subtitle; }
@@ -270,6 +289,190 @@
       if (index >= 0) schools[index] = state.school;
       else schools.push(state.school);
       window.EDUGNAY_CONFIG.saveSchools(schools);
+    }
+
+    function frontendPeriodType(type) {
+      return { semestral: 'semester', trimestral: 'three_term' }[type] || 'quarterly';
+    }
+
+    function backendPeriodType(type) {
+      return { semester: 'semestral', three_term: 'trimestral' }[type] || 'quarterly';
+    }
+
+    function gradeCode(label) {
+      return String(label).toLowerCase() === 'kindergarten'
+        ? 'kindergarten'
+        : `grade-${String(label).match(/\d+/)?.[0] || ''}`;
+    }
+
+    function trackCode(label) {
+      return { Academic: 'academic', 'Technical-Vocational-Livelihood': 'tvl', 'Arts and Design': 'arts-design', Sports: 'sports' }[label] || '';
+    }
+
+    function applyApiSchoolSettings(apiSchool) {
+      const school = state.school || {};
+      const selectedLevels = school.schoolLevels || [];
+      const type = schoolTypeInfo(selectedLevels);
+      state.apiSchoolId = Number(apiSchool.id) || null;
+      state.school = {
+        ...school,
+        name: apiSchool.name || school.name,
+        shortName: apiSchool.shortName || school.shortName,
+        schoolType: apiSchool.schoolType || type.value,
+        typeLabel: type.label,
+        schoolId: apiSchool.depedSchoolId || null,
+        regionName: apiSchool.regionName || null,
+        divisionName: apiSchool.divisionName || null,
+        districtName: apiSchool.districtName || null,
+        address: apiSchool.addressLine || '',
+        phone: apiSchool.phone || null,
+        email: apiSchool.email || '',
+        website: apiSchool.website || null,
+        notificationEmail: apiSchool.notificationEmail || null,
+        schoolYear: apiSchool.currentSchoolYearLabel || school.schoolYear || null,
+        platformStatus: apiSchool.registrationStatus || school.platformStatus,
+        logoUrl: apiSchool.logoPath || null
+      };
+    }
+
+    function applyApiAcademicStructure(levels) {
+      const enabledLevels = levels.filter(level => level.isEnabled !== false);
+      const school = state.school || {};
+      const divisions = { ...(school.divisions || {}) };
+
+      enabledLevels.forEach(level => {
+        const previous = divisions[level.levelCode] || window.EDUGNAY_CONFIG.createDivision(level.levelCode);
+        const enabledGrades = (level.gradeLevels || [])
+          .filter(grade => grade.isEnabled !== false)
+          .map(grade => grade.displayName);
+        const tracks = (level.tracks || [])
+          .filter(track => track.isEnabled !== false)
+          .map(track => track.displayName);
+        divisions[level.levelCode] = window.EDUGNAY_CONFIG.createDivision(level.levelCode, {
+          ...previous,
+          gradingPeriodType: frontendPeriodType(level.gradingPeriodType),
+          gradeRounding: level.gradeRounding || previous.gradeRounding || 'round',
+          passingGradeThreshold: Number.isFinite(Number(level.passingGradeThreshold))
+            ? Number(level.passingGradeThreshold)
+            : previous.passingGradeThreshold,
+          enabledGrades,
+          tracks
+        });
+      });
+
+      const schoolLevels = enabledLevels.map(level => level.levelCode);
+      const type = schoolTypeInfo(schoolLevels);
+      state.school = {
+        ...school,
+        schoolLevels,
+        schoolType: type.value,
+        typeLabel: type.label,
+        divisions,
+        activeDivision: schoolLevels.includes(state.division) ? state.division : schoolLevels[0]
+      };
+      state.division = state.school.activeDivision;
+      state.apiStructure = levels;
+    }
+
+    function getApiLevel(levelCode) {
+      return state.apiStructure.find(level => level.levelCode === levelCode) || null;
+    }
+
+    function getApiTermsForLevel(levelCode) {
+      const level = getApiLevel(levelCode);
+      const yearId = state.apiAcademicYear?.id;
+      if (!level || !yearId) return [];
+      return state.apiTerms
+        .filter(term => Number(term.academicYearId) === Number(yearId) && Number(term.schoolLevelId) === Number(level.id))
+        .sort((first, second) => Number(first.sequenceNumber) - Number(second.sequenceNumber));
+    }
+
+    function applyApiAcademicTerms(years, terms) {
+      state.apiAcademicYears = years;
+      state.apiAcademicYear = years.find(year => year.status === 'active')
+        || years.find(year => year.label === state.school.schoolYear)
+        || years[0]
+        || null;
+      state.apiTerms = terms;
+
+      if (state.apiAcademicYear) {
+        state.school.schoolYear = state.apiAcademicYear.label;
+        state.school.schoolYearStartDate = state.apiAcademicYear.startDate;
+        state.school.schoolYearEndDate = state.apiAcademicYear.endDate;
+      }
+
+      schoolLevels(state.school).forEach(levelCode => {
+        const level = getApiLevel(levelCode);
+        const previous = state.school.divisions?.[levelCode] || window.EDUGNAY_CONFIG.createDivision(levelCode);
+        const levelTerms = getApiTermsForLevel(levelCode);
+        const gradingPeriodType = frontendPeriodType(level?.gradingPeriodType || previous.gradingPeriodType);
+        const mappedTerms = levelTerms.map(term => ({
+            id: String(term.id),
+            name: term.name,
+            sequence: Number(term.sequenceNumber),
+            status: term.status === 'closed' ? 'closed' : term.status === 'active' ? 'active' : 'upcoming',
+            plannedStartDate: term.plannedStartDate,
+            plannedEndDate: term.plannedEndDate,
+            startedAt: term.activatedAt || null,
+            closedAt: term.completedAt || null
+          }));
+        const periods = window.EDUGNAY_CONFIG.createAcademicPeriods(
+          gradingPeriodType,
+          [],
+          `${state.apiAcademicYear?.id || 'new'}-${levelCode}`
+        ).map(period => mappedTerms.find(term => term.sequence === period.sequence) || period);
+        const activePeriod = periods.find(period => period.status === 'active');
+        state.school.divisions[levelCode] = window.EDUGNAY_CONFIG.createDivision(levelCode, {
+          ...previous,
+          gradingPeriodType,
+          academicPeriods: periods,
+          activeAcademicPeriodId: activePeriod?.id || null
+        });
+      });
+    }
+
+    function buildApiAcademicStructure(school, selectedLevels = schoolLevels(school), overrides = {}) {
+      return selectedLevels.map(levelCode => {
+        const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === levelCode) || { label: levelLabel(levelCode), grades: [], tracks: [] };
+        const division = overrides[levelCode] || school.divisions?.[levelCode] || window.EDUGNAY_CONFIG.createDivision(levelCode);
+        const enabledGrades = Array.isArray(division.enabledGrades) ? division.enabledGrades : catalog.grades;
+        const enabledTracks = Array.isArray(division.tracks) ? division.tracks : catalog.tracks || [];
+        return {
+          levelCode,
+          displayName: catalog.label,
+          gradingPeriodType: backendPeriodType(division.gradingPeriodType),
+          isEnabled: true,
+          gradeLevels: catalog.grades.map((displayName, index) => ({
+            gradeCode: gradeCode(displayName),
+            displayName,
+            sortOrder: displayName === 'Kindergarten' ? 0 : index,
+            isEnabled: enabledGrades.includes(displayName)
+          })),
+          tracks: (catalog.tracks || []).map(displayName => ({
+            trackCode: trackCode(displayName),
+            displayName,
+            isEnabled: enabledTracks.includes(displayName)
+          }))
+        };
+      });
+    }
+
+    function applyApiContext() {
+      window.EDUGNAY_API.setSchoolContext(state.school, state.apiFeatures);
+      window.refreshEdUgnayShellContext?.();
+    }
+
+    function renderSettingsApiState() {
+      const title = state.apiLoading ? 'Loading school settings' : 'School settings unavailable';
+      const text = state.apiLoading
+        ? 'Reading the authenticated school workspace.'
+        : (state.apiError || 'Sign in as a school administrator and try again.');
+      setSettingsHeading(title, text);
+      document.getElementById('schoolSettingsBody').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: state.apiLoading ? 'loader-circle' : 'triangle-alert',
+        title,
+        text
+      });
     }
 
     function renderProfilePane() {
@@ -466,9 +669,26 @@
       setSettingsHeading('Grading rules', 'Configure grading weights and final-grade rules.');
       const { level, data } = activeDivision(school);
       const defaults = window.EDUGNAY_CONFIG.createDivision(level);
-      const rules = Array.isArray(data.gradingRules) ? data.gradingRules : defaults.gradingRules;
-      const passingGradeThreshold = Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : defaults.passingGradeThreshold;
-      const gradeRounding = data.gradeRounding || defaults.gradeRounding;
+      const apiLevel = getApiLevel(level);
+      const savedCategories = state.apiActive
+        ? state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel?.id))
+        : [];
+      const rules = savedCategories.length
+        ? savedCategories.map(category => ({
+            id: category.code,
+            code: category.code,
+            apiId: Number(category.id),
+            label: category.name,
+            name: category.name,
+            weight: Number(category.weight)
+          }))
+        : (Array.isArray(data.gradingRules) ? data.gradingRules : defaults.gradingRules);
+      const passingGradeThreshold = state.apiActive
+        ? Number(apiLevel?.passingGradeThreshold ?? defaults.passingGradeThreshold)
+        : (Number.isFinite(Number(data.passingGradeThreshold)) ? Number(data.passingGradeThreshold) : defaults.passingGradeThreshold);
+      const gradeRounding = state.apiActive
+        ? (apiLevel?.gradeRounding || 'round')
+        : (data.gradeRounding || defaults.gradeRounding);
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
@@ -490,9 +710,10 @@
       const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
       const journalSubjectId = school?.journalSubjectId || subjects[0]?.id || '';
       const hasJournalSubject = subjects.some(subject => subject.id === journalSubjectId);
-      const gradesPageEnabled = Boolean(school?.gradesPageEnabled);
-      const narrativeReportsEnabled = Boolean(school?.narrativeReportsEnabled);
-      const journalsEnabled = Boolean(school?.journalsEnabled && hasJournalSubject);
+      const features = state.apiFeatures || {};
+      const gradesPageEnabled = state.apiActive ? Boolean(features.gradesEnabled) : Boolean(school?.gradesPageEnabled);
+      const narrativeReportsEnabled = state.apiActive ? Boolean(features.narrativeReportsEnabled) : Boolean(school?.narrativeReportsEnabled);
+      const journalsEnabled = Boolean((state.apiActive ? features.journalsEnabled : school?.journalsEnabled) && hasJournalSubject);
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
@@ -594,8 +815,59 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function renderPane() { if (state.tab === 'academic') renderAcademicPane(); else if (state.tab === 'terms') renderAcademicTermsPane(); else if (state.tab === 'grading') renderGradingPane(); else if (state.tab === 'attendance') renderAttendancePane(); else if (state.tab === 'portal') renderPortalFeaturesPane(); else renderProfilePane(); }
+    function renderPane() {
+      if (SCHOOL_SETTINGS_API_ENABLED && !state.apiActive) {
+        renderSettingsApiState();
+        return;
+      }
+      if (state.tab === 'academic') renderAcademicPane();
+      else if (state.tab === 'terms') renderAcademicTermsPane();
+      else if (state.tab === 'grading') renderGradingPane();
+      else if (state.tab === 'attendance') renderAttendancePane();
+      else if (state.tab === 'portal') renderPortalFeaturesPane();
+      else renderProfilePane();
+    }
     function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
+
+    async function loadBackendSchoolSettings() {
+      if (!SCHOOL_SETTINGS_API_ENABLED) {
+        renderAll();
+        return;
+      }
+
+      state.apiLoading = true;
+      renderSettingsApiState();
+      try {
+        const [apiSchool, portal, structure, years, gradingCategories] = await Promise.all([
+          window.EDUGNAY_API.getSchoolSettings(),
+          window.EDUGNAY_API.getPortalFeatures(),
+          window.EDUGNAY_API.getAcademicStructure(),
+          window.EDUGNAY_API.getAcademicYears(),
+          window.EDUGNAY_API.getGradingCategories()
+        ]);
+        if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
+        applyApiSchoolSettings(apiSchool);
+        applyApiAcademicStructure(structure);
+        state.apiGradingCategories = gradingCategories;
+        const activeYear = years.find(year => year.status === 'active') || years[0] || null;
+        const terms = activeYear
+          ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
+          : [];
+        applyApiAcademicTerms(years, terms);
+        state.apiFeatures = portal.features;
+        state.apiActive = true;
+        state.apiLoading = false;
+        applyApiContext();
+        renderAll();
+      } catch (error) {
+        state.apiLoading = false;
+        state.apiError = error.status === 401 || error.status === 403
+          ? 'Sign in as a school administrator to manage school settings.'
+          : (error.message || 'The backend school settings could not be loaded.');
+        renderSettingsApiState();
+        console.warn(state.apiError, error.message);
+      }
+    }
     function renderLogoPreview(logoUrl) {
       const image = document.getElementById('profileLogoImage');
       const placeholder = document.getElementById('profileLogoPlaceholder');
@@ -628,7 +900,7 @@
       reader.onerror = () => notify('The logo could not be previewed. Please try another image.');
       reader.readAsDataURL(file);
     }
-    function saveProfile(event) {
+    async function saveProfile(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const school = activeSchool();
@@ -639,6 +911,42 @@
         notify('Select at least one school level before saving.');
         return;
       }
+
+      if (SCHOOL_SETTINGS_API_ENABLED) {
+        if (!state.apiActive) {
+          notify('School settings are still loading. Please try again.');
+          return;
+        }
+        const settings = {
+          name: values.name.trim(),
+          shortName: values.name.trim().toUpperCase(),
+          depedSchoolId: values.schoolId.trim() || null,
+          regionName: values.regionName.trim() || null,
+          divisionName: values.divisionName.trim() || null,
+          districtName: values.districtName.trim() || null,
+          addressLine: values.address.trim() || null,
+          phone: values.phone.trim() || null,
+          website: values.website.trim() || null
+        };
+        if (values.email.trim()) settings.email = values.email.trim();
+
+        try {
+          const [apiSchool, structure] = await Promise.all([
+            window.EDUGNAY_API.updateSchoolSettings(settings),
+            window.EDUGNAY_API.updateAcademicStructure(buildApiAcademicStructure(school, selectedLevels))
+          ]);
+          applyApiSchoolSettings(apiSchool);
+          applyApiAcademicStructure(structure);
+          state.logoData = '';
+          applyApiContext();
+          renderAll();
+          notify('School profile saved.');
+        } catch (error) {
+          notify(error.message || 'The school profile could not be saved.');
+        }
+        return;
+      }
+
       const type = schoolTypeInfo(selectedLevels);
       Object.assign(school, {
         name: values.name.trim(),
@@ -670,15 +978,37 @@
       renderAll();
       notify('School profile saved.');
     }
-    function saveAcademic(event) {
+    async function saveAcademic(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const school = activeSchool();
       const values = new FormData(form);
       const level = currentDivisionKey(school);
+      const selectedGrades = values.getAll('grades');
+      const selectedTracks = values.getAll('tracks');
+
+      if (SCHOOL_SETTINGS_API_ENABLED) {
+        if (!state.apiActive) {
+          notify('School settings are still loading. Please try again.');
+          return;
+        }
+        try {
+          const structure = await window.EDUGNAY_API.updateAcademicStructure(buildApiAcademicStructure(school, schoolLevels(school), {
+            [level]: { ...ensureDivision(school, level), enabledGrades: selectedGrades, tracks: selectedTracks }
+          }));
+          applyApiAcademicStructure(structure);
+          applyApiContext();
+          renderAll();
+          notify(`${levelLabel(level)} academic structure saved.`);
+        } catch (error) {
+          notify(error.message || 'The academic structure could not be saved.');
+        }
+        return;
+      }
+
       const target = ensureDivision(school, level);
-      target.enabledGrades = values.getAll('grades');
-      target.tracks = values.getAll('tracks');
+      target.enabledGrades = selectedGrades;
+      target.tracks = selectedTracks;
       state.division = level;
       school.activeDivision = level;
       persistSchool();
@@ -689,6 +1019,11 @@
     function changeAcademicPeriodType(event) {
       const school = activeSchool();
       const { level } = activeDivision(school);
+      if (SCHOOL_SETTINGS_API_ENABLED && state.apiActive && getApiTermsForLevel(level).length) {
+        event.target.value = frontendPeriodType(getApiLevel(level)?.gradingPeriodType);
+        notify('The period structure cannot change after terms have been configured.');
+        return;
+      }
       const schoolYear = document.getElementById('termSchoolYear').value.trim();
       state.termDraft = {
         schoolLevel: level,
@@ -703,6 +1038,92 @@
         )
       };
       renderAcademicTermsPane();
+    }
+
+    async function reloadBackendAcademicTerms() {
+      const years = await window.EDUGNAY_API.getAcademicYears();
+      const activeYear = years.find(year => year.status === 'active')
+        || years.find(year => year.label === state.school.schoolYear)
+        || years[0]
+        || null;
+      const terms = activeYear
+        ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
+        : [];
+      applyApiAcademicTerms(years, terms);
+      return activeYear;
+    }
+
+    async function saveBackendAcademicTerms(values, level) {
+      const errors = window.EDUGNAY_CONFIG.validateAcademicTermConfig(values);
+      if (errors.length) throw new Error(errors[0]);
+
+      const levelRecord = getApiLevel(level);
+      if (!levelRecord) throw new Error('The selected school level was not found.');
+      const existingTerms = getApiTermsForLevel(level);
+      const currentPeriodType = frontendPeriodType(levelRecord.gradingPeriodType);
+      if (existingTerms.length && values.gradingPeriodType !== currentPeriodType) {
+        throw new Error('The period structure cannot change after terms have been configured.');
+      }
+
+      let year = state.apiAcademicYear;
+      if (!year || year.status === 'closed' || year.label !== values.schoolYear) {
+        const sameLabel = state.apiAcademicYears.find(item => item.label === values.schoolYear);
+        const otherActive = state.apiAcademicYears.find(item => item.status === 'active' && item.label !== values.schoolYear);
+        if (otherActive && !sameLabel) throw new Error('Complete the current academic year before creating another one.');
+        if (sameLabel?.status === 'closed') throw new Error('A closed academic year cannot be reused.');
+        year = sameLabel || await window.EDUGNAY_API.createAcademicYear({
+          label: values.schoolYear,
+          startDate: values.schoolYearStartDate,
+          endDate: values.schoolYearEndDate,
+          status: 'active'
+        });
+      }
+      if (year && (year.startDate !== values.schoolYearStartDate
+        || year.endDate !== values.schoolYearEndDate
+        || year.status === 'upcoming')) {
+        year = await window.EDUGNAY_API.updateAcademicYear(year.id, {
+          label: values.schoolYear,
+          startDate: values.schoolYearStartDate,
+          endDate: values.schoolYearEndDate,
+          status: 'active'
+        });
+      }
+
+      if (!year?.id) throw new Error('The academic year could not be saved.');
+      if (state.school.schoolYear !== year.label) {
+        const school = await window.EDUGNAY_API.updateSchoolSettings({ currentSchoolYearLabel: year.label });
+        applyApiSchoolSettings(school);
+      }
+
+      if (values.gradingPeriodType !== currentPeriodType) {
+        const school = activeSchool();
+        const division = school.divisions?.[level] || window.EDUGNAY_CONFIG.createDivision(level);
+        const structure = await window.EDUGNAY_API.updateAcademicStructure(buildApiAcademicStructure(school, schoolLevels(school), {
+          [level]: { ...division, gradingPeriodType: values.gradingPeriodType }
+        }));
+        applyApiAcademicStructure(structure);
+      }
+
+      for (const period of values.academicPeriods) {
+        const existing = existingTerms.find(term => Number(term.sequenceNumber) === Number(period.sequence));
+        const payload = {
+          name: period.name,
+          plannedStartDate: period.plannedStartDate,
+          plannedEndDate: period.plannedEndDate
+        };
+        if (existing) {
+          if (existing.status === 'upcoming') await window.EDUGNAY_API.updateAcademicTerm(existing.id, payload);
+        } else {
+          await window.EDUGNAY_API.createAcademicTerm({
+            academicYearId: year.id,
+            schoolLevelId: levelRecord.id,
+            sequenceNumber: period.sequence,
+            ...payload
+          });
+        }
+      }
+
+      await reloadBackendAcademicTerms();
     }
 
     async function saveAcademicTerms(event) {
@@ -724,6 +1145,16 @@
       };
 
       try {
+        if (SCHOOL_SETTINGS_API_ENABLED) {
+          if (!state.apiActive) throw new Error('School settings are still loading. Please try again.');
+          await saveBackendAcademicTerms(values, level);
+          state.termDraft = null;
+          applyApiContext();
+          renderAcademicTermsPane();
+          window.refreshEdUgnayShellContext?.();
+          notify(`${levelLabel(level)} academic terms saved.`);
+          return;
+        }
         await window.EDUGNAY_CONFIG.saveAcademicTermConfig(school.id, values);
         state.termDraft = null;
         state.school = window.EDUGNAY_CONFIG.getActiveSchool();
@@ -772,19 +1203,24 @@
       } else {
         title.textContent = `Close ${period.name}`;
         subtitle.textContent = 'Review incomplete records before closing this grading period.';
-        let readiness;
-        try {
-          readiness = await window.EDUGNAY_CONFIG.getAcademicPeriodCloseReadiness(activeSchool().id, level, periodId);
-        } catch (error) {
-          state.termAction = null;
-          state.termTrigger = null;
-          notify(error.message || 'The grading-period readiness could not be loaded.');
-          return;
+        if (SCHOOL_SETTINGS_API_ENABLED) {
+          body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p><div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>The backend will verify the active-period rule and record this action.</span></div>`;
+          confirmButton.textContent = 'Close period';
+        } else {
+          let readiness;
+          try {
+            readiness = await window.EDUGNAY_CONFIG.getAcademicPeriodCloseReadiness(activeSchool().id, level, periodId);
+          } catch (error) {
+            state.termAction = null;
+            state.termTrigger = null;
+            notify(error.message || 'The grading-period readiness could not be loaded.');
+            return;
+          }
+          const issues = [...readiness.blockingIssues.map(item => `<li class="blocking">${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`), ...readiness.warnings.map(item => `<li>${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`)].join('');
+          body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p>${issues ? `<ul class="term-readiness-list">${issues}</ul>` : '<div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>No blocking issues were found.</span></div>'}`;
+          confirmButton.textContent = 'Close period';
+          confirmButton.disabled = !readiness.canClose;
         }
-        const issues = [...readiness.blockingIssues.map(item => `<li class="blocking">${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`), ...readiness.warnings.map(item => `<li>${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`)].join('');
-        body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p>${issues ? `<ul class="term-readiness-list">${issues}</ul>` : '<div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>No blocking issues were found.</span></div>'}`;
-        confirmButton.textContent = 'Close period';
-        confirmButton.disabled = !readiness.canClose;
       }
 
       modal.classList.add('open');
@@ -802,13 +1238,26 @@
       confirmButton.disabled = true;
 
       try {
-        if (action === 'start') await window.EDUGNAY_CONFIG.startAcademicPeriod(schoolId, schoolLevel, periodId);
-        else if (action === 'close') await window.EDUGNAY_CONFIG.closeAcademicPeriod(schoolId, schoolLevel, periodId);
-        else await window.EDUGNAY_CONFIG.extendAcademicPeriod(schoolId, schoolLevel, periodId, {
-          plannedEndDate: document.getElementById('extendedEndDate').value,
-          reason: document.getElementById('extensionReason').value
-        });
-        state.school = window.EDUGNAY_CONFIG.getActiveSchool();
+        if (SCHOOL_SETTINGS_API_ENABLED) {
+          const apiTermId = Number(periodId);
+          if (!Number.isInteger(apiTermId) || apiTermId < 1) throw new Error('The academic-term identifier is invalid.');
+          if (action === 'start') await window.EDUGNAY_API.activateAcademicTerm(apiTermId);
+          else if (action === 'close') await window.EDUGNAY_API.completeAcademicTerm(apiTermId);
+          else await window.EDUGNAY_API.extendAcademicTerm(apiTermId, {
+            newEndDate: document.getElementById('extendedEndDate').value,
+            reason: document.getElementById('extensionReason').value
+          });
+          await reloadBackendAcademicTerms();
+          applyApiContext();
+        } else {
+          if (action === 'start') await window.EDUGNAY_CONFIG.startAcademicPeriod(schoolId, schoolLevel, periodId);
+          else if (action === 'close') await window.EDUGNAY_CONFIG.closeAcademicPeriod(schoolId, schoolLevel, periodId);
+          else await window.EDUGNAY_CONFIG.extendAcademicPeriod(schoolId, schoolLevel, periodId, {
+            plannedEndDate: document.getElementById('extendedEndDate').value,
+            reason: document.getElementById('extensionReason').value
+          });
+          state.school = window.EDUGNAY_CONFIG.getActiveSchool();
+        }
         closeTermActionModal();
         renderAcademicTermsPane();
         window.refreshEdUgnayShellContext?.();
@@ -819,24 +1268,85 @@
         notify(error.message || 'The academic-period action could not be completed.');
       }
     }
-    function saveGrading(event) {
+    async function saveGrading(event) {
       event.preventDefault();
       const school = activeSchool();
       const form = event.currentTarget;
       const { level, data } = activeDivision(school);
       const target = data;
-      const rules = target.gradingRules || [];
+      const apiLevel = getApiLevel(level);
+      const savedCategories = state.apiActive
+        ? state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel?.id))
+        : [];
+      const rules = savedCategories.length
+        ? savedCategories.map(category => ({
+            id: category.code,
+            code: category.code,
+            apiId: Number(category.id),
+            label: category.name,
+            name: category.name
+          }))
+        : (Array.isArray(target.gradingRules) ? target.gradingRules : window.EDUGNAY_CONFIG.createDivision(level).gradingRules);
       const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
       if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
+
+      const gradeRounding = form.elements.gradeRounding?.value || 'round';
+      const passingGradeThreshold = Number(form.elements.passingGradeThreshold?.value);
+      if (!['round', 'roundup', 'truncate'].includes(gradeRounding)
+        || !Number.isFinite(passingGradeThreshold)
+        || passingGradeThreshold < 0
+        || passingGradeThreshold > 100) {
+        notify('Enter a valid passing threshold and rounding rule.');
+        return;
+      }
+
+      if (SCHOOL_SETTINGS_API_ENABLED) {
+        if (!state.apiActive) {
+          notify('School settings are still loading. Please try again.');
+          return;
+        }
+        if (!apiLevel?.id) {
+          notify('The selected school level could not be found.');
+          return;
+        }
+        try {
+          const result = await window.EDUGNAY_API.updateGradingCategories({
+            schoolLevelId: Number(apiLevel.id),
+            categories: rules.map(rule => ({
+              ...(rule.apiId ? { id: Number(rule.apiId) } : {}),
+              code: String(rule.code || rule.id).toLowerCase(),
+              name: rule.name || rule.label,
+              weight: Number(form.elements[rule.id]?.value || 0)
+            })),
+            gradeRounding,
+            passingGradeThreshold
+          });
+          state.apiGradingCategories = [
+            ...state.apiGradingCategories.filter(category => Number(category.schoolLevelId) !== Number(apiLevel.id)),
+            ...result.gradingCategories
+          ];
+          const updatedStructure = state.apiStructure.map(item => Number(item.id) === Number(apiLevel.id)
+            ? { ...item, gradeRounding: result.gradeRounding, passingGradeThreshold: result.passingGradeThreshold }
+            : item);
+          applyApiAcademicStructure(updatedStructure);
+          applyApiContext();
+          renderAll();
+          notify(`${levelLabel(level)} grading rules saved.`);
+        } catch (error) {
+          notify(error.message || 'The grading rules could not be saved.');
+        }
+        return;
+      }
+
       target.gradingRules = rules.map(rule => ({ ...rule, weight: Number(form.elements[rule.id].value || 0) }));
-      target.passingGradeThreshold = Math.max(0, Math.min(100, Number(form.elements.passingGradeThreshold?.value || 75)));
-      target.gradeRounding = form.elements.gradeRounding?.value || 'round';
+      target.passingGradeThreshold = passingGradeThreshold;
+      target.gradeRounding = gradeRounding;
       school.activeDivision = level;
       persistSchool();
       window.refreshEdUgnayShellContext?.();
       notify(`${levelLabel(level)} grading rules saved.`);
     }
-    function savePortalFeatures(event) {
+    async function savePortalFeatures(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const school = activeSchool();
@@ -848,6 +1358,34 @@
         form.elements.journalSubjectId?.focus();
         return;
       }
+
+      if (SCHOOL_SETTINGS_API_ENABLED) {
+        if (!state.apiActive) {
+          notify('School settings are still loading. Please try again.');
+          return;
+        }
+        try {
+          const result = await window.EDUGNAY_API.updatePortalFeatures({
+            gradesEnabled: Boolean(form.elements.gradesPageEnabled?.checked),
+            narrativeReportsEnabled: Boolean(form.elements.narrativeReportsEnabled?.checked),
+            journalsEnabled: Boolean(form.elements.journalsEnabled?.checked),
+            attendanceEnabled: Boolean(state.apiFeatures?.attendanceEnabled),
+            sfTemplatesEnabled: Boolean(state.apiFeatures?.sfTemplatesEnabled)
+          });
+          state.apiFeatures = result.features;
+          school.gradesPageEnabled = Boolean(result.features.gradesEnabled);
+          school.narrativeReportsEnabled = Boolean(result.features.narrativeReportsEnabled);
+          school.journalsEnabled = Boolean(result.features.journalsEnabled);
+          school.journalSubjectId = journalSubjectId;
+          applyApiContext();
+          renderAll();
+          notify('Portal features saved.');
+        } catch (error) {
+          notify(error.message || 'The portal features could not be saved.');
+        }
+        return;
+      }
+
       school.gradesPageEnabled = Boolean(form.elements.gradesPageEnabled?.checked);
       school.narrativeReportsEnabled = Boolean(form.elements.narrativeReportsEnabled?.checked);
       school.journalsEnabled = Boolean(form.elements.journalsEnabled?.checked);
@@ -889,7 +1427,7 @@
         state.tab = 'terms';
         document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item.dataset.schoolTab === 'terms'));
       }
-      renderAll();
+      loadBackendSchoolSettings();
     });
   </script>
 </body>

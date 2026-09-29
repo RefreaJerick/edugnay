@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    STUDENT SHELL — shared across all student pages
    Nav, topbar, notif dropdown, profile dropdown
-   TODO on backend conversion: replace NOTIFICATIONS with
-   data from GET /student/notifications
+   Communication data uses the backend when it is available and keeps the
+   local array as an offline fallback.
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
@@ -17,7 +17,7 @@ window.EDUGNAY_STUDENT = { currentUser: STUDENT_CURRENT_USER };
 
 const STUDENT_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 const STUDENT_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
-const NOTIFICATIONS = [
+let NOTIFICATIONS = [
   ...(STUDENT_NO_CLASS_DAY ? [{
     id: `student-notif-no-class-${STUDENT_NO_CLASS_DAY.date}`,
     schoolId: STUDENT_SCHOOL_ID,
@@ -69,6 +69,8 @@ const NOTIFICATIONS = [
   .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
   .filter(record => record.schoolId === STUDENT_SCHOOL_ID);
 
+let BACKEND_COMMUNICATION = false;
+
 const STUDENT_READ_STORE_KEY = `edugnay_student_notif_read:${STUDENT_SCHOOL_ID}`;
 
 function studentCanAccess(feature) {
@@ -82,7 +84,9 @@ function getStudentVisibleNotifications() {
 
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
+  if (!BACKEND_COMMUNICATION) {
+    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
+  }
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -115,9 +119,9 @@ function renderTopbarNotifs() {
       </div>
       <div class="tb-notif-body">
         <div class="tb-notif-head">
-          <div class="tb-notif-title">${n.title}</div>
+          <div class="tb-notif-title">${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</div>
         </div>
-        <div class="tb-notif-desc">${n.message}</div>
+        <div class="tb-notif-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
         <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatRelativeTime(n.createdAt)}</span></div>
       </div>
     </a>
@@ -130,8 +134,7 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  window.EDUGNAY_CONFIG.markNotificationRead(STUDENT_READ_STORE_KEY, id, NOTIFICATIONS);
-  navigate(link.page);
+  markCurrentNotificationRead(id).finally(() => navigate(link.page));
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -139,6 +142,28 @@ window.EDUGNAY_NOTIFICATION_CONTEXT = {
   records: NOTIFICATIONS,
   getItems: getStudentVisibleNotifications
 };
+
+async function loadStudentCommunication() {
+  try {
+    const data = await window.EDUGNAY_API.loadCommunication('student');
+    if (!data.backend) return;
+    NOTIFICATIONS = data.notifications;
+    window.EDUGNAY_COMMUNICATION = data;
+    BACKEND_COMMUNICATION = true;
+  } catch (error) {
+    BACKEND_COMMUNICATION = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+    if (BACKEND_COMMUNICATION) NOTIFICATIONS = [];
+    window.EDUGNAY_COMMUNICATION = {
+      backend: BACKEND_COMMUNICATION,
+      notifications: NOTIFICATIONS,
+      announcements: [],
+      tasks: [],
+      error: error?.message || 'School communications could not be loaded.'
+    };
+  }
+}
+
+window.EDUGNAY_COMMUNICATION_READY = loadStudentCommunication();
 
 
 /* ── NAVIGATION ── */
@@ -187,7 +212,11 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
-  if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;
+  await window.EDUGNAY_COMMUNICATION_READY;
+  const backendEnabled = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  if (backendEnabled) {
+    if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
+  } else if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;
   applyStudentJournalAccess();
   renderTopbarNotifs();
 });

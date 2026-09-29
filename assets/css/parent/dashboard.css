@@ -447,45 +447,6 @@
   padding: 12px 18px 18px;
 }
 
-.daily-status-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  margin-bottom: 14px;
-}
-
-.daily-status-banner.present {
-  background: var(--green-pale);
-}
-
-.daily-status-banner.absent {
-  background: var(--red-pale);
-}
-
-.daily-status-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.daily-status-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--gray-800);
-}
-
-.daily-status-sub {
-  font-size: 11.5px;
-  color: var(--gray-500);
-  margin-top: 1px;
-}
-
 .subject-att-row {
   display: flex;
   align-items: center;
@@ -606,6 +567,11 @@
   font-size: 11px;
   color: var(--gray-400);
   margin-top: 1px;
+  overflow-wrap: anywhere;
+}
+
+.assignment-row > .badge {
+  flex-shrink: 0;
 }
 
 .mini-pane {

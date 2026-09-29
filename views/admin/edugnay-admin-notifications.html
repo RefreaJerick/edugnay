@@ -207,19 +207,14 @@
     renderNotifList();
   }
 
-  function markAllRead() {
-    const notifications = getNotifItems();
-    window.EDUGNAY_CONFIG.markAllNotificationsRead(ADMIN_READ_STORE_KEY, notifications);
+  async function markAllRead() {
+    await markCurrentNotificationsRead();
     renderTopbarNotifs();
     renderNotifList();
   }
 
-  function markRead(id) {
-    window.EDUGNAY_CONFIG.markNotificationRead(ADMIN_READ_STORE_KEY, id, NOTIFICATIONS);
-  }
-
-  function goToNotif(link) {
-    navigate(link?.page, link?.hash);
+  function goToNotif(link, id) {
+    markCurrentNotificationRead(id).finally(() => navigate(link?.page, link?.hash));
   }
 
   function renderNotifList() {
@@ -254,11 +249,11 @@
         lastGroup = group;
       }
       html += `
-        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='markRead(${JSON.stringify(n.id)}); goToNotif(${JSON.stringify(n.link)});'>
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)});'>
           <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
-            <div class="nt-text"><strong>${n.title}</strong></div>
-            <div class="nt-desc">${n.message}</div>
+            <div class="nt-text"><strong>${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</strong></div>
+            <div class="nt-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
             <div class="nt-time">${formatTime(n.createdAt)}</div>
           </div>
         </div>
@@ -270,6 +265,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    await window.EDUGNAY_COMMUNICATION_READY;
     renderNotifList();
   });
 </script>

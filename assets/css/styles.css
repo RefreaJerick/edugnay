@@ -1309,6 +1309,20 @@ body.drawer-open .sidebar {
   background: rgba(29,92,180,0.25);
 }
 
+.teacher-section-nav-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-circle);
+  background: var(--gold);
+}
+
+.teacher-section-nav-message {
+  padding: 7px 10px 7px 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+
 /* ══════════════════════════════
     TOPBAR — BREADCRUMB
 ══════════════════════════════ */

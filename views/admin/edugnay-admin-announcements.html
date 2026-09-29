@@ -111,13 +111,11 @@
       <p style="margin:0;font-size:13px;color:var(--gray-500);line-height:1.6;">
         This will permanently delete <strong id="deleteModalTitleInline">this announcement</strong>. This cannot be undone.
       </p>
-      <form id="deleteAnnouncementForm" method="post" action="/announcements/delete">
-        <input type="hidden" name="announcementId" id="deleteAnnouncementId"/>
-      </form>
+      <input type="hidden" id="deleteAnnouncementId"/>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-      <button type="submit" form="deleteAnnouncementForm" class="btn-save" style="background:#dc2626;box-shadow:none;">Yes, Delete</button>
+      <button type="button" class="btn-save" style="background:#dc2626;box-shadow:none;" onclick="confirmDeleteAnnouncement()">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -410,7 +408,21 @@
 </div>
 
 <script>
-  function openModal() { document.getElementById('editModal').classList.add('open'); }
+  let ACTIVE_ANNOUNCEMENT_ID = null;
+
+  function openModal(announcementId = null) {
+    ACTIVE_ANNOUNCEMENT_ID = announcementId ? String(announcementId) : null;
+    const announcement = ANNOUNCEMENTS.find(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
+    const form = document.getElementById('editAnnouncementForm');
+    if (announcement && form) {
+      form.elements.title.value = announcement.title || '';
+      form.elements.content.value = announcement.body || '';
+      form.elements.priority.value = announcement.priority === 'low' ? 'normal' : (announcement.priority || 'normal');
+      form.elements.audience.value = announcement.audienceKeys?.[0] || 'all';
+    }
+    document.getElementById('editModal').classList.add('open');
+    lucide.createIcons();
+  }
   function closeModal() { document.getElementById('editModal').classList.remove('open'); }
   document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -421,12 +433,50 @@
     document.getElementById('priorityValue').value = value;
   }
 
+  function getAudienceValues(form) {
+    const values = Array.from(form.querySelectorAll('input[name="audience"]:checked')).map(input => input.value);
+    if (values.length) return values;
+    const selectedAudience = form.elements.audience?.value;
+    return selectedAudience ? selectedAudience.split('-') : ['all'];
+  }
+
+  function getAnnouncementValues(form, status) {
+    const formData = new FormData(form);
+    const priority = String(formData.get('priority') || 'normal');
+    return {
+      title: String(formData.get('title') || '').trim(),
+      body: String(formData.get('content') || '').trim(),
+      priority: priority === 'low' ? 'normal' : priority,
+      audiences: getAudienceValues(form),
+      status
+    };
+  }
+
+  async function saveAnnouncement(form, status) {
+    const values = getAnnouncementValues(form, status);
+    if (!values.title || !values.body) {
+      alert('Enter an announcement title and content.');
+      return;
+    }
+    if (!window.EDUGNAY_COMMUNICATION?.backend) {
+      window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
+      ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
+      form.reset();
+      document.getElementById('priorityValue').value = 'normal';
+      renderAdminAnnouncements();
+      return;
+    }
+    const announcement = await window.EDUGNAY_API.createAnnouncement(values);
+    if (announcement) ANNOUNCEMENTS.unshift(announcement);
+    form.reset();
+    document.getElementById('priorityValue').value = 'normal';
+    audienceCheckboxes.forEach(input => input.closest('.aud-opt')?.classList.toggle('checked', input.checked));
+    renderAdminAnnouncements();
+  }
+
   function saveDraft() {
     const form = document.getElementById('composeAnnouncementForm');
-    const formData = new FormData(form);
-    formData.append('isDraft', 'true');
-    // Send to backend or handle draft saving
-    console.log('Saving draft:', Object.fromEntries(formData));
+    saveAnnouncement(form, 'draft').catch(error => alert(error.message));
   }
 
   const audienceCheckboxes = Array.from(document.querySelectorAll('.aud-opt input[type="checkbox"]'));
@@ -447,7 +497,7 @@
     });
   });
 
-  const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
+  let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
 
   function renderAdminAnnouncements() {
     const list = document.getElementById('annList');
@@ -455,8 +505,8 @@
     list.innerHTML = ANNOUNCEMENTS.map(ann => `
       <div class="ann-card priority-${ann.priority}" data-id="${ann.id}" data-priority="${ann.priority}" data-audience="${ann.audienceKeys.join(',')}">
         ${ann.pinned ? '<div class="pinned-strip"><i data-lucide="pin" style="width:12px;height:12px;"></i> Pinned Announcement</div>' : ''}
-        <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${ann.title}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${ann.time}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${ann.author}</span></div></div></div><div class="ann-badges">${ann.draft ? '<span class="badge badge-gray">Draft</span>' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${ann.body}</div>${ann.imageUrl ? `<div class="ann-image-wrap"><img class="ann-image" src="${window.EDUGNAY_CONFIG.escapeHtml(ann.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}" loading="lazy" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${ann.audience}</span></div></div>
-        <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.seen}</div><div class="ann-footer-right">${ann.draft ? '' : `<button class="footer-btn pin" onclick="${ann.pinned ? 'unpinCard' : 'pinCard'}(this)"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>`}<button class="footer-btn edit" onclick="openModal()"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.draft ? 'Edit & Publish' : 'Edit'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
+        <div class="ann-body"><div class="ann-head"><div class="ann-head-left"><div class="ann-type-icon ${ann.iconClass}"><i data-lucide="${ann.icon}" style="width:16px;height:16px;"></i></div><div class="ann-title-wrap"><div class="ann-title">${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}</div><div class="ann-meta"><span class="ann-meta-item"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.time)}</span><span class="ann-meta-item"><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.author)}</span></div></div></div><div class="ann-badges">${ann.draft ? '<span class="badge badge-gray">Draft</span>' : '<span class="badge badge-green">Active</span>'}</div></div><div class="ann-content"${ann.draft ? ' style="color:var(--gray-400);font-style:italic;"' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(ann.body)}</div>${ann.imageUrl ? `<div class="ann-image-wrap"><img class="ann-image" src="${window.EDUGNAY_CONFIG.escapeHtml(ann.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(ann.title)}" loading="lazy" onerror="this.closest('.ann-image-wrap').style.display='none'"/></div>` : ''}<div class="ann-audience"><span class="aud-label">To:</span><span class="aud-tag ${ann.audienceClass}"><i data-lucide="${ann.audienceIcon}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(ann.audience)}</span></div></div>
+        <div class="ann-footer"><div class="ann-footer-left"${ann.draft ? ' style="color:var(--orange);"' : ''}><i data-lucide="${ann.draft ? 'eye-off' : 'eye'}" style="width:12px;height:12px;"></i> ${ann.seen}</div><div class="ann-footer-right">${ann.draft ? '' : `<button class="footer-btn pin" onclick="${ann.pinned ? 'unpinCard' : 'pinCard'}(this)"><i data-lucide="${ann.pinned ? 'pin-off' : 'pin'}" style="width:11px;height:11px;"></i> ${ann.pinned ? 'Unpin' : 'Pin'}</button>`}<button class="footer-btn edit" onclick="openModal('${ann.id}')"><i data-lucide="pencil" style="width:11px;height:11px;"></i> ${ann.draft ? 'Edit & Publish' : 'Edit'}</button><button class="footer-btn delete" onclick="deleteCard(this)"><i data-lucide="trash-2" style="width:11px;height:11px;"></i> Delete</button></div></div>
       </div>`).join('');
     lucide.createIcons();
     filterAnnouncements();
@@ -539,14 +589,38 @@
     document.getElementById('deleteModalTitleVal').textContent = title;
     document.getElementById('deleteModalTitleInline').textContent = title;
     document.getElementById('deleteAnnouncementId').value = card.dataset.id || '';
-    document.getElementById('deleteAnnouncementForm').action = `/announcements/${card.dataset.id || 'unknown'}/delete`;
-
     document.getElementById('deleteModalBackdrop').classList.add('open');
     lucide.createIcons();
   }
 
   function closeDeleteModal() {
     document.getElementById('deleteModalBackdrop').classList.remove('open');
+  }
+
+  async function confirmDeleteAnnouncement() {
+    const announcementId = document.getElementById('deleteAnnouncementId').value;
+    const deleteButton = document.querySelector('#deleteModalBackdrop .btn-save');
+    if (!announcementId || !deleteButton) return;
+
+    const originalLabel = deleteButton.textContent;
+    deleteButton.disabled = true;
+    deleteButton.textContent = 'Deleting...';
+    try {
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        await window.EDUGNAY_API.deleteAnnouncement(announcementId);
+      } else if (!window.EDUGNAY_CONFIG.deleteAnnouncement(announcementId)) {
+        throw new Error('Announcement was not found.');
+      }
+
+      ANNOUNCEMENTS = ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcementId));
+      closeDeleteModal();
+      renderAdminAnnouncements();
+    } catch (error) {
+      alert(error.message || 'The announcement could not be deleted.');
+    } finally {
+      deleteButton.disabled = false;
+      deleteButton.textContent = originalLabel;
+    }
   }
 
   document.getElementById('deleteModalBackdrop').addEventListener('click', function(e) {
@@ -588,7 +662,38 @@
     });
   }
 
+  async function saveEditedAnnouncement(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!ACTIVE_ANNOUNCEMENT_ID) return;
+    const values = getAnnouncementValues(form, 'published');
+    if (!values.title || !values.body) {
+      alert('Enter an announcement title and content.');
+      return;
+    }
+    try {
+      const updated = window.EDUGNAY_COMMUNICATION?.backend
+        ? await window.EDUGNAY_API.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, values)
+        : window.EDUGNAY_CONFIG.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, { ...values, audience: values.audiences });
+      const index = ANNOUNCEMENTS.findIndex(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
+      if (index >= 0) ANNOUNCEMENTS[index] = updated || ANNOUNCEMENTS[index];
+      closeModal();
+      renderAdminAnnouncements();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  document.getElementById('composeAnnouncementForm')?.addEventListener('submit', event => {
+    event.preventDefault();
+    saveAnnouncement(event.currentTarget, 'published').catch(error => alert(error.message));
+  });
+  document.getElementById('editAnnouncementForm')?.addEventListener('submit', saveEditedAnnouncement);
   document.addEventListener('DOMContentLoaded', async () => {
+    await window.EDUGNAY_COMMUNICATION_READY;
+    if (window.EDUGNAY_COMMUNICATION?.backend) {
+      ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+    }
     renderAdminAnnouncements();
     setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
     setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');

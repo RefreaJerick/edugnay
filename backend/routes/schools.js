@@ -18,7 +18,7 @@ router.post('/platform/schools/:schoolId/reject', requireAuth, requirePlatformAd
 });
 router.get('/school/settings', requireAuth, requireSchoolAdmin, controller.getSchoolSettings);
 router.patch('/school/settings', requireAuth, requireSchoolAdmin, controller.updateSchoolSettings);
-router.get('/school/portal-features', requireAuth, requireSchoolAdmin, controller.getPortalFeatures);
+router.get('/school/portal-features', requireAuth, controller.getPortalFeatures);
 router.patch('/school/portal-features', requireAuth, requireSchoolAdmin, controller.updatePortalFeatures);
 router.get('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.getAcademicStructure);
 router.patch('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.updateAcademicStructure);

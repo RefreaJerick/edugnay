@@ -90,6 +90,24 @@ function sendAccountStatusEmail(user) {
   });
 }
 
+function sendAnnouncementEmail(user, announcement) {
+  const title = String(announcement.title || '').replace(/[\r\n]+/g, ' ').trim();
+  return sendEmail({
+    to: getRecipient(user),
+    subject: `New Academix announcement: ${title}`,
+    text: [
+      `Hello ${user.displayName || 'Academix user'},`,
+      '',
+      `${announcement.authorName || 'Your school'} published a new announcement:`,
+      title,
+      '',
+      announcement.body,
+      '',
+      'Sign in to Academix to view the announcement.'
+    ].join('\n')
+  });
+}
+
 function sendPasswordResetEmail(user, token) {
   const resetUrl = `${String(process.env.FRONTEND_ORIGIN || '').replace(/\/$/, '')}/index.html?token=${encodeURIComponent(token)}`;
   return sendEmail({
@@ -144,6 +162,7 @@ module.exports = {
   isEmailConfigured,
   sendAccountCreatedEmail,
   sendAccountStatusEmail,
+  sendAnnouncementEmail,
   sendEmail,
   sendPasswordResetEmail,
   sendSchoolRegistrationDecisionEmail,

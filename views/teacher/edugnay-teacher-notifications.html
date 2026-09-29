@@ -48,19 +48,8 @@
             <span>My Sections</span>
             <i data-lucide="chevron-right" style="width:13px;height:13px;" class="nav-chevron"></i>
           </div>
-          <div class="nav-children">
-            <a class="nav-child" onclick="navigate('section', '7-matthew')">
-              <span class="dot-7" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 7 – St. Matthew
-            </a>
-            <a class="nav-child" onclick="navigate('section', '8-luke')">
-              <span class="dot-8" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 8 – St. Luke
-            </a>
-            <a class="nav-child" onclick="navigate('section', '9-peter')">
-              <span class="dot-9" style="width:6px;height:6px;border-radius:var(--radius-circle);flex-shrink:0;"></span>
-              Grade 9 – St. Peter
-            </a>
+          <div class="nav-children" data-teacher-sections-nav>
+            <div class="teacher-section-nav-message" role="status">Loading assigned sections…</div>
           </div>
         </div>
       </div>
@@ -187,9 +176,8 @@
     renderNotifList();
   }
 
-  function markAllRead() {
-    const visibleNotifications = getTeacherVisibleNotifications();
-    window.EDUGNAY_CONFIG.markAllNotificationsRead(TEACHER_READ_STORE_KEY, visibleNotifications);
+  async function markAllRead() {
+    await markCurrentNotificationsRead();
     renderTopbarNotifs();
     renderNotifList();
   }
@@ -201,12 +189,13 @@
   }
 
   function goToNotif(link, id) {
-    window.EDUGNAY_CONFIG.markNotificationRead(TEACHER_READ_STORE_KEY, id, NOTIFICATIONS);
-    navigate(link.page, link.section, link.tab);
+    markCurrentNotificationRead(id).finally(() => navigate(link.page, link.section, link.tab));
   }
 
   function renderNotifList() {
-    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
+    if (!window.EDUGNAY_COMMUNICATION?.backend) {
+      window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
+    }
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();
@@ -239,8 +228,8 @@
         <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
           <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
-            <div class="nt-text"><strong>${n.title}</strong></div>
-            <div class="nt-desc">${n.message}</div>
+            <div class="nt-text"><strong>${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</strong></div>
+            <div class="nt-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
             <div class="nt-time">${formatTime(n.createdAt)}</div>
           </div>
           <span class="nt-tag">${n.type}</span>
@@ -253,6 +242,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    await window.EDUGNAY_COMMUNICATION_READY;
     renderNotifList();
   });
 </script>

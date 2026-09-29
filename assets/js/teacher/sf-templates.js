@@ -107,7 +107,9 @@ function renderGenerationOptions() {
 
   sfElements.templateSelect.disabled = !activeTemplates.length;
   sfElements.sectionSelect.disabled = !activeTemplates.length || !sfState.sections.length;
-  sfElements.schoolYear.value = window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear || '';
+  sfElements.schoolYear.value = sfState.sections[0]?.academicYear
+    || window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear
+    || '';
   updateGenerateButton();
 }
 
@@ -221,8 +223,12 @@ function preservePreviewEdits() {
   sfState.preview.rows.forEach(row => row.cells.forEach(cell => {
     if (values.has(cell.address)) cell.text = values.get(cell.address);
   }));
-  const edits = Array.from(values, ([cellAddress, value]) => ({ cellAddress, value }));
-  if (sfState.generated) sfState.generated.edits = edits;
+  const edits = Array.from(values, ([cellAddress, value]) => ({ cellAddress, value }))
+    .filter(edit => sfState.generated?.baseCellTexts?.[edit.cellAddress] !== edit.value);
+  if (sfState.generated) {
+    if (JSON.stringify(edits) !== JSON.stringify(sfState.generated.edits || [])) sfState.generated.exportId = null;
+    sfState.generated.edits = edits;
+  }
   return edits;
 }
 
@@ -282,6 +288,10 @@ async function openTemplatePreview(templateId, sheetName = '') {
 
 async function generateForm(event) {
   event.preventDefault();
+  sfState.generated = null;
+  sfState.editing = false;
+  sfElements.editButton.disabled = true;
+  sfElements.downloadButton.disabled = true;
   sfElements.generateButton.disabled = true;
   sfElements.generateButton.textContent = 'Generating...';
   try {
@@ -290,15 +300,22 @@ async function generateForm(event) {
       sectionId: sfElements.sectionSelect.value,
       schoolYear: sfElements.schoolYear.value
     });
+    sfState.generated.baseCellTexts = Object.fromEntries(
+      sfState.generated.preview.rows.flatMap(row => row.cells
+        .filter(cell => cell.editable)
+        .map(cell => [cell.address, cell.text]))
+    );
     sfState.selectedTemplate = sfState.templates.find(template => template.id === sfState.generated.templateId) || null;
     sfState.editing = false;
     sfState.zoomMode = 'fit';
     sfElements.previewTitle.textContent = 'Generated form preview';
-    sfElements.previewSubtitle.textContent = 'Review mapped values before downloading the XLSX file.';
+    sfElements.previewSubtitle.textContent = window.EDUGNAY_API?.isBackendAvailable
+      ? 'Review current system records before downloading the XLSX file.'
+      : 'Demo preview uses sample records stored in this browser.';
     sfElements.previewContent.innerHTML = `${renderIssueSummary(sfState.generated.issues)}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
     renderWorkbook(document.getElementById('sfMainWorkbook'), sfState.generated.preview);
-    sfElements.editButton.disabled = !sfState.generated.editableCells?.length;
-    sfElements.downloadButton.disabled = false;
+    sfElements.editButton.disabled = sfState.generated.hasBlockingIssues || !sfState.generated.editableCells?.length;
+    sfElements.downloadButton.disabled = Boolean(sfState.generated.hasBlockingIssues);
   } catch (error) {
     showSfToast(error.message);
   } finally {
@@ -325,7 +342,7 @@ function toggleGeneratedEditing() {
 }
 
 async function downloadGeneratedWorkbook() {
-  if (!sfState.generated) return;
+  if (!sfState.generated || sfState.generated.hasBlockingIssues) return;
   if (sfState.editing) {
     preservePreviewEdits();
     sfState.editing = false;
@@ -341,8 +358,11 @@ async function downloadGeneratedWorkbook() {
       sectionId: sfState.generated.sectionId,
       fileName: sfState.generated.fileName,
       mappedCells: sfState.generated.mappedCells,
-      edits: sfState.generated.edits
+      edits: sfState.generated.edits,
+      previewFingerprint: sfState.generated.previewFingerprint,
+      exportId: sfState.generated.exportId
     });
+    sfState.generated.exportId = result.exportId || null;
     const blob = new Blob([result.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
     const objectUrl = URL.createObjectURL(blob);
@@ -353,10 +373,17 @@ async function downloadGeneratedWorkbook() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
   } catch (error) {
+    if (error.status === 409) {
+      sfState.generated = null;
+      sfState.editing = false;
+      sfElements.editButton.disabled = true;
+      sfElements.previewSubtitle.textContent = 'The system records changed. Generate a new preview before downloading.';
+      sfElements.previewContent.innerHTML = '<div class="sf-preview-error">The records changed since this preview. Generate a new preview to continue.</div>';
+    }
     showSfToast(error.message);
   } finally {
     sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
-    sfElements.downloadButton.disabled = false;
+    sfElements.downloadButton.disabled = !sfState.generated || Boolean(sfState.generated.hasBlockingIssues);
     if (window.lucide) lucide.createIcons();
   }
 }
@@ -368,17 +395,44 @@ function showSfToast(message) {
 }
 
 async function initializeSfTemplatesPage() {
-  [sfState.templates, sfState.sections] = await Promise.all([
-    window.EDUGNAY_CONFIG.getSfTemplates(),
-    window.EDUGNAY_CONFIG.getMyAdvisorySections()
-  ]);
-  renderTemplateLibrary();
-  renderGenerationOptions();
-  if (window.lucide) lucide.createIcons();
+  if (!window.EDUGNAY_API?.isBackendAvailable) {
+    document.querySelector('.sf-info-banner-title').textContent = 'Demo preview';
+    document.querySelector('.sf-info-banner-text').textContent = 'This static-host preview uses sample records in your browser, not live MySQL data.';
+  }
+  sfElements.count.textContent = 'Loading templates...';
+  sfElements.list.innerHTML = '<div class="sf-preview-loading" role="status">Loading official templates...</div>';
+
+  try {
+    [sfState.templates, sfState.sections] = await Promise.all([
+      window.EDUGNAY_CONFIG.getSfTemplates(),
+      window.EDUGNAY_CONFIG.getMyAdvisorySections()
+    ]);
+    renderTemplateLibrary();
+    renderGenerationOptions();
+  } catch (error) {
+    sfState.templates = [];
+    sfState.sections = [];
+    sfElements.count.textContent = 'Templates unavailable';
+    sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+      icon: error.status === 403 ? 'shield-off' : 'cloud-off',
+      title: error.status === 403 ? 'SF Templates unavailable' : 'Templates could not be loaded',
+      text: error.message || 'Sign in again or try again later.'
+    });
+    renderGenerationOptions();
+    showSfToast(error.message || 'SF Templates could not be loaded.');
+  } finally {
+    if (window.lucide) lucide.createIcons();
+  }
 }
 
 sfElements.generatorForm.addEventListener('submit', generateForm);
-[sfElements.templateSelect, sfElements.sectionSelect, sfElements.schoolYear].forEach(select => select.addEventListener('change', updateGenerateButton));
+[sfElements.templateSelect, sfElements.sectionSelect, sfElements.schoolYear].forEach(select => select.addEventListener('change', () => {
+  sfState.generated = null;
+  sfState.editing = false;
+  sfElements.editButton.disabled = true;
+  sfElements.downloadButton.disabled = true;
+  updateGenerateButton();
+}));
 [sfElements.codeFilter, sfElements.levelFilter]
   .forEach(select => select.addEventListener('change', renderTemplateLibrary));
 sfElements.editButton.addEventListener('click', toggleGeneratedEditing);

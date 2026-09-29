@@ -161,9 +161,8 @@
     renderNotifList();
   }
 
-  function markAllRead() {
-    const visible = getStudentVisibleNotifications();
-    window.EDUGNAY_CONFIG.markAllNotificationsRead(STUDENT_READ_STORE_KEY, visible);
+  async function markAllRead() {
+    await markCurrentNotificationsRead();
     renderTopbarNotifs();
     renderNotifList();
   }
@@ -175,12 +174,13 @@
   }
 
   function goToNotif(link, id) {
-    window.EDUGNAY_CONFIG.markNotificationRead(STUDENT_READ_STORE_KEY, id, NOTIFICATIONS);
-    navigate(link.page);
+    markCurrentNotificationRead(id).finally(() => navigate(link.page));
   }
 
   function renderNotifList() {
-    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
+    if (!window.EDUGNAY_COMMUNICATION?.backend) {
+      window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
+    }
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();
@@ -213,8 +213,8 @@
         <div class="notif-item ${n.read ? '' : 'unread'}" onclick='goToNotif(${JSON.stringify(n.link)}, ${JSON.stringify(n.id)})'>
           <div class="nt-icon ${n.tone}"><i data-lucide="${n.icon}" style="width:15px;height:15px;"></i></div>
           <div class="nt-body">
-            <div class="nt-text"><strong>${n.title}</strong></div>
-            <div class="nt-desc">${n.message}</div>
+            <div class="nt-text"><strong>${window.EDUGNAY_CONFIG.escapeHtml(n.title)}</strong></div>
+            <div class="nt-desc">${window.EDUGNAY_CONFIG.escapeHtml(n.message)}</div>
             <div class="nt-time">${formatTime(n.createdAt)}</div>
           </div>
           <span class="nt-tag">${n.type}</span>
@@ -227,6 +227,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    await window.EDUGNAY_COMMUNICATION_READY;
     renderNotifList();
   });
 </script>

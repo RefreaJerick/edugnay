@@ -28,7 +28,7 @@
   EJS CONVERSION MAP — student-materials.html
   ─────────────────────────────────────────
   - learningMaterials[] → shared records filtered to the student's enrolled section:
-                       { id, schoolId, sectionId, subjectId, teacherId, title, description, type,
+                       { id, schoolId, sectionId, subjectId, teacherId, title, type,
                          schoolYear, academicPeriodId, postedAt, fileSize, fileUrl,
                          status, visibleToStudents, views }
                        This is read-only for students — no upload/delete actions render here
@@ -211,8 +211,14 @@
             <option value="all">All Types</option>
             <option value="pdf">PDF</option>
             <option value="pptx">Slides</option>
+            <option value="ppt">PowerPoint</option>
             <option value="video">Video</option>
             <option value="docx">Document</option>
+            <option value="doc">Word</option>
+            <option value="xls">Excel</option>
+            <option value="xlsx">Spreadsheet</option>
+            <option value="jpg">JPG image</option>
+            <option value="png">PNG image</option>
           </select>
         </div>
 
@@ -228,29 +234,42 @@
   <script>
     lucide.createIcons();
 
-    // The shared getter can later request only the selected subject from the API.
-    const MATERIAL_STUDENT = window.EDUGNAY_CONFIG.getUserById('jd-004');
-    const MATERIAL_RECORDS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(MATERIAL_STUDENT.id);
-    const MATERIAL_PERIODS = window.EDUGNAY_CONFIG.getAcademicPeriods(MATERIAL_STUDENT.schoolId, MATERIAL_STUDENT.schoolLevel);
+    const MATERIAL_STUDENT = window.EDUGNAY_API?.isBackendAvailable ? null
+      : window.EDUGNAY_CONFIG.getUserById('jd-004');
+    let MATERIAL_RECORDS = window.EDUGNAY_API?.isBackendAvailable ? []
+      : window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(MATERIAL_STUDENT.id);
+    const MATERIAL_PERIODS = window.EDUGNAY_API?.isBackendAvailable ? []
+      : window.EDUGNAY_CONFIG.getAcademicPeriods(MATERIAL_STUDENT.schoolId, MATERIAL_STUDENT.schoolLevel);
     const MATERIALS_BY_SUBJECT = {};
-    MATERIAL_RECORDS.forEach(material => {
-      if (!MATERIALS_BY_SUBJECT[material.subjectId]) {
-        MATERIALS_BY_SUBJECT[material.subjectId] = {
-          label: material.subjectName || 'Subject',
-          teacher: material.teacherName || 'Subject teacher',
-          items: []
-        };
-      }
-      MATERIALS_BY_SUBJECT[material.subjectId].items.push(material);
-    });
+    let currentSubject = '';
 
-    let currentSubject = Object.keys(MATERIALS_BY_SUBJECT)[0] || '';
+    function groupMaterials() {
+      Object.keys(MATERIALS_BY_SUBJECT).forEach(key => delete MATERIALS_BY_SUBJECT[key]);
+      MATERIAL_RECORDS.forEach(material => {
+        if (!MATERIALS_BY_SUBJECT[material.subjectId]) {
+          MATERIALS_BY_SUBJECT[material.subjectId] = {
+            label: material.subjectName || 'Subject',
+            teacher: material.teacherName || 'Subject teacher',
+            items: []
+          };
+        }
+        MATERIALS_BY_SUBJECT[material.subjectId].items.push(material);
+      });
+      currentSubject = Object.keys(MATERIALS_BY_SUBJECT)[0] || '';
+    }
 
     const TYPE_META = {
       pdf: { icon: 'file-text', bg: 'var(--red-pale)', color: 'var(--red)', label: 'PDF' },
       pptx: { icon: 'presentation', bg: 'var(--gold-pale)', color: '#92400e', label: 'Slides' },
       video: { icon: 'video', bg: 'var(--green-pale)', color: '#16a34a', label: 'Video' },
       docx: { icon: 'file-text', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)', label: 'Document' },
+      doc: { icon: 'file-text', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)', label: 'Document' },
+      ppt: { icon: 'presentation', bg: 'var(--gold-pale)', color: '#92400e', label: 'Slides' },
+      xls: { icon: 'table', bg: 'var(--green-pale)', color: 'var(--green)', label: 'Spreadsheet' },
+      xlsx: { icon: 'table', bg: 'var(--green-pale)', color: 'var(--green)', label: 'Spreadsheet' },
+      jpg: { icon: 'image', bg: 'var(--gold-pale)', color: 'var(--gold-dark)', label: 'Image' },
+      png: { icon: 'image', bg: 'var(--gold-pale)', color: 'var(--gold-dark)', label: 'Image' },
+      mp4: { icon: 'video', bg: 'var(--green-pale)', color: 'var(--green)', label: 'Video' },
     };
 
     const PERIOD_LABELS = Object.fromEntries(MATERIAL_PERIODS.map(period => [period.id, period.name]));
@@ -309,7 +328,7 @@
 
       const filtered = data.items.filter(m => {
         if (query && !m.title.toLowerCase().includes(query)) return false;
-        if (typeFilter !== 'all' && m.type !== typeFilter) return false;
+        if (typeFilter !== 'all' && m.type !== typeFilter && !(typeFilter === 'video' && m.type === 'mp4')) return false;
         return true;
       });
 
@@ -327,29 +346,29 @@
       const periodGroups = [];
       const grouped = {};
       filtered.forEach(m => {
-        const period = PERIOD_LABELS[m.academicPeriodId] || 'Academic Period';
+        const period = m.academicTermName || PERIOD_LABELS[m.academicPeriodId] || 'Academic Period';
         if (!grouped[period]) { grouped[period] = []; periodGroups.push(period); }
         grouped[period].push(m);
       });
 
       container.innerHTML = periodGroups.map(period => `
-    <div class="week-group-label">${period}</div>
+    <div class="week-group-label">${window.EDUGNAY_CONFIG.escapeHtml(period)}</div>
     ${grouped[period].map(m => {
-        const meta = TYPE_META[m.type];
+        const meta = TYPE_META[m.type] || TYPE_META.pdf;
         return `
-        <div class="material-row" onclick="downloadMaterial('${window.EDUGNAY_CONFIG.escapeHtml(m.id)}')">
+        <div class="material-row" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}">
           <div class="material-icon" style="background:${meta.bg};">
             <i data-lucide="${meta.icon}" style="width:19px;height:19px;color:${meta.color};"></i>
           </div>
           <div class="material-info">
-            <div class="material-title">${m.title}</div>
+            <div class="material-title">${window.EDUGNAY_CONFIG.escapeHtml(m.title)}</div>
             <div class="material-meta">
               <span class="badge badge-blue">${meta.label}</span>
               <span class="material-meta-dot"></span>
-              <span>Posted ${formatMaterialDate(m.postedAt)}</span>
+              <span>Posted ${window.EDUGNAY_CONFIG.escapeHtml(formatMaterialDate(m.postedAt))}</span>
             </div>
           </div>
-          <button class="material-action" onclick="event.stopPropagation();downloadMaterial('${window.EDUGNAY_CONFIG.escapeHtml(m.id)}')" aria-label="Open material">
+          <button class="material-action" type="button" aria-label="Open ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}">
             <i data-lucide="${m.type === 'video' ? 'play' : 'download'}" style="width:16px;height:16px;"></i>
           </button>
         </div>`;
@@ -360,12 +379,32 @@
     }
 
     function downloadMaterial(id) {
-      // EJS NOTE: replace with real navigation to GET /student/materials/:id/download
-      console.log('Open material', id);
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        alert('This is a sample material without an uploaded file.');
+        return;
+      }
+      window.open(window.EDUGNAY_API.materialFileUrl(id), '_blank', 'noopener');
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      if (window.EDUGNAY_API?.isBackendAvailable) {
+        document.getElementById('materials-container').innerHTML = '<div class="panel-empty-state" role="status">Loading learning materials...</div>';
+        try {
+          MATERIAL_RECORDS = await window.EDUGNAY_API.getMaterials();
+        } catch (error) {
+          document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+            icon: 'cloud-off', title: 'Materials unavailable', text: error.message
+          });
+          return;
+        }
+      }
+      groupMaterials();
       renderSubjectTabs();
+    });
+
+    document.getElementById('materials-container').addEventListener('click', event => {
+      const row = event.target.closest('[data-material-id]');
+      if (row) downloadMaterial(row.dataset.materialId);
     });
 
   </script>

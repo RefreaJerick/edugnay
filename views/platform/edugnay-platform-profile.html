@@ -150,6 +150,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       renderPlatformProfile();
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
     });
   </script>

@@ -115,8 +115,11 @@
 
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
-    const PLATFORM_NOTIFICATIONS = Array.isArray(PLATFORM?.notifications) ? PLATFORM.notifications : [];
     let activeNotifFilter = 'all';
+
+    function getPlatformNotifications() {
+      return PLATFORM?.getNotifications?.() || (Array.isArray(PLATFORM?.notifications) ? PLATFORM.notifications : []);
+    }
 
     function setNotifFilter(mode, button) {
       document.querySelectorAll('#notifTypeFilters .notif-filter-btn').forEach(item => item.classList.remove('active'));
@@ -125,27 +128,27 @@
       renderNotifList();
     }
 
-    function markRead(id) {
-      PLATFORM.markPlatformNotificationRead(id);
+    async function markRead(id) {
+      await PLATFORM.markPlatformNotificationRead(id);
       PLATFORM.renderTopbarNotifs();
+      renderNotifList();
     }
 
-    function openNotification(id) {
-      const notification = PLATFORM_NOTIFICATIONS.find(item => String(item.id) === String(id));
-      markRead(id);
-      renderNotifList();
+    async function openNotification(id) {
+      const notification = getPlatformNotifications().find(item => String(item.id) === String(id));
+      await markRead(id);
       if (notification?.link) window.navigatePlatform(notification.link);
     }
 
-    function markAllRead() {
-      PLATFORM.markAllPlatformNotificationsRead();
+    async function markAllRead() {
+      await PLATFORM.markAllPlatformNotificationsRead();
       renderNotifList();
     }
 
     function renderNotifList() {
       const container = document.getElementById('notifList');
       const emptyState = document.getElementById('notifEmptyState');
-      const all = PLATFORM_NOTIFICATIONS.slice().sort((first, second) => {
+      const all = getPlatformNotifications().slice().sort((first, second) => {
         return new Date(second.createdAt) - new Date(first.createdAt);
       });
       const filtered = activeNotifFilter === 'unread' ? all.filter(notification => !notification.read) : all;
@@ -195,6 +198,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
       renderNotifList();
       if (window.lucide) window.lucide.createIcons();

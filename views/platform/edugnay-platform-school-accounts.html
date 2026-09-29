@@ -397,6 +397,7 @@
     document.getElementById('schoolAccountRejectConfirm').addEventListener('click', rejectSchoolRegistration);
 
     document.addEventListener('DOMContentLoaded', async () => {
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
       try {
         await refreshSchoolAccounts();

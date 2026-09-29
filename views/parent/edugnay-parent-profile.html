@@ -472,8 +472,11 @@
 
     const escapeProfileHtml = PARENT_CONFIG.escapeHtml;
     let parentSetupRequired = false;
-    const PARENT_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    const PARENT_PROFILE_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
     let parentApiUser = null;
+    let parentSetupStatus = null;
+    let backendParentChildren = null;
+    let parentProfileError = '';
 
     function setParentText(id, value, fallback = 'Not provided') {
       const element = document.getElementById(id);
@@ -486,16 +489,21 @@
     }
 
     function getParentLinks() {
+      if (PARENT_PROFILE_API_ENABLED) return backendParentChildren || [];
       return window.EDUGNAY_PARENT.children;
     }
 
     function renderParentProfile() {
-      const parent = window.EDUGNAY_PARENT.currentUser;
+      const localParent = PARENT_PROFILE_API_ENABLED ? null : window.EDUGNAY_PARENT.currentUser;
+      const parent = parentApiUser || localParent;
       if (!parent) {
-        setParentText('parent-profile-name', 'Profile unavailable');
-        setParentText('parent-profile-child-count', 'No parent account found');
-        setParentText('parent-profile-school-email', 'Not available');
-        renderLinkedChildren([]);
+        const loading = PARENT_PROFILE_API_ENABLED && !parentProfileError;
+        setParentText('parent-profile-name', loading ? 'Loading profile...' : 'Profile unavailable');
+        setParentText('parent-profile-child-count', loading ? 'Loading linked children...' : 'Profile unavailable');
+        setParentText('parent-profile-school-email', loading ? 'Loading...' : 'Not available');
+        renderLinkedChildren([], PARENT_PROFILE_API_ENABLED
+          ? parentProfileError || 'Loading linked children...'
+          : '');
         return;
       }
 
@@ -557,19 +565,27 @@
       middleName.disabled = noMiddleName.checked;
       maidenName.disabled = noMaidenName.checked;
       religion.disabled = noReligion.checked;
-      middleName.required = parentSetupRequired && !noMiddleName.checked;
-      maidenName.required = parentSetupRequired && maidenNameVisible && !noMaidenName.checked;
-      religion.required = parentSetupRequired && !noReligion.checked;
-      middleName.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
-      maidenName.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired && maidenNameVisible);
-      religion.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
+      middleName.required = parentFieldRequired('middleName') && !noMiddleName.checked;
+      maidenName.required = parentFieldRequired('maidenLastName') && maidenNameVisible && !noMaidenName.checked;
+      religion.required = parentFieldRequired('religion') && !noReligion.checked;
+      middleName.closest('.form-group')?.classList.toggle('profile-required-field', middleName.required);
+      maidenName.closest('.form-group')?.classList.toggle('profile-required-field', maidenName.required);
+      religion.closest('.form-group')?.classList.toggle('profile-required-field', religion.required);
+    }
+
+    function parentFieldRequired(field) {
+      if (!parentSetupRequired) return false;
+      if (PARENT_PROFILE_API_ENABLED && parentSetupStatus) {
+        return Array.isArray(parentSetupStatus.missingFields) && parentSetupStatus.missingFields.includes(field);
+      }
+      return true;
     }
 
     function applyParentProfileSetupState() {
-      const parent = window.EDUGNAY_PARENT.currentUser;
-      parentSetupRequired = parent
-        ? PARENT_CONFIG.isProfileSetupRequired(parent.id)
-        : false;
+      const parent = parentApiUser || window.EDUGNAY_PARENT.currentUser;
+      parentSetupRequired = PARENT_PROFILE_API_ENABLED && parentSetupStatus
+        ? Boolean(parentSetupStatus.required && !parentSetupStatus.complete)
+        : (parent ? PARENT_CONFIG.isProfileSetupRequired(parent.id) : false);
 
       document.body.classList.toggle('profile-setup-required', parentSetupRequired);
       document.getElementById('parent-profile-setup-notice').hidden = !parentSetupRequired;
@@ -578,19 +594,20 @@
         ? 'Complete setup'
         : 'Save Changes';
 
-      [
-        'parent-personal-email',
-        'parent-contact-number',
-        'parent-sex',
-        'parent-house-street',
-        'parent-barangay',
-        'parent-city',
-        'parent-province'
-      ].forEach(id => {
+      const requiredFields = {
+        'parent-personal-email': 'personalEmail',
+        'parent-contact-number': 'contactNumber',
+        'parent-sex': 'sex',
+        'parent-house-street': 'houseStreet',
+        'parent-barangay': 'barangay',
+        'parent-city': 'cityMunicipality',
+        'parent-province': 'province'
+      };
+      Object.entries(requiredFields).forEach(([id, field]) => {
         const input = document.getElementById(id);
         if (!input) return;
-        input.required = parentSetupRequired;
-        input.closest('.form-group')?.classList.toggle('profile-required-field', parentSetupRequired);
+        input.required = parentFieldRequired(field);
+        input.closest('.form-group')?.classList.toggle('profile-required-field', input.required);
       });
 
       document.querySelectorAll('[data-profile-tab]').forEach(tab => {
@@ -609,9 +626,18 @@
       lucide.createIcons();
     }
 
-    function renderLinkedChildren(links = getParentLinks()) {
+    function renderLinkedChildren(links = getParentLinks(), statusMessage = '') {
       const list = document.getElementById('linked-children-list');
       if (!list) return;
+      if (statusMessage) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: parentProfileError ? 'circle-alert' : 'loader-circle',
+          title: parentProfileError ? 'Parent data unavailable' : 'Loading linked children',
+          text: escapeProfileHtml(statusMessage)
+        });
+        lucide.createIcons();
+        return;
+      }
       if (!links.length) {
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
         lucide.createIcons();
@@ -619,16 +645,16 @@
       }
       const sections = PARENT_CONFIG.getAssignmentSections();
       list.innerHTML = links.map(link => {
-        const student = PARENT_CONFIG.getUserById(link.studentId);
-        if (!student || student.role !== PARENT_CONFIG.values.roles.STUDENT) return '';
+        const student = PARENT_PROFILE_API_ENABLED ? link : PARENT_CONFIG.getUserById(link.studentId);
+        if (!student || (!PARENT_PROFILE_API_ENABLED && student.role !== PARENT_CONFIG.values.roles.STUDENT)) return '';
         const section = sections.find(record => record.id === student.sectionId);
-        const adviser = section?.adviserId
+        const adviser = !PARENT_PROFILE_API_ENABLED && section?.adviserId
           ? PARENT_CONFIG.getUserById(section.adviserId)
           : null;
         const relationship = link.relationship
           ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
           : 'Relationship not set';
-        return `<div class="child-record-card"><div class="child-record-avatar">${escapeProfileHtml(student.initials || '')}</div><div class="child-record-info"><div class="child-record-name">${escapeProfileHtml(student.displayName || '')}</div><div class="child-record-section">${escapeProfileHtml(student.gradeLevel || 'Unassigned')} – ${escapeProfileHtml(section?.name || 'Unassigned')} · Adviser: ${escapeProfileHtml(adviser?.displayName || 'Not assigned')}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${escapeProfileHtml(student.lrn || 'Not available')}</div></div><div class="child-record-labels"><span class="child-relationship-tag"><i data-lucide="heart-handshake" style="width:9px;height:9px;"></i> ${escapeProfileHtml(relationship)}</span></div></div>`;
+        return `<div class="child-record-card"><div class="child-record-avatar">${escapeProfileHtml(student.initials || '')}</div><div class="child-record-info"><div class="child-record-name">${escapeProfileHtml(student.displayName || '')}</div><div class="child-record-section">${escapeProfileHtml(student.gradeLevel || 'Unassigned')} – ${escapeProfileHtml(student.sectionName || section?.name || 'Unassigned')} · Adviser: ${escapeProfileHtml(student.adviserName || adviser?.displayName || 'Not assigned')}</div><div class="child-record-row"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> LRN ${escapeProfileHtml(student.lrn || 'Not available')}</div></div><div class="child-record-labels"><span class="child-relationship-tag"><i data-lucide="heart-handshake" style="width:9px;height:9px;"></i> ${escapeProfileHtml(relationship)}</span></div></div>`;
       }).join('');
       lucide.createIcons();
     }
@@ -651,13 +677,21 @@
       if (!PARENT_PROFILE_API_ENABLED) return;
 
       try {
-        const response = await window.EDUGNAY_API.request('/users/me/profile');
-        if (response.user.role === 'parent') {
-          parentApiUser = response.user;
-          renderParentProfile();
-        }
+        const [profileResponse, setupResponse, children] = await Promise.all([
+          window.EDUGNAY_API.request('/users/me/profile'),
+          window.EDUGNAY_API.request('/account-setup/status'),
+          window.EDUGNAY_API.getParentChildren()
+        ]);
+        if (profileResponse.user.role !== 'parent') throw new Error('Sign in with a parent account to view this profile.');
+        parentApiUser = profileResponse.user;
+        parentSetupStatus = setupResponse.setup || null;
+        backendParentChildren = children;
+        parentProfileError = '';
+        renderParentProfile();
       } catch (error) {
         console.warn('Unable to load the saved profile.', error.message);
+        parentProfileError = error.message || 'Profile and linked children could not be loaded.';
+        renderParentProfile();
       }
     }
 
@@ -767,8 +801,13 @@
 
     async function submitProfile(event) {
       event.preventDefault();
-      const parent = window.EDUGNAY_PARENT.currentUser;
+      if (PARENT_PROFILE_API_ENABLED && !parentApiUser) {
+        alert('Your profile could not be loaded. Refresh the page before saving.');
+        return false;
+      }
+      const parent = parentApiUser || window.EDUGNAY_PARENT.currentUser;
       if (!parent) return false;
+      const wasSetupRequired = parentSetupRequired;
 
       const personalEmail = document.getElementById('parent-personal-email').value.trim();
       if (personalEmail && !/^\S+@\S+\.\S+$/.test(personalEmail)) {
@@ -802,13 +841,24 @@
 
       try {
         if (PARENT_PROFILE_API_ENABLED) {
-          const response = await window.EDUGNAY_API.request('/users/me/profile', {
+          const endpoint = wasSetupRequired ? '/account-setup/parent' : '/users/me/profile';
+          await window.EDUGNAY_API.request(endpoint, {
             method: 'PATCH',
             body: JSON.stringify(profileData)
           });
-          parentApiUser = response.user;
+          const [profileResponse, setupResponse] = await Promise.all([
+            window.EDUGNAY_API.request('/users/me/profile'),
+            window.EDUGNAY_API.request('/account-setup/status')
+          ]);
+          parentApiUser = profileResponse.user;
+          parentSetupStatus = setupResponse.setup || null;
           renderParentProfile();
-          alert('Profile updated.');
+          if (wasSetupRequired && !parentSetupRequired) {
+            alert('Profile setup complete.');
+            window.location.replace('./edugnay-parent-dashboard.html');
+          } else {
+            alert('Profile updated.');
+          }
           return false;
         }
 

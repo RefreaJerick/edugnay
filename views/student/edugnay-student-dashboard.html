@@ -288,25 +288,11 @@
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
     if (dashboardPeriod && dashboardStudent?.schoolLevel) dashboardPeriod.dataset.schoolLevel = dashboardStudent.schoolLevel;
 
-    // The journal prompt comes from the same shared journal source used by the
-    // student journal and teacher review pages.
-    const journalSubjectName = window.EDUGNAY_CONFIG?.getJournalSubject?.()?.name || 'Journal';
-    const currentJournal = window.EDUGNAY_CONFIG.getJournalsForStudent(DASHBOARD_STUDENT_ID).find(record => record.isCurrent);
-    const JOURNAL = currentJournal ? [{
-      subject: journalSubjectName,
-      title: "This Week's Journal",
-      prompt: currentJournal.prompt,
-      status: currentJournal.submitted ? 'Submitted' : 'Window open',
-      due: currentJournal.dueLabel || 'due Friday'
-    }] : [];
+    let JOURNAL = [];
 
     function renderStudentJournal() {
       const card = document.getElementById('student-journal-card');
       if (!card) return;
-      if (!studentCanAccess('journals')) {
-        card.closest('.journal-feature')?.setAttribute('hidden', '');
-        return;
-      }
       const journal = JOURNAL[0];
       if (!journal) {
         card.classList.add('is-empty');
@@ -315,17 +301,70 @@
         return;
       }
       card.classList.remove('is-empty');
-      card.innerHTML = `<div class="journal-icon-chip"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div><div class="journal-body"><div class="journal-eyebrow" id="weeklyJournalTitle">${journal.subject} · ${journal.title}</div><div class="journal-prompt">"${journal.prompt}"</div><div class="journal-foot"><span class="badge badge-green"><i data-lucide="circle" style="width:8px;height:8px;"></i> ${journal.status} · ${journal.due}</span><a href="edugnay-student-journal.html" class="journal-cta">Write entry <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a></div></div>`;
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      const badgeClass = journal.status === 'Submission closed' ? 'badge-gray' : journal.status === 'Late submissions accepted' ? 'badge-gold' : 'badge-green';
+      const actionLabel = journal.status === 'Submitted' ? 'View entry' : journal.status === 'Submission closed' ? 'View journal' : 'Write entry';
+      card.innerHTML = `<div class="journal-icon-chip"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div><div class="journal-body"><div class="journal-eyebrow" id="weeklyJournalTitle">${escape(journal.subject)} · ${escape(journal.title)}</div><div class="journal-prompt">"${escape(journal.prompt)}"</div><div class="journal-foot"><span class="badge ${badgeClass}"><i data-lucide="circle" style="width:8px;height:8px;"></i> ${escape(journal.status)} · ${escape(journal.due)}</span><a href="edugnay-student-journal.html" class="journal-cta">${actionLabel} <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a></div></div>`;
       lucide.createIcons();
+    }
+
+    async function loadStudentJournalCard() {
+      const card = document.getElementById('student-journal-card');
+      if (!card) return;
+      try {
+        const [user, portal] = await Promise.all([
+          window.EDUGNAY_API.getCurrentUser(),
+          window.EDUGNAY_API.getPortalFeatures()
+        ]);
+        if (user?.role !== 'student' || !portal.features.journalsEnabled) {
+          card.closest('.journal-feature')?.setAttribute('hidden', '');
+          return;
+        }
+        const [subjects, prompts, entries] = await Promise.all([
+          window.EDUGNAY_API.getJournalSubjects(),
+          window.EDUGNAY_API.getJournalPrompts(),
+          window.EDUGNAY_API.getJournalEntries()
+        ]);
+        const prompt = prompts[0];
+        if (prompt && subjects.length) {
+          const submitted = entries.some(entry => entry.promptId === prompt.id);
+          const deadline = new Date(prompt.dueAt);
+          const acceptingLate = prompt.allowLate && prompt.status === 'open';
+          const canSubmit = prompt.status === 'open' && deadline >= new Date();
+          JOURNAL = [{
+            subject: prompt.subjectName || subjects[0].name,
+            title: "This Week's Journal",
+            prompt: prompt.promptText,
+            status: submitted ? 'Submitted' : canSubmit ? 'Window open' : acceptingLate ? 'Late submissions accepted' : 'Submission closed',
+            due: Number.isNaN(deadline.getTime()) ? 'deadline unavailable' : `due ${deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          }];
+        }
+      } catch (error) {
+        JOURNAL = [];
+        card.classList.add('is-empty');
+        card.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal unavailable', text: error.message || 'Please try again later.' });
+        lucide.createIcons();
+        return;
+      }
+      renderStudentJournal();
     }
 
     const MATERIAL_TYPE_DISPLAY = {
       pdf: { icon: 'file-text', tone: 'gold' },
       pptx: { icon: 'presentation', tone: 'blue' },
+      ppt: { icon: 'presentation', tone: 'blue' },
       video: { icon: 'video', tone: 'green' },
-      docx: { icon: 'file-text', tone: 'blue' }
+      mp4: { icon: 'video', tone: 'green' },
+      docx: { icon: 'file-text', tone: 'blue' },
+      doc: { icon: 'file-text', tone: 'blue' },
+      xls: { icon: 'table', tone: 'green' },
+      xlsx: { icon: 'table', tone: 'green' },
+      jpg: { icon: 'image', tone: 'gold' },
+      png: { icon: 'image', tone: 'gold' }
     };
-    const MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(DASHBOARD_STUDENT_ID)
+    let MATERIALS_ERROR = '';
+    let MATERIALS = (window.EDUGNAY_API?.isBackendAvailable ? []
+      : window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(DASHBOARD_STUDENT_ID))
       .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
       .slice(0, 3)
       .map(material => {
@@ -342,7 +381,24 @@
         };
       });
 
-    const ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
+    async function loadDashboardMaterials() {
+      if (!window.EDUGNAY_API?.isBackendAvailable) return;
+      try {
+        const materials = await window.EDUGNAY_API.getMaterials();
+        MATERIALS = materials.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
+          .slice(0, 3).map(material => {
+            const display = MATERIAL_TYPE_DISPLAY[material.type] || MATERIAL_TYPE_DISPLAY.pdf;
+            const posted = new Date(material.postedAt);
+            return { ...material, subject: material.subjectName || 'Subject',
+              posted: Number.isNaN(posted.getTime()) ? 'Date unavailable'
+                : `Posted ${posted.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+              icon: display.icon, tone: display.tone };
+          });
+        MATERIALS_ERROR = '';
+      } catch (error) { MATERIALS = []; MATERIALS_ERROR = error.message; }
+    }
+
+    let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
     const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(DASHBOARD_STUDENT_ID).slice(0, 3);
 
     const DASHBOARD_ASSIGNMENT_STATUS = {
@@ -409,10 +465,12 @@
       };
       const materials = document.getElementById('student-materials-list');
       if (materials) {
-        materials.innerHTML = MATERIALS.length ? MATERIALS.map(item => `
+        materials.innerHTML = MATERIALS_ERROR
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Materials unavailable', text: MATERIALS_ERROR })
+          : MATERIALS.length ? MATERIALS.map(item => `
           <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
             <div class="material-icon" style="${toneStyles[item.tone]}"><i data-lucide="${item.icon}" style="width:18px;height:18px;"></i></div>
-            <div class="material-info"><div class="material-title">${item.title}</div><div class="material-meta">${item.subject} · ${item.posted}</div></div>
+            <div class="material-info"><div class="material-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</div><div class="material-meta">${window.EDUGNAY_CONFIG.escapeHtml(item.subject)} · ${window.EDUGNAY_CONFIG.escapeHtml(item.posted)}</div></div>
             <i data-lucide="chevron-right" style="width:16px;height:16px;" class="material-chevron"></i>
           </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'folder-open', title: 'No learning materials yet', text: 'Materials shared by your teachers will appear here.' });
       }
@@ -422,9 +480,9 @@
         const visibleAnnouncements = ANNOUNCEMENTS.filter(item => !item.access || studentCanAccess(item.access));
         announcements.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
           <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-            <div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>
+            <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
             ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
-            <div class="ann-item-body">${item.body}</div>
+            <div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div>
             <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
           </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
@@ -433,7 +491,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      renderStudentJournal();
+      await window.EDUGNAY_COMMUNICATION_READY;
+      if (window.EDUGNAY_COMMUNICATION?.backend) {
+        ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+      }
+      await loadStudentJournalCard();
+      await loadDashboardMaterials();
       renderStudentDashboardLists();
       renderWeekCalendar();
     });

@@ -91,14 +91,46 @@
     }
   ];
 
-  /* ── READ STATE (localStorage; replace with a backend read flag later) ── */
+  let PLATFORM_API_NOTIFICATIONS = [];
+  let PLATFORM_BACKEND_NOTIFICATIONS = false;
+
+  /* localStorage read state is only used in frontend-only mode. */
   const PLATFORM_READ_STORE_KEY = 'edugnay_platform_notif_read';
 
   function applyPlatformReadState() {
     window.EDUGNAY_CONFIG.applyNotificationReadState(PLATFORM_NOTIFICATIONS, PLATFORM_READ_STORE_KEY);
   }
 
+  function getPlatformNotifications() {
+    if (PLATFORM_BACKEND_NOTIFICATIONS) return PLATFORM_API_NOTIFICATIONS;
+    return PLATFORM_NOTIFICATIONS;
+  }
+
+  async function loadPlatformNotifications() {
+    try {
+      const communication = await window.EDUGNAY_API.loadCommunication('platform_admin');
+      window.EDUGNAY_COMMUNICATION = communication;
+      PLATFORM_API_NOTIFICATIONS = communication.notifications || [];
+      PLATFORM_BACKEND_NOTIFICATIONS = Boolean(communication.backend);
+    } catch (error) {
+      PLATFORM_API_NOTIFICATIONS = [];
+      PLATFORM_BACKEND_NOTIFICATIONS = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+      window.EDUGNAY_COMMUNICATION = {
+        backend: PLATFORM_BACKEND_NOTIFICATIONS,
+        notifications: [],
+        announcements: [],
+        tasks: [],
+        error: error?.message || 'Platform communications could not be loaded.'
+      };
+    }
+  }
+
   function markPlatformNotificationRead(id) {
+    const apiNotification = PLATFORM_API_NOTIFICATIONS.find(item => String(item.id) === String(id));
+    if (PLATFORM_BACKEND_NOTIFICATIONS) {
+      if (!apiNotification) return Promise.resolve(null);
+      return window.markCurrentNotificationRead(apiNotification.apiId || apiNotification.id);
+    }
     return window.EDUGNAY_CONFIG.markNotificationRead(
       PLATFORM_READ_STORE_KEY,
       id,
@@ -159,23 +191,24 @@
   }
 
   function renderTopbarNotifs() {
-    applyPlatformReadState();
+    if (!PLATFORM_BACKEND_NOTIFICATIONS) applyPlatformReadState();
+    const notifications = getPlatformNotifications();
     const list = document.getElementById('tbNotifList');
     const dot = document.getElementById('tbNotifDot');
     const unreadLabel = document.querySelector('.tb-notif-unread-count');
     if (!list) return;
 
-    const unreadCount = PLATFORM_NOTIFICATIONS.filter(item => !item.read).length;
+    const unreadCount = notifications.filter(item => !item.read).length;
     if (unreadLabel) unreadLabel.textContent = unreadCount ? `${unreadCount} unread` : 'All caught up';
     if (dot) dot.style.display = unreadCount ? '' : 'none';
 
-    list.innerHTML = PLATFORM_NOTIFICATIONS.length
-      ? PLATFORM_NOTIFICATIONS.map(item => `
-        <a href="#" class="tb-notif-item ${item.read ? '' : 'unread'}" data-platform-notification="${item.id}">
-          <div class="tb-notif-icon ${item.tone}" aria-hidden="true"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+    list.innerHTML = notifications.length
+      ? notifications.map(item => `
+        <a href="#" class="tb-notif-item ${item.read ? '' : 'unread'}" data-platform-notification="${window.EDUGNAY_CONFIG.escapeHtml(item.id)}">
+          <div class="tb-notif-icon ${window.EDUGNAY_CONFIG.escapeHtml(item.tone)}" aria-hidden="true"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(item.icon)}" style="width:15px;height:15px;"></i></div>
           <div class="tb-notif-body">
-            <div class="tb-notif-head"><div class="tb-notif-title">${item.title}</div></div>
-            <div class="tb-notif-desc">${item.message}</div>
+            <div class="tb-notif-head"><div class="tb-notif-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</div></div>
+            <div class="tb-notif-desc">${window.EDUGNAY_CONFIG.escapeHtml(item.message)}</div>
             <div class="tb-notif-time"><i data-lucide="clock-3" style="width:12px;height:12px;"></i><span>${formatTime(item.createdAt)}</span></div>
           </div>
         </a>`).join('')
@@ -184,16 +217,21 @@
     list.querySelectorAll('[data-platform-notification]').forEach(button => {
       button.addEventListener('click', event => {
         event.preventDefault();
-        const notification = PLATFORM_NOTIFICATIONS.find(item => item.id === button.dataset.platformNotification);
-        markPlatformNotificationRead(button.dataset.platformNotification);
-        navigatePlatform(notification?.link);
+        const notification = getPlatformNotifications().find(item => String(item.id) === button.dataset.platformNotification);
+        markPlatformNotificationRead(button.dataset.platformNotification).finally(() => {
+          navigatePlatform(notification?.link);
+        });
       });
     });
     if (window.lucide) window.lucide.createIcons();
   }
 
-  function markAllPlatformNotificationsRead() {
-    window.EDUGNAY_CONFIG.markAllNotificationsRead(PLATFORM_READ_STORE_KEY, PLATFORM_NOTIFICATIONS);
+  async function markAllPlatformNotificationsRead() {
+    if (PLATFORM_BACKEND_NOTIFICATIONS) {
+      await window.markCurrentNotificationsRead();
+    } else {
+      window.EDUGNAY_CONFIG.markAllNotificationsRead(PLATFORM_READ_STORE_KEY, PLATFORM_NOTIFICATIONS);
+    }
     renderTopbarNotifs();
   }
 
@@ -209,12 +247,15 @@
     window.location.href = target;
   }
 
+  window.EDUGNAY_PLATFORM_COMMUNICATION_READY = loadPlatformNotifications();
+
   window.EDUGNAY_PLATFORM = {
     admin: PLATFORM_ADMIN,
     account: PLATFORM_ADMIN,
     profile: PLATFORM_ADMIN,
     activities: PLATFORM_ACTIVITY,
     notifications: PLATFORM_NOTIFICATIONS,
+    getNotifications: getPlatformNotifications,
     markPlatformNotificationRead,
     quickActions: PLATFORM_QUICK_ACTIONS,
     notificationStorageKey: PLATFORM_READ_STORE_KEY,
@@ -230,6 +271,6 @@
   window.EDUGNAY_NOTIFICATION_CONTEXT = {
     storageKey: PLATFORM_READ_STORE_KEY,
     records: PLATFORM_NOTIFICATIONS,
-    getItems: () => PLATFORM_NOTIFICATIONS
+    getItems: getPlatformNotifications
   };
 })();

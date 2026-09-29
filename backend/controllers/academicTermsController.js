@@ -36,7 +36,7 @@ function ensureDateRange(startDate, endDate, label = 'The end date') {
 
 async function getOwnedYear(schoolId, yearId, connection = getDatabase()) {
   const [rows] = await connection.execute(
-    'SELECT id, school_id AS schoolId, label, start_date AS startDate, end_date AS endDate, status FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1',
+    "SELECT id, school_id AS schoolId, label, DATE_FORMAT(start_date, '%Y-%m-%d') AS startDate, DATE_FORMAT(end_date, '%Y-%m-%d') AS endDate, status FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1",
     [yearId, schoolId]
   );
   return rows[0] || null;
@@ -54,11 +54,11 @@ async function getOwnedTerm(schoolId, termId, connection = getDatabase()) {
   const [rows] = await connection.execute(
     `SELECT academic_terms.id, academic_terms.academic_year_id AS academicYearId,
       academic_terms.school_level_id AS schoolLevelId, academic_terms.name,
-      academic_terms.sequence_number AS sequenceNumber, academic_terms.planned_start_date AS plannedStartDate,
-      academic_terms.planned_end_date AS plannedEndDate, academic_terms.status,
+      academic_terms.sequence_number AS sequenceNumber, DATE_FORMAT(academic_terms.planned_start_date, '%Y-%m-%d') AS plannedStartDate,
+      DATE_FORMAT(academic_terms.planned_end_date, '%Y-%m-%d') AS plannedEndDate, academic_terms.status,
       academic_terms.activated_at AS activatedAt, academic_terms.completed_at AS completedAt,
       academic_years.school_id AS schoolId, academic_years.label AS academicYearLabel,
-      academic_years.start_date AS academicYearStartDate, academic_years.end_date AS academicYearEndDate,
+      DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate, DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate,
       academic_years.status AS academicYearStatus, school_levels.display_name AS schoolLevelName,
       school_levels.grading_period_type AS gradingPeriodType
     FROM academic_terms
@@ -87,7 +87,7 @@ async function listAcademicYears(req, res, next) {
   try {
     const database = getDatabase();
     const [years] = await database.execute(
-      'SELECT id, label, start_date AS startDate, end_date AS endDate, status, created_at AS createdAt, updated_at AS updatedAt FROM academic_years WHERE school_id = ? ORDER BY start_date DESC',
+      "SELECT id, label, DATE_FORMAT(start_date, '%Y-%m-%d') AS startDate, DATE_FORMAT(end_date, '%Y-%m-%d') AS endDate, status, created_at AS createdAt, updated_at AS updatedAt FROM academic_years WHERE school_id = ? ORDER BY start_date DESC",
       [req.user.schoolId]
     );
     res.json({ academicYears: years });
@@ -161,8 +161,8 @@ async function listAcademicTerms(req, res, next) {
     }
     const [terms] = await database.execute(
       `SELECT academic_terms.id, academic_terms.academic_year_id AS academicYearId, academic_terms.school_level_id AS schoolLevelId,
-        academic_terms.name, academic_terms.sequence_number AS sequenceNumber, academic_terms.planned_start_date AS plannedStartDate,
-        academic_terms.planned_end_date AS plannedEndDate, academic_terms.status, academic_terms.activated_at AS activatedAt,
+        academic_terms.name, academic_terms.sequence_number AS sequenceNumber, DATE_FORMAT(academic_terms.planned_start_date, '%Y-%m-%d') AS plannedStartDate,
+        DATE_FORMAT(academic_terms.planned_end_date, '%Y-%m-%d') AS plannedEndDate, academic_terms.status, academic_terms.activated_at AS activatedAt,
         academic_terms.completed_at AS completedAt, academic_years.label AS academicYearLabel, school_levels.display_name AS schoolLevelName,
         school_levels.grading_period_type AS gradingPeriodType
       FROM academic_terms INNER JOIN academic_years ON academic_years.id = academic_terms.academic_year_id
@@ -181,7 +181,8 @@ async function getAcademicTerm(req, res, next) {
     if (!term) throw createError('Academic term was not found.', 404);
     const [actions] = await database.execute(
       `SELECT academic_term_actions.id, academic_term_actions.action_type AS actionType,
-        academic_term_actions.previous_end_date AS previousEndDate, academic_term_actions.new_end_date AS newEndDate,
+        DATE_FORMAT(academic_term_actions.previous_end_date, '%Y-%m-%d') AS previousEndDate,
+        DATE_FORMAT(academic_term_actions.new_end_date, '%Y-%m-%d') AS newEndDate,
         academic_term_actions.reason, academic_term_actions.performed_at AS performedAt,
         users.display_name AS performedByName
       FROM academic_term_actions INNER JOIN users ON users.id = academic_term_actions.performed_by_user_id
@@ -300,12 +301,26 @@ async function listGradingCategories(req, res, next) {
 async function updateGradingCategories(req, res, next) {
   const connection = await getDatabase().getConnection();
   try {
-    const schoolLevelId = parseId(req.body.schoolLevelId);
+    const body = req.body || {};
+    const allowedFields = ['schoolLevelId', 'categories', 'gradeRounding', 'passingGradeThreshold'];
+    if (Object.keys(body).some(field => !allowedFields.includes(field))) throw createError('Provide valid grading settings.');
+    const schoolLevelId = parseId(body.schoolLevelId);
     if (!schoolLevelId) throw createError('School level is required.');
-    const categories = validateCategories(req.body.categories);
-    const level = await getOwnedLevel(req.user.schoolId, schoolLevelId, connection);
-    if (!level) throw createError('School level was not found.', 404);
+    const categories = validateCategories(body.categories);
+    const gradeRounding = body.gradeRounding;
+    if (gradeRounding !== undefined && !['round', 'roundup', 'truncate'].includes(gradeRounding)) {
+      throw createError('Select a valid final-grade rounding rule.');
+    }
+    const passingGradeThreshold = body.passingGradeThreshold === undefined ? undefined : Number(body.passingGradeThreshold);
+    if (passingGradeThreshold !== undefined && (!Number.isFinite(passingGradeThreshold) || passingGradeThreshold < 0 || passingGradeThreshold > 100)) {
+      throw createError('The passing-grade threshold must be between 0 and 100.');
+    }
     await connection.beginTransaction();
+    const [[level]] = await connection.execute(
+      'SELECT id, grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold FROM school_levels WHERE id = ? AND school_id = ? FOR UPDATE',
+      [schoolLevelId, req.user.schoolId]
+    );
+    if (!level) throw createError('School level was not found.', 404);
     const [existing] = await connection.execute('SELECT id FROM grading_categories WHERE school_id = ? AND school_level_id = ? FOR UPDATE', [req.user.schoolId, schoolLevelId]);
     const existingIds = new Set(existing.map(category => category.id));
     if (categories.some(category => category.id && !existingIds.has(category.id))) throw createError('A grading category was not found.', 404);
@@ -320,9 +335,20 @@ async function updateGradingCategories(req, res, next) {
       if (category.id) await connection.execute('UPDATE grading_categories SET code = ?, name = ?, weight = ? WHERE id = ?', [category.code, category.name, category.weight, category.id]);
       else await connection.execute('INSERT INTO grading_categories (school_id, school_level_id, code, name, weight) VALUES (?, ?, ?, ?, ?)', [req.user.schoolId, schoolLevelId, category.code, category.name, category.weight]);
     }
+    const savedRounding = gradeRounding === undefined ? level.gradeRounding : gradeRounding;
+    const savedThreshold = passingGradeThreshold === undefined ? Number(level.passingGradeThreshold) : Math.round(passingGradeThreshold * 100) / 100;
+    await connection.execute(
+      'UPDATE school_levels SET grade_rounding = ?, passing_grade_threshold = ? WHERE id = ? AND school_id = ?',
+      [savedRounding, savedThreshold, schoolLevelId, req.user.schoolId]
+    );
     await connection.commit();
     const [saved] = await connection.execute('SELECT id, school_level_id AS schoolLevelId, code, name, weight FROM grading_categories WHERE school_id = ? AND school_level_id = ? ORDER BY code', [req.user.schoolId, schoolLevelId]);
-    res.json({ gradingCategories: saved });
+    res.json({
+      schoolLevelId,
+      gradeRounding: savedRounding,
+      passingGradeThreshold: savedThreshold,
+      gradingCategories: saved.map(category => ({ ...category, weight: Number(category.weight) }))
+    });
   } catch (error) {
     await connection.rollback();
     next(error);

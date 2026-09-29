@@ -472,48 +472,6 @@
   padding: 16px 20px;
 }
 
-.deadline-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--gray-100);
-}
-
-.deadline-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.deadline-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-circle);
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-
-.deadline-info {}
-
-.deadline-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gray-800);
-  margin-bottom: 2px;
-}
-
-.deadline-date {
-  font-size: 11px;
-  color: var(--gray-400);
-}
-
-.deadline-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-}
-
 .notif-row {
   display: flex;
   align-items: center;

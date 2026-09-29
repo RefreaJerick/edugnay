@@ -213,6 +213,8 @@
 
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
+    let PLATFORM_DASHBOARD_TODOS = null;
+    let PLATFORM_BACKEND_TASKS = false;
 
     function renderPlatformWeek() {
       const grid = document.getElementById('weekCalendarGrid');
@@ -262,7 +264,22 @@
     }
 
     function getPlatformTodos() {
+      if (PLATFORM_BACKEND_TASKS && Array.isArray(PLATFORM_DASHBOARD_TODOS)) {
+        return PLATFORM_DASHBOARD_TODOS;
+      }
       return window.EDUGNAY_CONFIG.getUserTodos(PLATFORM.admin.id, null);
+    }
+
+    async function loadPlatformTodos() {
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
+      const communication = window.EDUGNAY_COMMUNICATION;
+      if (communication?.backend) {
+        PLATFORM_DASHBOARD_TODOS = communication.tasks || [];
+        PLATFORM_BACKEND_TASKS = true;
+      } else {
+        PLATFORM_DASHBOARD_TODOS = null;
+        PLATFORM_BACKEND_TASKS = false;
+      }
     }
 
     function openPlatformTodoModal(todoId = null) {
@@ -290,7 +307,7 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
-    function savePlatformTodo(event) {
+    async function savePlatformTodo(event) {
       event?.preventDefault();
       const todoId = document.getElementById('platformTodoId').value;
       const titleInput = document.getElementById('platformTodoTitle');
@@ -299,15 +316,23 @@
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
 
-      if (todoId) {
-        window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate }, null);
-      } else {
-        window.EDUGNAY_CONFIG.createTodo({
-          schoolId: null,
-          userId: PLATFORM.admin.id,
-          title,
-          dueDate
-        });
+      try {
+        if (PLATFORM_BACKEND_TASKS) {
+          if (todoId) {
+            const task = await window.EDUGNAY_API.updateTask(todoId, { title, dueDate });
+            PLATFORM_DASHBOARD_TODOS = getPlatformTodos().map(item => item.id === task.id ? task : item);
+          } else {
+            const task = await window.EDUGNAY_API.createTask({ title, dueDate });
+            PLATFORM_DASHBOARD_TODOS = [...getPlatformTodos(), task];
+          }
+        } else if (todoId) {
+          window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate }, null);
+        } else {
+          window.EDUGNAY_CONFIG.createTodo({ schoolId: null, userId: PLATFORM.admin.id, title, dueDate });
+        }
+      } catch (error) {
+        window.alert(error?.message || 'The task could not be saved.');
+        return false;
       }
 
       closePlatformTodoModal();
@@ -315,14 +340,26 @@
       return false;
     }
 
-    function togglePlatformTodo(todoId) {
+    async function togglePlatformTodo(todoId) {
       const todo = getPlatformTodos().find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
-      window.EDUGNAY_CONFIG.updateTodo(todo.id, {
-        status: completed ? 'completed' : 'pending',
-        completedAt: completed ? new Date().toISOString() : null
-      }, null);
+      try {
+        if (PLATFORM_BACKEND_TASKS) {
+          const task = await window.EDUGNAY_API.updateTask(todo.id, {
+            status: completed ? 'completed' : 'pending'
+          });
+          PLATFORM_DASHBOARD_TODOS = getPlatformTodos().map(item => item.id === task.id ? task : item);
+        } else {
+          window.EDUGNAY_CONFIG.updateTodo(todo.id, {
+            status: completed ? 'completed' : 'pending',
+            completedAt: completed ? new Date().toISOString() : null
+          }, null);
+        }
+      } catch (error) {
+        window.alert(error?.message || 'The task status could not be updated.');
+        return;
+      }
       renderPlatformTodos();
     }
 
@@ -345,10 +382,20 @@
       document.getElementById('platformTodoDeleteId').value = '';
     }
 
-    function confirmDeletePlatformTodo() {
+    async function confirmDeletePlatformTodo() {
       const todoId = document.getElementById('platformTodoDeleteId').value;
       if (!todoId) return;
-      window.EDUGNAY_CONFIG.deleteTodo(todoId, null);
+      try {
+        if (PLATFORM_BACKEND_TASKS) {
+          await window.EDUGNAY_API.deleteTask(todoId);
+          PLATFORM_DASHBOARD_TODOS = getPlatformTodos().filter(item => String(item.id) !== String(todoId));
+        } else {
+          window.EDUGNAY_CONFIG.deleteTodo(todoId, null);
+        }
+      } catch (error) {
+        window.alert(error?.message || 'The task could not be deleted.');
+        return;
+      }
       closePlatformTodoDeleteModal();
       renderPlatformTodos();
     }
@@ -435,11 +482,13 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await renderPlatformDashboard();
+        await loadPlatformTodos();
       } catch (error) {
         window.alert(error?.message || 'The platform dashboard could not be loaded.');
       }
       renderPlatformTodos();
       renderPlatformWeek();
+      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
 
       document.getElementById('addPlatformTodoButton')?.addEventListener('click', () => openPlatformTodoModal());
