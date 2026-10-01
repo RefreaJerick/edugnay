@@ -330,15 +330,7 @@
   color: var(--white);
 }
 
-/*
-      ════════════════════════════════════════════════════
-      EJS CONVERSION NOTE
-      ════════════════════════════════════════════════════
-      This block moves wholesale to assets/css/student/dashboard.css
-      (already linked above). It uses ONLY tokens defined in the shared
-      styles.css (--navy, --blue, --blue-mid, --gold, --gray-*, etc.) —
-      no new color system introduced, consistent with admin + teacher portals.
-    */
+/* Student dashboard styles use the shared portal design tokens. */
 
 /* ── Panel — identical to teacher/admin panel pattern ── */
 .panel {

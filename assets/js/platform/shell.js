@@ -1,109 +1,9 @@
-/*
- * Platform Administrator frontend data.
- * Replace these local records with platform API responses during backend
- * integration. School-specific data remains scoped by schoolId on the server.
- */
+/* Shared platform portal behavior. */
 (function initializePlatformAdmin() {
-  const PLATFORM_ADMIN = {
-    id: 'platform-admin-001',
-    schoolId: null,
-    role: 'platform_admin',
-    schoolEmail: 'platform.admin@academix.local',
-    personalEmail: null,
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00.000Z',
-    honorific: null,
-    firstName: 'Platform',
-    lastName: 'Admin',
-    displayName: 'Platform Admin',
-    initials: 'PA',
-    employeeNo: null,
-    lrn: null,
-    schoolLevel: null,
-    gradeLevel: null,
-    strand: null,
-    sectionId: null
-  };
-
-  const PLATFORM_ACTIVITY = [
-    {
-      id: 'platform-activity-school-ready',
-      schoolId: 'scc',
-      actor: 'Platform',
-      title: "marked St. Columban's College active",
-      detail: 'School profile and academic structure are configured.',
-      icon: 'circle-check-big',
-      tone: 'green',
-      createdAt: '2026-08-25T09:20:00.000Z',
-      type: 'School account',
-      link: { page: 'school-accounts' }
-    },
-    {
-      id: 'platform-activity-account-created',
-      schoolId: 'scc',
-      actor: 'Platform',
-      title: 'created the initial administrator account',
-      detail: 'The school administrator can now manage their portal.',
-      icon: 'user-plus',
-      tone: 'blue',
-      createdAt: '2026-08-24T15:45:00.000Z',
-      type: 'Access',
-      link: { page: 'school-accounts' }
-    },
-    {
-      id: 'platform-activity-school-config-updated',
-      schoolId: 'scc',
-      actor: 'Platform',
-      title: 'updated a school configuration',
-      detail: 'A school profile setting was saved for review.',
-      icon: 'settings',
-      tone: 'gold',
-      createdAt: '2026-08-22T11:10:00.000Z',
-      type: 'Configuration',
-      link: { page: 'school-accounts' }
-    }
-  ];
-
-  const PLATFORM_NOTIFICATIONS = [
-    {
-      id: 'platform-notif-manghi-registration',
-      schoolId: null,
-      icon: 'building-2',
-      tone: 'gold',
-      type: 'School account',
-      title: 'Manghi school account awaiting review',
-      message: 'Mangaldan National High School submitted a new registration.',
-      createdAt: '2026-08-30T09:15:00.000Z',
-      link: { page: 'school-accounts' },
-      read: false
-    },
-    {
-      id: 'platform-notif-school-ready',
-      schoolId: null,
-      icon: 'building-2',
-      tone: 'green',
-      type: 'School account',
-      title: 'School account ready for review',
-      message: "St. Columban's College completed its initial setup.",
-      createdAt: '2026-08-25T09:20:00.000Z',
-      link: { page: 'school-accounts' },
-      read: false
-    }
-  ];
-
   let PLATFORM_API_NOTIFICATIONS = [];
-  let PLATFORM_BACKEND_NOTIFICATIONS = false;
-
-  /* localStorage read state is only used in frontend-only mode. */
-  const PLATFORM_READ_STORE_KEY = 'edugnay_platform_notif_read';
-
-  function applyPlatformReadState() {
-    window.EDUGNAY_CONFIG.applyNotificationReadState(PLATFORM_NOTIFICATIONS, PLATFORM_READ_STORE_KEY);
-  }
 
   function getPlatformNotifications() {
-    if (PLATFORM_BACKEND_NOTIFICATIONS) return PLATFORM_API_NOTIFICATIONS;
-    return PLATFORM_NOTIFICATIONS;
+    return PLATFORM_API_NOTIFICATIONS;
   }
 
   async function loadPlatformNotifications() {
@@ -111,12 +11,10 @@
       const communication = await window.EDUGNAY_API.loadCommunication('platform_admin');
       window.EDUGNAY_COMMUNICATION = communication;
       PLATFORM_API_NOTIFICATIONS = communication.notifications || [];
-      PLATFORM_BACKEND_NOTIFICATIONS = Boolean(communication.backend);
     } catch (error) {
       PLATFORM_API_NOTIFICATIONS = [];
-      PLATFORM_BACKEND_NOTIFICATIONS = Boolean(window.EDUGNAY_API?.isBackendAvailable);
       window.EDUGNAY_COMMUNICATION = {
-        backend: PLATFORM_BACKEND_NOTIFICATIONS,
+        backend: Boolean(window.EDUGNAY_API?.isBackendAvailable),
         notifications: [],
         announcements: [],
         tasks: [],
@@ -127,15 +25,9 @@
 
   function markPlatformNotificationRead(id) {
     const apiNotification = PLATFORM_API_NOTIFICATIONS.find(item => String(item.id) === String(id));
-    if (PLATFORM_BACKEND_NOTIFICATIONS) {
-      if (!apiNotification) return Promise.resolve(null);
-      return window.markCurrentNotificationRead(apiNotification.apiId || apiNotification.id);
-    }
-    return window.EDUGNAY_CONFIG.markNotificationRead(
-      PLATFORM_READ_STORE_KEY,
-      id,
-      PLATFORM_NOTIFICATIONS
-    );
+    return apiNotification
+      ? window.markCurrentNotificationRead(apiNotification.apiId || apiNotification.id)
+      : Promise.resolve(null);
   }
 
   const PLATFORM_QUICK_ACTIONS = [
@@ -147,17 +39,33 @@
     }
   ];
 
-  // Replace the local getter with GET /api/schools during backend integration.
   async function getSchoolRecords() {
-    const schools = await (window.EDUGNAY_CONFIG?.getSchools?.() || []);
-    return schools.map(school => ({
-      ...school,
-      typeLabel: Array.isArray(school.schoolLevels)
-        ? (window.EDUGNAY_CONFIG?.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.typeLabel || school.schoolType || 'School')
-        : (school.typeLabel || school.schoolType || 'School'),
-      administrator: school.initialAdministrator?.name || 'School administrator',
-      administratorSchoolEmail: school.initialAdministrator?.schoolEmail || ''
-    }));
+    if (window.EDUGNAY_API?.isBackendAvailable) {
+      const schools = await window.EDUGNAY_API.getPlatformSchools();
+      const schoolTypeLabels = {
+        k12: 'K-12 School', elementary: 'Elementary', jhs: 'Junior High School',
+        shs: 'Senior High School', 'multi-level': 'Multi-level School'
+      };
+      return schools.map(school => ({
+        ...school,
+        id: String(school.id),
+        schoolId: school.depedSchoolId || school.schoolCode || '',
+        typeLabel: school.typeLabel || schoolTypeLabels[school.schoolType] || 'School',
+        platformStatus: school.platformStatus || (school.registrationStatus === 'active'
+          ? 'active' : school.registrationStatus === 'pending' ? 'pending' : 'rejected'),
+        administrator: school.administrator || 'School administrator',
+        administratorSchoolEmail: school.administratorSchoolEmail || ''
+      }));
+    }
+
+    throw new Error('The platform API is not configured.');
+  }
+
+  async function getActivityRecords() {
+    if (window.EDUGNAY_API?.isBackendAvailable) {
+      return window.EDUGNAY_API.getDashboardActivity('platform');
+    }
+    throw new Error('The platform API is not configured.');
   }
 
   function getDashboardSummary(schools = []) {
@@ -191,7 +99,6 @@
   }
 
   function renderTopbarNotifs() {
-    if (!PLATFORM_BACKEND_NOTIFICATIONS) applyPlatformReadState();
     const notifications = getPlatformNotifications();
     const list = document.getElementById('tbNotifList');
     const dot = document.getElementById('tbNotifDot');
@@ -227,11 +134,7 @@
   }
 
   async function markAllPlatformNotificationsRead() {
-    if (PLATFORM_BACKEND_NOTIFICATIONS) {
-      await window.markCurrentNotificationsRead();
-    } else {
-      window.EDUGNAY_CONFIG.markAllNotificationsRead(PLATFORM_READ_STORE_KEY, PLATFORM_NOTIFICATIONS);
-    }
+    await window.markCurrentNotificationsRead();
     renderTopbarNotifs();
   }
 
@@ -250,16 +153,11 @@
   window.EDUGNAY_PLATFORM_COMMUNICATION_READY = loadPlatformNotifications();
 
   window.EDUGNAY_PLATFORM = {
-    admin: PLATFORM_ADMIN,
-    account: PLATFORM_ADMIN,
-    profile: PLATFORM_ADMIN,
-    activities: PLATFORM_ACTIVITY,
-    notifications: PLATFORM_NOTIFICATIONS,
     getNotifications: getPlatformNotifications,
     markPlatformNotificationRead,
     quickActions: PLATFORM_QUICK_ACTIONS,
-    notificationStorageKey: PLATFORM_READ_STORE_KEY,
     getSchoolRecords,
+    getActivityRecords,
     getDashboardSummary,
     renderTopbarNotifs,
     markAllPlatformNotificationsRead
@@ -269,8 +167,8 @@
   window.markAllPlatformNotificationsRead = markAllPlatformNotificationsRead;
   window.navigatePlatform = navigatePlatform;
   window.EDUGNAY_NOTIFICATION_CONTEXT = {
-    storageKey: PLATFORM_READ_STORE_KEY,
-    records: PLATFORM_NOTIFICATIONS,
+    storageKey: '',
+    records: [],
     getItems: getPlatformNotifications
   };
 })();

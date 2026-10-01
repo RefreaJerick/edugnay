@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../assets/css/parent/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -22,32 +23,7 @@
 
 <body data-page-title="My Profile">
 
-  <!--
-  EJS CONVERSION MAP — parent-profile.html
-  ─────────────────────────────────────────
-  - parent              → session record:
-                         { firstName, lastName, personalEmail, schoolEmail, avatarUrl }
-  - children[]           → linked student records (read-only here):
-                         { firstName, lastName, gradeSection, adviserName,
-                           relationship: 'Mother'|'Father'|'Guardian', isPrimary }
-                         NEVER editable by the parent — linking/unlinking a child
-                         to a parent account must go through the registrar/admin
-                         portal, not here.
-  - Personal info form   → personal email, sex, religion, contact number,
-                         address, and parent details are editable; school
-                         email and name remain read-only.
-
-  FORM SUBMIT: POST /parent/profile/update — validate server-side regardless of
-  client-side input types. Avatar upload goes through the same handler pattern as
-  student/teacher portals — inline base64 preview client-side, real upload
-  endpoint server-side with file-type/size validation.
-
-  TABS: profile-tab switching is pure UI state over already-rendered content — no
-  need for client fetches per tab unless data is large enough to warrant lazy
-  loading.
-
-  PARTIALS: same sidebar/topbar as other parent pages (activeNav='profile').
--->
+  <!-- Profile and linked-child details come from authenticated profile APIs. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -89,7 +65,7 @@
         <a href="edugnay-parent-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -741,7 +717,7 @@
         return false;
       }
       if (!PARENT_PROFILE_API_ENABLED) {
-        alert('Password updates require the local backend.');
+        alert('Password updates require a configured API connection.');
         return false;
       }
       try {
@@ -750,9 +726,9 @@
           body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
         });
         closePasswordModal();
-        alert('Password updated. You have been signed out on other devices.');
+        showAppToast('Password updated. You have been signed out on other devices.');
       } catch (error) {
-        alert(error.message || 'Unable to update your password.');
+        showAppToast(error.message || 'Unable to update your password.', 'error');
       }
       return false;
     }
@@ -857,7 +833,7 @@
             alert('Profile setup complete.');
             window.location.replace('./edugnay-parent-dashboard.html');
           } else {
-            alert('Profile updated.');
+            showAppToast('Profile updated.');
           }
           return false;
         }
@@ -872,9 +848,9 @@
         PARENT_CONFIG.updateUser(parent.id, { personalEmail });
         await PARENT_CONFIG.updateUserProfile(parent.id, profileData);
         renderParentProfile();
-        alert('Profile updated.');
+        showAppToast('Profile updated.');
       } catch (error) {
-        alert(error.message || 'Unable to update profile.');
+        showAppToast(error.message || 'Unable to update profile.', 'error');
       }
       return false;
     }

@@ -24,7 +24,11 @@ function getTransporter() {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASSWORD
     },
-    requireTLS: String(process.env.MAIL_SECURE).toLowerCase() !== 'true'
+    requireTLS: String(process.env.MAIL_SECURE).toLowerCase() !== 'true',
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
+    dnsTimeout: 10000
   });
 
   return transporter;

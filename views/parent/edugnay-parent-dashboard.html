@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../assets/css/parent/dashboard.css">
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -22,40 +23,7 @@
 
 <body data-page-title="Dashboard">
 
-  <!--
-  ════════════════════════════════════════════════════
-  EJS CONVERSION MAP — parent-dashboard.html
-  ════════════════════════════════════════════════════
-  PARTIALS:
-    partials/parent-sidebar.ejs  → sidebar block (pass activeNav='dashboard')
-    partials/parent-topbar.ejs   → topbar block
-
-  SERVER DATA:
-    - parent { firstName }, children[] → session record:
-        children[]: { id, firstName, lastName, gradeSection, avatarUrl, hasAlert }
-        hasAlert = true if any admin-configured notification trigger fired this week
-        (grade below threshold, consecutive absences, journal not submitted, etc.)
-    - activeChildId                     → query param or session-stored selection
-    - currentDate                        → server time, never client Date()
-    - dailyAttendance[selectedChild]     → per-subject attendance for the SELECTED
-        day (default: today), live/un-gated data:
-        { date, subjects: [{ name, status: 'present'|'absent'|'late', color }] }
-    - assignments[]                     → shared school assignment records,
-        filtered by selected child and day in the page renderer
-    - weeklyReport[selectedChild]        → ONLY rendered if status === 'confirmed'
-        for the current week. Query MUST filter at DB level:
-        WHERE status = 'confirmed' AND studentId = :studentId AND weekOf = :currentWeek
-        If no confirmed report exists, render the compact empty state — never expose
-        whether a pending one exists.
-        Shape: { weekLabel, text, atRisk, confirmedAt }
-    - announcements[]                    → filtered to audience IN ('all','parents')
-
-  CONDITIONAL RENDERING:
-    - Child alert dot only renders if child.hasAlert === true
-    - report-hero shows a report-ready link for the selected child
-
-  ROUTES: static .html hrefs → /parent/... once Express routes exist.
--->
+  <!-- Page JavaScript loads the selected child's dashboard data and renders this HTML shell. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -97,7 +65,7 @@
         <a href="edugnay-parent-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -214,7 +182,7 @@
           <!-- end children[] loop -->
 
           <!-- Weekly Report — confirmed only, fully invisible if not yet confirmed -->
-          <!-- EJS: <% if (weeklyReport) { %> -->
+          <!-- Page JavaScript loads the selected child's dashboard data and renders this HTML shell. -->
           <section class="report-hero" aria-labelledby="report-status-title">
             <div class="report-hero-head">
               <div class="report-hero-kicker">Weekly report</div>
@@ -292,35 +260,43 @@
 
 
   <script>
-    let DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
+    const PARENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
+    let DASHBOARD_ANNOUNCEMENTS = [];
+    let DASHBOARD_ANNOUNCEMENTS_ERROR = '';
+    let DASHBOARD_ANNOUNCEMENTS_LOADING = PARENT_DASHBOARD_API_ENABLED;
 
     function renderDashboardAnnouncements() {
       const list = document.getElementById('parent-dashboard-announcements');
       if (!list) return;
       const visibleAnnouncements = DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false);
-      list.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
+      list.innerHTML = DASHBOARD_ANNOUNCEMENTS_LOADING
+        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' })
+        : DASHBOARD_ANNOUNCEMENTS_ERROR
+        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: DASHBOARD_ANNOUNCEMENTS_ERROR })
+        : visibleAnnouncements.length ? visibleAnnouncements.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
-          <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
+          <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
           ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
           <div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div>
-          <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
+          <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.time)}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.author)}</div>
         </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       lucide.createIcons();
     }
 
-    const DAYS = [
-      { key: 'mon', label: 'Mon', date: 9 },
-      { key: 'tue', label: 'Tue', date: 10 },
-      { key: 'wed', label: 'Wed', date: 11 },
-      { key: 'thu', label: 'Thu', date: 12 },
-      { key: 'fri', label: 'Fri', date: 13, active: true },
-    ];
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'].map((key, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return { key, label: key[0].toUpperCase() + key.slice(1), date: date.getDate(),
+        isoDate: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` };
+    });
 
-    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
-    if (window.EDUGNAY_API?.isBackendAvailable) PARENT_CHILDREN.splice(0);
-    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
-    let backendAttendanceRecords = null;
-    let backendAssignments = false;
+    const PARENT_CHILDREN = [];
+    let PARENT_CHILDREN_LOADING = true;
+    let PARENT_CHILDREN_ERROR = '';
+    let backendAttendanceRecords = [];
     let backendCurrentDate = '';
     let attendanceLoadError = '';
     let assignmentsRequestId = 0;
@@ -333,9 +309,7 @@
     };
 
     function getDashboardAttendance(studentId, date) {
-      const records = backendAttendanceRecords
-        ? backendAttendanceRecords.filter(record => record.studentId === studentId && record.date === date)
-        : window.EDUGNAY_CONFIG.getAttendanceRecords({ studentId, date });
+      const records = backendAttendanceRecords.filter(record => record.studentId === studentId && record.date === date);
       if (!records.length) return null;
 
       const subjects = records.filter(record => record.subjectId).map(record => {
@@ -354,11 +328,11 @@
     }));
 
     let currentChild = PARENT_CHILDREN[0]?.studentId || null;
-    let currentDay = 'fri';
+    let currentDay = DAYS[Math.min((today.getDay() + 6) % 7, 4)].key;
 
     function getCurrentChild() {
       const link = PARENT_CHILDREN.find(child => child.studentId === currentChild);
-      return link?.profile || (link ? window.EDUGNAY_CONFIG.getUserById(link.studentId) : null);
+      return link?.profile || null;
     }
 
     function getCurrentDashboardRecord() {
@@ -368,13 +342,26 @@
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
-      switcher.innerHTML = PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
-        const student = link.profile || window.EDUGNAY_CONFIG.getUserById(link.studentId);
-        if (!student || (!link.profile && student.role !== PARENT_CONFIG.values.roles.STUDENT)) return '';
-        const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-        const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${student.sectionName || section?.name || 'Unassigned'}`;
-        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" onclick="switchChild('${window.EDUGNAY_CONFIG.escapeHtml(student.id)}', this)"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(sectionLabel)}</div></div></div>`;
+      switcher.innerHTML = PARENT_CHILDREN_LOADING
+        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading linked children', text: 'Please wait while linked student accounts are loaded.' })
+        : PARENT_CHILDREN_ERROR
+        ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Children unavailable', text: PARENT_CHILDREN_ERROR })
+        : PARENT_CHILDREN.length ? PARENT_CHILDREN.map(link => {
+        const student = link.profile;
+        if (!student) return '';
+        const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${student.sectionName || 'Unassigned'}`;
+        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" role="button" tabindex="0"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(sectionLabel)}</div></div></div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
+      switcher.querySelectorAll('.child-card').forEach(card => {
+        const selectChild = () => switchChild(card.dataset.child, card);
+        card.addEventListener('click', selectChild);
+        card.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectChild();
+          }
+        });
+      });
       if (window.lucide) lucide.createIcons();
     }
 
@@ -393,6 +380,10 @@
         hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'file-text', title, text });
         if (window.lucide) lucide.createIcons();
       };
+      if (PARENT_CHILDREN_ERROR) {
+        showEmptyReport('Report context unavailable', 'Linked child information could not be loaded.');
+        return;
+      }
       if (!child || !data) {
         showEmptyReport('No weekly report yet', 'A weekly report will appear here when a child account is linked.');
         return;
@@ -448,6 +439,11 @@
 
     function renderAttendanceDetail() {
       const container = document.getElementById('attendance-detail');
+      if (PARENT_CHILDREN_ERROR) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Children unavailable', text: PARENT_CHILDREN_ERROR });
+        lucide.createIcons();
+        return;
+      }
       if (attendanceLoadError) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Attendance could not be loaded', text: 'Try again after the connection is restored.' });
         lucide.createIcons();
@@ -493,18 +489,7 @@
     async function getParentAssignments(studentId, dayKey) {
       const day = DAYS.find(item => item.key === dayKey);
       if (!day) return [];
-      const assignedDate = day.isoDate || `2025-06-${String(day.date).padStart(2, '0')}`;
-      if (backendAssignments) {
-        return window.EDUGNAY_API.getParentAssignmentActivity(studentId, assignedDate);
-      }
-      return window.EDUGNAY_CONFIG.getAssignmentsForStudent(studentId)
-        .filter(assignment => assignment.assignedDate === assignedDate)
-        .map(assignment => ({
-          subject: assignment.subject,
-          task: assignment.title,
-          dueDate: assignment.dueDate,
-          status: assignment.status
-        }));
+      return window.EDUGNAY_API.getParentAssignmentActivity(studentId, day.isoDate);
     }
 
     async function renderAssignmentsDetail() {
@@ -512,6 +497,11 @@
       const requestId = ++assignmentsRequestId;
       const selectedChild = currentChild;
       const selectedDay = currentDay;
+      if (PARENT_CHILDREN_ERROR) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Children unavailable', text: PARENT_CHILDREN_ERROR });
+        lucide.createIcons();
+        return;
+      }
       if (!selectedChild) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignment data', text: 'Assignments will appear here when a child account is linked.' });
         lucide.createIcons();
@@ -613,21 +603,30 @@
       }
     }
 
-    /* ── INIT — runs once on page load, selects Juan and renders everything ── */
+    /* Load linked children and their current-week attendance and assignments. */
     document.addEventListener('DOMContentLoaded', async () => {
       if (window.EDUGNAY_API?.isBackendAvailable) {
+        renderChildSwitcher();
+        renderDashboardAnnouncements();
         document.getElementById('attendance-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading attendance', text: 'Please wait while records are loaded.' });
         document.getElementById('assignments-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while records are loaded.' });
+      } else {
+        PARENT_CHILDREN_LOADING = false;
+        PARENT_CHILDREN_ERROR = 'The backend is required to load linked children.';
+        attendanceLoadError = 'The backend is required to load attendance.';
       }
       await window.EDUGNAY_COMMUNICATION_READY;
       if (window.EDUGNAY_API?.isBackendAvailable) {
-        backendAssignments = true;
         try {
+          const session = await window.EDUGNAY_API.getCurrentUser();
+          if (session?.role !== 'parent') throw new Error('This dashboard requires a parent session.');
           const children = await window.EDUGNAY_API.getParentChildren();
           PARENT_CHILDREN.splice(0, PARENT_CHILDREN.length, ...children.map(child => ({
             studentId: child.studentId,
             profile: { ...child, id: child.studentId }
           })));
+          PARENT_CHILDREN_LOADING = false;
+          PARENT_CHILDREN_ERROR = '';
           try {
             const attendance = await window.EDUGNAY_API.getParentAttendance();
             backendAttendanceRecords = attendance.records || [];
@@ -653,9 +652,9 @@
             attendance: Object.fromEntries(DAYS.map(day => [day.key, getDashboardAttendance(child.studentId, day.isoDate)]))
           })));
         } catch (error) {
-          attendanceLoadError = error?.message || 'Linked children could not be loaded.';
+          PARENT_CHILDREN_LOADING = false;
+          PARENT_CHILDREN_ERROR = error?.message || 'Linked children could not be loaded.';
           backendAttendanceRecords = [];
-          backendAssignments = true;
           PARENT_CHILDREN.splice(0);
           CHILD_DASHBOARD_RECORDS.splice(0);
           currentChild = null;
@@ -663,7 +662,14 @@
       }
       if (window.EDUGNAY_COMMUNICATION?.backend) {
         DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+        DASHBOARD_ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION.error || '';
+      } else if (PARENT_DASHBOARD_API_ENABLED) {
+        DASHBOARD_ANNOUNCEMENTS = [];
+        DASHBOARD_ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION?.error || '';
+      } else {
+        DASHBOARD_ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
       }
+      DASHBOARD_ANNOUNCEMENTS_LOADING = false;
       renderDashboardAnnouncements();
       renderChildSwitcher();
       updateChildContext();

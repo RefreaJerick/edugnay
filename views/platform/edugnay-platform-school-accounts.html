@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/platform/school-accounts.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
@@ -120,11 +121,39 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="schoolStatusConfirmModal" aria-hidden="true">
+    <section class="modal platform-account-modal platform-status-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="schoolStatusConfirmTitle">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" id="schoolStatusConfirmIcon" aria-hidden="true"><i data-lucide="circle-help"></i></div>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="schoolStatusConfirmTitle">Confirm school status change</div>
+            <div class="modal-sub" id="schoolStatusConfirmSub">Review this change before continuing.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" aria-label="Close confirmation" onclick="closeSchoolStatusConfirmation()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-context confirm-remove-context" id="schoolStatusConfirmContext">
+          <div class="ctx-icon"><i data-lucide="building-2" style="width:18px;height:18px;"></i></div>
+          <div><div class="ctx-label">School account</div><div class="ctx-val" id="schoolStatusConfirmName"></div></div>
+        </div>
+        <p class="confirm-remove-message" id="schoolStatusConfirmMessage"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" onclick="closeSchoolStatusConfirmation()">Cancel</button>
+        <button class="btn btn-save" id="schoolStatusConfirmButton" type="button">Continue</button>
+      </div>
+    </section>
+  </div>
+
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
     const SCHOOL_STATUS_VALUES = window.EDUGNAY_CONFIG.values.statuses;
     const schoolAccountState = { filter: 'all', query: '', selectedSchoolId: null };
     let schoolAccountRecords = [];
+    let pendingSchoolStatusChange = null;
+    let schoolStatusChangeInProgress = false;
     const SCHOOL_ACCOUNT_FILTERS = [
       { id: 'all', label: 'All schools' },
       { id: 'active', label: 'Active' },
@@ -213,32 +242,50 @@
         text: schools.length ? 'Try a different search term or filter.' : 'Registered school accounts will appear here.'
       })}</td></tr>`;
 
-      document.querySelectorAll('[data-review-school]').forEach(button => button.addEventListener('click', () => openSchoolAccountModal(button.dataset.reviewSchool)));
+      document.querySelectorAll('[data-review-school]').forEach(button => button.addEventListener('click', () => openSchoolAccountModal(button.dataset.reviewSchool, button)));
       if (window.lucide) window.lucide.createIcons();
     }
 
-    function openSchoolAccountModal(schoolId) {
-      const school = schoolAccountRecords.find(item => item.id === schoolId);
-      if (!school) return;
+    async function openSchoolAccountModal(schoolId, button) {
+      const listSchool = schoolAccountRecords.find(item => item.id === schoolId);
+      if (!listSchool) return;
+      if (button) { button.disabled = true; button.textContent = 'Loading...'; }
+      let details;
+      try { details = await window.EDUGNAY_API.getPlatformSchool(schoolId); }
+      catch (error) { showAppToast(error.message || 'School details could not be loaded.', 'error'); return; }
+      finally { if (button) { button.disabled = false; button.textContent = 'Review'; } }
+      const school = {
+        ...listSchool, ...details.school,
+        id: String(details.school.id),
+        schoolId: details.school.depedSchoolId || details.school.schoolCode || '',
+        schoolYear: details.school.currentSchoolYearLabel,
+        platformStatus: details.school.registrationStatus,
+        administrator: details.administrators[0]?.displayName || listSchool.administrator,
+        administratorSchoolEmail: details.administrators[0]?.schoolEmail || listSchool.administratorSchoolEmail,
+        schoolLevels: details.structure.filter(level => level.isEnabled).map(level => level.levelCode),
+        gradesPageEnabled: details.features.gradesEnabled,
+        narrativeReportsEnabled: details.features.narrativeReportsEnabled,
+        journalsEnabled: details.features.journalsEnabled
+      };
       schoolAccountState.selectedSchoolId = school.id;
       const status = school.platformStatus;
       const type = school.typeLabel || school.schoolType || 'School';
       const levels = Array.isArray(school.schoolLevels) && school.schoolLevels.length
         ? (window.EDUGNAY_CONFIG.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.schoolLevels.join(' + '))
         : 'Not set';
-      const journalSubject = window.EDUGNAY_CONFIG.getJournalSubject(school);
+      const journalSubject = details.journalSubject;
       const portalFeatures = [
         { label: 'Grades page', enabled: Boolean(school.gradesPageEnabled) },
         { label: 'AI Reports', enabled: Boolean(school.narrativeReportsEnabled) },
-        { label: 'Journals', enabled: window.EDUGNAY_CONFIG.isJournalsEnabled(school) }
+        { label: 'Journals', enabled: Boolean(details.features.journalsEnabled && journalSubject) }
       ];
-      const academicTerms = (school.schoolLevels || []).map(level => {
-        const division = school.divisions?.[level];
-        const periodType = window.EDUGNAY_CONFIG.academicPeriodTypes[division?.gradingPeriodType];
+      const academicTerms = details.structure.filter(level => level.isEnabled).map(level => {
+        const count = details.academicTerms.filter(term => term.schoolLevel === level.levelCode).length;
+        const periodType = { quarterly: 'Quarterly', trimestral: 'Three-term', semestral: 'Semestral' }[level.gradingPeriodType];
         return {
-          level: window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level,
-          structure: periodType?.label || 'Not configured',
-          count: division?.academicPeriods?.length || 0
+          level: level.displayName,
+          structure: periodType || 'Not configured',
+          count
         };
       });
 
@@ -300,8 +347,7 @@
           : selectedSchool.platformStatus === SCHOOL_STATUS_VALUES.PENDING
             ? 'Approve'
             : 'Reactivate';
-        if (!window.confirm(`${actionLabel} ${selectedSchool.name}?`)) return;
-        updateSchoolAccountStatus(nextStatus);
+        openSchoolStatusConfirmation(selectedSchool, nextStatus, actionLabel);
       });
 
       const modal = document.getElementById('schoolAccountModal');
@@ -328,25 +374,87 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
+    function openSchoolStatusConfirmation(school, status, actionLabel) {
+      const isSuspending = status === SCHOOL_STATUS_VALUES.SUSPENDED;
+      pendingSchoolStatusChange = { schoolId: school.id, status, actionLabel };
+      document.getElementById('schoolStatusConfirmTitle').textContent = `${actionLabel} school account?`;
+      document.getElementById('schoolStatusConfirmSub').textContent = isSuspending
+        ? 'The school will lose access until it is reactivated.'
+        : 'This will update the school’s access to Academix.';
+      document.getElementById('schoolStatusConfirmName').textContent = school.name;
+      document.getElementById('schoolStatusConfirmMessage').textContent = isSuspending
+        ? 'Are you sure you want to suspend this school account?'
+        : `Are you sure you want to ${actionLabel.toLowerCase()} this school account?`;
+      document.getElementById('schoolStatusConfirmContext').classList.toggle('confirm-remove-context', isSuspending);
+      const icon = document.getElementById('schoolStatusConfirmIcon');
+      icon.classList.toggle('danger', isSuspending);
+      icon.innerHTML = `<i data-lucide="${isSuspending ? 'ban' : 'circle-check'}"></i>`;
+      const button = document.getElementById('schoolStatusConfirmButton');
+      button.textContent = `${actionLabel} school`;
+      button.className = `btn ${isSuspending ? 'btn-danger' : 'btn-save'}`;
+      const modal = document.getElementById('schoolStatusConfirmModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeSchoolStatusConfirmation() {
+      if (schoolStatusChangeInProgress) return;
+      const modal = document.getElementById('schoolStatusConfirmModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      pendingSchoolStatusChange = null;
+    }
+
+    async function confirmSchoolStatusChange() {
+      const change = pendingSchoolStatusChange;
+      const button = document.getElementById('schoolStatusConfirmButton');
+      if (!change || button.disabled) return;
+      schoolStatusChangeInProgress = true;
+      button.disabled = true;
+      button.textContent = change.actionLabel === 'Suspend'
+        ? 'Suspending...'
+        : change.actionLabel === 'Approve'
+          ? 'Approving...'
+          : 'Reactivating...';
+      let updated = false;
+      try {
+        updated = await updateSchoolAccountStatus(change.status, change.schoolId);
+      } finally {
+        schoolStatusChangeInProgress = false;
+        if (updated) closeSchoolStatusConfirmation();
+        button.disabled = false;
+        if (pendingSchoolStatusChange) button.textContent = `${pendingSchoolStatusChange.actionLabel} school`;
+      }
+    }
+
     async function rejectSchoolRegistration() {
-      const rejectionReason = document.getElementById('schoolAccountRejectionReason').value.trim() || null;
+      const rejectionReason = document.getElementById('schoolAccountRejectionReason').value.trim();
+      if (!rejectionReason) { showAppToast('Provide a reason for rejecting this registration.', 'error'); return; }
+      const button = document.getElementById('schoolAccountRejectConfirm');
+      if (button.disabled) return;
+      button.disabled = true;
+      button.textContent = 'Rejecting...';
 
       try {
-        const updatedSchool = await window.EDUGNAY_CONFIG.updateSchool(schoolAccountState.selectedSchoolId, {
-          platformStatus: SCHOOL_STATUS_VALUES.REJECTED,
-          rejectedAt: new Date().toISOString(),
-          rejectionReason,
-          approvedAt: null
-        });
+        const updatedSchool = await window.EDUGNAY_API.changePlatformSchool(schoolAccountState.selectedSchoolId, 'reject', rejectionReason);
         if (!updatedSchool) {
-          window.alert('The school record was not found.');
+          showAppToast('The school record was not found.', 'error');
           return;
         }
         closeSchoolRejectionModal();
         closeSchoolAccountModal();
-        await refreshSchoolAccounts();
+        try {
+          await refreshSchoolAccounts();
+          showAppToast('School registration rejected.');
+        } catch (refreshError) {
+          showAppToast('School registration was rejected, but the list could not refresh. Reload the page to verify it.', 'info');
+        }
       } catch (error) {
-        window.alert(error.message || 'The school registration could not be rejected.');
+        showAppToast(error.message || 'The school registration could not be rejected.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Reject registration';
       }
     }
 
@@ -357,27 +465,37 @@
       schoolAccountState.selectedSchoolId = null;
     }
 
-    async function updateSchoolAccountStatus(status) {
-      const school = schoolAccountRecords.find(item => item.id === schoolAccountState.selectedSchoolId);
-      if (!school) return;
-
-      const updates = { platformStatus: status };
-      if (status === SCHOOL_STATUS_VALUES.ACTIVE && school.platformStatus === SCHOOL_STATUS_VALUES.PENDING) {
-        updates.approvedAt = new Date().toISOString();
-        updates.rejectedAt = null;
-        updates.rejectionReason = null;
+    async function updateSchoolAccountStatus(status, schoolId = schoolAccountState.selectedSchoolId) {
+      const school = schoolAccountRecords.find(item => item.id === schoolId);
+      if (!school) {
+        showAppToast('The school record was not found.', 'error');
+        return false;
       }
+      const button = document.querySelector('#schoolAccountModalActions [data-school-status]');
+      if (button?.disabled) return false;
+      if (button) button.disabled = true;
 
       try {
-        const updatedSchool = await window.EDUGNAY_CONFIG.updateSchool(school.id, updates);
+        const action = status === SCHOOL_STATUS_VALUES.SUSPENDED ? 'suspend'
+          : school.platformStatus === SCHOOL_STATUS_VALUES.PENDING ? 'approve' : 'reactivate';
+        const updatedSchool = await window.EDUGNAY_API.changePlatformSchool(school.id, action);
         if (!updatedSchool) {
-          window.alert('The school record was not found.');
-          return;
+          showAppToast('The school record was not found.', 'error');
+          return false;
         }
         closeSchoolAccountModal();
-        await refreshSchoolAccounts();
+        try {
+          await refreshSchoolAccounts();
+          showAppToast(status === SCHOOL_STATUS_VALUES.ACTIVE ? 'School account activated.' : 'School account updated.');
+        } catch (refreshError) {
+          showAppToast('School account was updated, but the list could not refresh. Reload the page to verify it.', 'info');
+        }
+        return true;
       } catch (error) {
-        window.alert(error.message || 'The school account could not be updated.');
+        showAppToast(error.message || 'The school account could not be updated.', 'error');
+        return false;
+      } finally {
+        if (button) button.disabled = false;
       }
     }
 
@@ -394,7 +512,12 @@
       if (event.target.id === 'schoolAccountRejectModal') closeSchoolRejectionModal();
     });
 
+    document.getElementById('schoolStatusConfirmModal').addEventListener('click', event => {
+      if (event.target.id === 'schoolStatusConfirmModal') closeSchoolStatusConfirmation();
+    });
+
     document.getElementById('schoolAccountRejectConfirm').addEventListener('click', rejectSchoolRegistration);
+    document.getElementById('schoolStatusConfirmButton').addEventListener('click', confirmSchoolStatusChange);
 
     document.addEventListener('DOMContentLoaded', async () => {
       await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
@@ -402,7 +525,9 @@
       try {
         await refreshSchoolAccounts();
       } catch (error) {
-        window.alert(error?.message || 'The school accounts could not be loaded.');
+        document.getElementById('schoolAccountResultCount').textContent = 'Unavailable';
+        document.getElementById('schoolAccountList').innerHTML = `<tr><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School accounts unavailable', text: error?.message || 'Try again after the connection is restored.' })}</td></tr>`;
+        showAppToast(error?.message || 'The school accounts could not be loaded.', 'error');
       }
       if (window.lucide) window.lucide.createIcons();
     });

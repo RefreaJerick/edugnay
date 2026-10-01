@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/platform/dashboard.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
@@ -41,6 +42,7 @@
             <label class="form-label" for="platformTodoDueDate">Due date (optional)</label>
             <input class="form-input" id="platformTodoDueDate" name="dueDate" type="date">
           </div>
+          <p id="platformTodoFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
         </form>
       </div>
       <div class="modal-foot">
@@ -67,6 +69,7 @@
       <div class="modal-body">
         <input id="platformTodoDeleteId" type="hidden">
         <p class="confirm-remove-message">Delete <strong id="platformTodoDeleteName"></strong> from your to-do list?</p>
+        <p id="platformTodoDeleteFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
       </div>
       <div class="modal-foot">
         <button class="btn btn-cancel" id="platformTodoDeleteCancelButton" type="button">Cancel</button>
@@ -205,6 +208,7 @@
               </button>
             </div>
             <div class="todo-list" id="platform-todo-list"></div>
+            <p id="platformTodoListFeedback" class="dashboard-action-feedback" role="status" hidden></p>
           </section>
         </div>
       </div>
@@ -213,8 +217,9 @@
 
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
-    let PLATFORM_DASHBOARD_TODOS = null;
-    let PLATFORM_BACKEND_TASKS = false;
+    let PLATFORM_DASHBOARD_TODOS = [];
+    let PLATFORM_DASHBOARD_ACTIVITY = [];
+    let PLATFORM_ACTIVITY_ERROR = '';
 
     function renderPlatformWeek() {
       const grid = document.getElementById('weekCalendarGrid');
@@ -246,7 +251,7 @@
     function renderPlatformActivity() {
       const activityList = document.getElementById('platform-activity-list');
       if (!activityList) return;
-      const activities = (Array.isArray(PLATFORM.activities) ? PLATFORM.activities : []).slice().sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+      const activities = PLATFORM_DASHBOARD_ACTIVITY.slice().sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
       let lastGroup = '';
       let activityHtml = '';
 
@@ -256,30 +261,63 @@
           activityHtml += `<div class="activity-group-label">${group}</div>`;
           lastGroup = group;
         }
-        activityHtml += `<div class="activity-item"><div class="act-icon ${activity.tone}"><i data-lucide="${activity.icon}" style="width:15px;height:15px;"></i></div><div class="act-body"><div class="act-text"><strong>${escapeHtml(activity.actor)}</strong> ${escapeHtml(activity.title)} ${escapeHtml(activity.detail || '')}</div><div class="act-time">${formatTime(activity.createdAt)}</div></div><span class="act-tag">${escapeHtml(activity.type)}</span></div>`;
+        const schoolContext = activity.schoolName && activity.schoolName !== activity.actor
+          && !String(activity.detail || '').includes(activity.schoolName) ? ` · ${escapeHtml(activity.schoolName)}` : '';
+        activityHtml += `<div class="activity-item"><div class="act-icon ${escapeHtml(activity.tone)}"><i data-lucide="${escapeHtml(activity.icon)}" style="width:15px;height:15px;"></i></div><div class="act-body"><div class="act-text"><strong>${escapeHtml(activity.actor)}</strong> ${escapeHtml(activity.title)} ${escapeHtml(activity.detail || '')}${schoolContext}</div><div class="act-time">${formatTime(activity.createdAt)}</div></div><span class="act-tag">${escapeHtml(activity.type)}</span></div>`;
       });
       activityList.innerHTML = activities.length
         ? activityHtml
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'activity', title: 'No platform activity', text: 'School account changes and system events will appear here.' });
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: PLATFORM_ACTIVITY_ERROR ? 'cloud-off' : 'activity', title: PLATFORM_ACTIVITY_ERROR ? 'Activity unavailable' : 'No school account activity yet', text: PLATFORM_ACTIVITY_ERROR || 'School registrations and access changes will appear here.' });
     }
 
     function getPlatformTodos() {
-      if (PLATFORM_BACKEND_TASKS && Array.isArray(PLATFORM_DASHBOARD_TODOS)) {
-        return PLATFORM_DASHBOARD_TODOS;
-      }
-      return window.EDUGNAY_CONFIG.getUserTodos(PLATFORM.admin.id, null);
+      return Array.isArray(PLATFORM_DASHBOARD_TODOS) ? PLATFORM_DASHBOARD_TODOS : [];
     }
 
     async function loadPlatformTodos() {
-      await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
-      const communication = window.EDUGNAY_COMMUNICATION;
-      if (communication?.backend) {
-        PLATFORM_DASHBOARD_TODOS = communication.tasks || [];
-        PLATFORM_BACKEND_TASKS = true;
-      } else {
-        PLATFORM_DASHBOARD_TODOS = null;
-        PLATFORM_BACKEND_TASKS = false;
+      try {
+        PLATFORM_DASHBOARD_TODOS = await window.EDUGNAY_API.getTasks();
+        if (window.EDUGNAY_COMMUNICATION?.backend) window.EDUGNAY_COMMUNICATION.tasks = PLATFORM_DASHBOARD_TODOS;
+        setPlatformFeedback('platformTodoListFeedback');
+      } catch (error) {
+        PLATFORM_DASHBOARD_TODOS = [];
+        setPlatformFeedback('platformTodoListFeedback', error.message || 'Platform tasks could not be loaded.');
       }
+    }
+
+    function setPlatformFeedback(id, message = '', type = 'error') {
+      const feedback = document.getElementById(id);
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.hidden = !message;
+      feedback.classList.toggle('is-error', type === 'error');
+      feedback.classList.toggle('is-success', type === 'success');
+      feedback.classList.toggle('is-info', type === 'info');
+    }
+
+    async function refreshPlatformTasks(fallback = {}) {
+      try {
+        const tasks = await window.EDUGNAY_API.getTasks();
+        if (fallback.task && !tasks.some(item => item.id === fallback.task.id)) throw new Error('The saved task was not returned by the task list.');
+        if (fallback.removedId && tasks.some(item => item.id === String(fallback.removedId))) throw new Error('The deleted task is still returned by the task list.');
+        PLATFORM_DASHBOARD_TODOS = tasks;
+        if (window.EDUGNAY_COMMUNICATION?.backend) window.EDUGNAY_COMMUNICATION.tasks = PLATFORM_DASHBOARD_TODOS;
+        setPlatformFeedback('platformTodoListFeedback');
+      } catch (error) {
+        if (fallback.task) {
+          const index = getPlatformTodos().findIndex(item => item.id === fallback.task.id);
+          if (index >= 0) PLATFORM_DASHBOARD_TODOS[index] = fallback.task;
+          else PLATFORM_DASHBOARD_TODOS = [...getPlatformTodos(), fallback.task];
+        }
+        if (fallback.removedId) PLATFORM_DASHBOARD_TODOS = getPlatformTodos().filter(item => item.id !== String(fallback.removedId));
+        const message = fallback.removedId
+          ? `The task was deleted, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+          : fallback.task
+            ? `The task was saved, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+            : `Tasks could not be loaded: ${error.message || 'Please reload the page.'}`;
+        setPlatformFeedback('platformTodoListFeedback', message, fallback.task || fallback.removedId ? 'info' : 'error');
+      }
+      renderPlatformTodos();
     }
 
     function openPlatformTodoModal(todoId = null) {
@@ -287,6 +325,7 @@
       const form = document.getElementById('platformTodoForm');
       if (!modal || !form) return;
       form.reset();
+      setPlatformFeedback('platformTodoFeedback');
       const todo = todoId
         ? getPlatformTodos().find(item => item.id === String(todoId))
         : null;
@@ -309,30 +348,35 @@
 
     async function savePlatformTodo(event) {
       event?.preventDefault();
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        setPlatformFeedback('platformTodoFeedback', 'The backend is required to save tasks.');
+        return false;
+      }
       const todoId = document.getElementById('platformTodoId').value;
       const titleInput = document.getElementById('platformTodoTitle');
       const title = titleInput.value.trim();
       const dueDate = document.getElementById('platformTodoDueDate').value || null;
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
+      const button = document.getElementById('platformTodoSaveButton');
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      setPlatformFeedback('platformTodoFeedback');
 
       try {
-        if (PLATFORM_BACKEND_TASKS) {
-          if (todoId) {
-            const task = await window.EDUGNAY_API.updateTask(todoId, { title, dueDate });
-            PLATFORM_DASHBOARD_TODOS = getPlatformTodos().map(item => item.id === task.id ? task : item);
-          } else {
-            const task = await window.EDUGNAY_API.createTask({ title, dueDate });
-            PLATFORM_DASHBOARD_TODOS = [...getPlatformTodos(), task];
-          }
-        } else if (todoId) {
-          window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate }, null);
-        } else {
-          window.EDUGNAY_CONFIG.createTodo({ schoolId: null, userId: PLATFORM.admin.id, title, dueDate });
-        }
-      } catch (error) {
-        window.alert(error?.message || 'The task could not be saved.');
+        const task = todoId
+          ? await window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
+          : await window.EDUGNAY_API.createTask({ title, dueDate });
+        closePlatformTodoModal();
+        await refreshPlatformTasks({ task });
+        showAppToast(todoId ? 'Task updated.' : 'Task added.');
         return false;
+      } catch (error) {
+        showAppToast(error?.message || 'The task could not be saved.', 'error');
+        return false;
+      } finally {
+        button.disabled = false;
+        button.textContent = todoId ? 'Save changes' : 'Add task';
       }
 
       closePlatformTodoModal();
@@ -340,24 +384,26 @@
       return false;
     }
 
-    async function togglePlatformTodo(todoId) {
+    async function togglePlatformTodo(todoId, checkbox) {
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        setPlatformFeedback('platformTodoListFeedback', 'The backend is required to update tasks.');
+        renderPlatformTodos();
+        return;
+      }
       const todo = getPlatformTodos().find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
       try {
-        if (PLATFORM_BACKEND_TASKS) {
-          const task = await window.EDUGNAY_API.updateTask(todo.id, {
-            status: completed ? 'completed' : 'pending'
-          });
-          PLATFORM_DASHBOARD_TODOS = getPlatformTodos().map(item => item.id === task.id ? task : item);
-        } else {
-          window.EDUGNAY_CONFIG.updateTodo(todo.id, {
-            status: completed ? 'completed' : 'pending',
-            completedAt: completed ? new Date().toISOString() : null
-          }, null);
-        }
+        if (checkbox) checkbox.disabled = true;
+        const task = await window.EDUGNAY_API.updateTask(todo.id, {
+          status: completed ? 'completed' : 'pending'
+        });
+        await refreshPlatformTasks({ task });
+        showAppToast(completed ? 'Task completed.' : 'Task reopened.');
+        return;
       } catch (error) {
-        window.alert(error?.message || 'The task status could not be updated.');
+        showAppToast(error?.message || 'The task status could not be updated.', 'error');
+        renderPlatformTodos();
         return;
       }
       renderPlatformTodos();
@@ -367,6 +413,7 @@
       const todo = getPlatformTodos().find(item => item.id === String(todoId));
       const modal = document.getElementById('platformTodoDeleteModal');
       if (!todo || !modal) return;
+      setPlatformFeedback('platformTodoDeleteFeedback');
       document.getElementById('platformTodoDeleteId').value = todo.id;
       document.getElementById('platformTodoDeleteName').textContent = `“${todo.title}”`;
       modal.classList.add('open');
@@ -383,18 +430,28 @@
     }
 
     async function confirmDeletePlatformTodo() {
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        setPlatformFeedback('platformTodoDeleteFeedback', 'The backend is required to delete tasks.');
+        return;
+      }
       const todoId = document.getElementById('platformTodoDeleteId').value;
       if (!todoId) return;
+      const button = document.getElementById('platformTodoDeleteConfirmButton');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      setPlatformFeedback('platformTodoDeleteFeedback');
       try {
-        if (PLATFORM_BACKEND_TASKS) {
-          await window.EDUGNAY_API.deleteTask(todoId);
-          PLATFORM_DASHBOARD_TODOS = getPlatformTodos().filter(item => String(item.id) !== String(todoId));
-        } else {
-          window.EDUGNAY_CONFIG.deleteTodo(todoId, null);
-        }
-      } catch (error) {
-        window.alert(error?.message || 'The task could not be deleted.');
+        await window.EDUGNAY_API.deleteTask(todoId);
+        closePlatformTodoDeleteModal();
+        await refreshPlatformTasks({ removedId: todoId });
+        showAppToast('Task deleted.');
         return;
+      } catch (error) {
+        showAppToast(error?.message || 'The task could not be deleted.', 'error');
+        return;
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Yes, Delete';
       }
       closePlatformTodoDeleteModal();
       renderPlatformTodos();
@@ -424,7 +481,7 @@
         return `
           <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
             <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
-              ${completed ? 'checked' : ''} onchange="togglePlatformTodo('${todo.id}')">
+              ${completed ? 'checked' : ''} onchange="togglePlatformTodo('${todo.id}', this)">
             <div class="todo-copy">
               <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
               ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
@@ -444,30 +501,52 @@
 
     async function renderPlatformDashboard() {
       const summaryCards = document.getElementById('platform-summary-cards');
-      const schools = await PLATFORM.getSchoolRecords();
-      const summary = PLATFORM.getDashboardSummary(schools);
-      const activeStatus = window.EDUGNAY_CONFIG.values.statuses.ACTIVE;
+      const schoolList = document.getElementById('platform-school-list');
+      if (window.EDUGNAY_API?.isBackendAvailable) {
+        summaryCards.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school records', text: 'Please wait while the platform data is loaded.' });
+        schoolList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school records', text: 'Please wait while the platform data is loaded.' });
+        document.getElementById('platform-activity-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading activity', text: 'Please wait while recent activity is loaded.' });
+      }
 
-      summaryCards.innerHTML = summary.map(card => `
-        <article class="stat-card ${card.tone}">
-          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div></div>
-          <div class="stat-card-num">${card.value}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div>
-        </article>`).join('');
+      let schools = [];
+      try {
+        if (window.EDUGNAY_API?.isBackendAvailable) {
+          const session = await window.EDUGNAY_API.getCurrentUser();
+          if (session?.role !== 'platform_admin') throw new Error('This dashboard requires a platform administrator session.');
+          const greeting = document.getElementById('platform-welcome');
+          if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Platform Admin'}!`;
+        }
+        schools = await PLATFORM.getSchoolRecords();
+        const summary = PLATFORM.getDashboardSummary(schools);
+        summaryCards.innerHTML = summary.map(card => `
+          <article class="stat-card ${escapeHtml(card.tone)}">
+            <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${escapeHtml(card.icon)}" style="width:20px;height:20px;"></i></div></div>
+            <div class="stat-card-num">${card.value}</div><div class="stat-card-label">${escapeHtml(card.label)}</div><div class="stat-card-sub">${escapeHtml(card.sub)}</div>
+          </article>`).join('');
 
-      document.getElementById('platform-school-list').innerHTML = schools.length ? schools.slice(0, 4).map(school => {
-        const status = school.platformStatus;
-        const safeStatus = escapeHtml(status);
-        const type = escapeHtml(school.typeLabel || school.schoolType);
-        const logo = school.logoUrl
-          ? `<img src="${escapeHtml(school.logoUrl)}" alt="" onerror="this.parentElement.classList.remove('has-logo'); this.remove();">`
-          : '';
-        return `<article class="school-directory-row">
-          <div class="school-identity"><div class="school-logo${logo ? ' has-logo' : ''}" aria-hidden="true">${logo}<i data-lucide="building-2" style="width:16px;height:16px;"></i></div><div><div class="school-name">${escapeHtml(school.name)}</div><div class="school-meta">${type} · ${escapeHtml(school.schoolYear || 'School year not set')}</div></div></div>
-          <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail)}</div>
-          <div><span class="school-status ${safeStatus}"><i data-lucide="${status === activeStatus ? 'circle-check-big' : 'clock-3'}" style="width:13px;height:13px;"></i>${safeStatus}</span></div>
-        </article>`;
-      }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });
+        schoolList.innerHTML = schools.length ? schools.slice(0, 4).map(school => {
+          const status = String(school.platformStatus || 'inactive');
+          const safeStatus = escapeHtml(status);
+          const type = escapeHtml(school.typeLabel || school.schoolType);
+          return `<article class="school-directory-row">
+            <div class="school-identity"><div class="school-logo${school.logoUrl ? ' has-logo' : ''}" aria-hidden="true">${school.logoUrl ? `<img src="${escapeHtml(school.logoUrl)}" alt="" onerror="this.parentElement.classList.remove('has-logo'); this.remove();">` : ''}<i data-lucide="building-2" style="width:16px;height:16px;"></i></div><div><div class="school-name">${escapeHtml(school.name)}</div><div class="school-meta">${type} · ${escapeHtml(school.schoolYear || 'School year not set')}</div></div></div>
+            <div class="school-admin"><strong>${escapeHtml(school.administrator)}</strong><br>${escapeHtml(school.administratorSchoolEmail)}</div>
+            <div><span class="school-status ${safeStatus}"><i data-lucide="${status === 'active' ? 'circle-check-big' : status === 'pending' ? 'clock-3' : 'circle-x'}" style="width:13px;height:13px;"></i>${safeStatus}</span></div>
+          </article>`;
+        }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'school', title: 'No school accounts yet', text: 'Registered schools will appear here for platform administration.' });
+      } catch (error) {
+        const state = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'School records unavailable', text: error.message || 'Try again after the connection is restored.' });
+        summaryCards.innerHTML = state;
+        schoolList.innerHTML = state;
+      }
 
+      try {
+        PLATFORM_DASHBOARD_ACTIVITY = await PLATFORM.getActivityRecords();
+        PLATFORM_ACTIVITY_ERROR = '';
+      } catch (error) {
+        PLATFORM_DASHBOARD_ACTIVITY = [];
+        PLATFORM_ACTIVITY_ERROR = error.message || 'Try again after the connection is restored.';
+      }
       renderPlatformActivity();
 
       const quickActions = Array.isArray(PLATFORM.quickActions) ? PLATFORM.quickActions : [];
@@ -484,7 +563,7 @@
         await renderPlatformDashboard();
         await loadPlatformTodos();
       } catch (error) {
-        window.alert(error?.message || 'The platform dashboard could not be loaded.');
+        showAppToast(error?.message || 'The platform dashboard could not be loaded.', 'error');
       }
       renderPlatformTodos();
       renderPlatformWeek();

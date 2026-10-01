@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/materials.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <style>
@@ -24,27 +25,7 @@
 
 <body data-page-title="Learning Materials">
 
-  <!--
-  EJS CONVERSION MAP — student-materials.html
-  ─────────────────────────────────────────
-  - learningMaterials[] → shared records filtered to the student's enrolled section:
-                       { id, schoolId, sectionId, subjectId, teacherId, title, type,
-                         schoolYear, academicPeriodId, postedAt, fileSize, fileUrl,
-                         status, visibleToStudents, views }
-                       This is read-only for students — no upload/delete actions render here
-                       (those exist only on the teacher portal's Learning Materials tab).
-  - File download/view → route through GET /student/materials/:id/download (or signed URL),
-                       never expose raw storage paths client-side.
-
-  PARTIALS: same sidebar/topbar partials as dashboard (activeNav='materials').
-
-  CLIENT-SIDE BEHAVIOR THAT STAYS:
-    - Subject tab switching, search filter, and type filter are pure UI/display logic
-      over already-fetched data — fine to keep as JS after conversion UNLESS the
-      materials list per subject is large, in which case switching subjects should
-      become a real request (GET /student/materials?subject=:id) rather than holding
-      every subject's full file list in the page at once.
--->
+  <!-- Learning materials are loaded from the backend and rendered by JavaScript. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -90,7 +71,7 @@
         <a href="edugnay-student-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">3</span>
+
         </a>
       </div>
 

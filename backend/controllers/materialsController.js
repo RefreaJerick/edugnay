@@ -204,16 +204,21 @@ async function deleteMaterial(req, res, next) {
       fail('The stored file is invalid.', 500);
     }
     const filePath = path.join(materialUploadDirectory, material.storedFileName);
-    try {
-      await fs.promises.unlink(filePath);
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
     const [result] = await database.execute(
       'DELETE FROM learning_materials WHERE id = ? AND school_id = ? AND teacher_user_id = ?',
       [material.id, req.user.schoolId, req.user.id]
     );
     if (!result.affectedRows) fail('This learning material is unavailable.', 404);
+    let fileCleanupPending = false;
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        fileCleanupPending = true;
+        console.error('A deleted learning material file needs cleanup.');
+      }
+    }
+    if (fileCleanupPending) return res.status(200).json({ deleted: true, fileCleanupPending: true });
     res.status(204).end();
   } catch (error) { next(error); }
 }

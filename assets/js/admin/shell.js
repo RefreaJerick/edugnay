@@ -28,32 +28,37 @@ function enforceSchoolAccess() {
 enforceSchoolAccess();
 const ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
 const ADMIN_READ_STORE_KEY = `edugnay_admin_notif_read:${ADMIN_SCHOOL_ID}`;
+// This in-memory list is refreshed from the grading-period reopen API.
+let ADMIN_REOPEN_REQUESTS = [];
 
-function getReopenRequests() {
-  return window.EDUGNAY_CONFIG.getReopenRequests({ schoolId: ADMIN_SCHOOL_ID });
+function getAdminReopenRequestCache() {
+  return ADMIN_REOPEN_REQUESTS;
+}
+
+async function refreshAdminReopenRequests() {
+  if (!window.EDUGNAY_API?.isBackendAvailable) return;
+  try {
+    ADMIN_REOPEN_REQUESTS = await window.EDUGNAY_API.getGradingPeriodReopenRequests();
+    renderTopbarNotifs();
+  } catch (error) {
+    console.warn('Grading-period reopen requests could not be loaded.', error.message);
+  }
 }
 
 function getReopenRequestDetails(request) {
-  const teacher = window.EDUGNAY_CONFIG.getUserById(request.teacherId);
-  const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === request.sectionId);
-  const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === request.subjectId);
   return {
-    teacher: teacher?.displayName || request.teacher || 'Teacher',
-    section: section ? `${section.grade} – ${section.name}` : request.section || 'Section',
-    subject: subject?.name || request.subject || 'Subject'
+    teacher: request.teacher || request.teacherName || 'Teacher',
+    section: request.section || request.sectionName || 'Section',
+    subject: request.subject || request.subjectName || 'Subject'
   };
 }
 
 function getReopenPeriodName(request) {
-  const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === request.sectionId);
-  const periodId = request.academicPeriodId || request.quarter?.toLowerCase();
-  return window.EDUGNAY_CONFIG.getAcademicPeriods(ADMIN_SCHOOL_ID, section?.level)
-    .find(period => period.id === periodId)?.name || 'Grading period';
+  return request.academicTermName || 'Grading period';
 }
 
 /* ── NOTIFICATIONS DATA ──
-   Replace this local array with the signed-in school admin's notification
-   response later. Reopen requests remain local for now and are merged below. */
+   Reopen-request notifications are derived from the database-backed request API. */
 const ADMIN_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 
 function getAcademicPeriodNotifications() {
@@ -121,9 +126,9 @@ let NOTIFICATIONS = [
 let BACKEND_COMMUNICATION = false;
 
 /* ── ADMIN ACTIVITY DATA (shared by the dashboard and activity page) ──
-   TODO on backend conversion: replace this local array with records from
-   GET /admin/activity (scoped to the authenticated school). */
-const ADMIN_ACTIVITY = [
+   Historical mock records below are disabled; live data comes from the API.
+   GET /api/school/activity serves the dashboard and full activity page. */
+/* const ADMIN_ACTIVITY = [
   {
     id: 'admin-activity-announcement-001',
     schoolId: 'scc',
@@ -221,34 +226,38 @@ const ADMIN_ACTIVITY = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
   }
 ]
-  .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
+  .filter(record => record.schoolId === ADMIN_SCHOOL_ID); */
 
 function getAdminNotifItems() {
+  const reopenNotifications = getAdminReopenRequestCache()
+    .filter(request => request.status === 'pending')
+    .map(request => {
+      const details = getReopenRequestDetails(request);
+      return {
+        id: `admin-notif-reopen-${request.id}`,
+        schoolId: ADMIN_SCHOOL_ID,
+        icon: 'unlock',
+        tone: 'gold',
+        type: 'Reopen request',
+        title: `Reopen requested: ${getReopenPeriodName(request)}`,
+        message: `${details.teacher} · ${details.section} · ${details.subject}`,
+        read: false,
+        link: { page: 'system-config', hash: 'reopen-requests' },
+        createdAt: request.requestedAt
+      };
+    });
+
   if (BACKEND_COMMUNICATION) {
-    return [...NOTIFICATIONS].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return [...NOTIFICATIONS, ...reopenNotifications].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
   const currentNotifications = [...getAcademicPeriodNotifications(), ...NOTIFICATIONS];
   window.EDUGNAY_CONFIG.applyNotificationReadState(currentNotifications, ADMIN_READ_STORE_KEY);
   const readIds = window.EDUGNAY_CONFIG.getNotificationReadIds(ADMIN_READ_STORE_KEY);
   const localNotifications = currentNotifications.map(notification => ({ ...notification }));
-  const reopenNotifications = getReopenRequests()
-    .filter(r => r.status === 'pending')
-    .map(r => {
-      const details = getReopenRequestDetails(r);
-      return {
-        id: `admin-notif-reopen-${r.id}`,
-        schoolId: ADMIN_SCHOOL_ID,
-        icon: 'unlock',
-        tone: 'gold',
-        type: 'Reopen request',
-        title: `Reopen requested: ${getReopenPeriodName(r)}`,
-        message: `${details.teacher} - ${details.section} · ${details.subject}`,
-        read: readIds.includes(`admin-notif-reopen-${r.id}`),
-        link: { page: 'system-config', hash: 'reopen-requests' },
-        createdAt: r.requestedAt
-      };
-    });
+  reopenNotifications.forEach(notification => {
+    notification.read = readIds.includes(notification.id);
+  });
 
   return [...localNotifications, ...reopenNotifications]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -318,10 +327,10 @@ function navigate(page, hash) {
 }
 
 window.EDUGNAY_ADMIN = {
-  activities: ADMIN_ACTIVITY,
   notifications: NOTIFICATIONS,
   getNotifications: getAdminNotifItems,
-  notificationStorageKey: ADMIN_READ_STORE_KEY
+  notificationStorageKey: ADMIN_READ_STORE_KEY,
+  refreshReopenRequests: refreshAdminReopenRequests
 };
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -386,7 +395,7 @@ function ensureAdminConfigurationNav() {
 
 /* ── ACTIVE NAV ITEM ON CLICK ── */
 document.addEventListener('DOMContentLoaded', async () => {
-  await window.EDUGNAY_COMMUNICATION_READY;
+  await Promise.all([window.EDUGNAY_COMMUNICATION_READY, refreshAdminReopenRequests()]);
   ensureAdminConfigurationNav();
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function () {
@@ -398,3 +407,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderTopbarNotifs();
 });
+
+window.addEventListener('grading-period-reopen-requests-updated', refreshAdminReopenRequests);

@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -354,10 +355,14 @@ async function saveSectionAttendance(req, res, next) {
       );
     }
 
+    for (const record of records) {
+      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, section.schoolId, sectionId, subjectId, record.studentId);
+    }
+
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'manual'))`,
-      [section.schoolId, req.user.id, sessionId, attendanceDate, subjectId]
+      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'manual', 'summary', ?))`,
+      [section.schoolId, req.user.id, sessionId, attendanceDate, subjectId, `${section.name} · Subject ${subjectId} · ${attendanceDate}`]
     );
 
     await connection.commit();
@@ -427,8 +432,15 @@ async function getParentAttendance(req, res, next) {
 
 async function getSchoolAttendanceSummary(req, res, next) {
   try {
-    await assertAttendanceFeatureEnabled(getDatabase(), req.user.schoolId);
-    const [rows] = await getDatabase().execute(
+    const database = getDatabase();
+    await assertAttendanceFeatureEnabled(database, req.user.schoolId);
+    const yearId = req.query?.academicYearId === undefined ? null : parseId(req.query.academicYearId, 'academic year ID');
+    if (yearId) {
+      const [years] = await database.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1', [yearId, req.user.schoolId]);
+      if (!years.length) throw createError('Academic year not found.', 404);
+    }
+    const yearFilter = yearId ? 'academic_years.id = ?' : "academic_years.status = 'active'";
+    const [rows] = await database.execute(
       `SELECT sections.id AS sectionId, sections.name AS sectionName,
         school_grade_levels.display_name AS grade,
         attendance_records.student_user_id AS studentId,
@@ -439,14 +451,14 @@ async function getSchoolAttendanceSummary(req, res, next) {
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
-      WHERE attendance_sessions.school_id = ? AND academic_years.status = 'active'
+      WHERE attendance_sessions.school_id = ? AND ${yearFilter}
         AND attendance_sessions.subject_id IS NOT NULL
         AND attendance_sessions.status = 'confirmed'
         AND attendance_sessions.attendance_date <= ?
         AND attendance_sessions.attendance_date BETWEEN academic_years.start_date AND academic_years.end_date
       GROUP BY sections.id, sections.name, school_grade_levels.display_name,
         attendance_records.student_user_id, attendance_records.attendance_status`,
-      [req.user.schoolId, getCurrentDate()]
+      yearId ? [req.user.schoolId, yearId, getCurrentDate()] : [req.user.schoolId, getCurrentDate()]
     );
     const sections = new Map();
     const counts = { present: 0, absent: 0, late: 0, excused: 0 };
@@ -469,8 +481,13 @@ async function getSchoolAttendanceSummary(req, res, next) {
       grades.set(section.grade, group);
     });
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+    const attendanceRate = total ? Math.round(((counts.present + counts.late) / total) * 100) : null;
     const colors = { present: 'var(--green)', late: 'var(--orange)', absent: 'var(--red)', excused: 'var(--blue-mid)' };
+    res.set('Cache-Control', 'no-store');
     res.json({
+      academicYearId: yearId ? String(yearId) : null,
+      attendanceRate,
+      attendanceRecordCount: total,
       attendanceByGrade: Array.from(grades.values()),
       attendanceBreakdown: total ? Object.entries(counts).map(([status, count]) => ({
         label: status[0].toUpperCase() + status.slice(1),

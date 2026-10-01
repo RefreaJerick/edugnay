@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/student/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -21,45 +22,13 @@
 
 <body data-page-title="Dashboard">
 
-  <!--
-  ════════════════════════════════════════════════════
-  EJS CONVERSION MAP — student-dashboard.html
-  ════════════════════════════════════════════════════
-  PARTIALS (mirror teacher/admin structure):
-    partials/student-sidebar.ejs  → sidebar block (pass activeNav='dashboard')
-    partials/student-topbar.ejs   → topbar block (pass pageTitle, pageEyebrow)
-
-  SERVER DATA:
-    - studentName, gradeSection, avatarUrl → session/student record. avatarUrl is
-      optional — if absent, render initials fallback (see greeting-avatar below).
-    - currentDate, currentDayLabel         → server time, NOT client Date() once
-      converted, so it can't be spoofed/skewed by the student's device clock.
-    - summary stats (attendanceRate,
-      materialsCount, journalWeeksCount)   → aggregate queries
-    - announcements[]                      → announcements table, filtered to student's grade level
-    - journalPrompt (if the school enables Journals)  → active journal window config
-    - materials[]                          → learning materials, filtered to enrolled sections
-
-  CONDITIONAL RENDERING:
-    - Journal panel only renders if the school enables Journals
-    - Notification dot only renders if unreadCount > 0
-    - Greeting avatar: <% if (student.avatarUrl) { %><img src="<%= student.avatarUrl %>"><% } else { %>initials<% } %>
-
-  REMOVED: this banner previously showed the student's quarter grade/average with
-  released/pending/not-started states. The dashboard banner is identity/greeting only and must
-  NEVER surface a grade number, even indirectly (no "on track" language, no remark
-  pills tied to academic performance).
-
-  ROUTES: swap static .html hrefs for real Express routes once available
-    (student materials and journal pages, etc.) — filenames are consistent
-    so this is a mechanical find/replace later.
--->
+  <!-- Page JavaScript loads dashboard data for the signed-in student. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
 
     <!-- ══════ SIDEBAR ══════ -->
-    <!-- → partials/student-sidebar.ejs -->
+    <!-- Page JavaScript loads dashboard data for the signed-in student. -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-crest">
@@ -101,7 +70,7 @@
         <a href="edugnay-student-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">3</span>
+
         </a>
       </div>
 
@@ -115,7 +84,7 @@
     </aside>
 
     <!-- ══════ TOPBAR ══════ -->
-    <!-- → partials/student-topbar.ejs -->
+    <!-- Page JavaScript loads dashboard data for the signed-in student. -->
     <header class="topbar">
       <div class="topbar-left">
         <div class="topbar-context" aria-label="Dashboard page">
@@ -283,10 +252,8 @@
 
   <script>
     lucide.createIcons();
-    const DASHBOARD_STUDENT_ID = 'jd-004';
-    const dashboardStudent = window.EDUGNAY_CONFIG.getUserById(DASHBOARD_STUDENT_ID);
+    const STUDENT_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
-    if (dashboardPeriod && dashboardStudent?.schoolLevel) dashboardPeriod.dataset.schoolLevel = dashboardStudent.schoolLevel;
 
     let JOURNAL = [];
 
@@ -363,26 +330,10 @@
       png: { icon: 'image', tone: 'gold' }
     };
     let MATERIALS_ERROR = '';
-    let MATERIALS = (window.EDUGNAY_API?.isBackendAvailable ? []
-      : window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(DASHBOARD_STUDENT_ID))
-      .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
-      .slice(0, 3)
-      .map(material => {
-        const display = MATERIAL_TYPE_DISPLAY[material.type] || MATERIAL_TYPE_DISPLAY.pdf;
-        const postedDate = new Date(material.postedAt);
-        return {
-          ...material,
-          subject: material.subjectName || 'Subject',
-          posted: Number.isNaN(postedDate.getTime())
-            ? 'Date unavailable'
-            : `Posted ${postedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
-          icon: display.icon,
-          tone: display.tone
-        };
-      });
+    let MATERIALS_LOADING = true;
+    let MATERIALS = [];
 
     async function loadDashboardMaterials() {
-      if (!window.EDUGNAY_API?.isBackendAvailable) return;
       try {
         const materials = await window.EDUGNAY_API.getMaterials();
         MATERIALS = materials.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt))
@@ -395,11 +346,16 @@
               icon: display.icon, tone: display.tone };
           });
         MATERIALS_ERROR = '';
-      } catch (error) { MATERIALS = []; MATERIALS_ERROR = error.message; }
+      } catch (error) { MATERIALS = []; MATERIALS_ERROR = error.message || 'Try again after the connection is restored.'; }
+      finally { MATERIALS_LOADING = false; }
     }
 
-    let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('students');
-    const UPCOMING_ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(DASHBOARD_STUDENT_ID).slice(0, 3);
+    let ANNOUNCEMENTS = [];
+    let ANNOUNCEMENTS_ERROR = '';
+    let ANNOUNCEMENTS_LOADING = true;
+    let UPCOMING_ASSIGNMENTS = [];
+    let ASSIGNMENTS_LOADING = true;
+    let ASSIGNMENTS_ERROR = '';
 
     const DASHBOARD_ASSIGNMENT_STATUS = {
       pending: { label: 'Pending', icon: 'clock-3' },
@@ -423,6 +379,17 @@
       const container = document.getElementById('student-upcoming-assignments');
       if (!container) return;
 
+      if (ASSIGNMENTS_LOADING) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while your assignments are loaded.' });
+        lucide.createIcons();
+        return;
+      }
+      if (ASSIGNMENTS_ERROR) {
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Assignments unavailable', text: ASSIGNMENTS_ERROR });
+        lucide.createIcons();
+        return;
+      }
+
       if (!UPCOMING_ASSIGNMENTS.length) {
         container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-check', title: 'No assignments yet', text: 'Assignments shared by your teachers will appear here.' });
         lucide.createIcons();
@@ -434,7 +401,7 @@
         const date = getAssignmentDateMeta(item.dueDate);
         const title = window.EDUGNAY_CONFIG.escapeHtml(item.title);
         const subject = window.EDUGNAY_CONFIG.escapeHtml(item.subject);
-        const statusClass = item.status;
+        const statusClass = window.EDUGNAY_CONFIG.escapeHtml(item.status);
 
         return `
           <a class="assignment-preview-row ${statusClass}" href="edugnay-student-assignments.html"
@@ -457,6 +424,28 @@
       lucide.createIcons();
     }
 
+    async function loadDashboardAssignments() {
+      ASSIGNMENTS_LOADING = true;
+      try {
+        const now = new Date();
+        const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const assignments = (await window.EDUGNAY_API.getAssignments())
+          .filter(item => item.status === 'published' && item.dueDate && item.dueDate >= today)
+          .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
+          .slice(0, 3);
+        UPCOMING_ASSIGNMENTS = await Promise.all(assignments.map(async item => {
+          const submissions = await window.EDUGNAY_API.getAssignmentSubmissions(item.apiId || item.id);
+          return { ...item, status: submissions[0]?.status || 'pending' };
+        }));
+        ASSIGNMENTS_ERROR = '';
+      } catch (error) {
+        UPCOMING_ASSIGNMENTS = [];
+        ASSIGNMENTS_ERROR = error.message || 'Try again after the connection is restored.';
+      } finally {
+        ASSIGNMENTS_LOADING = false;
+      }
+    }
+
     function renderStudentDashboardLists() {
       const toneStyles = {
         blue: 'background:var(--blue-xpale);color:var(--blue-mid);',
@@ -465,7 +454,9 @@
       };
       const materials = document.getElementById('student-materials-list');
       if (materials) {
-        materials.innerHTML = MATERIALS_ERROR
+        materials.innerHTML = MATERIALS_LOADING
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading materials', text: 'Please wait while your learning materials are loaded.' })
+          : MATERIALS_ERROR
           ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Materials unavailable', text: MATERIALS_ERROR })
           : MATERIALS.length ? MATERIALS.map(item => `
           <div class="material-row" onclick="location.href='edugnay-student-materials.html'">
@@ -478,12 +469,16 @@
       const announcements = document.getElementById('student-announcements-list');
       if (announcements) {
         const visibleAnnouncements = ANNOUNCEMENTS.filter(item => !item.access || studentCanAccess(item.access));
-        announcements.innerHTML = visibleAnnouncements.length ? visibleAnnouncements.map(item => `
+        announcements.innerHTML = ANNOUNCEMENTS_LOADING
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' })
+          : ANNOUNCEMENTS_ERROR
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: ANNOUNCEMENTS_ERROR })
+          : visibleAnnouncements.length ? visibleAnnouncements.map(item => `
           <div class="ann-item" onclick="location.href='edugnay-student-announcements.html'">
-            <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
+            <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
             ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
             <div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div>
-            <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div>
+            <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.time)}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.author)}</div>
           </div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
       renderUpcomingAssignments();
@@ -491,23 +486,51 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      if (STUDENT_DASHBOARD_API_ENABLED) {
+        document.getElementById('student-upcoming-assignments').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Please wait while your assignments are loaded.' });
+        document.getElementById('student-materials-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading materials', text: 'Please wait while your learning materials are loaded.' });
+        document.getElementById('student-announcements-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' });
+        try {
+          const session = await window.EDUGNAY_API.getCurrentUser();
+          if (session?.role !== 'student') throw new Error('This dashboard requires a student session.');
+          const greeting = document.getElementById('greeting-time-label');
+          if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Student'}!`;
+          const sections = await window.EDUGNAY_API.getSections();
+          if (dashboardPeriod && sections[0]?.level) {
+            dashboardPeriod.dataset.schoolLevel = sections[0].level;
+            window.refreshEdUgnayShellContext?.();
+          }
+        } catch (error) {
+          ASSIGNMENTS_ERROR = error.message || 'Your account data could not be loaded.';
+          MATERIALS_ERROR = ASSIGNMENTS_ERROR;
+          MATERIALS_LOADING = false;
+        }
+      } else {
+        const message = 'The backend is required to load student dashboard data.';
+        ASSIGNMENTS_ERROR = message;
+        MATERIALS_ERROR = message;
+        ANNOUNCEMENTS_ERROR = message;
+        ASSIGNMENTS_LOADING = false;
+        MATERIALS_LOADING = false;
+      }
       await window.EDUGNAY_COMMUNICATION_READY;
       if (window.EDUGNAY_COMMUNICATION?.backend) {
         ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+        ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION.error || '';
+      } else if (STUDENT_DASHBOARD_API_ENABLED && window.EDUGNAY_COMMUNICATION?.error) {
+        ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION.error;
+      } else if (!STUDENT_DASHBOARD_API_ENABLED) {
+        ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
       }
+      ANNOUNCEMENTS_LOADING = false;
       await loadStudentJournalCard();
       await loadDashboardMaterials();
+      await loadDashboardAssignments();
       renderStudentDashboardLists();
       renderWeekCalendar();
     });
 
-    /*
-      EJS NOTE: this entire greeting block is a client-side placeholder.
-      On conversion, the server should render the correct time-of-day greeting,
-      the formatted current date, and the avatar (image or initials) directly —
-      no client Date() needed, since relying on the browser clock is both
-      spoofable and inconsistent with server-side school-day boundaries.
-    */
+    <!-- Page JavaScript loads dashboard data for the signed-in student. -->
 
     function renderWeekCalendar() {
       const grid = document.getElementById('weekCalendarGrid');

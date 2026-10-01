@@ -1,5 +1,4 @@
-/* EJS NOTE: moves to assets/css/student/materials.css. Uses shared tokens only —
-       no new color system, consistent with the dashboard styling already converted. */
+/* Student materials styles use the shared portal design tokens. */
 
 /* ── Subject tabs — same pill-tab pattern as journals/grades pages ── */
 /* Shared subject tab pattern */

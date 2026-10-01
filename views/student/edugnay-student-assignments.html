@@ -13,17 +13,14 @@
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/student/assignments.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/student/shell.js"></script>
 </head>
 
 <body data-page-title="Assignments">
 
-  <!--
-    EJS CONVERSION MAP
-    assignments[] comes from the shared school assignment source. The page
-    only adds the current student's submission status to each record.
-  -->
+  <!-- Assignments and submission status are loaded from the backend and rendered by JavaScript. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -68,7 +65,7 @@
         <a href="edugnay-student-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">3</span>
+
         </a>
       </div>
 
@@ -493,15 +490,23 @@
     async function submitStudentAssignment() {
       if (!activeSubmissionAssignmentId || !validateAssignmentSubmission()) return;
 
+      const button = document.getElementById('assignmentSubmissionSubmit');
+      if (button.disabled) return;
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Submitting...';
       const file = document.getElementById('assignmentSubmissionFile').files[0];
       if (BACKEND_ASSIGNMENTS_ENABLED) {
         try {
           await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
           const refreshed = await loadBackendAssignments();
-          if (!refreshed) alert('Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.');
+          showAppToast(refreshed ? 'Assignment submitted.' : 'Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.', refreshed ? 'success' : 'info');
         } catch (error) {
-          alert(error.message);
+          showAppToast(error.message || 'The assignment could not be submitted.', 'error');
           return;
+        } finally {
+          button.disabled = false;
+          button.textContent = originalLabel;
         }
         closeAssignmentSubmissionModal();
         renderFilterTabs();
@@ -519,7 +524,11 @@
         fileUrl: null
       });
 
-      if (!submission) return;
+      if (!submission) {
+        button.disabled = false;
+        button.textContent = originalLabel;
+        return;
+      }
 
       ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
       STUDENT_SUBMISSIONS = window.EDUGNAY_CONFIG.getAssignmentSubmissions()
@@ -527,6 +536,9 @@
       closeAssignmentSubmissionModal();
       renderFilterTabs();
       renderAssignments();
+      showAppToast('Assignment saved in local demo data.', 'info');
+      button.disabled = false;
+      button.textContent = originalLabel;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {

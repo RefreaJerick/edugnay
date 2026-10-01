@@ -213,7 +213,7 @@ document.addEventListener('keydown', e => {
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
   await window.EDUGNAY_COMMUNICATION_READY;
-  const backendEnabled = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  const backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   if (backendEnabled) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
   } else if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;

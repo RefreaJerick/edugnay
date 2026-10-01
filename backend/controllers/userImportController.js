@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
 const { getDatabase } = require('../config/database');
+const { writeAuditLog } = require('../utils/auditLog');
 const { sendAccountCreatedEmail } = require('../config/email');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
 
@@ -319,6 +320,9 @@ async function importUsers(req, res, next) {
       if (role === 'teacher') await connection.execute('INSERT INTO teacher_profiles (user_id, employee_number) VALUES (?, ?)', [account.id, account.employeeNo]);
       if (role === 'school_admin') await connection.execute('INSERT INTO school_admin_profiles (user_id, employee_number) VALUES (?, ?)', [account.id, account.employeeNo]);
     }
+    await writeAuditLog(connection, req, 'users_imported', 'user_import', null, {
+      summary: `${accounts.length} ${role.replace(/_/g, ' ')} accounts`
+    }, schoolId);
     await connection.commit();
 
     const deliveries = await Promise.all(accounts.map(account => sendAccountCreatedEmail({

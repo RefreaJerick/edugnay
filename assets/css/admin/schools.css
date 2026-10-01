@@ -1037,21 +1037,6 @@
   border-top: 1px solid var(--gray-200);
 }
 
-.school-notice {
-  display: none;
-  margin-bottom: 16px;
-  padding: 11px 13px;
-  border: 1px solid var(--green-border);
-  border-radius: var(--radius-sm);
-  background: var(--green-pale);
-  color: var(--green-darker);
-  font-size: 11px;
-}
-
-.school-notice.show {
-  display: block;
-}
-
 .school-type-chip {
   display: inline-flex;
   margin-top: 5px;

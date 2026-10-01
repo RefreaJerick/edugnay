@@ -1,18 +1,93 @@
 /* Shared shell behavior for every portal role. */
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
-const EDUGNAY_API_BASE_URL = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
-  ? `${window.location.protocol}//${window.location.hostname}:3000/api`
-  : '';
+const EDUGNAY_API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
+const TOAST_SOUND_STORAGE_KEY = 'edugnay_toast_sounds_enabled';
+
+let appToastTimer;
+let toastSoundsEnabled = true;
+let toastAudioContext = null;
+let lastToastSound = { message: '', type: '', at: 0 };
+try { toastSoundsEnabled = localStorage.getItem(TOAST_SOUND_STORAGE_KEY) !== 'false'; } catch {}
+
+function prepareToastAudio() {
+  if (!toastSoundsEnabled) return null;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  try {
+    if (!toastAudioContext) toastAudioContext = new AudioContext();
+    if (toastAudioContext.state === 'suspended') toastAudioContext.resume().catch(() => {});
+    return toastAudioContext;
+  } catch { return null; }
+}
+
+async function playToastSound(type, message) {
+  if (!toastSoundsEnabled) return;
+  const now = Date.now();
+  if (lastToastSound.message === message && lastToastSound.type === type && now - lastToastSound.at < 1000) return;
+  const context = prepareToastAudio();
+  if (!context) return;
+  const notes = type === 'error' ? [392] : type === 'info' ? [440] : [523, 659];
+  try {
+    if (context.state === 'suspended') await context.resume();
+    if (!toastSoundsEnabled || context.state !== 'running') return;
+    notes.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime + index * .09;
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(.0001, start);
+      gain.gain.linearRampToValueAtTime(.05, start + .015);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + .18);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.addEventListener('ended', () => {
+        oscillator.disconnect();
+        gain.disconnect();
+      }, { once: true });
+      oscillator.start(start);
+      oscillator.stop(start + .18);
+    });
+    lastToastSound = { message, type, at: now };
+  } catch { /* The visible toast still provides feedback. */ }
+}
+
+document.addEventListener('pointerdown', prepareToastAudio, { passive: true });
+document.addEventListener('keydown', prepareToastAudio);
+
+function showAppToast(message, type = 'success') {
+  if (!message) return;
+  let toast = document.getElementById('appToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'appToast';
+    toast.className = 'app-toast';
+    toast.innerHTML = '<span class="app-toast-message"></span><button type="button" class="app-toast-close" aria-label="Dismiss notification"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>';
+    toast.querySelector('button').addEventListener('click', () => {
+      clearTimeout(appToastTimer);
+      toast.hidden = true;
+    });
+    document.body.appendChild(toast);
+  }
+  clearTimeout(appToastTimer);
+  toast.className = `app-toast app-toast-${['success', 'error', 'info'].includes(type) ? type : 'info'}`;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+  toast.querySelector('.app-toast-message').textContent = String(message);
+  toast.hidden = false;
+  playToastSound(type, String(message));
+  appToastTimer = setTimeout(() => { toast.hidden = true; }, type === 'success' ? 4000 : 7000);
+}
 
 async function requestApi(path, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers || {})
     }
   });
@@ -29,7 +104,7 @@ async function requestApi(path, options = {}) {
 }
 
 async function requestApiFile(path, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
@@ -51,7 +126,7 @@ async function requestApiFile(path, options = {}) {
 }
 
 async function requestApiMultipart(path, formData, options = {}) {
-  if (!EDUGNAY_API_BASE_URL) throw new Error('The local backend is not available on this host.');
+  if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
 
   const response = await fetch(`${EDUGNAY_API_BASE_URL}${path}`, {
     ...options,
@@ -79,6 +154,11 @@ function normalizeApiUser(user) {
     ...user,
     id: String(user.id),
     apiId: Number(user.id),
+    sectionId: user.sectionId == null ? null : String(user.sectionId),
+    sectionName: user.sectionName || null,
+    gradeLevel: user.gradeLevel || null,
+    schoolLevel: user.schoolLevel || null,
+    strand: user.strand || null,
     status: user.accountStatus || 'active',
     employeeNo: profile.employeeNumber || null,
     lrn: profile.lrn || null,
@@ -99,6 +179,27 @@ async function getApiUsers(filters = {}) {
     users: Array.isArray(response?.users) ? response.users.map(normalizeApiUser).filter(Boolean) : [],
     pagination: response?.pagination || null
   };
+}
+
+async function getAllApiUsers(filters = {}) {
+  const requestedLimit = Number(filters.limit);
+  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0
+    ? Math.min(requestedLimit, 100)
+    : 100;
+  const firstPage = await getApiUsers({ ...filters, page: 1, limit });
+  const users = [...firstPage.users];
+  const total = Number(firstPage.pagination?.total);
+  const pageCount = Number.isFinite(total)
+    ? Math.ceil(total / (Number(firstPage.pagination?.limit) || limit))
+    : 1;
+
+  for (let page = 2; page <= pageCount; page += 1) {
+    const nextPage = await getApiUsers({ ...filters, page, limit });
+    if (!nextPage.users.length) break;
+    users.push(...nextPage.users);
+  }
+
+  return users;
 }
 
 async function getApiUser(userId) {
@@ -143,6 +244,13 @@ async function updateApiUser(userId, values = {}) {
   };
 }
 
+async function deleteApiUser(userId) {
+  const numericId = Number(userId);
+  if (!Number.isSafeInteger(numericId) || numericId < 1) throw new Error('The user ID is invalid.');
+  await requestApi(`/users/${numericId}`, { method: 'DELETE' });
+  return true;
+}
+
 async function setApiUserStatus(userId, status) {
   const numericId = Number(userId);
   if (!Number.isInteger(numericId) || numericId < 1) throw new Error('The user ID is invalid.');
@@ -156,7 +264,37 @@ async function setApiUserStatus(userId, status) {
 
 async function getApiSchoolSettings() {
   const response = await requestApi('/school/settings');
+  return response?.school ? { ...response.school, logoUrl: resolveApiSchoolLogo(response.school.logoUrl) } : null;
+}
+
+function resolveApiSchoolLogo(value) {
+  return typeof value === 'string' && /^\/api\/schools\/\d+\/logo$/.test(value)
+    ? new URL(value, EDUGNAY_API_BASE_URL).href : null;
+}
+
+async function registerApiSchool(values, logoFile) {
+  const body = new FormData();
+  body.append('payload', JSON.stringify(values));
+  if (logoFile) body.append('logo', logoFile);
+  const response = await requestApi('/schools/register', { method: 'POST', body });
   return response?.school || null;
+}
+
+async function updateApiSchoolLogo(file) {
+  const body = new FormData();
+  body.append('logo', file);
+  const response = await requestApi('/school/logo', { method: 'POST', body });
+  return response?.school ? { ...response.school, logoUrl: resolveApiSchoolLogo(response.school.logoUrl) } : null;
+}
+
+async function getApiParentNotificationTriggers() {
+  return requestApi('/school/parent-notification-triggers');
+}
+
+async function updateApiParentNotificationTriggers(triggers) {
+  return requestApi('/school/parent-notification-triggers', {
+    method: 'PATCH', body: JSON.stringify({ triggers })
+  });
 }
 
 async function updateApiSchoolSettings(values = {}) {
@@ -164,7 +302,7 @@ async function updateApiSchoolSettings(values = {}) {
     method: 'PATCH',
     body: JSON.stringify(values)
   });
-  return response?.school || null;
+  return response?.school ? { ...response.school, logoUrl: resolveApiSchoolLogo(response.school.logoUrl) } : null;
 }
 
 async function getApiPortalFeatures() {
@@ -614,6 +752,59 @@ async function saveApiStudentScore(values = {}) {
   return normalizeApiStudentScore(response?.studentScore || response?.score);
 }
 
+async function getApiGradingPeriodReopenRequests(filters = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'subjectId', 'academicTermId'].forEach(name => {
+    if (filters[name] !== undefined && filters[name] !== null && String(filters[name]).trim()) {
+      params.set(name, String(filters[name]).trim());
+    }
+  });
+  const query = params.toString();
+  const response = await requestApi(`/grading-period-reopen-requests${query ? `?${query}` : ''}`);
+  return Array.isArray(response?.requests) ? response.requests : [];
+}
+
+async function getApiGradeEditAccess(scope = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'subjectId', 'academicTermId'].forEach(name => {
+    if (scope[name] !== undefined && scope[name] !== null && String(scope[name]).trim()) {
+      params.set(name, String(scope[name]).trim());
+    }
+  });
+  const response = await requestApi(`/grading-period-reopen-requests/access?${params.toString()}`);
+  return response || null;
+}
+
+async function createApiGradingPeriodReopenRequest(values = {}) {
+  const response = await requestApi('/grading-period-reopen-requests', {
+    method: 'POST',
+    body: JSON.stringify({
+      sectionId: Number(values.sectionId),
+      subjectId: Number(values.subjectId),
+      academicTermId: Number(values.academicTermId),
+      reason: values.reason
+    })
+  });
+  return response?.request || null;
+}
+
+async function decideApiGradingPeriodReopenRequest(requestId, action, values = {}) {
+  const allowedActions = new Set(['approve', 'reject', 'extend', 'revoke']);
+  if (!allowedActions.has(action)) throw new Error('The reopen request action is invalid.');
+  const body = action === 'approve'
+    ? { expiresAt: values.expiresAt, adminNote: values.adminNote }
+    : action === 'reject'
+      ? { adminNote: values.adminNote }
+      : action === 'extend'
+        ? { expiresAt: values.expiresAt, reason: values.reason }
+        : { reason: values.reason };
+  const response = await requestApi(`/grading-period-reopen-requests/${Number(requestId)}/${action}`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return response?.request || null;
+}
+
 async function getApiFinalGradePreview(scope = {}) {
   const params = new URLSearchParams();
   ['sectionId', 'subjectId', 'academicTermId'].forEach(name => {
@@ -1002,8 +1193,30 @@ async function getApiParentAttendance() {
   return requestApi('/attendance/children');
 }
 
-async function getApiSchoolAttendanceSummary() {
-  return requestApi('/attendance/school-summary');
+async function getApiSchoolAttendanceSummary(academicYearId = '') {
+  const query = academicYearId ? `?academicYearId=${Number(academicYearId)}` : '';
+  return requestApi(`/attendance/school-summary${query}`);
+}
+
+async function getApiSchoolGradeSummary(academicYearId = '') {
+  const query = academicYearId ? `?academicYearId=${Number(academicYearId)}` : '';
+  return requestApi(`/reports/grade-summary${query}`);
+}
+
+async function getApiArchive() {
+  return requestApi('/archive');
+}
+
+async function getApiArchivedYear(yearId) {
+  const id = Number(yearId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('The academic year is invalid.');
+  return requestApi(`/archive/academic-years/${id}`);
+}
+
+async function archiveApiAcademicYear(yearId) {
+  const id = Number(yearId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('The academic year is invalid.');
+  return requestApi(`/archive/academic-years/${id}`, { method: 'POST' });
 }
 
 async function getApiStudentQr(studentId) {
@@ -1092,7 +1305,7 @@ function normalizeApiAnnouncement(record) {
     read: Boolean(record.isRead),
     pinned: false,
     icon: priority === 'high' ? 'alert-triangle' : priority === 'event' ? 'calendar-days' : 'megaphone',
-    iconClass: priority === 'high' ? 'icon-urgent' : priority === 'event' ? 'icon-event' : 'icon-normal',
+    iconClass: priority === 'high' ? 'icon-high' : priority === 'event' ? 'icon-event' : 'icon-normal',
     imageUrl: record.imagePath || null,
     createdAt: record.createdAt,
     publishedAt: record.publishedAt || null,
@@ -1147,14 +1360,33 @@ function normalizeApiNotification(record) {
   if (!record) return null;
   const type = String(record.type || 'notification').toLowerCase();
   const page = API_NOTIFICATION_PAGE_BY_TYPE[type] || 'notifications';
+  let link = { page };
+  if (type === 'grading_period_reopen') {
+    try {
+      const target = new URL(String(record.targetPath || ''), window.location.origin);
+      const sectionId = target.searchParams.get('sectionId') || '';
+      const subjectId = target.searchParams.get('subjectId') || '';
+      if (target.origin === window.location.origin
+        && target.pathname === '/views/teacher/edugnay-teacher-sections.html'
+        && /^\d+$/.test(sectionId)
+        && /^\d+$/.test(subjectId)
+        && target.searchParams.get('tab') === 'scores') {
+        link = { page: 'section', section: sectionId, subjectId, tab: 'scores' };
+      }
+    } catch {
+      link = { page: 'notifications' };
+    }
+  }
   const visual = {
+    school_account: { icon: 'building-2', tone: 'blue', label: 'School account' },
     announcement: { icon: 'megaphone', tone: 'gold', label: 'Announcement' },
     assignment: { icon: 'clipboard-list', tone: 'blue', label: 'Assignment' },
     grade: { icon: 'clipboard-pen', tone: 'orange', label: 'Grades' },
     attendance: { icon: 'user-check', tone: 'red', label: 'Attendance' },
     report: { icon: 'file-text', tone: 'orange', label: 'Report' },
     journal: { icon: 'notebook-pen', tone: 'purple', label: 'Journal' },
-    task: { icon: 'list-checks', tone: 'blue', label: 'Task' }
+    task: { icon: 'list-checks', tone: 'blue', label: 'Task' },
+    grading_period_reopen: { icon: 'clipboard-check', tone: 'blue', label: 'Grade access' }
   }[type] || { icon: 'bell', tone: 'gray', label: 'Notification' };
   return {
     id: String(record.id),
@@ -1165,7 +1397,7 @@ function normalizeApiNotification(record) {
     read: Boolean(record.isRead),
     title: String(record.title || ''),
     message: String(record.message || ''),
-    link: { page },
+    link,
     createdAt: record.createdAt
   };
 }
@@ -1185,11 +1417,14 @@ async function markAllApiNotificationsRead() {
 
 function normalizeApiTask(record) {
   if (!record) return null;
+  const dueDate = typeof record.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.dueDate)
+    ? record.dueDate
+    : null;
   return {
     id: String(record.id),
     apiId: Number(record.id),
     title: String(record.title || ''),
-    dueDate: record.dueDate || null,
+    dueDate,
     status: record.status === 'completed' ? 'completed' : 'pending',
     completedAt: record.completedAt || null,
     createdAt: record.createdAt || null,
@@ -1236,6 +1471,49 @@ async function loadApiCommunication(role) {
   return { backend: true, notifications, announcements, tasks };
 }
 
+async function getApiPlatformSchools() {
+  const response = await requestApi('/platform/schools');
+  return Array.isArray(response?.schools)
+    ? response.schools.map(school => ({ ...school, logoUrl: resolveApiSchoolLogo(school.logoUrl) })) : [];
+}
+
+async function getApiPlatformSchool(schoolId) {
+  const response = await requestApi(`/platform/schools/${Number(schoolId)}`);
+  return { ...response, school: { ...response.school, logoUrl: resolveApiSchoolLogo(response.school?.logoUrl) } };
+}
+
+async function changeApiPlatformSchool(schoolId, action, reason) {
+  if (!['approve', 'reject', 'suspend', 'reactivate'].includes(action)) throw new Error('School action is invalid.');
+  return requestApi(`/platform/schools/${Number(schoolId)}/${action}`, {
+    method: 'POST', body: JSON.stringify(reason ? { reason } : {})
+  });
+}
+
+async function getApiPlatformActivityPage(filters = {}) {
+  const params = new URLSearchParams();
+  ['limit', 'category', 'date', 'search', 'cursor'].forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && String(filters[key]).trim()) params.set(key, String(filters[key]).trim());
+  });
+  return requestApi(`/platform/activity?${params.toString()}`);
+}
+
+async function getApiSchoolActivityPage(filters = {}) {
+  const params = new URLSearchParams();
+  ['limit', 'category', 'date', 'search', 'cursor'].forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && String(filters[key]).trim()) {
+      params.set(key, String(filters[key]).trim());
+    }
+  });
+  return requestApi(`/school/activity?${params.toString()}`);
+}
+
+async function getApiDashboardActivity(scope) {
+  const response = scope === 'platform'
+    ? await getApiPlatformActivityPage({ limit: 4 })
+    : await getApiSchoolActivityPage({ limit: 4 });
+  return Array.isArray(response?.activities) ? response.activities : [];
+}
+
 function setApiSchoolContext(school, features = null) {
   window.EDUGNAY_API_SCHOOL_CONTEXT = school || null;
   window.EDUGNAY_API_PORTAL_FEATURES = features || null;
@@ -1252,12 +1530,18 @@ window.EDUGNAY_API = {
   isBackendAvailable: Boolean(EDUGNAY_API_BASE_URL),
   normalizeUser: normalizeApiUser,
   getUsers: getApiUsers,
+  getAllUsers: getAllApiUsers,
   getUser: getApiUser,
   createUser: createApiUser,
   updateUser: updateApiUser,
+  deleteUser: deleteApiUser,
   setUserStatus: setApiUserStatus,
   getSchoolSettings: getApiSchoolSettings,
+  getParentNotificationTriggers: getApiParentNotificationTriggers,
+  updateParentNotificationTriggers: updateApiParentNotificationTriggers,
   updateSchoolSettings: updateApiSchoolSettings,
+  updateSchoolLogo: updateApiSchoolLogo,
+  registerSchool: registerApiSchool,
   getPortalFeatures: getApiPortalFeatures,
   updatePortalFeatures: updateApiPortalFeatures,
   getAcademicStructure: getApiAcademicStructure,
@@ -1290,6 +1574,10 @@ window.EDUGNAY_API = {
   updateGradingItem: updateApiGradingItem,
   getStudentScores: getApiStudentScores,
   saveStudentScore: saveApiStudentScore,
+  getGradingPeriodReopenRequests: getApiGradingPeriodReopenRequests,
+  getGradeEditAccess: getApiGradeEditAccess,
+  createGradingPeriodReopenRequest: createApiGradingPeriodReopenRequest,
+  decideGradingPeriodReopenRequest: decideApiGradingPeriodReopenRequest,
   getFinalGradePreview: getApiFinalGradePreview,
   publishFinalGrades: publishApiFinalGrades,
   getFinalGrades: getApiFinalGrades,
@@ -1310,7 +1598,11 @@ window.EDUGNAY_API = {
   getParentAttendance: getApiParentAttendance,
   getParentChildren: getApiParentChildren,
   getStudentParents: getApiStudentParents,
+  getArchive: getApiArchive,
+  getArchivedYear: getApiArchivedYear,
+  archiveAcademicYear: archiveApiAcademicYear,
   getSchoolAttendanceSummary: getApiSchoolAttendanceSummary,
+  getSchoolGradeSummary: getApiSchoolGradeSummary,
   getStudentQr: getApiStudentQr,
   regenerateStudentQr: regenerateApiStudentQr,
   getAnnouncements: getApiAnnouncements,
@@ -1325,6 +1617,12 @@ window.EDUGNAY_API = {
   createTask: createApiTask,
   updateTask: updateApiTask,
   deleteTask: deleteApiTask,
+  getPlatformSchools: getApiPlatformSchools,
+  getPlatformSchool: getApiPlatformSchool,
+  changePlatformSchool: changeApiPlatformSchool,
+  getPlatformActivityPage: getApiPlatformActivityPage,
+  getDashboardActivity: getApiDashboardActivity,
+  getSchoolActivityPage: getApiSchoolActivityPage,
   loadCommunication: loadApiCommunication,
   setSchoolContext: setApiSchoolContext,
   setPortalFeatures: setApiPortalFeatures
@@ -1619,7 +1917,6 @@ function applyCurrentDateToGradingBanners() {
     assignmentStatuses: 'edugnay_assignment_statuses',
     assignmentSubmissions: 'edugnay_assignment_submissions',
     materials: 'edugnay_learning_materials',
-    todos: 'edugnay_user_todos',
     announcements: 'edugnay_announcements',
     reports: 'edugnay_reports',
     userProfiles: 'edugnay_user_profiles',
@@ -1711,13 +2008,6 @@ function applyCurrentDateToGradingBanners() {
     UPCOMING: 'upcoming',
     ACTIVE: 'active',
     CLOSED: 'closed'
-  };
-
-  const REOPEN_REQUEST_STATUSES = {
-    PENDING: 'pending',
-    APPROVED: 'approved',
-    REJECTED: 'rejected',
-    REVOKED: 'revoked'
   };
 
   function getDefaultPeriodType(level) {
@@ -2168,24 +2458,6 @@ function applyCurrentDateToGradingBanners() {
     return normalizedSchools;
   }
 
-  // Replace this localStorage implementation with POST /api/school-registrations.
-  async function createSchoolRegistration(registrationData = {}) {
-    const school = registrationData.school;
-    if (!school?.id) return null;
-
-    const schools = getSchools();
-    if (schools.some(record => record.id === school.id)) return null;
-
-    schools.push(school);
-    const savedSchools = saveSchools(schools);
-    return savedSchools.find(record => record.id === school.id) || null;
-  }
-
-  // Replace this local getter with GET /api/school-registrations/:id.
-  async function getSchoolRegistration(registrationId) {
-    return getSchools().find(school => school.id === registrationId) || null;
-  }
-
   // Replace this localStorage implementation with PATCH /api/schools/:id.
   function updateSchool(schoolId, updates = {}) {
     const schools = getSchools();
@@ -2219,7 +2491,7 @@ function applyCurrentDateToGradingBanners() {
     return clone(division?.academicPeriods?.find(period => period.id === division.activeAcademicPeriodId) || null);
   }
 
-  // Replace with GET /api/schools/:schoolId/academic-terms/:schoolLevel.
+  // Local fallback only. The API-backed settings page reads /api/academic-terms.
   async function getAcademicTermConfig(schoolId, schoolLevel) {
     const school = getSchools().find(record => record.id === schoolId);
     const division = school?.divisions?.[schoolLevel];
@@ -2282,7 +2554,7 @@ function applyCurrentDateToGradingBanners() {
     return [...new Set(errors)];
   }
 
-  // Replace with PUT /api/schools/:schoolId/academic-terms/:schoolLevel.
+  // Local fallback only. API-backed settings save through /api/academic-terms.
   async function saveAcademicTermConfig(schoolId, values = {}) {
     const schools = getSchools();
     const schoolIndex = schools.findIndex(record => record.id === schoolId);
@@ -2353,7 +2625,7 @@ function applyCurrentDateToGradingBanners() {
     });
   }
 
-  // Replace with POST /api/schools/:schoolId/academic-periods/:periodId/start.
+  // Local fallback only. API-backed pages start terms through POST /api/academic-terms/:termId/activate.
   async function startAcademicPeriod(schoolId, schoolLevel, periodId) {
     const schools = getSchools();
     const school = schools.find(record => record.id === schoolId);
@@ -2379,27 +2651,22 @@ function applyCurrentDateToGradingBanners() {
     return getAcademicTermConfig(schoolId, schoolLevel);
   }
 
-  // Replace with GET /api/schools/:schoolId/academic-periods/:periodId/close-readiness.
+  // API-backed close validation is performed by POST /api/academic-terms/:termId/complete.
   async function getAcademicPeriodCloseReadiness(schoolId, schoolLevel, periodId) {
     const school = getSchools().find(record => record.id === schoolId);
     const division = school?.divisions?.[schoolLevel];
     const period = division?.academicPeriods?.find(item => item.id === periodId);
     if (!period) throw new Error('Academic period not found.');
 
-    const sectionIds = new Set((division.sections || []).map(section => section.id));
-
-    const reopenRequests = getReopenRequests({ schoolId, academicPeriodId: periodId })
-      .filter(request => sectionIds.has(request.sectionId)
-        && request.status === REOPEN_REQUEST_STATUSES.PENDING);
     return {
       academicPeriodId: periodId,
-      canClose: reopenRequests.length === 0,
-      blockingIssues: reopenRequests.length ? [`${reopenRequests.length} reopen request${reopenRequests.length === 1 ? '' : 's'} must be resolved.`] : [],
+      canClose: true,
+      blockingIssues: [],
       warnings: []
     };
   }
 
-  // Replace with POST /api/schools/:schoolId/academic-periods/:periodId/close.
+  // Local fallback only. API-backed pages close terms through POST /api/academic-terms/:termId/complete.
   async function closeAcademicPeriod(schoolId, schoolLevel, periodId) {
     const readiness = await getAcademicPeriodCloseReadiness(schoolId, schoolLevel, periodId);
     if (!readiness.canClose) throw new Error(readiness.blockingIssues[0]);
@@ -2418,7 +2685,7 @@ function applyCurrentDateToGradingBanners() {
     return getAcademicTermConfig(schoolId, schoolLevel);
   }
 
-  // Replace with PATCH /api/schools/:schoolId/academic-periods/:periodId/end-date.
+  // Local fallback only. API-backed pages extend terms through POST /api/academic-terms/:termId/extend.
   async function extendAcademicPeriod(schoolId, schoolLevel, periodId, values = {}) {
     const schools = getSchools();
     const school = schools.find(record => record.id === schoolId);
@@ -2451,233 +2718,6 @@ function applyCurrentDateToGradingBanners() {
     if (daysRemaining === 0) return { tone: 'warning', label: 'Ends today', daysRemaining };
     if (daysRemaining <= 7) return { tone: 'warning', label: `Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`, daysRemaining };
     return null;
-  }
-
-  function normalizeReopenRequest(record = {}) {
-    const requestedAt = record.requestedAt || record.createdAt || null;
-    const status = record.status === 'denied' ? REOPEN_REQUEST_STATUSES.REJECTED : record.status;
-    return {
-      id: String(record.id || ''),
-      schoolId: String(record.schoolId || ''),
-      teacherId: String(record.teacherId || ''),
-      sectionId: String(record.sectionId || ''),
-      subjectId: String(record.subjectId || ''),
-      academicPeriodId: String(record.academicPeriodId || record.quarter || '').toLowerCase(),
-      reason: String(record.reason || '').trim(),
-      status: Object.values(REOPEN_REQUEST_STATUSES).includes(status)
-        ? status
-        : REOPEN_REQUEST_STATUSES.PENDING,
-      adminNote: String(record.adminNote || '').trim() || null,
-      requestedAt,
-      reviewedAt: record.reviewedAt || null,
-      reviewedBy: record.reviewedBy || null,
-      expiresAt: record.expiresAt || null,
-      extendedAt: record.extendedAt || null,
-      extendedBy: record.extendedBy || null,
-      extensionReason: String(record.extensionReason || '').trim() || null,
-      previousExpiresAt: record.previousExpiresAt || null,
-      revokedAt: record.revokedAt || null,
-      revokedBy: record.revokedBy || null,
-      revokeReason: String(record.revokeReason || '').trim() || null
-    };
-  }
-
-  function reopenRequestStorageKey(schoolId) {
-    return `edugnay_reopen_requests:${schoolId}`;
-  }
-
-  function getReopenRequests(filters = {}) {
-    const schoolId = String(filters.schoolId || getActiveSchoolId());
-    return readJson(reopenRequestStorageKey(schoolId), [])
-      .map(normalizeReopenRequest)
-      .filter(request => request.schoolId === schoolId)
-      .filter(request => !filters.teacherId || request.teacherId === String(filters.teacherId))
-      .filter(request => !filters.sectionId || request.sectionId === String(filters.sectionId))
-      .filter(request => !filters.subjectId || request.subjectId === String(filters.subjectId))
-      .filter(request => !filters.academicPeriodId || request.academicPeriodId === String(filters.academicPeriodId))
-      .filter(request => !filters.status || request.status === filters.status);
-  }
-
-  function saveReopenRequests(schoolId, requests) {
-    writeJson(reopenRequestStorageKey(schoolId), requests.map(normalizeReopenRequest));
-  }
-
-  function getReopenRequestState(request, now = Date.now()) {
-    if (request?.status === REOPEN_REQUEST_STATUSES.APPROVED) {
-      const expiresAt = new Date(request.expiresAt || '').getTime();
-      return Number.isFinite(expiresAt) && now < expiresAt
-        ? REOPEN_REQUEST_STATUSES.APPROVED
-        : 'expired';
-    }
-    return request?.status || null;
-  }
-
-  function isReopenRequestActive(request, now = Date.now()) {
-    return getReopenRequestState(request, now) === REOPEN_REQUEST_STATUSES.APPROVED;
-  }
-
-  function getReopenRequestContext(request) {
-    const school = getSchools().find(record => record.id === request.schoolId);
-    const section = school && getAssignmentSections(school).find(record => record.id === request.sectionId);
-    const period = section && school.divisions?.[section.level]?.academicPeriods
-      ?.find(record => record.id === request.academicPeriodId);
-    return { school, section, period };
-  }
-
-  function isSchoolAdministrator(userId, schoolId) {
-    const user = getUserById(userId);
-    return user?.schoolId === schoolId && user.role === RECORD_VALUES.roles.SCHOOL_ADMIN;
-  }
-
-  // Replace with POST /api/reopen-requests. The backend must derive the
-  // teacher from the authenticated session instead of trusting teacherId.
-  async function createReopenRequest(values = {}) {
-    const request = normalizeReopenRequest({
-      id: `reopen-request-${Date.now()}`,
-      schoolId: values.schoolId || getActiveSchoolId(),
-      teacherId: values.teacherId,
-      sectionId: values.sectionId,
-      subjectId: values.subjectId,
-      academicPeriodId: values.academicPeriodId,
-      reason: values.reason,
-      status: REOPEN_REQUEST_STATUSES.PENDING,
-      requestedAt: new Date().toISOString()
-    });
-
-    if (!request.schoolId || !request.teacherId || !request.sectionId || !request.subjectId || !request.academicPeriodId) {
-      throw new Error('The teacher, section, subject, and grading period are required.');
-    }
-    if (!request.reason) throw new Error('Enter a reason for reopening the grading period.');
-
-    const { school, section, period } = getReopenRequestContext(request);
-    if (!school || !section || !period) throw new Error('The selected grading period could not be found.');
-    if (period.status !== ACADEMIC_PERIOD_STATUSES.CLOSED) {
-      throw new Error('Only a closed grading period can be reopened.');
-    }
-
-    const teacher = getUserById(request.teacherId);
-    const assignedToSubject = ASSIGNMENT_DIRECTORY.some(record =>
-      record.schoolId === request.schoolId
-      && record.teacherId === request.teacherId
-      && record.sectionId === request.sectionId
-      && record.subjectId === request.subjectId
-    );
-    if (!teacher || teacher.schoolId !== request.schoolId || teacher.role !== RECORD_VALUES.roles.TEACHER || !assignedToSubject) {
-      throw new Error('Only the assigned teacher can request access for this section and subject.');
-    }
-
-    const requests = getReopenRequests({ schoolId: request.schoolId });
-    const duplicate = requests.find(record =>
-      record.teacherId === request.teacherId
-      && record.sectionId === request.sectionId
-      && record.subjectId === request.subjectId
-      && record.academicPeriodId === request.academicPeriodId
-      && (record.status === REOPEN_REQUEST_STATUSES.PENDING || isReopenRequestActive(record))
-    );
-    if (duplicate) throw new Error('A pending or active reopen request already exists for this grading period.');
-
-    requests.push(request);
-    saveReopenRequests(request.schoolId, requests);
-    return request;
-  }
-
-  // Replace with POST /api/reopen-requests/:id/approve.
-  async function approveReopenRequest(requestId, values = {}) {
-    const schoolId = String(values.schoolId || getActiveSchoolId());
-    const requests = getReopenRequests({ schoolId });
-    const request = requests.find(record => record.id === String(requestId));
-    if (!request || request.status !== REOPEN_REQUEST_STATUSES.PENDING) {
-      throw new Error('This request is no longer awaiting approval.');
-    }
-
-    const expiresAt = new Date(values.expiresAt || '').getTime();
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      throw new Error('Choose an expiration date and time later than now.');
-    }
-    const { period } = getReopenRequestContext(request);
-    if (!period || period.status !== ACADEMIC_PERIOD_STATUSES.CLOSED) {
-      throw new Error('Only a closed grading period can be reopened.');
-    }
-    if (!isSchoolAdministrator(values.reviewedBy, schoolId)) {
-      throw new Error('Only a school administrator from this school can approve the request.');
-    }
-
-    request.status = REOPEN_REQUEST_STATUSES.APPROVED;
-    request.adminNote = String(values.adminNote || '').trim() || null;
-    request.reviewedAt = new Date().toISOString();
-    request.reviewedBy = String(values.reviewedBy);
-    request.expiresAt = new Date(expiresAt).toISOString();
-    saveReopenRequests(schoolId, requests);
-    return request;
-  }
-
-  // Replace with POST /api/reopen-requests/:id/reject.
-  async function rejectReopenRequest(requestId, values = {}) {
-    const schoolId = String(values.schoolId || getActiveSchoolId());
-    const requests = getReopenRequests({ schoolId });
-    const request = requests.find(record => record.id === String(requestId));
-    if (!request || request.status !== REOPEN_REQUEST_STATUSES.PENDING) {
-      throw new Error('This request is no longer awaiting review.');
-    }
-    if (!isSchoolAdministrator(values.reviewedBy, schoolId)) {
-      throw new Error('Only a school administrator from this school can reject the request.');
-    }
-
-    request.status = REOPEN_REQUEST_STATUSES.REJECTED;
-    request.adminNote = String(values.adminNote || '').trim() || null;
-    request.reviewedAt = new Date().toISOString();
-    request.reviewedBy = String(values.reviewedBy);
-    request.expiresAt = null;
-    saveReopenRequests(schoolId, requests);
-    return request;
-  }
-
-  // Replace with PATCH /api/reopen-requests/:id/expiration.
-  async function extendReopenRequest(requestId, values = {}) {
-    const schoolId = String(values.schoolId || getActiveSchoolId());
-    const requests = getReopenRequests({ schoolId });
-    const request = requests.find(record => record.id === String(requestId));
-    if (!request || !isReopenRequestActive(request)) throw new Error('Only active reopen access can be extended.');
-
-    const expiresAt = new Date(values.expiresAt || '').getTime();
-    const currentExpiration = new Date(request.expiresAt).getTime();
-    const reason = String(values.reason || '').trim();
-    if (!Number.isFinite(expiresAt) || expiresAt <= currentExpiration) {
-      throw new Error('Choose a deadline later than the current expiration.');
-    }
-    if (!reason) throw new Error('Enter a reason for extending access.');
-    if (!isSchoolAdministrator(values.extendedBy, schoolId)) {
-      throw new Error('Only a school administrator from this school can extend access.');
-    }
-
-    request.previousExpiresAt = request.expiresAt;
-    request.expiresAt = new Date(expiresAt).toISOString();
-    request.extendedAt = new Date().toISOString();
-    request.extendedBy = String(values.extendedBy);
-    request.extensionReason = reason;
-    saveReopenRequests(schoolId, requests);
-    return request;
-  }
-
-  // Replace with POST /api/reopen-requests/:id/revoke.
-  async function revokeReopenRequest(requestId, values = {}) {
-    const schoolId = String(values.schoolId || getActiveSchoolId());
-    const requests = getReopenRequests({ schoolId });
-    const request = requests.find(record => record.id === String(requestId));
-    if (!request || !isReopenRequestActive(request)) throw new Error('Only active reopen access can be revoked.');
-
-    const reason = String(values.revokeReason || '').trim();
-    if (!reason) throw new Error('Enter a reason for revoking access.');
-    if (!isSchoolAdministrator(values.revokedBy, schoolId)) {
-      throw new Error('Only a school administrator from this school can revoke access.');
-    }
-
-    request.status = REOPEN_REQUEST_STATUSES.REVOKED;
-    request.revokedAt = new Date().toISOString();
-    request.revokedBy = String(values.revokedBy);
-    request.revokeReason = reason;
-    saveReopenRequests(schoolId, requests);
-    return request;
   }
 
   function scopeToActiveSchool(records, schoolId = getActiveSchoolId()) {
@@ -2844,6 +2884,13 @@ function applyCurrentDateToGradingBanners() {
     return normalizeApiSection(response?.section);
   }
 
+  async function deleteApiSection(sectionId) {
+    const numericId = Number(sectionId);
+    if (!Number.isSafeInteger(numericId) || numericId < 1) throw new Error('The section ID is invalid.');
+    await requestApi(`/sections/${numericId}`, { method: 'DELETE' });
+    return true;
+  }
+
   async function createApiSubject(values = {}) {
     const response = await requestApi('/subjects', { method: 'POST', body: JSON.stringify(values) });
     return normalizeApiSubject(response?.subject);
@@ -2852,6 +2899,13 @@ function applyCurrentDateToGradingBanners() {
   async function updateApiSubject(subjectId, values = {}) {
     const response = await requestApi(`/subjects/${Number(subjectId)}`, { method: 'PATCH', body: JSON.stringify(values) });
     return normalizeApiSubject(response?.subject);
+  }
+
+  async function deleteApiSubject(subjectId) {
+    const numericId = Number(subjectId);
+    if (!Number.isSafeInteger(numericId) || numericId < 1) throw new Error('The subject ID is invalid.');
+    const response = await requestApi(`/subjects/${numericId}`, { method: 'DELETE' });
+    return { deleted: response?.deleted !== false };
   }
 
   async function enrollApiStudent(sectionId, studentId) {
@@ -3544,69 +3598,6 @@ function applyCurrentDateToGradingBanners() {
     LEARNING_MATERIAL_DIRECTORY.push(material);
     saveLearningMaterials();
     return material;
-  }
-
-  function getUserTodos(userId, schoolId = getActiveSchoolId()) {
-    return USER_TODOS.filter(todo =>
-      todo.schoolId === schoolId &&
-      todo.userId === String(userId)
-    );
-  }
-
-  function saveTodos() {
-    writeJson(STORAGE_KEYS.todos, USER_TODOS);
-  }
-
-  function createTodo(values = {}) {
-    const createdAt = values.createdAt || new Date().toISOString();
-    const status = values.status === 'completed' ? 'completed' : 'pending';
-    const schoolId = values.schoolId === null
-      ? null
-      : (values.schoolId || getActiveSchoolId());
-    const todo = {
-      id: String(values.id || `todo-${Date.now()}`),
-      schoolId,
-      userId: values.userId ? String(values.userId) : null,
-      title: String(values.title || '').trim(),
-      dueDate: values.dueDate || null,
-      status,
-      createdAt,
-      updatedAt: values.updatedAt || createdAt,
-      completedAt: status === 'completed' ? (values.completedAt || createdAt) : null
-    };
-    USER_TODOS.push(todo);
-    saveTodos();
-    return todo;
-  }
-
-  function updateTodo(todoId, values = {}, schoolId = getActiveSchoolId()) {
-    const todo = USER_TODOS.find(item =>
-      item.id === String(todoId) && item.schoolId === schoolId
-    );
-    if (!todo) return null;
-
-    if (values.title !== undefined) todo.title = String(values.title).trim();
-    if (values.dueDate !== undefined) todo.dueDate = values.dueDate || null;
-    if (values.status !== undefined) {
-      todo.status = values.status === 'completed' ? 'completed' : 'pending';
-    }
-    todo.updatedAt = new Date().toISOString();
-    todo.completedAt = todo.status === 'completed'
-      ? (values.completedAt || todo.completedAt || todo.updatedAt)
-      : null;
-
-    saveTodos();
-    return todo;
-  }
-
-  function deleteTodo(todoId, schoolId = getActiveSchoolId()) {
-    const index = USER_TODOS.findIndex(todo =>
-      todo.id === String(todoId) && todo.schoolId === schoolId
-    );
-    if (index < 0) return null;
-    const [todo] = USER_TODOS.splice(index, 1);
-    saveTodos();
-    return todo;
   }
 
   const ANNOUNCEMENT_AUDIENCE_META = {
@@ -4644,113 +4635,6 @@ function applyCurrentDateToGradingBanners() {
       visibleToStudents: record.visibleToStudents !== false,
       views: Number(record.views) || 0
     }));
-
-  // Personal user tasks. A future API can return this same record shape.
-  const DEFAULT_USER_TODOS = [
-    {
-      id: 'teacher-todo-001',
-      schoolId: 'scc',
-      userId: 'teacher-2',
-      title: 'Review Grade 7 journal entries',
-      dueDate: '2026-09-09',
-      status: 'pending',
-      createdAt: '2026-09-07T08:00:00+08:00',
-      updatedAt: '2026-09-07T08:00:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'teacher-todo-002',
-      schoolId: 'scc',
-      userId: 'teacher-2',
-      title: 'Prepare next week\'s learning material',
-      dueDate: '2026-09-11',
-      status: 'pending',
-      createdAt: '2026-09-07T08:15:00+08:00',
-      updatedAt: '2026-09-07T08:15:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'teacher-todo-003',
-      schoolId: 'scc',
-      userId: 'teacher-2',
-      title: 'Check Grade 8 attendance records',
-      dueDate: '2026-09-07',
-      status: 'completed',
-      createdAt: '2026-09-05T15:30:00+08:00',
-      updatedAt: '2026-09-07T09:10:00+08:00',
-      completedAt: '2026-09-07T09:10:00+08:00'
-    },
-    {
-      id: 'platform-todo-001',
-      schoolId: null,
-      userId: 'platform-admin-001',
-      title: 'Review Manghi school account registration',
-      dueDate: '2026-09-08',
-      status: 'pending',
-      createdAt: '2026-09-07T08:20:00+08:00',
-      updatedAt: '2026-09-07T08:20:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'platform-todo-002',
-      schoolId: null,
-      userId: 'platform-admin-001',
-      title: 'Check suspended school accounts',
-      dueDate: '2026-09-10',
-      status: 'pending',
-      createdAt: '2026-09-07T08:35:00+08:00',
-      updatedAt: '2026-09-07T08:35:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'platform-todo-003',
-      schoolId: null,
-      userId: 'platform-admin-001',
-      title: 'Verify recent school configuration updates',
-      dueDate: null,
-      status: 'completed',
-      createdAt: '2026-09-06T16:20:00+08:00',
-      updatedAt: '2026-09-07T09:25:00+08:00',
-      completedAt: '2026-09-07T09:25:00+08:00'
-    },
-    {
-      id: 'admin-todo-001',
-      schoolId: 'scc',
-      userId: 'admin-1',
-      title: 'Review pending grading-period reopen requests',
-      dueDate: '2026-09-08',
-      status: 'pending',
-      createdAt: '2026-09-07T08:30:00+08:00',
-      updatedAt: '2026-09-07T08:30:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'admin-todo-002',
-      schoolId: 'scc',
-      userId: 'admin-1',
-      title: 'Confirm the active grading rules',
-      dueDate: '2026-09-10',
-      status: 'pending',
-      createdAt: '2026-09-07T08:45:00+08:00',
-      updatedAt: '2026-09-07T08:45:00+08:00',
-      completedAt: null
-    },
-    {
-      id: 'admin-todo-003',
-      schoolId: 'scc',
-      userId: 'admin-1',
-      title: 'Check this week\'s school announcements',
-      dueDate: null,
-      status: 'completed',
-      createdAt: '2026-09-06T16:00:00+08:00',
-      updatedAt: '2026-09-07T09:20:00+08:00',
-      completedAt: '2026-09-07T09:20:00+08:00'
-    }
-  ];
-  const savedTodos = readJson(STORAGE_KEYS.todos, null);
-  const USER_TODOS = Array.isArray(savedTodos)
-    ? savedTodos
-    : clone(DEFAULT_USER_TODOS);
 
   // Shared published/draft announcement records for every school portal.
   // Optional fields are always present: imageUrl/access use null, pinned uses false.
@@ -5982,8 +5866,7 @@ function applyCurrentDateToGradingBanners() {
     return report;
   }
 
-  // Replace this local mock with POST /api/reports/generate. The backend must
-  // derive the teacher and school from the authenticated session.
+  // Narrative reports and recommendations intentionally remain frontend-only for now.
   async function generateReports(values = {}) {
     const sectionId = String(values.sectionId || '');
     const weekId = String(values.weekId || '');
@@ -6109,8 +5992,10 @@ function applyCurrentDateToGradingBanners() {
     getSubjects: getApiSubjects,
     createSection: createApiSection,
     updateSection: updateApiSection,
+    deleteSection: deleteApiSection,
     createSubject: createApiSubject,
     updateSubject: updateApiSubject,
+    deleteSubject: deleteApiSubject,
     enrollStudent: enrollApiStudent,
     moveStudent: moveApiStudent,
     withdrawStudent: withdrawApiStudent,
@@ -6154,7 +6039,6 @@ function applyCurrentDateToGradingBanners() {
     setParentStudentLinks,
     academicPeriodTypes: ACADEMIC_PERIOD_TYPES,
     academicPeriodStatuses: ACADEMIC_PERIOD_STATUSES,
-    reopenRequestStatuses: REOPEN_REQUEST_STATUSES,
     createAcademicPeriods,
     getAcademicPeriods,
     getCurrentAcademicPeriod,
@@ -6166,14 +6050,6 @@ function applyCurrentDateToGradingBanners() {
     closeAcademicPeriod,
     extendAcademicPeriod,
     getAcademicPeriodReminder,
-    getReopenRequests,
-    getReopenRequestState,
-    isReopenRequestActive,
-    createReopenRequest,
-    approveReopenRequest,
-    rejectReopenRequest,
-    extendReopenRequest,
-    revokeReopenRequest,
     attendanceDefaults: makeAttendanceRules(),
     attendance: ATTENDANCE_DIRECTORY,
     getAttendanceRecords,
@@ -6181,8 +6057,6 @@ function applyCurrentDateToGradingBanners() {
     upsertAttendanceRecords,
     getSchools,
     saveSchools,
-    createSchoolRegistration,
-    getSchoolRegistration,
     updateSchool,
     getActiveSchool,
     getSchoolTypeInfo,
@@ -6222,11 +6096,6 @@ function applyCurrentDateToGradingBanners() {
     getLearningMaterialsForStudent,
     saveLearningMaterials,
     createLearningMaterial,
-    getUserTodos,
-    saveTodos,
-    createTodo,
-    updateTodo,
-    deleteTodo,
     reports: REPORT_DIRECTORY,
     getReports,
     getReportsForTeacher,
@@ -6543,7 +6412,11 @@ function applyCurrentDateToGradingBanners() {
 
 function toggleNotifDropdown() {
   const panel = document.getElementById('tbNotifPanel');
-  if (panel) panel.classList.toggle('open');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open') && typeof window.EDUGNAY_REFRESH_NOTIFICATIONS === 'function') {
+    void window.EDUGNAY_REFRESH_NOTIFICATIONS();
+  }
 }
 
 function markAllNotifRead() {
@@ -6557,6 +6430,33 @@ function getProfileControls() {
     trigger: document.getElementById('tbProfileTrigger'),
     dropdown: document.getElementById('tbProfileDropdown')
   };
+}
+
+function initToastSoundToggle() {
+  const { dropdown } = getProfileControls();
+  if (!dropdown || dropdown.querySelector('#tbToastSoundToggle')) return;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'tbToastSoundToggle';
+  button.className = 'tb-dropdown-item tb-sound-toggle';
+  button.setAttribute('role', 'switch');
+  button.setAttribute('aria-label', 'Toast sounds');
+  button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg><span>Toast sounds</span><span class="tb-sound-state" aria-hidden="true"></span>';
+
+  const supported = Boolean(window.AudioContext || window.webkitAudioContext);
+  button.disabled = !supported;
+  button.setAttribute('aria-checked', String(supported && toastSoundsEnabled));
+  button.querySelector('.tb-sound-state').textContent = supported ? (toastSoundsEnabled ? 'On' : 'Off') : 'Unavailable';
+  button.addEventListener('click', () => {
+    toastSoundsEnabled = !toastSoundsEnabled;
+    button.setAttribute('aria-checked', String(toastSoundsEnabled));
+    button.querySelector('.tb-sound-state').textContent = toastSoundsEnabled ? 'On' : 'Off';
+    try { localStorage.setItem(TOAST_SOUND_STORAGE_KEY, String(toastSoundsEnabled)); } catch {}
+    if (toastSoundsEnabled) void playToastSound('success', 'Toast sounds enabled');
+  });
+
+  dropdown.insertBefore(button, dropdown.querySelector('.tb-dropdown-divider') || dropdown.querySelector('.tb-dropdown-item.danger'));
 }
 
 function toggleProfileDropdown(forceState) {
@@ -6702,6 +6602,7 @@ function initScrollFades() {
   const selector = [
     '.child-switcher',
     '.onboarding-feature-tabs',
+    '.activity-type-filters',
     '.subject-tab-bar',
     '.profile-tab-bar',
     '.mgmt-tabs',
@@ -6728,13 +6629,63 @@ function initScrollFades() {
     element.parentNode.insertBefore(wrapper, element);
     wrapper.appendChild(element);
 
+    const isActivityFilters = element.classList.contains('activity-type-filters');
+    const scrollButtonSpace = 40;
+    let scrollButton = null;
+
+    if (isActivityFilters) {
+      scrollButton = document.createElement('button');
+      scrollButton.type = 'button';
+      scrollButton.className = 'activity-scroll-button';
+      scrollButton.setAttribute('aria-label', 'Scroll activity categories right');
+      scrollButton.setAttribute('aria-controls', element.id);
+      scrollButton.innerHTML = `
+        <i class="activity-scroll-icon activity-scroll-icon-right" data-lucide="chevron-right" aria-hidden="true"></i>
+        <i class="activity-scroll-icon activity-scroll-icon-left" data-lucide="chevron-left" aria-hidden="true"></i>
+      `;
+      wrapper.appendChild(scrollButton);
+      window.lucide?.createIcons?.();
+
+      scrollButton.addEventListener('click', () => {
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        if (scrollButton.dataset.direction === 'left') {
+          element.scrollTo({ left: 0, behavior });
+          return;
+        }
+        element.scrollBy({ left: Math.max(120, (element.clientWidth - scrollButtonSpace) * 0.8), behavior });
+      });
+    }
+
     const updateFade = () => {
+      const isDesktop = isActivityFilters && window.matchMedia('(min-width: 761px)').matches;
+      const hasReservedButtonSpace = isDesktop && wrapper.classList.contains('has-scroll-control');
+      const reservedSpace = hasReservedButtonSpace ? scrollButtonSpace : 0;
+      const contentOverflows = element.scrollWidth - element.clientWidth - reservedSpace > 4;
+
+      if (isActivityFilters) {
+        const showButton = isDesktop && contentOverflows;
+        wrapper.classList.toggle('has-scroll-control', showButton);
+        scrollButton.hidden = !showButton;
+
+        const buttonSpace = showButton ? scrollButtonSpace : 0;
+        const contentEnd = element.scrollWidth - element.clientWidth - buttonSpace;
+        const atEnd = contentEnd - element.scrollLeft <= 4;
+        scrollButton.dataset.direction = atEnd ? 'left' : 'right';
+        scrollButton.setAttribute('aria-label', atEnd
+          ? 'Return to first activity category'
+          : 'Scroll activity categories right');
+
+        wrapper.classList.toggle('has-more-right', contentEnd - element.scrollLeft > 4);
+        return;
+      }
+
       const hasMore = element.scrollWidth - element.clientWidth - element.scrollLeft > 4;
       wrapper.classList.toggle('has-more-right', hasMore);
     };
 
     updateFade();
     element.addEventListener('scroll', updateFade, { passive: true });
+    if (isActivityFilters) window.addEventListener('resize', updateFade, { passive: true });
     if ('ResizeObserver' in window) {
       new ResizeObserver(updateFade).observe(element);
     } else {
@@ -6886,6 +6837,7 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initToastSoundToggle();
   let apiSession = null;
   if (EDUGNAY_API_BASE_URL) {
     try {

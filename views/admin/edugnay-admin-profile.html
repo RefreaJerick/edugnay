@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <link rel="stylesheet" href="../../assets/css/admin/profile.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -43,7 +44,7 @@
       <a href="edugnay-admin-users.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Manage Users</span>
-        <span class="nav-badge">3</span>
+
       </a>
       <div class="nav-group" id="classMgmtGroup">
         <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
@@ -76,7 +77,7 @@
       <a href="edugnay-admin-announcements.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
+
       </a>
     </div>
 
@@ -185,7 +186,7 @@
     </section>
 
     <!-- Profile header -->
-    <!-- EJS: avatar background reads from user.avatarColor (defaults to 'navy' if unset) -->
+    <!-- Profile and avatar controls are handled by this page's JavaScript. -->
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
         <div class="profile-avatar" id="profileAvatar" data-color="blue">
@@ -217,7 +218,7 @@
               <i data-lucide="chevron-left" style="width:13px;height:13px;"></i> Back
             </button>
             <div class="avatar-color-swatches">
-              <!-- EJS: form action would POST to /admin/profile/avatar-color -->
+              <!-- Profile and avatar controls are handled by this page's JavaScript. -->
               <input type="hidden" name="avatarColor" id="avatarColorInput" value="navy" form="profileForm"/>
               <button type="button" class="avatar-swatch selected" data-color="navy" style="background:var(--navy);" onclick="selectAvatarColor(this,'navy')" title="Navy"></button>
               <button type="button" class="avatar-swatch" data-color="blue" style="background:var(--blue-mid);" onclick="selectAvatarColor(this,'blue')" title="Blue"></button>
@@ -360,7 +361,7 @@
 </div>
 
 <script>
-  const ADMIN_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  const ADMIN_PROFILE_API_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   let adminApiUser = null;
 
   function renderAdminProfile(user) {
@@ -408,7 +409,7 @@
       return false;
     }
     if (!ADMIN_PROFILE_API_ENABLED) {
-      alert('Password updates require the local backend.');
+      alert('Password updates require a configured API connection.');
       return false;
     }
     try {
@@ -417,9 +418,9 @@
         body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
       });
       closeModal();
-      alert('Password updated. You have been signed out on other devices.');
+      showAppToast('Password updated. You have been signed out on other devices.');
     } catch (error) {
-      alert(error.message || 'Unable to update your password.');
+      showAppToast(error.message || 'Unable to update your password.', 'error');
     }
     return false;
   }
@@ -443,8 +444,7 @@
   }
 
   // Removes the uploaded photo and reverts to initials + chosen background color
-  // EJS/backend note: on confirm, also call something like
-  // fetch('/admin/profile/avatar', { method: 'DELETE' }) to clear user.avatarUrl server-side
+// Page JavaScript handles this behavior.
   function removeAvatarPhoto() {
     const img = document.getElementById('avatarImage');
   img.src = '';
@@ -482,9 +482,7 @@
   });
 
   // Avatar background color selection
-  // EJS/backend note: on submit, POST avatarColor (from #avatarColorInput)
-  // to something like /admin/profile/avatar-color, save to user.avatarColor,
-  // then server-render data-color="<%= user.avatarColor %>" on page load.
+// Page JavaScript handles this behavior.
   function selectAvatarColor(btn, colorName) {
     document.querySelectorAll('.avatar-swatch').forEach(s => s.classList.remove('selected'));
     btn.classList.add('selected');
@@ -506,9 +504,9 @@
         adminApiUser = response.user;
         renderAdminProfile(adminApiUser);
       }
-      alert('Contact info updated.');
+      showAppToast('Contact info updated.');
     } catch (error) {
-      alert(error.message || 'Unable to update your profile.');
+      showAppToast(error.message || 'Unable to update your profile.', 'error');
     }
     return false;
   }

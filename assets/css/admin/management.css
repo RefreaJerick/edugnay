@@ -523,13 +523,6 @@ tbody tr:hover {
   flex-wrap: wrap;
 }
 
-.action-dots {
-  color: var(--gray-300);
-  display: inline-flex;
-  align-items: center;
-  margin-left: 4px;
-}
-
 /* ══════ SECTIONS TAB ══════ */
 .grade-group {
   margin-bottom: 26px;

@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { createQrPayload, createQrToken, decryptQrToken, encryptQrToken, hashQrToken } = require('../config/qrCredentials');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
@@ -393,10 +394,13 @@ async function confirmQrAttendance(req, res, next) {
       WHERE id = ?`,
       [req.user.id, sessionId]
     );
+    for (const record of records) {
+      if (record.status === 'absent') await notifyConsecutiveAbsences(connection, session.schoolId, session.sectionId, session.subjectId, record.studentId);
+    }
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'qr'))`,
-      [session.schoolId, req.user.id, sessionId, getCurrentDate(), session.subjectId]
+      VALUES (?, ?, 'attendance_confirmed', 'attendance_session', ?, JSON_OBJECT('attendance_date', ?, 'subject_id', ?, 'method', 'qr', 'summary', ?))`,
+      [session.schoolId, req.user.id, sessionId, getCurrentDate(), session.subjectId, `${session.sectionName} · Subject ${session.subjectId} · ${getCurrentDate()}`]
     );
 
     await connection.commit();
@@ -416,7 +420,7 @@ async function confirmQrAttendance(req, res, next) {
 async function findQrStudent(connection, user, studentId) {
   if (user.role === 'student' && user.id !== studentId) throw createError('You do not have access to this QR credential.', 403);
   if (!['student', 'school_admin'].includes(user.role)) throw createError('You do not have access to this QR credential.', 403);
-  const [students] = await connection.execute("SELECT users.id, users.school_id AS schoolId FROM users WHERE users.id = ? AND users.school_id = ? AND users.role = 'student' AND users.account_status = 'active' LIMIT 1", [studentId, user.schoolId]);
+  const [students] = await connection.execute("SELECT users.id, users.school_id AS schoolId, users.display_name AS displayName FROM users WHERE users.id = ? AND users.school_id = ? AND users.role = 'student' AND users.account_status = 'active' LIMIT 1", [studentId, user.schoolId]);
   if (!students.length) throw createError('Student was not found.', 404);
   return students[0];
 }
@@ -447,7 +451,7 @@ async function regenerateStudentQr(req, res, next) {
     const token = createQrToken();
     await connection.execute(`INSERT INTO student_qr_credentials (student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at) VALUES (?, ?, ?, 'active', NOW(), NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash), token_ciphertext=VALUES(token_ciphertext), credential_status='active', issued_at=NOW(), revoked_at=NULL`, [studentId, hashQrToken(token), encryptQrToken(token)]);
     const [credentials] = await connection.execute('SELECT id, credential_status AS credentialStatus, issued_at AS issuedAt FROM student_qr_credentials WHERE student_user_id = ? LIMIT 1', [studentId]);
-    await connection.execute(`INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details) VALUES (?, ?, 'qr_credential_regenerated', 'student_qr_credential', ?, JSON_OBJECT('student_id', ?))`, [student.schoolId, req.user.id, credentials[0].id, studentId]);
+    await connection.execute(`INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details) VALUES (?, ?, 'qr_credential_regenerated', 'student_qr_credential', ?, JSON_OBJECT('student_id', ?, 'summary', ?))`, [student.schoolId, req.user.id, credentials[0].id, studentId, student.displayName]);
     await connection.commit();
     res.json({ credential: { id: credentials[0].id, status: credentials[0].credentialStatus, issuedAt: credentials[0].issuedAt }, qrPayload: createQrPayload(token), requiresRegeneration: false });
   } catch (error) {

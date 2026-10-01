@@ -479,6 +479,8 @@ async function previewTemplate(req, res, next) {
 async function generateTemplate(req, res, next) {
   let savedFilePath = null;
   let exportId = null;
+  let connection;
+  let transactionStarted = false;
   try {
     const database = getDatabase();
     const { template, section, term, mappedCells, issues, fingerprint } = await preparePreview(req, database);
@@ -509,16 +511,23 @@ async function generateTemplate(req, res, next) {
     const workbook = await createExportWorkbook(template, [...cellMap.values()]);
     const saved = await saveExport(workbook, template.formCode);
     savedFilePath = saved.filePath;
-    await database.execute(
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await connection.execute(
       `UPDATE school_form_exports SET export_status = 'generated', file_path = ?, generated_at = NOW()
       WHERE id = ? AND requested_by_user_id = ?`,
       [saved.publicPath, exportId, req.user.id]
     );
-    await database.execute(
+    await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'school_form_generated', 'school_form_export', ?, JSON_OBJECT('form_code', ?, 'section_id', ?))`,
-      [req.user.schoolId, req.user.id, exportId, template.formCode, section.id]
+      VALUES (?, ?, 'school_form_generated', 'school_form_export', ?, JSON_OBJECT('form_code', ?, 'section_id', ?, 'summary', ?))`,
+      [req.user.schoolId, req.user.id, exportId, template.formCode, section.id, `${template.formCode} · ${section.name}`]
     );
+    await connection.commit();
+    transactionStarted = false;
+    connection.release();
+    connection = null;
 
     res.status(201).json({
       message: 'SF1 export generated successfully.',
@@ -532,6 +541,8 @@ async function generateTemplate(req, res, next) {
       mappedCells
     });
   } catch (error) {
+    if (transactionStarted) await connection.rollback().catch(() => {});
+    connection?.release();
     if (savedFilePath) await fs.promises.unlink(savedFilePath).catch(() => {});
     if (exportId) {
       await getDatabase().execute(

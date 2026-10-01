@@ -11,8 +11,12 @@ const section = {
 const database = {
   async execute(sql, values = []) {
     calls.push({ sql, values });
+    if (sql.includes('FROM parent_notification_triggers')) return [[]];
     if (sql.includes('FROM sections') && sql.includes('section_teachers')) {
       return [values[0] === 8 && values[1] === 1 && values[2] === 3 && [1, 2].includes(values[3]) ? [section] : []];
+    }
+    if (sql.includes('SELECT id FROM academic_years WHERE id = ? AND school_id = ?')) {
+      return [values[0] === 5 && values[1] === 1 ? [{ id: 5 }] : []];
     }
     if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled: 1 }]];
     if (sql.includes('FROM school_attendance_settings')) return [[{ allowEditPastAttendance: 1 }]];
@@ -66,6 +70,7 @@ async function call(handler, req) {
   const result = { status: 200, data: null, error: null };
   const response = {
     status(code) { result.status = code; return this; },
+    set() { return this; },
     json(data) { result.data = data; return this; }
   };
   await handler(req, response, error => { result.error = error; });
@@ -165,8 +170,31 @@ test('school summary counts confirmed subject sessions instead of whole days', a
     user: { id: 2, schoolId: 1, role: 'school_admin' }
   });
   assert.equal(result.error, null);
+  assert.equal(result.data.attendanceRecordCount, 2);
   assert.equal(result.data.attendanceByGrade[0].rows[0].rate, 50);
   assert.deepEqual(result.data.attendanceBreakdown.filter(item => item.value > 0).map(item => item.label), ['Present', 'Absent']);
   const query = calls.find(call => call.sql.includes('FROM attendance_records'));
   assert.match(query.sql, /attendance_sessions\.subject_id IS NOT NULL/);
+});
+
+test('school attendance summary can load an explicitly selected school year', async () => {
+  calls.length = 0;
+  const result = await call(attendance.getSchoolAttendanceSummary, {
+    user: { id: 2, schoolId: 1, role: 'school_admin' }, query: { academicYearId: '5' }
+  });
+  assert.equal(result.error, null);
+  assert.equal(result.data.academicYearId, '5');
+  const query = calls.find(call => call.sql.includes('FROM attendance_records') && call.sql.includes('GROUP BY sections.id'));
+  assert.deepEqual(query.values.slice(0, 2), [1, 5]);
+  assert.match(query.sql, /academic_years\.id = \?/);
+});
+
+test('school attendance summary rejects years outside the authenticated school', async () => {
+  calls.length = 0;
+  const result = await call(attendance.getSchoolAttendanceSummary, {
+    user: { id: 2, schoolId: 1, role: 'school_admin' }, query: { academicYearId: '999' }
+  });
+  assert.equal(result.data, null);
+  assert.equal(result.error?.status, 404);
+  assert.equal(calls.some(call => call.sql.includes('GROUP BY sections.id')), false);
 });

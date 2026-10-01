@@ -1,5 +1,6 @@
 const { getDatabase } = require('../config/database');
-const { isEmailConfigured, sendAnnouncementEmail } = require('../config/email');
+const { writeAuditLog } = require('../utils/auditLog');
+const { wakeAnnouncementEmailWorker } = require('../workers/announcementEmailWorker');
 
 const ANNOUNCEMENT_STATUSES = new Set(['draft', 'published']);
 const ANNOUNCEMENT_PRIORITIES = new Set(['normal', 'high', 'event']);
@@ -157,35 +158,30 @@ async function getAudienceRecipientIds(connection, schoolId, audiences) {
 }
 
 async function createNotifications(connection, announcement, audiences) {
-  const recipientIds = await getAudienceRecipientIds(connection, announcement.schoolId, audiences);
-  const notificationRecipientIds = [];
-  for (const userId of recipientIds) {
-    if (String(userId) === String(announcement.authorUserId)) continue;
-    await connection.execute(
-      `INSERT INTO notifications (announcement_id, user_id, type, title, message, target_path)
-      VALUES (?, ?, 'announcement', 'New announcement', ?, NULL)`,
-      [announcement.id, userId, announcement.title]
-    );
-    notificationRecipientIds.push(userId);
-  }
-  return notificationRecipientIds;
+  const recipientIds = (await getAudienceRecipientIds(connection, announcement.schoolId, audiences))
+    .filter(userId => String(userId) !== String(announcement.authorUserId));
+  if (!recipientIds.length) return [];
+
+  const placeholders = recipientIds.map(() => '?').join(', ');
+  await connection.execute(
+    `INSERT INTO notifications (announcement_id, user_id, type, title, message, target_path)
+    SELECT ?, users.id, 'announcement', 'New announcement', ?, NULL FROM users
+    WHERE users.school_id = ? AND users.account_status = 'active' AND users.id IN (${placeholders})`,
+    [announcement.id, announcement.title, announcement.schoolId, ...recipientIds]
+  );
+  return recipientIds;
 }
 
-async function sendAnnouncementEmails(connection, announcement, recipientIds) {
-  try {
-    if (!recipientIds.length || !isEmailConfigured()) return;
-    const placeholders = recipientIds.map(() => '?').join(', ');
-    const [recipients] = await connection.execute(
-      `SELECT display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail
-      FROM users WHERE id IN (${placeholders}) AND school_id = ? AND account_status = 'active'`,
-      [...recipientIds, announcement.schoolId]
-    );
-    for (const recipient of recipients) {
-      await sendAnnouncementEmail(recipient, announcement);
-    }
-  } catch (error) {
-    console.error(`Announcement email delivery could not be completed: ${error.message}`);
-  }
+async function queueAnnouncementEmails(connection, announcement, recipientIds) {
+  if (!recipientIds.length) return;
+  const placeholders = recipientIds.map(() => '?').join(', ');
+  const [result] = await connection.execute(
+    `INSERT IGNORE INTO announcement_email_outbox (announcement_id, user_id)
+    SELECT ?, users.id FROM users
+    WHERE users.school_id = ? AND users.account_status = 'active' AND users.id IN (${placeholders})`,
+    [announcement.id, announcement.schoolId, ...recipientIds]
+  );
+  return result.affectedRows > 0;
 }
 
 function announcementVisibilitySql(user) {
@@ -261,9 +257,14 @@ async function createAnnouncement(req, res, next) {
     const recipientIds = status === 'published'
       ? await createNotifications(connection, announcement, audiences)
       : [];
+    const emailQueued = recipientIds.length
+      ? await queueAnnouncementEmails(connection, announcement, recipientIds)
+      : false;
+    await writeAuditLog(connection, req, status === 'published' ? 'announcement_published' : 'announcement_draft_created', 'announcement', result.insertId, { summary: title });
+    const savedAnnouncement = formatAnnouncement(announcement, audiences);
     await connection.commit();
-    await sendAnnouncementEmails(connection, announcement, recipientIds);
-    res.status(201).json({ announcement: formatAnnouncement(announcement, audiences) });
+    res.status(201).json({ announcement: savedAnnouncement });
+    if (emailQueued) wakeAnnouncementEmailWorker();
   } catch (error) {
     await connection.rollback();
     next(error);
@@ -303,9 +304,17 @@ async function updateAnnouncement(req, res, next) {
     const recipientIds = current.status !== 'published' && status === 'published'
       ? await createNotifications(connection, updated, audiences)
       : [];
+    const emailQueued = recipientIds.length
+      ? await queueAnnouncementEmails(connection, updated, recipientIds)
+      : false;
+    const actionType = current.status !== 'published' && status === 'published'
+      ? 'announcement_published'
+      : 'announcement_updated';
+    await writeAuditLog(connection, req, actionType, 'announcement', announcementId, { summary: title });
+    const savedAnnouncement = formatAnnouncement(updated, audiences);
     await connection.commit();
-    await sendAnnouncementEmails(connection, updated, recipientIds);
-    res.json({ announcement: formatAnnouncement(updated, audiences) });
+    res.json({ announcement: savedAnnouncement });
+    if (emailQueued) wakeAnnouncementEmailWorker();
   } catch (error) {
     await connection.rollback();
     next(error);
@@ -325,7 +334,7 @@ async function deleteAnnouncement(req, res, next) {
     transactionStarted = true;
 
     const [rows] = await connection.execute(
-      `SELECT id, author_user_id AS authorUserId
+      `SELECT id, title, author_user_id AS authorUserId
       FROM announcements WHERE id = ? AND school_id = ? FOR UPDATE`,
       [announcementId, req.user.schoolId]
     );
@@ -338,6 +347,7 @@ async function deleteAnnouncement(req, res, next) {
       'DELETE FROM announcements WHERE id = ? AND school_id = ?',
       [announcementId, req.user.schoolId]
     );
+    await writeAuditLog(connection, req, 'announcement_deleted', 'announcement', announcementId, { summary: announcement.title });
     await connection.commit();
     transactionStarted = false;
     res.status(204).send();

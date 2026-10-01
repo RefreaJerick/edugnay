@@ -50,11 +50,56 @@
 
 .activity-type-filters {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
+.activity-type-filters::-webkit-scrollbar { display: none; }
+.activity-scroll-button {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--gray-600);
+  box-shadow: 0 2px 6px rgba(16, 40, 80, 0.12);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.activity-scroll-button[hidden] { display: none; }
+.activity-scroll-button:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.activity-scroll-button:focus-visible {
+  outline: 3px solid rgba(29, 92, 180, 0.35);
+  outline-offset: 2px;
+}
+.activity-scroll-icon { width: 16px; height: 16px; }
+.activity-scroll-button[data-direction="right"] .activity-scroll-icon-left,
+.activity-scroll-button[data-direction="left"] .activity-scroll-icon-right { display: none; }
+.scroll-fade-wrap.has-scroll-control .activity-type-filters { padding-right: 40px; }
 .atf-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--gray-200);
@@ -67,6 +112,12 @@
   transition: all 0.15s;
 }
 .atf-chip:hover { border-color: var(--blue-mid); color: var(--blue-mid); }
+.atf-chip:focus-visible {
+  position: relative;
+  z-index: 3;
+  outline: 3px solid rgba(29, 92, 180, 0.35);
+  outline-offset: 2px;
+}
 .atf-chip.active {
   border-color: var(--blue-mid);
   background: linear-gradient(135deg, var(--blue), var(--blue-mid));
@@ -92,6 +143,23 @@
   padding-right: 36px;
 }
 .activity-date-select:focus { border-color: var(--blue-mid); }
+
+@media (min-width: 1100px) {
+  .activity-filterbar { flex-wrap: nowrap; }
+  .activity-search {
+    flex: 0 1 320px;
+    min-width: 180px;
+  }
+  .activity-filterbar > .scroll-fade-wrap {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+  .activity-date-select {
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+}
 
 /* ── PANEL (same shape as dashboard) ── */
 .panel {
@@ -213,5 +281,8 @@
 @media (max-width: 760px) {
   .activity-filterbar { flex-direction: column; align-items: stretch; }
   .activity-search { max-width: none; }
+  .activity-filterbar > .scroll-fade-wrap { width: 100%; }
+  .activity-scroll-button { display: none; }
+  .scroll-fade-wrap.has-scroll-control .activity-type-filters { padding-right: 0; }
   .activity-date-select { margin-left: 0; }
 }

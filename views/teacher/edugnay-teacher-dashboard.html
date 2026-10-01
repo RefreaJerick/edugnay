@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -67,6 +68,12 @@
               </select>
             </div>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="teacherMaterialSubject">Subject</label>
+            <select class="form-select" id="teacherMaterialSubject" disabled>
+              <option value="">Select a section first</option>
+            </select>
+          </div>
           <div class="form-group" style="margin-bottom:0;">
             <label class="form-label" for="teacherMaterialVisibility">Visibility</label>
             <select class="form-select" id="teacherMaterialVisibility">
@@ -74,6 +81,7 @@
               <option value="draft">Save as draft</option>
             </select>
           </div>
+          <p id="teacherMaterialFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
         </form>
       </div>
       <div class="modal-foot">
@@ -101,7 +109,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <form id="teacherTodoForm" onsubmit="return saveTeacherTodo()">
+        <form id="teacherTodoForm" onsubmit="saveTeacherTodo(event); return false;">
           <input id="teacherTodoId" type="hidden">
           <div class="form-group">
             <label class="form-label" for="teacherTodoTitle">Task title</label>
@@ -111,6 +119,7 @@
             <label class="form-label" for="teacherTodoDueDate">Due date (optional)</label>
             <input class="form-input" id="teacherTodoDueDate" type="date">
           </div>
+          <p id="teacherTodoFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
         </form>
       </div>
       <div class="modal-foot">
@@ -138,6 +147,7 @@
       <div class="modal-body">
         <input id="teacherTodoDeleteId" type="hidden">
         <p class="confirm-remove-message">Delete <strong id="teacherTodoDeleteName"></strong> from your to-do list?</p>
+        <p id="teacherTodoDeleteFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
       </div>
       <div class="modal-foot">
         <button class="btn btn-cancel" type="button" onclick="closeTeacherTodoDeleteModal()">Cancel</button>
@@ -190,7 +200,7 @@
           <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
             <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
             <span class="nav-label">Narrative Reports</span>
-            <span class="nav-badge">5</span>
+
           </a>
           <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
             <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
@@ -207,7 +217,7 @@
           <a class="nav-item" onclick="navigate('announcements')">
             <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
             <span class="nav-label">Announcements</span>
-            <span class="nav-badge gold">2</span>
+
           </a>
         </div>
       </div>
@@ -521,6 +531,7 @@
               </button>
             </div>
             <div class="todo-list" id="teacher-todo-list"></div>
+            <p id="teacherTodoListFeedback" class="dashboard-action-feedback" role="status" hidden></p>
           </div>
 
           <!-- Flagged Students -->
@@ -544,31 +555,12 @@
   <script>
     lucide.createIcons();
 
-    // Dashboard-only records stay local for now; replace this data source with
-    // the teacher dashboard API later without changing the rendering markup.
-    // Advisership and a subject assignment stay separate, so subject can be blank.
-    const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
-    const journalSubjectName = journalSubject?.name || 'Values Education';
-    const DASHBOARD_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
-    let DASHBOARD_TEACHER_TODOS = null;
-    const TEACHER_SECTION_RECORDS = window.EDUGNAY_CONFIG.getAssignmentSections();
-    const TEACHER_SECTIONS = window.EDUGNAY_CONFIG.withActiveSchool([
-      { grade: '7', id: '7-matthew', sectionId: 'jhs-grade7-matthew', name: 'Grade 7 - St. Matthew', subjectId: journalSubject?.id || null, subjectName: journalSubjectName },
-      { grade: '8', id: '8-luke', sectionId: 'jhs-grade8-luke', name: 'Grade 8 - St. Luke', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false },
-      { grade: '8', id: '8-john', sectionId: 'jhs-grade8-john', name: 'Grade 8 - St. John', subjectId: 'science', subjectName: 'Science', isAdviser: false },
-      { grade: '9', id: '9-peter', sectionId: 'jhs-grade9-peter', name: 'Grade 9 - St. Peter', subjectId: 'mathematics', subjectName: 'Mathematics', isAdviser: false },
-      { grade: '9', id: '9-paul', sectionId: 'jhs-grade9-paul', name: 'Grade 9 - St. Paul', subjectId: 'science', subjectName: 'Science', isAdviser: false }
-    ]);
-    const dashboardSectionLevel = TEACHER_SECTIONS
-      .map(section => TEACHER_SECTION_RECORDS.find(record => record.id === section.sectionId)?.level)
-      .find(Boolean);
+    // Dashboard school records come from the backend; report arrays remain for the agreed mock report flow.
+    const TEACHER_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
+    let DASHBOARD_TEACHER_ID = '';
+    let DASHBOARD_TEACHER_TODOS = [];
+    let TEACHER_SECTIONS = [];
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
-    if (dashboardPeriod && dashboardSectionLevel) dashboardPeriod.dataset.schoolLevel = dashboardSectionLevel;
-
-    TEACHER_SECTIONS.forEach(section => {
-      const record = TEACHER_SECTION_RECORDS.find(item => item.id === section.sectionId);
-      section.isAdviser = record?.adviserId === DASHBOARD_TEACHER_ID;
-    });
 
     function getTeacherSectionSub(section) {
       return [section.isAdviser ? 'Class Adviser' : '', section.subjectName || '']
@@ -576,28 +568,12 @@
         .join(' · ');
     }
 
-    // The dashboard derives its roster from the same shared student directory
-    // used by Admin Users and Class Management. An API response can replace this
-    // filtered array later without changing the card or section renderers.
-    const TEACHER_STUDENT_RECORDS = window.EDUGNAY_CONFIG.getStudents()
-      .filter(student => TEACHER_SECTIONS.some(section => section.sectionId === student.sectionId));
-
     function getTeacherSectionStudentCount(sectionId) {
-      return TEACHER_STUDENT_RECORDS.filter(student => student.sectionId === sectionId).length;
+      return TEACHER_SECTIONS.find(section => section.sectionId === String(sectionId))?.studentCount || 0;
     }
 
-    const TEACHER_ADVISORY_REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(DASHBOARD_TEACHER_ID, '2025-W23');
+    const TEACHER_ADVISORY_REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2', '2025-W23');
     const PENDING_REPORTS = TEACHER_ADVISORY_REPORTS.filter(report => report.status === 'pending');
-    const HANDLED_SECTION_IDS = TEACHER_SECTIONS.map(section => section.sectionId);
-
-    const FLAGGED_STUDENTS = window.EDUGNAY_CONFIG.withActiveSchool([
-      { studentId: 'bg-007', sectionId: 'jhs-grade9-paul', color: 'var(--red)', kind: 'attendance', icon: 'calendar-x', reason: '4 absences' },
-      { studentId: 'sc-013', sectionId: 'jhs-grade7-matthew', color: 'var(--purple)', kind: 'academic', icon: 'trending-down', reason: 'Math: 73' },
-      { studentId: 'ml-006', sectionId: 'jhs-grade9-peter', color: 'var(--teal)', kind: 'attendance', icon: 'calendar-x', reason: '3 absences' },
-      { studentId: 'as-008', sectionId: 'jhs-grade10-james', color: 'var(--magenta)', kind: 'academic', icon: 'trending-down', reason: 'Science: 70' }
-    ]).filter(flag => HANDLED_SECTION_IDS.includes(flag.sectionId)
-      && (!window.EDUGNAY_API?.isBackendAvailable || flag.kind !== 'attendance'));
-
     const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
     const TEACHER_SUMMARY_CARDS = [
@@ -606,7 +582,7 @@
         icon: 'graduation-cap',
         label: 'Total Students',
         sub: 'Across assigned sections',
-        records: TEACHER_STUDENT_RECORDS,
+        records: [],
       },
       {
         tone: 'purple',
@@ -628,21 +604,61 @@
             icon: 'alert-triangle',
             label: 'Needs Attention',
             sub: 'Flagged students to review',
-            records: FLAGGED_STUDENTS,
+            records: [],
           }
     ];
 
-    let TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
+    let TEACHER_DASHBOARD_ANNOUNCEMENTS = [];
+    let TEACHER_ANNOUNCEMENTS_ERROR = '';
+    let TEACHER_ANNOUNCEMENTS_LOADING = true;
+    let TEACHER_SECTIONS_ERROR = '';
 
     function getTeacherTodos() {
-      return Array.isArray(DASHBOARD_TEACHER_TODOS)
-        ? DASHBOARD_TEACHER_TODOS
-        : window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_TEACHER_ID);
+      return Array.isArray(DASHBOARD_TEACHER_TODOS) ? DASHBOARD_TEACHER_TODOS : [];
+    }
+
+    function setDashboardFeedback(id, message = '', type = 'error') {
+      const feedback = document.getElementById(id);
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.hidden = !message;
+      feedback.classList.toggle('is-error', type === 'error');
+      feedback.classList.toggle('is-success', type === 'success');
+      feedback.classList.toggle('is-info', type === 'info');
+    }
+
+    async function refreshTeacherTasks(fallback = {}) {
+      try {
+        const tasks = await window.EDUGNAY_API.getTasks();
+        if (fallback.task && !tasks.some(item => item.id === fallback.task.id)) throw new Error('The saved task was not returned by the task list.');
+        if (fallback.removedId && tasks.some(item => item.id === String(fallback.removedId))) throw new Error('The deleted task is still returned by the task list.');
+        DASHBOARD_TEACHER_TODOS = tasks;
+        if (window.EDUGNAY_COMMUNICATION?.backend) window.EDUGNAY_COMMUNICATION.tasks = DASHBOARD_TEACHER_TODOS;
+        setDashboardFeedback('teacherTodoListFeedback');
+      } catch (error) {
+        if (fallback.task) {
+          const index = getTeacherTodos().findIndex(item => item.id === fallback.task.id);
+          if (index >= 0) DASHBOARD_TEACHER_TODOS[index] = fallback.task;
+          else DASHBOARD_TEACHER_TODOS = [...getTeacherTodos(), fallback.task];
+        }
+        if (fallback.removedId) DASHBOARD_TEACHER_TODOS = getTeacherTodos().filter(item => item.id !== String(fallback.removedId));
+        const message = fallback.removedId
+          ? `The task was deleted, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+          : fallback.task
+            ? `The task was saved, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+            : `Tasks could not be loaded: ${error.message || 'Please reload the page.'}`;
+        setDashboardFeedback('teacherTodoListFeedback', message, fallback.task || fallback.removedId ? 'info' : 'error');
+      }
+      renderTeacherTodos();
     }
 
     function openTeacherMaterialModal() {
       const modal = document.getElementById('teacherMaterialUploadModal');
       if (!modal) return false;
+      document.getElementById('teacherMaterialUploadForm')?.reset();
+      updateTeacherMaterialFileName(document.getElementById('teacherMaterialFile'));
+      setDashboardFeedback('teacherMaterialFeedback');
+      updateTeacherMaterialTargets();
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       return false;
@@ -660,6 +676,7 @@
       const form = document.getElementById('teacherTodoForm');
       if (!modal || !form) return;
       form.reset();
+      setDashboardFeedback('teacherTodoFeedback');
       const todo = todoId
         ? getTeacherTodos().find(item => item.id === String(todoId))
         : null;
@@ -681,7 +698,12 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
-    function saveTeacherTodo() {
+    async function saveTeacherTodo(event) {
+      event?.preventDefault();
+      if (!TEACHER_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('teacherTodoFeedback', 'The backend is required to save tasks.');
+        return false;
+      }
       const todoId = document.getElementById('teacherTodoId').value;
       const titleInput = document.getElementById('teacherTodoTitle');
       const title = titleInput.value.trim();
@@ -689,45 +711,46 @@
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
 
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        const request = todoId
-          ? window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
-          : window.EDUGNAY_API.createTask({ title, dueDate });
-        request.then(todo => {
-          if (!todo) return;
-          const index = DASHBOARD_TEACHER_TODOS?.findIndex(item => item.id === todo.id) ?? -1;
-          if (index >= 0) DASHBOARD_TEACHER_TODOS[index] = todo;
-          else DASHBOARD_TEACHER_TODOS = [...(DASHBOARD_TEACHER_TODOS || []), todo];
-          closeTeacherTodoModal();
-          renderTeacherTodos();
-        }).catch(error => alert(error.message));
-        return false;
+      const button = document.getElementById('teacherTodoSaveButton');
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      setDashboardFeedback('teacherTodoFeedback');
+      try {
+        const task = todoId
+          ? await window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
+          : await window.EDUGNAY_API.createTask({ title, dueDate });
+        closeTeacherTodoModal();
+        await refreshTeacherTasks({ task });
+        showAppToast(todoId ? 'Task updated.' : 'Task added.');
+      } catch (error) {
+        showAppToast(error.message || 'The task could not be saved.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = todoId ? 'Save changes' : 'Add task';
       }
-
-      if (todoId) window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
-      else window.EDUGNAY_CONFIG.createTodo({ schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), userId: DASHBOARD_TEACHER_ID, title, dueDate });
-      closeTeacherTodoModal();
-      renderTeacherTodos();
       return false;
     }
 
-    function toggleTeacherTodo(todoId) {
+    function toggleTeacherTodo(todoId, checkbox) {
+      if (!TEACHER_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('teacherTodoListFeedback', 'The backend is required to update tasks.');
+        renderTeacherTodos();
+        return;
+      }
       const todo = getTeacherTodos()
         .find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
-          .then(updated => {
-            const index = DASHBOARD_TEACHER_TODOS.findIndex(item => item.id === todo.id);
-            if (index >= 0) DASHBOARD_TEACHER_TODOS[index] = updated;
-            renderTeacherTodos();
-          })
-          .catch(error => alert(error.message));
-        return;
-      }
-      window.EDUGNAY_CONFIG.updateTodo(todo.id, { status: completed ? 'completed' : 'pending', completedAt: completed ? new Date().toISOString() : null });
-      renderTeacherTodos();
+      if (checkbox) checkbox.disabled = true;
+      window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
+        .then(async updated => {
+          await refreshTeacherTasks({ task: updated });
+          showAppToast(completed ? 'Task completed.' : 'Task reopened.');
+        })
+        .catch(error => {
+          showAppToast(error.message || 'The task status could not be updated.', 'error');
+          renderTeacherTodos();
+        });
     }
 
     function openTeacherTodoDeleteModal(todoId) {
@@ -735,6 +758,7 @@
         .find(item => item.id === String(todoId));
       const modal = document.getElementById('teacherTodoDeleteModal');
       if (!todo || !modal) return;
+      setDashboardFeedback('teacherTodoDeleteFeedback');
       document.getElementById('teacherTodoDeleteId').value = todo.id;
       document.getElementById('teacherTodoDeleteName').textContent = `“${todo.title}”`;
       modal.classList.add('open');
@@ -750,22 +774,28 @@
       document.getElementById('teacherTodoDeleteId').value = '';
     }
 
-    function confirmDeleteTeacherTodo() {
-      const todoId = document.getElementById('teacherTodoDeleteId').value;
-      if (!todoId) return;
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        window.EDUGNAY_API.deleteTask(todoId)
-          .then(() => {
-            DASHBOARD_TEACHER_TODOS = DASHBOARD_TEACHER_TODOS.filter(item => item.id !== String(todoId));
-            closeTeacherTodoDeleteModal();
-            renderTeacherTodos();
-          })
-          .catch(error => alert(error.message));
+    async function confirmDeleteTeacherTodo() {
+      if (!TEACHER_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('teacherTodoDeleteFeedback', 'The backend is required to delete tasks.');
         return;
       }
-      window.EDUGNAY_CONFIG.deleteTodo(todoId);
-      closeTeacherTodoDeleteModal();
-      renderTeacherTodos();
+      const todoId = document.getElementById('teacherTodoDeleteId').value;
+      if (!todoId) return;
+      const button = document.querySelector('#teacherTodoDeleteModal .btn-danger');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      setDashboardFeedback('teacherTodoDeleteFeedback');
+      try {
+        await window.EDUGNAY_API.deleteTask(todoId);
+        closeTeacherTodoDeleteModal();
+        await refreshTeacherTasks({ removedId: todoId });
+        showAppToast('Task deleted.');
+      } catch (error) {
+        showAppToast(error.message || 'The task could not be deleted.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Yes, Delete';
+      }
     }
 
     function updateTeacherMaterialFileName(input) {
@@ -781,9 +811,7 @@
       { icon: 'scan-line', title: 'Check Attendance via QR', desc: 'Scan student QR codes for today\'s attendance', action: "window.location.href='./edugnay-teacher-sections.html?tab=attendance&action=qr'; return false;" }
     ];
 
-    const TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section =>
-      section.schoolId === window.EDUGNAY_CONFIG.getActiveSchoolId()
-    );
+    let TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section => section.subjectAssignments?.length);
     const TEACHER_MATERIAL_FILE_TYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'png', 'mp4'];
 
     function formatTeacherMaterialGrade(grade) {
@@ -796,69 +824,104 @@
       return TEACHER_MATERIAL_SECTIONS.find(section => section.sectionId === sectionId) || null;
     }
 
+    function getTeacherMaterialSubjects(section) {
+      if (Array.isArray(section?.subjectAssignments)) return section.subjectAssignments;
+      return section?.subjectId ? [{ subjectId: section.subjectId, subjectName: section.subjectName || 'Assigned subject' }] : [];
+    }
+
+    function updateTeacherMaterialSubjects() {
+      const section = getSelectedTeacherMaterialSection();
+      const select = document.getElementById('teacherMaterialSubject');
+      if (!select) return;
+      const subjects = getTeacherMaterialSubjects(section);
+      select.replaceChildren(new Option('Select a subject', ''), ...subjects.map(subject =>
+        new Option(subject.subjectName, subject.subjectId)
+      ));
+      select.disabled = subjects.length === 0;
+      select.required = TEACHER_DASHBOARD_API_ENABLED;
+    }
+
+    function updateTeacherMaterialTargets() {
+      const gradeSelect = document.getElementById('teacherMaterialGrade');
+      if (!gradeSelect) return;
+      const selectedGrade = gradeSelect.value;
+      const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))];
+      gradeSelect.replaceChildren(new Option('Select a grade level', ''), ...grades.map(grade =>
+        new Option(formatTeacherMaterialGrade(grade), grade)
+      ));
+      gradeSelect.value = grades.includes(selectedGrade) ? selectedGrade : '';
+      updateTeacherMaterialSections();
+    }
+
     function updateTeacherMaterialSections() {
       const gradeSelect = document.getElementById('teacherMaterialGrade');
       const sectionSelect = document.getElementById('teacherMaterialSection');
       if (!gradeSelect || !sectionSelect) return;
 
       const sections = TEACHER_MATERIAL_SECTIONS.filter(section => section.grade === gradeSelect.value);
-      sectionSelect.innerHTML = sections.length
-        ? '<option value="">Select a section</option>' + sections.map(section => `<option value="${section.sectionId}">${section.name}</option>`).join('')
-        : '<option value="">Select a grade level first</option>';
+      sectionSelect.replaceChildren(new Option(sections.length ? 'Select a section' : 'No assigned sections for this grade', ''), ...sections.map(section =>
+        new Option(section.name, section.sectionId)
+      ));
       sectionSelect.disabled = sections.length === 0;
       sectionSelect.value = '';
+      updateTeacherMaterialSubjects();
     }
 
     function initTeacherMaterialTargets() {
       const gradeSelect = document.getElementById('teacherMaterialGrade');
-      if (!gradeSelect) return;
-
-      const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))];
-      gradeSelect.innerHTML = '<option value="">Select a grade level</option>'
-        + grades.map(grade => `<option value="${grade}">${formatTeacherMaterialGrade(grade)}</option>`).join('');
+      const sectionSelect = document.getElementById('teacherMaterialSection');
+      if (!gradeSelect || !sectionSelect) return;
       gradeSelect.addEventListener('change', updateTeacherMaterialSections);
-      updateTeacherMaterialSections();
+      sectionSelect.addEventListener('change', updateTeacherMaterialSubjects);
+      updateTeacherMaterialTargets();
     }
 
-    function submitTeacherMaterialUpload() {
+    async function submitTeacherMaterialUpload() {
       const file = document.getElementById('teacherMaterialFile')?.files?.[0];
       const title = document.getElementById('teacherMaterialTitle')?.value.trim();
       const grade = document.getElementById('teacherMaterialGrade')?.value;
       const section = getSelectedTeacherMaterialSection();
+      const subjectId = document.getElementById('teacherMaterialSubject')?.value;
       const status = document.getElementById('teacherMaterialVisibility')?.value || 'published';
-      const visibleToStudents = status === 'published';
+      const button = document.getElementById('teacherMaterialUploadSubmit');
+      const fail = message => setDashboardFeedback('teacherMaterialFeedback', message);
+      setDashboardFeedback('teacherMaterialFeedback');
 
-      if (!file) { alert('Please choose a file.'); return false; }
-      if (!title) { alert('Please enter a material title.'); return false; }
-      if (!grade) { alert('Please select a grade level.'); return false; }
-      if (!section || section.grade !== grade) { alert('Please select a section for the chosen grade.'); return false; }
+      if (!TEACHER_DASHBOARD_API_ENABLED) { fail('The backend is required to upload learning materials.'); return false; }
+      if (!file) { fail('Please choose a file.'); return false; }
+      if (!title) { fail('Please enter a material title.'); return false; }
+      if (!grade) { fail('Please select a grade level.'); return false; }
+      if (!section || section.grade !== grade) { fail('Please select one of your assigned sections for the chosen grade.'); return false; }
+      if (!subjectId) { fail('Please select a subject assigned to you in this section.'); return false; }
 
       const type = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'file';
       if (!TEACHER_MATERIAL_FILE_TYPES.includes(type)) {
-        alert('Choose a PDF, Word, PowerPoint, Excel, image, or video file.');
+        fail('Choose a PDF, Word, PowerPoint, Excel, JPG, PNG, or MP4 file.');
         return false;
       }
-      const fileSize = file.size ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : null;
-      const material = window.EDUGNAY_CONFIG.createLearningMaterial({
-        schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-        sectionId: section.sectionId,
-        subjectId: section.subjectId || null,
-        teacherId: DASHBOARD_TEACHER_ID,
-        title,
-        type,
-        postedAt: visibleToStudents ? new Date().toISOString() : null,
-        fileSize,
-        fileUrl: null,
-        status,
-        visibleToStudents
-      });
-
-      if (!material) return false;
-      document.getElementById('teacherMaterialUploadForm')?.reset();
-      updateTeacherMaterialFileName(document.getElementById('teacherMaterialFile'));
-      closeTeacherMaterialModal();
-      updateTeacherMaterialSections();
-      alert(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${section.name}.`);
+      button.disabled = true;
+      button.textContent = 'Uploading…';
+      try {
+        const material = await window.EDUGNAY_API.uploadMaterial(section.sectionId, subjectId, { file, title, status });
+        let refreshMessage = '';
+        try {
+          const materials = await window.EDUGNAY_API.getMaterials({ sectionId: section.sectionId, subjectId });
+          if (!materials.some(item => String(item.id) === String(material.id))) throw new Error('The uploaded material was not returned by the materials list.');
+        } catch (error) {
+          refreshMessage = ` The file was uploaded, but the list could not refresh: ${error.message || 'reload My Sections.'}`;
+        }
+        document.getElementById('teacherMaterialUploadForm')?.reset();
+        updateTeacherMaterialFileName(document.getElementById('teacherMaterialFile'));
+        updateTeacherMaterialTargets();
+        closeTeacherMaterialModal();
+        showAppToast(`“${material.title}” was ${status === 'published' ? 'published' : 'saved as a draft'} for ${section.name}.${refreshMessage}`, refreshMessage ? 'info' : 'success');
+      } catch (error) {
+        fail(error.message || 'The material could not be uploaded. Your file and form values are still selected.');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<i data-lucide="upload" style="width:13px;height:13px;"></i> Upload';
+        lucide.createIcons();
+      }
       return false;
     }
 
@@ -886,7 +949,7 @@
         return `
           <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
             <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
-              ${completed ? 'checked' : ''} onchange="toggleTeacherTodo('${todo.id}')">
+              ${completed ? 'checked' : ''} onchange="toggleTeacherTodo('${todo.id}', this)">
             <div class="todo-copy">
               <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
               ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
@@ -907,12 +970,22 @@
     function renderTeacherDashboardData() {
       const summaryList = document.getElementById('teacher-summary-cards');
       if (summaryList) {
+        TEACHER_SUMMARY_CARDS[0].value = TEACHER_SECTIONS_ERROR
+          ? '—'
+          : TEACHER_SECTIONS.reduce((total, section) => total + section.studentCount, 0);
+        TEACHER_SUMMARY_CARDS[0].sub = TEACHER_SECTIONS_ERROR || 'Across assigned sections';
+        TEACHER_SUMMARY_CARDS[1].value = TEACHER_SECTIONS_ERROR ? '—' : TEACHER_SECTIONS.length;
+        TEACHER_SUMMARY_CARDS[1].sub = TEACHER_SECTIONS_ERROR || 'Assigned for the current term';
+        if (!TEACHER_CAN_REVIEW_REPORTS) {
+          TEACHER_SUMMARY_CARDS[2].value = '—';
+          TEACHER_SUMMARY_CARDS[2].sub = 'Student risk indicators are not connected yet';
+        }
         summaryList.innerHTML = TEACHER_SUMMARY_CARDS.map(card => `
           <div class="stat-card ${card.tone}">
             <div class="stat-card-top">
               <div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div>
             </div>
-            <div class="stat-card-num">${card.records.length}</div>
+            <div class="stat-card-num">${card.value === undefined ? card.records.length : card.value}</div>
             <div class="stat-card-label">${card.label}</div>
             <div class="stat-card-sub">${card.sub}</div>
           </div>`).join('');
@@ -921,28 +994,47 @@
       const sectionList = document.getElementById('sectionCardsContainer');
       if (sectionList) {
         sectionList.innerHTML = TEACHER_SECTIONS.map(section => `
-          <div class="section-card" data-grade="${section.grade}" onclick="navigate('section','${section.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); navigate('section','${section.id}'); }" role="button" tabindex="0">
+          <div class="section-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(section.grade)}" data-section-id="${window.EDUGNAY_CONFIG.escapeHtml(section.id)}" role="button" tabindex="0">
             <div class="section-card-arrow"><i data-lucide="chevron-right" style="width:15px;height:15px;"></i></div>
-            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${section.name}</div><div class="section-card-sub">${getTeacherSectionSub(section)}</div></div></div>
+            <div class="section-card-top"><div class="section-card-main"><div class="section-card-name">${window.EDUGNAY_CONFIG.escapeHtml(section.name)}</div><div class="section-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(getTeacherSectionSub(section))}</div></div></div>
             <div class="section-card-divider"></div>
             <div class="section-card-stats"><div class="section-stat"><span class="section-stat-label">Students</span><span class="section-stat-value">${getTeacherSectionStudentCount(section.sectionId)}</span></div></div>
           </div>`).join('') + `<div id="teacherSectionsEmpty" class="panel-empty-slot" hidden></div>`;
+        sectionList.querySelectorAll('.section-card').forEach(card => {
+          const openSection = () => navigate('section', card.dataset.sectionId);
+          card.addEventListener('click', openSection);
+          card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openSection();
+            }
+          });
+        });
         const sectionEmpty = document.getElementById('teacherSectionsEmpty');
-        if (sectionEmpty && !TEACHER_SECTIONS.length) {
-          sectionEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to you will appear here.' });
+        if (sectionEmpty && (!TEACHER_SECTIONS.length || TEACHER_SECTIONS_ERROR)) {
+          sectionEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+            icon: TEACHER_SECTIONS_ERROR ? 'cloud-off' : 'door-open',
+            title: TEACHER_SECTIONS_ERROR ? 'Sections unavailable' : 'No sections assigned',
+            text: TEACHER_SECTIONS_ERROR || 'Sections assigned to you will appear here.'
+          });
           sectionEmpty.hidden = false;
         }
 
         const sectionCount = document.getElementById('teacherSectionCount');
-        if (sectionCount) sectionCount.textContent = `${TEACHER_SECTIONS.length} sections`;
+        if (sectionCount) sectionCount.textContent = TEACHER_SECTIONS_ERROR ? 'Unavailable' : `${TEACHER_SECTIONS.length} sections`;
+        renderTeacherGradeFilters();
       }
 
       const announcements = document.getElementById('teacher-dashboard-announcements');
       if (announcements) {
         const visibleAnnouncements = TEACHER_DASHBOARD_ANNOUNCEMENTS.filter(item => !item.access || teacherCanAccess(item.access));
-        announcements.innerHTML = visibleAnnouncements.map(item => `
-          <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${item.title}</span><span class="badge ${item.tagClass}" style="font-size:10px;padding:2px 7px;">${item.tag}</span></div>${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}<div class="ann-item-body">${item.body}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${item.time} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${item.author}</div></div>`).join('');
-        if (!visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
+        announcements.innerHTML = TEACHER_ANNOUNCEMENTS_LOADING
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' })
+          : TEACHER_ANNOUNCEMENTS_ERROR
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: TEACHER_ANNOUNCEMENTS_ERROR })
+          : visibleAnnouncements.map(item => `
+          <div class="ann-item"><div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}<div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div><div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.time)} · <i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.author)}</div></div>`).join('');
+        if (!TEACHER_ANNOUNCEMENTS_LOADING && !TEACHER_ANNOUNCEMENTS_ERROR && !visibleAnnouncements.length) announcements.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'megaphone', title: 'No announcements yet', text: 'School updates will appear here when they are published.' });
       }
       const actions = document.getElementById('teacher-quick-actions');
       if (actions) {
@@ -962,24 +1054,36 @@
         if (flagFilter) {
           flagFilter.innerHTML = [
             '<option value="all">All My Sections</option>',
-            ...TEACHER_SECTIONS.map(section => `<option value="${section.sectionId}">${section.name}</option>`)
+            ...TEACHER_SECTIONS.map(section => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(section.sectionId)}">${window.EDUGNAY_CONFIG.escapeHtml(section.name)}</option>`)
           ].join('');
         }
-        flagList.innerHTML = FLAGGED_STUDENTS.map(flag => {
-          const student = window.EDUGNAY_CONFIG.getUserById(flag.studentId);
-          if (!student) return '';
-          const section = window.EDUGNAY_CONFIG.getAssignmentSections().find(item => item.id === flag.sectionId);
-          const detail = section ? `${section.grade} – ${section.name}` : 'Section not assigned';
-          return `
-          <div class="flag-card flag-${flag.kind}" data-section="${flag.sectionId}"><div class="flag-card-top"><div class="flag-av" style="background:${flag.color};">${student.initials}</div><div class="flag-info"><div class="flag-name">${student.displayName}</div><div class="flag-detail">${detail}</div></div></div><div class="flag-reason-row"><span class="flag-tag flag-${flag.kind === 'attendance' ? 'absences' : 'grades'}"><i data-lucide="${flag.icon}" style="width:10px;height:10px;"></i> ${flag.reason}</span></div></div>`;
-        }).join('');
-        if (!FLAGGED_STUDENTS.length) flagList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-search', title: 'No students need attention', text: 'Students flagged by attendance or progress rules will appear here.' });
+        flagList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'cloud-off',
+          title: 'Student indicators unavailable',
+          text: 'Risk indicators are not connected to the backend yet.'
+        });
       }
       lucide.createIcons();
     }
 
     const MAX_SECTION_CARDS = 6;
     let currentSectionFilter = 'all';
+
+    function renderTeacherGradeFilters() {
+      const row = document.getElementById('sectionFilterRow');
+      if (!row || !TEACHER_DASHBOARD_API_ENABLED) return;
+      row.replaceChildren();
+      const grades = [...new Map(TEACHER_SECTIONS.map(section => [section.grade, section.gradeLabel || `Grade ${section.grade}`])).entries()];
+      [['all', 'All'], ...grades].forEach(([value, label], index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `section-filter-btn${index === 0 ? ' active' : ''}`;
+        button.textContent = label;
+        button.addEventListener('click', () => filterSections(value, button));
+        row.appendChild(button);
+      });
+      currentSectionFilter = 'all';
+    }
 
     function filterSections(grade, btnEl) {
       currentSectionFilter = grade;
@@ -1005,9 +1109,60 @@
       const empty = document.getElementById('teacherSectionsEmpty');
       if (empty) {
         empty.hidden = shown > 0;
-        if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No matching sections', text: 'Try another grade filter.' });
+        if (!empty.hidden && !TEACHER_SECTIONS_ERROR) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No matching sections', text: 'Try another grade filter.' });
       }
       lucide.createIcons();
+    }
+
+    async function loadTeacherDashboardData() {
+      const session = await window.EDUGNAY_API.getCurrentUser();
+      if (session?.role !== 'teacher') throw new Error('This dashboard requires a teacher session.');
+      DASHBOARD_TEACHER_ID = String(session.apiUserId || session.userId);
+      const greeting = document.querySelector('.grading-welcome-name');
+      if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Teacher'}!`;
+
+      const sections = (await window.EDUGNAY_API.getSections()).filter(section =>
+        section.status === 'active' && section.academicYearStatus === 'active'
+      );
+      const teacherAssignments = await Promise.all(sections.map(async section => {
+        try {
+          const result = await window.EDUGNAY_API.getSectionTeachers(section.id);
+          return result.teachers.filter(teacher => String(teacher.teacherId) === DASHBOARD_TEACHER_ID);
+        } catch {
+          return [];
+        }
+      }));
+
+      TEACHER_SECTIONS = sections.map((section, index) => {
+        const assignments = teacherAssignments[index];
+        const grade = String(section.gradeCode || section.gradeLevelName || '').replace(/^grade-/, '');
+        const gradeLabel = section.gradeLevelName || ('Grade ' + grade);
+        return {
+          id: String(section.id),
+          sectionId: String(section.id),
+          schoolId: section.schoolId,
+          grade,
+          gradeLabel,
+          name: gradeLabel + ' – ' + section.name,
+          sectionName: section.name,
+          studentCount: Number(section.studentCount) || 0,
+          capacity: Number(section.capacity) || 0,
+          isAdviser: String(section.adviserId || '') === DASHBOARD_TEACHER_ID,
+          subjectId: assignments[0]?.subjectId || null,
+          subjectName: [...new Set(assignments.map(item => item.subjectName).filter(Boolean))].join(', '),
+          subjectAssignments: assignments.map(item => ({
+            subjectId: String(item.subjectId),
+            subjectName: item.subjectName
+          }))
+        };
+      });
+      TEACHER_MATERIAL_SECTIONS = TEACHER_SECTIONS.filter(section => section.subjectAssignments.length > 0);
+      TEACHER_SECTIONS_ERROR = '';
+
+      if (dashboardPeriod && sections[0]?.level) {
+        dashboardPeriod.dataset.schoolLevel = sections[0].level;
+        window.refreshEdUgnayShellContext?.();
+      }
     }
 
     function renderWeekCalendar() {
@@ -1046,11 +1201,32 @@
       }
     }
     document.addEventListener('DOMContentLoaded', async () => {
+      if (TEACHER_DASHBOARD_API_ENABLED) {
+        document.getElementById('teacher-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while your assigned sections are loaded.' });
+        document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading sections', text: 'Please wait while your assigned sections are loaded.' });
+        document.getElementById('teacher-dashboard-announcements').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' });
+        try {
+          await loadTeacherDashboardData();
+        } catch (error) {
+          TEACHER_SECTIONS = [];
+          TEACHER_MATERIAL_SECTIONS = [];
+          TEACHER_SECTIONS_ERROR = error.message || 'Assigned sections could not be loaded.';
+        }
+      } else {
+        TEACHER_SECTIONS_ERROR = 'The backend is required to load your assigned sections.';
+      }
       await window.EDUGNAY_COMMUNICATION_READY;
       if (window.EDUGNAY_COMMUNICATION?.backend) {
-        DASHBOARD_TEACHER_TODOS = window.EDUGNAY_COMMUNICATION.tasks;
         TEACHER_DASHBOARD_ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
+        TEACHER_ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION.error || '';
+      } else if (TEACHER_DASHBOARD_API_ENABLED) {
+        TEACHER_DASHBOARD_ANNOUNCEMENTS = [];
+        TEACHER_ANNOUNCEMENTS_ERROR = window.EDUGNAY_COMMUNICATION?.error || '';
+      } else {
+        TEACHER_ANNOUNCEMENTS_ERROR = 'The backend is required to load announcements.';
       }
+      await refreshTeacherTasks();
+      TEACHER_ANNOUNCEMENTS_LOADING = false;
       renderTeacherDashboardData();
       renderTeacherTodos();
       initTeacherMaterialTargets();

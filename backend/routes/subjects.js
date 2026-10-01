@@ -9,5 +9,6 @@ router.use(requireAuth);
 router.get('/', controller.listSubjects);
 router.post('/', requireSchoolAdmin, controller.createSubject);
 router.patch('/:subjectId', requireSchoolAdmin, controller.updateSubject);
+router.delete('/:subjectId', requireSchoolAdmin, controller.deleteSubject);
 
 module.exports = router;

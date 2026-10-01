@@ -606,26 +606,6 @@
   color: var(--red-dark);
 }
 
-.sf-toast {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 400;
-  display: none;
-  max-width: 340px;
-  padding: 11px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--navy);
-  color: var(--white);
-  box-shadow: 0 8px 22px rgba(11, 31, 58, .2);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.sf-toast.show {
-  display: block;
-}
-
 @media (max-width: 1050px) {
   .sf-workspace {
     grid-template-columns: 1fr;
@@ -702,12 +682,5 @@
 
   .sf-workbook-viewport {
     max-height: 60dvh;
-  }
-
-  .sf-toast {
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
-    max-width: none;
   }
 }

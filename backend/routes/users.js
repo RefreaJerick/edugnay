@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   createUser,
+  deleteUser,
   getMyParents,
   getMyProfile,
   getParentChildren,
@@ -26,6 +27,7 @@ router.get('/:userId', getUser);
 router.get('/:userId/children', requireRoles('school_admin'), getParentChildren);
 router.get('/:userId/profile', getUser);
 router.patch('/:userId', requireRoles('platform_admin', 'school_admin'), updateUser);
+router.delete('/:userId', requireRoles('school_admin'), deleteUser);
 router.post('/:userId/activate', requireRoles('platform_admin', 'school_admin'), (req, res, next) => {
   req.params.action = 'activate';
   setUserStatus(req, res, next);

@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS schools (
   rejected_at DATETIME NULL,
   rejection_reason TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_schools_registration_status CHECK (registration_status IN ('pending', 'active', 'rejected', 'suspended'))
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS school_portal_features (
@@ -86,6 +87,9 @@ CREATE TABLE IF NOT EXISTS academic_years (
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   status VARCHAR(30) NOT NULL DEFAULT 'upcoming',
+  archived_at DATETIME NULL,
+  archived_by_user_id BIGINT UNSIGNED NULL,
+  archive_snapshot JSON NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_academic_years_school_label (school_id, label),
@@ -160,6 +164,18 @@ CREATE TABLE IF NOT EXISTS users (
   KEY idx_users_school_role_status (school_id, role, account_status),
   CONSTRAINT fk_users_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS parent_notification_triggers (
+  school_id BIGINT UNSIGNED NOT NULL,
+  trigger_code VARCHAR(50) NOT NULL,
+  is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  threshold TINYINT UNSIGNED NULL,
+  updated_by_user_id BIGINT UNSIGNED NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (school_id, trigger_code),
+  CONSTRAINT fk_parent_notification_triggers_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
+  CONSTRAINT fk_parent_notification_triggers_user FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -578,6 +594,38 @@ CREATE TABLE IF NOT EXISTS qr_scan_events (
   CONSTRAINT fk_qr_scan_events_user FOREIGN KEY (scanned_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS grading_period_reopen_requests (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_term_id BIGINT UNSIGNED NOT NULL,
+  section_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  teacher_user_id BIGINT UNSIGNED NOT NULL,
+  reason TEXT NOT NULL,
+  request_status ENUM('pending', 'approved', 'rejected', 'revoked') NOT NULL DEFAULT 'pending',
+  review_note TEXT NULL,
+  last_action_note TEXT NULL,
+  reviewed_by_user_id BIGINT UNSIGNED NULL,
+  reviewed_at DATETIME NULL,
+  approved_at DATETIME NULL,
+  expires_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_gp_reopen_school_status_created (school_id, request_status, created_at),
+  KEY idx_gp_reopen_teacher_scope (teacher_user_id, section_id, subject_id, academic_term_id, created_at),
+  KEY idx_gp_reopen_scope_status_expiry (school_id, academic_term_id, section_id, subject_id, request_status, expires_at),
+  CONSTRAINT chk_gp_reopen_approval_expiry CHECK (request_status <> 'approved' OR expires_at IS NOT NULL),
+  CONSTRAINT chk_gp_reopen_review_fields CHECK (
+    request_status = 'pending' OR (reviewed_by_user_id IS NOT NULL AND reviewed_at IS NOT NULL)
+  ),
+  CONSTRAINT fk_gp_reopen_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_gp_reopen_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_gp_reopen_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_gp_reopen_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_gp_reopen_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_gp_reopen_reviewer FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
 -- =========================================================
 -- 5. Communication, journals, reports, and interventions
 -- =========================================================
@@ -622,16 +670,41 @@ CREATE TABLE IF NOT EXISTS notifications (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   announcement_id BIGINT UNSIGNED NULL,
   user_id BIGINT UNSIGNED NOT NULL,
+  related_student_user_id BIGINT UNSIGNED NULL,
   type VARCHAR(50) NOT NULL,
   title VARCHAR(255) NOT NULL,
   message TEXT NULL,
   target_path VARCHAR(500) NULL,
+  event_key VARCHAR(180) NULL,
   read_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_user_read (user_id, read_at),
+  UNIQUE KEY uq_notifications_recipient_event (user_id, event_key),
   KEY idx_notifications_announcement (announcement_id),
+  KEY idx_notifications_related_student (related_student_user_id),
   CONSTRAINT fk_notifications_announcement FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
-  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_related_student FOREIGN KEY (related_student_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS announcement_email_outbox (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  announcement_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  status ENUM('pending', 'sending', 'sent', 'failed', 'skipped') NOT NULL DEFAULT 'pending',
+  attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  claim_token CHAR(36) NULL,
+  claimed_at DATETIME NULL,
+  sent_at DATETIME NULL,
+  last_error VARCHAR(100) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_announcement_email_recipient (announcement_id, user_id),
+  KEY idx_announcement_email_ready (status, next_attempt_at, id),
+  KEY idx_announcement_email_claim (status, claimed_at),
+  CONSTRAINT fk_announcement_email_announcement FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+  CONSTRAINT fk_announcement_email_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS learning_materials (
@@ -935,6 +1008,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details JSON NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_audit_logs_school_created (school_id, created_at),
+  KEY idx_audit_logs_action_created (action_type, created_at, id),
   CONSTRAINT fk_audit_logs_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL,
   CONSTRAINT fk_audit_logs_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

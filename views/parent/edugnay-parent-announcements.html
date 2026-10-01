@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/parent/announcements.css">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -21,32 +22,7 @@
 
 <body data-page-title="Announcements">
 
-  <!--
-  EJS CONVERSION MAP — parent-announcements.html
-  ─────────────────────────────────────────
-  Mirrors edugnay-student-announcements.html and edugnay-teacher-announcements.html
-  structurally: same modal-based detail/read pattern, same card classes, same filter bar.
-  Differences from the student version:
-    - data-id, data-priority, data-read come from the SAME announcements table,
-      filtered server-side to audience IN ('all', 'parents'), status != 'draft'.
-      Drafts must never reach this query.
-    - No per-child scoping needed for announcements themselves — school-wide/parent-wide
-      content only. Child-specific alerts (grades, attendance) live in notifications,
-      not this feed.
-    - No notification-preference rail — reused "About Announcements" copy instead,
-      audience wording adjusted for parents.
-
-  SERVER DATA:
-    - announcements[]  → { _id, title, content (full HTML), excerpt, priority, audience,
-                          imageUrl, postedBy, postedAt, isPinned, readBy: [parentIds] }
-    - currentUser._id   → used to compute data-read = announcements.readBy.includes(currentUser._id)
-    - unreadCount, urgentCount, eventCount → computed server-side from the filtered set
-
-  MARK AS READ: fires on modal open (openAnnModal → markAsRead).
-  Replace the commented fetch() with a real call: POST /parent/announcements/:id/read.
-
-  PARTIALS: sidebar/topbar shared with other parent pages (activeNav='announcements').
--->
+  <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
 
   <!-- ══════ ANNOUNCEMENT DETAIL MODAL ══════ -->
   <div class="modal-backdrop" id="annDetailModal">
@@ -55,7 +31,7 @@
         <div class="modal-heading">
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="megaphone"></i></div>
           <div class="modal-heading-copy">
-          <!-- EJS: <%= announcement.title %> -->
+          <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
           <div class="modal-title" id="modalAnnTitle">Announcement Title</div>
           <div class="modal-sub" id="modalAnnMeta">Posted by Admin · Today, 8:00 AM</div>
           </div>
@@ -66,11 +42,11 @@
       </div>
       <div class="modal-body">
 
-        <!-- EJS: <% if (announcement.imageUrl) { %> -->
+        <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
         <div class="modal-ann-image-wrap" id="modalImageWrap" style="display:none;">
           <img class="modal-ann-image" id="modalAnnImage" src="" alt="Announcement image" />
         </div>
-        <!-- EJS: <% } %> -->
+        <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
 
         <div class="modal-meta-row">
           <span class="modal-meta-label">Audience</span>
@@ -81,7 +57,7 @@
           <span style="font-size:12px;color:var(--gray-500);" id="modalPostedAt">—</span>
         </div>
 
-        <!-- EJS: <%- announcement.content %> -->
+        <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
         <div class="modal-ann-content" id="modalAnnContent"></div>
 
       </div>
@@ -131,7 +107,7 @@
         <a href="edugnay-parent-announcements.html" class="nav-item active">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -255,10 +231,10 @@
 
         <!-- LEFT: Announcement cards -->
         <div>
-          <!-- EJS: <% announcements.forEach(function(ann) { %> -->
+          <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
           <div class="ann-list" id="annList"></div>
           <div class="panel-empty-slot" id="annEmpty" hidden aria-live="polite"></div>
-          <!-- EJS: <% }); %> -->
+          <!-- Announcements are loaded through the authenticated API and rendered by JavaScript. -->
         </div>
 
         <!-- RIGHT: Info rail -->

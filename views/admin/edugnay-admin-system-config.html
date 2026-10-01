@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/system-config.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -36,7 +37,7 @@
     <div class="nav-section">
       <div class="nav-section-label">Main</div>
       <a href="edugnay-admin-dashboard.html"       class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
-      <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span><span class="nav-badge">3</span></a>
+      <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span></a>
 
       <div class="nav-group" id="classMgmtGroup">
         <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
@@ -63,7 +64,7 @@
     <div class="nav-section">
       <div class="nav-section-label">Reports</div>
       <a href="edugnay-admin-reports.html"       class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
-      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"   style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"   style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span></a>
     </div>
 
     <div class="nav-section">
@@ -211,76 +212,17 @@
             </div>
           </div>
           <div class="config-panel-body">
-            <div class="trigger-rows" id="notification-trigger-list">
-
-              <div class="trigger-row">
-                <div class="trigger-icon" style="background:var(--red-pale);color:var(--red);"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Grade Falls Below Threshold</div>
-                  <div class="trigger-desc">Notify parent when a student's final encoded grade for the grading period drops below the set value.</div>
-                </div>
-                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div>
-
-              <div class="trigger-row">
-                <div class="trigger-icon" style="background:var(--orange-pale);color:#d97706;"><i data-lucide="calendar-x" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Consecutive Absences</div>
-                  <div class="trigger-desc">Notify parent when a student has this many absences in a row.</div>
-                </div>
-                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div>
-
-              <div class="trigger-row">
-                <div class="trigger-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Assignment Not Completed</div>
-                  <div class="trigger-desc">Notify parent when a student fails to submit this many consecutive assignments.</div>
-                </div>
-                <div class="trigger-input-wrap">
-                  <input class="trigger-input" type="number" value="2" min="1"/>
-                  <span class="trigger-unit">tasks</span>
-                </div>
-                <div class="toggle" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div>
-
-              <div class="trigger-row">
-                <div class="trigger-icon" style="background:var(--gold-pale);color:#92400e;"><i data-lucide="file-text" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Narrative Report Released</div>
-                  <div class="trigger-desc">Notify parent when a teacher confirms and releases a narrative report.</div>
-                </div>
-                <div class="trigger-input-wrap" style="visibility:hidden;">
-                  <input class="trigger-input" type="number" value="1"/>
-                  <span class="trigger-unit"></span>
-                </div>
-                <div class="toggle on" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div>
-
-              <div class="trigger-row">
-                <div class="trigger-icon" style="background:var(--gray-100);color:var(--gray-500);"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
-                <div class="trigger-info">
-                  <div class="trigger-label">Journal Not Submitted</div>
-                  <div class="trigger-desc">Notify parent when a student misses this many consecutive journal submissions.</div>
-                </div>
-                <div class="trigger-input-wrap">
-                  <input class="trigger-input" type="number" value="2" min="1"/>
-                  <span class="trigger-unit">weeks</span>
-                </div>
-                <div class="toggle" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div>
-              </div>
-
-            </div>
+            <div class="trigger-rows" id="notification-trigger-list" aria-live="polite">Loading notification settings…</div>
             <div class="divider"></div>
             <div class="form-group">
               <label class="form-label">Notification Delivery Method</label>
               <input class="form-input" type="text" value="In-app notification (Academix parent dashboard)" readonly style="color:var(--gray-500);cursor:not-allowed;"/>
-              <span class="form-hint">Fixed delivery channel. SMS and the parent portal are already used for weekly reports.</span>
+              <span class="form-hint">Notifications appear in linked parents' portal. SMS is not enabled.</span>
             </div>
           </div>
           <div class="config-panel-foot">
-            <button class="btn btn-cancel">Discard</button>
-            <button class="btn btn-save"><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
+            <button class="btn btn-cancel" id="discardNotificationTriggers" type="button" disabled>Discard</button>
+            <button class="btn btn-save" id="saveNotificationTriggers" type="button" disabled><i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes</button>
           </div>
         </div>
 
@@ -407,22 +349,84 @@
 </div>
 
 <script>
-  const NOTIFICATION_TRIGGERS = window.EDUGNAY_CONFIG.withActiveSchool([
-    { icon: 'trending-down', iconBackground: 'var(--red-pale)', iconColor: 'var(--red)', label: 'Grade Falls Below Threshold', description: "Notify parent when a student's final encoded grade for the grading period drops below the set value.", enabled: true },
-    { icon: 'calendar-x', iconBackground: 'var(--orange-pale)', iconColor: '#d97706', label: 'Consecutive Absences', description: 'Notify parent when a student has this many absences in a row.', enabled: true },
-    { icon: 'clipboard-check', iconBackground: 'var(--green-pale)', iconColor: '#16a34a', label: 'Assignment Not Completed', description: 'Notify parent when a student fails to submit this many consecutive assignments.', enabled: false, inputValue: 2, unit: 'tasks' },
-    { icon: 'file-text', iconBackground: 'var(--gold-pale)', iconColor: '#92400e', label: 'Narrative Report Released', description: 'Notify parent when a teacher confirms and releases a narrative report.', enabled: true },
-    { icon: 'notebook-pen', iconBackground: 'var(--gray-100)', iconColor: 'var(--gray-500)', label: 'Journal Not Submitted', description: 'Notify parent when a student misses this many consecutive journal submissions.', enabled: false, inputValue: 2, unit: 'weeks' }
-  ]);
+  const NOTIFICATION_TRIGGER_LABELS = [
+    { code: 'grade_below_threshold', icon: 'trending-down', color: 'var(--red)', background: 'var(--red-pale)', label: 'Grade Falls Below Threshold', description: 'After a final grade is published below the school level passing grade.' },
+    { code: 'consecutive_absences', icon: 'calendar-x', color: '#d97706', background: 'var(--orange-pale)', label: 'Consecutive Absences', description: 'After confirmed absences in the same subject reach the attendance alert count.' },
+    { code: 'assignment_not_completed', icon: 'clipboard-check', color: '#16a34a', background: 'var(--green-pale)', label: 'Assignment Not Completed', description: 'After this many consecutive due assignments are incomplete.', unit: 'tasks' },
+    { code: 'narrative_report_released', icon: 'file-text', color: '#92400e', background: 'var(--gold-pale)', label: 'Narrative Report Released', description: 'Unavailable until narrative reports have a backend release flow.' },
+    { code: 'journal_not_submitted', icon: 'notebook-pen', color: 'var(--gray-500)', background: 'var(--gray-100)', label: 'Journal Not Submitted', description: 'After this many consecutive closed journal prompts are missed.', unit: 'prompts' }
+  ];
+  let savedNotificationTriggers = null;
+  let notificationDraft = null;
+  let notificationAbsenceThreshold = 3;
 
   function renderNotificationTriggers() {
     const list = document.getElementById('notification-trigger-list');
-    if (!list) return;
-    list.innerHTML = NOTIFICATION_TRIGGERS.length
-      ? NOTIFICATION_TRIGGERS.map(trigger => `<div class="trigger-row"><div class="trigger-icon" style="background:${trigger.iconBackground};color:${trigger.iconColor};"><i data-lucide="${trigger.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${trigger.label}</div><div class="trigger-desc">${trigger.description}</div></div>${trigger.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" type="number" value="${trigger.inputValue}" min="1"/><span class="trigger-unit">${trigger.unit}</span></div>` : ''}<div class="toggle ${trigger.enabled ? 'on' : ''}" onclick="this.classList.toggle('on')" style="margin-left:12px;"></div></div>`).join('')
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bell-off', title: 'No notification triggers configured', text: 'Add notification rules when the school defines its communication preferences.' });
+    if (!list || !notificationDraft) return;
+    list.innerHTML = NOTIFICATION_TRIGGER_LABELS.map(meta => {
+      const setting = notificationDraft.find(item => item.code === meta.code);
+      return `<div class="trigger-row" data-code="${meta.code}"><div class="trigger-icon" style="background:${meta.background};color:${meta.color};"><i data-lucide="${meta.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${meta.label}</div><div class="trigger-desc">${meta.description}${meta.code === 'consecutive_absences' ? ` Current count: ${notificationAbsenceThreshold}.` : ''}${setting.available || meta.code === 'narrative_report_released' ? '' : ' Enable its portal feature first.'}</div></div>${meta.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" aria-label="${meta.label} count" type="number" value="${setting.threshold}" min="1" max="20"/><span class="trigger-unit">${meta.unit}</span></div>` : ''}<button class="toggle ${setting.enabled ? 'on' : ''}" type="button" role="switch" aria-label="${meta.label}" aria-checked="${setting.enabled}" ${setting.available ? '' : 'disabled'}></button></div>`;
+    }).join('');
     lucide.createIcons();
   }
+
+  async function loadNotificationTriggers() {
+    try {
+      const response = await window.EDUGNAY_API.getParentNotificationTriggers();
+      notificationAbsenceThreshold = Number(response.absenceThreshold) || 3;
+      savedNotificationTriggers = response.triggers;
+      notificationDraft = structuredClone(savedNotificationTriggers);
+      renderNotificationTriggers();
+      document.getElementById('saveNotificationTriggers').disabled = false;
+      document.getElementById('discardNotificationTriggers').disabled = false;
+    } catch (error) {
+      document.getElementById('notification-trigger-list').textContent = error.message || 'Notification settings could not be loaded.';
+      showAppToast(error.message || 'Notification settings could not be loaded.', 'error');
+    }
+  }
+
+  document.getElementById('notification-trigger-list').addEventListener('click', event => {
+    const toggle = event.target.closest('button.toggle');
+    if (!toggle || !notificationDraft) return;
+    const setting = notificationDraft.find(item => item.code === toggle.closest('[data-code]').dataset.code);
+    setting.enabled = !setting.enabled;
+    toggle.classList.toggle('on', setting.enabled);
+    toggle.setAttribute('aria-checked', String(setting.enabled));
+  });
+
+  document.getElementById('discardNotificationTriggers').addEventListener('click', () => {
+    notificationDraft = structuredClone(savedNotificationTriggers);
+    renderNotificationTriggers();
+  });
+
+  document.getElementById('saveNotificationTriggers').addEventListener('click', async () => {
+    const button = document.getElementById('saveNotificationTriggers');
+    for (const input of document.querySelectorAll('#notification-trigger-list .trigger-input')) {
+      const setting = notificationDraft.find(item => item.code === input.closest('[data-code]').dataset.code);
+      setting.threshold = Number(input.value);
+      if (!Number.isInteger(setting.threshold) || setting.threshold < 1 || setting.threshold > 20) {
+        showAppToast('Enter a count from 1 to 20.', 'error');
+        input.focus();
+        return;
+      }
+    }
+    button.disabled = true;
+    button.textContent = 'Saving…';
+    try {
+      const values = notificationDraft.map(({ code, enabled, threshold }) => ({ code, enabled, threshold }));
+      const response = await window.EDUGNAY_API.updateParentNotificationTriggers(values);
+      savedNotificationTriggers = response.triggers;
+      notificationDraft = structuredClone(savedNotificationTriggers);
+      renderNotificationTriggers();
+      showAppToast('Parent notification settings saved.', 'success');
+    } catch (error) {
+      showAppToast(error.message || 'Notification settings could not be saved.', 'error');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i data-lucide="save" style="width:13px;height:13px;"></i> Save Changes';
+      lucide.createIcons();
+    }
+  });
 
   // Config nav highlight on click
   document.querySelectorAll('.config-nav-item').forEach(item => {
@@ -449,10 +453,22 @@
     });
   });
 
-  const ADMIN_USER_ID = window.EDUGNAY_CONFIG.getUsersByRole('school_admin')[0]?.id || 'admin-1';
   let reopenFilter = 'pending';
   let activeReopenRequestId = null;
   let reopenListTimer = null;
+  let reopenRequests = [];
+  let reopenRequestLoadError = '';
+
+  async function loadReopenRequests() {
+    try {
+      reopenRequests = await window.EDUGNAY_API.getGradingPeriodReopenRequests();
+      reopenRequestLoadError = '';
+    } catch (error) {
+      reopenRequests = [];
+      reopenRequestLoadError = error.message || 'Reopen requests could not be loaded.';
+    }
+    renderReopenRequests();
+  }
 
   function formatReopenDate(value) {
     return value ? window.EDUGNAY_CONFIG.formatDateTime(value) : 'Not set';
@@ -484,10 +500,10 @@
     const countEl = document.getElementById('reopenPanelCount');
     const navBadge = document.getElementById('reopenNavBadge');
     const dot = document.getElementById('tbNotifDot');
-    const requests = getReopenRequests();
+    const requests = reopenRequests;
     const pending = requests.filter(request => request.status === 'pending');
-    const active = requests.filter(request => window.EDUGNAY_CONFIG.isReopenRequestActive(request));
-    const history = requests.filter(request => request.status !== 'pending' && !window.EDUGNAY_CONFIG.isReopenRequestActive(request));
+    const active = requests.filter(request => request.status === 'approved');
+    const history = requests.filter(request => request.status !== 'pending' && request.status !== 'approved');
     const visible = (reopenFilter === 'active' ? active : reopenFilter === 'history' ? history : pending)
       .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
 
@@ -495,13 +511,20 @@
     reopenListTimer = null;
     if (active.length) {
       const nextExpiration = Math.min(...active.map(request => new Date(request.expiresAt).getTime()));
-      reopenListTimer = setTimeout(renderReopenRequests, Math.min(nextExpiration - Date.now() + 50, 2147483647));
+      reopenListTimer = setTimeout(loadReopenRequests, Math.min(nextExpiration - Date.now() + 50, 2147483647));
     }
 
     countEl.textContent = pending.length + ' pending';
     countEl.className = 'badge ' + (pending.length ? 'badge-orange' : 'badge-gray');
     if (navBadge) { navBadge.style.display = pending.length ? '' : 'none'; navBadge.textContent = pending.length; }
     if (dot) dot.style.display = pending.length ? '' : 'none';
+
+    if (reopenRequestLoadError) {
+      listEl.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'circle-alert', title: 'Requests could not be loaded', text: reopenRequestLoadError
+      });
+      return;
+    }
 
     if (!visible.length) {
       const emptyStates = {
@@ -517,7 +540,7 @@
     const statusClasses = { approved: 'badge-green', expired: 'badge-gray', rejected: 'badge-red', revoked: 'badge-red' };
     listEl.innerHTML = visible.map(request => {
       const details = getReopenRequestDetails(request);
-      const state = window.EDUGNAY_CONFIG.getReopenRequestState(request);
+      const state = request.status;
       const statusBadge = reopenFilter === 'pending'
         ? ''
         : `<span class="badge ${statusClasses[state] || 'badge-gray'}">${statusLabels[state] || state}</span>`;
@@ -548,7 +571,7 @@
   }
 
   function getReopenRequestById(id) {
-    return getReopenRequests().find(request => request.id === String(id));
+    return reopenRequests.find(request => request.id === String(id));
   }
 
   function showReopenModal(id, requestId) {
@@ -611,21 +634,22 @@
     showReopenModal('revokeReopenModal', id);
   }
 
-  function finishReopenAction(modalId) {
+  async function finishReopenAction(modalId) {
     closeReopenModal(modalId);
-    renderReopenRequests();
+    await loadReopenRequests();
     renderTopbarNotifs();
+    window.dispatchEvent(new Event('grading-period-reopen-requests-updated'));
+    return !reopenRequestLoadError;
   }
 
   async function submitReopenApproval() {
     try {
-      await window.EDUGNAY_CONFIG.approveReopenRequest(activeReopenRequestId, {
-        schoolId: ADMIN_SCHOOL_ID,
-        reviewedBy: ADMIN_USER_ID,
+      await window.EDUGNAY_API.decideGradingPeriodReopenRequest(activeReopenRequestId, 'approve', {
         expiresAt: document.getElementById('approveReopenExpiresAt').value,
         adminNote: document.getElementById('approveReopenNote').value
       });
-      finishReopenAction('approveReopenModal');
+      const refreshed = await finishReopenAction('approveReopenModal');
+      showAppToast(refreshed ? 'Reopen request approved.' : 'Reopen request approved, but the list could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
       setReopenModalError('approveReopenError', error.message);
     }
@@ -633,12 +657,11 @@
 
   async function submitReopenRejection() {
     try {
-      await window.EDUGNAY_CONFIG.rejectReopenRequest(activeReopenRequestId, {
-        schoolId: ADMIN_SCHOOL_ID,
-        reviewedBy: ADMIN_USER_ID,
+      await window.EDUGNAY_API.decideGradingPeriodReopenRequest(activeReopenRequestId, 'reject', {
         adminNote: document.getElementById('rejectReopenNote').value
       });
-      finishReopenAction('rejectReopenModal');
+      const refreshed = await finishReopenAction('rejectReopenModal');
+      showAppToast(refreshed ? 'Reopen request rejected.' : 'Reopen request rejected, but the list could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
       setReopenModalError('rejectReopenError', error.message);
     }
@@ -646,13 +669,12 @@
 
   async function submitReopenExtension() {
     try {
-      await window.EDUGNAY_CONFIG.extendReopenRequest(activeReopenRequestId, {
-        schoolId: ADMIN_SCHOOL_ID,
-        extendedBy: ADMIN_USER_ID,
+      await window.EDUGNAY_API.decideGradingPeriodReopenRequest(activeReopenRequestId, 'extend', {
         expiresAt: document.getElementById('extendReopenExpiresAt').value,
         reason: document.getElementById('extendReopenReason').value
       });
-      finishReopenAction('extendReopenModal');
+      const refreshed = await finishReopenAction('extendReopenModal');
+      showAppToast(refreshed ? 'Reopen access extended.' : 'Reopen access extended, but the list could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
       setReopenModalError('extendReopenError', error.message);
     }
@@ -660,20 +682,19 @@
 
   async function submitReopenRevocation() {
     try {
-      await window.EDUGNAY_CONFIG.revokeReopenRequest(activeReopenRequestId, {
-        schoolId: ADMIN_SCHOOL_ID,
-        revokedBy: ADMIN_USER_ID,
-        revokeReason: document.getElementById('revokeReopenReason').value
+      await window.EDUGNAY_API.decideGradingPeriodReopenRequest(activeReopenRequestId, 'revoke', {
+        reason: document.getElementById('revokeReopenReason').value
       });
-      finishReopenAction('revokeReopenModal');
+      const refreshed = await finishReopenAction('revokeReopenModal');
+      showAppToast(refreshed ? 'Reopen access revoked.' : 'Reopen access revoked, but the list could not refresh.', refreshed ? 'success' : 'info');
     } catch (error) {
       setReopenModalError('revokeReopenError', error.message);
     }
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    renderNotificationTriggers();
-    renderReopenRequests();
+    await loadNotificationTriggers();
+    await loadReopenRequests();
     document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
       backdrop.addEventListener('click', event => {
         if (event.target === backdrop) closeReopenModal(backdrop.id);
@@ -682,11 +703,8 @@
     lucide.createIcons();
   });
 
-  window.addEventListener('storage', event => {
-    if (event.key === `edugnay_reopen_requests:${ADMIN_SCHOOL_ID}`) {
-      renderReopenRequests();
-      renderTopbarNotifs();
-    }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void loadReopenRequests();
   });
 </script>
 

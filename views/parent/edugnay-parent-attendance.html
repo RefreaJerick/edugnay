@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/parent/attendance.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
@@ -22,42 +23,7 @@
 
 <body data-page-title="Attendance History">
 
-  <!--
-  ════════════════════════════════════════════════════
-  EJS CONVERSION MAP — parent-attendance.html
-  ════════════════════════════════════════════════════
-  This page is the HISTORICAL counterpart to the live Daily Activity panel on
-  parent-dashboard.html. It shows attendance patterns across a full month
-  rather than a single day, so a parent can spot trends (e.g. "absent every
-  Wednesday") that the day-by-day dashboard view doesn't surface.
-
-  SERVER DATA:
-    - children[]              → same source as other parent pages
-    - activeChildId             → query param or session-stored selection
-    - activeMonth, activeYear   → query params, default to current month
-    - calendarDays[]             → for the selected child + month, per school day:
-        { date, status: 'present'|'absent'|'late'|null, subjects: [...] }
-        null status = no school that day (weekend/holiday), rendered as empty cell
-    - monthStats                → computed server-side: { presentDays, absentDays,
-        lateDays, attendanceRate } — NEVER computed client-side from raw status
-        values, to keep one source of truth with admin/teacher attendance records.
-    - flaggedDays[]              → subset of calendarDays where status === 'absent',
-        used for the side panel list (could also include late-pattern flags if
-        the admin's consecutive-absence trigger has fired)
-
-  PARTIALS: same sidebar/topbar/profile dropdown as other parent pages
-  pages (activeNav='attendance').
-
-  ROUTING: GET /parent/attendance?child=:id&month=:m&year=:y once converted —
-  do not hold multiple months in a client object; fetch one month at a time
-  when cal-nav prev/next is clicked.
-
-  CLIENT-SIDE BEHAVIOR THAT STAYS:
-    - Calendar day selection (click to view day detail) is pure UI state over
-      already-fetched month data — no extra request needed per day click.
-    - Month navigation (prev/next arrows) SHOULD trigger a new fetch once
-      converted, since holding many months of data client-side is wasteful.
--->
+  <!-- Attendance history for the selected linked child is loaded through the attendance API. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -99,7 +65,7 @@
         <a href="edugnay-parent-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 

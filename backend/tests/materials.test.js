@@ -18,6 +18,7 @@ let lastQuery = '';
 let lastValues = [];
 let committed = false;
 let rolledBack = false;
+let failMaterialDelete = false;
 const material = {
   id: 42, schoolId: 1, sectionId: 8, subjectId: 2, teacherUserId: 3,
   title: 'Test material', type: 'pdf', mimeType: 'application/pdf',
@@ -31,7 +32,10 @@ const database = {
     if (sql.includes('FROM section_teachers')) return [assigned ? [{ id: 8 }] : []];
     if (sql.includes('FROM academic_terms')) return [[]];
     if (sql.includes('INSERT INTO learning_materials')) return [{ insertId: 42 }];
-    if (sql.includes('DELETE FROM learning_materials')) return [{ affectedRows: 1 }];
+    if (sql.includes('DELETE FROM learning_materials')) {
+      if (failMaterialDelete) throw new Error('Database delete failed.');
+      return [{ affectedRows: 1 }];
+    }
     if (sql.includes('FROM learning_materials AS materials')) return [[material]];
     throw new Error(`Unexpected query: ${sql}`);
   },
@@ -143,6 +147,26 @@ test('teacher removal permanently deletes the uploaded file and owned database r
     assert.deepEqual(lastValues, [42, 1, 3]);
     await assert.rejects(fs.stat(filePath), { code: 'ENOENT' });
   } finally {
+    material.storedFileName = originalFileName;
+    await fs.rm(filePath, { force: true });
+  }
+});
+
+test('a failed database delete leaves the uploaded file intact', async () => {
+  const originalFileName = material.storedFileName;
+  const fileName = `${crypto.randomUUID()}.pdf`;
+  const filePath = path.join(materialUploadDirectory, fileName);
+  material.storedFileName = fileName;
+  failMaterialDelete = true;
+  await fs.writeFile(filePath, '%PDF-1.4\nTest material');
+  try {
+    const result = await call(controller.deleteMaterial, {
+      user: { id: 3, schoolId: 1, role: 'teacher' }, params: { materialId: '42' }
+    });
+    assert.match(result.error?.message || '', /Database delete failed/);
+    await fs.stat(filePath);
+  } finally {
+    failMaterialDelete = false;
     material.storedFileName = originalFileName;
     await fs.rm(filePath, { force: true });
   }

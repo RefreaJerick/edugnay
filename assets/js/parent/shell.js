@@ -202,7 +202,7 @@ window.EDUGNAY_COMMUNICATION_READY = loadParentCommunication();
 
 /* ── NAVIGATION ── */
 function navigate(page) {
-  if (page === 'dashboard') {
+  if (page === 'dashboard' || page === 'assignments' || page === 'journal') {
     window.location.href = './edugnay-parent-dashboard.html';
   } else if (page === 'grades') {
     if (window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() === false) {

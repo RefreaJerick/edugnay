@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/activity.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
@@ -103,9 +104,8 @@
 
         <div class="activity-type-filters" id="activityTypeFilters" role="group" aria-label="Activity type filters">
           <button class="atf-chip active" type="button" data-tag="all" onclick="setActivityTypeFilter(this, 'all')">All</button>
-          <button class="atf-chip" type="button" data-tag="School account" onclick="setActivityTypeFilter(this, 'School account')">School accounts</button>
-          <button class="atf-chip" type="button" data-tag="Access" onclick="setActivityTypeFilter(this, 'Access')">Access</button>
-          <button class="atf-chip" type="button" data-tag="Configuration" onclick="setActivityTypeFilter(this, 'Configuration')">Configuration</button>
+          <button class="atf-chip" type="button" data-tag="registrations" onclick="setActivityTypeFilter(this, 'registrations')">Registrations</button>
+          <button class="atf-chip" type="button" data-tag="access" onclick="setActivityTypeFilter(this, 'access')">School access</button>
         </div>
 
         <select class="activity-date-select" id="activityDateFilter" onchange="applyActivityFilters()" aria-label="Filter activity by date">
@@ -131,64 +131,83 @@
 
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
-    const PLATFORM_ACTIVITY = Array.isArray(PLATFORM?.activities) ? PLATFORM.activities : [];
-    const PAGE_SIZE = 5;
+    const PLATFORM_ACTIVITY = [];
+    const PAGE_SIZE = 20;
     let activeTypeFilter = 'all';
-    let visibleCount = PAGE_SIZE;
+    let nextCursor = null;
+    let activityError = '';
+    let loading = false;
+    let requestVersion = 0;
+    let filterTimer;
 
     function setActivityTypeFilter(element, type) {
       document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(chip => chip.classList.remove('active'));
       element.classList.add('active');
       activeTypeFilter = type;
-      visibleCount = PAGE_SIZE;
-      renderActivityList();
+      applyActivityFilters();
     }
 
-    function getFilteredActivity() {
-      const query = document.getElementById('activitySearch').value.trim().toLowerCase();
-      const dateFilter = document.getElementById('activityDateFilter').value;
-      const now = new Date();
-
-      return PLATFORM_ACTIVITY
-        .filter(activity => activeTypeFilter === 'all' || activity.type === activeTypeFilter)
-        .filter(activity => {
-          if (!query) return true;
-          return [activity.actor, activity.title, activity.detail, activity.type].join(' ').toLowerCase().includes(query);
-        })
-        .filter(activity => {
-          if (dateFilter === 'all') return true;
-          const created = new Date(activity.createdAt);
-          if (dateFilter === 'today') return formatDateGroup(activity.createdAt) === 'Today';
-          const days = parseInt(dateFilter, 10);
-          return (now - created) / 86400000 <= days;
-        })
-        .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+    async function loadActivity(reset = true) {
+      if (loading && !reset) return;
+      const version = ++requestVersion;
+      loading = true;
+      if (reset) {
+        PLATFORM_ACTIVITY.length = 0;
+        nextCursor = null;
+        activityError = '';
+      }
+      renderActivityList();
+      try {
+        const page = await window.EDUGNAY_API.getPlatformActivityPage({
+          limit: PAGE_SIZE,
+          category: activeTypeFilter,
+          date: document.getElementById('activityDateFilter').value,
+          search: document.getElementById('activitySearch').value.trim(),
+          cursor: reset ? null : nextCursor
+        });
+        if (version !== requestVersion) return;
+        PLATFORM_ACTIVITY.push(...(page.activities || []));
+        nextCursor = page.nextCursor || null;
+        activityError = '';
+      } catch (error) {
+        if (version !== requestVersion) return;
+        activityError = error.message || 'Platform activity could not be loaded.';
+        if (!reset) showAppToast(activityError, 'error');
+      } finally {
+        if (version === requestVersion) {
+          loading = false;
+          renderActivityList();
+        }
+      }
     }
 
     function applyActivityFilters() {
-      visibleCount = PAGE_SIZE;
-      renderActivityList();
+      clearTimeout(filterTimer);
+      filterTimer = setTimeout(() => loadActivity(), 250);
     }
 
     function loadMoreActivity() {
-      visibleCount += PAGE_SIZE;
-      renderActivityList();
+      if (nextCursor) loadActivity(false);
     }
 
     function renderActivityList() {
       const container = document.getElementById('activityList');
       const emptyState = document.getElementById('activityEmptyState');
       const loadMoreWrap = document.querySelector('.activity-loadmore-wrap');
-      const filtered = getFilteredActivity();
+      const filtered = PLATFORM_ACTIVITY;
+      const hasFilter = activeTypeFilter !== 'all' || document.getElementById('activityDateFilter').value !== 'all'
+        || document.getElementById('activitySearch').value.trim();
 
       if (!filtered.length) {
         container.innerHTML = '';
         container.style.display = 'none';
         emptyState.hidden = false;
         emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: PLATFORM_ACTIVITY.length ? 'search-x' : 'activity',
-          title: PLATFORM_ACTIVITY.length ? 'No matching activity' : 'No platform activity yet',
-          text: PLATFORM_ACTIVITY.length ? 'Try a different search term or filter.' : 'School account changes and platform events will appear here.'
+          icon: activityError ? 'cloud-off' : loading ? 'loader-circle' : 'activity',
+          title: activityError ? 'Activity unavailable' : loading ? 'Loading activity'
+            : hasFilter ? 'No matching school activity' : 'No school account activity yet',
+          text: activityError || (loading ? 'Please wait while school account activity loads.'
+            : hasFilter ? 'Try a different search term or filter.' : 'School account changes will appear here.')
         });
         loadMoreWrap.style.display = 'none';
         if (window.lucide) window.lucide.createIcons();
@@ -200,7 +219,7 @@
       emptyState.innerHTML = '';
 
       let lastGroup = '';
-      const activityHtml = filtered.slice(0, visibleCount).map(activity => {
+      const activityHtml = filtered.map(activity => {
         const group = formatDateGroup(activity.createdAt);
         const groupHtml = group !== lastGroup ? `<div class="activity-group-label">${escapeHtml(group)}</div>` : '';
         lastGroup = group;
@@ -216,12 +235,12 @@
       }).join('');
 
       container.innerHTML = activityHtml;
-      loadMoreWrap.style.display = visibleCount < filtered.length ? 'flex' : 'none';
+      loadMoreWrap.style.display = nextCursor && !loading ? 'flex' : 'none';
       if (window.lucide) window.lucide.createIcons();
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      renderActivityList();
+      await loadActivity();
       await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
       PLATFORM.renderTopbarNotifs();
       if (window.lucide) window.lucide.createIcons();

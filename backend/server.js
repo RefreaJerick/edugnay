@@ -6,7 +6,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { checkDatabaseConnection, isDatabaseConfigured } = require('./config/database');
+const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
+const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
+const { getFrontendOrigin, getTrustProxyHops } = require('./config/deployment');
 const { errorHandler } = require('./middleware/errorHandler');
+const { createRequestOriginGuard } = require('./middleware/requestOrigin');
 const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
 const accountSetupRoutes = require('./routes/accountSetup');
@@ -25,15 +29,21 @@ const tasksRoutes = require('./routes/tasks');
 const journalsRoutes = require('./routes/journals');
 const sfTemplatesRoutes = require('./routes/sfTemplates');
 const materialsRoutes = require('./routes/materials');
+const reportsRoutes = require('./routes/reports');
+const archiveRoutes = require('./routes/archive');
+const gradingPeriodReopenRoutes = require('./routes/gradingPeriodReopen');
 const usersRoutes = require('./routes/users');
 const userImportRoutes = require('./routes/userImport');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5500';
+const frontendOrigin = getFrontendOrigin();
+const trustProxyHops = getTrustProxyHops();
+if (trustProxyHops) app.set('trust proxy', trustProxyHops);
 
 app.use(helmet());
 app.use(cors({ origin: frontendOrigin, credentials: true }));
+app.use(createRequestOriginGuard(frontendOrigin));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(rateLimit({
@@ -73,6 +83,9 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api', journalsRoutes);
 app.use('/api', sfTemplatesRoutes);
 app.use('/api/materials', materialsRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/archive', archiveRoutes);
+app.use('/api/grading-period-reopen-requests', gradingPeriodReopenRoutes);
 app.use('/api/users/import', userImportRoutes);
 app.use('/api/users', usersRoutes);
 
@@ -87,3 +100,6 @@ server.on('error', error => {
   console.error(error.message);
   process.exitCode = 1;
 });
+
+startAnnouncementEmailWorker();
+startParentNotificationWorker();

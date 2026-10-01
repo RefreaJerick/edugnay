@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -45,7 +46,7 @@
         </a>
         <a href="edugnay-admin-users.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div><span
-            class="nav-label">Manage Users</span><span class="nav-badge">3</span>
+            class="nav-label">Manage Users</span>
         </a>
 
         <div class="nav-group" id="classMgmtGroup">
@@ -78,7 +79,7 @@
         </a>
         <a href="edugnay-admin-announcements.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span
-            class="nav-label">Announcements</span><span class="nav-badge gold">2</span>
+            class="nav-label">Announcements</span>
         </a>
       </div>
 
@@ -189,30 +190,12 @@
 
       <!-- Filter bar -->
       <div class="filter-bar">
-        <span class="filter-label">Filter:</span>
-        <select class="filter-select" id="reportSchoolYear">
-          <option></option>
+        <label class="filter-label" for="reportSchoolYear">School year:</label>
+        <select class="filter-select" id="reportSchoolYear" aria-label="Select school year" disabled>
+          <option value="">Loading school years…</option>
         </select>
-        <select class="filter-select" id="reportAcademicPeriod"></select>
         <div class="filter-divider"></div>
-        <select class="filter-select">
-          <option>All Grade Levels</option>
-          <option>Grade 7</option>
-          <option>Grade 8</option>
-          <option>Grade 9</option>
-          <option>Grade 10</option>
-        </select>
-        <select class="filter-select">
-          <option>All Sections</option>
-          <option>St. Matthew</option>
-          <option>St. Mark</option>
-          <option>St. Luke</option>
-          <option>St. John</option>
-          <option>St. Peter</option>
-          <option>St. Paul</option>
-          <option>St. James</option>
-          <option>St. Thomas</option>
-        </select>
+        <span class="filter-label">All grade levels, sections, and published terms</span>
       </div>
 
       <!-- Stat cards: rendered from REPORTS_DATA -->
@@ -230,208 +213,21 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
           <div class="panel-head">
             <div class="panel-title">Average Grade per Subject</div>
-            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Current period</span> · All Sections</span>
+            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Selected school year</span> · All Sections</span>
           </div>
-          <div class="bar-chart grouped ranked" id="subject-performance-chart">
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 7</div>
-              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">EsP</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:93%;background:var(--green);"></div>
-                </div><span class="bar-val">93</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Filipino</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:89%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">89</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">84</span>
-              </div>
-              <div class="bar-row tier-low"><span class="bar-rank">4</span><span class="bar-label">Science</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:76%;background:var(--orange);"></div>
-                </div><span class="bar-val">76</span>
-              </div>
-              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:74%;background:var(--orange);"></div>
-                </div><span class="bar-val">74</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 8</div>
-              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:90%;background:var(--green);"></div>
-                </div><span class="bar-val">90</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">TLE</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">87</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">Araling
-                  Panlipunan</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:85%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">85</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Mathematics</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:83%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">83</span>
-              </div>
-              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Science</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:78%;background:var(--orange);"></div>
-                </div><span class="bar-val">78</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 9</div>
-              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">Filipino</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:88%;background:var(--green);"></div>
-                </div><span class="bar-val">88</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">EsP</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">86</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:84%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">84</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">TLE</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:82%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">82</span>
-              </div>
-              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:80%;background:var(--orange);"></div>
-                </div><span class="bar-val">80</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 10</div>
-              <div class="bar-row tier-high"><span class="bar-rank">1</span><span class="bar-label">MAPEH</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:91%;background:var(--green);"></div>
-                </div><span class="bar-val">91</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">2</span><span class="bar-label">Araling
-                  Panlipunan</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:87%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">87</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">3</span><span class="bar-label">English</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:86%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">86</span>
-              </div>
-              <div class="bar-row tier-mid"><span class="bar-rank">4</span><span class="bar-label">Science</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:81%;background:var(--blue-mid);"></div>
-                </div><span class="bar-val">81</span>
-              </div>
-              <div class="bar-row tier-low"><span class="bar-rank">5</span><span class="bar-label">Mathematics</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:79%;background:var(--orange);"></div>
-                </div><span class="bar-val">79</span>
-              </div>
-            </div>
-
-          </div>
+          <div class="bar-chart grouped ranked" id="subject-performance-chart"></div>
         </div>
 
         <!-- Pass / Fail donut -->
         <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
           <div class="panel-head">
-            <div class="panel-title">Pass / Fail Rate</div>
-            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Current period</span> · All Sections</span>
+            <div class="panel-title">Published Grade Outcomes</div>
+            <span style="font-size:11px;color:var(--gray-400);"><span data-report-period-label>Selected school year</span> · All Sections</span>
           </div>
-          <div class="donut-wrap" id="grade-outcome-donut">
-            <div class="donut">
-              <svg viewBox="0 0 100 100" width="120" height="120">
-                <circle class="donut-bg" cx="50" cy="50" r="40" />
-                <!-- Passing: 255/284 = 89.8% → stroke-dasharray = 89.8% of circumference (251.2) = 225.6 -->
-                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#22c55e" stroke-dasharray="225.6 251.2"
-                  stroke-dashoffset="0" />
-                <!-- Failing: 29/284 = 10.2% → 25.6 -->
-                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#ef4444" stroke-dasharray="25.6 251.2"
-                  stroke-dashoffset="-225.6" />
-              </svg>
-              <div class="donut-label">
-                <div class="donut-num">90%</div>
-                <div class="donut-sub">Passing</div>
-              </div>
-            </div>
-            <div class="donut-legend">
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--green);"></div>
-                <span class="legend-label">Passing (≥75)</span>
-                <span class="legend-val">255</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--red);"></div>
-                <span class="legend-label">Failing (&lt;75)</span>
-                <span class="legend-val">29</span>
-              </div>
-              <div style="border-top:1px solid var(--gray-100);padding-top:10px;margin-top:2px;">
-                <div class="legend-item">
-                  <div class="legend-dot" style="background:var(--blue-mid);"></div>
-                  <span class="legend-label">Total Students</span>
-                  <span class="legend-val">284</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div class="donut-wrap" id="grade-outcome-donut"></div>
 
           <!-- Grade distribution -->
-          <div class="grade-distribution" id="grade-distribution">
-            <div
-              style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">
-              Grade Distribution</div>
-            <div class="bar-row">
-              <span class="bar-label" style="width:80px;">90 – 100</span>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:28%;background:#16a34a;"></div>
-              </div>
-              <span class="bar-val">79</span>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label" style="width:80px;">80 – 89</span>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:42%;background:var(--blue-mid);"></div>
-              </div>
-              <span class="bar-val">120</span>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label" style="width:80px;">75 – 79</span>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:20%;background:var(--orange);"></div>
-              </div>
-              <span class="bar-val">56</span>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label" style="width:80px;">Below 75</span>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:10%;background:var(--red);"></div>
-              </div>
-              <span class="bar-val">29</span>
-            </div>
-          </div>
+          <div class="grade-distribution" id="grade-distribution"></div>
         </div>
 
       </div>
@@ -448,131 +244,24 @@
         <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Rate</div>
-            <span style="font-size:11px;color:var(--gray-400);">Per Section · Current school year</span>
+            <span style="font-size:11px;color:var(--gray-400);">Per Section · selected school year</span>
           </div>
-          <div class="bar-chart grouped" id="attendance-rate-chart">
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 7</div>
-              <div class="bar-row"><span class="bar-label">St. Matthew</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:96%;background:var(--green);"></div>
-                </div><span class="bar-val">96%</span>
-              </div>
-              <div class="bar-row"><span class="bar-label">St. Mark</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:91%;background:var(--green);"></div>
-                </div><span class="bar-val">91%</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 8</div>
-              <div class="bar-row"><span class="bar-label">St. Luke</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:94%;background:var(--green);"></div>
-                </div><span class="bar-val">94%</span>
-              </div>
-              <div class="bar-row"><span class="bar-label">St. John</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:88%;background:var(--orange);"></div>
-                </div><span class="bar-val">88%</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 9</div>
-              <div class="bar-row"><span class="bar-label">St. Peter</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:93%;background:var(--green);"></div>
-                </div><span class="bar-val">93%</span>
-              </div>
-              <div class="bar-row"><span class="bar-label">St. Paul</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:90%;background:var(--green);"></div>
-                </div><span class="bar-val">90%</span>
-              </div>
-            </div>
-
-            <div class="bar-group">
-              <div class="bar-group-label">Grade 10</div>
-              <div class="bar-row"><span class="bar-label">St. James</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:95%;background:var(--green);"></div>
-                </div><span class="bar-val">95%</span>
-              </div>
-              <div class="bar-row"><span class="bar-label">St. Thomas</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:87%;background:var(--orange);"></div>
-                </div><span class="bar-val">87%</span>
-              </div>
-            </div>
-
-          </div>
+          <div class="bar-chart grouped" id="attendance-rate-chart"></div>
         </div>
 
         <!-- Attendance breakdown -->
         <div class="panel" style="animation:fadeUp 0.4s ease 0.10s both;">
           <div class="panel-head">
             <div class="panel-title">Attendance Breakdown</div>
-            <span style="font-size:11px;color:var(--gray-400);">All Sections · Current school year</span>
+            <span style="font-size:11px;color:var(--gray-400);">All Sections · selected school year</span>
           </div>
-          <div class="donut-wrap" id="attendance-breakdown-donut">
-            <div class="donut">
-              <svg viewBox="0 0 100 100" width="120" height="120">
-                <circle class="donut-bg" cx="50" cy="50" r="40" />
-                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#22c55e" stroke-dasharray="215 251.2"
-                  stroke-dashoffset="0" />
-                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#f59e0b" stroke-dasharray="20 251.2"
-                  stroke-dashoffset="-215" />
-                <circle class="donut-seg" cx="50" cy="50" r="40" stroke="#ef4444" stroke-dasharray="16.2 251.2"
-                  stroke-dashoffset="-235" />
-              </svg>
-              <div class="donut-label">
-                <div class="donut-num">92%</div>
-                <div class="donut-sub">Present</div>
-              </div>
-            </div>
-            <div class="donut-legend">
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--green);"></div><span
-                  class="legend-label">Present</span><span class="legend-val">92%</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--orange);"></div><span class="legend-label">Late /
-                  Tardy</span><span class="legend-val">5%</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background:var(--red);"></div><span
-                  class="legend-label">Absent</span><span class="legend-val">3%</span>
-              </div>
-            </div>
-          </div>
-          <div class="absence-triggers" id="absence-triggers">
-            <div
-              style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">
-              Absence Triggers Fired</div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div
-                style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--red-pale);border-radius:var(--radius-sm);">
-                <span style="font-size:12px;font-weight:600;color:var(--red);">3+ Consecutive Absences</span>
-                <span style="font-size:13px;font-weight:800;color:var(--red);">12</span>
-              </div>
-              <div
-                style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--orange-pale);border-radius:var(--radius-sm);">
-                <span style="font-size:12px;font-weight:600;color:#d97706;">Parent Notified</span>
-                <span style="font-size:13px;font-weight:800;color:#d97706;">12</span>
-              </div>
-            </div>
-          </div>
+          <div class="donut-wrap" id="attendance-breakdown-donut"></div>
+          <div class="absence-triggers" id="absence-triggers"></div>
         </div>
 
       </div>
 
-      <!-- Flagged Students -->
-      <!-- EJS: flaggedStudents array grouped server-side or client-filtered from a single flat list.
-         Each card needs data-grade (7-10) and data-reason (space-separated: "absences", "grades", or both)
-         so the tabs + reason filter + search can all operate on the same DOM without a re-fetch. -->
+      <!-- Flagged students remain unavailable until the school has configured risk criteria. -->
       <div class="section-title">
         <h2>Flagged Students</h2>
         <div class="section-line"></div>
@@ -580,50 +269,14 @@
 
       <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
         <div class="panel-head">
-          <div class="panel-title">Requires Attention</div>
-          <span style="font-size:11px;color:var(--gray-400);" id="flaggedCount">4 students</span>
+          <div class="panel-title">Flagging criteria are not configured</div>
         </div>
 
-        <!-- Grade level tabs -->
-        <div class="grade-tabs">
-          <div class="grade-tab active" onclick="switchFlagGrade('all', this)">
-            All Grades <span class="tab-count" id="tabCountAll">4</span>
+        <div class="panel-empty-slot" role="status">
+          <div class="panel-empty-state">
+            <div class="panel-empty-state-title">No risk rules are configured</div>
+            <div class="panel-empty-state-text">Student flags will appear here after the school defines the criteria.</div>
           </div>
-          <div class="grade-tab" onclick="switchFlagGrade('7', this)">
-            Grade 7 <span class="tab-count" id="tabCount7">0</span>
-          </div>
-          <div class="grade-tab" onclick="switchFlagGrade('8', this)">
-            Grade 8 <span class="tab-count" id="tabCount8">2</span>
-          </div>
-          <div class="grade-tab" onclick="switchFlagGrade('9', this)">
-            Grade 9 <span class="tab-count" id="tabCount9">1</span>
-          </div>
-          <div class="grade-tab" onclick="switchFlagGrade('10', this)">
-            Grade 10 <span class="tab-count" id="tabCount10">1</span>
-          </div>
-        </div>
-
-        <!-- Search + reason filter -->
-        <div class="flag-toolbar">
-          <div class="search-wrap">
-            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-            <input class="search-input" type="text" id="flagSearchInput" placeholder="Search student name..."
-              oninput="filterFlagged()" />
-          </div>
-          <select class="filter-select" id="flagReasonFilter"
-            onchange="filterFlagged()">
-            <option value="all">All Reasons</option>
-            <option value="absences">Absences</option>
-            <option value="grades">Low Grades</option>
-          </select>
-        </div>
-
-        <!-- Scrollable card grid — caps height once the list grows -->
-        <div class="flag-grid-scroll">
-          <div class="flag-grid" id="flagGrid" data-render-source="REPORTS_DATA.flaggedStudents"></div>
-
-          <!-- Empty state, hidden by default, shown when a filter matches nothing -->
-          <div class="panel-empty-slot" id="flagEmpty" hidden aria-live="polite"></div>
         </div>
       </div>
 
@@ -631,249 +284,215 @@
   </div>
 
   <script>
-    /*
-      Reports data contract.
-      Replace REPORTS_DATA with EJS-provided JSON or a fetch response when the
-      page is connected to the backend. The render functions below can remain
-      unchanged because they only depend on this shape.
-    */
-    function buildAttendanceReportData() {
-      const source = window.EDUGNAY_CONFIG.getAttendanceRecords()
-        .filter(record => record.status !== 'pending' && record.subjectId);
-
-      const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
-      const sectionGroups = {};
-      const statusCounts = { present: 0, late: 0, absent: 0, excused: 0 };
-      const absenceCounts = {};
-      const lateStudents = new Set();
-
-      source.forEach(record => {
-        const section = sections.find(item => item.id === record.sectionId);
-        if (!section) return;
-
-        const group = sectionGroups[section.id] || (sectionGroups[section.id] = {
-          grade: section.grade,
-          section: section.name,
-          total: 0,
-          attended: 0
-        });
-        group.total += 1;
-        if (record.status === 'present' || record.status === 'late') group.attended += 1;
-        statusCounts[record.status] = (statusCounts[record.status] || 0) + 1;
-        if (record.status === 'absent') absenceCounts[record.studentId] = (absenceCounts[record.studentId] || 0) + 1;
-        if (record.status === 'late') lateStudents.add(record.studentId);
-      });
-
-      const attendanceByGrade = [];
-      Object.values(sectionGroups).forEach(group => {
-        const row = {
-          section: group.section,
-          rate: group.total ? Math.round((group.attended / group.total) * 100) : 0
-        };
-        const gradeGroup = attendanceByGrade.find(item => item.grade === group.grade);
-        if (gradeGroup) gradeGroup.rows.push(row);
-        else attendanceByGrade.push({ grade: group.grade, rows: [row] });
-      });
-
-      const total = Object.values(statusCounts).reduce((sum, value) => sum + value, 0);
-      const present = statusCounts.present;
-      const presentRate = total ? Math.round((present / total) * 100) : 0;
-      const lateRate = total ? Math.round((statusCounts.late / total) * 100) : 0;
-      return {
-        attendanceByGrade,
-        attendanceBreakdown: total ? [
-          { label: 'Present', value: presentRate, color: 'var(--green)' },
-          { label: 'Late / Tardy', value: lateRate, color: 'var(--orange)' },
-          { label: 'Absent', value: total ? Math.round(statusCounts.absent / total * 100) : 0, color: 'var(--red)' },
-          { label: 'Excused', value: total ? Math.round(statusCounts.excused / total * 100) : 0, color: 'var(--blue-mid)' }
-        ] : [],
-        absenceTriggers: [
-          { label: 'Students with 3+ subject absences', value: Object.values(absenceCounts).filter(count => count >= 3).length, tone: 'red' },
-          { label: 'Students with late subject records', value: lateStudents.size, tone: 'orange' }
-        ]
-      };
-    }
-
-    const ATTENDANCE_REPORT_DATA = window.EDUGNAY_API?.isBackendAvailable
-      ? { attendanceByGrade: [], attendanceBreakdown: [], absenceTriggers: [] }
-      : buildAttendanceReportData();
+    let gradeSummaryError = '';
     let attendanceSummaryError = '';
+    let reportsLoading = true;
     const REPORTS_DATA = {
-      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-      subjectPerformance: [
-        { grade: 'Grade 7', rows: [{ subject: 'EsP', score: 93, tone: 'high' }, { subject: 'Filipino', score: 89, tone: 'mid' }, { subject: 'English', score: 84, tone: 'mid' }, { subject: 'Science', score: 76, tone: 'low' }, { subject: 'Mathematics', score: 74, tone: 'low' }] },
-        { grade: 'Grade 8', rows: [{ subject: 'MAPEH', score: 90, tone: 'high' }, { subject: 'TLE', score: 87, tone: 'mid' }, { subject: 'Araling Panlipunan', score: 85, tone: 'mid' }, { subject: 'Mathematics', score: 83, tone: 'mid' }, { subject: 'Science', score: 78, tone: 'low' }] },
-        { grade: 'Grade 9', rows: [{ subject: 'Filipino', score: 88, tone: 'high' }, { subject: 'EsP', score: 86, tone: 'mid' }, { subject: 'English', score: 84, tone: 'mid' }, { subject: 'TLE', score: 82, tone: 'mid' }, { subject: 'Mathematics', score: 80, tone: 'low' }] },
-        { grade: 'Grade 10', rows: [{ subject: 'MAPEH', score: 91, tone: 'high' }, { subject: 'Araling Panlipunan', score: 87, tone: 'mid' }, { subject: 'English', score: 86, tone: 'mid' }, { subject: 'Science', score: 81, tone: 'mid' }, { subject: 'Mathematics', score: 79, tone: 'low' }] }
-      ],
-      gradeOutcome: { passing: 255, failing: 29, total: 284, distribution: [{ label: '90 to 100', value: 79, percent: 28, color: '#16a34a' }, { label: '80 to 89', value: 120, percent: 42, color: 'var(--blue-mid)' }, { label: '75 to 79', value: 56, percent: 20, color: 'var(--orange)' }, { label: 'Below 75', value: 29, percent: 10, color: 'var(--red)' }] },
-      ...ATTENDANCE_REPORT_DATA,
-      flaggedStudents: [
-        { studentId: 'bg-007', color: 'var(--red)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '4 absences' }, { type: 'grades', icon: 'trending-down', label: 'Math: 72' }] },
-        { studentId: 'sc-013', color: 'var(--purple)', reasons: [{ type: 'grades', icon: 'trending-down', label: 'Science: 70' }, { type: 'grades', icon: 'trending-down', label: 'Math: 73' }] },
-        { studentId: 'as-008', color: 'var(--magenta)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '6 absences' }, { type: 'grades', icon: 'trending-down', label: 'English: 74' }] },
-        { studentId: 'ml-006', color: 'var(--teal)', reasons: [{ type: 'absences', icon: 'calendar-x', label: '3 absences' }] }
-      ]
+      academicYear: null,
+      subjectPerformance: [],
+      gradeOutcome: null,
+      attendanceByGrade: [],
+      attendanceBreakdown: [],
+      attendanceRate: null,
+      attendanceRecordCount: 0,
+      absenceTriggers: []
     };
 
-    // Replace REPORTS_DATA with EJS JSON or pass the same shape to renderReportPanels(payload).
     const REPORTS_TONE_COLORS = { high: 'var(--green)', mid: 'var(--blue-mid)', low: 'var(--orange)' };
-    let reportPeriodLabel = 'Current period';
 
     function buildReportSummary(data = REPORTS_DATA) {
-      const outcome = data.gradeOutcome || { passing: 0, total: 0 };
-      const passingRate = outcome.total ? Math.round((outcome.passing / outcome.total) * 100) : 0;
-      const attendanceRate = data.attendanceBreakdown?.find(item => item.label === 'Present')?.value || 0;
-      const sectionCount = (data.attendanceByGrade || []).reduce((total, group) => total + group.rows.length, 0);
+      const outcome = data.gradeOutcome;
+      const passingRate = reportsLoading ? 'Loading…' : gradeSummaryError ? 'Unavailable' : outcome?.total ? `${Math.round((outcome.passing / outcome.total) * 100)}%` : '—';
+      const attendanceRate = reportsLoading ? 'Loading…' : attendanceSummaryError ? 'Unavailable' : data.attendanceRate == null ? '—' : `${data.attendanceRate}%`;
       return [
-        { tone: 'green', icon: 'check-circle', badge: 'On track', trend: 'trend-up', value: `${passingRate}%`, label: 'Passing rate', sub: `${outcome.passing} of ${outcome.total} students · ${reportPeriodLabel}` },
-        { tone: 'blue', icon: 'user-check', badge: 'Stable', trend: 'trend-up', value: `${attendanceRate}%`, label: 'Subject attendance rate', sub: `Across ${sectionCount} sections · confirmed subject records` },
-        { tone: 'red', icon: 'alert-triangle', badge: 'Needs review', trend: 'trend-down', value: (data.flaggedStudents || []).length, label: 'Flagged students', sub: 'Absences or grades below threshold' },
+        { tone: 'green', icon: 'check-circle', value: passingRate, label: 'Published grades meeting threshold', sub: reportsLoading ? 'Loading school reports' : outcome ? `${outcome.passing} of ${outcome.total} published subject marks met the configured threshold` : 'No published subject grades for this school year' },
+        { tone: 'blue', icon: 'user-check', value: attendanceRate, label: 'Subject attendance rate', sub: reportsLoading ? 'Loading school reports' : attendanceSummaryError ? 'Attendance summary is unavailable' : `${Number(data.attendanceRecordCount) || 0} confirmed subject records` }
       ];
     }
 
     function renderReportSummary(data = REPORTS_DATA) {
       document.getElementById('report-stat-grid').innerHTML = buildReportSummary(data).map(card => `
-      <div class="stat-card ${window.EDUGNAY_CONFIG.escapeHtml(card.tone)}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(card.icon)}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${window.EDUGNAY_CONFIG.escapeHtml(card.trend)}">${window.EDUGNAY_CONFIG.escapeHtml(card.badge)}</span></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(card.value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`).join('');
+      <div class="stat-card ${window.EDUGNAY_CONFIG.escapeHtml(card.tone)}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(card.icon)}" style="width:18px;height:18px;"></i></div></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(card.value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`).join('');
     }
 
-  function renderSubjectPerformance(data = REPORTS_DATA) {
-    const groups = Array.isArray(data.subjectPerformance) ? data.subjectPerformance : [];
-    const populatedGroups = groups.filter(group => Array.isArray(group.rows) && group.rows.length);
-    document.getElementById('subject-performance-chart').innerHTML = populatedGroups.length
-      ? populatedGroups.map(group => `<div class="bar-group"><div class="bar-group-label">${window.EDUGNAY_CONFIG.escapeHtml(group.grade)}</div>${group.rows.map((row, index) => `<div class="bar-row tier-${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span class="bar-rank">${index + 1}</span><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.subject)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.score)}%;background:${REPORTS_TONE_COLORS[row.tone] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.score)}</span></div>`).join('')}</div>`).join('')
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No subject performance data', text: 'Subject averages will appear here when records are available.' });
-  }
-
-  function renderGradeOutcome(data = REPORTS_DATA) {
-    const outcome = data.gradeOutcome || {};
-    const distribution = Array.isArray(outcome.distribution) ? outcome.distribution : [];
-    if (!Number(outcome.total)) {
-      document.getElementById('grade-outcome-donut').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No grade outcomes yet', text: 'Passing and failing totals will appear here after grades are recorded.' });
-      document.getElementById('grade-distribution').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when results are available.' });
-      return;
+    function renderSubjectPerformance(data = REPORTS_DATA) {
+      const chart = document.getElementById('subject-performance-chart');
+      if (gradeSummaryError) {
+        chart.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Grade report unavailable', text: 'Published grade data could not be loaded.' });
+        return;
+      }
+      if (reportsLoading) {
+        chart.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Published grade data is being loaded.' });
+        return;
+      }
+      const groups = Array.isArray(data.subjectPerformance) ? data.subjectPerformance : [];
+      const populatedGroups = groups.filter(group => Array.isArray(group.rows) && group.rows.length);
+      chart.innerHTML = populatedGroups.length
+        ? populatedGroups.map(group => `<div class="bar-group"><div class="bar-group-label">${window.EDUGNAY_CONFIG.escapeHtml(group.grade)}</div>${group.rows.map((row, index) => `<div class="bar-row tier-${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span class="bar-rank">${index + 1}</span><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.subject)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, Number(row.score) || 0))}%;background:${REPORTS_TONE_COLORS[row.tone] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.score)}</span></div>`).join('')}</div>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No subject performance data', text: 'Published subject averages will appear here when grades are available.' });
     }
-    const circumference = 251.2;
-    const passRate = Math.round((outcome.passing / outcome.total) * 100);
-    const passStroke = (outcome.passing / outcome.total * circumference).toFixed(1);
-    const failStroke = (outcome.failing / outcome.total * circumference).toFixed(1);
-    document.getElementById('grade-outcome-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126" aria-label="${passRate}% passing"><circle class="donut-bg" cx="50" cy="50" r="40"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--green)" stroke-dasharray="${passStroke} ${circumference}"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--red)" stroke-dasharray="${failStroke} ${circumference}" stroke-dashoffset="-${passStroke}"/></svg><div class="donut-label"><div class="donut-num">${passRate}%</div><div class="donut-sub">Passing</div></div></div><div class="donut-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Passing (75 and above)</span><span class="legend-val">${outcome.passing}</span></div><div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Failing (below 75)</span><span class="legend-val">${outcome.failing}</span></div><div class="legend-total"><div class="legend-item"><div class="legend-dot" style="background:var(--blue-mid);"></div><span class="legend-label">Total students</span><span class="legend-val">${outcome.total}</span></div></div></div>`;
-    document.getElementById('grade-distribution').innerHTML = distribution.length
-      ? `<div class="distribution-title">Grade distribution</div>${distribution.map(row => `<div class="bar-row"><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.percent)}%;background:${row.color};"></div></div><span class="bar-val">${Number(row.value)}</span></div>`).join('')}`
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when results are available.' });
-  }
 
-  function renderAttendance(data = REPORTS_DATA) {
-    if (attendanceSummaryError) {
-      ['attendance-rate-chart', 'attendance-breakdown-donut'].forEach(id => {
-        document.getElementById(id).textContent = attendanceSummaryError;
+    function renderGradeOutcome(data = REPORTS_DATA) {
+      const donut = document.getElementById('grade-outcome-donut');
+      const distributionElement = document.getElementById('grade-distribution');
+      if (gradeSummaryError) {
+        const empty = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Grade report unavailable', text: 'Published grade data could not be loaded.' });
+        donut.innerHTML = empty;
+        distributionElement.innerHTML = empty;
+        return;
+      }
+      if (reportsLoading) {
+        const loading = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Published grade data is being loaded.' });
+        donut.innerHTML = loading;
+        distributionElement.innerHTML = loading;
+        return;
+      }
+      const outcome = data.gradeOutcome || {};
+      const distribution = Array.isArray(outcome.distribution) ? outcome.distribution : [];
+      if (!Number(outcome.total)) {
+        donut.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No grade outcomes yet', text: 'Published grade outcomes will appear here when marks are available.' });
+        distributionElement.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when published marks are available.' });
+        return;
+      }
+      const circumference = 251.2;
+      const passRate = Math.round((outcome.passing / outcome.total) * 100);
+      const passStroke = (outcome.passing / outcome.total * circumference).toFixed(1);
+      const failStroke = (outcome.failing / outcome.total * circumference).toFixed(1);
+      donut.innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126" aria-label="${passRate}% met threshold"><circle class="donut-bg" cx="50" cy="50" r="40"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--green)" stroke-dasharray="${passStroke} ${circumference}"/><circle class="donut-seg" cx="50" cy="50" r="40" stroke="var(--red)" stroke-dasharray="${failStroke} ${circumference}" stroke-dashoffset="-${passStroke}"/></svg><div class="donut-label"><div class="donut-num">${passRate}%</div><div class="donut-sub">Met threshold</div></div></div><div class="donut-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div><span class="legend-label">Met school-level threshold</span><span class="legend-val">${Number(outcome.passing)}</span></div><div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div><span class="legend-label">Below school-level threshold</span><span class="legend-val">${Number(outcome.failing)}</span></div><div class="legend-total"><div class="legend-item"><div class="legend-dot" style="background:var(--blue-mid);"></div><span class="legend-label">Published subject marks</span><span class="legend-val">${Number(outcome.total)}</span></div></div></div>`;
+      const distributionColors = ['var(--green)', 'var(--blue-mid)', 'var(--orange)', 'var(--red)'];
+      distributionElement.innerHTML = distribution.length
+        ? `<div class="distribution-title">Published grade distribution</div>${distribution.map((row, index) => `<div class="bar-row"><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, Number(row.percent) || 0))}%;background:${distributionColors[index] || 'var(--blue-mid)'};"></div></div><span class="bar-val">${Number(row.value) || 0}</span></div>`).join('')}`
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'bar-chart-3', title: 'No grade distribution', text: 'Grade bands will appear here when published marks are available.' });
+    }
+
+    function renderAttendance(data = REPORTS_DATA) {
+      const chart = document.getElementById('attendance-rate-chart');
+      const donut = document.getElementById('attendance-breakdown-donut');
+      const triggersElement = document.getElementById('absence-triggers');
+      if (attendanceSummaryError) {
+        [chart, donut, triggersElement].forEach(element => { element.textContent = 'Attendance data could not be loaded.'; });
+        return;
+      }
+      if (reportsLoading) {
+        const loading = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading school reports', text: 'Confirmed subject attendance is being loaded.' });
+        [chart, donut, triggersElement].forEach(element => { element.innerHTML = loading; });
+        return;
+      }
+      const byGrade = Array.isArray(data.attendanceByGrade) ? data.attendanceByGrade : [];
+      const breakdown = Array.isArray(data.attendanceBreakdown) ? data.attendanceBreakdown : [];
+      const triggers = Array.isArray(data.absenceTriggers) ? data.absenceTriggers : [];
+      const populatedGrades = byGrade.filter(group => Array.isArray(group.rows) && group.rows.length);
+      chart.innerHTML = populatedGrades.length
+        ? populatedGrades.map(group => `<div class="bar-group"><div class="bar-group-label">${window.EDUGNAY_CONFIG.escapeHtml(group.grade)}</div>${group.rows.map(row => `<div class="bar-row"><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.section)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, Number(row.rate) || 0))}%;background:${row.rate >= 90 ? 'var(--green)' : 'var(--orange)'};"></div></div><span class="bar-val">${Number(row.rate) || 0}%</span></div>`).join('')}</div>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Confirmed subject attendance will appear here when records are available.' });
+      if (!breakdown.length) {
+        donut.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No attendance breakdown', text: 'Present, late, and absent totals will appear here when confirmed records are available.' });
+      } else {
+        const colors = { Present: 'var(--green)', Absent: 'var(--red)', Late: 'var(--orange)', Excused: 'var(--blue-mid)' };
+        const circumference = 251.2;
+        let offset = 0;
+        const segments = breakdown.map(row => {
+          const length = Number(row.value) / 100 * circumference;
+          const color = colors[row.label] || 'var(--blue-mid)';
+          const html = `<circle class="donut-seg" cx="50" cy="50" r="40" stroke="${color}" stroke-dasharray="${length.toFixed(1)} ${circumference}" stroke-dashoffset="-${offset.toFixed(1)}"/>`;
+          offset += length;
+          return html;
+        }).join('');
+        const present = breakdown.find(row => row.label === 'Present') || breakdown[0];
+        donut.innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${Number(present.value) || 0}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${breakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${colors[row.label] || 'var(--blue-mid)'};"></div><span class="legend-label">${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><span class="legend-val">${Number(row.value) || 0}%</span></div>`).join('')}</div>`;
+      }
+      triggersElement.innerHTML = triggers.length
+        ? `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${triggers.map(row => `<div class="trigger-row ${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span>${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><strong>${Number(row.value) || 0}</strong></div>`).join('')}</div>`
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No absence triggers', text: 'No students currently meet the subject-absence triggers.' });
+    }
+
+    function renderReportPanels(data = REPORTS_DATA) {
+      renderReportSummary(data);
+      renderSubjectPerformance(data);
+      renderGradeOutcome(data);
+      renderAttendance(data);
+    }
+
+    function updateReportPeriodLabel(label) {
+      const cleanLabel = String(label || '').replace(/^S\.Y\.\s*/i, '');
+      const display = cleanLabel ? `S.Y. ${cleanLabel} · All published terms` : 'Selected school year';
+      document.querySelectorAll('[data-report-period-label]').forEach(element => { element.textContent = display; });
+    }
+
+    async function loadSchoolYearReports(yearId) {
+      reportsLoading = true;
+      gradeSummaryError = '';
+      attendanceSummaryError = '';
+      Object.assign(REPORTS_DATA, {
+        academicYear: null, subjectPerformance: [], gradeOutcome: null,
+        attendanceByGrade: [], attendanceBreakdown: [], attendanceRate: null,
+        attendanceRecordCount: 0, absenceTriggers: []
       });
-      return;
-    }
-    const byGrade = Array.isArray(data.attendanceByGrade) ? data.attendanceByGrade : [];
-    const breakdown = Array.isArray(data.attendanceBreakdown) ? data.attendanceBreakdown : [];
-    const triggers = Array.isArray(data.absenceTriggers) ? data.absenceTriggers : [];
-    const populatedGrades = byGrade.filter(group => Array.isArray(group.rows) && group.rows.length);
-    document.getElementById('attendance-rate-chart').innerHTML = populatedGrades.length
-      ? populatedGrades.map(group => `<div class="bar-group"><div class="bar-group-label">${window.EDUGNAY_CONFIG.escapeHtml(group.grade)}</div>${group.rows.map(row => `<div class="bar-row"><span class="bar-label">${window.EDUGNAY_CONFIG.escapeHtml(row.section)}</span><div class="bar-track"><div class="bar-fill" style="width:${Number(row.rate)}%;background:${row.rate >= 90 ? 'var(--green)' : 'var(--orange)'};"></div></div><span class="bar-val">${Number(row.rate)}%</span></div>`).join('')}</div>`).join('')
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-check', title: 'No attendance data', text: 'Attendance rates will appear here when class records are available.' });
-    if (!breakdown.length) {
-      document.getElementById('attendance-breakdown-donut').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'pie-chart', title: 'No attendance breakdown', text: 'Present, late, and absent totals will appear here.' });
-    } else {
-    const circumference = 251.2; let offset = 0;
-    const segments = breakdown.map(row => { const length = Number(row.value) / 100 * circumference; const html = `<circle class="donut-seg" cx="50" cy="50" r="40" stroke="${row.color}" stroke-dasharray="${length.toFixed(1)} ${circumference}" stroke-dashoffset="-${offset.toFixed(1)}"/>`; offset += length; return html; }).join('');
-    const present = breakdown.find(row => row.label === 'Present') || breakdown[0];
-    document.getElementById('attendance-breakdown-donut').innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${present.value}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${breakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${row.color};"></div><span class="legend-label">${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><span class="legend-val">${Number(row.value)}%</span></div>`).join('')}</div>`;
-    }
-    document.getElementById('absence-triggers').innerHTML = triggers.length
-      ? `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${triggers.map(row => `<div class="trigger-row ${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span>${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><strong>${Number(row.value)}</strong></div>`).join('')}</div>`
-      : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No absence triggers', text: 'Attendance alerts will appear here when a configured threshold is reached.' });
-  }
+      renderReportPanels();
 
-  function renderFlaggedStudents(data = REPORTS_DATA) {
-    const students = Array.isArray(data.flaggedStudents) ? data.flaggedStudents : [];
-    const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
-    document.getElementById('flagGrid').innerHTML = students.map(record => {
-      const student = window.EDUGNAY_CONFIG.getUserById(record.studentId);
-      if (!student || student.role !== 'student') return '';
-      const section = sections.find(item => item.id === student.sectionId);
-      const adviser = section?.adviserId ? window.EDUGNAY_CONFIG.getUserById(section.adviserId) : null;
-      const grade = String(student.gradeLevel || '').replace(/^Grade\s*/i, '');
-      const detail = section
-        ? `${student.gradeLevel} · ${section.name} · ${adviser?.displayName || 'Unassigned'}`
-        : `${student.gradeLevel || 'Unassigned'} · Unassigned`;
-      return `<div class="flag-card" data-grade="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" data-reason="${(record.reasons || []).map(reason => window.EDUGNAY_CONFIG.escapeHtml(reason.type)).join(' ')}" data-name="${window.EDUGNAY_CONFIG.escapeHtml(student.displayName.toLowerCase())}"><div class="flag-card-top"><div class="flag-av" style="background:${record.color};">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="flag-info"><div class="flag-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="flag-detail">${window.EDUGNAY_CONFIG.escapeHtml(detail)}</div></div></div><div class="flag-reason-row">${(record.reasons || []).map(reason => `<span class="flag-tag flag-${window.EDUGNAY_CONFIG.escapeHtml(reason.type)}"><i data-lucide="${window.EDUGNAY_CONFIG.escapeHtml(reason.icon)}" style="width:10px;height:10px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(reason.label)}</span>`).join('')}</div></div>`;
-    }).join('');
-  }
+      const [gradesResult, attendanceResult] = await Promise.allSettled([
+        window.EDUGNAY_API.getSchoolGradeSummary(yearId),
+        window.EDUGNAY_API.getSchoolAttendanceSummary(yearId)
+      ]);
+      const selector = document.getElementById('reportSchoolYear');
+      if (selector.value !== String(yearId)) return;
+      reportsLoading = false;
 
-    function renderReportPanels(data = REPORTS_DATA) { renderReportSummary(data); renderSubjectPerformance(data); renderGradeOutcome(data); renderAttendance(data); renderFlaggedStudents(data); }
-
-    // ── FLAGGED STUDENTS: grade tabs + search + reason filter ──
-    // EJS/backend note: replace tabCount hardcoded numbers with server-computed
-    // counts per grade, e.g. tabCount7 = flaggedStudents.filter(s => s.grade === 7).length
-    let activeFlagGrade = 'all';
-
-    function switchFlagGrade(grade, el) {
-      activeFlagGrade = grade;
-      document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
-      el.classList.add('active');
-      filterFlagged();
-    }
-
-    function filterFlagged() {
-      const search = document.getElementById('flagSearchInput').value.toLowerCase();
-      const reason = document.getElementById('flagReasonFilter').value;
-      const cards = document.querySelectorAll('#flagGrid .flag-card');
-      let visibleCount = 0;
-
-      cards.forEach(card => {
-        const matchGrade = activeFlagGrade === 'all' || card.dataset.grade === activeFlagGrade;
-        const matchReason = reason === 'all' || card.dataset.reason.includes(reason);
-        const matchSearch = card.dataset.name.includes(search);
-        const isVisible = matchGrade && matchReason && matchSearch;
-
-        card.style.display = isVisible ? '' : 'none';
-        if (isVisible) visibleCount++;
-      });
-
-      document.getElementById('flaggedCount').textContent = visibleCount + (visibleCount === 1 ? ' student' : ' students');
-      const flagEmpty = document.getElementById('flagEmpty');
-      const hasNoVisibleFlags = visibleCount === 0;
-      flagEmpty.hidden = !hasNoVisibleFlags;
-      if (hasNoVisibleFlags) {
-        flagEmpty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'user-round-search',
-          title: 'No flagged students found',
-          text: 'Try a different grade level, reason, or search term.'
-        });
-        if (window.lucide) lucide.createIcons();
-      } else flagEmpty.innerHTML = '';
-      document.getElementById('flagGrid').style.display = visibleCount === 0 ? 'none' : 'grid';
+      if (gradesResult.status === 'fulfilled') {
+        Object.assign(REPORTS_DATA, gradesResult.value);
+        updateReportPeriodLabel(gradesResult.value.academicYear?.label || selector.selectedOptions[0]?.textContent);
+      } else {
+        gradeSummaryError = 'Published grade data could not be loaded.';
+      }
+      if (attendanceResult.status === 'fulfilled') {
+        Object.assign(REPORTS_DATA, attendanceResult.value);
+      } else {
+        attendanceSummaryError = 'Confirmed subject attendance could not be loaded.';
+      }
+      renderReportPanels();
+      if (window.lucide) window.lucide.createIcons();
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      if (window.EDUGNAY_API?.isBackendAvailable) {
-        try {
-          Object.assign(REPORTS_DATA, await window.EDUGNAY_API.getSchoolAttendanceSummary());
-        } catch (error) {
-          attendanceSummaryError = error?.message || 'Attendance summary could not be loaded.';
-        }
-        REPORTS_DATA.flaggedStudents = REPORTS_DATA.flaggedStudents
-          .map(student => ({ ...student, reasons: student.reasons.filter(reason => reason.type !== 'absences') }))
-          .filter(student => student.reasons.length);
-      }
-      const school = window.EDUGNAY_CONFIG.getActiveSchool();
-      const periods = window.EDUGNAY_CONFIG.getAcademicPeriods(school.id, school.activeDivision);
-      const activePeriod = periods.find(period => period.id === school.divisions?.[school.activeDivision]?.activeAcademicPeriodId);
-      reportPeriodLabel = activePeriod?.name || periods[0]?.name || 'No grading period';
-      document.getElementById('reportSchoolYear').innerHTML = `<option value="${escapeHtml(school.schoolYear)}">S.Y. ${escapeHtml(school.schoolYear)}</option>`;
-      document.getElementById('reportAcademicPeriod').innerHTML = periods.length
-        ? periods.map(period => `<option value="${escapeHtml(period.id)}" ${period.id === activePeriod?.id ? 'selected' : ''}>${escapeHtml(period.name)}</option>`).join('')
-        : '<option value="">No grading periods</option>';
-      document.querySelectorAll('[data-report-period-label]').forEach(element => { element.textContent = reportPeriodLabel; });
+      const selector = document.getElementById('reportSchoolYear');
       renderReportPanels();
-      filterFlagged();
-      lucide.createIcons();
+
+      if (!window.EDUGNAY_API?.isBackendAvailable) {
+        selector.replaceChildren(new Option('Backend unavailable', ''));
+        reportsLoading = false;
+        gradeSummaryError = 'Published grade data could not be loaded.';
+        attendanceSummaryError = 'Confirmed subject attendance could not be loaded.';
+        renderReportPanels();
+        return;
+      }
+
+      try {
+        const years = await window.EDUGNAY_API.getAcademicYears();
+        if (!years.length) {
+          selector.replaceChildren(new Option('No school years configured', ''));
+          selector.disabled = true;
+          reportsLoading = false;
+          updateReportPeriodLabel('');
+          renderReportPanels();
+          return;
+        }
+
+        selector.replaceChildren(...years.map(year => new Option(`S.Y. ${year.label}`, String(year.id))));
+        const activeYear = years.find(year => year.status === 'active') || years[0];
+        selector.value = String(activeYear.id);
+        selector.disabled = false;
+        selector.addEventListener('change', () => loadSchoolYearReports(selector.value));
+        await loadSchoolYearReports(selector.value);
+      } catch (error) {
+        selector.replaceChildren(new Option('School years unavailable', ''));
+        selector.disabled = true;
+        reportsLoading = false;
+        gradeSummaryError = 'Published grade data could not be loaded.';
+        attendanceSummaryError = 'Confirmed subject attendance could not be loaded.';
+        renderReportPanels();
+        console.warn('School reports could not be initialized.', error.message);
+      }
+      if (window.lucide) window.lucide.createIcons();
     });
   </script>
 

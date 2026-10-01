@@ -65,11 +65,7 @@
   overflow: hidden;
 }
 
-/* ══════════════════════════════
-    AVATAR — dynamic background color
-    (driven by data-color attribute, set via EJS on load
-     or via JS after a swatch is picked)
-══════════════════════════════ */
+/* Avatar color is applied by profile JavaScript through the data-color attribute. */
 .profile-avatar[data-color="navy"]     { background: var(--navy); }
 .profile-avatar[data-color="blue"] { background: var(--blue-mid); }
 .profile-avatar[data-color="gold"]     { background: var(--gold); }

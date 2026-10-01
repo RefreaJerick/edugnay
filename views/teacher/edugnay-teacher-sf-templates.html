@@ -13,6 +13,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/vendor/exceljs.min.js"></script>
   <script src="../../assets/vendor/jszip.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/sf-workbook.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
@@ -56,7 +57,7 @@
           <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
             <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
             <span class="nav-label">Narrative Reports</span>
-            <span class="nav-badge">5</span>
+
           </a>
           <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
             <div class="nav-icon"><i data-lucide="notebook-pen"></i></div>
@@ -73,7 +74,7 @@
           <a class="nav-item" onclick="navigate('announcements')">
             <div class="nav-icon"><i data-lucide="megaphone"></i></div>
             <span class="nav-label">Announcements</span>
-            <span class="nav-badge gold">2</span>
+
           </a>
         </div>
       </div>
@@ -219,7 +220,6 @@
     </main>
   </div>
 
-  <div class="sf-toast" id="sfToast" role="status" aria-live="polite"></div>
   <script src="../../assets/js/teacher/sf-templates.js"></script>
 </body>
 </html>

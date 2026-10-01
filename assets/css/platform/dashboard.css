@@ -195,7 +195,7 @@
   position: absolute;
   top: 22px;
   bottom: 22px;
-  left: 38px;
+  left: 35px;
   z-index: 0;
   width: 2px;
   background: var(--gray-200);
@@ -228,6 +228,8 @@
 }
 
 .platform-dashboard .act-icon {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,6 +421,12 @@
 }
 
 .platform-dashboard .school-status.suspended {
+  border-color: var(--red-border-soft);
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.platform-dashboard .school-status.rejected {
   border-color: var(--red-border-soft);
   background: var(--red-pale);
   color: var(--red);

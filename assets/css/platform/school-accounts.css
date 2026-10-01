@@ -270,6 +270,69 @@
   background: var(--white);
 }
 
+.platform-school-accounts .platform-status-confirm-modal #schoolStatusConfirmContext {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.platform-school-accounts #schoolStatusConfirmContext .ctx-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--blue-mid);
+}
+
+.platform-school-accounts #schoolStatusConfirmContext .ctx-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.platform-school-accounts #schoolStatusConfirmContext .ctx-label {
+  margin-bottom: 3px;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.platform-school-accounts #schoolStatusConfirmContext.confirm-remove-context {
+  border-color: var(--red-border);
+  background: #fff7f7;
+}
+
+.platform-school-accounts #schoolStatusConfirmContext.confirm-remove-context .ctx-icon {
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.platform-school-accounts #schoolStatusConfirmContext.confirm-remove-context .ctx-label {
+  color: var(--red);
+}
+
+.platform-school-accounts #schoolStatusConfirmContext .ctx-val {
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.platform-school-accounts .platform-status-confirm-modal .confirm-remove-message {
+  margin: 0;
+}
+
 .platform-school-accounts #schoolAccountRejectModal .modal-body > .modal-sub {
   margin: 0 0 18px;
 }

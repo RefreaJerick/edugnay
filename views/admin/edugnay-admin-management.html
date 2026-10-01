@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/management.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -496,7 +497,7 @@
       <a href="edugnay-admin-users.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Manage Users</span>
-        <span class="nav-badge">3</span>
+
       </a>
 
       <!-- Collapsible group replaces the four separate Sections / Subjects /
@@ -527,7 +528,7 @@
       <a href="edugnay-admin-announcements.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
+
       </a>
     </div>
 
@@ -737,6 +738,16 @@
         <div class="hierarchical-filter-tabs" id="subjectGradeTabs"></div>
 
         <div class="subject-grid" id="subjectTableBody"></div>
+      </div>
+
+      <div class="panel" id="inactiveSubjectsPanel" hidden>
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Inactive Subjects</div>
+            <div class="panel-sub">These subjects are hidden from new assignments so linked school records stay intact.</div>
+          </div>
+        </div>
+        <div class="subject-grid" id="inactiveSubjectList"></div>
       </div>
     </section>
 
@@ -1024,6 +1035,7 @@ function managementApiSubjectRecord(subject) {
     name: subject.name,
     code: subject.code,
     type: 'Core Subject',
+    isActive: subject.isActive,
     grades: [...new Set(grades)]
   };
 }
@@ -1035,8 +1047,8 @@ async function loadManagementApiData() {
     window.EDUGNAY_API.getAcademicYears(),
     window.EDUGNAY_API.getSections(),
     window.EDUGNAY_API.getSubjects(),
-    window.EDUGNAY_API.getUsers({ role: 'teacher', status: 'active', limit: 100 }),
-    window.EDUGNAY_API.getUsers({ role: 'student', status: 'active', limit: 100 })
+    window.EDUGNAY_API.getAllUsers({ role: 'teacher', status: 'active' }),
+    window.EDUGNAY_API.getAllUsers({ role: 'student', status: 'active' })
   ]);
 
   MANAGEMENT_API_CONTEXT.school = school;
@@ -1059,7 +1071,7 @@ async function loadManagementApiData() {
     return { section, studentsResult, teachersResult };
   }));
 
-  const students = (studentResponse?.users || []).map(normalizeManagementApiStudent);
+  const students = studentResponse.map(normalizeManagementApiStudent);
   const studentsById = new Map(students.map(student => [student.id, student]));
   sectionDetails.forEach(({ section, studentsResult, teachersResult }) => {
     section.teacherAssignments = (teachersResult.teachers || []).map(assignment => ({
@@ -1084,8 +1096,10 @@ async function loadManagementApiData() {
   SECTION_RECORDS = activeSections;
   STUDENTS_DATA = students;
   MANAGEMENT_ASSIGNMENT_STUDENTS = students.filter(student => !student.sectionId);
-  MANAGEMENT_API_TEACHERS = (teacherResponse?.users || []).map(normalizeManagementApiTeacher);
-  SUBJECTS_DATA.splice(0, SUBJECTS_DATA.length, ...(subjects || []).filter(subject => subject.isActive).map(managementApiSubjectRecord));
+  MANAGEMENT_API_TEACHERS = teacherResponse.map(normalizeManagementApiTeacher);
+  const schoolSubjects = (subjects || []).map(managementApiSubjectRecord);
+  SUBJECTS_DATA.splice(0, SUBJECTS_DATA.length, ...schoolSubjects.filter(subject => subject.isActive));
+  MANAGEMENT_API_CONTEXT.inactiveSubjects = schoolSubjects.filter(subject => !subject.isActive);
   TEACHER_ASSIGNMENTS_DATA.splice(0, TEACHER_ASSIGNMENTS_DATA.length, ...activeSections.map(section => ({
     sectionId: section.id,
     collapsed: managementTeacherCollapseState[section.id] ?? true,
@@ -1157,6 +1171,7 @@ async function saveSectionForm(event, mode) {
   if (MANAGEMENT_API_ENABLED) {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
+    let saved = false;
     try {
       const sectionId = form.elements.sectionId?.value || '';
       const payload = managementApiSectionPayload(sectionData, sectionId);
@@ -1164,11 +1179,13 @@ async function saveSectionForm(event, mode) {
         ? await window.EDUGNAY_API.updateSection(sectionId, payload)
         : await window.EDUGNAY_API.createSection(payload);
       if (!savedSection) throw new Error('The section could not be saved.');
+      saved = true;
       if (mode === 'edit') closeSectionEditModal();
       else closeSectionAddModal();
       await refreshManagementViews();
+      showAppToast(mode === 'edit' ? 'Section updated.' : 'Section created.');
     } catch (error) {
-      window.alert(error?.message || 'The section could not be saved.');
+      showAppToast(saved ? 'Section saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The section could not be saved.', saved ? 'info' : 'error');
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
@@ -1179,6 +1196,7 @@ async function saveSectionForm(event, mode) {
     const sectionId = form.elements.sectionId?.value || '';
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
+    let saved = false;
     try {
       const updatedSection = await window.EDUGNAY_CONFIG.updateSection(sectionId, sectionData);
       if (!updatedSection) {
@@ -1229,7 +1247,8 @@ const MANAGEMENT_API_CONTEXT = {
   school: null,
   structure: [],
   academicYears: [],
-  activeAcademicYear: null
+  activeAcademicYear: null,
+  inactiveSubjects: []
 };
 let MANAGEMENT_API_TEACHERS = [];
 let SECTION_RECORDS = [];
@@ -1436,6 +1455,11 @@ function renderSections() {
       closeSectionMenus();
       openSectionEditModal(card);
     });
+    card.querySelector('.section-menu-item.delete').addEventListener('click', () => {
+      closeSectionMenus();
+      const section = managementSectionById(card.dataset.id);
+      if (section) openSectionDeleteConfirmation(section);
+    });
   });
 
   const tbody = document.querySelector('#sectionTableView tbody');
@@ -1447,12 +1471,16 @@ function renderSections() {
       <td>${section.students}</td>
       <td>${section.subjects}</td>
       <td>${section.capacity}</td>
-      <td><div class="row-actions"><button class="row-btn view">View</button><button class="row-btn edit">${section.adviser ? 'Edit' : 'Assign'}</button><span class="action-dots"><i data-lucide="more-horizontal" style="width:18px;height:18px;"></i></span></div></td>
+      <td><div class="row-actions"><button class="row-btn view" type="button">View</button><button class="row-btn edit" type="button">${section.adviser ? 'Edit' : 'Assign'}</button><button class="row-btn danger" type="button">Delete</button></div></td>
     </tr>`).join('') : '') + `<tr class="panel-empty-row" hidden><td colspan="7">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections found', text: 'Create a section or adjust the filters.' })}</td></tr>`;
   const sectionTableEmpty = tbody.querySelector('.panel-empty-row');
   if (sectionTableEmpty) sectionTableEmpty.hidden = records.length > 0;
   tbody.querySelectorAll('.row-btn.view').forEach(button => button.addEventListener('click', () => openSectionStudentsModal(button.closest('tr'))));
   tbody.querySelectorAll('.row-btn.edit').forEach(button => button.addEventListener('click', () => openSectionEditModal(button.closest('tr'))));
+  tbody.querySelectorAll('.row-btn.danger').forEach(button => button.addEventListener('click', () => {
+    const section = managementSectionById(button.closest('tr').dataset.id);
+    if (section) openSectionDeleteConfirmation(section);
+  }));
   lucide.createIcons();
 }
 
@@ -1465,6 +1493,37 @@ function managementSubjectRecords() {
       subject.grades
     )).length
   }));
+}
+
+function renderInactiveSubjects() {
+  const panel = document.getElementById('inactiveSubjectsPanel');
+  const list = document.getElementById('inactiveSubjectList');
+  if (!panel || !list) return;
+  const subjects = MANAGEMENT_API_CONTEXT.inactiveSubjects || [];
+  panel.hidden = !MANAGEMENT_API_ENABLED || !subjects.length;
+  list.innerHTML = subjects.map(subject => `
+    <article class="subject-card" data-id="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}">
+      <div class="subject-card-content">
+        <div class="subj-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</div>
+        <div class="subj-code-text">${window.EDUGNAY_CONFIG.escapeHtml(subject.code)} · Inactive; linked records preserved</div>
+      </div>
+      <div class="subject-card-actions row-actions"><button class="row-btn edit" type="button" data-restore-subject>Restore</button></div>
+    </article>`).join('');
+  list.querySelectorAll('[data-restore-subject]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const subject = subjects.find(item => item.id === button.closest('.subject-card')?.dataset.id);
+      if (!subject || button.disabled) return;
+      button.disabled = true;
+      try {
+        await window.EDUGNAY_API.updateSubject(subject.apiId, { isActive: true });
+        await refreshManagementViews();
+        showAppToast('Subject restored.');
+      } catch (error) {
+        showAppToast(error.message || 'The subject could not be restored.', 'error');
+        button.disabled = false;
+      }
+    });
+  });
 }
 
 function managementFilterMatches(filterValue, keys) {
@@ -1648,6 +1707,7 @@ function renderSubjects() {
       if (subject) openSubjectRemoveConfirmation(subject);
     });
   });
+  renderInactiveSubjects();
   lucide.createIcons();
 }
 
@@ -1904,6 +1964,30 @@ function openSectionEditModal(card) {
   document.getElementById('editSectionId').value = section.id;
   updateSectionFormFields('edit');
   document.getElementById('sectionEditModalBackdrop').classList.add('open');
+}
+
+function openSectionDeleteConfirmation(section) {
+  if (!MANAGEMENT_API_ENABLED) {
+    showAppToast('Connect to the backend to delete a section.', 'error');
+    return;
+  }
+  const placement = managementSectionPlacement(section);
+  openConfirmRemoveModal({
+    type: 'section',
+    id: section.id,
+    targetId: section.id,
+    sectionId: section.id,
+    name: section.name,
+    context: placement,
+    contextLabel: 'Section placement',
+    title: `Delete section: ${section.name}`,
+    sub: 'This permanently removes an empty section.',
+    icon: 'door-closed',
+    submitLabel: 'Delete Section',
+    messageParts: [
+      { text: 'This section can only be deleted when it has no students, teachers, announcements, or saved records. Existing history is preserved if deletion is blocked.' }
+    ]
+  });
 }
 
 function openSectionStudentsModal(card) {
@@ -2247,10 +2331,12 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
       };
       if (existing?.apiId) await window.EDUGNAY_API.updateSubject(existing.apiId, payload);
       else await window.EDUGNAY_API.createSubject(payload);
+      saved = true;
       closeSubjectModal();
       await refreshManagementViews();
+      showAppToast(existing?.apiId ? 'Subject updated.' : 'Subject created.');
     } catch (error) {
-      alert(error?.message || 'The subject could not be saved.');
+      showAppToast(saved ? 'Subject saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The subject could not be saved.', saved ? 'info' : 'error');
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
@@ -2416,6 +2502,7 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
   if (MANAGEMENT_API_ENABLED) {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
+    let saved = false;
     try {
       const section = managementSectionById(sectionId);
       const currentAssignment = section?.teacherAssignments?.find(item => item.subjectId === subjectId);
@@ -2429,10 +2516,12 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
       } else {
         await window.EDUGNAY_API.assignTeacher(sectionId, teacherId, subjectId);
       }
+      saved = true;
       closeTeacherModal();
       await refreshManagementViews();
+      showAppToast('Teacher assignment saved.');
     } catch (error) {
-      alert(error?.message || 'The teacher assignment could not be saved.');
+      showAppToast(saved ? 'Teacher assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The teacher assignment could not be saved.', saved ? 'info' : 'error');
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
@@ -2541,7 +2630,6 @@ function managementDivision(level) {
 }
 
 function managementSectionStudentCount(sectionId) {
-  /* STUDENTS_DATA is derived from the shared directory above. Replace its source with the student API later. */
   const records = Array.isArray(STUDENTS_DATA) ? STUDENTS_DATA : [];
   return records.filter(student => student.sectionId === sectionId).length;
 }
@@ -2979,10 +3067,6 @@ function openTeacherRemoveConfirmation({ sectionId, assignmentId, subjectId, sec
 
 function openSubjectRemoveConfirmation(subject) {
   if (!subject) return;
-  if (MANAGEMENT_API_ENABLED) {
-    window.alert('Subject removal is reserved for a later backend phase.');
-    return;
-  }
   const scope = getSubjectModalContext(activeSubjectGrade, activeSubjectStrand);
   const removingAll = scope.mode === 'all';
   const scopeLabel = removingAll ? 'all configured grade levels and strands' : scope.label;
@@ -3001,7 +3085,9 @@ function openSubjectRemoveConfirmation(subject) {
     icon: 'book-minus',
     action: '/subjects/remove',
     messageParts: [
-      { text: `Remove this subject from ${scopeLabel}?` }
+      { text: MANAGEMENT_API_ENABLED
+        ? `Remove this subject from ${scopeLabel}? If school records use it, it will be deactivated and those records will stay available; otherwise, it will be permanently deleted.`
+        : `Remove this subject from ${scopeLabel}?` }
     ]
   });
 }
@@ -3127,13 +3213,16 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
 
   const submitButton = event.submitter;
   if (submitButton) submitButton.disabled = true;
+  let saved = false;
   try {
     if (!(await saveManagementStudentPlacement(studentId, section))) throw new Error('That student could not be updated.');
+    saved = true;
     closeStudentAssignModal();
     if (MANAGEMENT_API_ENABLED) await refreshManagementViews();
     else renderManagementStudentChanges();
+    showAppToast(MANAGEMENT_API_ENABLED ? 'Student assigned to section.' : 'Student assignment saved in local demo data.', MANAGEMENT_API_ENABLED ? 'success' : 'info');
   } catch (error) {
-    alert(error?.message || 'That student could not be updated.');
+    showAppToast(saved ? 'Student assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -3147,13 +3236,16 @@ document.getElementById('moveStudentForm').addEventListener('submit', async func
 
   const submitButton = event.submitter;
   if (submitButton) submitButton.disabled = true;
+  let saved = false;
   try {
     if (!(await saveManagementStudentPlacement(studentId, section))) throw new Error('That student could not be updated.');
+    saved = true;
     closeStudentAssignModal();
     if (MANAGEMENT_API_ENABLED) await refreshManagementViews();
     else renderManagementStudentChanges();
+    showAppToast(MANAGEMENT_API_ENABLED ? 'Student moved to section.' : 'Student placement saved in local demo data.', MANAGEMENT_API_ENABLED ? 'success' : 'info');
   } catch (error) {
-    alert(error?.message || 'That student could not be updated.');
+    showAppToast(saved ? 'Student placement saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -3169,12 +3261,15 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
     if (MANAGEMENT_API_ENABLED) {
       const submitButton = event.submitter;
       if (submitButton) submitButton.disabled = true;
+      let removed = false;
       try {
         await window.EDUGNAY_API.removeTeacherAssignment(request.sectionId, request.assignmentId);
+        removed = true;
         closeConfirmRemoveModal();
         await refreshManagementViews();
+        showAppToast('Teacher assignment removed.');
       } catch (error) {
-        alert(error?.message || 'The teacher assignment could not be removed.');
+        showAppToast(removed ? 'Teacher assignment removed, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The teacher assignment could not be removed.', removed ? 'info' : 'error');
       } finally {
         if (submitButton) submitButton.disabled = false;
       }
@@ -3187,7 +3282,44 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
     return;
   }
 
+  if (type === 'section') {
+    const submitButton = event.submitter;
+    const originalLabel = submitButton?.textContent || 'Delete Section';
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Deleting…'; }
+    let deleted = false;
+    try {
+      await window.EDUGNAY_API.deleteSection(targetId);
+      deleted = true;
+      closeConfirmRemoveModal();
+      await refreshManagementViews();
+      showAppToast('Section deleted.');
+    } catch (error) {
+      showAppToast(deleted ? 'Section deleted, but the list could not refresh.' : error.message || 'The section could not be deleted.', deleted ? 'info' : 'error');
+    } finally {
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = originalLabel; }
+    }
+    return;
+  }
+
   if (type === 'subject') {
+    if (MANAGEMENT_API_ENABLED) {
+      const submitButton = event.submitter;
+      const originalLabel = submitButton?.textContent || 'Yes, Remove';
+      if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Removing…'; }
+      let removed = false;
+      try {
+        const result = await window.EDUGNAY_API.deleteSubject(targetId);
+        removed = true;
+        closeConfirmRemoveModal();
+        await refreshManagementViews();
+        showAppToast(result.deleted ? 'Subject permanently deleted.' : 'Subject deactivated; linked records were preserved.', result.deleted ? 'success' : 'info');
+      } catch (error) {
+        showAppToast(removed ? 'Subject removed, but the list could not refresh.' : error.message || 'The subject could not be removed.', removed ? 'info' : 'error');
+      } finally {
+        if (submitButton) { submitButton.disabled = false; submitButton.textContent = originalLabel; }
+      }
+      return;
+    }
     const removed = removeSubjectRecord(
       targetId,
       pendingRemoveRequest?.contextValue || 'all',
@@ -3209,14 +3341,17 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
   if (MANAGEMENT_API_ENABLED) {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
+    let removed = false;
     try {
       const sourceSectionId = pendingRemoveRequest?.sectionId || student.sectionId;
       await window.EDUGNAY_API.withdrawStudent(sourceSectionId, studentId);
+      removed = true;
       closeConfirmRemoveModal();
       closeSectionStudentsModal();
       await refreshManagementViews();
+      showAppToast('Student removed from section.');
     } catch (error) {
-      alert(error?.message || 'The student could not be removed from the section.');
+      showAppToast(removed ? 'Student removed, but the list could not refresh. Reload the page to verify it.' : error?.message || 'The student could not be removed from the section.', removed ? 'info' : 'error');
     } finally {
       if (submitButton) submitButton.disabled = false;
     }

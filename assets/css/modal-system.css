@@ -23,6 +23,37 @@
   overflow: hidden;
 }
 
+.dashboard-action-feedback {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dashboard-action-feedback[hidden] {
+  display: none;
+}
+
+.dashboard-action-feedback.is-error {
+  color: var(--red-dark);
+  background: var(--red-pale);
+  border-color: var(--red-pale);
+}
+
+.dashboard-action-feedback.is-success {
+  color: var(--green-dark);
+  background: var(--green-pale);
+  border-color: var(--green-pale);
+}
+
+.dashboard-action-feedback.is-info {
+  color: var(--blue-mid);
+  background: var(--blue-xpale);
+  border-color: var(--blue-pale);
+}
+
 /* Forms that own the modal body or footer still need to behave as one column
    inside the dialog so the footer remains separated from the fields. */
 .modal > form,

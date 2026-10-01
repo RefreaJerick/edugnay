@@ -347,11 +347,10 @@
   </div>
 </div>
 
+<script src="./assets/js/api-config.js"></script>
 <script>
 
-  const API_BASE_URL = ['127.0.0.1', 'localhost'].includes(window.location.hostname)
-    ? `${window.location.protocol}//${window.location.hostname}:3000/api`
-    : '';
+  const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 
   const AUTH_CONFIG = {
     frontendOnly: false,
@@ -561,7 +560,7 @@
     setSubmitting(submitButton, true, 'Signing in...');
     try {
       if (!AUTH_CONFIG.apiBaseUrl) {
-        throw new Error('Sign in is available only when the local backend is running.');
+        throw new Error('The API address has not been configured.');
       }
 
       const { user } = await postAuthData('/auth/login', { schoolEmail, password });

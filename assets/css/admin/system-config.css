@@ -197,6 +197,9 @@
   transition: background 0.2s;
   flex-shrink: 0;
 }
+.trigger-row .toggle { border: 0; padding: 0; margin-left: 12px; }
+.trigger-row .toggle:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: 3px; }
+.trigger-row .toggle:disabled { opacity: .45; cursor: not-allowed; }
 .toggle.on {
   background: var(--blue-mid);
 }

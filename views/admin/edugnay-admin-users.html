@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/users.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/vendor/qrcode/qrcode.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js?v=5"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -38,8 +39,7 @@
             style="width:18px;height:18px;"></i></button>
       </div>
       <div class="modal-body">
-        <!-- EJS NOTE: action gets set dynamically by JS (create vs edit/:id).
-           If you'd rather render server-side, you could template action="<%= mode === 'edit' ? `/users/${user._id}/edit` : '/users/create' %>" -->
+        <!-- JavaScript submits create and edit changes through the user API. -->
         <form id="accountForm" method="post" action="/users/create">
           <input type="hidden" name="userId" id="accountUserId" value="" />
 
@@ -111,7 +111,7 @@
               <div id="linkedStudentTags" class="linked-student-list"></div>
             </div>
           </section>
-
+          <p id="accountFormFeedback" class="dashboard-action-feedback is-error" role="alert" hidden></p>
         </form>
       </div>
       <div class="modal-foot">
@@ -285,8 +285,8 @@
           </div>
         </div>
         <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
-          This will permanently delete <strong id="deleteModalNameInline">this account</strong>. All associated data
-          will be removed and this cannot be undone.
+          Permanently delete <strong id="deleteModalNameInline">this account</strong>? Accounts with parent/student links,
+          enrollments, grades, attendance, submissions, or other protected records cannot be deleted. Deactivate those accounts instead.
         </p>
         <form id="deleteForm" method="post" action="/users/delete">
           <input type="hidden" name="userId" id="deleteUserId" />
@@ -294,7 +294,7 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-        <button type="submit" form="deleteForm" class="btn btn-save"
+        <button type="submit" form="deleteForm" id="deleteUserConfirmButton" class="btn btn-save"
           style="background:#dc2626;border-color:#dc2626;">Yes, Delete</button>
       </div>
     </div>
@@ -425,7 +425,7 @@
             <i data-lucide="users" style="width:16px;height:16px;"></i>
           </div>
           <span class="nav-label">Manage Users</span>
-          <span class="nav-badge">3</span>
+
         </a>
 
         <div class="nav-group" id="classMgmtGroup">
@@ -466,7 +466,7 @@
             <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
           </div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -585,7 +585,7 @@
       <!-- Role summary cards -->
       <div class="role-summary">
         <div class="rs-card all selected" onclick="filterRole('all', this)">
-          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div><span class="rs-badge">All accounts</span></div>
+          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div></div>
           <div class="rs-info">
             <div class="rs-num"></div>
             <div class="rs-label">All Users</div>
@@ -593,7 +593,7 @@
           <div class="rs-caption">All school accounts</div>
         </div>
         <div class="rs-card admin" onclick="filterRole('school_admin', this)">
-          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div><span class="rs-badge">System access</span></div>
+          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div></div>
           <div class="rs-info">
             <div class="rs-num"></div>
             <div class="rs-label">Admins</div>
@@ -601,7 +601,7 @@
           <div class="rs-caption">System access accounts</div>
         </div>
         <div class="rs-card fac" onclick="filterRole('teacher', this)">
-          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Teaching staff</span></div>
+          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div></div>
           <div class="rs-info">
             <div class="rs-num"></div>
             <div class="rs-label">Faculty</div>
@@ -609,7 +609,7 @@
           <div class="rs-caption">Teaching staff accounts</div>
         </div>
         <div class="rs-card stud" onclick="filterRole('student', this)">
-          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div><span class="rs-badge">Learners</span></div>
+          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div></div>
           <div class="rs-info">
             <div class="rs-num"></div>
             <div class="rs-label">Students</div>
@@ -617,7 +617,7 @@
           <div class="rs-caption">Learner accounts</div>
         </div>
         <div class="rs-card par" onclick="filterRole('parent', this)">
-          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div><span class="rs-badge">Family accounts</span></div>
+          <div class="rs-card-top"><div class="rs-icon"><i data-lucide="heart-handshake" style="width:18px;height:18px;"></i></div></div>
           <div class="rs-info">
             <div class="rs-num"></div>
             <div class="rs-label">Parents</div>
@@ -649,7 +649,7 @@
         <div class="toolbar-actions">
           <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up"
               style="width:16px;height:16px;"></i>Import Users</button>
-          <button class="top-btn primary" onclick="openAddModal()"><i data-lucide="user-plus"
+          <button class="top-btn primary" id="addAccountButton" onclick="openAddModal()" disabled><i data-lucide="user-plus"
               style="width:16px;height:16px;"></i>Add Account</button>
         </div>
       </div>
@@ -721,8 +721,9 @@
     const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
 
     const ADMIN_USERS_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
-    const LOCAL_USERS = window.EDUGNAY_CONFIG.getUsers();
+    const LOCAL_USERS = ADMIN_USERS_API_ENABLED ? [] : window.EDUGNAY_CONFIG.getUsers();
     let USERS = LOCAL_USERS;
+    let backendUserSections = [];
     let backendParentChildren = new Map();
     let usersApiActive = false;
     let usersLoading = false;
@@ -742,17 +743,26 @@
     async function loadManagedUsers() {
       usersLoading = true;
       usersLoadError = '';
+      const addAccountButton = document.getElementById('addAccountButton');
+      if (addAccountButton) addAccountButton.disabled = true;
       renderUsers();
 
       if (!ADMIN_USERS_API_ENABLED) {
         usersLoading = false;
+        if (addAccountButton) addAccountButton.disabled = false;
         renderUsers();
         return;
       }
 
       try {
-        const response = await window.EDUGNAY_API.getUsers({ limit: 100 });
-        USERS = response.users;
+        const [users, sections] = await Promise.all([
+          window.EDUGNAY_API.getAllUsers(),
+          window.EDUGNAY_API.getSections()
+        ]);
+        USERS = users;
+        backendUserSections = sections.filter(section =>
+          section.status === 'active' && section.academicYearStatus === 'active'
+        );
         backendParentChildren = new Map(await Promise.all(USERS.filter(user => user.role === 'parent').map(async parent => [
           String(parent.id), await window.EDUGNAY_API.getParentChildren(parent.id)
         ])));
@@ -760,6 +770,7 @@
       } catch (error) {
         usersApiActive = false;
         USERS = [];
+        backendUserSections = [];
         backendParentChildren.clear();
         usersLoadError = error.status === 401 || error.status === 403
           ? 'Sign in as a school administrator to load user accounts.'
@@ -767,6 +778,7 @@
         console.warn(usersLoadError, error.message);
       } finally {
         usersLoading = false;
+        if (addAccountButton) addAccountButton.disabled = !usersApiActive;
         renderUsers();
       }
     }
@@ -835,19 +847,20 @@
       if (user.role === 'parent') {
         const linkedStudents = getLinkedStudents(user);
         if (!linkedStudents.length) return 'No linked students';
-        const sections = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
         return 'Linked: ' + linkedStudents.map(link => {
           if (usersApiActive) {
             const child = (backendParentChildren.get(String(user.id)) || []).find(item => item.studentId === link.studentId);
             return child ? `${child.displayName} (${[child.gradeLevel, child.sectionName].filter(Boolean).join(' / ') || 'Unassigned'})` : 'Student';
           }
-          const student = usersApiActive ? findManagedUser(link.studentId) : window.EDUGNAY_CONFIG.getUserById(link.studentId);
+          const sections = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
           const section = sections.find(record => record.id === student?.sectionId);
           return (student?.displayName || 'Student') + (section ? ` (${section.grade} / ${section.name})` : '');
         }).join(', ');
       }
       if (user.role === 'school_admin') return '—';
       if (user.role !== 'student') return '—';
+      if (usersApiActive) return [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
       const section = window.EDUGNAY_CONFIG
         .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
         .find(record => record.id === user.sectionId);
@@ -859,8 +872,9 @@
       const selectedGrade = document.getElementById('gradeLevelFilter').value;
 
       const currentValue = select.value;
-      const sections = window.EDUGNAY_CONFIG
-        .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
+      const sections = (usersApiActive
+        ? backendUserSections
+        : window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool()))
         .filter(section => selectedGrade === 'all' || section.grade === selectedGrade)
         .sort((a, b) => (
           gradeLevelSortValue(a.grade) - gradeLevelSortValue(b.grade)
@@ -888,7 +902,7 @@
 
       const currentValue = select.value;
       const gradeLevels = [...new Set(
-        window.EDUGNAY_CONFIG.getStudents().flatMap(getStudentGradeLevels)
+        USERS.filter(user => user.role === 'student').flatMap(getStudentGradeLevels)
       )].sort((a, b) => gradeLevelSortValue(a) - gradeLevelSortValue(b) || a.localeCompare(b));
 
       select.innerHTML = '<option value="all">All Grade Levels</option>' +
@@ -1270,10 +1284,18 @@
       e.preventDefault();
       const data = getAccountFormData();
       const validationMessage = validateAccountFormData(data);
+      const feedback = document.getElementById('accountFormFeedback');
+      feedback.hidden = true;
       if (validationMessage) {
-        alert(validationMessage);
+        feedback.textContent = validationMessage;
+        feedback.hidden = false;
         return;
       }
+
+      const saveButton = document.getElementById('accountSaveBtn');
+      const originalLabel = saveButton.textContent;
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
 
       const payload = {
         firstName: data.firstName,
@@ -1304,7 +1326,7 @@
           closeAccountModal();
           await loadManagedUsers();
           if (data.userId) {
-            alert('Account updated.');
+            showAppToast(usersLoadError ? 'Account updated, but the user list could not refresh.' : 'Account updated.', usersLoadError ? 'info' : 'success');
           } else {
             openBackendCredentialDeliveryModal(result.user, result.emailDelivery);
           }
@@ -1316,11 +1338,14 @@
 
           closeAccountModal();
           renderUsers();
-          if (data.userId) alert('Account updated.');
+          if (data.userId) showAppToast('Account updated.');
           else await openCredentialDeliveryModal(user);
         }
       } catch (error) {
-        alert(error.message || 'The account could not be saved.');
+        showAppToast(error.message || 'The account could not be saved.', 'error');
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = originalLabel;
       }
     });
 
@@ -1339,22 +1364,44 @@
           renderUsers();
         }
         closeDeactivateModal();
+        showAppToast(usersLoadError ? 'Account status changed, but the user list could not refresh.' : action === 'deactivate' ? 'Account deactivated.' : 'Account reactivated.', usersLoadError ? 'info' : 'success');
       } catch (error) {
-        alert(error.message || 'The account status could not be updated.');
+        showAppToast(error.message || 'The account status could not be updated.', 'error');
       }
 
     });
 
-    document.getElementById('deleteForm').addEventListener('submit', function (e) {
+    document.getElementById('deleteForm').addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      if (usersApiActive) {
-        closeDeleteModal();
-        alert('Account deletion is planned for a later backend phase. Deactivate the account for now.');
+      const userId = document.getElementById('deleteUserId').value;
+      if (ADMIN_USERS_API_ENABLED && !usersApiActive) {
+        showAppToast('User accounts are not connected to the backend. Try again after they load.', 'error');
         return;
       }
 
-      const userId = document.getElementById('deleteUserId').value;
+      if (usersApiActive) {
+        const button = document.getElementById('deleteUserConfirmButton');
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Deleting…';
+        let deleted = false;
+        try {
+          await window.EDUGNAY_API.deleteUser(userId);
+          deleted = true;
+          closeDeleteModal();
+          currentPage = 1;
+          await loadManagedUsers();
+          showAppToast(usersLoadError ? 'Account deleted, but the user list could not refresh.' : 'Account deleted.', usersLoadError ? 'info' : 'success');
+        } catch (error) {
+          showAppToast(deleted ? 'Account deleted, but the user list could not refresh.' : error.message || 'The account could not be deleted.', deleted ? 'info' : 'error');
+        } finally {
+          button.disabled = false;
+          button.textContent = originalLabel;
+        }
+        return;
+      }
+
       const user = window.EDUGNAY_CONFIG.getUserById(userId);
       if (user) {
         const links = window.EDUGNAY_CONFIG.getParentStudentLinks();
@@ -1410,11 +1457,11 @@
 
     function openAddModal() {
       if (ADMIN_USERS_API_ENABLED && (!usersApiActive || usersLoading)) {
-        alert('User accounts are still loading. Please try again in a moment.');
         return;
       }
       const form = document.getElementById('accountForm');
       form.reset();
+      document.getElementById('accountFormFeedback').hidden = true;
 
       document.getElementById('accountModalTitle').textContent = 'Add New Account';
       document.getElementById('accountModalSub').textContent = 'Fill in the details to create a new user.';
@@ -1443,6 +1490,7 @@
 
       const form = document.getElementById('accountForm');
       form.reset();
+      document.getElementById('accountFormFeedback').hidden = true;
 
       document.getElementById('accountModalTitle').textContent = 'Edit Account';
       document.getElementById('accountModalSub').textContent = "Update the user's details.";
@@ -1454,7 +1502,7 @@
       document.getElementById('accountUserId').value = user.id;
       document.getElementById('accountEmployeeNo').value = user.employeeNo || '';
 
-      // EJS NOTE: when wired up, route is POST /users/:id/edit (or PATCH via method-override)
+// Page JavaScript handles this behavior.
       form.action = `/users/${user.id}/edit`;
 
       const roleOptValue = TABLE_TO_ROLE_OPT[user.role] || '';
@@ -1485,7 +1533,7 @@
       if (!user) return;
 
       const profile = user.profile || await window.EDUGNAY_CONFIG.getUserProfile(user.id);
-      const sections = ['student', 'parent'].includes(user.role)
+      const sections = !usersApiActive && ['student', 'parent'].includes(user.role)
         ? await window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
         : [];
       let parentLinks = [];
@@ -1508,7 +1556,7 @@
       const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
       const statusIcon = user.status === 'active' ? 'circle-check' : 'circle-x';
       const schoolLevel = window.EDUGNAY_CONFIG.grades.find(level => level.key === user.schoolLevel)?.label || user.schoolLevel;
-      const section = sections.find(item => item.id === user.sectionId);
+      const section = sections.find(item => String(item.id) === String(user.sectionId));
       const address = [profile?.houseStreet, profile?.barangay, profile?.cityMunicipality, profile?.province]
         .filter(Boolean)
         .join(', ');
@@ -1530,11 +1578,14 @@
         roleDetails.push(['Employee number', user.employeeNo]);
       }
       if (user.role === 'student') {
+        const sectionDisplay = usersApiActive
+          ? [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned'
+          : section ? `${section.grade} / ${section.name}` : 'Unassigned';
         roleDetails.push(
           ['LRN', user.lrn],
           ['School level', schoolLevel],
           ['Grade level', user.gradeLevel],
-          ['Section', section ? `${section.grade} / ${section.name}` : 'Unassigned']
+          ['Section', sectionDisplay]
         );
         if (user.schoolLevel === 'shs') roleDetails.push(['Strand', user.strand]);
       }
@@ -1723,7 +1774,7 @@
           student = await window.EDUGNAY_API.getUser(student.apiId || student.id) || student;
           userDetailsQrStudent = student;
         } catch (error) {
-          alert(error.message || 'The attendance QR could not be reissued.');
+          showAppToast(error.message || 'The attendance QR could not be reissued.', 'error');
           return;
         }
       } else {
@@ -1733,6 +1784,7 @@
       closeRegenerateAttendanceQrModal();
       await renderUserDetailsAttendanceQr(student);
       document.getElementById('userDetailsAttendanceQrStatus').hidden = false;
+      showAppToast(usersApiActive ? 'Attendance QR reissued.' : 'Attendance QR updated in local demo data.', usersApiActive ? 'success' : 'info');
     });
 
     document.getElementById('regenerateAttendanceQrModalBackdrop').addEventListener('click', function (event) {
@@ -2504,16 +2556,17 @@
     }
 
 
-    document.addEventListener('DOMContentLoaded', () => {
-      if (ADMIN_USERS_API_ENABLED) {
-        loadManagedUsers();
-      } else {
-        renderUsers();
-      }
-      if (new URLSearchParams(window.location.search).get('action') === 'add') {
-        openAddModal();
-        window.history.replaceState(null, '', window.location.pathname);
-      }
+    document.addEventListener('DOMContentLoaded', async () => {
+      const pageUrl = new URL(window.location.href);
+      const openAddOnLoad = pageUrl.searchParams.get('action') === 'add';
+
+      await loadManagedUsers();
+
+      if (!openAddOnLoad || (ADMIN_USERS_API_ENABLED && !usersApiActive)) return;
+
+      openAddModal();
+      pageUrl.searchParams.delete('action');
+      window.history.replaceState(null, '', `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
     });
   </script>
 

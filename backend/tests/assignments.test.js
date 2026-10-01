@@ -11,6 +11,7 @@ let submissionCount = 0;
 let gradingItemFound = false;
 let assignmentDeleted = false;
 let submissionFilePath = null;
+let listedSubmissionRows = [];
 const assignment = {
   id: 4, schoolId: 1, sectionId: 8, subjectId: 2, academicTermId: 6,
   gradingCategoryId: 3, teacherUserId: 3, title: 'Reading response'
@@ -18,6 +19,7 @@ const assignment = {
 
 async function executeQuery(sql) {
   if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) return [[assignment]];
+  if (sql.includes('FROM assignment_submissions INNER JOIN users AS students')) return [listedSubmissionRows];
   if (sql.includes('SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions')) {
     return [submissionFilePath ? [{ fileName: path.basename(submissionFilePath), filePath: submissionFilePath }] : []];
   }
@@ -37,7 +39,7 @@ databaseModule.getDatabase = () => ({
   }
 });
 
-const { deleteAssignment, previewSubmission } = require('../controllers/assignmentsController');
+const { deleteAssignment, listSubmissions, previewSubmission } = require('../controllers/assignmentsController');
 
 async function callDelete(user = { id: 3, schoolId: 1, role: 'teacher' }) {
   const result = { status: 200, sent: false, error: null };
@@ -53,6 +55,14 @@ async function callPreview(user = { id: 3, schoolId: 1, role: 'teacher' }) {
   await previewSubmission({ params: { assignmentId: '4', submissionId: '11' }, user }, {
     set(headers) { result.headers = headers; return this; },
     send(body) { result.body = body; return this; }
+  }, error => { result.error = error; });
+  return result;
+}
+
+async function callListSubmissions(user = { id: 3, schoolId: 1, role: 'teacher' }) {
+  const result = { body: null, error: null };
+  await listSubmissions({ params: { assignmentId: '4' }, user }, {
+    json(body) { result.body = body; }
   }, error => { result.error = error; });
   return result;
 }
@@ -128,6 +138,22 @@ test('a teacher cannot preview another teacher’s submission', async () => {
     assert.equal(result.error.status, 404);
     assert.equal(result.body, null);
   });
+});
+
+test('submission listing hides stored server paths and returns a protected file URL', async () => {
+  listedSubmissionRows = [{
+    id: 11, assignmentId: 4, studentId: 8, studentName: 'Student Example',
+    fileName: 'work.pdf', filePath: 'uploads/assignment-submissions/work.pdf',
+    fileSizeBytes: 512, submissionStatus: 'submitted', submittedAt: '2026-09-29T10:00:00.000Z'
+  }];
+  try {
+    const result = await callListSubmissions();
+    assert.equal(result.error, null);
+    assert.equal(result.body.submissions[0].fileUrl, '/api/assignments/4/submissions/11/download');
+    assert.equal(Object.hasOwn(result.body.submissions[0], 'filePath'), false);
+  } finally {
+    listedSubmissionRows = [];
+  }
 });
 
 test('Office preview reports when LibreOffice is not installed or configured', async () => {

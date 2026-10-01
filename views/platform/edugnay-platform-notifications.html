@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/notifications.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
@@ -118,7 +119,7 @@
     let activeNotifFilter = 'all';
 
     function getPlatformNotifications() {
-      return PLATFORM?.getNotifications?.() || (Array.isArray(PLATFORM?.notifications) ? PLATFORM.notifications : []);
+      return PLATFORM.getNotifications();
     }
 
     function setNotifFilter(mode, button) {
@@ -159,8 +160,8 @@
         const noUnread = activeNotifFilter === 'unread' && all.length;
         emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'bell-off',
-          title: noUnread ? 'No unread notifications' : 'No notifications yet',
-          text: noUnread ? "You're all caught up." : 'Platform alerts and school account updates will appear here.'
+          title: window.EDUGNAY_COMMUNICATION?.error ? 'Notifications unavailable' : noUnread ? 'No unread notifications' : 'No notifications yet',
+          text: window.EDUGNAY_COMMUNICATION?.error || (noUnread ? "You're all caught up." : 'School account updates will appear here.')
         });
         if (window.lucide) window.lucide.createIcons();
         return;

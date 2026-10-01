@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/activity.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -47,7 +48,7 @@
       <a href="edugnay-admin-users.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Manage Users</span>
-        <span class="nav-badge">3</span>
+
       </a>
 
       <div class="nav-group" id="classMgmtGroup">
@@ -76,7 +77,7 @@
       <a href="edugnay-admin-announcements.html" class="nav-item">
         <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
         <span class="nav-label">Announcements</span>
-        <span class="nav-badge gold">2</span>
+
       </a>
     </div>
 
@@ -192,15 +193,20 @@
     <div class="activity-filterbar">
       <div class="activity-search search-wrap">
         <span class="search-icon" aria-hidden="true"><i data-lucide="search" style="width:15px;height:15px;"></i></span>
-        <input class="search-input" type="text" id="activitySearch" placeholder="Search activity..." oninput="applyActivityFilters()"/>
+        <input class="search-input" type="search" id="activitySearch" placeholder="Search activity..." maxlength="100" oninput="applyActivityFilters()"/>
       </div>
 
       <div class="activity-type-filters" id="activityTypeFilters">
         <button class="atf-chip active" data-tag="all" onclick="setActivityTypeFilter(this,'all')">All</button>
-        <button class="atf-chip" data-tag="Announcement" onclick="setActivityTypeFilter(this,'Announcement')">Announcements</button>
-        <button class="atf-chip" data-tag="Assignment" onclick="setActivityTypeFilter(this,'Assignment')">Assignments</button>
-        <button class="atf-chip" data-tag="Config" onclick="setActivityTypeFilter(this,'Config')">Config</button>
-        <button class="atf-chip" data-tag="Alert" onclick="setActivityTypeFilter(this,'Alert')">Alerts</button>
+        <button class="atf-chip" data-tag="accounts" onclick="setActivityTypeFilter(this,'accounts')">Accounts</button>
+        <button class="atf-chip" data-tag="class_management" onclick="setActivityTypeFilter(this,'class_management')">Class management</button>
+        <button class="atf-chip" data-tag="announcements" onclick="setActivityTypeFilter(this,'announcements')">Announcements</button>
+        <button class="atf-chip" data-tag="school_configuration" onclick="setActivityTypeFilter(this,'school_configuration')">School configuration</button>
+        <button class="atf-chip" data-tag="reopen_requests" onclick="setActivityTypeFilter(this,'reopen_requests')">Reopen requests</button>
+        <button class="atf-chip" data-tag="grades" onclick="setActivityTypeFilter(this,'grades')">Grades</button>
+        <button class="atf-chip" data-tag="attendance" onclick="setActivityTypeFilter(this,'attendance')">Attendance</button>
+        <button class="atf-chip" data-tag="school_forms" onclick="setActivityTypeFilter(this,'school_forms')">School forms</button>
+        <button class="atf-chip" data-tag="archives" onclick="setActivityTypeFilter(this,'archives')">Archives</button>
       </div>
 
       <select class="activity-date-select" id="activityDateFilter" onchange="applyActivityFilters()">
@@ -219,6 +225,7 @@
       <div class="activity-list" id="activityList"></div>
 
       <div class="panel-empty-slot" id="activityEmptyState" hidden aria-live="polite"></div>
+      <div class="panel-empty-slot" id="activityErrorState" hidden role="alert"></div>
 
       <div class="activity-loadmore-wrap">
         <button class="activity-loadmore-btn" id="activityLoadMoreBtn" onclick="loadMoreActivity()">Load more</button>
@@ -234,115 +241,116 @@
 </script>
 <script>
   /* ── ACTIVITY LOG ──
-     RECENT_ACTIVITY is the shared source from assets/js/admin/shell.js.
-     The dashboard uses a four-item preview while this page handles the full
-     list, filtering, and pagination.
-     TODO on backend conversion: replace the shared shell source with records
-     from GET /admin/activity, then keep this rendering logic unchanged. */
-  const RECENT_ACTIVITY = Array.isArray(window.EDUGNAY_ADMIN?.activities)
-    ? window.EDUGNAY_ADMIN.activities
-    : [];
+     The school-scoped Express API powers this page and the dashboard preview. */
+  const ACTIVITY_PAGE_SIZE = 20;
+  const allowedActivityTones = new Set(['blue', 'green', 'red', 'orange', 'purple', 'gold', 'gray']);
+  let activityCategory = 'all';
+  let activityCursor = null;
+  let activityItems = [];
+  let activityRequestId = 0;
+  let activitySearchTimer;
 
-  const PAGE_SIZE = 5;
-  let activeTypeFilter = 'all';
-  let visibleCount = PAGE_SIZE;
-
-  function setActivityTypeFilter(el, type) {
-    document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    activeTypeFilter = type;
-    visibleCount = PAGE_SIZE;
-    applyActivityFilters();
-  }
-
-  function getFilteredActivity() {
-    const query = document.getElementById('activitySearch').value.trim().toLowerCase();
-    const dateFilter = document.getElementById('activityDateFilter').value;
-    const now = new Date();
-
-    return RECENT_ACTIVITY
-      .filter(item => activeTypeFilter === 'all' || item.type === activeTypeFilter)
-      .filter(item => {
-        if (!query) return true;
-        return [item.actor, item.title, item.detail, item.type]
-          .join(' ')
-          .toLowerCase()
-          .includes(query);
-      })
-      .filter(item => {
-        if (dateFilter === 'all') return true;
-        const created = new Date(item.createdAt);
-        if (dateFilter === 'today') return formatDateGroup(item.createdAt) === 'Today';
-        const days = parseInt(dateFilter, 10);
-        return (now - created) / 86400000 <= days;
-      })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  function setActivityTypeFilter(button, category) {
+    document.querySelectorAll('#activityTypeFilters .atf-chip').forEach(chip => chip.classList.remove('active'));
+    button.classList.add('active');
+    activityCategory = category;
+    loadActivity(false);
   }
 
   function applyActivityFilters() {
-    visibleCount = PAGE_SIZE;
-    renderActivityList();
+    clearTimeout(activitySearchTimer);
+    activitySearchTimer = setTimeout(() => loadActivity(false), 250);
   }
 
-  function loadMoreActivity() {
-    visibleCount += PAGE_SIZE;
-    renderActivityList();
+  async function loadMoreActivity() {
+    if (activityCursor) await loadActivity(true);
+  }
+
+  async function loadActivity(append) {
+    const requestId = ++activityRequestId;
+    const list = document.getElementById('activityList');
+    const empty = document.getElementById('activityEmptyState');
+    const errorState = document.getElementById('activityErrorState');
+    const loadMore = document.getElementById('activityLoadMoreBtn');
+    const search = document.getElementById('activitySearch').value.trim();
+
+    if (!append) {
+      activityCursor = null;
+      activityItems = [];
+      list.innerHTML = '';
+      list.style.display = 'none';
+      empty.hidden = false;
+      empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading activity', text: 'Please wait while activity is loaded.' });
+    }
+    errorState.hidden = true;
+    loadMore.disabled = true;
+    loadMore.textContent = 'Loading...';
+
+    try {
+      const result = await window.EDUGNAY_API.getSchoolActivityPage({
+        limit: ACTIVITY_PAGE_SIZE,
+        category: activityCategory,
+        date: document.getElementById('activityDateFilter').value,
+        search,
+        cursor: append ? activityCursor : null
+      });
+      if (requestId !== activityRequestId) return;
+      activityItems = append ? activityItems.concat(result.activities || []) : (result.activities || []);
+      activityCursor = result.nextCursor || null;
+      renderActivityList();
+    } catch (error) {
+      if (requestId !== activityRequestId) return;
+      if (!append) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      empty.hidden = true;
+      errorState.hidden = false;
+      errorState.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Activity unavailable', text: error.message || 'Activity could not be loaded.' })}<button type="button" class="activity-loadmore-btn" onclick="loadActivity(false)">Try again</button>`;
+      if (window.lucide) lucide.createIcons();
+    } finally {
+      if (requestId === activityRequestId) {
+        loadMore.disabled = false;
+        loadMore.textContent = 'Load more';
+        loadMore.closest('.activity-loadmore-wrap').style.display = activityCursor ? 'flex' : 'none';
+      }
+    }
   }
 
   function renderActivityList() {
-    const container = document.getElementById('activityList');
-    const emptyState = document.getElementById('activityEmptyState');
-    const loadMoreWrap = document.querySelector('.activity-loadmore-wrap');
-
-    const filtered = getFilteredActivity();
-
-    if (!filtered.length) {
-      container.innerHTML = '';
-      container.style.display = 'none';
-      emptyState.hidden = false;
-      emptyState.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-        icon: 'search-x',
-        title: 'No matching activity',
-        text: 'Try a different search term or filter.'
-      });
-      loadMoreWrap.style.display = 'none';
-      if (window.lucide) lucide.createIcons();
+    const list = document.getElementById('activityList');
+    const empty = document.getElementById('activityEmptyState');
+    const errorState = document.getElementById('activityErrorState');
+    errorState.hidden = true;
+    if (!activityItems.length) {
+      list.innerHTML = '';
+      list.style.display = 'none';
+      empty.hidden = false;
+      empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'search-x', title: 'No matching activity', text: 'Try a different search term or filter.' });
       return;
     }
-    container.style.display = '';
-    emptyState.hidden = true;
-    emptyState.innerHTML = '';
 
-    const slice = filtered.slice(0, visibleCount);
-    let html = '';
+    const safe = window.EDUGNAY_CONFIG.escapeHtml;
     let lastGroup = null;
-
-    slice.forEach(item => {
+    list.innerHTML = activityItems.map(item => {
       const group = formatDateGroup(item.createdAt);
-      if (group !== lastGroup) {
-        html += `<div class="activity-group-label">${group}</div>`;
-        lastGroup = group;
-      }
-      html += `
-        <div class="activity-item">
-        <div class="act-icon ${item.tone}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
-        <div class="act-body">
-          <div class="act-text"><strong>${item.actor}</strong> ${item.title} ${item.detail || ''}</div>
-          <div class="act-time">${formatTime(item.createdAt)}</div>
-        </div>
-        <span class="act-tag">${item.type}</span>
-        </div>
-      `;
-    });
-
-    container.innerHTML = html;
-    loadMoreWrap.style.display = visibleCount < filtered.length ? 'flex' : 'none';
-    lucide.createIcons();
+      const groupLabel = group !== lastGroup ? `<div class="activity-group-label">${safe(group)}</div>` : '';
+      lastGroup = group;
+      const tone = allowedActivityTones.has(item.tone) ? item.tone : 'blue';
+      const icon = /^[a-z0-9-]{1,40}$/.test(item.icon || '') ? item.icon : 'activity';
+      return `${groupLabel}<div class="activity-item">
+        <div class="act-icon ${tone}" aria-hidden="true"><i data-lucide="${icon}" style="width:15px;height:15px;"></i></div>
+        <div class="act-body"><div class="act-text"><strong>${safe(item.actor || 'System')}</strong> ${safe(item.title || 'recorded an activity')} ${safe(item.detail || '')}</div>
+        <div class="act-time">${safe(formatTime(item.createdAt))}</div></div><span class="act-tag">${safe(item.type || 'System')}</span></div>`;
+    }).join('');
+    list.style.display = '';
+    empty.hidden = true;
+    empty.innerHTML = '';
+    if (window.lucide) lucide.createIcons();
   }
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    renderActivityList();
-  });
+  document.getElementById('activityDateFilter').addEventListener('change', () => loadActivity(false));
+  document.addEventListener('DOMContentLoaded', () => loadActivity(false));
 </script>
 
 </body>

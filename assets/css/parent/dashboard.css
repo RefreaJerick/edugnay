@@ -1,6 +1,4 @@
-/* ════════════════════════════════════════════════════
-     EJS CONVERSION NOTE — unchanged from original, keep as-is
-     ════════════════════════════════════════════════════ */
+/* Parent dashboard styles use shared tokens; JavaScript supplies dynamic page data. */
 
 /* ── Dashboard grid (matches student dashboard exactly) ── */
 .dashboard-grid {

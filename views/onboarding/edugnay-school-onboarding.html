@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/onboarding.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
 </head>
 <body>
@@ -179,7 +180,7 @@
                   </span>
                   <img id="schoolLogoPreviewImage" src="" alt="School logo preview" hidden />
                   <div class="onboarding-logo-upload">
-                    <input id="schoolLogo" name="schoolLogo" type="file" accept="image/*" />
+                    <input id="schoolLogo" name="schoolLogo" type="file" accept="image/png,image/jpeg,image/webp" />
                     <small>Preview the logo here. You can update this branding later in School Management.</small>
                   </div>
                 </div>
@@ -210,8 +211,8 @@
               </div>
               <div class="onboarding-field">
                 <label for="adminPassword">Temporary password</label>
-                <input id="adminPassword" name="adminPassword" type="password" minlength="8" placeholder="At least 8 characters" required />
-                <small>Use at least 8 characters. This can be changed after account activation.</small>
+                <input id="adminPassword" name="adminPassword" type="password" minlength="12" placeholder="At least 12 characters" required />
+                <small>Use at least 12 characters. This can be changed after account activation.</small>
               </div>
             </div>
             <div class="onboarding-settings-note" role="note">
@@ -557,10 +558,6 @@
       return SCHOOL_LEVELS.map(level => level.value).filter(level => selected.has(level));
     }
 
-    function slugify(value) {
-      return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `school-${Date.now()}`;
-    }
-
     let schoolLogoData = '';
 
     function readSchoolLogo(file) {
@@ -695,8 +692,9 @@
         placeholder.hidden = false;
         return;
       }
-      if (!file.type.startsWith('image/')) {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
         event.target.value = '';
+        showAppToast('Choose a PNG, JPEG, or WebP logo no larger than 2 MB.', 'error');
         preview.hidden = true;
         preview.removeAttribute('src');
         placeholder.hidden = false;
@@ -736,67 +734,43 @@
         document.querySelector('[data-term-error]:not([hidden])')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-      const type = window.EDUGNAY_CONFIG.getSchoolTypeInfo(schoolLevels);
-      const activeDivision = schoolLevels.includes('jhs') ? 'jhs' : schoolLevels[0];
-      const schoolRecordId = `${slugify(values.schoolName)}-${Date.now()}`;
-      const divisions = Object.fromEntries(
-        academicTermConfigs.map(config => [config.schoolLevel, window.EDUGNAY_CONFIG.createDivision(config.schoolLevel, {
-          gradingPeriodType: config.gradingPeriodType,
-          academicPeriods: config.academicPeriods,
-          activeAcademicPeriodId: null,
-          periodIdContext: `${schoolRecordId}-${config.schoolLevel}-${config.schoolYear.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
-        })])
-      );
-      const school = {
-        id: schoolRecordId,
+      const adminNames = values.adminName.trim().split(/\s+/);
+      if (adminNames.length < 2) {
+        showAppToast('Enter the administrator’s first and last name.', 'error');
+        document.getElementById('adminName').focus();
+        return;
+      }
+      const registration = {
         name: values.schoolName.trim(),
         shortName: values.schoolName.trim().toUpperCase(),
-        schoolType: type.value,
-        typeLabel: type.label,
-        schoolId: values.schoolId.trim() || null,
-        address: values.schoolAddress.trim() || null,
+        schoolType: window.EDUGNAY_CONFIG.getSchoolTypeInfo(schoolLevels).value,
+        depedSchoolId: values.schoolId.trim() || null,
+        addressLine: values.schoolAddress.trim() || null,
         phone: values.schoolPhone.trim() || null,
         email: schoolEmail,
         notificationEmail,
         website: values.schoolWebsite.trim() || null,
-        logoUrl: null,
-        schoolYear: values.schoolYear.trim(),
+        currentSchoolYearLabel: values.schoolYear.trim(),
         schoolYearStartDate: values.schoolYearStartDate,
         schoolYearEndDate: values.schoolYearEndDate,
-        platformStatus: window.EDUGNAY_CONFIG.values.statuses.PENDING,
-        submittedAt: new Date().toISOString(),
-        approvedAt: null,
-        rejectedAt: null,
-        rejectionReason: null,
-        gradesPageEnabled: false,
-        narrativeReportsEnabled: false,
-        journalsEnabled: false,
-        journalSubjectId: null,
-        attendanceRules: window.EDUGNAY_CONFIG.attendanceDefaults,
-        activeDivision,
         schoolLevels,
-        divisions,
+        academicTermConfigs,
         initialAdministrator: {
-          schoolId: schoolRecordId,
-          name: values.adminName.trim(),
-          schoolEmail: administratorSchoolEmail
+          firstName: adminNames[0],
+          lastName: adminNames.slice(1).join(' '),
+          schoolEmail: administratorSchoolEmail,
+          temporaryPassword
         }
       };
 
       const logoInput = document.getElementById('schoolLogo');
       const submitButton = form.querySelector('[type="submit"]');
+      const submitLabel = submitButton.innerHTML;
       submitButton.disabled = true;
+      submitButton.textContent = 'Creating profile...';
 
       try {
-        if (!schoolLogoData && logoInput.files?.[0]) {
-          schoolLogoData = await readSchoolLogo(logoInput.files[0]);
-        }
-        school.logoUrl = schoolLogoData || null;
-
-        const createdSchool = await window.EDUGNAY_CONFIG.createSchoolRegistration({
-          school,
-          temporaryPassword
-        });
+        const createdSchool = await window.EDUGNAY_API.registerSchool(registration, logoInput.files?.[0]);
         if (!createdSchool) throw new Error('The school registration could not be created.');
 
         sessionStorage.setItem('edugnay_pending_registration', JSON.stringify({
@@ -807,7 +781,9 @@
         window.location.href = './edugnay-registration-pending.html';
       } catch (error) {
         submitButton.disabled = false;
-        window.alert(error?.message || 'The school registration could not be created.');
+        submitButton.innerHTML = submitLabel;
+        if (window.lucide) lucide.createIcons();
+        showAppToast(error?.message || 'The school registration could not be created.', 'error');
       }
     }
 

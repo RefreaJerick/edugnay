@@ -167,7 +167,7 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  markCurrentNotificationRead(id).finally(() => navigate(link.page, link.section, link.tab));
+  markCurrentNotificationRead(id).finally(() => navigate(link.page, link.section, link.tab, link.subjectId));
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -197,6 +197,25 @@ async function loadTeacherCommunication() {
 }
 
 window.EDUGNAY_COMMUNICATION_READY = loadTeacherCommunication();
+
+async function refreshTeacherNotifications() {
+  if (!BACKEND_COMMUNICATION || !window.EDUGNAY_API?.getNotifications) return;
+  try {
+    NOTIFICATIONS = await window.EDUGNAY_API.getNotifications();
+    if (window.EDUGNAY_COMMUNICATION?.backend) {
+      window.EDUGNAY_COMMUNICATION.notifications = NOTIFICATIONS;
+    }
+    renderTopbarNotifs();
+    window.dispatchEvent(new Event('teacher-notifications-updated'));
+  } catch {
+    // Keep the last loaded notifications if the refresh request fails.
+  }
+}
+
+window.EDUGNAY_REFRESH_NOTIFICATIONS = refreshTeacherNotifications;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void refreshTeacherNotifications();
+});
 
 
 /* ── ASSIGNED SECTION NAVIGATION ── */
@@ -266,7 +285,7 @@ async function renderTeacherSectionsNavigation() {
 
 
 /* ── NAVIGATION ── */
-function navigate(page, section, tab) {
+function navigate(page, section, tab, subjectId) {
   if (page === 'dashboard') {
     window.location.href = './edugnay-teacher-dashboard.html';
   } else if (page === 'journals') {
@@ -278,6 +297,7 @@ function navigate(page, section, tab) {
     if (/^\d+$/.test(sectionId) || /^(jhs|shs|elementary)-/i.test(sectionId)) {
       params.set('sectionId', sectionId);
     }
+    if (/^\d+$/.test(String(subjectId || ''))) params.set('subjectId', String(subjectId));
     if (tab) params.set('tab', String(tab));
     const query = params.toString();
     window.location.href = `./edugnay-teacher-sections.html${query ? `?${query}` : ''}`;

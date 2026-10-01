@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/dashboard.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -85,12 +86,13 @@
           <input type="hidden" id="modalSchoolLevelValue" name="schoolLevel">
           <input type="hidden" id="modalGradeLevelValue" name="gradeLevel">
           <input type="hidden" id="modalStrandValue" name="strand">
+          <p id="assignStudentFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
         </form>
 
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-cancel" onclick="closeStudentModal()">Cancel</button>
-        <button type="submit" form="assignStudentForm" class="btn btn-save">Save Assignment</button>
+        <button type="submit" form="assignStudentForm" class="btn btn-save" id="assignStudentSaveButton">Save Assignment</button>
       </div>
     </div>
   </div>
@@ -191,11 +193,12 @@
             <label class="form-label">Schedule (optional)</label>
             <input class="form-input" type="datetime-local" name="schedule" />
           </div>
+          <p id="announcementFeedback" class="dashboard-action-feedback" role="status" aria-live="polite" hidden></p>
         </form>
       </div>
       <div class="compose-footer">
-        <button type="button" class="btn btn-draft" onclick="saveDashboardAnnouncementDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
-        <button type="submit" form="postAnnouncementForm" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post</button>
+        <button type="button" class="btn btn-draft" onclick="saveDashboardAnnouncementDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> <span>Save Draft</span></button>
+        <button type="submit" form="postAnnouncementForm" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> <span>Post</span></button>
       </div>
     </div>
   </div>
@@ -226,6 +229,7 @@
             <label class="form-label" for="adminTodoDueDate">Due date (optional)</label>
             <input class="form-input" id="adminTodoDueDate" name="dueDate" type="date">
           </div>
+          <p id="adminTodoFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
         </form>
       </div>
       <div class="modal-foot">
@@ -253,6 +257,7 @@
       <div class="modal-body">
         <input id="adminTodoDeleteId" type="hidden">
         <p class="confirm-remove-message">Delete <strong id="adminTodoDeleteName"></strong> from your to-do list?</p>
+        <p id="adminTodoDeleteFeedback" class="dashboard-action-feedback" role="alert" hidden></p>
       </div>
       <div class="modal-foot">
         <button class="btn btn-cancel" id="adminTodoDeleteCancelButton" type="button">Cancel</button>
@@ -295,7 +300,7 @@
             <i data-lucide="users" style="width:16px;height:16px;"></i>
           </div>
           <span class="nav-label">Manage Users</span>
-          <span class="nav-badge">3</span>
+
         </a>
 
         <div class="nav-group" id="classMgmtGroup">
@@ -336,7 +341,7 @@
             <i data-lucide="megaphone" style="width:16px;height:16px;"></i>
           </div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -545,6 +550,7 @@
               </button>
             </div>
             <div class="todo-list" id="admin-todo-list"></div>
+            <p id="adminTodoListFeedback" class="dashboard-action-feedback" role="status" hidden></p>
           </div>
 
         </div>
@@ -556,16 +562,56 @@
   </div>
 
   <script>
-    // Shared frontend data services. Replace their internals with fetched data
-    // later, then call renderAdminDashboard().
-    const DASHBOARD_ADMIN_ID = 'admin-1';
-    let DASHBOARD_ADMIN_TODOS = null;
-    let ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
+    // Dashboard records come from the backend; do not show demo data here.
+    const ADMIN_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
+    let DASHBOARD_ADMIN_TODOS = [];
+    let ADMIN_STUDENTS = [];
+    let ADMIN_TEACHERS = [];
+    let ADMIN_PARENTS = [];
+    let ADMIN_DASHBOARD_SECTIONS = [];
+    let ADMIN_DASHBOARD_STRUCTURE = [];
+    let ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
+    let ADMIN_ASSIGNMENT_ERROR = '';
+    let ADMIN_USER_ERRORS = { students: '', teachers: '', parents: '' };
+    let DASHBOARD_ACTIVITY_ERROR = '';
 
     function getAdminTodos() {
-      return Array.isArray(DASHBOARD_ADMIN_TODOS)
-        ? DASHBOARD_ADMIN_TODOS
-        : window.EDUGNAY_CONFIG.getUserTodos(DASHBOARD_ADMIN_ID);
+      return Array.isArray(DASHBOARD_ADMIN_TODOS) ? DASHBOARD_ADMIN_TODOS : [];
+    }
+
+    function setDashboardFeedback(id, message = '', type = 'error') {
+      const feedback = document.getElementById(id);
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.hidden = !message;
+      feedback.classList.toggle('is-error', type === 'error');
+      feedback.classList.toggle('is-success', type === 'success');
+      feedback.classList.toggle('is-info', type === 'info');
+    }
+
+    async function refreshAdminTasks(fallback = {}) {
+      try {
+        const tasks = await window.EDUGNAY_API.getTasks();
+        if (fallback.task && !tasks.some(item => item.id === fallback.task.id)) throw new Error('The saved task was not returned by the task list.');
+        if (fallback.removedId && tasks.some(item => item.id === String(fallback.removedId))) throw new Error('The deleted task is still returned by the task list.');
+        DASHBOARD_ADMIN_TODOS = tasks;
+        if (window.EDUGNAY_COMMUNICATION?.backend) window.EDUGNAY_COMMUNICATION.tasks = DASHBOARD_ADMIN_TODOS;
+        setDashboardFeedback('adminTodoListFeedback');
+      } catch (error) {
+        if (fallback.task) {
+          const index = getAdminTodos().findIndex(item => item.id === fallback.task.id);
+          if (index >= 0) DASHBOARD_ADMIN_TODOS[index] = fallback.task;
+          else DASHBOARD_ADMIN_TODOS = [...getAdminTodos(), fallback.task];
+        }
+        if (fallback.removedId) DASHBOARD_ADMIN_TODOS = getAdminTodos().filter(item => item.id !== String(fallback.removedId));
+        const message = fallback.removedId
+          ? `The task was deleted, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+          : fallback.task
+            ? `The task was saved, but the list could not refresh: ${error.message || 'Please reload the page.'}`
+            : `Tasks could not be loaded: ${error.message || 'Please reload the page.'}`;
+        setDashboardFeedback('adminTodoListFeedback', message, fallback.task || fallback.removedId ? 'info' : 'error');
+      }
+      renderAdminTodos();
     }
 
     const ADMIN_SUMMARY_CARDS = [
@@ -587,7 +633,7 @@
         trend: '— 0%',
         label: 'Faculty',
         sub: 'Active teachers this grading period',
-        records: window.EDUGNAY_CONFIG.getUsersByRole('teacher'),
+        records: ADMIN_TEACHERS,
       },
       {
         id: 'parents',
@@ -597,7 +643,7 @@
         trend: '— 0%',
         label: 'Parents',
         sub: 'Linked to student accounts',
-        records: window.EDUGNAY_CONFIG.getUsersByRole('parent'),
+        records: ADMIN_PARENTS,
       },
     ];
 
@@ -616,29 +662,23 @@
     }
 
     function dashboardLevelLabel(level) {
-      return window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level;
+      return ADMIN_DASHBOARD_STRUCTURE.find(item => item.levelCode === level)?.displayName || level;
     }
 
     function dashboardSchoolLevels() {
-      const school = window.EDUGNAY_CONFIG.getActiveSchool();
-      return Array.isArray(school?.schoolLevels) && school.schoolLevels.length
-        ? school.schoolLevels
-        : (school?.schoolType === 'k12' ? window.EDUGNAY_CONFIG.grades.map(item => item.key) : [school?.schoolType || 'jhs']);
+      return ADMIN_DASHBOARD_STRUCTURE.filter(item => item.isEnabled !== false).map(item => item.levelCode);
     }
 
     function dashboardDefaultLevel() {
-      const school = window.EDUGNAY_CONFIG.getActiveSchool();
-      const levels = dashboardSchoolLevels();
-      return levels.includes(school?.activeDivision) ? school.activeDivision : levels[0];
+      return dashboardSchoolLevels()[0] || '';
     }
 
     function dashboardDivision(level) {
-      const school = window.EDUGNAY_CONFIG.getActiveSchool();
-      return school?.divisions?.[level] || {};
+      return ADMIN_DASHBOARD_STRUCTURE.find(item => item.levelCode === level) || {};
     }
 
     function dashboardAssignmentSections() {
-      return window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
+      return ADMIN_DASHBOARD_SECTIONS;
     }
 
     function dashboardSetOptions(select, options, placeholder, selectedValue) {
@@ -656,29 +696,21 @@
     }
 
     function dashboardGradeOptions(level) {
-      const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || {};
-      const division = dashboardDivision(level);
-      const enabled = Array.isArray(division.enabledGrades) && division.enabledGrades.length
-        ? division.enabledGrades
-        : catalog.grades || [];
-      return (catalog.grades || []).filter(grade => enabled.some(item => dashboardGradeKey(item) === dashboardGradeKey(grade)));
+      return (dashboardDivision(level).gradeLevels || [])
+        .filter(grade => grade.isEnabled !== false)
+        .map(grade => grade.displayName);
     }
 
     function dashboardStrandOptions(level) {
       if (level !== 'shs') return [];
-      const division = dashboardDivision(level);
-      const sections = dashboardAssignmentSections().filter(section => section.level === level);
-      const sectionStrands = sections.map(section => section.strand).filter(Boolean);
-      if (sectionStrands.length) return [...new Set(sectionStrands)];
-      return [...new Set([
-        ...(Array.isArray(division.strands) ? division.strands : []),
-        ...(Array.isArray(division.tracks) ? division.tracks : []),
-      ])];
+      return (dashboardDivision(level).tracks || [])
+        .filter(track => track.isEnabled !== false)
+        .map(track => track.displayName);
     }
 
     function dashboardSectionLabel(section) {
       const strand = section.strand ? ` · ${section.strand}` : '';
-      const occupancy = `${section.enrolled}/${section.capacity}`;
+      const occupancy = `${section.enrolled}/${section.capacity || '—'}`;
       return `${section.grade}${strand} · ${section.name} (${occupancy})`;
     }
 
@@ -738,7 +770,7 @@
       dashboardSetOptions(levelSelect, dashboardSchoolLevels().map(item => ({ value: item, label: dashboardLevelLabel(item) })), 'Select a school level', level);
       if (levelSelect) {
         levelSelect.value = level;
-        levelSelect.disabled = Boolean(dashboardAssignmentState.student);
+        levelSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
       }
 
       const grades = dashboardGradeOptions(level);
@@ -746,7 +778,7 @@
       const grade = grades.find(item => dashboardGradeKey(item) === dashboardGradeKey(studentGrade)) || grades[0] || '';
       dashboardAssignmentState.grade = grade;
       dashboardSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
-      if (gradeSelect) gradeSelect.disabled = Boolean(dashboardAssignmentState.student);
+      if (gradeSelect) gradeSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
 
       const strands = dashboardStrandOptions(level);
       const strandGroup = document.getElementById('modalStrandGroup');
@@ -756,7 +788,7 @@
       if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
       dashboardSetOptions(strandSelect, strands.map(item => ({ value: item, label: item })), 'Select a track or strand', strand);
       if (strandSelect) {
-        strandSelect.disabled = Boolean(dashboardAssignmentState.student);
+        strandSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
         strandSelect.required = level === 'shs';
       }
 
@@ -803,15 +835,22 @@
     ];
 
     function renderAdminDashboard() {
-      ADMIN_STUDENTS = window.EDUGNAY_CONFIG.getStudents();
-      DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS;
+      DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS.filter(student => student.status === 'active');
       ADMIN_SUMMARY_CARDS[0].records = ADMIN_STUDENTS;
-      ADMIN_SUMMARY_CARDS[1].records = window.EDUGNAY_CONFIG.getUsersByRole('teacher');
-      ADMIN_SUMMARY_CARDS[2].records = window.EDUGNAY_CONFIG.getUsersByRole('parent');
+      ADMIN_SUMMARY_CARDS[1].records = ADMIN_TEACHERS;
+      ADMIN_SUMMARY_CARDS[2].records = ADMIN_PARENTS;
+      ADMIN_SUMMARY_CARDS[0].value = ADMIN_USER_ERRORS.students ? '—' : ADMIN_STUDENTS.length;
+      ADMIN_SUMMARY_CARDS[0].sub = ADMIN_USER_ERRORS.students || 'Across all configured grade levels';
+      ADMIN_SUMMARY_CARDS[1].value = ADMIN_USER_ERRORS.teachers ? '—' : ADMIN_TEACHERS.length;
+      ADMIN_SUMMARY_CARDS[1].sub = ADMIN_USER_ERRORS.teachers || 'Active teachers this grading period';
+      ADMIN_SUMMARY_CARDS[2].value = ADMIN_USER_ERRORS.parents ? '—' : ADMIN_PARENTS.length;
+      ADMIN_SUMMARY_CARDS[2].sub = ADMIN_USER_ERRORS.parents || 'Linked to student accounts';
+      ADMIN_SUMMARY_CARDS.forEach(card => { card.trend = '—'; });
       const cards = document.getElementById('admin-summary-cards');
       if (cards) {
         cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => {
-          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${card.records.length}</div><div class="stat-card-label">${card.label}</div><div class="stat-card-sub">${card.sub}</div></div>`;
+          const value = card.value === undefined ? card.records.length : card.value;
+          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`;
         }).join('');
       }
       const actions = document.getElementById('admin-quick-actions');
@@ -824,11 +863,90 @@
       lucide.createIcons();
     }
 
+    async function getAllAdminDashboardUsers(role, status = '') {
+      const users = [];
+      let page = 1;
+      let total = Infinity;
+      while (users.length < total) {
+        const result = await window.EDUGNAY_API.getUsers({ role, status, page, limit: 100 });
+        if (!result.users.length) {
+          total = Number(result.pagination?.total) || 0;
+          if (users.length < total) throw new Error('The user list could not be fully loaded.');
+          break;
+        }
+        users.push(...result.users);
+        total = Number(result.pagination?.total) || 0;
+        page += 1;
+      }
+      return users;
+    }
+
+    async function loadAdminDashboardData() {
+      const session = await window.EDUGNAY_API.getCurrentUser();
+      if (session?.role !== 'school_admin') throw new Error('This dashboard requires a school administrator session.');
+      const greeting = document.querySelector('.grading-welcome-name');
+      if (greeting) greeting.textContent = `Welcome back, ${session.firstName || 'Admin'}!`;
+
+      const [students, teachers, parents, sections, structure] = await Promise.allSettled([
+        getAllAdminDashboardUsers('student'),
+        getAllAdminDashboardUsers('teacher', 'active'),
+        getAllAdminDashboardUsers('parent'),
+        window.EDUGNAY_API.getSections(),
+        window.EDUGNAY_API.getAcademicStructure()
+      ]);
+      const applyUsers = (result, key, setter) => {
+        if (result.status === 'fulfilled') setter(result.value);
+        else ADMIN_USER_ERRORS[key] = result.reason?.message || 'Users could not be loaded';
+      };
+      applyUsers(students, 'students', value => { ADMIN_STUDENTS = value; });
+      applyUsers(teachers, 'teachers', value => { ADMIN_TEACHERS = value; });
+      applyUsers(parents, 'parents', value => { ADMIN_PARENTS = value; });
+
+      if (sections.status === 'fulfilled') {
+        ADMIN_ASSIGNMENT_ERROR = '';
+        ADMIN_DASHBOARD_SECTIONS = sections.value
+          .filter(section => section.status === 'active' && section.academicYearStatus !== 'closed')
+          .map(section => ({
+            id: String(section.id), schoolId: section.schoolId, academicYearId: String(section.academicYearId), level: section.level,
+            grade: section.grade, strand: section.strand, name: section.name,
+            enrolled: Number(section.studentCount) || 0, capacity: Number(section.capacity) || 0
+          }));
+        if (students.status !== 'fulfilled') {
+          ADMIN_ASSIGNMENT_ERROR = students.reason?.message || 'Student choices could not be loaded.';
+        } else {
+          try {
+            const rosters = await Promise.all(sections.value.map(section => window.EDUGNAY_API.getSectionStudents(section.id)));
+            ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
+            rosters.forEach(result => result.students.forEach(student => {
+              const key = String(student.apiId || student.id);
+              const enrollments = ADMIN_STUDENT_SECTION_ENROLLMENTS.get(key) || [];
+              enrollments.push({
+                id: String(result.section.id),
+                academicYearId: String(result.section.academicYearId),
+                name: result.section.name
+              });
+              ADMIN_STUDENT_SECTION_ENROLLMENTS.set(key, enrollments);
+            }));
+          } catch (error) {
+            ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
+            ADMIN_ASSIGNMENT_ERROR = error.message || 'Student enrollment choices could not be loaded.';
+          }
+        }
+      } else {
+        ADMIN_DASHBOARD_SECTIONS = [];
+        ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
+        ADMIN_ASSIGNMENT_ERROR = sections.reason?.message || 'Sections could not be loaded.';
+      }
+      if (structure.status === 'fulfilled') ADMIN_DASHBOARD_STRUCTURE = structure.value;
+      else ADMIN_ASSIGNMENT_ERROR = structure.reason?.message || 'School grade settings could not be loaded.';
+    }
+
     function openAdminTodoModal(todoId = null) {
       const modal = document.getElementById('adminTodoModal');
       const form = document.getElementById('adminTodoForm');
       if (!modal || !form) return;
       form.reset();
+      setDashboardFeedback('adminTodoFeedback');
       const todo = todoId
         ? getAdminTodos().find(item => item.id === String(todoId))
         : null;
@@ -849,8 +967,12 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
-    function saveAdminTodo(event) {
+    async function saveAdminTodo(event) {
       event?.preventDefault();
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('adminTodoFeedback', 'The backend is required to save tasks.');
+        return false;
+      }
       const todoId = document.getElementById('adminTodoId').value;
       const titleInput = document.getElementById('adminTodoTitle');
       const title = titleInput.value.trim();
@@ -858,45 +980,46 @@
       titleInput.setCustomValidity(title ? '' : 'Enter a task title.');
       if (!titleInput.reportValidity()) return false;
 
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        const request = todoId
-          ? window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
-          : window.EDUGNAY_API.createTask({ title, dueDate });
-        request.then(todo => {
-          if (!todo) return;
-          const index = DASHBOARD_ADMIN_TODOS?.findIndex(item => item.id === todo.id) ?? -1;
-          if (index >= 0) DASHBOARD_ADMIN_TODOS[index] = todo;
-          else DASHBOARD_ADMIN_TODOS = [...(DASHBOARD_ADMIN_TODOS || []), todo];
-          closeAdminTodoModal();
-          renderAdminTodos();
-        }).catch(error => alert(error.message));
-        return false;
+      const button = document.getElementById('adminTodoSaveButton');
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      setDashboardFeedback('adminTodoFeedback');
+      try {
+        const task = todoId
+          ? await window.EDUGNAY_API.updateTask(todoId, { title, dueDate })
+          : await window.EDUGNAY_API.createTask({ title, dueDate });
+        closeAdminTodoModal();
+        await refreshAdminTasks({ task });
+        showAppToast(todoId ? 'Task updated.' : 'Task added.');
+      } catch (error) {
+        showAppToast(error.message || 'The task could not be saved.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = todoId ? 'Save changes' : 'Add task';
       }
-
-      if (todoId) window.EDUGNAY_CONFIG.updateTodo(todoId, { title, dueDate });
-      else window.EDUGNAY_CONFIG.createTodo({ schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), userId: DASHBOARD_ADMIN_ID, title, dueDate });
-      closeAdminTodoModal();
-      renderAdminTodos();
       return false;
     }
 
-    function toggleAdminTodo(todoId) {
+    function toggleAdminTodo(todoId, checkbox) {
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('adminTodoListFeedback', 'The backend is required to update tasks.');
+        renderAdminTodos();
+        return;
+      }
       const todo = getAdminTodos()
         .find(item => item.id === String(todoId));
       if (!todo) return;
       const completed = todo.status !== 'completed';
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
-          .then(updated => {
-            const index = DASHBOARD_ADMIN_TODOS.findIndex(item => item.id === todo.id);
-            if (index >= 0) DASHBOARD_ADMIN_TODOS[index] = updated;
-            renderAdminTodos();
-          })
-          .catch(error => alert(error.message));
-        return;
-      }
-      window.EDUGNAY_CONFIG.updateTodo(todo.id, { status: completed ? 'completed' : 'pending', completedAt: completed ? new Date().toISOString() : null });
-      renderAdminTodos();
+      if (checkbox) checkbox.disabled = true;
+      window.EDUGNAY_API.updateTask(todo.id, { status: completed ? 'completed' : 'pending' })
+        .then(async updated => {
+          await refreshAdminTasks({ task: updated });
+          showAppToast(completed ? 'Task completed.' : 'Task reopened.');
+        })
+        .catch(error => {
+          showAppToast(error.message || 'The task status could not be updated.', 'error');
+          renderAdminTodos();
+        });
     }
 
     function openAdminTodoDeleteModal(todoId) {
@@ -904,6 +1027,7 @@
         .find(item => item.id === String(todoId));
       const modal = document.getElementById('adminTodoDeleteModal');
       if (!todo || !modal) return;
+      setDashboardFeedback('adminTodoDeleteFeedback');
       document.getElementById('adminTodoDeleteId').value = todo.id;
       document.getElementById('adminTodoDeleteName').textContent = `“${todo.title}”`;
       modal.classList.add('open');
@@ -919,22 +1043,28 @@
       document.getElementById('adminTodoDeleteId').value = '';
     }
 
-    function confirmDeleteAdminTodo() {
-      const todoId = document.getElementById('adminTodoDeleteId').value;
-      if (!todoId) return;
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        window.EDUGNAY_API.deleteTask(todoId)
-          .then(() => {
-            DASHBOARD_ADMIN_TODOS = DASHBOARD_ADMIN_TODOS.filter(item => item.id !== String(todoId));
-            closeAdminTodoDeleteModal();
-            renderAdminTodos();
-          })
-          .catch(error => alert(error.message));
+    async function confirmDeleteAdminTodo() {
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('adminTodoDeleteFeedback', 'The backend is required to delete tasks.');
         return;
       }
-      window.EDUGNAY_CONFIG.deleteTodo(todoId);
-      closeAdminTodoDeleteModal();
-      renderAdminTodos();
+      const todoId = document.getElementById('adminTodoDeleteId').value;
+      if (!todoId) return;
+      const button = document.getElementById('adminTodoDeleteConfirmButton');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      setDashboardFeedback('adminTodoDeleteFeedback');
+      try {
+        await window.EDUGNAY_API.deleteTask(todoId);
+        closeAdminTodoDeleteModal();
+        await refreshAdminTasks({ removedId: todoId });
+        showAppToast('Task deleted.');
+      } catch (error) {
+        showAppToast(error.message || 'The task could not be deleted.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Yes, Delete';
+      }
     }
 
     function renderAdminTodos() {
@@ -961,7 +1091,7 @@
         return `
           <div class="todo-item${completed ? ' is-completed' : ''}" data-todo-id="${window.EDUGNAY_CONFIG.escapeHtml(todo.id)}">
             <input class="todo-check" type="checkbox" aria-label="Mark task as ${completed ? 'pending' : 'completed'}"
-              ${completed ? 'checked' : ''} onchange="toggleAdminTodo('${todo.id}')">
+              ${completed ? 'checked' : ''} onchange="toggleAdminTodo('${todo.id}', this)">
             <div class="todo-copy">
               <div class="todo-title">${window.EDUGNAY_CONFIG.escapeHtml(todo.title)}</div>
               ${dueDate ? `<div class="todo-due">Due ${dueDate}</div>` : ''}
@@ -981,11 +1111,33 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       await window.EDUGNAY_COMMUNICATION_READY;
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        DASHBOARD_ADMIN_TODOS = window.EDUGNAY_COMMUNICATION.tasks;
+      if (ADMIN_DASHBOARD_API_ENABLED) {
+        document.getElementById('admin-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while school records are loaded.' });
+        document.getElementById('activityList').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading activity', text: 'Please wait while recent activity is loaded.' });
+        try {
+          await loadAdminDashboardData();
+        } catch (error) {
+          ADMIN_USER_ERRORS = { students: error.message, teachers: error.message, parents: error.message };
+          ADMIN_DASHBOARD_SECTIONS = [];
+          ADMIN_DASHBOARD_STRUCTURE = [];
+        }
+        try {
+          RECENT_ACTIVITY = await window.EDUGNAY_API.getDashboardActivity('school');
+          DASHBOARD_ACTIVITY_ERROR = '';
+        } catch (error) {
+          RECENT_ACTIVITY = [];
+          DASHBOARD_ACTIVITY_ERROR = error.message || 'Recent activity could not be loaded.';
+        }
+      } else {
+        const message = 'The backend is required to load school dashboard data.';
+        ADMIN_USER_ERRORS = { students: message, teachers: message, parents: message };
+        ADMIN_ASSIGNMENT_ERROR = message;
+        DASHBOARD_ACTIVITY_ERROR = message;
       }
+      await refreshAdminTasks();
       renderAdminDashboard();
       renderAdminTodos();
+      renderActivityList();
       document.getElementById('addAdminTodoButton')?.addEventListener('click', () => openAdminTodoModal());
       document.getElementById('adminTodoForm')?.addEventListener('submit', saveAdminTodo);
       document.getElementById('adminTodoCloseButton')?.addEventListener('click', closeAdminTodoModal);
@@ -1046,7 +1198,7 @@
         rangeLabel.parentElement.dataset.currentDate = rangeLabel.dataset.currentDate;
       }
     }
-    function openStudentModal() {
+    async function openStudentModal() {
       const title = document.getElementById('studentModalTitle');
       title.textContent = 'Assign Student';
       dashboardAssignmentState.student = null;
@@ -1054,10 +1206,31 @@
       dashboardAssignmentState.grade = '';
       dashboardAssignmentState.strand = '';
       dashboardAssignmentState.section = '';
-      renderDashboardStudentOptions();
       document.getElementById('studentPreview').classList.remove('visible');
-      updateDashboardAssignmentFields();
       document.getElementById('studentModalBackdrop').classList.add('open');
+      setDashboardFeedback('assignStudentFeedback');
+      const saveButton = document.getElementById('assignStudentSaveButton');
+      if (ADMIN_DASHBOARD_API_ENABLED) {
+        saveButton.disabled = true;
+        setDashboardFeedback('assignStudentFeedback', 'Loading current students and sections…', 'info');
+        try {
+          await loadAdminDashboardData();
+          if (ADMIN_ASSIGNMENT_ERROR) throw new Error(ADMIN_ASSIGNMENT_ERROR);
+          renderAdminDashboard();
+          setDashboardFeedback('assignStudentFeedback');
+        } catch (error) {
+          ADMIN_ASSIGNMENT_ERROR = error.message || 'Student and section choices could not be loaded.';
+          setDashboardFeedback('assignStudentFeedback', ADMIN_ASSIGNMENT_ERROR);
+        } finally {
+          saveButton.disabled = Boolean(ADMIN_ASSIGNMENT_ERROR);
+        }
+      } else {
+        ADMIN_ASSIGNMENT_ERROR = 'The backend is required to load students and sections.';
+        saveButton.disabled = true;
+        setDashboardFeedback('assignStudentFeedback', ADMIN_ASSIGNMENT_ERROR);
+      }
+      renderDashboardStudentOptions();
+      updateDashboardAssignmentFields();
     }
 
     function closeStudentModal() {
@@ -1068,25 +1241,47 @@
       if (e.target === this) closeStudentModal();
     });
 
-    document.getElementById('assignStudentForm').addEventListener('submit', function (event) {
+    document.getElementById('assignStudentForm').addEventListener('submit', async function (event) {
       event.preventDefault();
       const student = dashboardAssignmentState.student;
       const section = dashboardAssignmentSections().find(item => item.id === dashboardAssignmentState.section);
       if (!student || !section) {
-        alert('Choose a student and section first.');
+        setDashboardFeedback('assignStudentFeedback', 'Choose a student and section first.');
         return;
       }
 
-      window.EDUGNAY_CONFIG.updateUser(student.id, {
-        schoolLevel: section.level,
-        gradeLevel: section.grade,
-        strand: section.strand || '',
-        sectionId: section.id
-      });
-
-      closeStudentModal();
-      renderDashboardStudentOptions(student.id);
-      renderAdminDashboard();
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('assignStudentFeedback', 'The backend is required to save section assignments.');
+        return;
+      }
+      const saveButton = document.getElementById('assignStudentSaveButton');
+      saveButton.disabled = true;
+      setDashboardFeedback('assignStudentFeedback');
+      let assignmentSaved = false;
+      try {
+        if (ADMIN_ASSIGNMENT_ERROR) throw new Error(ADMIN_ASSIGNMENT_ERROR);
+        const studentId = student.apiId || student.id;
+        const enrollments = ADMIN_STUDENT_SECTION_ENROLLMENTS.get(String(studentId)) || [];
+        const currentEnrollments = enrollments.filter(item => item.academicYearId === String(section.academicYearId));
+        if (currentEnrollments.length > 1) {
+          throw new Error('This student has more than one section in the selected school year. Ask an administrator to review the enrollment.');
+        }
+        const currentSection = currentEnrollments[0];
+        if (currentSection?.id === section.id) throw new Error('This student is already assigned to the selected section.');
+        if (currentSection) await window.EDUGNAY_API.moveStudent(currentSection.id, studentId, section.id);
+        else await window.EDUGNAY_API.enrollStudent(section.id, studentId);
+        assignmentSaved = true;
+        closeStudentModal();
+        await loadAdminDashboardData();
+        renderDashboardStudentOptions(student.id);
+        renderAdminDashboard();
+        showAppToast(ADMIN_ASSIGNMENT_ERROR ? `Student assignment was saved, but section data could not refresh: ${ADMIN_ASSIGNMENT_ERROR}` : 'Student assigned to section.', ADMIN_ASSIGNMENT_ERROR ? 'info' : 'success');
+      } catch (error) {
+        if (assignmentSaved) showAppToast(`Student assignment was saved, but the dashboard could not refresh: ${error.message || 'reload the page.'}`, 'info');
+        else setDashboardFeedback('assignStudentFeedback', error.message || 'The student could not be assigned to this section.');
+      } finally {
+        saveButton.disabled = false;
+      }
     });
 
     document.addEventListener('keydown', e => {
@@ -1127,26 +1322,79 @@
       };
     }
 
+    let dashboardAnnouncementSaving = false;
+
     async function saveDashboardAnnouncement(status) {
+      if (dashboardAnnouncementSaving) return false;
+
       const form = document.getElementById('postAnnouncementForm');
       const values = getDashboardAnnouncementValues(status);
+      setDashboardFeedback('announcementFeedback');
       if (!values.title || !values.body) {
-        alert('Enter an announcement title and content.');
-        return;
+        setDashboardFeedback('announcementFeedback', 'Enter an announcement title and content.');
+        return false;
       }
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        await window.EDUGNAY_API.createAnnouncement(values);
-      } else {
-        window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('announcementFeedback', 'The backend is required to save announcements.');
+        return false;
       }
-      form.reset();
-      document.getElementById('modalPriorityValue').value = 'normal';
-      closeAnnouncementModal();
-      alert(status === 'draft' ? 'Announcement saved as a draft.' : 'Announcement posted.');
+
+      const image = document.getElementById('composeImageInput')?.files?.[0];
+      const schedule = form.elements.schedule?.value;
+      if (image || schedule) {
+        setDashboardFeedback('announcementFeedback', 'Image attachments and scheduled posts are not supported by this API yet. Clear those optional fields to save this announcement.');
+        return false;
+      }
+
+      const modal = form.closest('.modal');
+      const postButton = modal.querySelector('button[type="submit"][form="postAnnouncementForm"]');
+      const draftButton = modal.querySelector('.btn-draft');
+      const buttons = [postButton, draftButton].filter(Boolean);
+      const activeButton = status === 'draft' ? draftButton : postButton;
+      const activeLabel = activeButton?.querySelector('span');
+      const originalLabel = activeLabel?.textContent || (status === 'draft' ? 'Save Draft' : 'Post');
+      dashboardAnnouncementSaving = true;
+      buttons.forEach(button => { button.disabled = true; });
+      if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : 'Posting…';
+
+      try {
+        const savedAnnouncement = await window.EDUGNAY_API.createAnnouncement(values);
+        if (!savedAnnouncement) throw new Error('The server did not confirm the announcement save.');
+
+        if (window.EDUGNAY_COMMUNICATION?.backend) {
+          const announcements = window.EDUGNAY_COMMUNICATION.announcements || [];
+          window.EDUGNAY_COMMUNICATION.announcements = [
+            savedAnnouncement,
+            ...announcements.filter(item => String(item.id) !== String(savedAnnouncement.id))
+          ];
+        }
+
+        form.reset();
+        document.getElementById('modalPriorityValue').value = 'normal';
+        document.querySelectorAll('#announcementModalBackdrop .priority-opt').forEach(option => {
+          option.classList.toggle('selected', option.classList.contains('p-normal'));
+        });
+        modalAudienceCheckboxes.forEach(input => {
+          input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
+        });
+        const message = status === 'draft' ? 'Announcement saved as a draft.' : 'Announcement posted.';
+        showAppToast(message);
+        closeAnnouncementModal();
+        return true;
+      } catch (error) {
+        showAppToast(error.message || 'The announcement could not be saved.', 'error');
+        return false;
+      } finally {
+        dashboardAnnouncementSaving = false;
+        buttons.forEach(button => { button.disabled = false; });
+        if (activeLabel) activeLabel.textContent = originalLabel;
+      }
     }
 
     function saveDashboardAnnouncementDraft() {
-      saveDashboardAnnouncement('draft').catch(error => alert(error.message));
+      saveDashboardAnnouncement('draft').catch(error => {
+        showAppToast(error.message || 'The announcement could not be saved.', 'error');
+      });
     }
 
     const modalAudienceCheckboxes = Array.from(
@@ -1172,7 +1420,9 @@
 
     document.getElementById('postAnnouncementForm')?.addEventListener('submit', event => {
       event.preventDefault();
-      saveDashboardAnnouncement('published').catch(error => alert(error.message));
+      saveDashboardAnnouncement('published').catch(error => {
+        showAppToast(error.message || 'The announcement could not be posted.', 'error');
+      });
     });
 
     function handleImagePreview(input, previewWrapId, placeholderId) {
@@ -1213,38 +1463,35 @@
     setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
 
     /* ── RECENT ACTIVITY PREVIEW ──
-     Shared records come from assets/js/admin/shell.js. The dashboard shows
-     the latest four; the activity page uses the same source for its full log.
-     Columns to match later in Postgres:
-      id | schoolId | actor | title | detail | icon | tone | type | link | createdAt
-     (date_group and time-of-day are computed, not stored) */
-    const RECENT_ACTIVITY = Array.isArray(window.EDUGNAY_ADMIN?.activities)
-      ? window.EDUGNAY_ADMIN.activities
-      : [];
+     The dashboard shows the latest four records from the school activity API. */
+    let RECENT_ACTIVITY = [];
 
     function renderActivityList() {
       const container = document.getElementById('activityList');
       const sorted = [...RECENT_ACTIVITY]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 4);
+      const allowedTones = new Set(['blue', 'green', 'red', 'orange', 'purple', 'gold', 'gray']);
 
       let html = '';
       let lastGroup = null;
 
       sorted.forEach(item => {
         const group = formatDateGroup(item.createdAt);
+        const tone = allowedTones.has(item.tone) ? item.tone : 'blue';
+        const icon = /^[a-z0-9-]{1,40}$/.test(item.icon || '') ? item.icon : 'activity';
         if (group !== lastGroup) {
           html += `<div class="activity-group-label">${group}</div>`;
           lastGroup = group;
         }
         html += `
         <div class="activity-item">
-        <div class="act-icon ${item.tone}"><i data-lucide="${item.icon}" style="width:15px;height:15px;"></i></div>
+        <div class="act-icon ${tone}" aria-hidden="true"><i data-lucide="${icon}" style="width:15px;height:15px;"></i></div>
         <div class="act-body">
-          <div class="act-text"><strong>${item.actor}</strong> ${item.title} ${item.detail || ''}</div>
+          <div class="act-text"><strong>${window.EDUGNAY_CONFIG.escapeHtml(item.actor)}</strong> ${window.EDUGNAY_CONFIG.escapeHtml(item.title)} ${window.EDUGNAY_CONFIG.escapeHtml(item.detail || '')}</div>
           <div class="act-time">${formatTime(item.createdAt)}</div>
         </div>
-        <span class="act-tag">${item.type}</span>
+        <span class="act-tag">${window.EDUGNAY_CONFIG.escapeHtml(item.type)}</span>
         </div>
       `;
       });
@@ -1252,14 +1499,13 @@
       container.innerHTML = sorted.length
         ? html
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'activity',
-          title: 'No recent activity',
-          text: 'System updates and account actions will appear here.'
+          icon: DASHBOARD_ACTIVITY_ERROR ? 'cloud-off' : 'activity',
+          title: DASHBOARD_ACTIVITY_ERROR ? 'Activity unavailable' : 'No recent activity',
+          text: DASHBOARD_ACTIVITY_ERROR || 'Recorded school and system events will appear here.'
         });
       lucide.createIcons();
     }
 
-    renderActivityList();  
   </script>
 
 </body>

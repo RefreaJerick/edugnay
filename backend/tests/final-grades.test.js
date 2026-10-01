@@ -7,6 +7,7 @@ const savedGrades = [];
 const pendingGrades = [];
 let assigned = true;
 let failOnInsertNumber = 0;
+let failOnAuditWrite = false;
 let context = {};
 let categories = [];
 let students = [];
@@ -14,10 +15,14 @@ let items = [];
 let scores = [];
 let committed = false;
 let rolledBack = false;
+let parentTriggerEnabled = false;
 
 const database = {
   async execute(sql, values = []) {
     queries.push({ sql, values });
+    if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
+    if (sql.includes('SELECT passing_grade_threshold AS threshold FROM school_levels')) return [[{ threshold: 75 }]];
+    if (sql.includes('INSERT INTO notifications')) return [{ affectedRows: 1 }];
     if (sql.includes('FROM section_teachers')) return [[assigned ? context : undefined].filter(Boolean)];
     if (sql.includes('FROM grading_categories')) return [categories];
     if (sql.includes('FROM section_students')) return [students];
@@ -27,6 +32,10 @@ const database = {
       pendingGrades.push(values);
       if (failOnInsertNumber && pendingGrades.length === failOnInsertNumber) throw new Error('Simulated database write failure.');
       return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('INSERT INTO audit_logs')) {
+      if (failOnAuditWrite) throw new Error('Simulated activity log failure.');
+      return [{ insertId: 1 }];
     }
     throw new Error(`Unexpected query: ${sql}`);
   },
@@ -50,8 +59,10 @@ function reset() {
   pendingGrades.length = 0;
   assigned = true;
   failOnInsertNumber = 0;
+  failOnAuditWrite = false;
   committed = false;
   rolledBack = false;
+  parentTriggerEnabled = false;
   context = {
     sectionId: 8, schoolId: 1, schoolLevelId: 2, academicYearId: 4,
     sectionName: 'St. Matthew', subjectId: 2, subjectName: 'English',
@@ -154,6 +165,21 @@ test('publish saves all student grades atomically using the authenticated teache
   assert.equal(committed, true);
   assert.equal(rolledBack, false);
   assert.match(queries.find(query => query.sql.includes('INSERT INTO published_final_grades')).sql, /ON DUPLICATE KEY UPDATE/);
+  const audit = queries.find(query => query.sql.includes('INSERT INTO audit_logs'));
+  assert.ok(audit);
+  assert.equal(audit.values[2], 'final_grades_published');
+});
+
+test('publication notifies linked parents only for a below-passing final grade', async () => {
+  reset();
+  parentTriggerEnabled = true;
+  const result = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(result.error, null);
+  const notices = queries.filter(item => item.sql.includes('INSERT INTO notifications'));
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].values[0], 'grade');
+  assert.equal(notices[0].values.at(-1), 102);
+  assert.equal(committed, true);
 });
 
 test('unassigned teachers and closed terms cannot preview or publish grades', async () => {
@@ -212,6 +238,18 @@ test('a failed snapshot write rolls the entire publish operation back', async ()
   const result = await call(grades.publishFinalGrades, { body: scope });
 
   assert.match(result.error?.message, /Simulated database write failure/);
+  assert.equal(committed, false);
+  assert.equal(rolledBack, true);
+  assert.equal(savedGrades.length, 0);
+  assert.equal(pendingGrades.length, 0);
+});
+
+test('a failed activity log write also rolls back grade publication', async () => {
+  reset();
+  failOnAuditWrite = true;
+  const result = await call(grades.publishFinalGrades, { body: scope });
+
+  assert.match(result.error?.message, /activity log failure/);
   assert.equal(committed, false);
   assert.equal(rolledBack, true);
   assert.equal(savedGrades.length, 0);

@@ -25,8 +25,7 @@ const sfElements = {
   previewSubtitle: document.getElementById('sfPreviewSubtitle'),
   previewContent: document.getElementById('sfPreviewContent'),
   editButton: document.getElementById('sfEditGenerated'),
-  downloadButton: document.getElementById('sfDownloadWorkbook'),
-  toast: document.getElementById('sfToast')
+  downloadButton: document.getElementById('sfDownloadWorkbook')
 };
 
 function schoolLevelLabel(level) {
@@ -317,7 +316,7 @@ async function generateForm(event) {
     sfElements.editButton.disabled = sfState.generated.hasBlockingIssues || !sfState.generated.editableCells?.length;
     sfElements.downloadButton.disabled = Boolean(sfState.generated.hasBlockingIssues);
   } catch (error) {
-    showSfToast(error.message);
+    showAppToast(error.message, 'error');
   } finally {
     sfElements.generateButton.textContent = 'Generate preview';
     updateGenerateButton();
@@ -338,7 +337,7 @@ function toggleGeneratedEditing() {
   sfState.editing = false;
   sfElements.editButton.textContent = 'Edit generated form';
   renderWorkbook(workbook, sfState.generated.preview);
-  showSfToast('Generated form edits saved in this browser.');
+  showAppToast('Generated form edits saved in this browser.', 'info');
 }
 
 async function downloadGeneratedWorkbook() {
@@ -372,6 +371,7 @@ async function downloadGeneratedWorkbook() {
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    showAppToast('Workbook download started.');
   } catch (error) {
     if (error.status === 409) {
       sfState.generated = null;
@@ -380,18 +380,12 @@ async function downloadGeneratedWorkbook() {
       sfElements.previewSubtitle.textContent = 'The system records changed. Generate a new preview before downloading.';
       sfElements.previewContent.innerHTML = '<div class="sf-preview-error">The records changed since this preview. Generate a new preview to continue.</div>';
     }
-    showSfToast(error.message);
+    showAppToast(error.message, 'error');
   } finally {
     sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
     sfElements.downloadButton.disabled = !sfState.generated || Boolean(sfState.generated.hasBlockingIssues);
     if (window.lucide) lucide.createIcons();
   }
-}
-
-function showSfToast(message) {
-  sfElements.toast.textContent = message;
-  sfElements.toast.classList.add('show');
-  window.setTimeout(() => sfElements.toast.classList.remove('show'), 3200);
 }
 
 async function initializeSfTemplatesPage() {
@@ -419,7 +413,6 @@ async function initializeSfTemplatesPage() {
       text: error.message || 'Sign in again or try again later.'
     });
     renderGenerationOptions();
-    showSfToast(error.message || 'SF Templates could not be loaded.');
   } finally {
     if (window.lucide) lucide.createIcons();
   }

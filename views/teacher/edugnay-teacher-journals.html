@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/journals.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -248,7 +249,7 @@
         <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
+
         </a>
         <a class="nav-item active" data-teacher-access="journals">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
@@ -265,7 +266,7 @@
         <a class="nav-item" onclick="navigate('announcements')">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -380,7 +381,7 @@
           <div class="panel-title" id="panel-title">Journal Entries</div>
         </div>
         <div class="panel-head-right">
-          <!-- EJS: render only when this teacher teaches the configured journal subject -->
+          <!-- Journal settings controls are managed by page JavaScript. -->
           <button class="settings-trigger" onclick="openSettingsDrawer()" title="Journal Settings">
             <i data-lucide="settings-2" style="width:14px;height:14px;"></i>
             <span>Journal Settings</span>
@@ -542,7 +543,7 @@ async function saveJournalSettings() {
   const deadline = document.getElementById('settings-deadline').value;
   const allowLate = document.getElementById('toggle-allow-late').classList.contains('on');
   if (!sec || !newPrompt || !gradingItemId || !deadline || !Number.isInteger(minWords) || minWords < 10 || minWords > 2000) {
-    showToast('Enter a prompt, minimum word count, deadline, and gradebook item.', 'error');
+    showAppToast('Enter a prompt, minimum word count, deadline, and gradebook item.', 'error');
     return;
   }
 
@@ -550,7 +551,7 @@ async function saveJournalSettings() {
   let opensAt = new Date();
   if (editingPromptId) opensAt = localDate(sec.prompts.find(item => item.id === editingPromptId)?.opensAt);
   if (dueDate <= opensAt && editingPromptId) {
-    showToast('The deadline must be after the opening time.', 'error');
+    showAppToast('The deadline must be after the opening time.', 'error');
     return;
   }
   if (dueDate <= opensAt) {
@@ -560,7 +561,7 @@ async function saveJournalSettings() {
   }
   const finalDueDate = dueDateForWeek(settingsWeekStart, day, deadline);
   if (finalDueDate <= opensAt) {
-    showToast('The deadline must be after the opening time.', 'error');
+    showAppToast('The deadline must be after the opening time.', 'error');
     return;
   }
   const payload = {
@@ -578,10 +579,10 @@ async function saveJournalSettings() {
     if (editingPromptId) await window.EDUGNAY_API.updateJournalPrompt(editingPromptId, payload);
     else await window.EDUGNAY_API.createJournalPrompt(payload);
     closeSettingsDrawer();
-    showToast('Journal prompt saved.', 'success');
+    showAppToast('Journal prompt saved.', 'success');
     await loadTeacherJournals();
   } catch (error) {
-    showToast(error.message || 'Unable to save journal prompt.', 'error');
+    showAppToast(error.message || 'Unable to save journal prompt.', 'error');
   }
 }
 
@@ -873,7 +874,7 @@ async function markReviewed() {
   if (s.submitted && (isNaN(scoreVal) || scoreInput.value === '')) {
     scoreInput.style.borderColor = 'var(--red)';
     scoreInput.focus();
-    showToast('Please enter a score before marking as reviewed.', 'error');
+    showAppToast('Please enter a score before marking as reviewed.', 'error');
     return;
   }
 
@@ -883,7 +884,7 @@ async function markReviewed() {
   if (scoreVal > maxScore) {
     scoreInput.style.borderColor = 'var(--red)';
     scoreInput.focus();
-    showToast(`Score cannot exceed ${maxScore}.`, 'error');
+    showAppToast(`Score cannot exceed ${maxScore}.`, 'error');
     return;
   }
   scoreInput.style.borderColor = '';
@@ -894,10 +895,10 @@ async function markReviewed() {
     await loadTeacherJournals();
     const refreshed = SECTIONS[currentSection]?.students.find(student => student.studentId === s.studentId);
     if (refreshed) populateModal(refreshed);
-    showToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · score saved and reviewed`, 'success');
+    showAppToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · score saved and reviewed`, 'success');
   } catch (error) {
     button.disabled = false;
-    showToast(error.message || 'Unable to save this journal review.', 'error');
+    showAppToast(error.message || 'Unable to save this journal review.', 'error');
   }
 }
 
@@ -914,15 +915,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' && document.getElementById('journalModal').classList.contains('open')) navigateEntry(1);
   if (e.key === 'ArrowLeft'  && document.getElementById('journalModal').classList.contains('open')) navigateEntry(-1);
 });
-
-/* ══════ TOAST ══════ */
-function showToast(msg, type = 'success') {
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;background:${type === 'success' ? '#16a34a' : 'var(--red)'};color:#fff;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.2s ease;`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
 
 async function loadTeacherJournals() {
   const tabs = document.getElementById('journal-section-tabs');

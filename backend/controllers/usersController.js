@@ -4,6 +4,7 @@ const { getDatabase } = require('../config/database');
 const { sendAccountCreatedEmail, sendAccountStatusEmail } = require('../config/email');
 const { deleteSessionsForUser } = require('../config/session');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
+const { writeAuditLog } = require('../utils/auditLog');
 
 const USER_ROLES = new Set(['platform_admin', 'school_admin', 'teacher', 'student', 'parent']);
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
@@ -177,6 +178,54 @@ function formatUser(row) {
   return user;
 }
 
+async function addCurrentStudentPlacement(users) {
+  const studentIds = users.filter(user => user.role === 'student').map(user => user.id);
+  if (!studentIds.length) return users;
+
+  const placeholders = studentIds.map(() => '?').join(', ');
+  const [enrollments] = await getDatabase().execute(
+    `SELECT section_students.student_user_id AS studentId,
+      sections.id AS sectionId, sections.name AS sectionName,
+      school_grade_levels.display_name AS gradeLevel,
+      school_levels.level_code AS schoolLevel,
+      school_shs_tracks.display_name AS strand,
+      academic_years.label AS academicYearLabel
+    FROM section_students
+    INNER JOIN sections ON sections.id = section_students.section_id AND sections.status = 'active'
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
+    INNER JOIN users AS students ON students.id = section_students.student_user_id
+      AND students.role = 'student' AND students.school_id = sections.school_id
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+    INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+    LEFT JOIN school_shs_tracks ON school_shs_tracks.id = sections.strand_id
+    WHERE section_students.withdrawn_at IS NULL
+      AND section_students.student_user_id IN (${placeholders})
+    ORDER BY academic_years.start_date DESC, section_students.enrolled_at DESC, section_students.id DESC`,
+    studentIds
+  );
+
+  const placementByStudent = new Map();
+  enrollments.forEach(enrollment => {
+    if (!placementByStudent.has(String(enrollment.studentId))) {
+      placementByStudent.set(String(enrollment.studentId), enrollment);
+    }
+  });
+
+  return users.map(user => {
+    if (user.role !== 'student') return user;
+    const placement = placementByStudent.get(String(user.id));
+    return {
+      ...user,
+      sectionId: placement ? String(placement.sectionId) : null,
+      sectionName: placement?.sectionName || null,
+      gradeLevel: placement?.gradeLevel || null,
+      schoolLevel: placement?.schoolLevel || null,
+      strand: placement?.strand || null,
+      academicYearLabel: placement?.academicYearLabel || null
+    };
+  });
+}
+
 function normalizeText(value, maximum) {
   if (typeof value !== 'string') throw createError('Profile fields must be text.');
 
@@ -322,7 +371,7 @@ async function listUsers(req, res, next) {
     );
 
     res.status(200).json({
-      users: users.map(formatUser),
+      users: await addCurrentStudentPlacement(users.map(formatUser)),
       pagination: { page: filters.page, limit: filters.limit, total: count.total }
     });
   } catch (error) {
@@ -357,7 +406,8 @@ async function getUser(req, res, next) {
     const user = await findUserById(userId, scope);
     if (!user) throw createError('User not found.', 404);
 
-    res.status(200).json({ user: formatUser(user) });
+    const [formattedUser] = await addCurrentStudentPlacement([formatUser(user)]);
+    res.status(200).json({ user: formattedUser });
   } catch (error) {
     next(error);
   }
@@ -581,6 +631,9 @@ async function createUser(req, res, next) {
         );
       }
     }
+    await writeAuditLog(connection, req, 'user_created', 'user', userId, {
+      summary: `${displayName} · ${role.replace(/_/g, ' ')}`
+    }, schoolId);
     await connection.commit();
     const user = await findUserById(userId, { clause: '', values: [] });
     const emailDelivery = await sendAccountCreatedEmail(formatUser(user), temporaryPassword);
@@ -688,8 +741,16 @@ async function updateUser(req, res, next) {
         );
       }
     }
-    await connection.commit();
     const accountStatusChanged = values.accountStatus !== user.accountStatus;
+    const actionType = accountStatusChanged && values.accountStatus === 'active'
+      ? 'user_activated'
+      : accountStatusChanged && values.accountStatus === 'inactive'
+        ? 'user_deactivated'
+        : 'user_updated';
+    await writeAuditLog(connection, req, actionType, 'user', userId, {
+      summary: `${displayName} · ${user.role.replace(/_/g, ' ')}`
+    }, user.schoolId);
+    await connection.commit();
     if (accountStatusChanged && values.accountStatus !== 'active') await deleteSessionsForUser(userId);
     const updated = await findUserById(userId, { clause: '', values: [] });
     const formattedUser = formatUser(updated);
@@ -707,6 +768,66 @@ async function updateUser(req, res, next) {
 async function setUserStatus(req, res, next) {
   req.body = { accountStatus: req.params.action === 'activate' ? 'active' : 'inactive' };
   return updateUser(req, res, next);
+}
+
+async function deleteUser(req, res, next) {
+  let connection;
+  let transactionStarted = false;
+  try {
+    if (req.user.role !== 'school_admin' || !req.user.schoolId) {
+      throw createError('You do not have access to delete school accounts.', 403);
+    }
+    const userId = parsePositiveInteger(req.params.userId, null, Number.MAX_SAFE_INTEGER);
+    if (!userId) throw createError('Invalid user ID.');
+    if (userId === Number(req.user.id)) throw createError('You cannot delete your own account.', 409);
+
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+
+    await connection.execute('SELECT id FROM schools WHERE id = ? FOR UPDATE', [req.user.schoolId]);
+    const [users] = await connection.execute(
+      'SELECT id, school_id AS schoolId, role, display_name AS displayName FROM users WHERE id = ? AND school_id = ? FOR UPDATE',
+      [userId, req.user.schoolId]
+    );
+    const user = users[0];
+    if (!user) throw createError('User not found.', 404);
+
+    if (user.role === 'school_admin') {
+      const [[admins]] = await connection.execute(
+        "SELECT COUNT(*) AS total FROM users WHERE school_id = ? AND role = 'school_admin' AND id <> ?",
+        [req.user.schoolId, userId]
+      );
+      if (Number(admins.total) === 0) throw createError('The school’s last administrator cannot be deleted.', 409);
+    }
+
+    const [parentLinks] = await connection.execute(
+      'SELECT id FROM student_parent_links WHERE parent_user_id = ? OR student_user_id = ? LIMIT 1 FOR UPDATE',
+      [userId, userId]
+    );
+    if (parentLinks.length) throw createError('Remove this account’s parent or student links before deleting it.', 409);
+
+    await writeAuditLog(connection, req, 'user_deleted', 'user', userId, {
+      summary: `${user.displayName} · ${user.role.replace(/_/g, ' ')}`
+    }, req.user.schoolId);
+    const [result] = await connection.execute(
+      'DELETE FROM users WHERE id = ? AND school_id = ?',
+      [userId, req.user.schoolId]
+    );
+    if (!result.affectedRows) throw createError('User not found.', 404);
+
+    await connection.commit();
+    transactionStarted = false;
+    res.status(204).end();
+  } catch (error) {
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      error = createError('This account has school or academic records and cannot be permanently deleted. Deactivate it instead.', 409);
+    }
+    next(error);
+  } finally {
+    connection?.release();
+  }
 }
 
 async function getAccountSetupStatus(req, res, next) {
@@ -742,4 +863,4 @@ async function completeAccountSetup(req, res, next) {
   }
 }
 
-module.exports = { completeAccountSetup, createUser, getAccountSetupStatus, getMyParents, getMyProfile, getParentChildren, getUser, listUsers, setUserStatus, updateMyProfile, updateUser };
+module.exports = { completeAccountSetup, createUser, deleteUser, getAccountSetupStatus, getMyParents, getMyProfile, getParentChildren, getUser, listUsers, setUserStatus, updateMyProfile, updateUser };

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/adviser/narrative-reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -63,7 +64,7 @@
         <a class="nav-item active" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
+
         </a>
         <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
@@ -80,7 +81,7 @@
         <a class="nav-item" onclick="navigate('announcements')">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
     </div>
@@ -188,14 +189,7 @@
           </div>
           <div>
             <div class="pipeline-title">Weekly Report Generation Pipeline</div>
-            <!--
-              EJS:
-              <div class="pipeline-sub">
-                Week of <%= weekStart %> – <%= weekEnd %> &nbsp;·&nbsp;
-                <%= adviser.sectionName %> &nbsp;·&nbsp;
-                Data aggregated across all subjects
-              </div>
-            -->
+            <!-- Report context is rendered by the page's JavaScript. -->
             <div class="pipeline-sub">
               Week of June 9–14, 2025 · Grade 7 – St. Matthew · Data aggregated across all subjects
             </div>
@@ -241,16 +235,11 @@
     </div>
 
     <!-- ── SUMMARY STRIP ── -->
-    <!--
-      EJS: stats.total, stats.pending, stats.confirmed, stats.atRisk
-      rendered server-side inside the strip below
-    -->
+    <!-- Summary values are rendered by the existing frontend report code. -->
     <div class="summary-strip" id="report-summary-strip"></div>
     <div class="panel">
       <div class="panel-head">
-        <!--
-          EJS: <%= weekLabel %> e.g. "Weekly Reports — June 9–14, 2025"
-        -->
+        <!-- The report week label is managed by page JavaScript. -->
         <div class="panel-title">Weekly Reports: June 9–14, 2025</div>
         <div class="panel-head-right">
           <div class="filter-row">
@@ -278,17 +267,9 @@
         </div>
       </div>
 
-      <!--
-        EJS: <% reports.forEach(function(r) { %>
-        render each card here using r.* properties
-        <% }); %>
-
-        Static JS rendering is used below for the prototype.
-        In production, replace the reports-grid div contents with EJS loop,
-        and remove the renderReports() JS call at the bottom.
-      -->
+      <!-- Keep rendering the agreed frontend report array with renderReports(). -->
       <div class="reports-grid" id="reports-grid">
-        <!-- Populated by renderReports() in prototype; replace with EJS loop in production -->
+        <!-- Populated by renderReports(). -->
       </div>
     </div>
 
@@ -389,11 +370,7 @@
           <i data-lucide="sparkles" style="width:11px;height:11px;"></i>
           AI-Generated Parent Report
         </div>
-        <!--
-          EJS: value="<%= report.generatedText %>"
-          In production this textarea is editable before confirming.
-          POST the edited values to /api/reports/:reportId/confirm
-        -->
+        <!-- The current frontend report flow fills and saves this text. -->
         <textarea
           class="ai-report-text"
           id="rm-report-text"
@@ -447,9 +424,7 @@
       </div>
       <div class="modal-heading-copy">
         <div class="modal-title review-modal-title">Generate Weekly Reports</div>
-        <!--
-          EJS: <div class="review-modal-sub"><%= adviser.sectionName %> · <%= stats.total %> students</div>
-        -->
+        <!-- Section details are supplied by the current frontend report flow. -->
         <div class="modal-sub review-modal-sub">Grade 7 – St. Matthew · 38 students</div>
       </div>
       </div>
@@ -519,7 +494,6 @@
      Keep teacherNote internal to teacher report-generation and review responses.
   ───────────────────────────────────────────────────── */
 
-  // EJS: const SYSTEM_CONFIG = <%- JSON.stringify(config) %>;
   const JOURNALS_ENABLED = window.EDUGNAY_CONFIG?.isJournalsEnabled?.() === true;
   const journalSubjectName = JOURNALS_ENABLED
     ? window.EDUGNAY_CONFIG.getJournalSubject()?.name || ''
@@ -881,7 +855,7 @@
     }
 
     document.getElementById('rm-status-note').textContent = r.status === 'confirmed'
-      ? `Generated ${r.generatedAtLabel} · Confirmed and sent to parent`
+      ? `Generated ${r.generatedAtLabel} · Confirmed in demo reports`
       : `Generated ${r.generatedAtLabel} · Not yet confirmed`;
 
     lucide.createIcons();
@@ -907,22 +881,21 @@
       report.recommendedActions = [...(generatedReport.recommendedActions || [])];
       textarea.value = report.text;
       renderRecommendedActions(report.recommendedActions);
-      showToast('Report regenerated', 'success');
+      showAppToast('Report regenerated', 'success');
     } catch (error) {
-      showToast(error.message || 'Report could not be regenerated.', 'error');
+      showAppToast(error.message || 'Report could not be regenerated.', 'error');
     } finally {
       textarea.disabled = false;
     }
   }
 
   function confirmReport() {
-    /* TODO: POST /api/reports/:id/confirm with body { text, recommendedActions }
-       On success: update local REPORTS array and re-render */
+    // Keep the current frontend report and recommendation behavior.
     const r = REPORTS.find(x => x.id === activeReportId);
     if (r) {
       const reportText = document.getElementById('rm-report-text').value.trim();
       if (!reportText) {
-        showToast('Enter a report before confirming it.', 'error');
+        showAppToast('Enter a report before confirming it.', 'error');
         return;
       }
       const recommendedActions = collectRecommendedActions();
@@ -939,7 +912,7 @@
     closeModal('review-modal');
     renderReports();
     renderTeacherReportSummary();
-    showToast('Report confirmed and sent to parent', 'success');
+    showAppToast('Report confirmed in demo reports. Parent notification is not available yet.', 'info');
   }
 
   /* ── GENERATE MODAL ── */
@@ -967,13 +940,13 @@
       });
     } catch (error) {
       startButton.disabled = false;
-      showToast('Reports could not be generated.', 'error');
+      showAppToast('Reports could not be generated.', 'error');
       return;
     }
 
     if (!generatedReports.length && GENERATION_STUDENTS.length) {
       startButton.disabled = false;
-      showToast('You do not have access to generate these reports.', 'error');
+      showAppToast('You do not have access to generate these reports.', 'error');
       return;
     }
 
@@ -988,8 +961,7 @@
     document.getElementById('gen-confirm-view').style.display  = 'none';
     document.getElementById('gen-progress-view').style.display = 'block';
 
-    /* TODO: replace this simulation with POST /api/reports/generate
-       that returns progress via SSE or polling, then show gen-done-view on completion */
+    // Report generation remains frontend-based until its dedicated backend phase.
     const steps = [
       'Pulling attendance records across all subjects',
       'Checking assignment completion per subject',
@@ -1038,21 +1010,6 @@
   /* ── MODAL / DRAWER HELPERS ── */
   function openModal(id)  { document.getElementById(id).classList.add('open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-  function showToast(msg, type = 'success') {
-    const colors = { success: 'var(--green-dark)', error: 'var(--red)', info: 'var(--blue-mid)' };
-    const t = document.createElement('div');
-    t.style.cssText = `
-      position:fixed; bottom:24px; right:24px;
-      padding:12px 18px; border-radius:var(--radius-sm);
-      font-size:13px; font-weight:600; font-family:'Plus Jakarta Sans',sans-serif;
-      background:${colors[type] || colors.success}; color:#fff;
-      z-index:999; box-shadow:0 4px 16px rgba(0,0,0,0.15);
-      animation:fadeUp 0.2s ease;`;
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

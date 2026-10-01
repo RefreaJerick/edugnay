@@ -33,8 +33,8 @@ async function login(req, res, next) {
     const database = getDatabase();
     const [users] = await database.execute(
       `SELECT
-        id,
-        school_id AS schoolId,
+        users.id,
+        users.school_id AS schoolId,
         role,
         school_email AS schoolEmail,
         personal_email AS personalEmail,
@@ -44,21 +44,26 @@ async function login(req, res, next) {
         display_name AS displayName,
         initials,
         setup_completed_at AS setupCompletedAt,
-        password_hash AS passwordHash
+        password_hash AS passwordHash,
+        schools.registration_status AS schoolStatus
       FROM users
-      WHERE school_email = ?
+      LEFT JOIN schools ON schools.id = users.school_id
+      WHERE users.school_email = ?
       LIMIT 1`,
       [schoolEmail]
     );
 
     const user = users[0];
-    if (!user || user.accountStatus !== 'active' || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (!user || user.accountStatus !== 'active'
+      || (user.role !== 'platform_admin' && user.schoolStatus !== 'active')
+      || !(await bcrypt.compare(password, user.passwordHash))) {
       return invalidCredentials(res);
     }
 
     const token = await createSession(user.id);
     await database.execute('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
     delete user.passwordHash;
+    delete user.schoolStatus;
     setSessionCookie(res, token);
 
     res.status(200).json({ user });

@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/sections.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js?v=5"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <script src="../../assets/vendor/zxing/zxing-browser.min.js"></script>
@@ -453,10 +454,11 @@
         <label class="form-label">Reason for Reopen</label>
         <textarea class="form-input" id="reopenReasonInput" rows="4" style="resize:vertical;font-family:'Plus Jakarta Sans',sans-serif;" placeholder="e.g. Need to correct Quiz 2 score for Ben Garcia — entered wrong value."></textarea>
       </div>
+      <p id="reopenRequestFeedback" class="dashboard-action-feedback is-error" role="alert" hidden></p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-cancel" onclick="closeModal('reopenRequestModal')">Cancel</button>
-      <button class="btn btn-save" onclick="submitReopenRequest()">
+      <button class="btn btn-save" id="submitReopenRequestButton" onclick="submitReopenRequest()">
         <i data-lucide="send" style="width:13px;height:13px;"></i> Send Request
       </button>
     </div>
@@ -613,7 +615,7 @@
         <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
+
         </a>
         <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
@@ -630,7 +632,7 @@
         <a class="nav-item" onclick="navigate('announcements')">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
     </div>
@@ -861,7 +863,7 @@
             <button class="top-btn secondary" data-requires-subject onclick="openModal('addCompModal')">
               <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Component
             </button>
-            <button class="top-btn success" onclick="openPublishGradesModal()">
+            <button class="top-btn success" id="publishGradesButton" onclick="openPublishGradesModal()">
               <i data-lucide="send" style="width:14px;height:14px;"></i> Publish Grades
             </button>
           </div>
@@ -1075,10 +1077,39 @@
   </main>
 </div>
 
+<div class="modal-backdrop" id="teacherDeleteConfirmModal" aria-hidden="true">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherDeleteConfirmTitle" aria-describedby="teacherDeleteConfirmDescription" style="max-width:420px;">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="teacherDeleteConfirmTitle">Confirm deletion</div>
+          <div class="modal-sub" id="teacherDeleteConfirmSub">This action cannot be undone.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" aria-label="Close confirmation" onclick="closeModal('teacherDeleteConfirmModal')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context confirm-remove-context">
+        <div class="ctx-icon"><i data-lucide="trash-2" aria-hidden="true"></i></div>
+        <div><div class="ctx-label">Deleting</div><div class="ctx-val" id="teacherDeleteConfirmName"></div></div>
+      </div>
+      <p class="confirm-remove-message" id="teacherDeleteConfirmDescription"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeModal('teacherDeleteConfirmModal')">Cancel</button>
+      <button class="btn btn-danger" type="button" id="teacherDeleteConfirmButton">Delete</button>
+    </div>
+  </section>
+</div>
+
 <script>
   lucide.createIcons();
 
   /* ── MODALS ── */
+  let pendingTeacherDelete = null;
+  let teacherDeletePending = false;
+
   function openModal(id)  {
     const modal = document.getElementById(id);
     modal.classList.add('open');
@@ -1086,6 +1117,7 @@
   }
   function closeModal(id) {
     const modal = document.getElementById(id);
+    if (id === 'teacherDeleteConfirmModal' && teacherDeletePending) return;
     if (id === 'uploadModal' && materialUploadInProgress) return;
     if (id === 'assignmentSubmissionPreviewModal') {
       assignmentPreviewRequestId += 1;
@@ -1102,6 +1134,7 @@
     if (id === 'uploadModal') resetMaterialUploadForm();
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
+    if (id === 'teacherDeleteConfirmModal') pendingTeacherDelete = null;
     if (id === 'qrAttendanceModal') {
       window.setTimeout(() => qrAttendanceReturnFocus?.focus(), 0);
     }
@@ -1109,6 +1142,63 @@
   document.querySelectorAll('.modal-backdrop').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
   });
+
+  function openTeacherDeleteModal(kind, id, name) {
+    pendingTeacherDelete = { kind, id: String(id) };
+    const isMaterial = kind === 'material';
+    document.getElementById('teacherDeleteConfirmTitle').textContent = `Delete ${isMaterial ? 'learning material' : 'assignment'}?`;
+    document.getElementById('teacherDeleteConfirmSub').textContent = 'This action cannot be undone.';
+    document.getElementById('teacherDeleteConfirmName').textContent = name || (isMaterial ? 'Learning material' : 'Assignment');
+    document.getElementById('teacherDeleteConfirmDescription').textContent = isMaterial
+      ? 'The material and its uploaded file will be permanently removed.'
+      : 'Assignments with student submissions or linked score records cannot be deleted.';
+    const button = document.getElementById('teacherDeleteConfirmButton');
+    button.textContent = `Delete ${isMaterial ? 'Material' : 'Assignment'}`;
+    button.disabled = false;
+    openModal('teacherDeleteConfirmModal');
+    window.lucide?.createIcons?.();
+  }
+
+  async function confirmTeacherDelete() {
+    const request = pendingTeacherDelete;
+    const button = document.getElementById('teacherDeleteConfirmButton');
+    if (!request || !button || teacherDeletePending) return;
+    const originalLabel = button.textContent;
+    teacherDeletePending = true;
+    button.disabled = true;
+    button.textContent = 'Deleting…';
+    try {
+      if (request.kind === 'assignment') {
+        await window.EDUGNAY_API.deleteAssignment(request.id);
+        BACKEND_ASSIGNMENTS = BACKEND_ASSIGNMENTS.filter(item => String(item.id) !== request.id);
+        BACKEND_SUBMISSIONS.delete(request.id);
+        closeAssignmentMenus();
+        teacherDeletePending = false;
+        closeModal('teacherDeleteConfirmModal');
+        renderAssignments();
+        renderScoreTable(document.getElementById('academicPeriodSelect').value);
+        showAppToast('Assignment deleted.');
+      } else {
+        const result = await window.EDUGNAY_API.deleteMaterial(request.id);
+        teacherDeletePending = false;
+        closeModal('teacherDeleteConfirmModal');
+        await loadBackendMaterials();
+        const needsInfo = result?.fileCleanupPending || backendMaterialsError;
+        showAppToast(result?.fileCleanupPending
+          ? 'Material deleted, but its stored file still needs cleanup.'
+          : backendMaterialsError ? 'Material deleted, but the list could not refresh.' : 'Material deleted.',
+        needsInfo ? 'info' : 'success');
+      }
+    } catch (error) {
+      showAppToast(error.message || 'The item could not be deleted.', 'error');
+    } finally {
+      teacherDeletePending = false;
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+
+  document.getElementById('teacherDeleteConfirmButton').addEventListener('click', confirmTeacherDelete);
 
   /* ── TABS ── */
   function switchTab(name) {
@@ -1805,40 +1895,49 @@
     }
   }
 
-  const STUDENT_PROGRESS = window.EDUGNAY_CONFIG.withActiveSchool([
-    { studentId: 'cm-001', attendanceRate: '96%', grade: 88, status: 'Passing', tone: 'green' },
-    { studentId: 'lr-002', attendanceRate: '100%', grade: 92, status: 'Passing', tone: 'green' },
-    { studentId: 'mt-012', attendanceRate: '72%', grade: 71, status: 'Failing', tone: 'red' },
-    { studentId: 'sc-013', attendanceRate: '94%', grade: 85, status: 'Passing', tone: 'green' },
-    { studentId: 'gb-014', attendanceRate: '80%', grade: 76, status: 'Near Failing', tone: 'orange' },
-    { studentId: 'jd-004', attendanceRate: '93%', grade: 86, status: 'Passing', tone: 'green' }
-  ]).map(progress => {
-    const records = getTeacherAttendanceRecords().filter(record => record.studentId === progress.studentId);
-    const attended = records.filter(record => ['present', 'late', 'excused'].includes(record.status)).length;
-    return records.length
-      ? { ...progress, attendanceRate: Math.round((attended / records.length) * 100) + '%' }
-      : progress;
-  });
-
   function renderTeacherStudentList() {
     const tbody = document.getElementById('studentTbody');
     if (!tbody) return;
     const students = isBackendGradeMode()
       ? getGradeStudents()
       : (isBackendAttendanceMode() ? getAttendanceStudents() : STUDENTS);
-    const progressByStudent = Object.fromEntries(STUDENT_PROGRESS.map(record => [record.studentId, record]));
-    const gradeColor = { green: '#16a34a', orange: '#d97706', red: 'var(--red)' };
+    const attendanceByStudent = new Map();
+    if (isBackendAttendanceMode() && !BACKEND_ATTENDANCE_HISTORY_ERROR) {
+      getTeacherAttendanceRecords().forEach(record => {
+        const records = attendanceByStudent.get(record.studentId) || [];
+        records.push(record);
+        attendanceByStudent.set(record.studentId, records);
+      });
+    }
+    const selectedPeriod = document.getElementById('academicPeriodSelect')?.value || ACTIVE_ACADEMIC_PERIOD_ID;
+    const publishedGrades = isBackendGradeMode() ? getPublishedGradesForPeriod(selectedPeriod) : [];
+    const gradesByStudent = new Map(publishedGrades.map(grade => [String(grade.studentId), grade]));
+    const progressByStudent = Object.fromEntries(students.map(student => {
+      const attendanceRecords = attendanceByStudent.get(String(student.id)) || [];
+      const attended = attendanceRecords.filter(record => ['present', 'late', 'excused'].includes(record.status)).length;
+      const attendanceRateValue = attendanceRecords.length ? Math.round(attended / attendanceRecords.length * 100) : null;
+      const grade = gradesByStudent.get(String(student.id));
+      const gradeStatus = grade ? 'Published' : isBackendGradeMode() && !BACKEND_GRADE_ERROR ? 'Not published' : 'Not available';
+      return [String(student.id), {
+        attendanceRate: attendanceRecords.length ? `${Math.round(attended / attendanceRecords.length * 100)}%` : '—',
+        attendanceTone: attendanceRateValue == null ? 'gray' : attendanceRateValue >= 90 ? 'green' : attendanceRateValue >= 75 ? 'orange' : 'red',
+        grade: grade ? Number(grade.finalGrade).toFixed(0) : '—',
+        status: gradeStatus,
+        gradeTone: grade ? 'green' : 'gray'
+      }];
+    }));
+    const gradeColor = { green: '#16a34a', gray: 'var(--gray-400)' };
 
     tbody.innerHTML = students.length ? students.map((student, index) => {
-      const progress = progressByStudent[student.id] || { attendanceRate: '—', grade: '—', status: 'Pending', tone: 'gray' };
+      const progress = progressByStudent[String(student.id)];
       return `
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
           <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div><div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
           <td style="font-size:12px;color:var(--gray-400);">${window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '')}</td>
-          <td><span class="badge badge-${progress.tone}">${progress.attendanceRate}</span></td>
-          <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.tone] || 'var(--gray-400)'};">${progress.grade}</span></td>
-          <td><span class="badge badge-${progress.tone}">${progress.status}</span></td>
+          <td><span class="badge badge-${progress.attendanceTone}">${progress.attendanceRate}</span></td>
+          <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.gradeTone] || 'var(--gray-400)'};">${progress.grade}</span></td>
+          <td><span class="badge badge-${progress.gradeTone}">${progress.status}</span></td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
@@ -1916,54 +2015,77 @@
   let TEACHER_SECTION_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
   let pendingReopenAcademicPeriodId = null;
   let reopenExpirationTimer = null;
+   let gradeAccessRequestNumber = 0;
+   const gradeEditAccessByTerm = new Map();
 
   function academicPeriodName(periodId) {
     return ACADEMIC_PERIODS.find(period => period.id === periodId)?.name || 'Grading period';
   }
 
-  function getReopenRequests() {
-    return window.EDUGNAY_CONFIG.getReopenRequests({
-      schoolId: TEACHER_SECTION_SCHOOL_ID,
-      teacherId: CURRENT_TEACHER_ID,
-      sectionId: CURRENT_SECTION_ID,
-      subjectId: CURRENT_SUBJECT_ID
-    });
-  }
+   function isReopenBackendMode() {
+     return Boolean(window.EDUGNAY_API?.isBackendAvailable);
+   }
 
   function findReopenRequest(academicPeriodId) {
-    return getReopenRequests()
-      .filter(request => request.academicPeriodId === academicPeriodId)
-      .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt))[0];
+     const termId = getBackendTermId(academicPeriodId);
+     return termId ? gradeEditAccessByTerm.get(String(termId))?.request || null : null;
   }
 
   function openReopenModal() {
     document.getElementById('reopenModalSub').textContent =
       'Ask the admin to unlock ' + academicPeriodName(pendingReopenAcademicPeriodId) + ' for ' + CURRENT_SECTION + ' · ' + CURRENT_SUBJECT + '.';
     document.getElementById('reopenReasonInput').value = '';
+    document.getElementById('reopenRequestFeedback').hidden = true;
     openModal('reopenRequestModal');
   }
 
   async function submitReopenRequest() {
     const reason = document.getElementById('reopenReasonInput').value.trim();
-    if (!reason) { alert('Please describe why you need this grading period reopened.'); return; }
+    const feedback = document.getElementById('reopenRequestFeedback');
+    feedback.hidden = true;
+    if (!reason) {
+      feedback.textContent = 'Please describe why you need this grading period reopened.';
+      feedback.hidden = false;
+      return;
+    }
+     const academicTermId = getBackendTermId(pendingReopenAcademicPeriodId);
+     if (!isBackendGradeMode() || !academicTermId) {
+       feedback.textContent = 'The selected grading period is not available from the backend. Reload the page and try again.';
+       feedback.hidden = false;
+       return;
+     }
 
+    const button = document.getElementById('submitReopenRequestButton');
+    if (button.disabled) return;
+    const originalButton = button.innerHTML;
+    button.disabled = true;
+    button.textContent = 'Sending...';
+    let submitted = false;
     try {
-      await window.EDUGNAY_CONFIG.createReopenRequest({
-        schoolId: TEACHER_SECTION_SCHOOL_ID,
-        teacherId: CURRENT_TEACHER_ID,
+       await window.EDUGNAY_API.createGradingPeriodReopenRequest({
         sectionId: CURRENT_SECTION_ID,
         subjectId: CURRENT_SUBJECT_ID,
-        academicPeriodId: pendingReopenAcademicPeriodId,
+         academicTermId,
         reason
       });
+      submitted = true;
       closeModal('reopenRequestModal');
-      switchAcademicPeriod(pendingReopenAcademicPeriodId);
+       await switchAcademicPeriod(pendingReopenAcademicPeriodId);
+      showAppToast('Reopen request submitted.');
     } catch (error) {
-      alert(error.message);
+      if (submitted) showAppToast('Reopen request submitted, but the status could not refresh. Reload the page to verify it.', 'info');
+      else {
+        feedback.textContent = error.message || 'The reopen request could not be sent.';
+        feedback.hidden = false;
+      }
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalButton;
+      lucide.createIcons();
     }
   }
 
-  function renderLockBannerState(academicPeriodId, reopened) {
+   function renderLockBannerState(academicPeriodId, access, reopened) {
     pendingReopenAcademicPeriodId = academicPeriodId;
     const req = findReopenRequest(academicPeriodId);
     const periodName = academicPeriodName(academicPeriodId);
@@ -1972,10 +2094,24 @@
     const actionEl = document.getElementById('quarterLockAction');
     const banner   = document.getElementById('quarterLockBanner');
     const adminMessage = req?.extensionReason || req?.adminNote;
+    const requestState = req?.status;
 
     const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+     const termStatus = access?.termStatus || period?.status;
 
-    if (period?.status === 'upcoming') {
+     if (access?.error) {
+       banner.style.background = 'var(--gray-100)';
+       titleEl.style.color = 'var(--gray-700)';
+       titleEl.textContent = 'Editing access could not be verified';
+       descEl.textContent = access.error;
+       actionEl.innerHTML = '';
+     } else if (access?.academicYearStatus && access.academicYearStatus !== 'active') {
+       banner.style.background = 'var(--gray-100)';
+       titleEl.style.color = 'var(--gray-700)';
+       titleEl.textContent = access.academicYearStatus === 'archived' ? 'School year archived' : 'School year is closed';
+       descEl.textContent = 'Records outside the active school year are read-only.';
+       actionEl.innerHTML = '';
+     } else if (termStatus === 'upcoming') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = periodName + ' has not started';
@@ -1987,26 +2123,26 @@
       titleEl.textContent = periodName + ' temporarily reopened';
       descEl.textContent = 'Scores are editable until ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + (adminMessage ? '. Admin note: "' + adminMessage + '"' : '.');
       actionEl.innerHTML = '<span class="badge badge-green"><i data-lucide="unlock" style="width:10px;height:10px;"></i> Reopened</span>';
-    } else if (req && req.status === 'pending') {
+    } else if (req && requestState === 'pending') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = 'Reopen Requested: Awaiting Admin Response';
       descEl.textContent = 'You asked to reopen ' + periodName + ' on ' +
         new Date(req.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '. You\'ll be notified once the admin responds.';
       actionEl.innerHTML = '<span class="badge badge-gray"><i data-lucide="clock" style="width:10px;height:10px;"></i> Pending</span>';
-    } else if (req && req.status === 'rejected') {
+    } else if (req && requestState === 'rejected') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = 'Reopen Request Rejected';
       descEl.textContent = req.adminNote ? 'Admin note: "' + req.adminNote + '"' : 'This grading period is closed. Scores are read-only.';
       actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
-    } else if (req && req.status === 'revoked') {
+    } else if (req && requestState === 'revoked') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = 'Temporary Access Revoked';
       descEl.textContent = req.revokeReason ? 'Admin reason: "' + req.revokeReason + '"' : 'Score editing has been locked by the school administrator.';
       actionEl.innerHTML = '<button class="top-btn secondary" onclick="openReopenModal()"><i data-lucide="unlock" style="width:13px;height:13px;"></i> Request Again</button>';
-    } else if (req && window.EDUGNAY_CONFIG.getReopenRequestState(req) === 'expired') {
+     } else if (req && requestState === 'expired') {
       banner.style.background = 'var(--gray-100)';
       titleEl.style.color = 'var(--gray-700)';
       titleEl.textContent = 'Reopen Access Expired';
@@ -2024,24 +2160,54 @@
     lucide.createIcons();
   }
 
-  function switchAcademicPeriod(academicPeriodId) {
+   async function switchAcademicPeriod(academicPeriodId) {
     const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
-    const req = findReopenRequest(academicPeriodId);
-    const reopened = period?.status === 'closed' && window.EDUGNAY_CONFIG.isReopenRequestActive(req);
-    const locked = period?.status !== 'active' && !reopened;
+     const requestNumber = ++gradeAccessRequestNumber;
+     pendingReopenAcademicPeriodId = academicPeriodId;
+     let access = null;
+
+     if (isReopenBackendMode()) {
+       document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(input => { input.disabled = true; });
+       const headActions = document.querySelector('#content-scores .panel-head-actions');
+       if (headActions) headActions.style.display = 'none';
+       const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
+       if (fillPerfectButton) fillPerfectButton.style.display = 'none';
+       const academicTermId = getBackendTermId(academicPeriodId);
+       try {
+         if (!academicTermId || !BACKEND_GRADE_CONTEXT?.sectionId || !BACKEND_GRADE_CONTEXT?.subjectId) {
+           throw new Error('The section, subject, or grading period is unavailable.');
+         }
+         access = await window.EDUGNAY_API.getGradeEditAccess({
+           sectionId: BACKEND_GRADE_CONTEXT.sectionId,
+           subjectId: BACKEND_GRADE_CONTEXT.subjectId,
+           academicTermId
+         });
+       } catch (error) {
+         access = { canEdit: false, termStatus: period?.status, error: error.message || 'The server could not verify editing access.' };
+       }
+       if (requestNumber !== gradeAccessRequestNumber) return;
+       if (academicTermId) gradeEditAccessByTerm.set(String(academicTermId), access);
+     }
+
+     const req = findReopenRequest(academicPeriodId);
+    const reopened = isReopenBackendMode() && access?.termStatus === 'closed' && access?.canEdit === true;
+     const locked = isReopenBackendMode()
+       ? access?.canEdit !== true
+       : period?.status !== 'active' && !reopened;
 
     clearTimeout(reopenExpirationTimer);
     reopenExpirationTimer = null;
     if (reopened) {
       const remaining = new Date(req.expiresAt).getTime() - Date.now();
-      reopenExpirationTimer = setTimeout(() => switchAcademicPeriod(academicPeriodId), Math.min(remaining + 50, 2147483647));
+       if (remaining > 0) reopenExpirationTimer = setTimeout(() => switchAcademicPeriod(academicPeriodId), Math.min(remaining + 50, 2147483647));
     }
 
     renderScoreTable(academicPeriodId);
+    renderTeacherStudentList();
     document.getElementById('scorePanelPeriodName').textContent = period?.name || 'Grading period';
     document.getElementById('publishPeriodName').textContent = period?.name || 'current grading period';
     document.getElementById('publishedPeriodName').textContent = period?.name || 'Grading period';
-    if (isBackendGradeMode()) {
+      if (isBackendGradeMode()) {
       updatePublishedGradesBanner(academicPeriodId);
     } else {
       document.getElementById('publishedPeriodStatus').textContent = 'Demo mode publication status is not saved to the database.';
@@ -2051,7 +2217,7 @@
     const showLockBanner = locked || reopened;
     document.getElementById('quarterLockBanner').style.display = showLockBanner ? 'flex' : 'none';
     document.getElementById('quarterLockBadge').style.display = locked ? 'inline-flex' : 'none';
-    if (showLockBanner) renderLockBannerState(academicPeriodId, reopened);
+     if (showLockBanner) renderLockBannerState(academicPeriodId, access, reopened);
 
     document.querySelectorAll('#scoreTable .score-input:not(.readonly-score)').forEach(inp => {
       inp.disabled = locked;
@@ -2059,29 +2225,37 @@
 
     const headActions = document.querySelector('#content-scores .panel-head-actions');
     if (headActions) headActions.style.display = locked ? 'none' : 'flex';
+     const publishButton = document.getElementById('publishGradesButton');
+     if (publishButton) publishButton.style.display = canPublishGradePeriod(academicPeriodId) ? 'inline-flex' : 'none';
     const republishButton = document.getElementById('republishGradesButton');
-    if (republishButton && !isBackendGradeMode()) republishButton.style.display = locked ? 'none' : 'inline-flex';
+     if (republishButton && !canPublishGradePeriod(academicPeriodId)) republishButton.style.display = 'none';
     const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
     if (fillPerfectButton) fillPerfectButton.style.display = locked ? 'none' : 'inline-flex';
   }
 
-  function hasScoreEditingAccess(academicPeriodId) {
-    if (isBackendGradeMode()) {
-      const backendTerm = BACKEND_TERMS.find(term => String(term.id) === String(academicPeriodId))
-        || BACKEND_TERMS.find(term => String(term.id) === String(getBackendTermId(academicPeriodId)));
-      return backendTerm?.status === 'active';
-    }
-    const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
-    if (period?.status === 'active') return true;
-    return period?.status === 'closed'
-      && window.EDUGNAY_CONFIG.isReopenRequestActive(findReopenRequest(academicPeriodId));
-  }
+   function hasScoreEditingAccess(academicPeriodId) {
+     if (isReopenBackendMode()) {
+       const termId = getBackendTermId(academicPeriodId);
+       return Boolean(termId && gradeEditAccessByTerm.get(String(termId))?.canEdit === true);
+     }
+     const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+     return period?.status === 'active';
+   }
+
+   function canPublishGradePeriod(academicPeriodId) {
+     const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
+     if (!isReopenBackendMode()) return period?.status === 'active';
+     if (!isBackendGradeMode()) return false;
+     const termId = getBackendTermId(academicPeriodId);
+     const access = termId ? gradeEditAccessByTerm.get(String(termId)) : null;
+     return period?.status === 'active' && access?.academicYearStatus === 'active';
+   }
 
   function requireScoreEditingAccess(academicPeriodId) {
-    if (hasScoreEditingAccess(academicPeriodId)) return true;
+     if (hasScoreEditingAccess(academicPeriodId)) return true;
     Object.values(scoreSaveTimers).forEach(timer => clearTimeout(timer));
     scoreSaveTimers = {};
-    switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
+     void switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
     alert(academicPeriodName(academicPeriodId) + ' is locked. Request temporary access before changing scores.');
     return false;
   }
@@ -2171,7 +2345,8 @@
         BACKEND_GRADING_ITEMS.push(item);
         closeModal('addCompModal');
         renderScoreTable(periodId);
-      }).catch(error => alert(error.message));
+        showAppToast('Gradebook item added.');
+      }).catch(error => showAppToast(error.message || 'The gradebook item could not be added.', 'error'));
       return;
     }
 
@@ -2488,11 +2663,20 @@
   }
 
   async function saveBackendStudentScore(gradingItemId, studentId, value) {
-    const saved = await window.EDUGNAY_API.saveStudentScore({
-      gradingItemId,
-      studentId,
-      score: value === '' ? null : Number(value)
-    });
+     let saved;
+     try {
+       saved = await window.EDUGNAY_API.saveStudentScore({
+         gradingItemId,
+         studentId,
+         score: value === '' ? null : Number(value)
+       });
+     } catch (error) {
+       const item = BACKEND_GRADING_ITEMS.find(record => String(record.id) === String(gradingItemId));
+       if (isReopenBackendMode() && item && [403, 409].includes(error.status)) {
+         await switchAcademicPeriod(item.academicPeriodId);
+       }
+       throw error;
+     }
     if (!saved) throw new Error('The score could not be saved.');
     const index = BACKEND_STUDENT_SCORES.findIndex(record =>
       String(record.gradingItemId) === String(gradingItemId) && String(record.studentId) === String(studentId)
@@ -2970,6 +3154,7 @@
       recordedAt
     }));
 
+    let confirmed = false;
     try {
       if (isBackendAttendanceMode()) {
         const savedData = await window.EDUGNAY_API.confirmQrAttendance(qrAttendanceContext.sessionId, records);
@@ -2979,15 +3164,16 @@
         const savedRecords = await window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
         if (savedRecords.length !== records.length) throw new Error('Attendance records were incomplete.');
       }
+      confirmed = true;
       qrAttendanceSaving = false;
       await loadAttendanceForDate(APP_TODAY);
       renderAttendanceHistory();
       closeModal('qrAttendanceModal');
-      showAttendanceSavedState();
+      showAppToast('QR attendance confirmed.');
     } catch (error) {
       qrAttendanceSaving = false;
       button.disabled = false;
-      alert(error?.message || 'Attendance could not be saved. Please try again.');
+      showAppToast(confirmed ? `QR attendance was confirmed, but the view could not refresh: ${error?.message || 'Reload the page.'}` : error?.message || 'Attendance could not be saved. Please try again.', confirmed ? 'info' : 'error');
     }
   }
 
@@ -3295,34 +3481,26 @@
       return;
     }
 
+    let saved = false;
     try {
       if (isBackendAttendanceMode()) {
         const savedData = await window.EDUGNAY_API.saveSectionAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, {
           attendanceDate: date,
           records
         });
+        saved = true;
         BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
         await loadAttendanceForDate(date);
       } else {
         await window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
+        saved = true;
         renderTeacherAttendanceRows();
         renderAttendanceHistory();
       }
-      showAttendanceSavedState();
+      showAppToast('Attendance saved.');
     } catch (error) {
-      alert(error?.message || 'Attendance could not be saved. Please try again.');
+      showAppToast(saved ? `Attendance was saved, but the view could not refresh: ${error?.message || 'Reload the page.'}` : error?.message || 'Attendance could not be saved. Please try again.', saved ? 'info' : 'error');
     }
-  }
-
-  function showAttendanceSavedState() {
-    const btn = document.querySelector('#content-attendance .top-btn.primary');
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Saved';
-    lucide.createIcons();
-    setTimeout(() => {
-      btn.innerHTML = originalHtml;
-      lucide.createIcons();
-    }, 1500);
   }
 
   /* ── STUDENT FILTER ── */
@@ -3421,7 +3599,7 @@
 
     if (BACKEND_GRADE_ERROR) throw new Error(BACKEND_GRADE_ERROR);
     const academicPeriodId = document.getElementById('academicPeriodSelect').value;
-    if (!hasScoreEditingAccess(academicPeriodId)) {
+    if (!canPublishGradePeriod(academicPeriodId)) {
       throw new Error('Only the active grading period can be published.');
     }
 
@@ -3477,7 +3655,7 @@
         return;
       }
 
-      if (!hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
+      if (!canPublishGradePeriod(document.getElementById('academicPeriodSelect').value)) {
         throw new Error('Only the active grading period can be published.');
       }
 
@@ -3489,9 +3667,9 @@
           subjectId: scope.subjectId
         });
         updatePublishedGradesBanner(document.getElementById('academicPeriodSelect').value);
-        alert(`Grades published for ${result.publishedCount} students.`);
+        showAppToast(`Grades published for ${result.publishedCount} students.`);
       } catch (refreshError) {
-        alert(`Grades were published for ${result.publishedCount} students, but the status could not refresh. Reload the page to verify it.`);
+        showAppToast(`Grades were published for ${result.publishedCount} students, but the status could not refresh. Reload the page to verify it.`, 'info');
       }
     } catch (error) {
       setPublishGradeFeedback(error.message || 'Grades could not be published.', true);
@@ -3545,20 +3723,7 @@
     const button = event.target.closest('[data-delete-assignment]');
     if (!button) return;
     const assignmentId = button.dataset.deleteAssignment;
-    if (!window.confirm('Delete this assignment? Assignments with submissions or score records cannot be deleted.')) return;
-
-    button.disabled = true;
-    try {
-      await window.EDUGNAY_API.deleteAssignment(assignmentId);
-      BACKEND_ASSIGNMENTS = BACKEND_ASSIGNMENTS.filter(item => String(item.id) !== String(assignmentId));
-      BACKEND_SUBMISSIONS.delete(String(assignmentId));
-      closeAssignmentMenus();
-      renderAssignments();
-      renderScoreTable(document.getElementById('academicPeriodSelect').value);
-    } catch (error) {
-      window.alert(error.message || 'The assignment could not be deleted.');
-      button.disabled = false;
-    }
+    openTeacherDeleteModal('assignment', assignmentId, button.dataset.assignmentTitle);
   });
 
   document.addEventListener('keydown', event => {
@@ -3614,7 +3779,7 @@
                 <button class="assignment-menu-item" type="button" role="menuitem" onclick="closeAssignmentMenus(); openEditAssignmentModal('${a.id}')">
                   <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Assignment
                 </button>
-                ${BACKEND_SECTION_MODE ? `<button class="assignment-menu-item delete" type="button" role="menuitem" data-delete-assignment="${window.EDUGNAY_CONFIG.escapeHtml(a.id)}">
+                ${BACKEND_SECTION_MODE ? `<button class="assignment-menu-item delete" type="button" role="menuitem" data-delete-assignment="${window.EDUGNAY_CONFIG.escapeHtml(a.id)}" data-assignment-title="${window.EDUGNAY_CONFIG.escapeHtml(a.title)}">
                   <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Assignment
                 </button>` : ''}
               </div>
@@ -3686,7 +3851,7 @@
           <button class="row-btn edit" type="button" data-material-action="${isDraft ? 'publish' : 'preview'}" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(material.id)}">
             <i data-lucide="${isDraft ? 'send' : 'eye'}" style="width:11px;height:11px;"></i> ${isDraft ? 'Publish' : 'Preview'}
           </button>
-          <button class="row-btn danger" type="button" data-material-action="remove" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(material.id)}" aria-label="Permanently delete ${window.EDUGNAY_CONFIG.escapeHtml(material.title)}">
+          <button class="row-btn danger" type="button" data-material-action="remove" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(material.id)}" data-material-title="${window.EDUGNAY_CONFIG.escapeHtml(material.title)}" aria-label="Permanently delete ${window.EDUGNAY_CONFIG.escapeHtml(material.title)}">
             <i data-lucide="trash-2" style="width:11px;height:11px;"></i>
           </button>
         </div>
@@ -3737,10 +3902,10 @@
         materialUploadInProgress = false;
         closeModal('uploadModal');
         await loadBackendMaterials();
-        showTeacherMaterialsFeedback(backendMaterialsError
+        showAppToast(backendMaterialsError
           ? `The file was uploaded, but the materials list could not refresh: ${backendMaterialsError}`
           : `"${title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`,
-        backendMaterialsError ? 'error' : '');
+        backendMaterialsError ? 'info' : 'success');
       } else {
         const material = window.EDUGNAY_CONFIG.createLearningMaterial({
           schoolId: TEACHER_SECTION_SCHOOL_ID,
@@ -3761,7 +3926,7 @@
         renderTeacherMaterials();
         materialUploadInProgress = false;
         closeModal('uploadModal');
-        showTeacherMaterialsFeedback(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`);
+        showAppToast(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`, 'info');
       }
     } catch (error) {
       setMaterialUploadHelp(error.message || 'Upload failed. Your file is still selected; try again.', 'error');
@@ -3785,13 +3950,16 @@
       window.open(window.EDUGNAY_API.materialFileUrl(materialId), '_blank', 'noopener');
       return;
     }
-    if (action === 'remove' && !window.confirm('Permanently delete this material and its uploaded file? This cannot be undone.')) return;
+    if (action === 'remove') {
+      openTeacherDeleteModal('material', materialId, button.dataset.materialTitle);
+      return;
+    }
     button.disabled = true;
     try {
       if (action === 'publish') await window.EDUGNAY_API.updateMaterial(materialId, 'published');
-      else if (action === 'remove') await window.EDUGNAY_API.deleteMaterial(materialId);
       await loadBackendMaterials();
-    } catch (error) { alert(error.message); button.disabled = false; }
+      showAppToast(backendMaterialsError ? 'Material updated, but the list could not refresh. Reload the page to verify it.' : 'Material published.', backendMaterialsError ? 'info' : 'success');
+    } catch (error) { showAppToast(error.message || 'The material could not be updated.', 'error'); button.disabled = false; }
   });
 
   async function addAssignment() {
@@ -3848,8 +4016,9 @@
         closeModal('addAssignmentModal');
         renderAssignments();
         renderScoreTable(academicPeriodId);
+        showAppToast('Assignment added.');
       } catch (error) {
-        alert(error.message);
+        showAppToast(error.message || 'The assignment could not be added.', 'error');
       }
       return;
     }
@@ -3982,8 +4151,9 @@
         activeAssignmentId = null;
         renderAssignments();
         renderScoreTable(document.getElementById('academicPeriodSelect').value);
+        showAppToast('Assignment updated.');
       } catch (error) {
-        alert(error.message);
+        showAppToast(error.message || 'The assignment could not be updated.', 'error');
       }
       return;
     }
@@ -4117,6 +4287,7 @@
       if (index >= 0) BACKEND_STUDENT_SCORES[index] = saved;
       else BACKEND_STUDENT_SCORES.push(saved);
     } catch (error) {
+      if ([403, 409].includes(error.status)) await switchAcademicPeriod(assignment.academicPeriodId);
       alert(error.message);
       return;
     }
@@ -4255,7 +4426,7 @@
     if (studentGradePeriodName) {
       studentGradePeriodName.textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
     }
-    switchAcademicPeriod(ACTIVE_ACADEMIC_PERIOD_ID);
+     await switchAcademicPeriod(ACTIVE_ACADEMIC_PERIOD_ID);
 
     renderAssignments();
     await loadBackendMaterials();
@@ -4263,15 +4434,11 @@
     await loadAttendanceForDate(APP_TODAY);
 
     const pageParams = new URLSearchParams(window.location.search);
-    if (pageParams.get('tab') === 'attendance') {
+    if (pageParams.get('tab') === 'scores') {
+      switchTab('scores');
+    } else if (pageParams.get('tab') === 'attendance') {
       switchTab('attendance');
       if (pageParams.get('action') === 'qr') openQrAttendance();
-    }
-  });
-
-  window.addEventListener('storage', event => {
-    if (event.key === `edugnay_reopen_requests:${TEACHER_SECTION_SCHOOL_ID}`) {
-      switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
     }
   });
 
@@ -4288,6 +4455,10 @@
       if (document.getElementById('qrAttendanceModal').classList.contains('open')) {
         closeModal('qrAttendanceModal');
       }
+    }
+
+    if (isReopenBackendMode()) {
+      void switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
     }
   });
 

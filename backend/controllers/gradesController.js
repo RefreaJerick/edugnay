@@ -1,4 +1,6 @@
 const { getDatabase } = require('../config/database');
+const { writeAuditLog } = require('../utils/auditLog');
+const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 
 function createError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
 function parseId(value, label) { const id = Number.parseInt(value, 10); if (!Number.isSafeInteger(id) || id < 1) throw createError(`Invalid ${label}.`); return id; }
@@ -6,22 +8,90 @@ function text(value, maximum, label) { const result = String(value || '').trim()
 function optionalText(value, maximum, label) { if (value === undefined || value === null) return null; const result = String(value).trim(); if (result.length > maximum) throw createError(`${label} is too long.`); return result || null; }
 function scoreValue(value, label, required = true) { if (value === undefined || value === null || value === '') { if (required) throw createError(`${label} is required.`); return null; } const score = Number(value); if (!Number.isFinite(score) || score < 0 || score > 1000000) throw createError(`${label} is invalid.`); return Math.round(score * 100) / 100; }
 
-async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId) {
-  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id WHERE section_teachers.teacher_user_id=? AND section_teachers.section_id=? AND section_teachers.subject_id=? AND sections.status='active' LIMIT 1`, [teacherId, sectionId, subjectId]);
+async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, schoolId) {
+  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
   return rows[0] || null;
 }
 
 async function getManagedGradingItem(connection, user, gradingItemId) {
-  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id WHERE grading_items.id=? AND sections.school_id=? LIMIT 1`, [gradingItemId, user.schoolId]);
+  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
   const item = rows[0];
-  if (!item || (user.role === 'teacher' && item.teacherUserId !== user.id)) return null;
+  if (!item || (user.role === 'teacher' && Number(item.teacherUserId) !== Number(user.id))) return null;
+  if (item.academicYearStatus === 'archived') throw createError('Records from an archived school year are read-only.', 409);
   return item;
 }
 
-async function validateGradeItemScope(connection, section, academicTermId, gradingCategoryId) {
-  const [terms] = await connection.execute("SELECT id FROM academic_terms WHERE id=? AND academic_year_id=? AND school_level_id=? AND status='active' LIMIT 1", [academicTermId, section.academicYearId, section.schoolLevelId]);
+async function assertGradeWriteAccess(connection, user, scope) {
+  if (!['teacher', 'school_admin'].includes(user.role)) throw createError('You do not have access to edit grades.', 403);
+
+  const [terms] = await connection.execute(
+    `SELECT academic_terms.status AS academicTermStatus,
+      academic_years.status AS academicYearStatus
+     FROM academic_terms
+     INNER JOIN sections ON sections.id = ?
+       AND sections.academic_year_id = academic_terms.academic_year_id
+       AND sections.school_level_id = academic_terms.school_level_id
+       AND sections.school_id = ? AND sections.status = 'active'
+     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+       AND academic_years.school_id = sections.school_id
+     WHERE academic_terms.id = ? FOR UPDATE`,
+    [scope.sectionId, user.schoolId, scope.academicTermId]
+  );
+  if (!terms.length) throw createError('The grading period no longer matches this section.', 404);
+  const termStatus = terms[0].academicTermStatus;
+  if (terms[0].academicYearStatus !== 'active') throw createError('Records outside the active school year are read-only.', 409);
+
+  if (user.role === 'teacher') {
+    const [assignments] = await connection.execute(
+      `SELECT 1 FROM section_teachers
+       INNER JOIN sections ON sections.id = section_teachers.section_id
+         AND sections.school_id = ? AND sections.status = 'active'
+       INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+         AND subjects.school_id = sections.school_id
+       INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id
+         AND teachers.school_id = sections.school_id AND teachers.role = 'teacher'
+         AND teachers.account_status = 'active'
+       WHERE section_teachers.teacher_user_id = ?
+         AND section_teachers.section_id = ? AND section_teachers.subject_id = ? LIMIT 1 FOR UPDATE`,
+      [user.schoolId, user.id, scope.sectionId, scope.subjectId]
+    );
+    if (!assignments.length) throw createError('You are not assigned to this section and subject.', 403);
+  }
+
+  if (termStatus === 'active') return;
+  if (termStatus !== 'closed' || user.role !== 'teacher') {
+    throw createError('This grading period is locked. An approved, unexpired teacher request is required.', 409);
+  }
+
+  const [approvals] = await connection.execute(
+    `SELECT id FROM grading_period_reopen_requests
+     WHERE school_id = ? AND academic_term_id = ? AND section_id = ? AND subject_id = ?
+       AND teacher_user_id = ? AND request_status = 'approved' AND expires_at > NOW()
+     LIMIT 1 FOR UPDATE`,
+    [user.schoolId, scope.academicTermId, scope.sectionId, scope.subjectId, user.id]
+  );
+  if (!approvals.length) throw createError('This grading period is locked. An approved, unexpired teacher request is required.', 409);
+}
+
+async function validateGradeItemScope(connection, user, section, subjectId, academicTermId, gradingCategoryId) {
+  const [terms] = await connection.execute(`SELECT academic_terms.id,
+      academic_terms.status AS academicTermStatus,
+      academic_years.status AS academicYearStatus
+    FROM academic_terms
+    INNER JOIN academic_years ON academic_years.id = academic_terms.academic_year_id
+    WHERE academic_terms.id = ? AND academic_terms.academic_year_id = ?
+      AND academic_terms.school_level_id = ? AND academic_years.school_id = ? LIMIT 1`,
+  [academicTermId, section.academicYearId, section.schoolLevelId, section.schoolId]);
   const [categories] = await connection.execute('SELECT id FROM grading_categories WHERE id=? AND school_id=? AND school_level_id=? LIMIT 1', [gradingCategoryId, section.schoolId, section.schoolLevelId]);
-  if (!terms.length || !categories.length) throw createError('The term or grading category does not match the active section.', 404);
+  if (!terms.length || !categories.length) throw createError('The term or grading category does not match the section.', 404);
+  await assertGradeWriteAccess(connection, user, {
+    schoolId: section.schoolId,
+    sectionId: section.id,
+    subjectId,
+    academicTermId,
+    academicTermStatus: terms[0].academicTermStatus,
+    academicYearStatus: terms[0].academicYearStatus
+  });
 }
 
 async function listGradingItems(req, res, next) {
@@ -43,29 +113,48 @@ async function listGradingItems(req, res, next) {
 
 async function createGradingItem(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const sectionId = parseId(req.body.sectionId, 'section ID'); const subjectId = parseId(req.body.subjectId, 'subject ID');
     const academicTermId = parseId(req.body.academicTermId, 'academic term ID'); const gradingCategoryId = parseId(req.body.gradingCategoryId, 'grading category ID');
-    const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId);
+    const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId, req.user.schoolId);
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
-    await validateGradeItemScope(connection, section, academicTermId, gradingCategoryId);
+    await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId);
     const title = text(req.body.title, 255, 'Grading item title'); const maxScore = scoreValue(req.body.maxScore, 'Maximum score');
     const [result] = await connection.execute('INSERT INTO grading_items (section_id, subject_id, academic_term_id, grading_category_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?)', [sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, maxScore]);
+    await connection.commit();
+    transactionStarted = false;
     res.status(201).json({ gradingItem: { id: result.insertId, sectionId, subjectId, academicTermId, gradingCategoryId, teacherUserId: req.user.id, title, maxScore } });
-  } catch (error) { next(error); } finally { connection.release(); }
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 async function updateGradingItem(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const gradingItemId = parseId(req.params.gradingItemId, 'grading item ID'); const current = await getManagedGradingItem(connection, req.user, gradingItemId);
     if (!current) throw createError('Grading item was not found.', 404);
-    const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
+    const assignedTeacherId = req.user.role === 'teacher' ? req.user.id : current.teacherUserId;
+    const section = await getTeacherSectionSubject(connection, assignedTeacherId, current.sectionId, current.subjectId, req.user.schoolId);
     if (!section) throw createError('The grading item section-subject relationship is no longer active.', 409);
+    await assertGradeWriteAccess(connection, req.user, {
+      schoolId: section.schoolId,
+      sectionId: current.sectionId,
+      subjectId: current.subjectId,
+      academicTermId: current.academicTermId,
+      academicTermStatus: current.academicTermStatus,
+      academicYearStatus: current.academicYearStatus
+    });
     const title = req.body.title === undefined ? current.title : text(req.body.title, 255, 'Grading item title'); const maxScore = req.body.maxScore === undefined ? Number(current.maxScore) : scoreValue(req.body.maxScore, 'Maximum score');
     await connection.execute('UPDATE grading_items SET title=?, max_score=? WHERE id=?', [title, maxScore, gradingItemId]);
+    await connection.commit();
+    transactionStarted = false;
     res.json({ gradingItem: { ...current, title, maxScore } });
-  } catch (error) { next(error); } finally { connection.release(); }
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 async function listStudentScores(req, res, next) {
@@ -523,6 +612,12 @@ async function publishFinalGrades(req, res, next) {
     const preview = await buildFinalGradePreview(connection, req.user, scope, true);
     if (!preview.readyToPublish) throw createError('Resolve every missing score and grading setup issue before publishing.', 409);
 
+    const gradeTrigger = await getTrigger(connection, req.user.schoolId, 'grade_below_threshold');
+    const [[level]] = gradeTrigger ? await connection.execute(
+      'SELECT passing_grade_threshold AS threshold FROM school_levels WHERE id = (SELECT school_level_id FROM sections WHERE id = ? AND school_id = ?)',
+      [preview.sectionId, req.user.schoolId]
+    ) : [[]];
+
     for (const student of preview.students) {
       await connection.execute(
         `INSERT INTO published_final_grades (
@@ -533,7 +628,20 @@ async function publishFinalGrades(req, res, next) {
           published_by_user_id = VALUES(published_by_user_id), published_at = NOW()`,
         [req.user.schoolId, preview.sectionId, preview.subjectId, preview.academicTermId, student.studentId, student.finalGrade, req.user.id]
       );
+      if (gradeTrigger && Number(student.finalGrade) < Number(level.threshold)) {
+        await notifyParents(connection, {
+          schoolId: req.user.schoolId, studentId: student.studentId, code: 'grade_below_threshold',
+          eventKey: `grade:${preview.sectionId}:${preview.subjectId}:${preview.academicTermId}:${student.studentId}`,
+          title: 'Published grade below passing',
+          message: `${student.studentName}'s published grade in ${preview.subjectName} is below the passing grade.`,
+          targetPath: '/views/parent/edugnay-parent-grades.html'
+        });
+      }
     }
+
+    await writeAuditLog(connection, req, 'final_grades_published', 'published_final_grades', null, {
+      summary: `${preview.subjectName} · ${preview.sectionName} · ${preview.academicTermName} · ${preview.students.length} students`
+    });
 
     await connection.commit();
     transactionStarted = false;
@@ -711,10 +819,18 @@ async function listPublishedFinalGrades(req, res, next) {
 async function upsertStudentScore(connection, user, gradingItemId, studentId, body) {
   const item = await getManagedGradingItem(connection, user, gradingItemId);
   if (!item) throw createError('Grading item was not found.', 404);
+  await assertGradeWriteAccess(connection, user, {
+    schoolId: user.schoolId,
+    sectionId: item.sectionId,
+    subjectId: item.subjectId,
+    academicTermId: item.academicTermId,
+    academicTermStatus: item.academicTermStatus,
+    academicYearStatus: item.academicYearStatus
+  });
   const score = scoreValue(body.score, 'Score', false);
   if (score !== null && score > Number(item.maxScore)) throw createError('Score cannot exceed the maximum score.');
   const remarks = optionalText(body.remarks, 500, 'Score remarks');
-  const [students] = await connection.execute('SELECT student_user_id AS studentId FROM section_students WHERE section_id=? AND student_user_id=? AND withdrawn_at IS NULL LIMIT 1', [item.sectionId, studentId]);
+  const [students] = await connection.execute('SELECT student_user_id AS studentId FROM section_students WHERE section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL LIMIT 1 FOR UPDATE', [item.sectionId, studentId]);
   if (!students.length) throw createError('The student is not actively enrolled in this section.', 404);
   await connection.execute(`INSERT INTO student_scores (grading_item_id, student_user_id, score, remarks, recorded_by_user_id, recorded_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE score=VALUES(score), remarks=VALUES(remarks), recorded_by_user_id=VALUES(recorded_by_user_id), recorded_at=NOW()`, [gradingItemId, studentId, score, remarks, user.id]);
   const [scores] = await connection.execute('SELECT id, grading_item_id AS gradingItemId, student_user_id AS studentId, score, remarks, recorded_at AS recordedAt FROM student_scores WHERE grading_item_id=? AND student_user_id=?', [gradingItemId, studentId]);
@@ -723,23 +839,35 @@ async function upsertStudentScore(connection, user, gradingItemId, studentId, bo
 
 async function saveStudentScore(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const gradingItemId = parseId(req.body.gradingItemId, 'grading item ID');
     const studentId = parseId(req.body.studentId, 'student ID');
-    res.status(200).json({ studentScore: await upsertStudentScore(connection, req.user, gradingItemId, studentId, req.body) });
-  } catch (error) { next(error); } finally { connection.release(); }
+    const studentScore = await upsertStudentScore(connection, req.user, gradingItemId, studentId, req.body);
+    await connection.commit();
+    transactionStarted = false;
+    res.status(200).json({ studentScore });
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 async function updateStudentScore(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const scoreId = parseId(req.params.scoreId, 'student score ID');
     const [rows] = await connection.execute('SELECT id, grading_item_id AS gradingItemId, student_user_id AS studentId, score, remarks FROM student_scores WHERE id=? LIMIT 1', [scoreId]);
     const current = rows[0];
     if (!current) throw createError('Student score was not found.', 404);
     const values = { score: req.body.score === undefined ? current.score : req.body.score, remarks: req.body.remarks === undefined ? current.remarks : req.body.remarks };
-    res.json({ studentScore: await upsertStudentScore(connection, req.user, current.gradingItemId, current.studentId, values) });
-  } catch (error) { next(error); } finally { connection.release(); }
+    const studentScore = await upsertStudentScore(connection, req.user, current.gradingItemId, current.studentId, values);
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ studentScore });
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 module.exports = {
@@ -751,7 +879,6 @@ module.exports = {
   previewFinalGrades,
   publishFinalGrades,
   saveStudentScore,
-  upsertStudentScore,
   updateGradingItem,
   updateStudentScore
 };

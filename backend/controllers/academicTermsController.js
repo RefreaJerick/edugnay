@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { writeAuditLog } = require('../utils/auditLog');
 
 const PERIOD_COUNTS = { quarterly: 4, semestral: 2, trimestral: 3 };
 const YEAR_STATUSES = new Set(['upcoming', 'active', 'closed']);
@@ -95,6 +96,8 @@ async function listAcademicYears(req, res, next) {
 }
 
 async function createAcademicYear(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     const database = getDatabase();
     const label = requiredText(req.body.label, 30, 'Academic-year label');
@@ -107,21 +110,30 @@ async function createAcademicYear(req, res, next) {
       const [active] = await database.execute('SELECT id FROM academic_years WHERE school_id = ? AND status = \'active\' LIMIT 1', [req.user.schoolId]);
       if (active.length) throw createError('Close the current academic year before activating another one.', 409);
     }
-    const [result] = await database.execute(
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [result] = await connection.execute(
       'INSERT INTO academic_years (school_id, label, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
       [req.user.schoolId, label, startDate, endDate, status]
     );
+    await writeAuditLog(connection, req, 'academic_year_created', 'academic_year', result.insertId, { summary: label });
+    await connection.commit();
+    transactionStarted = false;
     const year = await getOwnedYear(req.user.schoolId, result.insertId);
     res.status(201).json({ academicYear: year });
-  } catch (error) { next(error); }
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
 async function updateAcademicYear(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     const database = getDatabase();
     const yearId = parseId(req.params.yearId);
     const current = yearId && await getOwnedYear(req.user.schoolId, yearId);
     if (!current) throw createError('Academic year was not found.', 404);
+    if (current.status === 'archived') throw createError('An archived academic year cannot be changed.', 409);
     if (current.status === 'closed') throw createError('A closed academic year cannot be changed.', 409);
     const label = req.body.label === undefined ? current.label : requiredText(req.body.label, 30, 'Academic-year label');
     const startDate = req.body.startDate === undefined ? current.startDate : date(req.body.startDate, 'Start date');
@@ -140,9 +152,15 @@ async function updateAcademicYear(req, res, next) {
       );
       if (activeTerms.length) throw createError('Complete every active term before changing the academic-year status.', 409);
     }
-    await database.execute('UPDATE academic_years SET label = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?', [label, startDate, endDate, status, yearId]);
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await connection.execute('UPDATE academic_years SET label = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?', [label, startDate, endDate, status, yearId]);
+    await writeAuditLog(connection, req, 'academic_year_updated', 'academic_year', yearId, { summary: label });
+    await connection.commit();
+    transactionStarted = false;
     res.json({ academicYear: await getOwnedYear(req.user.schoolId, yearId) });
-  } catch (error) { next(error); }
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
 async function listAcademicTerms(req, res, next) {
@@ -193,38 +211,56 @@ async function getAcademicTerm(req, res, next) {
 }
 
 async function createAcademicTerm(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     const database = getDatabase();
     const data = validateTermPayload(req.body);
     const year = await getOwnedYear(req.user.schoolId, data.academicYearId);
     const level = await getOwnedLevel(req.user.schoolId, data.schoolLevelId);
     if (!year || !level) throw createError('Academic year or school level was not found.', 404);
+    if (year.status === 'closed' || year.status === 'archived') throw createError('Grading periods cannot be added to a closed or archived school year.', 409);
     if (!level.isEnabled) throw createError('Enable the school level before configuring its terms.', 409);
     if (data.plannedStartDate < year.startDate || data.plannedEndDate > year.endDate) throw createError('Term dates must be inside the academic year.');
     if (data.sequenceNumber > PERIOD_COUNTS[level.gradingPeriodType]) throw createError(`This school level allows ${PERIOD_COUNTS[level.gradingPeriodType]} term(s).`);
-    const [result] = await database.execute(
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [result] = await connection.execute(
       'INSERT INTO academic_terms (academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date) VALUES (?, ?, ?, ?, ?, ?)',
       [data.academicYearId, data.schoolLevelId, data.name, data.sequenceNumber, data.plannedStartDate, data.plannedEndDate]
     );
+    await writeAuditLog(connection, req, 'academic_term_created', 'academic_term', result.insertId, { summary: `${data.name} · ${year.label}` });
+    await connection.commit();
+    transactionStarted = false;
     res.status(201).json({ academicTerm: await getOwnedTerm(req.user.schoolId, result.insertId) });
-  } catch (error) { next(error); }
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
 async function updateAcademicTerm(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     const database = getDatabase();
     const termId = parseId(req.params.termId);
     const current = termId && await getOwnedTerm(req.user.schoolId, termId);
     if (!current) throw createError('Academic term was not found.', 404);
+    if (current.academicYearStatus === 'archived') throw createError('An archived school year cannot be changed.', 409);
     if (current.status !== 'upcoming') throw createError('Only an upcoming term can be edited. Use the term actions after activation.', 409);
     const name = req.body.name === undefined ? current.name : requiredText(req.body.name, 80, 'Term name');
     const plannedStartDate = req.body.plannedStartDate === undefined ? current.plannedStartDate : date(req.body.plannedStartDate, 'Planned start date');
     const plannedEndDate = req.body.plannedEndDate === undefined ? current.plannedEndDate : date(req.body.plannedEndDate, 'Planned end date');
     ensureDateRange(plannedStartDate, plannedEndDate);
     if (plannedStartDate < current.academicYearStartDate || plannedEndDate > current.academicYearEndDate) throw createError('Term dates must be inside the academic year.');
-    await database.execute('UPDATE academic_terms SET name = ?, planned_start_date = ?, planned_end_date = ? WHERE id = ?', [name, plannedStartDate, plannedEndDate, termId]);
+    connection = await database.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    await connection.execute('UPDATE academic_terms SET name = ?, planned_start_date = ?, planned_end_date = ? WHERE id = ?', [name, plannedStartDate, plannedEndDate, termId]);
+    await writeAuditLog(connection, req, 'academic_term_updated', 'academic_term', termId, { summary: `${name} · ${current.academicYearLabel}` });
+    await connection.commit();
+    transactionStarted = false;
     res.json({ academicTerm: await getOwnedTerm(req.user.schoolId, termId) });
-  } catch (error) { next(error); }
+  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
 async function termAction(req, res, next) {
@@ -256,6 +292,8 @@ async function termAction(req, res, next) {
       await connection.execute('UPDATE academic_terms SET planned_end_date = ? WHERE id = ?', [newEndDate, termId]);
       await connection.execute('INSERT INTO academic_term_actions (academic_term_id, action_type, previous_end_date, new_end_date, reason, performed_by_user_id) VALUES (?, \'extended\', ?, ?, ?, ?)', [termId, term.plannedEndDate, newEndDate, reason, req.user.id]);
     } else { throw createError('Term action is invalid.'); }
+    const actionType = { activate: 'academic_term_activated', complete: 'academic_term_completed', extend: 'academic_term_extended' }[action];
+    await writeAuditLog(connection, req, actionType, 'academic_term', termId, { summary: `${term.name} · ${term.academicYearLabel}` });
     await connection.commit();
     res.json({ academicTerm: await getOwnedTerm(req.user.schoolId, termId, connection) });
   } catch (error) {
@@ -317,7 +355,7 @@ async function updateGradingCategories(req, res, next) {
     }
     await connection.beginTransaction();
     const [[level]] = await connection.execute(
-      'SELECT id, grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold FROM school_levels WHERE id = ? AND school_id = ? FOR UPDATE',
+      'SELECT id, display_name AS displayName, grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold FROM school_levels WHERE id = ? AND school_id = ? FOR UPDATE',
       [schoolLevelId, req.user.schoolId]
     );
     if (!level) throw createError('School level was not found.', 404);
@@ -341,6 +379,7 @@ async function updateGradingCategories(req, res, next) {
       'UPDATE school_levels SET grade_rounding = ?, passing_grade_threshold = ? WHERE id = ? AND school_id = ?',
       [savedRounding, savedThreshold, schoolLevelId, req.user.schoolId]
     );
+    await writeAuditLog(connection, req, 'grading_categories_updated', 'grading_categories', schoolLevelId, { summary: `${level.displayName} grading rules` });
     await connection.commit();
     const [saved] = await connection.execute('SELECT id, school_level_id AS schoolLevelId, code, name, weight FROM grading_categories WHERE school_id = ? AND school_level_id = ? ORDER BY code', [req.user.schoolId, schoolLevelId]);
     res.json({

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../../assets/css/teacher/profile.css">
   <link rel="stylesheet" href="../../assets/css/profile-common.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -60,7 +61,7 @@
         <a class="nav-item" data-teacher-access="reports" onclick="navigate('reports')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Narrative Reports</span>
-          <span class="nav-badge">5</span>
+
         </a>
         <a class="nav-item" data-teacher-access="journals" onclick="navigate('journals')">
           <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
@@ -77,7 +78,7 @@
         <a class="nav-item" onclick="navigate('announcements')">
           <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Announcements</span>
-          <span class="nav-badge gold">2</span>
+
         </a>
       </div>
 
@@ -361,7 +362,7 @@
   const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([{
     sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
   }]);
-  const TEACHER_PROFILE_API_ENABLED = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  const TEACHER_PROFILE_API_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   let teacherApiUser = null;
 
   function renderTeacherProfile(user) {
@@ -424,7 +425,7 @@
       return false;
     }
     if (!TEACHER_PROFILE_API_ENABLED) {
-      alert('Password updates require the local backend.');
+      alert('Password updates require a configured API connection.');
       return false;
     }
     try {
@@ -433,9 +434,9 @@
         body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
       });
       closeModal('changePasswordModal');
-      alert('Password updated. You have been signed out on other devices.');
+      showAppToast('Password updated. You have been signed out on other devices.');
     } catch (error) {
-      alert(error.message || 'Unable to update your password.');
+      showAppToast(error.message || 'Unable to update your password.', 'error');
     }
     return false;
   }
@@ -521,9 +522,9 @@
         teacherApiUser = response.user;
         renderTeacherProfile(teacherApiUser);
       }
-      alert('Contact number updated.');
+      showAppToast('Contact number updated.');
     } catch (error) {
-      alert(error.message || 'Unable to update your profile.');
+      showAppToast(error.message || 'Unable to update your profile.', 'error');
     }
     return false;
   }

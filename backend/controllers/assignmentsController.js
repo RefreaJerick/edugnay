@@ -103,9 +103,11 @@ function assignmentSelect() {
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
-    sections.name AS sectionName, subjects.name AS subjectName, academic_terms.name AS academicTermName,
+    sections.name AS sectionName, academic_years.status AS academicYearStatus,
+    subjects.name AS subjectName, academic_terms.name AS academicTermName,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, teachers.display_name AS teacherName
   FROM assignments INNER JOIN sections ON sections.id = assignments.section_id
+  INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
   INNER JOIN subjects ON subjects.id = assignments.subject_id
   LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id
   LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id
@@ -130,6 +132,12 @@ async function getAssignmentForManagement(connection, user, assignmentId) {
   const assignment = assignments[0];
   if (!assignment || (user.role === 'teacher' && assignment.teacherUserId !== user.id)) return null;
   return assignment;
+}
+
+function assertAssignmentYearWritable(assignment) {
+  if (assignment.academicYearStatus === 'archived') {
+    throw createError('Records from an archived school year are read-only.', 409);
+  }
 }
 
 async function validateTermAndCategory(connection, section, academicTermId, gradingCategoryId) {
@@ -245,6 +253,7 @@ async function updateStudentAssignmentStatus(req, res, next) {
     await connection.beginTransaction();
     const assignment = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
+    assertAssignmentYearWritable(assignment);
     const [currentAssignment] = await connection.execute(
       'SELECT online_submission_enabled AS onlineSubmissionEnabled FROM assignments WHERE id = ? AND school_id = ? AND teacher_user_id = ? FOR UPDATE',
       [assignmentId, req.user.schoolId, req.user.id]
@@ -315,6 +324,7 @@ async function updateAssignment(req, res, next) {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     const current = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (!current) throw createError('Assignment was not found.', 404);
+    assertAssignmentYearWritable(current);
     const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
     if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
     const academicTermId = req.body.academicTermId === undefined ? current.academicTermId : optionalId(req.body.academicTermId, 'academic term ID');
@@ -340,6 +350,7 @@ async function deleteAssignment(req, res, next) {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     const assignment = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
+    assertAssignmentYearWritable(assignment);
     const [[submissions]] = await connection.execute('SELECT COUNT(*) AS total FROM assignment_submissions WHERE assignment_id = ?', [assignmentId]);
     if (submissions.total) throw createError('Assignments with student submissions cannot be deleted.', 409);
     if (assignment.academicTermId) {
@@ -375,6 +386,7 @@ async function submitAssignment(req, res, next) {
     if (!req.file) throw createError('Attach one supported submission file.');
     const assignment = await getStudentAssignment(getDatabase(), req.user.id, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
+    assertAssignmentYearWritable(assignment);
     if (!assignment.onlineSubmissionEnabled) throw createError('Online submissions are not enabled for this assignment.', 409);
     const filePath = path.posix.join('uploads', 'assignment-submissions', req.file.filename);
     const database = getDatabase();
@@ -397,16 +409,16 @@ async function listSubmissions(req, res, next) {
       if (req.user.role !== 'student') throw createError('Assignment was not found.', 404);
       const ownAssignment = await getStudentAssignment(database, req.user.id, assignmentId);
       if (!ownAssignment) throw createError('Assignment was not found.', 404);
-      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE assignment_id = ? AND student_user_id = ? AND file_path IS NOT NULL', [assignmentId, req.user.id]);
-      return res.json({ submissions: submissions.map(submission => ({
+      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE assignment_id = ? AND student_user_id = ?', [assignmentId, req.user.id]);
+      return res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
         ...submission,
         fileUrl: null
       })) });
     }
     const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id WHERE assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignmentId]);
-    res.json({ submissions: submissions.map(submission => ({
+    res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
       ...submission,
-      fileUrl: submission.filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null
+      fileUrl: filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null
     })) });
   } catch (error) { next(error); }
 }

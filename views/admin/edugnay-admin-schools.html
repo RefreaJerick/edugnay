@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/schools.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
@@ -36,8 +37,7 @@
           <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span>
         </a>
         <a href="edugnay-admin-users.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span><span
-            class="nav-badge">3</span>
+          <div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span>
         </a>
         <div class="nav-group" id="classMgmtGroup">
           <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
@@ -62,8 +62,7 @@
           <div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span>
         </a>
         <a href="edugnay-admin-announcements.html" class="nav-item">
-          <div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span><span
-            class="nav-badge gold">2</span>
+          <div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span>
         </a>
       </div>
       <div class="nav-section">
@@ -157,7 +156,6 @@
           <h1 class="page-overview-title" id="page-overview-title">School Settings</h1>
         </div>
       </section>
-      <div class="school-notice" id="schoolNotice" role="status"></div>
       <div class="school-workspace">
         <section class="school-settings-card">
           <div class="school-settings-head">
@@ -282,7 +280,7 @@
     function bindDivisionSwitcher() {
       document.querySelectorAll('[data-school-division]').forEach(button => button.addEventListener('click', () => { state.division = button.dataset.schoolDivision; renderPane(); }));
     }
-    function notify(message) { const node = document.getElementById('schoolNotice'); node.textContent = message; node.classList.add('show'); clearTimeout(notify.timer); notify.timer = setTimeout(() => node.classList.remove('show'), 3600); }
+    function notify(message) { showAppToast(message, 'error'); }
     function persistSchool() {
       const schools = window.EDUGNAY_CONFIG.getSchools();
       const index = schools.findIndex(school => school.id === state.school.id);
@@ -331,7 +329,7 @@
         notificationEmail: apiSchool.notificationEmail || null,
         schoolYear: apiSchool.currentSchoolYearLabel || school.schoolYear || null,
         platformStatus: apiSchool.registrationStatus || school.platformStatus,
-        logoUrl: apiSchool.logoPath || null
+        logoUrl: apiSchool.logoUrl || null
       };
     }
 
@@ -530,7 +528,7 @@
                 <div class="school-logo-preview" id="profileLogoPreview">
                   <span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span>
                   <img id="profileLogoImage" src="${school?.logoUrl ? window.EDUGNAY_CONFIG.escapeHtml(school.logoUrl) : ''}" alt="${window.EDUGNAY_CONFIG.escapeHtml(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}>
-                  <div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/*"></div>
+                  <div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/png,image/jpeg,image/webp"></div>
                 </div>
                 <small>The school logo is used across the school profile and portal shell.</small>
               </div>
@@ -887,9 +885,9 @@
     function readLogo(event) {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (!file.type.startsWith('image/')) {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
         event.target.value = '';
-        notify('Choose an image file for the school logo.');
+        notify('Choose a PNG, JPEG, or WebP logo no larger than 2 MB.');
         return;
       }
       const reader = new FileReader();
@@ -930,19 +928,42 @@
         };
         if (values.email.trim()) settings.email = values.email.trim();
 
+        const button = event.submitter;
+        if (button?.disabled) return;
+        const originalButton = button?.innerHTML;
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Saving...';
+        }
+        let profileSaved = false;
+        let structureSaved = false;
         try {
-          const [apiSchool, structure] = await Promise.all([
-            window.EDUGNAY_API.updateSchoolSettings(settings),
-            window.EDUGNAY_API.updateAcademicStructure(buildApiAcademicStructure(school, selectedLevels))
-          ]);
+          const apiSchool = await window.EDUGNAY_API.updateSchoolSettings(settings);
+          profileSaved = true;
           applyApiSchoolSettings(apiSchool);
+          const structure = await window.EDUGNAY_API.updateAcademicStructure(buildApiAcademicStructure(school, selectedLevels));
+          structureSaved = true;
           applyApiAcademicStructure(structure);
+          const logoFile = form.querySelector('#profileLogo')?.files?.[0];
+          if (logoFile) applyApiSchoolSettings(await window.EDUGNAY_API.updateSchoolLogo(logoFile));
           state.logoData = '';
           applyApiContext();
           renderAll();
-          notify('School profile saved.');
+          showAppToast('School profile saved.');
         } catch (error) {
-          notify(error.message || 'The school profile could not be saved.');
+          if (profileSaved) {
+            applyApiContext();
+            renderAll();
+            showAppToast(`School details were saved, but ${structureSaved ? 'the logo' : 'school levels'} were not: ${error.message || 'Please try again.'}`, 'info');
+          } else {
+            showAppToast(error.message || 'The school profile could not be saved.', 'error');
+          }
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.innerHTML = originalButton;
+            lucide.createIcons();
+          }
         }
         return;
       }
@@ -976,7 +997,7 @@
       persistSchool();
       window.refreshEdUgnayShellContext?.();
       renderAll();
-      notify('School profile saved.');
+      showAppToast('School profile saved in local demo data.', 'info');
     }
     async function saveAcademic(event) {
       event.preventDefault();
@@ -999,7 +1020,7 @@
           applyApiAcademicStructure(structure);
           applyApiContext();
           renderAll();
-          notify(`${levelLabel(level)} academic structure saved.`);
+          showAppToast(`${levelLabel(level)} academic structure saved.`);
         } catch (error) {
           notify(error.message || 'The academic structure could not be saved.');
         }
@@ -1013,7 +1034,7 @@
       school.activeDivision = level;
       persistSchool();
       renderAll();
-      notify(`${levelLabel(level)} academic structure saved.`);
+      showAppToast(`${levelLabel(level)} academic structure saved in local demo data.`, 'info');
     }
 
     function changeAcademicPeriodType(event) {
@@ -1152,7 +1173,7 @@
           applyApiContext();
           renderAcademicTermsPane();
           window.refreshEdUgnayShellContext?.();
-          notify(`${levelLabel(level)} academic terms saved.`);
+          showAppToast(`${levelLabel(level)} academic terms saved.`);
           return;
         }
         await window.EDUGNAY_CONFIG.saveAcademicTermConfig(school.id, values);
@@ -1160,7 +1181,7 @@
         state.school = window.EDUGNAY_CONFIG.getActiveSchool();
         renderAcademicTermsPane();
         window.refreshEdUgnayShellContext?.();
-        notify(`${levelLabel(level)} academic terms saved.`);
+        showAppToast(`${levelLabel(level)} academic terms saved in local demo data.`, 'info');
       } catch (error) {
         notify(error.message || 'The academic terms could not be saved.');
       }
@@ -1262,7 +1283,7 @@
         renderAcademicTermsPane();
         window.refreshEdUgnayShellContext?.();
         if (typeof renderTopbarNotifs === 'function') renderTopbarNotifs();
-        notify(`Academic period ${action === 'start' ? 'started' : action === 'close' ? 'closed' : 'extended'}.`);
+        showAppToast(`Academic period ${action === 'start' ? 'started' : action === 'close' ? 'closed' : 'extended'}.`);
       } catch (error) {
         confirmButton.disabled = false;
         notify(error.message || 'The academic-period action could not be completed.');
@@ -1331,7 +1352,7 @@
           applyApiAcademicStructure(updatedStructure);
           applyApiContext();
           renderAll();
-          notify(`${levelLabel(level)} grading rules saved.`);
+          showAppToast(`${levelLabel(level)} grading rules saved.`);
         } catch (error) {
           notify(error.message || 'The grading rules could not be saved.');
         }
@@ -1344,7 +1365,7 @@
       school.activeDivision = level;
       persistSchool();
       window.refreshEdUgnayShellContext?.();
-      notify(`${levelLabel(level)} grading rules saved.`);
+      showAppToast(`${levelLabel(level)} grading rules saved in local demo data.`, 'info');
     }
     async function savePortalFeatures(event) {
       event.preventDefault();
@@ -1379,7 +1400,7 @@
           school.journalSubjectId = journalSubjectId;
           applyApiContext();
           renderAll();
-          notify('Portal features saved.');
+          showAppToast('Portal features saved.');
         } catch (error) {
           notify(error.message || 'The portal features could not be saved.');
         }
@@ -1393,7 +1414,7 @@
       persistSchool();
       window.refreshEdUgnayShellContext?.();
       renderAll();
-      notify('Portal features saved.');
+      showAppToast('Portal features saved in local demo data.', 'info');
     }
     function saveAttendance(event) {
       event.preventDefault();
@@ -1411,10 +1432,10 @@
         allowEditPastAttendance: values.has('allowEditPastAttendance')
       };
       persistSchool();
-      notify('Attendance rules saved.');
+      showAppToast('Attendance rules saved.');
     }
-    function addHoliday(event) { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); const holidays = window.EDUGNAY_CONFIG.getHolidays(); holidays.push({ id: `holiday-${Date.now()}`, date: values.date, title: values.title.trim(), detail: values.detail.trim() || 'No classes today.', type: 'holiday', appliesTo: 'all' }); window.EDUGNAY_CONFIG.saveHolidays(holidays); event.currentTarget.reset(); renderCalendarPane(); notify('Calendar notice added.'); }
-    function removeHoliday(id) { window.EDUGNAY_CONFIG.saveHolidays(window.EDUGNAY_CONFIG.getHolidays().filter(day => day.id !== id)); renderCalendarPane(); notify('Calendar notice removed.'); }
+    function addHoliday(event) { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); const holidays = window.EDUGNAY_CONFIG.getHolidays(); holidays.push({ id: `holiday-${Date.now()}`, date: values.date, title: values.title.trim(), detail: values.detail.trim() || 'No classes today.', type: 'holiday', appliesTo: 'all' }); window.EDUGNAY_CONFIG.saveHolidays(holidays); event.currentTarget.reset(); renderCalendarPane(); showAppToast('Calendar notice added in local demo data.', 'info'); }
+    function removeHoliday(id) { window.EDUGNAY_CONFIG.saveHolidays(window.EDUGNAY_CONFIG.getHolidays().filter(day => day.id !== id)); renderCalendarPane(); showAppToast('Calendar notice removed from local demo data.', 'info'); }
 
     document.getElementById('termActionForm').addEventListener('submit', submitTermAction);
     document.getElementById('closeTermActionModal').addEventListener('click', closeTermActionModal);

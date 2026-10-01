@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../../assets/css/admin/announcements.css">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -69,7 +70,7 @@
             <span class="upload-text">Click or drag an image here</span>
             <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
           </div>
-          <!-- EJS later: set src="<%= announcement.imageUrl %>" and start this wrap visible (display:block) if an image already exists, hide #editPlaceholder instead -->
+          <!-- Preview fields are populated by this page's JavaScript. -->
           <div class="image-preview-wrap" id="editPreview" style="display:none;">
             <img class="image-preview" src="https://placehold.co/600x300" alt="Preview"/>
             <button type="button" class="remove-image-btn" onclick="removeImage(event, 'editImageInput', 'editPreview', 'editPlaceholder')">
@@ -78,6 +79,7 @@
           </div>
         </div>
       </div>
+      <p id="editAnnouncementFeedback" class="dashboard-action-feedback is-error" role="alert" hidden></p>
       </form>
     </div>
     <div class="modal-footer">
@@ -138,7 +140,7 @@
     <div class="nav-section">
       <div class="nav-section-label">Main</div>
       <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
-      <a href="edugnay-admin-users.html"     class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span><span class="nav-badge">3</span></a>
+      <a href="edugnay-admin-users.html"     class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span></a>
 
       <div class="nav-group" id="classMgmtGroup">
         <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
@@ -165,7 +167,7 @@
     <div class="nav-section">
       <div class="nav-section-label">Reports</div>
       <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i></div><span class="nav-label">System Reports</span></a>
-      <a href="edugnay-admin-announcements.html" class="nav-item active"><div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span><span class="nav-badge gold">2</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item active"><div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span></a>
     </div>
 
     <div class="nav-section">
@@ -393,11 +395,13 @@
                 <input class="form-input" type="datetime-local" name="schedule"/>
               </div>
 
+              <p id="announcementFormFeedback" class="dashboard-action-feedback" role="status" aria-live="polite" hidden></p>
+
             </form>
           </div>
           <div class="compose-footer">
-            <button type="button" class="btn btn-draft" onclick="saveDraft()"><i data-lucide="file" style="width:13px;height:13px;"></i> Save Draft</button>
-            <button type="submit" form="composeAnnouncementForm" class="btn btn-post"><i data-lucide="send" style="width:13px;height:13px;"></i> Post</button>
+            <button type="button" class="btn btn-draft" id="announcementDraftButton" onclick="saveDraft()" disabled><i data-lucide="file" style="width:13px;height:13px;"></i> <span>Save Draft</span></button>
+            <button type="submit" form="composeAnnouncementForm" class="btn btn-post" id="announcementPostButton" disabled><i data-lucide="send" style="width:13px;height:13px;"></i> <span>Post</span></button>
           </div>
         </div>
       </div>
@@ -409,9 +413,19 @@
 
 <script>
   let ACTIVE_ANNOUNCEMENT_ID = null;
+  let announcementSaving = false;
+
+  function setAnnouncementFeedback(message = '') {
+    const feedback = document.getElementById('announcementFormFeedback');
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.hidden = !message;
+    feedback.classList.toggle('is-error', Boolean(message));
+  }
 
   function openModal(announcementId = null) {
     ACTIVE_ANNOUNCEMENT_ID = announcementId ? String(announcementId) : null;
+    document.getElementById('editAnnouncementFeedback').hidden = true;
     const announcement = ANNOUNCEMENTS.find(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
     const form = document.getElementById('editAnnouncementForm');
     if (announcement && form) {
@@ -453,30 +467,66 @@
   }
 
   async function saveAnnouncement(form, status) {
+    if (announcementSaving) return;
+
     const values = getAnnouncementValues(form, status);
+    setAnnouncementFeedback();
     if (!values.title || !values.body) {
-      alert('Enter an announcement title and content.');
+      setAnnouncementFeedback('Enter an announcement title and content.');
       return;
     }
-    if (!window.EDUGNAY_COMMUNICATION?.backend) {
-      window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
-      ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
+
+    const postButton = document.getElementById('announcementPostButton');
+    const draftButton = document.getElementById('announcementDraftButton');
+    const buttons = [postButton, draftButton].filter(Boolean);
+    const activeButton = status === 'draft' ? draftButton : postButton;
+    const activeLabel = activeButton?.querySelector('span');
+    const originalLabel = activeLabel?.textContent || (status === 'draft' ? 'Save Draft' : 'Post');
+    let backendEnabled = false;
+    announcementSaving = true;
+    buttons.forEach(button => { button.disabled = true; });
+    if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : 'Posting…';
+
+    try {
+      backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
+      if (backendEnabled && (form.elements.image?.files?.length || form.elements.schedule?.value)) {
+        setAnnouncementFeedback('Image attachments and scheduled posts are not supported by this API yet. Clear those optional fields to post this announcement.');
+        return;
+      }
+
+      if (backendEnabled) {
+        const announcement = await window.EDUGNAY_API.createAnnouncement(values);
+        if (!announcement) throw new Error('The server did not confirm the announcement save.');
+        ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcement.id))];
+        if (window.EDUGNAY_COMMUNICATION) window.EDUGNAY_COMMUNICATION.announcements = ANNOUNCEMENTS;
+      } else {
+        const announcement = window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
+        if (!announcement) throw new Error('The announcement could not be saved.');
+        ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
+      }
+
       form.reset();
       document.getElementById('priorityValue').value = 'normal';
+      document.querySelectorAll('#composeAnnouncementForm .priority-opt').forEach(option => {
+        option.classList.toggle('selected', option.classList.contains('p-normal'));
+      });
+      audienceCheckboxes.forEach(input => input.closest('.aud-opt')?.classList.toggle('checked', input.checked));
       renderAdminAnnouncements();
-      return;
+
+      const message = status === 'draft' ? 'Announcement saved as a draft.' : 'Announcement posted.';
+      showAppToast(backendEnabled ? message : `${message} Saved in local demo data only.`, backendEnabled ? 'success' : 'info');
+    } catch (error) {
+      showAppToast(error.message || 'The announcement could not be saved.', 'error');
+    } finally {
+      announcementSaving = false;
+      buttons.forEach(button => { button.disabled = false; });
+      if (activeLabel) activeLabel.textContent = originalLabel;
     }
-    const announcement = await window.EDUGNAY_API.createAnnouncement(values);
-    if (announcement) ANNOUNCEMENTS.unshift(announcement);
-    form.reset();
-    document.getElementById('priorityValue').value = 'normal';
-    audienceCheckboxes.forEach(input => input.closest('.aud-opt')?.classList.toggle('checked', input.checked));
-    renderAdminAnnouncements();
   }
 
   function saveDraft() {
     const form = document.getElementById('composeAnnouncementForm');
-    saveAnnouncement(form, 'draft').catch(error => alert(error.message));
+    saveAnnouncement(form, 'draft').catch(error => showAppToast(error.message || 'The announcement could not be saved.', 'error'));
   }
 
   const audienceCheckboxes = Array.from(document.querySelectorAll('.aud-opt input[type="checkbox"]'));
@@ -615,8 +665,9 @@
       ANNOUNCEMENTS = ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcementId));
       closeDeleteModal();
       renderAdminAnnouncements();
+      showAppToast('Announcement deleted.');
     } catch (error) {
-      alert(error.message || 'The announcement could not be deleted.');
+      showAppToast(error.message || 'The announcement could not be deleted.', 'error');
     } finally {
       deleteButton.disabled = false;
       deleteButton.textContent = originalLabel;
@@ -667,10 +718,16 @@
     const form = event.currentTarget;
     if (!ACTIVE_ANNOUNCEMENT_ID) return;
     const values = getAnnouncementValues(form, 'published');
+    const feedback = document.getElementById('editAnnouncementFeedback');
+    feedback.hidden = true;
     if (!values.title || !values.body) {
-      alert('Enter an announcement title and content.');
+      feedback.textContent = 'Enter an announcement title and content.';
+      feedback.hidden = false;
       return;
     }
+    const saveButton = document.querySelector('#editModal .btn-save');
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving...';
     try {
       const updated = window.EDUGNAY_COMMUNICATION?.backend
         ? await window.EDUGNAY_API.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, values)
@@ -679,18 +736,25 @@
       if (index >= 0) ANNOUNCEMENTS[index] = updated || ANNOUNCEMENTS[index];
       closeModal();
       renderAdminAnnouncements();
+      showAppToast('Announcement updated.');
     } catch (error) {
-      alert(error.message);
+      feedback.textContent = error.message || 'The announcement could not be updated.';
+      feedback.hidden = false;
+    } finally {
+      saveButton.disabled = false;
+      saveButton.textContent = 'Save Changes';
     }
   }
 
   document.getElementById('composeAnnouncementForm')?.addEventListener('submit', event => {
     event.preventDefault();
-    saveAnnouncement(event.currentTarget, 'published').catch(error => alert(error.message));
+    saveAnnouncement(event.currentTarget, 'published').catch(error => showAppToast(error.message || 'The announcement could not be posted.', 'error'));
   });
   document.getElementById('editAnnouncementForm')?.addEventListener('submit', saveEditedAnnouncement);
   document.addEventListener('DOMContentLoaded', async () => {
     await window.EDUGNAY_COMMUNICATION_READY;
+    document.getElementById('announcementDraftButton').disabled = false;
+    document.getElementById('announcementPostButton').disabled = false;
     if (window.EDUGNAY_COMMUNICATION?.backend) {
       ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
     }

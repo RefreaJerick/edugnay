@@ -1876,6 +1876,10 @@ select:not([multiple]):disabled {
 }
 .tb-dropdown-item:hover { background: var(--blue-xpale); color: var(--blue-mid); }
 .tb-dropdown-item.danger:hover { background: var(--red-pale); color: var(--red); }
+.tb-sound-toggle { white-space: nowrap; }
+.tb-sound-toggle .tb-sound-state { margin-left: auto; color: var(--blue-mid); font-size: 11px; font-weight: 700; }
+.tb-sound-toggle[aria-checked="false"] .tb-sound-state { color: var(--gray-400); }
+.tb-sound-toggle:disabled { opacity: .55; cursor: not-allowed; }
 
 .tb-dropdown-divider { height: 1px; background: var(--gray-100); margin: 4px 6px; }
 
@@ -3225,4 +3229,49 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 
 .school-academic-pane .academic-option input {
   margin-top: 0;
+}
+/* Shared confirmation for portal actions. */
+.app-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: min(400px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--green-dark);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--navy);
+  box-shadow: 0 8px 24px rgba(11, 31, 58, .18);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.app-toast[hidden] { display: none; }
+.app-toast-error { border-color: var(--red); }
+.app-toast-info { border-color: var(--blue-mid); }
+.app-toast-message { flex: 1; overflow-wrap: anywhere; }
+.app-toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+  cursor: pointer;
+}
+.app-toast-close:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: 2px; }
+.app-toast-close svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+@media (max-width: 560px) {
+  .app-toast { right: 16px; bottom: 16px; left: 16px; max-width: none; }
 }
