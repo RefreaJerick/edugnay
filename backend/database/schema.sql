@@ -228,6 +228,9 @@ CREATE TABLE IF NOT EXISTS student_profiles (
   sex VARCHAR(20) NULL,
   birth_date DATE NULL,
   birth_place_province VARCHAR(120) NULL,
+  birth_place VARCHAR(120) NULL,
+  birth_place_region VARCHAR(120) NULL,
+  birth_country VARCHAR(120) NULL,
   mother_tongue VARCHAR(120) NULL,
   indigenous_group VARCHAR(120) NULL,
   religion VARCHAR(120) NULL,
@@ -639,9 +642,13 @@ CREATE TABLE IF NOT EXISTS announcements (
   status VARCHAR(30) NOT NULL DEFAULT 'draft',
   author_user_id BIGINT UNSIGNED NOT NULL,
   image_path VARCHAR(500) NULL,
+  scheduled_at DATETIME NULL,
+  is_pinned TINYINT(1) NOT NULL DEFAULT 0,
   published_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_announcements_due (status, scheduled_at),
+  KEY idx_announcements_school_pin (school_id, status, is_pinned, published_at),
   CONSTRAINT fk_announcements_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_announcements_author FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;

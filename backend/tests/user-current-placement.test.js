@@ -23,7 +23,7 @@ const database = {
 };
 databaseModule.getDatabase = () => database;
 
-const { getUser, listUsers } = require('../controllers/usersController');
+const { getAccountSetupStatus, getUser, listUsers } = require('../controllers/usersController');
 
 async function call(handler, req) {
   const result = { status: 200, data: null, error: null };
@@ -62,4 +62,20 @@ test('admin user details returns the same database-backed current placement', as
   assert.equal(result.data.user.sectionName, 'St. Matthew');
   assert.deepEqual(queries[0].values, [10, 1]);
   assert.match(queries[0].sql, /users\.school_id = \?/);
+});
+
+test('student setup requires a country but not a birth province', async () => {
+  const student = userRows[0];
+  Object.assign(student, {
+    lrn: '100201000015', studentSex: 'male', studentBirthDate: '2013-01-10',
+    studentBirthPlace: 'Jabriya', studentBirthPlaceRegion: null, studentBirthCountry: null,
+    studentMotherTongue: 'Arabic', studentReligion: 'Islam',
+    studentHouseStreet: 'Street 1', studentBarangay: 'Area 1',
+    studentCityMunicipality: 'City', studentProvince: 'Region'
+  });
+  const missing = await call(getAccountSetupStatus, { user: { id: 10, schoolId: 1, role: 'student' } });
+  assert.deepEqual(missing.data.setup.missingFields, ['birthCountry']);
+  student.studentBirthCountry = 'Kuwait';
+  const complete = await call(getAccountSetupStatus, { user: { id: 10, schoolId: 1, role: 'student' } });
+  assert.equal(complete.data.setup.complete, true);
 });

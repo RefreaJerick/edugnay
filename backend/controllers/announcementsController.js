@@ -1,8 +1,11 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { wakeAnnouncementEmailWorker } = require('../workers/announcementEmailWorker');
+const { deleteAnnouncementImage, imageDirectory, saveAnnouncementImage } = require('../config/announcementImages');
+const fs = require('fs');
+const path = require('path');
 
-const ANNOUNCEMENT_STATUSES = new Set(['draft', 'published']);
+const ANNOUNCEMENT_STATUSES = new Set(['draft', 'scheduled', 'published']);
 const ANNOUNCEMENT_PRIORITIES = new Set(['normal', 'high', 'event']);
 const AUDIENCE_TYPES = new Set(['all', 'school_admin', 'teacher', 'student', 'parent', 'section']);
 
@@ -38,6 +41,9 @@ function normalizeAudienceType(value) {
 }
 
 function normalizeAudiences(value) {
+  if (typeof value === 'string' && value.trim().startsWith('[')) {
+    try { value = JSON.parse(value); } catch { throw createError('Announcement audiences are invalid.'); }
+  }
   const source = Array.isArray(value) ? value : [value || 'all'];
   if (!source.length || source.length > 20) throw createError('Provide at least one announcement audience.');
   const entries = source.map(item => {
@@ -55,6 +61,25 @@ function normalizeAudiences(value) {
   return entries;
 }
 
+function scheduledTime(value, status) {
+  if (status !== 'scheduled') {
+    if (value) throw createError('Only scheduled announcements can have a publication time.');
+    return null;
+  }
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    throw createError('Provide a scheduled time with a timezone.');
+  }
+  const date = new Date(value);
+  if (!value || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
+    throw createError('Choose a future date and time for the announcement.');
+  }
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function imageUrl(row) {
+  return /^[a-f0-9-]{36}\.(png|jpg|webp)$/.test(row.imagePath || '') ? `/api/announcements/${row.id}/image` : null;
+}
+
 function formatAnnouncement(row, audiences = []) {
   return {
     id: row.id,
@@ -66,6 +91,9 @@ function formatAnnouncement(row, audiences = []) {
     authorUserId: row.authorUserId,
     authorName: row.authorName,
     imagePath: row.imagePath,
+    imageUrl: imageUrl(row),
+    scheduledAt: row.scheduledAt,
+    pinned: Boolean(row.isPinned),
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -100,14 +128,16 @@ async function validateAudiences(connection, user, audiences) {
   }
 }
 
-async function getAnnouncement(connection, announcementId, user) {
+async function getAnnouncement(connection, announcementId, user, lock = false) {
   const [rows] = await connection.execute(
     `SELECT announcements.id, announcements.school_id AS schoolId, announcements.title, announcements.body,
       announcements.priority, announcements.status, announcements.author_user_id AS authorUserId,
       authors.display_name AS authorName, announcements.image_path AS imagePath,
+      DATE_FORMAT(announcements.scheduled_at, '%Y-%m-%dT%H:%i:%sZ') AS scheduledAt,
+      announcements.is_pinned AS isPinned,
       announcements.published_at AS publishedAt, announcements.created_at AS createdAt, announcements.updated_at AS updatedAt
     FROM announcements INNER JOIN users AS authors ON authors.id = announcements.author_user_id
-    WHERE announcements.id = ? AND announcements.school_id = ? LIMIT 1`,
+    WHERE announcements.id = ? AND announcements.school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
     [announcementId, user.schoolId]
   );
   return rows[0] || null;
@@ -222,11 +252,13 @@ async function listAnnouncements(req, res, next) {
       `SELECT announcements.id, announcements.school_id AS schoolId, announcements.title, announcements.body,
         announcements.priority, announcements.status, announcements.author_user_id AS authorUserId,
         authors.display_name AS authorName, announcements.image_path AS imagePath,
+        DATE_FORMAT(announcements.scheduled_at, '%Y-%m-%dT%H:%i:%sZ') AS scheduledAt,
+        announcements.is_pinned AS isPinned,
         announcements.published_at AS publishedAt, announcements.created_at AS createdAt, announcements.updated_at AS updatedAt,
         announcement_reads.read_at AS readAt
       FROM announcements INNER JOIN users AS authors ON authors.id = announcements.author_user_id
       LEFT JOIN announcement_reads ON announcement_reads.announcement_id = announcements.id AND announcement_reads.user_id = ?
-      WHERE ${visibility.where} ORDER BY announcements.published_at DESC, announcements.created_at DESC`,
+      WHERE ${visibility.where} ORDER BY announcements.is_pinned DESC, announcements.published_at DESC, announcements.created_at DESC`,
       [req.user.id, ...visibility.values]
     );
     const audienceMap = await getAnnouncementAudiences(database, rows.map(row => row.id));
@@ -236,6 +268,8 @@ async function listAnnouncements(req, res, next) {
 
 async function createAnnouncement(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let newImage;
+  let committed = false;
   try {
     if (!['school_admin', 'teacher'].includes(req.user.role)) throw createError('You do not have access to create announcements.', 403);
     const title = text(req.body.title, 255, 'Announcement title', true);
@@ -244,13 +278,16 @@ async function createAnnouncement(req, res, next) {
     const status = String(req.body.status || 'published').trim().toLowerCase();
     if (!ANNOUNCEMENT_PRIORITIES.has(priority)) throw createError('Announcement priority is invalid.');
     if (!ANNOUNCEMENT_STATUSES.has(status)) throw createError('Announcement status is invalid.');
+    if (req.body.imagePath !== undefined || req.body.pinned !== undefined) throw createError('Use the image upload and pin controls.');
+    const schedule = scheduledTime(req.body.scheduledAt, status);
     const audiences = normalizeAudiences(req.body.audiences === undefined ? req.body.audience : req.body.audiences);
+    if (req.file) newImage = await saveAnnouncementImage(req.file);
     await connection.beginTransaction();
     await validateAudiences(connection, req.user, audiences);
     const [result] = await connection.execute(
-      `INSERT INTO announcements (school_id, title, body, priority, status, author_user_id, image_path, published_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ${status === 'published' ? 'NOW()' : 'NULL'})`,
-      [req.user.schoolId, title, body, priority, status, req.user.id, text(req.body.imagePath, 500, 'Image path')]
+      `INSERT INTO announcements (school_id, title, body, priority, status, author_user_id, image_path, scheduled_at, published_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${status === 'published' ? 'NOW()' : 'NULL'})`,
+      [req.user.schoolId, title, body, priority, status, req.user.id, newImage || null, schedule]
     );
     for (const audience of audiences) await connection.execute('INSERT INTO announcement_audiences (announcement_id, audience_type, section_id) VALUES (?, ?, ?)', [result.insertId, audience.type, audience.sectionId]);
     const announcement = await getAnnouncement(connection, result.insertId, req.user);
@@ -260,24 +297,29 @@ async function createAnnouncement(req, res, next) {
     const emailQueued = recipientIds.length
       ? await queueAnnouncementEmails(connection, announcement, recipientIds)
       : false;
-    await writeAuditLog(connection, req, status === 'published' ? 'announcement_published' : 'announcement_draft_created', 'announcement', result.insertId, { summary: title });
+    await writeAuditLog(connection, req, status === 'published' ? 'announcement_published' : status === 'scheduled' ? 'announcement_scheduled' : 'announcement_draft_created', 'announcement', result.insertId, { summary: title });
     const savedAnnouncement = formatAnnouncement(announcement, audiences);
     await connection.commit();
+    committed = true;
     res.status(201).json({ announcement: savedAnnouncement });
     if (emailQueued) wakeAnnouncementEmailWorker();
   } catch (error) {
-    await connection.rollback();
+    if (!committed) await connection.rollback();
+    if (newImage && !committed) await deleteAnnouncementImage(newImage).catch(() => {});
     next(error);
   } finally { connection.release(); }
 }
 
 async function updateAnnouncement(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let newImage;
+  let oldImage;
+  let committed = false;
   try {
     if (!['school_admin', 'teacher'].includes(req.user.role)) throw createError('You do not have access to update announcements.', 403);
     const announcementId = parseId(req.params.announcementId, 'announcement ID');
     await connection.beginTransaction();
-    const current = await getAnnouncement(connection, announcementId, req.user);
+    const current = await getAnnouncement(connection, announcementId, req.user, true);
     if (!current || (req.user.role === 'teacher' && current.authorUserId !== req.user.id)) throw createError('Announcement was not found.', 404);
     const title = req.body.title === undefined ? current.title : text(req.body.title, 255, 'Announcement title', true);
     const body = req.body.body === undefined ? current.body : text(req.body.body, 20000, 'Announcement body', true);
@@ -285,16 +327,22 @@ async function updateAnnouncement(req, res, next) {
     const status = req.body.status === undefined ? current.status : String(req.body.status).trim().toLowerCase();
     if (!ANNOUNCEMENT_PRIORITIES.has(priority)) throw createError('Announcement priority is invalid.');
     if (!ANNOUNCEMENT_STATUSES.has(status)) throw createError('Announcement status is invalid.');
+    if (current.status === 'published' && status !== 'published') throw createError('Published announcements cannot be unpublished.');
+    if (req.body.imagePath !== undefined || req.body.pinned !== undefined) throw createError('Use the image upload and pin controls.');
+    const schedule = scheduledTime(status === 'scheduled' && req.body.scheduledAt === undefined ? current.scheduledAt : req.body.scheduledAt, status);
+    if (req.file && req.body.removeImage === 'true') throw createError('Choose either a replacement image or remove the current image.');
     const replaceAudiences = req.body.audiences !== undefined || req.body.audience !== undefined;
     const audiences = replaceAudiences
       ? normalizeAudiences(req.body.audiences === undefined ? req.body.audience : req.body.audiences)
       : (await getAnnouncementAudiences(connection, [announcementId])).get(announcementId) || [];
     await validateAudiences(connection, req.user, audiences);
+    if (req.file) newImage = await saveAnnouncementImage(req.file);
+    if (req.file || req.body.removeImage === 'true') oldImage = current.imagePath;
     await connection.execute(
-      `UPDATE announcements SET title = ?, body = ?, priority = ?, status = ?, image_path = ?,
+      `UPDATE announcements SET title = ?, body = ?, priority = ?, status = ?, image_path = ?, scheduled_at = ?,
         published_at = CASE WHEN ? = 'published' AND ? <> 'published' THEN NOW() ELSE published_at END
       WHERE id = ?`,
-      [title, body, priority, status, req.body.imagePath === undefined ? current.imagePath : text(req.body.imagePath, 500, 'Image path'), status, current.status, announcementId]
+      [title, body, priority, status, newImage || (req.body.removeImage === 'true' ? null : current.imagePath), schedule, status, current.status, announcementId]
     );
     if (replaceAudiences) {
       await connection.execute('DELETE FROM announcement_audiences WHERE announcement_id = ?', [announcementId]);
@@ -313,10 +361,13 @@ async function updateAnnouncement(req, res, next) {
     await writeAuditLog(connection, req, actionType, 'announcement', announcementId, { summary: title });
     const savedAnnouncement = formatAnnouncement(updated, audiences);
     await connection.commit();
+    committed = true;
+    if (oldImage) await deleteAnnouncementImage(oldImage).catch(error => console.error('Announcement image cleanup failed.', error));
     res.json({ announcement: savedAnnouncement });
     if (emailQueued) wakeAnnouncementEmailWorker();
   } catch (error) {
-    await connection.rollback();
+    if (!committed) await connection.rollback();
+    if (newImage && !committed) await deleteAnnouncementImage(newImage).catch(() => {});
     next(error);
   } finally { connection.release(); }
 }
@@ -334,7 +385,7 @@ async function deleteAnnouncement(req, res, next) {
     transactionStarted = true;
 
     const [rows] = await connection.execute(
-      `SELECT id, title, author_user_id AS authorUserId
+      `SELECT id, title, image_path AS imagePath, author_user_id AS authorUserId
       FROM announcements WHERE id = ? AND school_id = ? FOR UPDATE`,
       [announcementId, req.user.schoolId]
     );
@@ -350,6 +401,7 @@ async function deleteAnnouncement(req, res, next) {
     await writeAuditLog(connection, req, 'announcement_deleted', 'announcement', announcementId, { summary: announcement.title });
     await connection.commit();
     transactionStarted = false;
+    if (announcement.imagePath) await deleteAnnouncementImage(announcement.imagePath).catch(error => console.error('Announcement image cleanup failed.', error));
     res.status(204).send();
   } catch (error) {
     if (transactionStarted) {
@@ -371,4 +423,83 @@ async function markAnnouncementRead(req, res, next) {
   } catch (error) { next(error); } finally { connection.release(); }
 }
 
-module.exports = { createAnnouncement, deleteAnnouncement, listAnnouncements, markAnnouncementRead, updateAnnouncement };
+async function getAnnouncementImage(req, res, next) {
+  try {
+    const announcementId = parseId(req.params.announcementId, 'announcement ID');
+    const visibility = announcementVisibilitySql(req.user);
+    const [rows] = await getDatabase().execute(
+      `SELECT announcements.image_path AS imagePath FROM announcements
+      WHERE announcements.id = ? AND ${visibility.where} LIMIT 1`,
+      [announcementId, ...visibility.values]
+    );
+    const name = rows[0]?.imagePath;
+    if (!name || !/^[a-f0-9-]{36}\.(png|jpg|webp)$/.test(name)) throw createError('Announcement image was not found.', 404);
+    const mime = name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+    res.set({ 'Content-Type': mime, 'Content-Disposition': 'inline', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    fs.createReadStream(path.join(imageDirectory, name))
+      .on('error', error => next(error.code === 'ENOENT' ? createError('Announcement image was not found.', 404) : error))
+      .pipe(res);
+  } catch (error) { next(error); }
+}
+
+async function setAnnouncementPinned(req, res, next) {
+  const connection = await getDatabase().getConnection();
+  try {
+    const announcementId = parseId(req.params.announcementId, 'announcement ID');
+    if (req.user.role !== 'school_admin') throw createError('Only a school administrator can pin announcements.', 403);
+    if (typeof req.body.pinned !== 'boolean') throw createError('Pinned must be true or false.');
+    await connection.beginTransaction();
+    const [rows] = await connection.execute(
+      `SELECT id, title, status FROM announcements WHERE id = ? AND school_id = ? FOR UPDATE`,
+      [announcementId, req.user.schoolId]
+    );
+    if (!rows.length) throw createError('Announcement was not found.', 404);
+    if (rows[0].status !== 'published') throw createError('Only published announcements can be pinned.');
+    await connection.execute('UPDATE announcements SET is_pinned = ? WHERE id = ? AND school_id = ?', [req.body.pinned ? 1 : 0, announcementId, req.user.schoolId]);
+    await writeAuditLog(connection, req, req.body.pinned ? 'announcement_pinned' : 'announcement_unpinned', 'announcement', announcementId, { summary: rows[0].title });
+    const updated = formatAnnouncement(await getAnnouncement(connection, announcementId, req.user));
+    await connection.commit();
+    res.json({ announcement: updated });
+  } catch (error) {
+    await connection.rollback();
+    next(error);
+  } finally { connection.release(); }
+}
+
+async function publishDueAnnouncements() {
+  const database = getDatabase();
+  const [due] = await database.execute(
+    `SELECT announcements.id FROM announcements
+    INNER JOIN schools ON schools.id = announcements.school_id
+    WHERE announcements.status = 'scheduled' AND announcements.scheduled_at <= UTC_TIMESTAMP()
+      AND schools.registration_status = 'active'
+    ORDER BY announcements.scheduled_at, announcements.id LIMIT 20`
+  );
+  let emailQueued = false;
+  for (const item of due) {
+    const connection = await database.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [[row]] = await connection.execute(
+        `SELECT id, school_id AS schoolId, author_user_id AS authorUserId, title
+        FROM announcements WHERE id = ? AND status = 'scheduled' AND scheduled_at <= UTC_TIMESTAMP() FOR UPDATE`, [item.id]
+      );
+      if (!row) { await connection.rollback(); continue; }
+      const [[school]] = await connection.execute('SELECT registration_status AS status FROM schools WHERE id = ?', [row.schoolId]);
+      if (school?.status !== 'active') { await connection.rollback(); continue; }
+      await connection.execute("UPDATE announcements SET status = 'published', scheduled_at = NULL, published_at = NOW() WHERE id = ?", [row.id]);
+      const announcement = await getAnnouncement(connection, row.id, { schoolId: row.schoolId });
+      const audiences = (await getAnnouncementAudiences(connection, [row.id])).get(row.id) || [];
+      const recipients = await createNotifications(connection, announcement, audiences);
+      if (recipients.length) emailQueued = Boolean(await queueAnnouncementEmails(connection, announcement, recipients)) || emailQueued;
+      await writeAuditLog(connection, { user: { id: null, schoolId: row.schoolId } }, 'announcement_published', 'announcement', row.id, { summary: row.title, scheduled: true });
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      console.error('Scheduled announcement could not be published.', item.id, error);
+    } finally { connection.release(); }
+  }
+  if (emailQueued) wakeAnnouncementEmailWorker();
+}
+
+module.exports = { createAnnouncement, deleteAnnouncement, getAnnouncementImage, listAnnouncements, markAnnouncementRead, publishDueAnnouncements, setAnnouncementPinned, updateAnnouncement };

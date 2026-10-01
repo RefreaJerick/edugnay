@@ -1277,7 +1277,7 @@ function normalizeApiAnnouncement(record) {
     body: String(record.body || ''),
     priority,
     status: record.status,
-    draft: record.status === 'draft',
+    draft: record.status !== 'published',
     audienceKeys,
     audienceKey: audienceKeys.join('-'),
     audience: audiences.map(audience => {
@@ -1301,12 +1301,13 @@ function normalizeApiAnnouncement(record) {
     time: formatApiAnnouncementTime(publishedAt),
     tag: priority === 'high' ? 'Urgent' : priority === 'event' ? 'Event' : 'Normal',
     tagClass: priority === 'high' ? 'badge-red' : priority === 'event' ? 'badge-gold' : 'badge-blue',
-    seen: record.status === 'draft' ? 'Not yet published' : 'Not yet viewed',
+    seen: record.status !== 'published' ? 'Not yet published' : 'Not yet viewed',
     read: Boolean(record.isRead),
-    pinned: false,
+    pinned: record.pinned === true,
     icon: priority === 'high' ? 'alert-triangle' : priority === 'event' ? 'calendar-days' : 'megaphone',
     iconClass: priority === 'high' ? 'icon-high' : priority === 'event' ? 'icon-event' : 'icon-normal',
-    imageUrl: record.imagePath || null,
+    imageUrl: record.imageUrl ? new URL(record.imageUrl, EDUGNAY_API_BASE_URL).href : null,
+    scheduledAt: record.scheduledAt || null,
     createdAt: record.createdAt,
     publishedAt: record.publishedAt || null,
     access: null
@@ -1319,31 +1320,40 @@ async function getApiAnnouncements() {
 }
 
 async function createApiAnnouncement(values = {}) {
-  const response = await requestApi('/announcements', {
-    method: 'POST',
-    body: JSON.stringify({
-      title: values.title,
-      body: values.body,
-      priority: values.priority || 'normal',
-      status: values.status || 'published',
-      audiences: values.audiences || values.audience || ['all']
-    })
-  });
+  const fields = {
+    title: values.title, body: values.body, priority: values.priority || 'normal',
+    status: values.status || 'published', audiences: values.audiences || values.audience || ['all'],
+    scheduledAt: values.scheduledAt || null
+  };
+  const form = values.image instanceof File ? new FormData() : null;
+  if (form) {
+    Object.entries(fields).forEach(([key, value]) => { if (value !== null) form.append(key, Array.isArray(value) ? JSON.stringify(value) : value); });
+    form.append('image', values.image);
+  }
+  const response = await requestApi('/announcements', { method: 'POST', body: form || JSON.stringify(fields) });
   return normalizeApiAnnouncement(response?.announcement);
 }
 
 async function updateApiAnnouncement(announcementId, values = {}) {
-  const response = await requestApi(`/announcements/${Number(announcementId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      title: values.title,
-      body: values.body,
-      priority: values.priority,
-      status: values.status,
-      audiences: values.audiences || values.audience
-    })
-  });
+  const fields = {
+    title: values.title, body: values.body, priority: values.priority,
+    status: values.status, audiences: values.audiences || values.audience,
+    scheduledAt: values.scheduledAt || null, removeImage: values.removeImage === true
+  };
+  const form = values.image instanceof File ? new FormData() : null;
+  if (form) {
+    Object.entries(fields).forEach(([key, value]) => { if (value !== undefined && value !== null) form.append(key, Array.isArray(value) ? JSON.stringify(value) : value); });
+    form.append('image', values.image);
+  }
+  const response = await requestApi(`/announcements/${Number(announcementId)}`, { method: 'PATCH', body: form || JSON.stringify(fields) });
   return normalizeApiAnnouncement(response?.announcement);
+}
+
+async function setApiAnnouncementPinned(announcementId, pinned) {
+  const response = await requestApi(`/announcements/${Number(announcementId)}/pin`, {
+    method: 'PATCH', body: JSON.stringify({ pinned })
+  });
+  return response?.announcement;
 }
 
 async function deleteApiAnnouncement(announcementId) {
@@ -1608,6 +1618,7 @@ window.EDUGNAY_API = {
   getAnnouncements: getApiAnnouncements,
   createAnnouncement: createApiAnnouncement,
   updateAnnouncement: updateApiAnnouncement,
+  setAnnouncementPinned: setApiAnnouncementPinned,
   deleteAnnouncement: deleteApiAnnouncement,
   markAnnouncementRead: markApiAnnouncementRead,
   getNotifications: getApiNotifications,
@@ -3030,12 +3041,14 @@ function applyCurrentDateToGradingBanners() {
     if (EDUGNAY_API_BASE_URL) {
       const session = await getCurrentUser();
       const teacherId = String(session?.apiUserId || '');
-      return (await getApiSections()).filter(section => section.adviserId === teacherId);
+      return (await getApiSections()).filter(section =>
+        section.adviserId === teacherId && section.status === 'active' && section.academicYearStatus === 'active'
+      );
     }
 
     const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
     if (!teacherId) return [];
-    return getAssignmentSections().filter(section => section.adviserId === teacherId);
+    return getAssignmentSections().filter(section => section.adviserId === teacherId && section.status !== 'archived');
   }
 
   async function getApiMaterials(filters = {}) {
@@ -3226,7 +3239,7 @@ function applyCurrentDateToGradingBanners() {
           sex: profile.sex ? String(profile.sex).slice(0, 1).toUpperCase() : '',
           birthDate: formatSfDateValue(profile.birthDate),
           age: ageOnDate(profile.birthDate, referenceDate),
-          birthPlaceProvince: profile.birthPlaceProvince || '',
+          birthPlaceProvince: [profile.birthPlace || profile.birthPlaceProvince, profile.birthPlaceRegion, profile.birthCountry].filter(Boolean).join(', '),
           motherTongue: profile.motherTongue || '',
           indigenousGroup: profile.indigenousGroup || '',
           religion: profile.religion || '',
@@ -5116,6 +5129,9 @@ function applyCurrentDateToGradingBanners() {
       sex: values.sex || null,
       birthDate: values.birthDate || null,
       birthPlaceProvince: values.birthPlaceProvince || null,
+      birthPlace: values.birthPlace || values.birthPlaceProvince || null,
+      birthPlaceRegion: values.birthPlaceRegion || null,
+      birthCountry: values.birthCountry || null,
       motherTongue: values.motherTongue || null,
       indigenousGroup: values.indigenousGroup || null,
       religion: values.religion || null,
@@ -5722,7 +5738,7 @@ function applyCurrentDateToGradingBanners() {
     if (!personalEmail) missing.push('personalEmail');
     if (!candidateProfile.middleName && !candidateProfile.hasNoMiddleName) missing.push('middleName');
     if (user.role === RECORD_VALUES.roles.STUDENT) {
-      ['sex', 'birthDate', 'birthPlaceProvince', 'motherTongue', 'indigenousGroup', 'religion', 'houseStreet', 'barangay', 'cityMunicipality', 'province']
+      ['sex', 'birthDate', 'birthPlace', 'birthCountry', 'motherTongue', 'indigenousGroup', 'religion', 'houseStreet', 'barangay', 'cityMunicipality', 'province']
         .forEach(field => { if (!candidateProfile[field]) missing.push(field); });
     }
     if (user.role === RECORD_VALUES.roles.PARENT) {

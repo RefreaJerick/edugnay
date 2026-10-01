@@ -291,17 +291,17 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="studentSchoolLevel">School level</label>
-            <select class="form-select dropdown" id="studentSchoolLevel" name="schoolLevel" onchange="updateManagementAssignmentFields()" required></select>
+            <select class="form-select dropdown" id="studentSchoolLevel" name="schoolLevel" onchange="updateManagementAssignmentFields('level')" required></select>
           </div>
           <div class="form-group">
             <label class="form-label" for="studentGradeLevel">Grade level</label>
-            <select class="form-select dropdown" id="studentGradeLevel" name="gradeLevel" onchange="updateManagementAssignmentFields()" required></select>
+            <select class="form-select dropdown" id="studentGradeLevel" name="gradeLevel" onchange="updateManagementAssignmentFields('grade')" required></select>
           </div>
         </div>
         <div class="form-row-2 modal-final-row">
           <div class="form-group" id="studentStrandGroup" style="display:none;">
             <label class="form-label" for="studentStrand">Track / Strand</label>
-            <select class="form-select dropdown" id="studentStrand" name="strand" onchange="updateManagementAssignmentFields()"></select>
+            <select class="form-select dropdown" id="studentStrand" name="strand" onchange="updateManagementAssignmentFields('strand')"></select>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label" for="studentSectionSelect">Assign to section</label>
@@ -328,17 +328,17 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="moveSchoolLevel">School level</label>
-            <select class="form-select dropdown" id="moveSchoolLevel" name="schoolLevel" onchange="updateManagementMoveFields()" required></select>
+            <select class="form-select dropdown" id="moveSchoolLevel" name="schoolLevel" required></select>
           </div>
           <div class="form-group">
             <label class="form-label" for="moveGradeLevel">Grade level</label>
-            <select class="form-select dropdown" id="moveGradeLevel" name="gradeLevel" onchange="updateManagementMoveFields()" required></select>
+            <select class="form-select dropdown" id="moveGradeLevel" name="gradeLevel" required></select>
           </div>
         </div>
         <div class="form-row-2 modal-final-row">
           <div class="form-group" id="moveStrandGroup" style="display:none;">
             <label class="form-label" for="moveStrand">Track / Strand</label>
-            <select class="form-select dropdown" id="moveStrand" name="strand" onchange="updateManagementMoveFields()"></select>
+            <select class="form-select dropdown" id="moveStrand" name="strand"></select>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label" for="moveSectionSelect">Move to section</label>
@@ -1054,14 +1054,12 @@ async function loadManagementApiData() {
   MANAGEMENT_API_CONTEXT.school = school;
   MANAGEMENT_API_CONTEXT.structure = Array.isArray(structure) ? structure : [];
   MANAGEMENT_API_CONTEXT.academicYears = Array.isArray(academicYears) ? academicYears : [];
-  MANAGEMENT_API_CONTEXT.activeAcademicYear = MANAGEMENT_API_CONTEXT.academicYears.find(year => year.status === 'active')
-    || MANAGEMENT_API_CONTEXT.academicYears[0]
-    || null;
+  MANAGEMENT_API_CONTEXT.activeAcademicYear = MANAGEMENT_API_CONTEXT.academicYears.find(year => year.status === 'active') || null;
   window.EDUGNAY_API.setSchoolContext(school);
 
   const activeYearId = MANAGEMENT_API_CONTEXT.activeAcademicYear?.id;
   const activeSections = (Array.isArray(sectionRecords) ? sectionRecords : [])
-    .filter(section => !activeYearId || Number(section.academicYearId) === Number(activeYearId))
+    .filter(section => activeYearId && Number(section.academicYearId) === Number(activeYearId))
     .filter(section => section.status === 'active');
   const sectionDetails = await Promise.all(activeSections.map(async section => {
     const [studentsResult, teachersResult] = await Promise.all([
@@ -2811,35 +2809,32 @@ function managementRenderStudentOptions(selectedId = '') {
   );
 }
 
-function managementRenderFields(state, ids, excludeSection = '') {
+function managementRenderFields(state, ids, excludeSection = '', locked = false) {
   const levelSelect = document.getElementById(ids.level);
   const gradeSelect = document.getElementById(ids.grade);
   const strandSelect = document.getElementById(ids.strand);
   const sectionSelect = document.getElementById(ids.section);
-  const level = state.student?.schoolLevel || levelSelect?.value || state.level || managementDefaultLevel();
+  const level = state.level;
   state.level = level;
   managementSetOptions(levelSelect, managementSchoolLevels().map(item => ({ value: item, label: managementLevelLabel(item) })), 'Select a school level', level);
   if (levelSelect) {
-    levelSelect.value = level;
-    levelSelect.disabled = Boolean(state.student);
+    levelSelect.disabled = !state.student || locked;
   }
 
   const grades = managementGradeOptions(level);
-  const requestedGrade = state.student?.gradeLevel || gradeSelect?.value || state.grade;
-  const grade = grades.find(item => managementGradeKey(item) === managementGradeKey(requestedGrade)) || grades[0] || '';
+  const grade = grades.find(item => managementGradeKey(item) === managementGradeKey(state.grade)) || '';
   state.grade = grade;
   managementSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
-  if (gradeSelect) gradeSelect.disabled = Boolean(state.student);
+  if (gradeSelect) gradeSelect.disabled = !state.student || !level || locked;
 
   const strands = managementStrandOptions(level);
-  const selectedStrand = state.student?.strand || strandSelect?.value || state.strand;
-  const strand = strands.find(item => managementGradeKey(item) === managementGradeKey(selectedStrand)) || strands[0] || '';
+  const strand = strands.find(item => managementGradeKey(item) === managementGradeKey(state.strand)) || '';
   state.strand = level === 'shs' ? strand : '';
   const strandGroup = document.getElementById(ids.strandGroup);
   if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
   managementSetOptions(strandSelect, strands.map(item => ({ value: item, label: item })), 'Select a track or strand', strand);
   if (strandSelect) {
-    strandSelect.disabled = Boolean(state.student);
+    strandSelect.disabled = !state.student || !grade || locked;
     strandSelect.required = level === 'shs';
   }
 
@@ -2857,6 +2852,7 @@ function managementRenderFields(state, ids, excludeSection = '') {
 
   const gradeKey = managementGradeKey(state.grade);
   const sectionOptions = managementSectionRecords().filter(section => {
+    if (!level || !grade || (level === 'shs' && !state.strand)) return false;
     if (section.level !== level || managementGradeKey(section.grade) !== gradeKey) return false;
     if (level === 'shs' && state.strand && managementGradeKey(section.strand) !== managementGradeKey(state.strand)) return false;
     if (excludeSection && (section.id === excludeSection || section.name.toLowerCase() === String(excludeSection).toLowerCase())) return false;
@@ -2866,7 +2862,7 @@ function managementRenderFields(state, ids, excludeSection = '') {
     label: managementSectionLabel(section),
     disabled: section.students >= section.capacity
   }));
-  if (!sectionOptions.length) sectionOptions.push({ value: '', label: 'No matching sections configured', disabled: true });
+  if (!sectionOptions.length) sectionOptions.push({ value: '', label: level && grade && (level !== 'shs' || state.strand) ? 'No matching active sections' : 'Choose a level and grade first', disabled: true });
   managementSetOptions(sectionSelect, sectionOptions, 'Select a section', state.section);
   state.section = sectionSelect?.value || '';
 }
@@ -2890,20 +2886,31 @@ function updateManagementMoveContext() {
   context.textContent = section ? `${placement} · ${section.name}` : `Currently in ${managementMoveState.excludedSection || 'an existing section'}`;
 }
 
-function updateManagementAssignmentFields() {
+function updateManagementAssignmentFields(changed = '') {
+  if (changed === 'level') {
+    managementAssignState.level = document.getElementById('studentSchoolLevel').value;
+    managementAssignState.grade = '';
+    managementAssignState.strand = '';
+  } else if (changed === 'grade') {
+    managementAssignState.grade = document.getElementById('studentGradeLevel').value;
+    managementAssignState.strand = '';
+  } else if (changed === 'strand') {
+    managementAssignState.strand = document.getElementById('studentStrand').value;
+  }
+  if (changed) managementAssignState.section = '';
   managementRenderFields(managementAssignState, { level: 'studentSchoolLevel', grade: 'studentGradeLevel', strand: 'studentStrand', strandGroup: 'studentStrandGroup', section: 'studentSectionSelect', levelValue: 'studentSchoolLevelValue', gradeValue: 'studentGradeLevelValue', strandValue: 'studentStrandValue' });
   updateManagementAssignmentContext();
 }
 
 function updateManagementMoveFields() {
-  managementRenderFields(managementMoveState, { level: 'moveSchoolLevel', grade: 'moveGradeLevel', strand: 'moveStrand', strandGroup: 'moveStrandGroup', section: 'moveSectionSelect', levelValue: 'moveSchoolLevelValue', gradeValue: 'moveGradeLevelValue', strandValue: 'moveStrandValue' }, managementMoveState.excludedSection);
+  managementRenderFields(managementMoveState, { level: 'moveSchoolLevel', grade: 'moveGradeLevel', strand: 'moveStrand', strandGroup: 'moveStrandGroup', section: 'moveSectionSelect', levelValue: 'moveSchoolLevelValue', gradeValue: 'moveGradeLevelValue', strandValue: 'moveStrandValue' }, managementMoveState.excludedSection, true);
   updateManagementMoveContext();
 }
 
 function handleManagementStudentChange(studentId) {
   const student = managementStudentMeta(studentId);
   managementAssignState.student = student;
-  managementAssignState.level = student?.schoolLevel || managementDefaultLevel() || '';
+  managementAssignState.level = student?.schoolLevel || '';
   managementAssignState.grade = student?.gradeLevel || '';
   managementAssignState.strand = student?.strand || '';
   managementAssignState.section = '';
@@ -2926,7 +2933,7 @@ function openStudentAssignModal(studentId = '') {
   document.getElementById('studentModalTitle').textContent = matchedStudent ? `Assign: ${matchedStudent.displayName}` : 'Assign Student';
   document.getElementById('studentModalSub').textContent = 'Choose the student and class placement.';
   managementAssignState.student = null;
-  managementAssignState.level = managementDefaultLevel() || '';
+  managementAssignState.level = '';
   managementAssignState.grade = '';
   managementAssignState.strand = '';
   managementAssignState.section = '';
@@ -3209,7 +3216,14 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
   event.preventDefault();
   const studentId = managementAssignState.student?.id || document.getElementById('studentSelect').value;
   const section = managementSectionById(document.getElementById('studentSectionSelect').value);
-  if (!studentId || !section) { alert('Choose a student and section first.'); return; }
+  if (!studentId || !section || !managementAssignState.level || !managementAssignState.grade || (managementAssignState.level === 'shs' && !managementAssignState.strand)) {
+    showAppToast('Choose a student, school level, grade, and matching section first.', 'error');
+    return;
+  }
+  if (section.level !== managementAssignState.level || managementGradeKey(section.grade) !== managementGradeKey(managementAssignState.grade) || (section.level === 'shs' && managementGradeKey(section.strand) !== managementGradeKey(managementAssignState.strand))) {
+    showAppToast('The selected section does not match the chosen grade or track.', 'error');
+    return;
+  }
 
   const submitButton = event.submitter;
   if (submitButton) submitButton.disabled = true;

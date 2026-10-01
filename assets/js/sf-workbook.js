@@ -266,9 +266,13 @@
         if (merge?.hidden) continue;
         const cell = worksheet.getCell(rowNumber, columnIndex);
         const formula = cell.value && typeof cell.value === 'object' ? cell.value.formula || null : null;
+        const date = cell.value instanceof Date && cell.numFmt === 'mm/dd/yyyy' ? cell.value : null;
+        const text = date && !Number.isNaN(date.getTime())
+          ? `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`
+          : cell.text || '';
         cells.push({
           address: cell.address,
-          text: cell.text || '',
+          text,
           formula,
           rowSpan: merge?.rowSpan || 1,
           columnSpan: merge?.columnSpan || 1,

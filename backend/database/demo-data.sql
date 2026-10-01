@@ -397,7 +397,7 @@ INSERT INTO school_form_template_mappings (
   (1, 'sex', 'School Form 1 (SF1)', 'G10', 'student_profiles.sex'),
   (1, 'birthDate', 'School Form 1 (SF1)', 'H10', 'student_profiles.birth_date'),
   (1, 'age', 'School Form 1 (SF1)', 'I10', 'generated.age_as_of_first_friday_of_june'),
-  (1, 'birthPlaceProvince', 'School Form 1 (SF1)', 'J10', 'student_profiles.birth_place_province'),
+  (1, 'birthPlaceProvince', 'School Form 1 (SF1)', 'J10', 'student_profiles.birth_place, birth_place_region, birth_country'),
   (1, 'motherTongue', 'School Form 1 (SF1)', 'L10', 'student_profiles.mother_tongue'),
   (1, 'indigenousGroup', 'School Form 1 (SF1)', 'M10', 'student_profiles.indigenous_group'),
   (1, 'religion', 'School Form 1 (SF1)', 'N10', 'student_profiles.religion'),

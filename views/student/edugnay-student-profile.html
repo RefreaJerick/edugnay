@@ -402,8 +402,17 @@
                 <input class="form-input" type="date" name="birthDate" id="student-birth-date" />
               </div>
               <div class="form-group">
-                <label class="form-label" for="student-birthplace-province">Birthplace Province</label>
-                <input class="form-input" type="text" name="birthPlaceProvince" id="student-birthplace-province" placeholder="e.g. Pangasinan" />
+                <label class="form-label" for="student-birthplace">Place of Birth</label>
+                <input class="form-input" type="text" name="birthPlace" id="student-birthplace" maxlength="120" placeholder="e.g. Dagupan or Jabriya" />
+                <span class="form-hint">Enter the city or locality here. If an old value includes a country, move it to Country of Birth below.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-birthplace-region">Birth Province / State (optional)</label>
+                <input class="form-input" type="text" name="birthPlaceRegion" id="student-birthplace-region" maxlength="120" placeholder="e.g. Pangasinan" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="student-birth-country">Country of Birth</label>
+                <input class="form-input" type="text" name="birthCountry" id="student-birth-country" maxlength="120" placeholder="e.g. Philippines or Kuwait" />
               </div>
             </div>
           </div>
@@ -651,7 +660,9 @@ function renderStudentProfile() {
   setStudentInput('student-contact-number', profile.contactNumber);
   setStudentInput('student-sex', profile.sex);
   setStudentInput('student-birth-date', profile.birthDate);
-  setStudentInput('student-birthplace-province', profile.birthPlaceProvince);
+  setStudentInput('student-birthplace', profile.birthPlace || profile.birthPlaceProvince);
+  setStudentInput('student-birthplace-region', profile.birthPlaceRegion);
+  setStudentInput('student-birth-country', profile.birthCountry);
   setStudentInput('student-mother-tongue', profile.motherTongue);
   setStudentInput('student-indigenous-group', profile.indigenousGroup === 'not_applicable' ? '' : profile.indigenousGroup);
   setStudentInput('student-religion', profile.religion === 'prefer_not_to_provide' ? '' : profile.religion);
@@ -806,7 +817,8 @@ function applyStudentProfileSetupState() {
     'student-personal-email': 'personalEmail',
     'student-sex': 'sex',
     'student-birth-date': 'birthDate',
-    'student-birthplace-province': 'birthPlaceProvince',
+    'student-birthplace': 'birthPlace',
+    'student-birth-country': 'birthCountry',
     'student-mother-tongue': 'motherTongue',
     'student-house-street': 'houseStreet',
     'student-barangay': 'barangay',
@@ -1118,7 +1130,9 @@ async function submitProfile(event) {
     contactNumber: document.getElementById('student-contact-number').value.trim() || null,
     sex: document.getElementById('student-sex').value || null,
     birthDate: birthDate || null,
-    birthPlaceProvince: document.getElementById('student-birthplace-province').value.trim() || null,
+    birthPlace: document.getElementById('student-birthplace').value.trim() || null,
+    birthPlaceRegion: document.getElementById('student-birthplace-region').value.trim() || null,
+    birthCountry: document.getElementById('student-birth-country').value.trim() || null,
     motherTongue: document.getElementById('student-mother-tongue').value.trim() || null,
     indigenousGroup: document.getElementById('student-no-indigenous-group').checked
       ? 'not_applicable'

@@ -7,7 +7,7 @@ const CATEGORIES = {
     'student_withdrawn', 'teacher_assigned', 'teacher_assignment_updated', 'teacher_unassigned',
     'subject_created', 'subject_updated', 'subject_deactivated', 'subject_deleted'
   ],
-  announcements: ['announcement_draft_created', 'announcement_published', 'announcement_updated', 'announcement_deleted'],
+  announcements: ['announcement_draft_created', 'announcement_scheduled', 'announcement_published', 'announcement_updated', 'announcement_pinned', 'announcement_unpinned', 'announcement_deleted'],
   school_configuration: [
     'school_settings_updated', 'school_logo_updated', 'portal_features_updated', 'academic_structure_updated',
     'academic_year_created', 'academic_year_updated', 'academic_term_created', 'academic_term_updated',
@@ -64,6 +64,9 @@ const ACTION_LABELS = {
   subject_deleted: ['removed a subject', 'book-minus', 'red', 'class_management'],
   announcement_draft_created: ['created an announcement draft', 'megaphone', 'purple', 'announcements'],
   announcement_published: ['published an announcement', 'megaphone', 'purple', 'announcements'],
+  announcement_scheduled: ['scheduled an announcement', 'calendar-clock', 'purple', 'announcements'],
+  announcement_pinned: ['pinned an announcement', 'pin', 'purple', 'announcements'],
+  announcement_unpinned: ['unpinned an announcement', 'pin-off', 'purple', 'announcements'],
   announcement_updated: ['updated an announcement', 'megaphone', 'blue', 'announcements'],
   announcement_deleted: ['deleted an announcement', 'megaphone', 'red', 'announcements'],
   school_settings_updated: ['updated school settings', 'settings-2', 'gold', 'school_configuration'],

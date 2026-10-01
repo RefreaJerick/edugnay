@@ -64,17 +64,17 @@
           <div class="form-row-2">
             <div class="form-group">
               <label class="form-label" for="modalSchoolLevel">School level</label>
-              <select class="form-select" id="modalSchoolLevel" name="schoolLevel" onchange="updateDashboardAssignmentFields()" required></select>
+              <select class="form-select" id="modalSchoolLevel" name="schoolLevel" onchange="updateDashboardAssignmentFields('level')" required></select>
             </div>
             <div class="form-group">
               <label class="form-label" for="modalGradeLevel">Grade level</label>
-              <select class="form-select" id="modalGradeLevel" name="gradeLevel" onchange="updateDashboardAssignmentFields()" required></select>
+              <select class="form-select" id="modalGradeLevel" name="gradeLevel" onchange="updateDashboardAssignmentFields('grade')" required></select>
             </div>
           </div>
           <div class="form-row-2 modal-final-row">
             <div class="form-group" id="modalStrandGroup" style="display:none;">
               <label class="form-label" for="modalStrand">Track / Strand</label>
-              <select class="form-select" id="modalStrand" name="strand" onchange="updateDashboardAssignmentFields()"></select>
+              <select class="form-select" id="modalStrand" name="strand" onchange="updateDashboardAssignmentFields('strand')"></select>
             </div>
             <div class="form-group" id="modalSectionGroup" style="margin-bottom:0;">
               <label class="form-label" for="modalSection">Assign to section</label>
@@ -173,12 +173,12 @@
             <label class="form-label">Attach Image <span class="optional-tag">(Optional)</span></label>
             <div class="image-upload-area" id="composeUploadArea"
               onclick="document.getElementById('composeImageInput').click()">
-              <input type="file" id="composeImageInput" name="image" accept="image/*" style="display:none;"
+              <input type="file" id="composeImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;"
                 onchange="handleImagePreview(this, 'composePreview', 'composePlaceholder')" />
               <div class="upload-placeholder" id="composePlaceholder">
                 <i data-lucide="image-plus" style="width:20px;height:20px;"></i>
                 <span class="upload-text">Click or drag an image here</span>
-                <span class="upload-sub">PNG, JPG up to 5MB · Recommended 1200×500px</span>
+                <span class="upload-sub">PNG, JPG, or WebP up to 5MB · Recommended 1200×500px</span>
               </div>
               <div class="image-preview-wrap" id="composePreview" style="display:none;">
                 <img class="image-preview" src="https://placehold.co/600x300" alt="Preview" />
@@ -190,8 +190,8 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Schedule (optional)</label>
-            <input class="form-input" type="datetime-local" name="schedule" />
+            <label class="form-label">Schedule (optional, Philippine time)</label>
+            <input class="form-input" type="datetime-local" name="schedule" oninput="updateDashboardAnnouncementPostLabel()" />
           </div>
           <p id="announcementFeedback" class="dashboard-action-feedback" role="status" aria-live="polite" hidden></p>
         </form>
@@ -669,10 +669,6 @@
       return ADMIN_DASHBOARD_STRUCTURE.filter(item => item.isEnabled !== false).map(item => item.levelCode);
     }
 
-    function dashboardDefaultLevel() {
-      return dashboardSchoolLevels()[0] || '';
-    }
-
     function dashboardDivision(level) {
       return ADMIN_DASHBOARD_STRUCTURE.find(item => item.levelCode === level) || {};
     }
@@ -731,15 +727,16 @@
       if (!select) return;
 
       const sections = dashboardAssignmentSections().filter(section => {
+        if (!level || !grade || (level === 'shs' && !strand)) return false;
         if (section.level !== level || dashboardGradeKey(section.grade) !== grade) return false;
-        return level !== 'shs' || !strand || dashboardGradeKey(section.strand) === dashboardGradeKey(strand);
+        return level !== 'shs' || dashboardGradeKey(section.strand) === dashboardGradeKey(strand);
       });
       const options = sections.map(section => ({
         value: section.id,
         label: dashboardSectionLabel(section),
         disabled: section.enrolled >= section.capacity
       }));
-      if (!options.length) options.push({ value: '', label: 'No matching sections configured', disabled: true });
+      if (!options.length) options.push({ value: '', label: level && grade && (level !== 'shs' || strand) ? 'No matching active sections' : 'Choose a level and grade first', disabled: true });
       dashboardSetOptions(select, options, 'Select a section', dashboardAssignmentState.section);
       dashboardAssignmentState.section = select.value;
     }
@@ -761,34 +758,41 @@
         : `${studentLabel} · ${placement}`;
     }
 
-    function updateDashboardAssignmentFields() {
+    function updateDashboardAssignmentFields(changed = '') {
       const levelSelect = document.getElementById('modalSchoolLevel');
       const gradeSelect = document.getElementById('modalGradeLevel');
       const strandSelect = document.getElementById('modalStrand');
-      const level = dashboardAssignmentState.student?.schoolLevel || levelSelect?.value || dashboardAssignmentState.level || dashboardDefaultLevel();
-      dashboardAssignmentState.level = level;
+      if (changed === 'level') {
+        dashboardAssignmentState.level = levelSelect.value;
+        dashboardAssignmentState.grade = '';
+        dashboardAssignmentState.strand = '';
+      } else if (changed === 'grade') {
+        dashboardAssignmentState.grade = gradeSelect.value;
+        dashboardAssignmentState.strand = '';
+      } else if (changed === 'strand') {
+        dashboardAssignmentState.strand = strandSelect.value;
+      }
+      if (changed) dashboardAssignmentState.section = '';
+      const level = dashboardAssignmentState.level;
       dashboardSetOptions(levelSelect, dashboardSchoolLevels().map(item => ({ value: item, label: dashboardLevelLabel(item) })), 'Select a school level', level);
       if (levelSelect) {
-        levelSelect.value = level;
-        levelSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
+        levelSelect.disabled = !dashboardAssignmentState.student || !ADMIN_DASHBOARD_API_ENABLED;
       }
 
       const grades = dashboardGradeOptions(level);
-      const studentGrade = dashboardAssignmentState.student?.gradeLevel || gradeSelect?.value || dashboardAssignmentState.grade;
-      const grade = grades.find(item => dashboardGradeKey(item) === dashboardGradeKey(studentGrade)) || grades[0] || '';
+      const grade = grades.find(item => dashboardGradeKey(item) === dashboardGradeKey(dashboardAssignmentState.grade)) || '';
       dashboardAssignmentState.grade = grade;
       dashboardSetOptions(gradeSelect, grades.map(item => ({ value: item, label: item })), 'Select a grade level', grade);
-      if (gradeSelect) gradeSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
+      if (gradeSelect) gradeSelect.disabled = !dashboardAssignmentState.student || !level || !ADMIN_DASHBOARD_API_ENABLED;
 
       const strands = dashboardStrandOptions(level);
       const strandGroup = document.getElementById('modalStrandGroup');
-      const selectedStrand = dashboardAssignmentState.student?.strand || strandSelect?.value || dashboardAssignmentState.strand;
-      const strand = strands.find(item => dashboardGradeKey(item) === dashboardGradeKey(selectedStrand)) || strands[0] || '';
+      const strand = strands.find(item => dashboardGradeKey(item) === dashboardGradeKey(dashboardAssignmentState.strand)) || '';
       dashboardAssignmentState.strand = level === 'shs' ? strand : '';
       if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
       dashboardSetOptions(strandSelect, strands.map(item => ({ value: item, label: item })), 'Select a track or strand', strand);
       if (strandSelect) {
-        strandSelect.disabled = Boolean(dashboardAssignmentState.student) && !ADMIN_DASHBOARD_API_ENABLED;
+        strandSelect.disabled = !dashboardAssignmentState.student || !grade || !ADMIN_DASHBOARD_API_ENABLED;
         strandSelect.required = level === 'shs';
       }
 
@@ -811,7 +815,7 @@
     function handleDashboardStudentChange(studentId) {
       const student = DASHBOARD_ASSIGNMENT_STUDENTS.find(item => item.id === studentId) || null;
       dashboardAssignmentState.student = student;
-      dashboardAssignmentState.level = student?.schoolLevel || dashboardDefaultLevel() || '';
+      dashboardAssignmentState.level = student?.schoolLevel || '';
       dashboardAssignmentState.grade = student?.gradeLevel || '';
       dashboardAssignmentState.strand = student?.strand || '';
       dashboardAssignmentState.section = '';
@@ -835,7 +839,7 @@
     ];
 
     function renderAdminDashboard() {
-      DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS.filter(student => student.status === 'active');
+      DASHBOARD_ASSIGNMENT_STUDENTS = ADMIN_STUDENTS.filter(student => student.status === 'active' && !student.sectionId);
       ADMIN_SUMMARY_CARDS[0].records = ADMIN_STUDENTS;
       ADMIN_SUMMARY_CARDS[1].records = ADMIN_TEACHERS;
       ADMIN_SUMMARY_CARDS[2].records = ADMIN_PARENTS;
@@ -905,7 +909,7 @@
       if (sections.status === 'fulfilled') {
         ADMIN_ASSIGNMENT_ERROR = '';
         ADMIN_DASHBOARD_SECTIONS = sections.value
-          .filter(section => section.status === 'active' && section.academicYearStatus !== 'closed')
+          .filter(section => section.status === 'active' && section.academicYearStatus === 'active')
           .map(section => ({
             id: String(section.id), schoolId: section.schoolId, academicYearId: String(section.academicYearId), level: section.level,
             grade: section.grade, strand: section.strand, name: section.name,
@@ -1158,7 +1162,7 @@
         emptyText: 'No matching students',
         ariaLabel: 'Student'
       });
-      dashboardAssignmentState.level = dashboardDefaultLevel() || '';
+      dashboardAssignmentState.level = '';
       updateDashboardAssignmentFields();
       renderWeekCalendar();
     });
@@ -1202,7 +1206,7 @@
       const title = document.getElementById('studentModalTitle');
       title.textContent = 'Assign Student';
       dashboardAssignmentState.student = null;
-      dashboardAssignmentState.level = dashboardDefaultLevel() || '';
+      dashboardAssignmentState.level = '';
       dashboardAssignmentState.grade = '';
       dashboardAssignmentState.strand = '';
       dashboardAssignmentState.section = '';
@@ -1245,8 +1249,12 @@
       event.preventDefault();
       const student = dashboardAssignmentState.student;
       const section = dashboardAssignmentSections().find(item => item.id === dashboardAssignmentState.section);
-      if (!student || !section) {
-        setDashboardFeedback('assignStudentFeedback', 'Choose a student and section first.');
+      if (!student || !section || !dashboardAssignmentState.level || !dashboardAssignmentState.grade || (dashboardAssignmentState.level === 'shs' && !dashboardAssignmentState.strand)) {
+        setDashboardFeedback('assignStudentFeedback', 'Choose a student, school level, grade, and matching section first.');
+        return;
+      }
+      if (section.level !== dashboardAssignmentState.level || dashboardGradeKey(section.grade) !== dashboardGradeKey(dashboardAssignmentState.grade) || (section.level === 'shs' && dashboardGradeKey(section.strand) !== dashboardGradeKey(dashboardAssignmentState.strand))) {
+        setDashboardFeedback('assignStudentFeedback', 'The selected section does not match the chosen grade or track.');
         return;
       }
 
@@ -1313,13 +1321,23 @@
       const form = document.getElementById('postAnnouncementForm');
       const formData = new FormData(form);
       const audiences = Array.from(form.querySelectorAll('input[name="audience"]:checked')).map(input => input.value);
+      const schedule = String(formData.get('schedule') || '');
+      const effectiveStatus = status === 'published' && schedule ? 'scheduled' : status;
+      const date = schedule ? new Date(`${schedule}:00+08:00`) : null;
       return {
         title: String(formData.get('title') || '').trim(),
         body: String(formData.get('content') || '').trim(),
         priority: String(formData.get('priority') || 'normal') === 'low' ? 'normal' : String(formData.get('priority') || 'normal'),
         audiences: audiences.length ? audiences : ['all'],
-        status
+        status: effectiveStatus,
+        scheduledAt: effectiveStatus === 'scheduled' && date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
+        image: form.elements.image?.files?.[0] || null
       };
+    }
+
+    function updateDashboardAnnouncementPostLabel() {
+      document.querySelector('#announcementModalBackdrop .btn-post span').textContent =
+        document.querySelector('#postAnnouncementForm [name="schedule"]').value ? 'Schedule' : 'Post';
     }
 
     let dashboardAnnouncementSaving = false;
@@ -1334,15 +1352,12 @@
         setDashboardFeedback('announcementFeedback', 'Enter an announcement title and content.');
         return false;
       }
-      if (!ADMIN_DASHBOARD_API_ENABLED) {
-        setDashboardFeedback('announcementFeedback', 'The backend is required to save announcements.');
+      if (values.status === 'scheduled' && (!values.scheduledAt || new Date(values.scheduledAt).getTime() <= Date.now())) {
+        setDashboardFeedback('announcementFeedback', 'Choose a future date and time to schedule this announcement.');
         return false;
       }
-
-      const image = document.getElementById('composeImageInput')?.files?.[0];
-      const schedule = form.elements.schedule?.value;
-      if (image || schedule) {
-        setDashboardFeedback('announcementFeedback', 'Image attachments and scheduled posts are not supported by this API yet. Clear those optional fields to save this announcement.');
+      if (!ADMIN_DASHBOARD_API_ENABLED) {
+        setDashboardFeedback('announcementFeedback', 'The backend is required to save announcements.');
         return false;
       }
 
@@ -1355,7 +1370,7 @@
       const originalLabel = activeLabel?.textContent || (status === 'draft' ? 'Save Draft' : 'Post');
       dashboardAnnouncementSaving = true;
       buttons.forEach(button => { button.disabled = true; });
-      if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : 'Posting…';
+      if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : values.status === 'scheduled' ? 'Scheduling…' : 'Posting…';
 
       try {
         const savedAnnouncement = await window.EDUGNAY_API.createAnnouncement(values);
@@ -1370,6 +1385,9 @@
         }
 
         form.reset();
+        document.getElementById('composePreview').style.display = 'none';
+        document.getElementById('composePlaceholder').style.display = 'flex';
+        updateDashboardAnnouncementPostLabel();
         document.getElementById('modalPriorityValue').value = 'normal';
         document.querySelectorAll('#announcementModalBackdrop .priority-opt').forEach(option => {
           option.classList.toggle('selected', option.classList.contains('p-normal'));
@@ -1377,7 +1395,8 @@
         modalAudienceCheckboxes.forEach(input => {
           input.closest('.aud-opt')?.classList.toggle('checked', input.checked);
         });
-        const message = status === 'draft' ? 'Announcement saved as a draft.' : 'Announcement posted.';
+        const message = values.status === 'draft' ? 'Announcement saved as a draft.'
+          : values.status === 'scheduled' ? 'Announcement scheduled.' : 'Announcement posted.';
         showAppToast(message);
         closeAnnouncementModal();
         return true;
@@ -1388,6 +1407,7 @@
         dashboardAnnouncementSaving = false;
         buttons.forEach(button => { button.disabled = false; });
         if (activeLabel) activeLabel.textContent = originalLabel;
+        updateDashboardAnnouncementPostLabel();
       }
     }
 

@@ -134,7 +134,7 @@ async function getAdvisorySections(database, teacherId, schoolId) {
     `SELECT sections.id, sections.name, academic_years.label AS academicYear,
       school_grade_levels.display_name AS gradeLevel
     FROM sections
-    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     WHERE sections.school_id = ? AND sections.adviser_user_id = ? AND sections.status = 'active'
     ORDER BY school_grade_levels.sort_order, sections.name`,
@@ -155,7 +155,7 @@ async function getAdvisorySection(database, teacherId, schoolId, sectionId) {
       sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId,
       academic_years.label AS academicYear, school_grade_levels.display_name AS gradeLevel
     FROM sections
-    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     WHERE sections.id = ? AND sections.school_id = ? AND sections.adviser_user_id = ?
       AND sections.status = 'active'
@@ -189,7 +189,10 @@ async function getSectionLearners(database, sectionId) {
       student_profiles.user_id AS profileUserId,
       student_profiles.lrn, student_profiles.middle_name AS middleName,
       student_profiles.sex, DATE_FORMAT(student_profiles.birth_date, '%Y-%m-%d') AS birthDate,
-      student_profiles.birth_place_province AS birthPlaceProvince,
+      student_profiles.birth_place_province AS legacyBirthPlace,
+      student_profiles.birth_place AS birthPlace,
+      student_profiles.birth_place_region AS birthPlaceRegion,
+      student_profiles.birth_country AS birthCountry,
       student_profiles.mother_tongue AS motherTongue,
       student_profiles.indigenous_group AS indigenousGroup, student_profiles.religion,
       student_profiles.house_street AS houseStreet, student_profiles.barangay,
@@ -282,7 +285,7 @@ function buildGenerationData(school, section, learners) {
     [
       ['sex', learner.sex, 'G', 'sex'],
       ['birthDate', learner.birthDate, 'H', 'birth date'],
-      ['birthPlaceProvince', learner.birthPlaceProvince, 'J', 'birthplace province'],
+      ['birthPlaceProvince', learner.birthPlace || learner.legacyBirthPlace, 'J', 'place of birth'],
       ['motherTongue', learner.motherTongue, 'L', 'mother tongue'],
       ['religion', learner.religion, 'N', 'religion']
     ].forEach(([fieldKey, value, column, label]) => {
@@ -290,6 +293,9 @@ function buildGenerationData(school, section, learners) {
         issues.push({ severity: 'warning', fieldKey, cellReference: `${column}${row}`, message: `${learner.lastName}, ${learner.firstName} has no ${label}.` });
       }
     });
+    if (!learner.birthCountry) {
+      issues.push({ severity: 'warning', fieldKey: 'birthCountry', cellReference: `J${row}`, message: `${learner.lastName}, ${learner.firstName} has not confirmed their country of birth.` });
+    }
     if (!contact) {
       issues.push({ severity: 'warning', fieldKey: 'contactNumber', cellReference: `Z${row}`, message: `${learner.lastName}, ${learner.firstName} has no parent or guardian contact number.` });
     }
@@ -301,7 +307,7 @@ function buildGenerationData(school, section, learners) {
       sex: learner.sex ? String(learner.sex).charAt(0).toUpperCase() : '',
       birthDate: learner.birthDate,
       age: calculateAge(learner.birthDate, referenceDate),
-      birthPlaceProvince: learner.birthPlaceProvince,
+      birthPlaceProvince: [learner.birthPlace || learner.legacyBirthPlace, learner.birthPlaceRegion, learner.birthCountry].filter(Boolean).join(', '),
       motherTongue: learner.motherTongue,
       indigenousGroup: learner.indigenousGroup,
       religion: learner.religion,

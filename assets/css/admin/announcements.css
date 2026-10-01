@@ -432,6 +432,11 @@
   background: #fef08a;
 }
 
+.footer-btn.pin:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
 /* Pinned indicator */
 .pinned-strip {
   background: var(--gold-pale);

@@ -2,13 +2,16 @@ const express = require('express');
 const controller = require('../controllers/announcementsController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/authorize');
+const { announcementImageUpload } = require('../config/announcementImages');
 
 const router = express.Router();
 
 router.use(requireAuth);
 router.get('/', controller.listAnnouncements);
-router.post('/', requireRoles('school_admin', 'teacher'), controller.createAnnouncement);
-router.patch('/:announcementId', requireRoles('school_admin', 'teacher'), controller.updateAnnouncement);
+router.post('/', requireRoles('school_admin', 'teacher'), announcementImageUpload.single('image'), controller.createAnnouncement);
+router.patch('/:announcementId', requireRoles('school_admin', 'teacher'), announcementImageUpload.single('image'), controller.updateAnnouncement);
+router.get('/:announcementId/image', controller.getAnnouncementImage);
+router.patch('/:announcementId/pin', requireRoles('school_admin'), controller.setAnnouncementPinned);
 router.delete('/:announcementId', requireRoles('school_admin', 'teacher'), controller.deleteAnnouncement);
 router.post('/:announcementId/read', controller.markAnnouncementRead);
 

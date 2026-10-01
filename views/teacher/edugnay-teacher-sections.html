@@ -913,14 +913,14 @@
           <div class="score-toolbar-left">
             <div class="search-wrap" style="min-width:160px;">
               <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-              <input class="search-input" type="text" placeholder="Search student..."/>
+              <input class="search-input" id="scoreStudentSearch" type="search" placeholder="Search student..." aria-label="Search score records by student" oninput="filterScoreStudents()"/>
             </div>
           </div>
           <div class="score-toolbar-right">
             <button class="top-btn secondary" id="fillPerfectScoresButton" onclick="fillAllPresent()">
               <i data-lucide="copy" style="width:13px;height:13px;"></i> Fill Perfect
             </button>
-            <button class="top-btn secondary">
+            <button class="top-btn secondary" id="exportScoresButton" type="button" onclick="exportScoresCsv()" disabled>
               <i data-lucide="download" style="width:13px;height:13px;"></i> Export
             </button>
           </div>
@@ -936,9 +936,12 @@
             <tbody id="scoreTbody"></tbody>
           </table>
         </div>
-        <div style="padding:12px 24px;border-top:1px solid var(--gray-100);font-size:12px;color:var(--gray-400);display:flex;justify-content:space-between;align-items:center;">
-          <span>Showing 5 of 38 students · <a href="#" style="color:var(--blue-mid);font-weight:600;">Load all</a></span>
-          <span style="color:var(--gray-500);font-weight:600;">Auto-saved · Last saved 2 mins ago</span>
+        <div class="score-list-footer">
+          <span id="scoreListFooter">Loading students…</span>
+          <div class="score-save-feedback" id="scoreSaveFeedback">
+            <span id="scoreSaveStatus" role="status" aria-live="polite">Scores save automatically</span>
+            <button class="score-save-retry" id="scoreSaveRetry" type="button" onclick="retryFailedScoreSaves()" hidden>Retry</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2231,6 +2234,7 @@
      if (republishButton && !canPublishGradePeriod(academicPeriodId)) republishButton.style.display = 'none';
     const fillPerfectButton = document.getElementById('fillPerfectScoresButton');
     if (fillPerfectButton) fillPerfectButton.style.display = locked ? 'none' : 'inline-flex';
+    updateScoreFooter();
   }
 
    function hasScoreEditingAccess(academicPeriodId) {
@@ -2251,12 +2255,20 @@
      return period?.status === 'active' && access?.academicYearStatus === 'active';
    }
 
-  function requireScoreEditingAccess(academicPeriodId) {
+  function requireScoreEditingAccess(academicPeriodId, showAlert = true) {
      if (hasScoreEditingAccess(academicPeriodId)) return true;
-    Object.values(scoreSaveTimers).forEach(timer => clearTimeout(timer));
-    scoreSaveTimers = {};
+    const message = academicPeriodName(academicPeriodId) + ' is locked. Score changes were not saved.';
+    Object.entries(scoreSaveTimers).forEach(([scoreId, timer]) => {
+      const record = pendingBackendScoreValues.get(scoreId);
+      if (record?.academicPeriodId !== academicPeriodId) return;
+      clearTimeout(timer);
+      delete scoreSaveTimers[scoreId];
+      record.failed = true;
+      record.error = message;
+    });
+    updateScoreFooter();
      void switchAcademicPeriod(document.getElementById('academicPeriodSelect').value);
-    alert(academicPeriodName(academicPeriodId) + ' is locked. Request temporary access before changing scores.');
+    if (showAlert) alert(academicPeriodName(academicPeriodId) + ' is locked. Request temporary access before changing scores.');
     return false;
   }
 
@@ -2428,6 +2440,7 @@
       theadRow.replaceChildren();
       tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Grade data unavailable', text: window.EDUGNAY_CONFIG.escapeHtml(BACKEND_GRADE_ERROR || 'Grade data could not be loaded from the backend.') })}</td></tr>`;
       updateSectionHeader(academicPeriodId);
+      updateScoreFooter();
       return;
     }
 
@@ -2453,6 +2466,7 @@
     if (!components.length) {
       tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this grading period to begin recording grades.' })}</td></tr>`;
       updateSectionHeader(academicPeriodId);
+      updateScoreFooter();
       return;
     }
 
@@ -2503,10 +2517,11 @@
 
       components.forEach(c => {
         const backendScore = getBackendScore(c.gradingItemId, studentId);
-        const val = backendScore?.score ?? null;
-        const displayVal = val !== null ? val : '';
         const scoreId = studentId + ':' + (c.id || c.name);
-        cellsHtml += '<td class="center" data-cat="' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '"><input class="score-input" type="number" value="' + displayVal + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-grading-item-id="' + c.gradingItemId + '" data-academic-period-id="' + academicPeriodId + '" oninput="computeRow(this, true)"/></td>';
+        const pendingScore = pendingBackendScoreValues.get(scoreId);
+        const val = pendingScore ? pendingScore.value : (backendScore?.score ?? null);
+        const displayVal = val !== null ? val : '';
+        cellsHtml += '<td class="center" data-cat="' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '"><input class="score-input" type="number" value="' + window.EDUGNAY_CONFIG.escapeHtml(displayVal) + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-grading-item-id="' + c.gradingItemId + '" data-academic-period-id="' + academicPeriodId + '" oninput="computeRow(this, true)"/></td>';
       });
 
       cellsHtml += CURRENT_GRADING_RULES
@@ -2526,19 +2541,152 @@
 
     tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));
     updateSectionHeader(academicPeriodId);
+    filterScoreStudents();
   }
 
-  let scoreSaveTimers = {};
+  const scoreSaveTimers = {};
   const pendingBackendScoreValues = new Map();
   const pendingBackendScoreSaves = new Map();
+  let scoreHasSavedChanges = false;
+
+  function filterScoreStudents() {
+    const query = document.getElementById('scoreStudentSearch').value.trim().toLocaleLowerCase();
+    const tbody = document.getElementById('scoreTbody');
+    const rows = [...tbody.querySelectorAll('tr[data-student-id]')];
+    let visible = 0;
+    rows.forEach(row => {
+      const name = row.querySelector('.student-name')?.textContent || '';
+      const matches = name.toLocaleLowerCase().includes(query);
+      row.style.display = matches ? '' : 'none';
+      if (matches) visible++;
+    });
+
+    tbody.querySelector('#scoreSearchEmpty')?.remove();
+    if (rows.length && !visible) {
+      const empty = document.createElement('tr');
+      empty.id = 'scoreSearchEmpty';
+      empty.className = 'panel-empty-row';
+      const cell = document.createElement('td');
+      cell.colSpan = document.getElementById('scoreTheadRow').children.length;
+      cell.textContent = 'No students match your search.';
+      empty.appendChild(cell);
+      tbody.appendChild(empty);
+    }
+    updateScoreFooter();
+  }
+
+  function updateScoreFooter() {
+    const rows = [...document.querySelectorAll('#scoreTbody tr[data-student-id]')];
+    const visible = rows.filter(row => row.style.display !== 'none').length;
+    const count = document.getElementById('scoreListFooter');
+    const status = document.getElementById('scoreSaveStatus');
+    const feedback = document.getElementById('scoreSaveFeedback');
+    const retry = document.getElementById('scoreSaveRetry');
+    const pending = [...pendingBackendScoreValues.values()];
+    const failed = pending.filter(record => record.failed);
+    const exportButton = document.getElementById('exportScoresButton');
+    const canExport = !BACKEND_GRADE_ERROR && isBackendGradeMode()
+      && Boolean(BACKEND_GRADE_CONTEXT?.sectionId && BACKEND_GRADE_CONTEXT?.subjectId)
+      && visible > 0 && pending.length === 0;
+    exportButton.disabled = !canExport;
+    exportButton.title = pending.length ? 'Wait until all score changes are saved before exporting.'
+      : !visible ? 'No student scores to export.'
+        : canExport ? 'Download visible score records as CSV.' : 'Score records are unavailable.';
+
+    if (BACKEND_GRADE_ERROR || !isBackendGradeMode()) {
+      count.textContent = 'Score records unavailable';
+    } else if (rows.length) {
+      count.textContent = visible === rows.length
+        ? `Showing ${rows.length} ${rows.length === 1 ? 'student' : 'students'}`
+        : `Showing ${visible} of ${rows.length} students`;
+    } else {
+      const enrolled = getGradeStudents().length;
+      count.textContent = enrolled ? `${enrolled} students enrolled` : 'No students enrolled';
+    }
+
+    feedback.classList.toggle('is-error', failed.length > 0);
+    retry.hidden = !failed.some(record => hasScoreEditingAccess(record.academicPeriodId));
+    if (failed.length) {
+      status.textContent = failed.length === 1
+        ? `Score not saved: ${failed[0].error || 'Try again.'}`
+        : `${failed.length} scores not saved. ${failed[0].error || 'Try again.'}`;
+    } else if (pending.some(record => record.saving)) {
+      status.textContent = 'Saving changes…';
+    } else if (pending.length) {
+      status.textContent = 'Unsaved changes';
+    } else if (BACKEND_GRADE_ERROR || !isBackendGradeMode()) {
+      status.textContent = 'Save status unavailable';
+    } else if (!rows.length) {
+      status.textContent = 'No scores to save';
+    } else if (!hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
+      status.textContent = 'Read-only grading period';
+    } else {
+      status.textContent = scoreHasSavedChanges ? 'All changes saved' : 'Scores save automatically';
+    }
+  }
+
+  function exportScoresCsv() {
+    const button = document.getElementById('exportScoresButton');
+    updateScoreFooter();
+    if (button.disabled) {
+      showAppToast(button.title || 'Score records are unavailable for export.', 'info');
+      return;
+    }
+
+    const periodId = document.getElementById('academicPeriodSelect').value;
+    const period = ACADEMIC_PERIODS.find(item => item.id === periodId);
+    const rows = [...document.querySelectorAll('#scoreTbody tr[data-student-id]')]
+      .filter(row => row.style.display !== 'none');
+    const itemHeaders = [...document.querySelectorAll('#scoreTheadRow .comp-head-cell')].map(cell =>
+      `${cell.querySelector('.comp-head-type').textContent}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`
+    );
+    const csvRows = [
+      ['Student', ...itemHeaders, ...CURRENT_GRADING_RULES.map(rule => `${String(rule.id).toUpperCase()} Avg`), 'Estimate'],
+      ...rows.map(row => [
+        row.querySelector('.student-name').textContent,
+        ...[...row.querySelectorAll('td[data-cat] .score-input')].map(input => input.value),
+        ...[...row.querySelectorAll('.computed-cell')].map(cell => cell.textContent.trim() === '—' ? '' : cell.textContent.trim())
+      ])
+    ];
+    const csvCell = value => {
+      let text = String(value ?? '');
+      if (/^[\s\uFEFF]*[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = '\uFEFF' + csvRows.map(row => row.map(csvCell).join(',')).join('\r\n');
+    const filename = [CURRENT_SECTION_RECORD?.academicYear, CURRENT_SECTION, CURRENT_SUBJECT, period?.name]
+      .filter(Boolean).join('-').replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 140) + '-scores.csv';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showAppToast('Score CSV download started.');
+  }
 
   function savePendingBackendScore(record) {
     const previous = pendingBackendScoreSaves.get(record.scoreId) || Promise.resolve();
     const pending = previous.catch(() => {}).then(async () => {
       if (pendingBackendScoreValues.get(record.scoreId) !== record) return;
-      await saveBackendStudentScore(record.gradingItemId, record.studentId, record.value);
-      if (pendingBackendScoreValues.get(record.scoreId) === record) {
-        pendingBackendScoreValues.delete(record.scoreId);
+      record.saving = true;
+      record.failed = false;
+      updateScoreFooter();
+      try {
+        await saveBackendStudentScore(record.gradingItemId, record.studentId, record.value);
+        if (pendingBackendScoreValues.get(record.scoreId) === record) {
+          pendingBackendScoreValues.delete(record.scoreId);
+          scoreHasSavedChanges = true;
+        }
+      } catch (error) {
+        if (pendingBackendScoreValues.get(record.scoreId) === record) {
+          record.failed = true;
+          record.error = error.message || 'Try again.';
+        }
+        throw error;
+      } finally {
+        record.saving = false;
+        updateScoreFooter();
       }
     });
     pendingBackendScoreSaves.set(record.scoreId, pending);
@@ -2558,16 +2706,33 @@
       academicPeriodId: input.dataset.academicPeriodId
     };
     pendingBackendScoreValues.set(scoreId, record);
+    updateScoreFooter();
     clearTimeout(scoreSaveTimers[scoreId]);
     scoreSaveTimers[scoreId] = setTimeout(async () => {
       delete scoreSaveTimers[scoreId];
-      if (!requireScoreEditingAccess(record.academicPeriodId)) return;
+      if (!requireScoreEditingAccess(record.academicPeriodId, false)) {
+        record.failed = true;
+        record.error = 'This grading period is locked. The score was not saved.';
+        updateScoreFooter();
+        return;
+      }
       try {
         await savePendingBackendScore(record);
-      } catch (error) {
-        alert(error.message);
-      }
+      } catch {} // The footer keeps the failed score visible for retry.
     }, 600);
+  }
+
+  async function retryFailedScoreSaves() {
+    const button = document.getElementById('scoreSaveRetry');
+    const failed = [...pendingBackendScoreValues.values()]
+      .filter(record => record.failed && hasScoreEditingAccess(record.academicPeriodId));
+    button.disabled = true;
+    try {
+      await Promise.allSettled(failed.map(savePendingBackendScore));
+    } finally {
+      button.disabled = false;
+      updateScoreFooter();
+    }
   }
 
   function computeRow(input, shouldSave = false) {
@@ -3574,15 +3739,18 @@
 
   async function flushPendingBackendScoreSaves() {
     const queued = [...pendingBackendScoreValues.values()];
+    for (const record of queued) {
+      if (!hasScoreEditingAccess(record.academicPeriodId)) {
+        record.failed = true;
+        record.error = 'This grading period is locked. The score was not saved.';
+        updateScoreFooter();
+        throw new Error('This grading period is locked. The score changes could not be saved.');
+      }
+    }
+
     for (const scoreId of Object.keys(scoreSaveTimers)) {
       clearTimeout(scoreSaveTimers[scoreId]);
       delete scoreSaveTimers[scoreId];
-    }
-
-    for (const record of queued) {
-      if (!hasScoreEditingAccess(record.academicPeriodId)) {
-        throw new Error('This grading period is locked. The score changes could not be saved.');
-      }
     }
 
     await Promise.all(queued.map(savePendingBackendScore));

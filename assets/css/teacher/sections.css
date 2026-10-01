@@ -687,6 +687,21 @@ tbody tr:hover td.sticky-col {
   flex-wrap: wrap;
 }
 
+.score-toolbar #exportScoresButton:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.score-toolbar #exportScoresButton:disabled:hover {
+  background: var(--gray-100);
+}
+
+#scoreSearchEmpty td {
+  padding: 24px;
+  text-align: center;
+  color: var(--gray-500);
+}
+
 /* Component header cell */
 .comp-head-cell {
   min-width: 90px;
@@ -1112,6 +1127,61 @@ thead tr:hover .comp-delete-btn {
   border-top: 1px solid var(--gray-100);
   color: var(--gray-400);
   font-size: 12px;
+}
+
+.score-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--gray-100);
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.score-save-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.score-save-feedback.is-error {
+  color: var(--red);
+}
+
+.score-save-feedback [role="status"] {
+  overflow-wrap: anywhere;
+}
+
+.score-save-retry {
+  flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--blue-mid);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.score-save-retry[hidden] {
+  display: none;
+}
+
+.score-save-retry:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.score-save-retry:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 3px;
 }
 
 /* Attendance history */
@@ -3025,6 +3095,17 @@ tbody tr:hover td.sticky-col {
 
   .attendance-list-footer {
     padding: 10px 15px;
+  }
+
+  .score-list-footer {
+    flex-wrap: wrap;
+    padding: 10px 15px;
+  }
+
+  .score-save-feedback {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
   }
 
 }

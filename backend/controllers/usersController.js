@@ -82,6 +82,9 @@ function userSelect() {
     student_profiles.sex AS studentSex,
     DATE_FORMAT(student_profiles.birth_date, '%Y-%m-%d') AS studentBirthDate,
     student_profiles.birth_place_province AS studentBirthPlaceProvince,
+    student_profiles.birth_place AS studentBirthPlace,
+    student_profiles.birth_place_region AS studentBirthPlaceRegion,
+    student_profiles.birth_country AS studentBirthCountry,
     student_profiles.mother_tongue AS studentMotherTongue,
     student_profiles.indigenous_group AS studentIndigenousGroup,
     student_profiles.religion AS studentReligion,
@@ -148,6 +151,9 @@ function formatUser(row) {
       sex: row.studentSex,
       birthDate: row.studentBirthDate,
       birthPlaceProvince: row.studentBirthPlaceProvince,
+      birthPlace: row.studentBirthPlace || row.studentBirthPlaceProvince,
+      birthPlaceRegion: row.studentBirthPlaceRegion,
+      birthCountry: row.studentBirthCountry,
       motherTongue: row.studentMotherTongue,
       indigenousGroup: row.studentIndigenousGroup,
       religion: row.studentReligion,
@@ -265,7 +271,7 @@ function normalizeLrn(value) {
 
 function getSetupStatus(user) {
   const fields = user.role === 'student'
-    ? ['lrn', 'sex', 'birthDate', 'birthPlaceProvince', 'motherTongue', 'religion', 'houseStreet', 'barangay', 'cityMunicipality', 'province']
+    ? ['lrn', 'sex', 'birthDate', 'birthPlace', 'birthCountry', 'motherTongue', 'religion', 'houseStreet', 'barangay', 'cityMunicipality', 'province']
     : user.role === 'parent'
       ? ['sex', 'religion', 'contactNumber', 'houseStreet', 'barangay', 'cityMunicipality', 'province']
       : [];
@@ -281,7 +287,8 @@ function getProfileChanges(role, body) {
     : role === 'student'
       ? {
         middleName: ['middle_name', 100], hasNoMiddleName: ['has_no_middle_name'], sex: ['sex', 20],
-        birthDate: ['birth_date', 10], birthPlaceProvince: ['birth_place_province', 120],
+        birthDate: ['birth_date', 10], birthPlace: ['birth_place', 120],
+        birthPlaceRegion: ['birth_place_region', 120], birthCountry: ['birth_country', 120],
         motherTongue: ['mother_tongue', 120], indigenousGroup: ['indigenous_group', 120], religion: ['religion', 120],
         houseStreet: ['house_street', 255], barangay: ['barangay', 120], cityMunicipality: ['city_municipality', 120],
         province: ['province', 120], contactNumber: ['contact_number', 30]
@@ -311,7 +318,7 @@ function getProfileChanges(role, body) {
     let value = body[field];
     if (field === 'birthDate') value = normalizeDate(value);
     else if (field.startsWith('hasNo')) value = normalizeBoolean(value);
-    else value = normalizeText(value, maximum);
+    else value = value === null ? null : normalizeText(value, maximum);
 
     if (field === 'sex' && value && !['male', 'female'].includes(value)) {
       throw createError('Sex must be male or female.');
@@ -324,8 +331,7 @@ function getProfileChanges(role, body) {
   return changes;
 }
 
-async function findUserById(userId, scope) {
-  const database = getDatabase();
+async function findUserById(userId, scope, database = getDatabase()) {
   const where = ['users.id = ?'];
   const values = [userId];
 
@@ -841,25 +847,37 @@ async function getAccountSetupStatus(req, res, next) {
 }
 
 async function completeAccountSetup(req, res, next) {
+  let connection;
+  let transactionStarted = false;
   try {
     if (!['student', 'parent'].includes(req.user.role)) throw createError('Account setup is not required for this role.', 403);
     const changes = getProfileChanges(req.user.role, req.body || {});
     const table = req.user.role === 'student' ? 'student_profiles' : 'parent_profiles';
-    const database = getDatabase();
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
     const assignments = changes.map(change => `${change.column} = ?`).join(', ');
-    await database.execute(
+    const [result] = await connection.execute(
       `UPDATE ${table} SET ${assignments} WHERE user_id = ?`,
       [...changes.map(change => change.value), req.user.id]
     );
-    const user = await findUserById(req.user.id, { clause: '', values: [] });
+    if (!result.affectedRows) throw createError('Profile not found.', 404);
+    const user = await findUserById(req.user.id, { clause: '', values: [] }, connection);
     const setup = getSetupStatus(formatUser(user));
     if (!setup.complete) {
+      await connection.rollback();
+      transactionStarted = false;
       return res.status(400).json({ message: 'Complete all required account-setup fields.', setup });
     }
-    await database.execute('UPDATE users SET setup_completed_at = COALESCE(setup_completed_at, NOW()) WHERE id = ?', [req.user.id]);
+    await connection.execute('UPDATE users SET setup_completed_at = COALESCE(setup_completed_at, NOW()) WHERE id = ?', [req.user.id]);
+    await connection.commit();
+    transactionStarted = false;
     res.status(200).json({ setup: { ...setup, completedAt: new Date().toISOString() } });
   } catch (error) {
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
     next(error);
+  } finally {
+    connection?.release();
   }
 }
 

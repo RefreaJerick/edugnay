@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const { checkDatabaseConnection, isDatabaseConfigured } = require('./config/database');
 const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
 const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
+const { startScheduledAnnouncementWorker } = require('./workers/scheduledAnnouncementWorker');
 const { getFrontendOrigin, getTrustProxyHops } = require('./config/deployment');
 const { errorHandler } = require('./middleware/errorHandler');
 const { createRequestOriginGuard } = require('./middleware/requestOrigin');
@@ -103,3 +104,4 @@ server.on('error', error => {
 
 startAnnouncementEmailWorker();
 startParentNotificationWorker();
+startScheduledAnnouncementWorker();

@@ -1595,7 +1595,7 @@
         personalDetails.push(
           ['Sex', profile?.sex ? profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1) : null],
           ['Birth date', profile?.birthDate ? formatAccountDate(profile.birthDate) : null],
-          ['Birthplace province', profile?.birthPlaceProvince],
+          ['Place of birth', [profile?.birthPlace || profile?.birthPlaceProvince, profile?.birthPlaceRegion, profile?.birthCountry].filter(Boolean).join(', ')],
           ['Mother tongue', profile?.motherTongue],
           ['Indigenous group', profile?.indigenousGroup],
           ['Religion', profile?.religion],

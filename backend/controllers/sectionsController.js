@@ -264,6 +264,7 @@ async function enrollStudent(req, res, next) {
     const studentId = parseId(req.body.studentId, 'student ID');
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    if (section.academicYearStatus !== 'active') throw createError('Students can only be assigned to sections in the active academic year.', 409);
     if (section.studentCount >= section.capacity) throw createError('This section has reached its capacity.', 409);
     const [students] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1", [studentId, req.user.schoolId]);
     if (!students.length) throw createError('The student was not found in this school.', 404);
@@ -291,6 +292,9 @@ async function moveStudent(req, res, next) {
     const target = await findOwnedSection(req.user.schoolId, targetSectionId, connection);
     if (!source || !target || source.status !== 'active' || target.status !== 'active') {
       throw createError('Both sections must be active sections from this school.', 404);
+    }
+    if (source.academicYearStatus !== 'active' || target.academicYearStatus !== 'active') {
+      throw createError('Students can only be moved between sections in the active academic year.', 409);
     }
     if (source.academicYearId !== target.academicYearId) throw createError('Students can only be moved within the same academic year.');
     if (target.studentCount >= target.capacity) throw createError('The target section has reached its capacity.', 409);
