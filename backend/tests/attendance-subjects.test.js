@@ -12,6 +12,10 @@ const database = {
   async execute(sql, values = []) {
     calls.push({ sql, values });
     if (sql.includes('FROM parent_notification_triggers')) return [[]];
+    if (sql.includes("FROM users WHERE users.id = ?") && sql.includes("users.role = 'student'")) {
+      return [values[0] === 4 && values[1] === 1 ? [{ id: 4, schoolId: 1, displayName: 'Student' }] : []];
+    }
+    if (sql.includes('FROM student_qr_credentials WHERE school_id = ?')) return [[]];
     if (sql.includes('FROM sections') && sql.includes('section_teachers')) {
       return [values[0] === 8 && values[1] === 1 && values[2] === 3 && [1, 2].includes(values[3]) ? [section] : []];
     }
@@ -29,7 +33,7 @@ const database = {
     if (sql.includes('FROM attendance_sessions') && sql.includes('LEFT JOIN attendance_records')) return [[]];
     if (sql.includes('FROM attendance_sessions') && sql.includes('FOR UPDATE')) return [[]];
     if (sql.includes('FROM attendance_sessions') && sql.includes('LIMIT 1')) {
-      return [[{ id: values[1] === 1 ? 10 : 11, status: 'confirmed', method: 'manual' }]];
+      return [[{ id: values[2] === 1 ? 10 : 11, status: 'confirmed', method: 'manual' }]];
     }
     if (sql.includes('FROM section_students') && sql.includes('INNER JOIN users AS students')) {
       const status = values[0] === 10 ? 'absent' : values[0] === 11 ? 'present' : null;
@@ -92,8 +96,8 @@ test('the same student can have different statuses in two subjects', async () =>
   assert.equal(second.data.subjectId, 2);
   assert.equal(first.data.students[0].attendanceStatus, 'absent');
   assert.equal(second.data.students[0].attendanceStatus, 'present');
-  assert.ok(calls.some(call => call.sql.includes('subject_id = ?') && call.values[1] === 1));
-  assert.ok(calls.some(call => call.sql.includes('subject_id = ?') && call.values[1] === 2));
+  assert.ok(calls.some(call => call.sql.includes('subject_id = ?') && call.values[2] === 1));
+  assert.ok(calls.some(call => call.sql.includes('subject_id = ?') && call.values[2] === 2));
 });
 
 test('an unassigned subject is denied before attendance is read', async () => {
@@ -113,6 +117,31 @@ test('a teacher from another school cannot read the section', async () => {
   assert.equal(result.error?.status, 404);
 });
 
+test('a student can read only their own same-school QR credential', async () => {
+  calls.length = 0;
+  const own = await call(qr.getStudentQr, {
+    user: { id: 4, schoolId: 1, role: 'student' }, params: { studentId: '4' }
+  });
+  assert.equal(own.error, null);
+  assert.equal(own.data.requiresRegeneration, true);
+  const credentialQuery = calls.find(call => call.sql.includes('FROM student_qr_credentials'));
+  assert.deepEqual(credentialQuery.values, [1, 4]);
+
+  const other = await call(qr.getStudentQr, {
+    user: { id: 4, schoolId: 1, role: 'student' }, params: { studentId: '5' }
+  });
+  assert.equal(other.data, null);
+  assert.equal(other.error?.status, 403);
+});
+
+test('a school administrator cannot read a student QR from another school', async () => {
+  const result = await call(qr.getStudentQr, {
+    user: { id: 2, schoolId: 2, role: 'school_admin' }, params: { studentId: '4' }
+  });
+  assert.equal(result.data, null);
+  assert.equal(result.error?.status, 404);
+});
+
 test('QR sessions save the chosen subject and do not touch other subjects', async () => {
   calls.length = 0;
   const result = await call(qr.startQrAttendance, {
@@ -122,7 +151,7 @@ test('QR sessions save the chosen subject and do not touch other subjects', asyn
   assert.equal(result.data.subjectId, 1);
   const insert = calls.find(call => call.sql.includes('INSERT INTO attendance_sessions'));
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 1]);
-  assert.ok(calls.some(call => call.sql.includes('FOR UPDATE') && call.values[1] === 1));
+  assert.ok(calls.some(call => call.sql.includes('FOR UPDATE') && call.values[2] === 1));
 });
 
 test('manual save writes a subject-specific session and student status', async () => {
@@ -135,7 +164,7 @@ test('manual save writes a subject-specific session and student status', async (
   const insert = calls.find(call => call.sql.includes('INSERT INTO attendance_sessions'));
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 2]);
   const savedRecord = calls.find(call => call.sql.includes('INSERT INTO attendance_records'));
-  assert.deepEqual(savedRecord.values.slice(1, 4), [4, 'present', 'Here']);
+  assert.deepEqual(savedRecord.values.slice(0, 5), [1, 21, 4, 'present', 'Here']);
 });
 
 test('QR confirmation keeps the session subject and records the reviewed roster', async () => {
@@ -147,7 +176,7 @@ test('QR confirmation keeps the session subject and records the reviewed roster'
   assert.equal(result.error, null);
   assert.equal(result.data.subjectId, 1);
   assert.ok(calls.some(call => call.sql.includes('section_teachers.subject_id = attendance_sessions.subject_id')));
-  assert.ok(calls.some(call => call.sql.includes('INSERT INTO attendance_records') && call.values[2] === 'absent'));
+  assert.ok(calls.some(call => call.sql.includes('INSERT INTO attendance_records') && call.values[3] === 'absent'));
 });
 
 test('parent attendance query is scoped to linked children and confirmed subjects', async () => {
@@ -157,6 +186,7 @@ test('parent attendance query is scoped to linked children and confirmed subject
   });
   assert.equal(result.error, null);
   assert.equal(result.data.records[0].subjectId, '1');
+  assert.match(result.data.currentDate, /^\d{4}-\d{2}-\d{2}$/);
   const query = calls.find(call => call.sql.includes('FROM attendance_records'));
   assert.match(query.sql, /attendance_sessions\.status = 'confirmed'/);
   assert.match(query.sql, /student_parent_links\.parent_user_id = \?/);

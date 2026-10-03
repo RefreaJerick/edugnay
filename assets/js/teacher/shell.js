@@ -26,6 +26,7 @@ const TEACHER_PORTAL_ACCESS = {
 };
 
 window.EDUGNAY_TEACHER_ACCESS = TEACHER_PORTAL_ACCESS;
+let teacherJournalAccess = false;
 
 function toggleGroup(id) {
   const group = document.getElementById(id);
@@ -36,6 +37,7 @@ function toggleGroup(id) {
 
 function teacherCanAccess(feature) {
   if (feature === 'journals') {
+    if (window.EDUGNAY_API?.isBackendAvailable) return teacherJournalAccess;
     const journalSubject = window.EDUGNAY_CONFIG?.getJournalSubject?.();
     return window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false
       && Boolean(journalSubject)
@@ -237,7 +239,7 @@ async function renderTeacherSectionsNavigation() {
     if (window.EDUGNAY_API?.isBackendAvailable) {
       const session = await window.EDUGNAY_API.getCurrentUser();
       if (session?.role !== 'teacher') {
-        containers.forEach(container => setTeacherSectionNavMessage(container, 'No active sections assigned'));
+        containers.forEach(container => setTeacherSectionNavMessage(container, 'No subject sections assigned'));
         return;
       }
     }
@@ -253,7 +255,7 @@ async function renderTeacherSectionsNavigation() {
     const activeSectionId = requestedSectionId || (isSectionsPage ? activeSections[0]?.id : '');
 
     if (!activeSections.length) {
-      containers.forEach(container => setTeacherSectionNavMessage(container, 'No active sections assigned'));
+      containers.forEach(container => setTeacherSectionNavMessage(container, 'No subject sections assigned'));
       return;
     }
 
@@ -346,12 +348,23 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT ── */
-if (!guardTeacherPageAccess()) {
-  document.addEventListener('DOMContentLoaded', async () => {
-    const sectionNavigationReady = renderTeacherSectionsNavigation();
-    await window.EDUGNAY_COMMUNICATION_READY;
-    await sectionNavigationReady;
-    applyTeacherAccess();
-    renderTopbarNotifs();
-  });
-}
+document.addEventListener('DOMContentLoaded', async () => {
+  const sectionNavigationReady = renderTeacherSectionsNavigation();
+  if (window.EDUGNAY_API?.isBackendAvailable) {
+    try {
+      const sections = await window.EDUGNAY_API.getJournalSections();
+      teacherJournalAccess = sections.length > 0;
+    } catch { teacherJournalAccess = false; }
+    if (!teacherJournalAccess) {
+      try {
+        const history = await window.EDUGNAY_API.getJournalHistory();
+        teacherJournalAccess = history.prompts.length > 0 || history.entries.length > 0;
+      } catch { teacherJournalAccess = false; }
+    }
+  }
+  if (guardTeacherPageAccess()) return;
+  applyTeacherAccess();
+  await window.EDUGNAY_COMMUNICATION_READY;
+  await sectionNavigationReady;
+  renderTopbarNotifs();
+});

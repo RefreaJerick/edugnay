@@ -6,7 +6,6 @@ const { deleteSessionsForUser } = require('../config/session');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
 const { writeAuditLog } = require('../utils/auditLog');
 
-const USER_ROLES = new Set(['platform_admin', 'school_admin', 'teacher', 'student', 'parent']);
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
 const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent']);
 
@@ -31,7 +30,7 @@ function getListFilters(query) {
   const status = String(query.status || '').trim();
   const search = String(query.search || '').trim();
 
-  if (role && !USER_ROLES.has(role)) throw createError('Invalid user role.');
+  if (role && !MANAGED_ROLES.has(role)) throw createError('Invalid user role.');
   if (status && !ACCOUNT_STATUSES.has(status)) throw createError('Invalid account status.');
   if (search.length > 80) throw createError('Search text is too long.');
 
@@ -44,15 +43,7 @@ function getListFilters(query) {
   };
 }
 
-function getSchoolScope(req, schoolId) {
-  if (req.user.role === 'platform_admin') {
-    if (!schoolId) return { clause: '', values: [] };
-
-    const parsedSchoolId = parsePositiveInteger(schoolId, null, Number.MAX_SAFE_INTEGER);
-    if (!parsedSchoolId) throw createError('Invalid school ID.');
-    return { clause: 'users.school_id = ?', values: [parsedSchoolId] };
-  }
-
+function getSchoolScope(req) {
   return { clause: 'users.school_id = ?', values: [req.user.schoolId] };
 }
 
@@ -347,7 +338,7 @@ async function findUserById(userId, scope, database = getDatabase()) {
 async function listUsers(req, res, next) {
   try {
     const filters = getListFilters(req.query);
-    const scope = getSchoolScope(req, req.query.schoolId);
+    const scope = getSchoolScope(req);
     const where = scope.clause ? [scope.clause] : [];
     const values = [...scope.values];
 
@@ -396,17 +387,17 @@ async function getUser(req, res, next) {
       const database = getDatabase();
       const [[link]] = await database.execute(
         `SELECT COUNT(*) AS linkCount FROM student_parent_links
-        WHERE parent_user_id = ? AND student_user_id = ?
+        WHERE school_id = ? AND parent_user_id = ? AND student_user_id = ?
         `,
-        [req.user.id, userId]
+        [req.user.schoolId, req.user.id, userId]
       );
       isLinkedChild = Number(link.linkCount) > 0;
     }
-    if (!isOwnProfile && !isLinkedChild && req.user.role !== 'platform_admin' && req.user.role !== 'school_admin') {
+    if (!isOwnProfile && !isLinkedChild && req.user.role !== 'school_admin') {
       throw createError('You do not have access to this resource.', 403);
     }
 
-    const scope = isOwnProfile || isLinkedChild || req.user.role === 'platform_admin'
+    const scope = isOwnProfile || isLinkedChild
       ? { clause: '', values: [] }
       : { clause: 'users.school_id = ?', values: [req.user.schoolId] };
     const user = await findUserById(userId, scope);
@@ -442,9 +433,9 @@ async function getMyParents(req, res, next) {
         student_parent_links.relationship
       FROM student_parent_links
       INNER JOIN users AS parents ON parents.id = student_parent_links.parent_user_id
-        AND parents.school_id = ? AND parents.role = 'parent'
+        AND parents.school_id = student_parent_links.school_id AND parents.role = 'parent'
       LEFT JOIN parent_profiles ON parent_profiles.user_id = parents.id
-      WHERE student_parent_links.student_user_id = ?
+      WHERE student_parent_links.school_id = ? AND student_parent_links.student_user_id = ?
       ORDER BY parents.last_name, parents.first_name, student_parent_links.relationship`,
       [req.user.schoolId, req.user.id]
     );
@@ -484,7 +475,7 @@ async function getParentChildren(req, res, next) {
         advisers.display_name AS adviserName
       FROM student_parent_links AS links
       INNER JOIN users AS students ON students.id = links.student_user_id
-        AND students.school_id = ? AND students.role = 'student'
+        AND students.school_id = links.school_id AND students.role = 'student'
       LEFT JOIN student_profiles ON student_profiles.user_id = students.id
       LEFT JOIN section_students AS enrollment ON enrollment.student_user_id = students.id
         AND enrollment.withdrawn_at IS NULL
@@ -500,7 +491,7 @@ async function getParentChildren(req, res, next) {
       LEFT JOIN school_grade_levels AS grade_levels ON grade_levels.id = sections.grade_level_id
       LEFT JOIN school_levels ON school_levels.id = sections.school_level_id
       LEFT JOIN users AS advisers ON advisers.id = sections.adviser_user_id
-      WHERE links.parent_user_id = ?
+      WHERE links.school_id = ? AND links.parent_user_id = ?
       ORDER BY students.last_name, students.first_name`,
       [req.user.schoolId, parentId]
     );
@@ -542,16 +533,14 @@ async function updateMyProfile(req, res, next) {
   }
 }
 
-function getManagedSchoolId(req, body = {}) {
-  if (req.user.role === 'school_admin') return req.user.schoolId;
-  if (req.user.role !== 'platform_admin') throw createError('You do not have access to this resource.', 403);
-  return parsePositiveInteger(body.schoolId, null, Number.MAX_SAFE_INTEGER) || (() => { throw createError('School ID is required.'); })();
+function getManagedSchoolId(req) {
+  if (req.user.role !== 'school_admin') throw createError('You do not have access to this resource.', 403);
+  return req.user.schoolId;
 }
 
 async function findManagedUser(req, userId) {
-  const scope = req.user.role === 'platform_admin'
-    ? { clause: '', values: [] }
-    : { clause: 'users.school_id = ?', values: [req.user.schoolId] };
+  if (req.user.role !== 'school_admin') throw createError('You do not have access to this resource.', 403);
+  const scope = { clause: 'users.school_id = ?', values: [req.user.schoolId] };
   const user = await findUserById(userId, scope);
   if (!user) throw createError('User not found.', 404);
   return user;
@@ -561,7 +550,7 @@ async function createUser(req, res, next) {
   let connection;
   try {
     const body = req.body || {};
-    const schoolId = getManagedSchoolId(req, body);
+    const schoolId = getManagedSchoolId(req);
     const role = String(body.role || '').trim();
     if (!MANAGED_ROLES.has(role) || (req.user.role === 'school_admin' && role === 'school_admin')) {
       throw createError('This role cannot be created here.');
@@ -612,7 +601,7 @@ async function createUser(req, res, next) {
     const userId = result.insertId;
     if (role === 'student') {
       await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [userId, lrn]);
-      await issueStudentQrCredential(connection, userId);
+      await issueStudentQrCredential(connection, schoolId, userId);
     }
     else if (role === 'parent') await connection.execute('INSERT INTO parent_profiles (user_id) VALUES (?)', [userId]);
     else if (role === 'teacher') await connection.execute('INSERT INTO teacher_profiles (user_id, employee_number) VALUES (?, ?)', [userId, employeeNo]);
@@ -632,8 +621,8 @@ async function createUser(req, res, next) {
         );
         if (!students.length) throw createError('A linked student was not found in this school.');
         await connection.execute(
-          'INSERT INTO student_parent_links (student_user_id, parent_user_id, relationship) VALUES (?, ?, ?)',
-          [studentId, userId, relationship]
+          'INSERT INTO student_parent_links (school_id, student_user_id, parent_user_id, relationship) VALUES (?, ?, ?, ?)',
+          [schoolId, studentId, userId, relationship]
         );
       }
     }
@@ -742,8 +731,8 @@ async function updateUser(req, res, next) {
       await connection.execute('DELETE FROM student_parent_links WHERE parent_user_id = ?', [userId]);
       for (const link of body.parentLinks) {
         await connection.execute(
-          'INSERT INTO student_parent_links (student_user_id, parent_user_id, relationship) VALUES (?, ?, ?)',
-          [Number(link.studentId), userId, link.relationship.trim().toLowerCase()]
+          'INSERT INTO student_parent_links (school_id, student_user_id, parent_user_id, relationship) VALUES (?, ?, ?, ?)',
+          [user.schoolId, Number(link.studentId), userId, link.relationship.trim().toLowerCase()]
         );
       }
     }

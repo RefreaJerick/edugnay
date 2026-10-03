@@ -28,10 +28,11 @@ async function listNotifications(req, res, next) {
           SELECT 1 FROM student_parent_links AS links
           INNER JOIN users AS students ON students.id = links.student_user_id
             AND students.school_id = ? AND students.role = 'student' AND students.account_status = 'active'
-          WHERE links.parent_user_id = ? AND links.student_user_id = notifications.related_student_user_id
+          WHERE links.school_id = ? AND links.parent_user_id = ?
+            AND links.student_user_id = notifications.related_student_user_id
         ))
       ) ORDER BY created_at DESC LIMIT ?`,
-      [req.user.id, req.user.role, req.user.schoolId, req.user.id, limit(req.query.limit)]
+      [req.user.id, req.user.role, req.user.schoolId, req.user.schoolId, req.user.id, limit(req.query.limit)]
     );
     res.json({ notifications: rows.map(row => ({ ...row, isRead: Boolean(row.readAt) })) });
   } catch (error) { next(error); }

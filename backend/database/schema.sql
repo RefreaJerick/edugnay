@@ -1,6 +1,6 @@
 -- =========================================================
 -- Academix Database Schema
--- MySQL 8.0+ | Run this file before demo-data.sql
+-- MySQL 8.0+ | Run this file, migrations 021-023, then demo-data.sql
 -- =========================================================
 
 CREATE DATABASE IF NOT EXISTS academix
@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS academic_years (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_academic_years_school_label (school_id, label),
+  UNIQUE KEY uq_academic_years_school_id (school_id, id),
   CONSTRAINT fk_academic_years_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
@@ -109,12 +110,14 @@ CREATE TABLE IF NOT EXISTS school_levels (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_school_levels_school_code (school_id, level_code),
+  UNIQUE KEY uq_school_levels_school_id (school_id, id),
   CONSTRAINT fk_school_levels_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS school_grade_levels (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   school_level_id BIGINT UNSIGNED NOT NULL,
   grade_code VARCHAR(30) NOT NULL,
   display_name VARCHAR(80) NOT NULL,
@@ -123,12 +126,16 @@ CREATE TABLE IF NOT EXISTS school_grade_levels (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_school_grade_levels_level_grade (school_level_id, grade_code),
+  UNIQUE KEY uq_school_grade_levels_school_id (school_id, id),
   CONSTRAINT fk_school_grade_levels_level
-    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE CASCADE
+    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE CASCADE,
+  CONSTRAINT fk_school_grade_levels_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS school_shs_tracks (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   school_level_id BIGINT UNSIGNED NOT NULL,
   track_code VARCHAR(30) NOT NULL,
   display_name VARCHAR(120) NOT NULL,
@@ -136,8 +143,11 @@ CREATE TABLE IF NOT EXISTS school_shs_tracks (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_school_shs_tracks_level_track (school_level_id, track_code),
+  UNIQUE KEY uq_school_shs_tracks_school_id (school_id, id),
   CONSTRAINT fk_school_shs_tracks_level
-    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE CASCADE
+    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE CASCADE,
+  CONSTRAINT fk_school_shs_tracks_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- =========================================================
@@ -162,9 +172,18 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_users_school_role_status (school_id, role, account_status),
+  UNIQUE KEY uq_users_school_id (school_id, id),
+  CONSTRAINT chk_users_role_school CHECK (
+    (role = 'platform_admin' AND school_id IS NULL)
+    OR (role IN ('school_admin', 'teacher', 'student', 'parent') AND school_id IS NOT NULL)
+  ),
   CONSTRAINT fk_users_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+ALTER TABLE academic_years
+  ADD CONSTRAINT fk_academic_years_tenant_archiver
+    FOREIGN KEY (school_id, archived_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS parent_notification_triggers (
   school_id BIGINT UNSIGNED NOT NULL,
@@ -175,7 +194,9 @@ CREATE TABLE IF NOT EXISTS parent_notification_triggers (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (school_id, trigger_code),
   CONSTRAINT fk_parent_notification_triggers_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
-  CONSTRAINT fk_parent_notification_triggers_user FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  CONSTRAINT fk_parent_notification_triggers_user FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_parent_notification_triggers_tenant_user
+    FOREIGN KEY (school_id, updated_by_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -266,6 +287,7 @@ CREATE TABLE IF NOT EXISTS parent_profiles (
 
 CREATE TABLE IF NOT EXISTS student_parent_links (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   parent_user_id BIGINT UNSIGNED NOT NULL,
   relationship VARCHAR(50) NOT NULL,
@@ -274,7 +296,11 @@ CREATE TABLE IF NOT EXISTS student_parent_links (
   CONSTRAINT fk_student_parent_links_student
     FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_student_parent_links_parent
-    FOREIGN KEY (parent_user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (parent_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_student_parent_links_tenant_student
+    FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_student_parent_links_tenant_parent
+    FOREIGN KEY (school_id, parent_user_id) REFERENCES users(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- =========================================================
@@ -283,6 +309,7 @@ CREATE TABLE IF NOT EXISTS student_parent_links (
 
 CREATE TABLE IF NOT EXISTS academic_terms (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   academic_year_id BIGINT UNSIGNED NOT NULL,
   school_level_id BIGINT UNSIGNED NOT NULL,
   name VARCHAR(80) NOT NULL,
@@ -295,10 +322,15 @@ CREATE TABLE IF NOT EXISTS academic_terms (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_academic_terms_year_level_sequence (academic_year_id, school_level_id, sequence_number),
+  UNIQUE KEY uq_academic_terms_school_id (school_id, id),
   CONSTRAINT fk_academic_terms_year
     FOREIGN KEY (academic_year_id) REFERENCES academic_years(id) ON DELETE RESTRICT,
   CONSTRAINT fk_academic_terms_level
-    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE RESTRICT
+    FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_academic_terms_tenant_year
+    FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_academic_terms_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS academic_term_actions (
@@ -327,12 +359,17 @@ CREATE TABLE IF NOT EXISTS subjects (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_subjects_school_code (school_id, subject_code),
+  UNIQUE KEY uq_subjects_school_id (school_id, id),
   CONSTRAINT fk_subjects_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_subjects_level
     FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE SET NULL,
   CONSTRAINT fk_subjects_grade_level
-    FOREIGN KEY (grade_level_id) REFERENCES school_grade_levels(id) ON DELETE SET NULL
+    FOREIGN KEY (grade_level_id) REFERENCES school_grade_levels(id) ON DELETE SET NULL,
+  CONSTRAINT fk_subjects_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_subjects_tenant_grade
+    FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS school_settings (
@@ -345,7 +382,9 @@ CREATE TABLE IF NOT EXISTS school_settings (
   CONSTRAINT fk_school_settings_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
   CONSTRAINT fk_school_settings_journal_subject
-    FOREIGN KEY (journal_subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+    FOREIGN KEY (journal_subject_id) REFERENCES subjects(id) ON DELETE SET NULL,
+  CONSTRAINT fk_school_settings_tenant_journal_subject
+    FOREIGN KEY (school_id, journal_subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS sections (
@@ -362,6 +401,7 @@ CREATE TABLE IF NOT EXISTS sections (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_sections_year_grade_name (academic_year_id, grade_level_id, name),
+  UNIQUE KEY uq_sections_school_id (school_id, id),
   CONSTRAINT fk_sections_school
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_sections_year
@@ -373,26 +413,43 @@ CREATE TABLE IF NOT EXISTS sections (
   CONSTRAINT fk_sections_strand
     FOREIGN KEY (strand_id) REFERENCES school_shs_tracks(id) ON DELETE SET NULL,
   CONSTRAINT fk_sections_adviser
-    FOREIGN KEY (adviser_user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (adviser_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sections_tenant_year
+    FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_tenant_grade
+    FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_tenant_track
+    FOREIGN KEY (school_id, strand_id) REFERENCES school_shs_tracks(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_tenant_adviser
+    FOREIGN KEY (school_id, adviser_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS section_students (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   student_user_id BIGINT UNSIGNED NOT NULL,
   enrolled_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   withdrawn_at DATETIME NULL,
+  active_marker TINYINT GENERATED ALWAYS AS (IF(withdrawn_at IS NULL, 1, NULL)) STORED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_section_students_active (section_id, student_user_id),
+  UNIQUE KEY uq_section_students_active (section_id, student_user_id, active_marker),
   KEY idx_section_students_student (student_user_id),
   CONSTRAINT fk_section_students_section
     FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_section_students_student
-    FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_section_students_tenant_section
+    FOREIGN KEY (school_id, section_id) REFERENCES sections(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_section_students_tenant_student
+    FOREIGN KEY (school_id, student_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS section_teachers (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   subject_id BIGINT UNSIGNED NOT NULL,
@@ -404,7 +461,13 @@ CREATE TABLE IF NOT EXISTS section_teachers (
   CONSTRAINT fk_section_teachers_teacher
     FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_section_teachers_subject
-    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_section_teachers_tenant_section
+    FOREIGN KEY (school_id, section_id) REFERENCES sections(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_section_teachers_tenant_teacher
+    FOREIGN KEY (school_id, teacher_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_section_teachers_tenant_subject
+    FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- =========================================================
@@ -1020,4 +1083,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   CONSTRAINT fk_audit_logs_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Run demo-data.sql after this schema to load presentation records.
+-- Apply migrations/021_add_feature_tenant_constraints.sql and
+-- migrations/022_add_child_tenant_constraints.sql and
+-- migrations/023_link_assignment_grading_items.sql and
+-- migrations/024_track_published_grading_items.sql before loading demo-data.sql.

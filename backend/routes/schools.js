@@ -4,7 +4,7 @@ const controller = require('../controllers/schoolsController');
 const activityController = require('../controllers/activityController');
 const parentNotificationTriggersController = require('../controllers/parentNotificationTriggersController');
 const { requireAuth } = require('../middleware/auth');
-const { requirePlatformAdmin, requireSchoolAdmin } = require('../middleware/authorize');
+const { requirePlatformAdmin, requireSchoolAdmin, requireSchoolUser } = require('../middleware/authorize');
 const { schoolLogoUpload } = require('../config/schoolLogos');
 
 const router = express.Router();
@@ -38,7 +38,7 @@ router.get('/school/parent-notification-triggers', requireAuth, requireSchoolAdm
 router.patch('/school/parent-notification-triggers', requireAuth, requireSchoolAdmin, parentNotificationTriggersController.updateSettings);
 router.get('/school/activity', requireAuth, requireSchoolAdmin, activityController.listSchoolActivity);
 router.patch('/school/settings', requireAuth, requireSchoolAdmin, controller.updateSchoolSettings);
-router.get('/school/portal-features', requireAuth, controller.getPortalFeatures);
+router.get('/school/portal-features', requireAuth, requireSchoolUser, controller.getPortalFeatures);
 router.patch('/school/portal-features', requireAuth, requireSchoolAdmin, controller.updatePortalFeatures);
 router.get('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.getAcademicStructure);
 router.patch('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.updateAcademicStructure);

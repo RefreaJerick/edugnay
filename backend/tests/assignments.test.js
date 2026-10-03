@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
+const { randomUUID } = require('node:crypto');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
 const databaseModule = require('../config/database');
+const { uploadDirectory } = require('../config/uploads');
 const { errorHandler } = require('../middleware/errorHandler');
 
 let submissionCount = 0;
@@ -23,23 +25,26 @@ async function executeQuery(sql) {
   if (sql.includes('SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions')) {
     return [submissionFilePath ? [{ fileName: path.basename(submissionFilePath), filePath: submissionFilePath }] : []];
   }
-  if (sql.includes('SELECT COUNT(*) AS total FROM assignment_submissions')) return [[{ total: submissionCount }]];
+  if (sql.includes('FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? LIMIT 1 FOR UPDATE')) {
+    return [submissionCount ? [{ id: 1 }] : []];
+  }
   if (sql.includes('FROM grading_items WHERE')) return [gradingItemFound ? [{ id: 12 }] : []];
   if (sql.startsWith('DELETE FROM assignments')) {
     assignmentDeleted = true;
     return [{ affectedRows: 1 }];
   }
+  if (sql.startsWith('INSERT INTO audit_logs')) return [{ insertId: 1 }];
   throw new Error(`Unexpected query: ${sql}`);
 }
 
 databaseModule.getDatabase = () => ({
   execute: executeQuery,
   async getConnection() {
-    return { execute: executeQuery, release() {} };
+    return { execute: executeQuery, beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release() {} };
   }
 });
 
-const { deleteAssignment, listSubmissions, previewSubmission } = require('../controllers/assignmentsController');
+const { deleteAssignment, listSubmissions, previewSubmission, submitAssignment } = require('../controllers/assignmentsController');
 
 async function callDelete(user = { id: 3, schoolId: 1, role: 'teacher' }) {
   const result = { status: 200, sent: false, error: null };
@@ -68,20 +73,32 @@ async function callListSubmissions(user = { id: 3, schoolId: 1, role: 'teacher' 
 }
 
 async function withSubmissionFile(extension, callback) {
-  const uploadDirectory = path.resolve(__dirname, '../uploads/assignment-submissions');
   await fs.mkdir(uploadDirectory, { recursive: true });
-  const temporaryDirectory = await fs.mkdtemp(path.join(uploadDirectory, 'preview-test-'));
-  const fileName = `submission${extension}`;
-  const filePath = path.join(temporaryDirectory, fileName);
-  submissionFilePath = `uploads/assignment-submissions/${path.basename(temporaryDirectory)}/${fileName}`;
+  const fileName = `${randomUUID()}${extension}`;
+  const filePath = path.join(uploadDirectory, fileName);
+  submissionFilePath = fileName;
   try {
     await fs.writeFile(filePath, extension === '.pdf' ? '%PDF-1.7\nPreview test' : 'test document');
     await callback();
   } finally {
     submissionFilePath = null;
-    await fs.rm(temporaryDirectory, { recursive: true, force: true });
+    await fs.rm(filePath, { force: true });
   }
 }
+
+test('assignment submission rejects content that does not match its extension', async () => {
+  const fileName = `${randomUUID()}.pdf`;
+  const filePath = path.join(uploadDirectory, fileName);
+  await fs.writeFile(filePath, 'not a PDF');
+  const result = { error: null };
+  await submitAssignment({
+    params: { assignmentId: '4' }, user: { id: 8, schoolId: 1, role: 'student' },
+    file: { path: filePath, filename: fileName, originalname: 'work.pdf', size: 9 }
+  }, {}, error => { result.error = error; });
+  assert.equal(result.error?.status, 400);
+  assert.match(result.error?.message, /contents do not match/);
+  await assert.rejects(fs.stat(filePath), error => error.code === 'ENOENT');
+});
 
 test('assignment deletion is blocked when student submissions exist', async () => {
   submissionCount = 1;

@@ -132,7 +132,7 @@
       <div class="form-row-2">
         <div class="form-group">
           <label class="form-label">Subject</label>
-          <input class="form-input" type="text" style="color: var(--gray-400);" id="assignSubjectInput" value="Values Education" disabled/>
+          <input class="form-input" type="text" id="assignSubjectInput" disabled/>
         </div>
         <div class="form-group">
           <label class="form-label">Due Date</label>
@@ -824,7 +824,6 @@
                 <th>School Email</th>
                 <th>Attendance Rate</th>
                 <th><span id="studentGradePeriodName">Current period</span> Final Grade</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody id="studentTbody"></tbody>
@@ -881,7 +880,7 @@
 
         <div class="publish-banner" id="quarterLockBanner" style="display:none;background:var(--gray-100);">
           <div class="publish-banner-left">
-            <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;color:var(--gray-500);"></i></div>
+            <div class="publish-banner-icon"><i data-lucide="lock" style="width:18px;height:18px;"></i></div>
             <div>
               <div class="publish-info-title" style="color:var(--gray-700);" id="quarterLockTitle">Grading period is locked</div>
               <div class="publish-info-sub" id="quarterLockDesc">This grading period is closed. Scores are read-only.</div>
@@ -1106,12 +1105,42 @@
   </section>
 </div>
 
+<div class="modal-backdrop" id="teacherStudentDetailsModal" aria-hidden="true">
+  <section class="modal teacher-student-details-modal" role="dialog" aria-modal="true" aria-labelledby="teacherStudentDetailsTitle" aria-describedby="teacherStudentDetailsSub">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="user-round"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="teacherStudentDetailsTitle">Student details</div>
+          <div class="modal-sub" id="teacherStudentDetailsSub">Student and parent or guardian contact information.</div>
+        </div>
+      </div>
+      <button class="modal-close" id="teacherStudentDetailsClose" type="button" aria-label="Close student details" onclick="closeTeacherStudentDetailsModal()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="modal-body teacher-student-details-body" id="teacherStudentDetailsBody" aria-live="polite"></div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" type="button" onclick="closeTeacherStudentDetailsModal()">Close</button>
+    </div>
+  </section>
+</div>
+
+<div class="score-component-menu" id="scoreComponentMenu" role="menu" hidden>
+  <button class="assignment-menu-item delete" id="scoreComponentDeleteAction" type="button" role="menuitem">
+    <i data-lucide="trash-2" aria-hidden="true"></i> <span id="scoreComponentDeleteLabel">Delete component</span>
+  </button>
+</div>
+
 <script>
   lucide.createIcons();
 
   /* ── MODALS ── */
   let pendingTeacherDelete = null;
   let teacherDeletePending = false;
+  let teacherStudentDetailsTrigger = null;
+  let teacherStudentDetailsRequestId = 0;
+  let teacherStudentDetailsStudentId = '';
 
   function openModal(id)  {
     const modal = document.getElementById(id);
@@ -1143,21 +1172,148 @@
     }
   }
   document.querySelectorAll('.modal-backdrop').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+    m.addEventListener('click', e => {
+      if (e.target !== m) return;
+      if (m.id === 'teacherStudentDetailsModal') closeTeacherStudentDetailsModal();
+      else closeModal(m.id);
+    });
   });
 
+  function closeTeacherStudentDetailsModal() {
+    teacherStudentDetailsRequestId += 1;
+    closeModal('teacherStudentDetailsModal');
+    if (teacherStudentDetailsTrigger?.isConnected) teacherStudentDetailsTrigger.focus();
+    teacherStudentDetailsTrigger = null;
+    teacherStudentDetailsStudentId = '';
+  }
+
+  function renderTeacherStudentDetails(details) {
+    const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+    const student = details.student || {};
+    const studentDetails = [
+      ['Student number (LRN)', student.studentNumber],
+      ['School email', student.schoolEmail],
+      ['Grade level', student.gradeLevel],
+      ['Section', student.sectionName],
+      ['School year', student.schoolYear],
+      ['Enrollment status', student.enrollmentStatus]
+    ];
+    const parents = details.parents || [];
+    const parentCards = parents.length ? parents.map(parent => {
+      const email = String(parent.email || '').trim();
+      const phone = String(parent.contactNumber || '').trim();
+      const emailMarkup = email
+        ? `<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>`
+        : 'Not available';
+      const phoneHref = phone.replace(/[^\d+]/g, '');
+      const phoneMarkup = phone
+        ? `<a href="tel:${escapeHtml(phoneHref)}">${escapeHtml(phone)}</a>`
+        : 'Not available';
+      const relationship = String(parent.relationship || 'Guardian');
+      return `<article class="teacher-student-guardian">
+        <div class="teacher-student-guardian-head">
+          <h4>${escapeHtml(parent.displayName || 'Parent or guardian')}</h4>
+          <span>${escapeHtml(relationship.charAt(0).toUpperCase() + relationship.slice(1))}</span>
+        </div>
+        <dl class="teacher-student-contact-grid">
+          <div><dt>Phone</dt><dd>${phoneMarkup}</dd></div>
+          <div><dt>Email</dt><dd>${emailMarkup}</dd></div>
+        </dl>
+      </article>`;
+    }).join('') : '<p class="teacher-student-details-empty">No parent or guardian is linked to this student.</p>';
+
+    document.getElementById('teacherStudentDetailsTitle').textContent = student.displayName || 'Student details';
+    document.getElementById('teacherStudentDetailsSub').textContent = [student.gradeLevel, student.sectionName, student.schoolYear]
+      .filter(Boolean).join(' · ') || 'Student and parent or guardian contact information.';
+    document.getElementById('teacherStudentDetailsBody').innerHTML = `
+      <section class="teacher-student-details-section" aria-labelledby="teacherStudentIdentityHeading">
+        <h3 id="teacherStudentIdentityHeading">Student information</h3>
+        <dl class="teacher-student-details-grid">${studentDetails.map(([label, value]) => `
+          <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || 'Not available')}</dd></div>`).join('')}
+        </dl>
+      </section>
+      <section class="teacher-student-details-section" aria-labelledby="teacherStudentGuardiansHeading">
+        <h3 id="teacherStudentGuardiansHeading">Parents and guardians</h3>
+        <div class="teacher-student-guardian-list">${parentCards}</div>
+      </section>`;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  async function loadTeacherStudentDetails() {
+    const studentId = teacherStudentDetailsStudentId;
+    const requestId = ++teacherStudentDetailsRequestId;
+    const body = document.getElementById('teacherStudentDetailsBody');
+    body.innerHTML = '<div class="teacher-student-details-message" role="status">Loading student details…</div>';
+
+    try {
+      const details = await window.EDUGNAY_API.getSectionStudentDetails(CURRENT_SECTION_ID, studentId);
+      if (requestId !== teacherStudentDetailsRequestId || !document.getElementById('teacherStudentDetailsModal').classList.contains('open')) return;
+      renderTeacherStudentDetails(details);
+    } catch (error) {
+      if (requestId !== teacherStudentDetailsRequestId || !document.getElementById('teacherStudentDetailsModal').classList.contains('open')) return;
+      body.innerHTML = `<div class="teacher-student-details-message is-error" role="alert">
+        <p>${window.EDUGNAY_CONFIG.escapeHtml(error?.message || 'Student details could not be loaded.')}</p>
+        <button class="top-btn secondary" type="button" onclick="loadTeacherStudentDetails()">Try again</button>
+      </div>`;
+    }
+  }
+
+  function openTeacherStudentDetails(studentId, trigger) {
+    if (!BACKEND_SECTION_MODE || !CURRENT_SECTION_ID || !window.EDUGNAY_API?.getSectionStudentDetails) return;
+    const student = STUDENTS.find(item => String(item.id) === String(studentId));
+    if (!student) return;
+
+    teacherStudentDetailsTrigger = trigger || document.activeElement;
+    teacherStudentDetailsStudentId = String(student.id);
+    document.getElementById('teacherStudentDetailsTitle').textContent = student.displayName || 'Student details';
+    document.getElementById('teacherStudentDetailsSub').textContent = CURRENT_SECTION;
+    openModal('teacherStudentDetailsModal');
+    document.getElementById('teacherStudentDetailsClose').focus();
+    loadTeacherStudentDetails();
+  }
+
   function openTeacherDeleteModal(kind, id, name) {
-    pendingTeacherDelete = { kind, id: String(id) };
+    const journalItem = kind === 'scoreComponent' ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(id) && item.journalPromptId) : null;
+    const linkedAssignment = kind === 'scoreComponent'
+      ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.gradingItemId) === String(id))
+      : kind === 'assignment' ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.id) === String(id)) : null;
+    const linkedItem = linkedAssignment?.gradingItemId
+      ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(linkedAssignment.gradingItemId)) : null;
+    const isPair = Boolean(linkedAssignment?.gradingItemId);
+    const deleteKind = isPair ? 'assignment' : kind;
+    pendingTeacherDelete = { kind: journalItem ? 'journalPrompt' : deleteKind, id: String(journalItem ? journalItem.journalPromptId : isPair ? linkedAssignment.id : id), gradingItemId: journalItem ? journalItem.id : isPair ? linkedAssignment.gradingItemId : null };
     const isMaterial = kind === 'material';
-    document.getElementById('teacherDeleteConfirmTitle').textContent = `Delete ${isMaterial ? 'learning material' : 'assignment'}?`;
+    const isComponent = deleteKind === 'scoreComponent';
+    document.getElementById('teacherDeleteConfirmTitle').textContent = `Delete ${journalItem ? 'journal prompt and component' : isPair ? 'assignment and component' : isComponent ? 'score component' : isMaterial ? 'learning material' : 'assignment'}?`;
     document.getElementById('teacherDeleteConfirmSub').textContent = 'This action cannot be undone.';
-    document.getElementById('teacherDeleteConfirmName').textContent = name || (isMaterial ? 'Learning material' : 'Assignment');
-    document.getElementById('teacherDeleteConfirmDescription').textContent = isMaterial
-      ? 'The material and its uploaded file will be permanently removed.'
-      : 'Assignments with student submissions or linked score records cannot be deleted.';
+    document.getElementById('teacherDeleteConfirmName').textContent = isPair
+      ? kind === 'scoreComponent' ? linkedItem?.name || name || 'Score component' : linkedAssignment.title
+      : name || (isComponent ? 'Score component' : isMaterial ? 'Learning material' : 'Assignment');
+    const scoreCount = isComponent || isPair || journalItem ? BACKEND_STUDENT_SCORES.filter(score =>
+      String(score.gradingItemId) === String(isPair ? linkedAssignment.gradingItemId : id)
+      && (score.score !== null && score.score !== undefined || String(score.remarks || '').trim())).length : 0;
+    const item = isComponent ? BACKEND_GRADING_ITEMS.find(record => String(record.id) === String(id)) : null;
+    const published = Boolean((linkedItem || item)?.usedInPublishedGrades);
+    const submissionCount = isPair ? (BACKEND_SUBMISSIONS.get(String(linkedAssignment.id)) || []).length : 0;
+    document.getElementById('teacherDeleteConfirmDescription').textContent = journalItem
+      ? published ? 'This component was used in published grades and must remain.'
+        : scoreCount ? 'This component has saved scores and cannot be deleted.'
+          : 'Its linked journal prompt will also be deleted. Prompts with student entries cannot be deleted.'
+      : isPair
+      ? published ? 'The score component was used in published grades and cannot be deleted.'
+        : submissionCount ? 'This assignment has student submission records and cannot be deleted.'
+          : scoreCount ? 'The score component has saved student scores and cannot be deleted.'
+            : kind === 'scoreComponent'
+              ? 'Its linked assignment will also be deleted.'
+              : 'Its linked score component will also be deleted.'
+      : isComponent
+        ? published ? 'This component was used in published grades and cannot be deleted.'
+          : `This will permanently remove the component and ${scoreCount} saved student score ${scoreCount === 1 ? 'record' : 'records'}.`
+      : isMaterial ? 'The material and its uploaded file will be permanently removed.'
+        : 'Assignments with student submissions or unconfirmed score links cannot be deleted.';
     const button = document.getElementById('teacherDeleteConfirmButton');
-    button.textContent = `Delete ${isMaterial ? 'Material' : 'Assignment'}`;
-    button.disabled = false;
+    button.textContent = `Delete ${journalItem || isPair ? 'Both' : isComponent ? 'Component' : isMaterial ? 'Material' : 'Assignment'}`;
+    button.disabled = Boolean(published || ((isPair || journalItem) && (submissionCount || scoreCount)));
     openModal('teacherDeleteConfirmModal');
     window.lucide?.createIcons?.();
   }
@@ -1172,15 +1328,60 @@
     button.textContent = 'Deleting…';
     try {
       if (request.kind === 'assignment') {
+        if (request.gradingItemId) await flushPendingBackendScoreSaves();
         await window.EDUGNAY_API.deleteAssignment(request.id);
         BACKEND_ASSIGNMENTS = BACKEND_ASSIGNMENTS.filter(item => String(item.id) !== request.id);
+        if (request.gradingItemId) {
+          BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.filter(item => String(item.id) !== String(request.gradingItemId));
+          BACKEND_STUDENT_SCORES = BACKEND_STUDENT_SCORES.filter(score => String(score.gradingItemId) !== String(request.gradingItemId));
+        }
         BACKEND_SUBMISSIONS.delete(request.id);
+        let refreshFailed = false;
+        try {
+          const [assignments, items, scores] = await Promise.all([
+            window.EDUGNAY_API.getAssignments({ sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId }),
+            window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId }),
+            window.EDUGNAY_API.getStudentScores({})
+          ]);
+          BACKEND_ASSIGNMENTS = assignments;
+          BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+          BACKEND_STUDENT_SCORES = scores;
+        } catch { refreshFailed = true; }
         closeAssignmentMenus();
         teacherDeletePending = false;
         closeModal('teacherDeleteConfirmModal');
         renderAssignments();
         renderScoreTable(document.getElementById('academicPeriodSelect').value);
-        showAppToast('Assignment deleted.');
+        showAppToast(refreshFailed ? 'Deletion succeeded, but the lists could not refresh.'
+          : request.gradingItemId ? 'Assignment and score component deleted.' : 'Assignment deleted.',
+        refreshFailed ? 'info' : 'success');
+      } else if (request.kind === 'journalPrompt') {
+        await flushPendingBackendScoreSaves();
+        await window.EDUGNAY_API.deleteJournalPrompt(request.id);
+        BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.filter(item => String(item.id) !== String(request.gradingItemId));
+        BACKEND_STUDENT_SCORES = BACKEND_STUDENT_SCORES.filter(score => String(score.gradingItemId) !== String(request.gradingItemId));
+        teacherDeletePending = false;
+        closeModal('teacherDeleteConfirmModal');
+        renderScoreTable(document.getElementById('academicPeriodSelect').value);
+        showAppToast('Journal prompt and score component deleted.');
+      } else if (request.kind === 'scoreComponent') {
+        await flushPendingBackendScoreSaves();
+        await window.EDUGNAY_API.deleteGradingItem(request.id);
+        BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.filter(item => String(item.id) !== request.id);
+        BACKEND_STUDENT_SCORES = BACKEND_STUDENT_SCORES.filter(score => String(score.gradingItemId) !== request.id);
+        let refreshFailed = false;
+        try {
+          const [items, scores] = await Promise.all([
+            window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId }),
+            window.EDUGNAY_API.getStudentScores({})
+          ]);
+          BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+          BACKEND_STUDENT_SCORES = scores;
+        } catch { refreshFailed = true; }
+        teacherDeletePending = false;
+        closeModal('teacherDeleteConfirmModal');
+        renderScoreTable(document.getElementById('academicPeriodSelect').value);
+        showAppToast(refreshFailed ? 'Component deleted, but the gradebook could not refresh.' : 'Score component deleted.', refreshFailed ? 'info' : 'success');
       } else {
         const result = await window.EDUGNAY_API.deleteMaterial(request.id);
         teacherDeletePending = false;
@@ -1202,6 +1403,50 @@
   }
 
   document.getElementById('teacherDeleteConfirmButton').addEventListener('click', confirmTeacherDelete);
+
+  let scoreComponentMenuItemId = null;
+  function closeScoreComponentMenu() {
+    document.getElementById('scoreComponentMenu').hidden = true;
+    document.querySelectorAll('.score-comp-menu-trigger[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    scoreComponentMenuItemId = null;
+  }
+  document.getElementById('scoreTheadRow').addEventListener('click', event => {
+    const button = event.target.closest('.score-comp-menu-trigger');
+    if (!button) return;
+    event.stopPropagation();
+    const wasOpen = !document.getElementById('scoreComponentMenu').hidden && scoreComponentMenuItemId === button.dataset.componentId;
+    closeScoreComponentMenu();
+    if (wasOpen) return;
+    if (!hasScoreEditingAccess(document.getElementById('academicPeriodSelect').value)) {
+      showAppToast('This grading period is locked. Request temporary access before deleting a component.', 'error');
+      return;
+    }
+    const menu = document.getElementById('scoreComponentMenu');
+    const rect = button.getBoundingClientRect();
+    scoreComponentMenuItemId = button.dataset.componentId;
+    const journalItem = BACKEND_GRADING_ITEMS.find(item => String(item.id) === scoreComponentMenuItemId && item.journalPromptId);
+    document.getElementById('scoreComponentDeleteLabel').textContent = journalItem ? 'Delete journal & component' : BACKEND_ASSIGNMENTS.some(assignment =>
+      String(assignment.gradingItemId) === scoreComponentMenuItemId)
+      ? 'Delete assignment & component' : 'Delete component';
+    button.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+    menu.style.left = `${Math.max(8, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - menu.offsetHeight - 8)}px`;
+    document.getElementById('scoreComponentDeleteAction').focus();
+  });
+  document.getElementById('scoreComponentDeleteAction').addEventListener('click', () => {
+    const item = BACKEND_GRADING_ITEMS.find(record => String(record.id) === scoreComponentMenuItemId);
+    closeScoreComponentMenu();
+    if (item) openTeacherDeleteModal('scoreComponent', item.id, item.name);
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#scoreComponentMenu, .score-comp-menu-trigger')) closeScoreComponentMenu();
+  });
+  document.addEventListener('scroll', closeScoreComponentMenu, true);
+  window.addEventListener('resize', closeScoreComponentMenu);
+  document.getElementById('scoreComponentMenu').addEventListener('focusout', event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) closeScoreComponentMenu();
+  });
 
   /* ── TABS ── */
   function switchTab(name) {
@@ -1308,8 +1553,8 @@
           : sections[0];
         if (!selectedSection) {
           throw new Error(requestedSectionId
-            ? 'That section is not assigned to your account or is no longer active.'
-            : 'No active sections are assigned to your account.');
+            ? 'This section has no subject assigned to your account.'
+            : 'No active subject sections are assigned to your account.');
         }
 
         CURRENT_SECTION_RECORD = selectedSection;
@@ -1384,22 +1629,21 @@
 
       if (!selectedSection) {
         throw new Error(requestedSectionId
-          ? 'That section is not assigned to your account or is no longer active.'
-          : 'No active sections are assigned to your account.');
+          ? 'This section has no subject assigned to your account.'
+          : 'No active subject sections are assigned to your account.');
       }
 
-      const [studentResponse, teacherResponse] = await Promise.all([
-        window.EDUGNAY_API.getSectionStudents(selectedSection.id),
-        window.EDUGNAY_API.getSectionTeachers(selectedSection.id)
-      ]);
+      const studentResponse = await window.EDUGNAY_API.getSectionStudents(selectedSection.id);
 
       CURRENT_BACKEND_SECTION = selectedSection;
       CURRENT_SECTION_RECORD = selectedSection;
       CURRENT_SECTION_ID = String(selectedSection.id);
       keepSectionInUrl();
-      CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = teacherResponse.teachers.filter(item =>
-        String(item.teacherId) === CURRENT_TEACHER_ID
-      );
+      CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = (selectedSection.subjectAssignments || []).map(item => ({
+        ...item,
+        teacherId: CURRENT_TEACHER_ID,
+        subjectId: String(item.subjectId)
+      }));
 
       const requestedSubjectId = new URLSearchParams(window.location.search).get('subjectId');
       CURRENT_SUBJECT_ASSIGNMENT = requestedSubjectId
@@ -1455,6 +1699,14 @@
 
   function gradingWeight(category) {
     return Number(GRADING_RULES_BY_ID[String(category).toLowerCase()]?.weight) || 0;
+  }
+
+  function hasValidBackendSubjectAssignment() {
+    const subjectId = Number(CURRENT_SUBJECT_ID);
+    return Number.isSafeInteger(subjectId) && subjectId > 0
+      && CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.some(assignment =>
+        String(assignment.subjectId) === String(CURRENT_SUBJECT_ID)
+      );
   }
 
   // Attendance rows keep the existing UI field names while their source can
@@ -1654,7 +1906,7 @@
     }
     try {
       backendMaterialsError = '';
-      if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT) {
+      if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT || !hasValidBackendSubjectAssignment()) {
         throw new Error('No subject is assigned to you in this section.');
       }
       BACKEND_MATERIAL_CONTEXT = { sectionId: CURRENT_SECTION_ID, subjectId: CURRENT_SUBJECT_ID };
@@ -1751,12 +2003,18 @@
   }
 
   function getBackendGradingItemForAssignment(assignment) {
-    return BACKEND_GRADING_ITEMS.find(item =>
+    if (assignment.gradingItemId) {
+      return BACKEND_GRADING_ITEMS.find(item => item.id === String(assignment.gradingItemId)) || null;
+    }
+    const matches = BACKEND_GRADING_ITEMS.filter(item =>
       item.sectionId === String(BACKEND_GRADE_CONTEXT?.sectionId) &&
       item.subjectId === String(BACKEND_GRADE_CONTEXT?.subjectId) &&
       item.academicTermId === String(assignment.academicPeriodId) &&
-      item.title === assignment.title
-    ) || null;
+      Number(item.gradingCategoryId) === Number(assignment.gradingCategoryId) &&
+      item.title === assignment.title &&
+      Number(item.maxScore) === Number(assignment.maxScore)
+    );
+    return matches.length === 1 ? matches[0] : null;
   }
 
   function getBackendScore(gradingItemId, studentId) {
@@ -1783,7 +2041,7 @@
       BACKEND_GRADE_ERROR = 'The grade service is unavailable. Connect to the backend and reload this page.';
       return false;
     }
-    if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT) {
+    if (!CURRENT_BACKEND_SECTION || !CURRENT_SUBJECT_ASSIGNMENT || !hasValidBackendSubjectAssignment()) {
       BACKEND_GRADE_ERROR = 'The assigned section and subject are unavailable for grade recording.';
       return false;
     }
@@ -1870,6 +2128,9 @@
       if (!section) throw new Error('This section is not available to your account.');
       const teacherId = String(session.apiUserId || session.userId);
       if (teacherId !== CURRENT_TEACHER_ID) throw new Error('Your session changed. Reload this page to continue.');
+      if (!hasValidBackendSubjectAssignment()) {
+        throw new Error('This section has no subject assigned to your account.');
+      }
       BACKEND_ATTENDANCE_CONTEXT = {
         sectionId: String(section.id),
         schoolId: section.schoolId,
@@ -1901,6 +2162,14 @@
   function renderTeacherStudentList() {
     const tbody = document.getElementById('studentTbody');
     if (!tbody) return;
+    tbody.onclick = event => {
+      const row = event.target.closest('tr[data-student-id]');
+      if (!row || !tbody.contains(row)) return;
+      const detailButton = event.target.closest('[data-student-details]');
+      const otherControl = event.target.closest('a, button, input, select, textarea');
+      if (otherControl && otherControl !== detailButton) return;
+      openTeacherStudentDetails(row.dataset.studentId, row.querySelector('[data-student-details]'));
+    };
     const students = isBackendGradeMode()
       ? getGradeStudents()
       : (isBackendAttendanceMode() ? getAttendanceStudents() : STUDENTS);
@@ -1920,12 +2189,10 @@
       const attended = attendanceRecords.filter(record => ['present', 'late', 'excused'].includes(record.status)).length;
       const attendanceRateValue = attendanceRecords.length ? Math.round(attended / attendanceRecords.length * 100) : null;
       const grade = gradesByStudent.get(String(student.id));
-      const gradeStatus = grade ? 'Published' : isBackendGradeMode() && !BACKEND_GRADE_ERROR ? 'Not published' : 'Not available';
       return [String(student.id), {
         attendanceRate: attendanceRecords.length ? `${Math.round(attended / attendanceRecords.length * 100)}%` : '—',
         attendanceTone: attendanceRateValue == null ? 'gray' : attendanceRateValue >= 90 ? 'green' : attendanceRateValue >= 75 ? 'orange' : 'red',
         grade: grade ? Number(grade.finalGrade).toFixed(0) : '—',
-        status: gradeStatus,
         gradeTone: grade ? 'green' : 'gray'
       }];
     }));
@@ -1936,13 +2203,12 @@
       return `
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
-          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div><div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
+          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div><div class="student-name">${BACKEND_SECTION_MODE ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</button>` : window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
           <td style="font-size:12px;color:var(--gray-400);">${window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '')}</td>
           <td><span class="badge badge-${progress.attendanceTone}">${progress.attendanceRate}</span></td>
           <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.gradeTone] || 'var(--gray-400)'};">${progress.grade}</span></td>
-          <td><span class="badge badge-${progress.gradeTone}">${progress.status}</span></td>
         </tr>`;
-    }).join('') : `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
+    }).join('') : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
     const count = String(students.length);
     document.getElementById('studentCount').textContent = count;
@@ -2096,6 +2362,7 @@
     const descEl   = document.getElementById('quarterLockDesc');
     const actionEl = document.getElementById('quarterLockAction');
     const banner   = document.getElementById('quarterLockBanner');
+    banner.classList.remove('is-reopened');
     const adminMessage = req?.extensionReason || req?.adminNote;
     const requestState = req?.status;
 
@@ -2121,8 +2388,9 @@
       descEl.textContent = 'Scores become editable after the school administrator starts this grading period.';
       actionEl.innerHTML = '';
     } else if (reopened) {
+      banner.classList.add('is-reopened');
       banner.style.background = '#f0fdf4';
-      titleEl.style.color = '#16a34a';
+      titleEl.style.color = 'var(--green-dark)';
       titleEl.textContent = periodName + ' temporarily reopened';
       descEl.textContent = 'Scores are editable until ' + window.EDUGNAY_CONFIG.formatDateTime(req.expiresAt) + (adminMessage ? '. Admin note: "' + adminMessage + '"' : '.');
       actionEl.innerHTML = '<span class="badge badge-green"><i data-lucide="unlock" style="width:10px;height:10px;"></i> Reopened</span>';
@@ -2401,6 +2669,7 @@
     if (!subjectName || !subjectSelect) return;
 
     subjectName.textContent = CURRENT_SUBJECT;
+    document.getElementById('assignSubjectInput').value = CURRENT_SUBJECT_ASSIGNMENT ? CURRENT_SUBJECT : '';
     subjectSelect.replaceChildren(...CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.map(assignment => {
       const option = document.createElement('option');
       option.value = String(assignment.subjectId);
@@ -2434,6 +2703,7 @@
   }
 
   function renderScoreTable(academicPeriodId) {
+    closeScoreComponentMenu();
     const theadRow = document.getElementById('scoreTheadRow');
     const tbody = document.getElementById('scoreTbody');
     if (!isBackendGradeMode()) {
@@ -2455,6 +2725,9 @@
         return {
           id: item.id,
           name: item.name,
+          subjectId: item.subjectId,
+          journalPromptId: item.journalPromptId,
+          currentJournalSubjectId: item.currentJournalSubjectId,
           max: item.max,
           cat: String(category?.code || item.cat || '').trim().toUpperCase(),
           gradingItemId: item.id
@@ -2478,12 +2751,17 @@
       th.dataset.cat = c.cat;
       th.innerHTML =
         '<div class="comp-head-inner">' +
-          '<div class="comp-head-name">' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '</div>' +
+          '<div class="comp-head-title">' +
+            '<div class="comp-head-name" title="' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '">' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '</div>' +
+            '<button class="score-comp-menu-trigger" type="button" data-component-id="' + window.EDUGNAY_CONFIG.escapeHtml(c.id) + '" aria-label="Actions for ' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '" aria-haspopup="menu" aria-expanded="false"><i data-lucide="more-vertical" aria-hidden="true"></i></button>' +
+          '</div>' +
           '<div class="comp-head-max">/ ' + c.max + '</div>' +
           '<div class="comp-head-type ' + (typeClass[c.cat] || 'type-ww') + '">' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '</div>' +
+          (c.journalPromptId ? '<div class="comp-head-journal">' + (c.subjectId === c.currentJournalSubjectId ? 'Journal' : 'Past journal') + '</div>' : '') +
         '</div>';
       theadRow.appendChild(th);
     });
+    window.lucide?.createIcons?.();
 
     CURRENT_GRADING_RULES.forEach(rule => {
       const th = document.createElement('th');
@@ -3828,12 +4106,17 @@
       }
 
       const result = await window.EDUGNAY_API.publishFinalGrades(scope);
+      const publishedItemIds = new Set((result.gradingItemIds || []).map(String));
+      BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.map(item => publishedItemIds.has(String(item.id))
+        ? { ...item, usedInPublishedGrades: true } : item);
       closeModal('publishModal');
       try {
-        BACKEND_PUBLISHED_GRADES = await window.EDUGNAY_API.getFinalGrades({
-          sectionId: scope.sectionId,
-          subjectId: scope.subjectId
-        });
+        const [publishedGrades, gradingItems] = await Promise.all([
+          window.EDUGNAY_API.getFinalGrades({ sectionId: scope.sectionId, subjectId: scope.subjectId }),
+          window.EDUGNAY_API.getGradingItems({ sectionId: scope.sectionId })
+        ]);
+        BACKEND_PUBLISHED_GRADES = publishedGrades;
+        BACKEND_GRADING_ITEMS = gradingItems.filter(item => item.subjectId === String(scope.subjectId));
         updatePublishedGradesBanner(document.getElementById('academicPeriodSelect').value);
         showAppToast(`Grades published for ${result.publishedCount} students.`);
       } catch (refreshError) {
@@ -3897,8 +4180,12 @@
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
     closeAssignmentMenus();
+    const scoreMenuTrigger = document.querySelector('.score-comp-menu-trigger[aria-expanded="true"]');
+    closeScoreComponentMenu();
+    scoreMenuTrigger?.focus();
     const openModalBackdrop = document.querySelector('.modal-backdrop.open');
-    if (openModalBackdrop) closeModal(openModalBackdrop.id);
+    if (openModalBackdrop?.id === 'teacherStudentDetailsModal') closeTeacherStudentDetailsModal();
+    else if (openModalBackdrop) closeModal(openModalBackdrop.id);
   });
 
   function renderAssignments() {
@@ -3948,7 +4235,7 @@
                   <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Assignment
                 </button>
                 ${BACKEND_SECTION_MODE ? `<button class="assignment-menu-item delete" type="button" role="menuitem" data-delete-assignment="${window.EDUGNAY_CONFIG.escapeHtml(a.id)}" data-assignment-title="${window.EDUGNAY_CONFIG.escapeHtml(a.title)}">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Assignment
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> ${a.gradingItemId ? 'Delete Assignment & Component' : 'Delete Assignment'}
                 </button>` : ''}
               </div>
             </div>
@@ -4132,7 +4419,6 @@
 
   async function addAssignment() {
     const title = document.getElementById('assignTitleInput').value.trim();
-    const subject = document.getElementById('assignSubjectInput').value.trim();
     const instructions = document.getElementById('assignInstructionsInput').value.trim();
     const due = document.getElementById('assignDueInput').value;
     const onlineSubmissionEnabled = document.getElementById('assignOnlineSubmissionInput').checked;
@@ -4140,6 +4426,10 @@
     const academicPeriodId = document.getElementById('academicPeriodSelect').value;
     const categoryId = includeInScoreRecording ? document.getElementById('assignCategoryInput').value : null;
     const maxScore = includeInScoreRecording ? Number(document.getElementById('assignMaxScoreInput').value) : null;
+    if (!CURRENT_SUBJECT_ASSIGNMENT || !CURRENT_SUBJECT_ID) {
+      showAppToast('Select an assigned subject before adding an assignment.', 'error');
+      return;
+    }
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
     if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
       alert('Please select a grading category and enter the highest possible score.');
@@ -4147,7 +4437,6 @@
     }
     if (includeInScoreRecording && !requireScoreEditingAccess(academicPeriodId)) return;
 
-    const subjectRecord = window.EDUGNAY_CONFIG.subjects.find(item => item.name === subject) || CURRENT_SUBJECT_RECORD;
     if (isBackendGradeMode()) {
       const academicTermId = getBackendTermId(academicPeriodId);
       const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
@@ -4169,22 +4458,18 @@
         });
         if (!assignment) throw new Error('The assignment could not be created.');
         BACKEND_ASSIGNMENTS.push(assignment);
+        let gradeRefreshFailed = false;
         if (includeInScoreRecording) {
-          const gradingItem = await window.EDUGNAY_API.createGradingItem({
-            sectionId: BACKEND_GRADE_CONTEXT.sectionId,
-            subjectId: BACKEND_GRADE_CONTEXT.subjectId,
-            academicTermId,
-            gradingCategoryId: category.id,
-            title,
-            maxScore
-          });
-          if (gradingItem) BACKEND_GRADING_ITEMS.push(gradingItem);
+          try {
+            const items = await window.EDUGNAY_API.getGradingItems({ sectionId: BACKEND_GRADE_CONTEXT.sectionId });
+            BACKEND_GRADING_ITEMS = items.filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId));
+          } catch { gradeRefreshFailed = true; }
         }
         resetAssignmentForm();
         closeModal('addAssignmentModal');
         renderAssignments();
         renderScoreTable(academicPeriodId);
-        showAppToast('Assignment added.');
+        showAppToast(gradeRefreshFailed ? 'Assignment added, but the score table could not refresh.' : 'Assignment added.', gradeRefreshFailed ? 'info' : 'success');
       } catch (error) {
         showAppToast(error.message || 'The assignment could not be added.', 'error');
       }
@@ -4195,7 +4480,7 @@
       schoolId: TEACHER_SECTION_SCHOOL_ID,
       teacherId: CURRENT_TEACHER_ID,
       sectionId: CURRENT_SECTION_ID,
-      subjectId: subjectRecord?.id || CURRENT_SUBJECT_ID,
+      subjectId: CURRENT_SUBJECT_ID,
       academicPeriodId,
       title,
       instructions: instructions || null,
@@ -4299,21 +4584,25 @@
         if (index >= 0 && updated) BACKEND_ASSIGNMENTS[index] = updated;
         const gradingItem = currentGradingItem || getBackendGradingItemForAssignment(updated || assignment);
         if (gradingItem && includeInScoreRecording) {
-          const savedItem = await window.EDUGNAY_API.updateGradingItem(gradingItem.id, { title, maxScore });
-          if (savedItem) {
-            const itemIndex = BACKEND_GRADING_ITEMS.findIndex(item => item.id === gradingItem.id);
-            if (itemIndex >= 0) BACKEND_GRADING_ITEMS[itemIndex] = savedItem;
-          }
+          const savedItem = String(updated?.gradingItemId) === String(gradingItem.id)
+            ? { ...gradingItem, title, name: title, max: maxScore, maxScore }
+            : await window.EDUGNAY_API.updateGradingItem(gradingItem.id, { title, maxScore });
+          const itemIndex = BACKEND_GRADING_ITEMS.findIndex(item => item.id === gradingItem.id);
+          if (itemIndex >= 0) BACKEND_GRADING_ITEMS[itemIndex] = savedItem;
         } else if (!gradingItem && includeInScoreRecording) {
           const savedItem = await window.EDUGNAY_API.createGradingItem({
             sectionId: BACKEND_GRADE_CONTEXT.sectionId,
             subjectId: BACKEND_GRADE_CONTEXT.subjectId,
             academicTermId,
             gradingCategoryId: category.id,
+            assignmentId: activeAssignmentId,
             title,
             maxScore
           });
-          if (savedItem) BACKEND_GRADING_ITEMS.push(savedItem);
+          if (savedItem) {
+            if (index >= 0) BACKEND_ASSIGNMENTS[index].gradingItemId = savedItem.id;
+            BACKEND_GRADING_ITEMS.push(savedItem);
+          }
         }
         closeModal('editAssignmentModal');
         activeAssignmentId = null;
@@ -4553,8 +4842,8 @@
     panel.className = 'section-context-unavailable';
     panel.setAttribute('role', 'alert');
     panel.innerHTML = `
-      <div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="users-round"></i></div>
-      <h2>Section unavailable</h2>
+      <div class="panel-empty-state-icon" aria-hidden="true"><i data-lucide="book-x"></i></div>
+      <h2>Subject section unavailable</h2>
       <p>${window.EDUGNAY_CONFIG.escapeHtml(BACKEND_SECTION_ERROR)}</p>
       <a class="top-btn secondary" href="./edugnay-teacher-dashboard.html">Return to dashboard</a>
     `;

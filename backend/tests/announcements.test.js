@@ -65,7 +65,7 @@ const connection = {
     if (sql.startsWith('INSERT IGNORE INTO announcement_email_outbox')) {
       events.push('outbox');
       if (failOutboxInsert) throw new Error('outbox unavailable');
-      assert.deepEqual(values, [31, 4, 11, 12]);
+      assert.deepEqual(values, [4, 31, 4, 11, 12]);
       return [{ affectedRows: 2 }];
     }
     throw new Error(`Unexpected query: ${sql}`);

@@ -16,6 +16,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/journal-history-viewer.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
 
@@ -167,7 +168,7 @@
               </div>
             </div>
           </div>
-          <div class="school-tabs" role="tablist"><button class="school-tab active" data-school-tab="profile"
+          <div class="school-tabs" id="schoolSettingsTabs" role="tablist"><button class="school-tab active" data-school-tab="profile"
               type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic"
               type="button">Academic Structure</button><button class="school-tab" data-school-tab="terms"
               type="button">Academic Terms</button><button class="school-tab" data-school-tab="grading"
@@ -214,6 +215,41 @@
     </div>
   </div>
 
+  <div class="modal-backdrop school-term-modal" id="journalSubjectModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalSubjectModalTitle" aria-describedby="journalSubjectModalMessage">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon"><i data-lucide="notebook-pen"></i></span>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="journalSubjectModalTitle">Change journal subject?</div>
+            <div class="modal-sub">Existing journal records will be kept.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button" data-cancel-journal-change aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body"><p class="term-modal-message" id="journalSubjectModalMessage"></p></div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" type="button" data-cancel-journal-change>Cancel</button>
+        <button class="btn btn-save" type="button" id="confirmJournalSubjectChange">Change subject</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop school-term-modal" id="schoolJournalHistoryModal" aria-hidden="true">
+    <div class="modal journal-history-modal" role="dialog" aria-modal="true" aria-labelledby="schoolJournalHistoryTitle">
+      <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="history"></i></span><div class="modal-heading-copy"><div class="modal-title" id="schoolJournalHistoryTitle">Journal history</div><div class="modal-sub">Past prompts and entries remain under their original subjects and sections.</div></div></div><button class="modal-close" type="button" aria-label="Close history" onclick="closeSchoolJournalModal('schoolJournalHistoryModal')"><i data-lucide="x"></i></button></div>
+      <div class="modal-body journal-history-list" id="schoolJournalHistoryList"></div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeSchoolJournalModal('schoolJournalHistoryModal')">Close</button></div>
+    </div>
+  </div>
+  <div class="modal-backdrop school-term-modal" id="schoolJournalDeleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="schoolJournalDeleteTitle">
+      <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon danger"><i data-lucide="trash-2"></i></span><div class="modal-heading-copy"><div class="modal-title" id="schoolJournalDeleteTitle">Delete journal prompt and component?</div><div class="modal-sub">This action cannot be undone.</div></div></div><button class="modal-close" type="button" aria-label="Close confirmation" onclick="closeSchoolJournalModal('schoolJournalDeleteModal')"><i data-lucide="x"></i></button></div>
+      <div class="modal-body"><p class="term-modal-message" id="schoolJournalDeleteMessage"></p></div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeSchoolJournalModal('schoolJournalDeleteModal')">Cancel</button><button class="btn btn-danger" type="button" id="confirmSchoolJournalDelete">Delete Both</button></div>
+    </div>
+  </div>
+
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
     const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
@@ -231,6 +267,8 @@
       apiError: '',
       apiSchoolId: null,
       apiFeatures: null,
+      apiJournalSubjectId: null,
+      apiSubjects: [],
       apiStructure: [],
       apiGradingCategories: [],
       apiAcademicYears: [],
@@ -456,7 +494,8 @@
     }
 
     function applyApiContext() {
-      window.EDUGNAY_API.setSchoolContext(state.school, state.apiFeatures);
+      const subject = state.apiSubjects.find(item => String(item.id) === String(state.apiJournalSubjectId));
+      window.EDUGNAY_API.setSchoolContext(state.school, { ...state.apiFeatures, journalSubjectId: state.apiJournalSubjectId, journalSubjectName: subject?.name || null });
       window.refreshEdUgnayShellContext?.();
     }
 
@@ -705,13 +744,13 @@
     function renderPortalFeaturesPane() {
       const school = activeSchool();
       setSettingsHeading('Portal features', 'Control optional features across each portal.');
-      const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
-      const journalSubjectId = school?.journalSubjectId || subjects[0]?.id || '';
-      const hasJournalSubject = subjects.some(subject => subject.id === journalSubjectId);
+      const subjects = state.apiActive ? state.apiSubjects : window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
+      const journalSubjectId = state.apiActive ? String(state.apiJournalSubjectId || '') : String(school?.journalSubjectId || '');
+      const hasJournalSubject = subjects.some(subject => String(subject.id) === journalSubjectId);
       const features = state.apiFeatures || {};
       const gradesPageEnabled = state.apiActive ? Boolean(features.gradesEnabled) : Boolean(school?.gradesPageEnabled);
       const narrativeReportsEnabled = state.apiActive ? Boolean(features.narrativeReportsEnabled) : Boolean(school?.narrativeReportsEnabled);
-      const journalsEnabled = Boolean((state.apiActive ? features.journalsEnabled : school?.journalsEnabled) && hasJournalSubject);
+      const journalsEnabled = Boolean(state.apiActive ? features.journalsEnabled : school?.journalsEnabled);
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
@@ -752,16 +791,18 @@
                   <label for="journalSubjectId">Subject used for Journals</label>
                   <select id="journalSubjectId" name="journalSubjectId" ${subjects.length && journalsEnabled ? '' : 'disabled'}>
                     <option value="">Select a configured subject</option>
-                    ${subjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${subject.id === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</option>`).join('')}
+                    ${subjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${String(subject.id) === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</option>`).join('')}
                   </select>
-                  <small>${subjects.length ? 'Students and teachers will see this subject wherever Journal is shown.' : 'Add a subject in Class Management before enabling Journals.'}</small>
+                  <small>${subjects.length ? hasJournalSubject || !journalSubjectId ? 'Only teachers assigned to this subject in a section can manage Journals.' : 'The saved subject is unavailable. Choose an active subject.' : 'Add a subject in Class Management before enabling Journals.'}</small>
                 </div>
               </div>
             </div>
+            ${state.apiActive ? '<div class="school-section-block"><button class="top-btn" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>' : ''}
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save portal features</button></div>
           </form>
         </div>`;
       document.getElementById('schoolPortalForm').addEventListener('submit', savePortalFeatures);
+      document.getElementById('viewSchoolJournalHistory')?.addEventListener('click', openSchoolJournalHistory);
       const journalToggle = document.querySelector('#schoolPortalForm [name="journalsEnabled"]');
       const journalSubjectBlock = document.getElementById('journalSubjectBlock');
       const journalSubjectSelect = document.getElementById('journalSubjectId');
@@ -836,12 +877,13 @@
       state.apiLoading = true;
       renderSettingsApiState();
       try {
-        const [apiSchool, portal, structure, years, gradingCategories] = await Promise.all([
+        const [apiSchool, portal, structure, years, gradingCategories, subjects] = await Promise.all([
           window.EDUGNAY_API.getSchoolSettings(),
           window.EDUGNAY_API.getPortalFeatures(),
           window.EDUGNAY_API.getAcademicStructure(),
           window.EDUGNAY_API.getAcademicYears(),
-          window.EDUGNAY_API.getGradingCategories()
+          window.EDUGNAY_API.getGradingCategories(),
+          window.EDUGNAY_API.getSubjects()
         ]);
         if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
         applyApiSchoolSettings(apiSchool);
@@ -853,6 +895,8 @@
           : [];
         applyApiAcademicTerms(years, terms);
         state.apiFeatures = portal.features;
+        state.apiJournalSubjectId = portal.journalSubjectId;
+        state.apiSubjects = subjects.filter(subject => subject.isActive);
         state.apiActive = true;
         state.apiLoading = false;
         applyApiContext();
@@ -1367,13 +1411,168 @@
       window.refreshEdUgnayShellContext?.();
       showAppToast(`${levelLabel(level)} grading rules saved in local demo data.`, 'info');
     }
+    function confirmJournalSubjectChange(subjectName) {
+      return new Promise(resolve => {
+        const modal = document.getElementById('journalSubjectModal');
+        const trigger = document.activeElement;
+        document.getElementById('journalSubjectModalMessage').textContent = `Journals will use ${subjectName}. Teachers assigned only to the previous subject will lose current journal access. Existing prompts, entries, score components, and published grades stay under their original subject. They can be reviewed in Journal history. Switching back can make old prompts active again.`;
+        const confirm = document.getElementById('confirmJournalSubjectChange');
+        const cancelButtons = modal.querySelectorAll('[data-cancel-journal-change]');
+        const finish = accepted => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+          confirm.removeEventListener('click', accept);
+          cancelButtons.forEach(button => button.removeEventListener('click', cancel));
+          modal.removeEventListener('click', backdrop);
+          document.removeEventListener('keydown', escape);
+          trigger?.focus();
+          resolve(accepted);
+        };
+        const accept = () => finish(true);
+        const cancel = () => finish(false);
+        const backdrop = event => { if (event.target === modal) cancel(); };
+        const escape = event => { if (event.key === 'Escape') cancel(); };
+        confirm.addEventListener('click', accept);
+        cancelButtons.forEach(button => button.addEventListener('click', cancel));
+        modal.addEventListener('click', backdrop);
+        document.addEventListener('keydown', escape);
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        confirm.focus();
+      });
+    }
+
+    let schoolJournalHistory = { prompts: [], entries: [] };
+    let pendingSchoolJournalDeleteId = '';
+    let schoolJournalHistoryReturnFocus = null;
+    let schoolJournalDeleteReturnFocus = null;
+
+    function formatSchoolJournalHistoryDate(value) {
+      const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T00:00:00` : value);
+      return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    const schoolJournalEntryViewer = window.EDUGNAY_JOURNAL_HISTORY.createEntryViewer(document.getElementById('schoolJournalHistoryList'), formatSchoolJournalHistoryDate);
+
+    function closeSchoolJournalModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      if (id === 'schoolJournalHistoryModal') {
+        schoolJournalEntryViewer.reset();
+        schoolJournalHistoryReturnFocus?.focus();
+      }
+      if (id === 'schoolJournalDeleteModal') schoolJournalDeleteReturnFocus?.focus();
+    }
+
+    function renderSchoolJournalHistory() {
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      const list = document.getElementById('schoolJournalHistoryList');
+      const promptCards = schoolJournalHistory.prompts.map(prompt => {
+        const entries = schoolJournalHistory.entries.filter(entry => entry.promptId === prompt.id);
+        const canDelete = prompt.gradingItemId && !prompt.usedInPublishedGrades && !prompt.entryCount && !prompt.recordedScoreCount;
+        const previous = prompt.effectiveStatus === 'inactive';
+        const status = previous ? 'Previous subject' : prompt.status === 'open' ? 'Open' : 'Closed';
+        return `<article class="journal-history-card">
+          <div class="journal-history-card-head"><div class="journal-history-card-heading"><strong class="journal-history-card-title">${escape(prompt.subjectName)} · ${escape(prompt.sectionName)}</strong><span class="journal-history-card-date">Week of ${escape(formatSchoolJournalHistoryDate(prompt.weekStartDate))}</span></div><span class="journal-history-status ${previous ? 'is-previous' : prompt.status === 'open' ? 'is-open' : ''}">${status}</span></div>
+          <p class="journal-history-card-content">${escape(prompt.promptText)}</p>
+          <div class="journal-history-card-meta"><div>Score component: <strong>${escape(prompt.componentTitle || 'Not linked')}</strong></div><div class="journal-history-facts"><span>${prompt.entryCount} ${prompt.entryCount === 1 ? 'entry' : 'entries'}</span><span>${prompt.recordedScoreCount} recorded ${prompt.recordedScoreCount === 1 ? 'score' : 'scores'}</span>${prompt.usedInPublishedGrades ? '<span class="journal-history-protected">Used in published grades</span>' : ''}</div></div>
+          ${entries.length ? `<div class="journal-history-entry-action"><button type="button" data-view-journal-entries="prompt:${escape(prompt.id)}"><i data-lucide="users" aria-hidden="true"></i>View submitted entries (${entries.length})<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>` : ''}
+          ${canDelete ? `<div class="journal-history-actions"><button class="journal-history-delete" type="button" data-delete-school-journal="${escape(prompt.id)}"><i data-lucide="trash-2" aria-hidden="true"></i>Delete prompt & component</button></div>` : ''}
+        </article>`;
+      }).join('');
+      const legacyCards = window.EDUGNAY_JOURNAL_HISTORY.groupLegacyEntries(schoolJournalHistory.entries).map(group => {
+        const entryCount = group.entries.length;
+        const weekLabel = group.weekStartDate ? `Submission week of ${formatSchoolJournalHistoryDate(group.weekStartDate)}` : 'Submission date unavailable';
+        return `<article class="journal-history-card">
+          <div class="journal-history-card-head"><div class="journal-history-card-heading"><strong class="journal-history-card-title">${escape(group.journalSubjectName)} · ${escape(group.sectionName)}</strong><span class="journal-history-card-date">${escape(weekLabel)}</span></div><span class="journal-history-status is-previous">Past entries</span></div>
+          <p class="journal-history-card-content">${escape(group.promptText || 'Original prompt text unavailable.')}</p>
+          <div class="journal-history-card-meta"><div class="journal-history-facts"><span>${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}</span></div></div>
+          <div class="journal-history-entry-action"><button type="button" data-view-journal-entries="${escape(group.key)}"><i data-lucide="users" aria-hidden="true"></i>View submitted entries (${entryCount})<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
+        </article>`;
+      }).join('');
+      list.innerHTML = promptCards + legacyCards || window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'No journal history', text: 'Prompts and entries will appear here.' });
+      window.lucide?.createIcons();
+    }
+
+    async function openSchoolJournalHistory() {
+      const modal = document.getElementById('schoolJournalHistoryModal');
+      const list = document.getElementById('schoolJournalHistoryList');
+      if (!modal.classList.contains('open')) schoolJournalHistoryReturnFocus = document.activeElement;
+      list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'Loading journal history', text: 'Prompts and entries are being loaded.' });
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      modal.querySelector('.modal-close').focus();
+      try {
+        schoolJournalHistory = await window.EDUGNAY_API.getJournalHistory();
+        renderSchoolJournalHistory();
+      } catch (error) {
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal history unavailable', text: error.message || 'Please try again.' });
+        window.lucide?.createIcons();
+      }
+    }
+
+    ['schoolJournalHistoryModal', 'schoolJournalDeleteModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', event => {
+        if (event.target === event.currentTarget) closeSchoolJournalModal(id);
+      });
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      if (document.getElementById('schoolJournalDeleteModal').classList.contains('open')) closeSchoolJournalModal('schoolJournalDeleteModal');
+      else if (document.getElementById('schoolJournalHistoryModal').classList.contains('open')) closeSchoolJournalModal('schoolJournalHistoryModal');
+    });
+
+    document.getElementById('schoolJournalHistoryList').addEventListener('click', event => {
+      const entriesButton = event.target.closest('[data-view-journal-entries]');
+      if (entriesButton) {
+        const key = entriesButton.dataset.viewJournalEntries;
+        const prompt = key.startsWith('prompt:') ? schoolJournalHistory.prompts.find(item => item.id === key.slice(7)) : null;
+        const legacyGroup = key.startsWith('legacy:')
+          ? window.EDUGNAY_JOURNAL_HISTORY.groupLegacyEntries(schoolJournalHistory.entries).find(group => group.key === key)
+          : null;
+        const entries = prompt ? schoolJournalHistory.entries.filter(entry => entry.promptId === prompt.id) : legacyGroup?.entries || [];
+        const first = entries[0];
+        if (!first) return;
+        schoolJournalEntryViewer.open({ groupKey: key, title: `Submitted entries · ${first.journalSubjectName} · ${first.sectionName}`, context: prompt ? `Week of ${formatSchoolJournalHistoryDate(prompt.weekStartDate)}` : legacyGroup?.weekStartDate ? `Submission week of ${formatSchoolJournalHistoryDate(legacyGroup.weekStartDate)}` : 'Submission date unavailable', entries });
+        return;
+      }
+      const button = event.target.closest('[data-delete-school-journal]');
+      if (!button) return;
+      const prompt = schoolJournalHistory.prompts.find(item => item.id === button.dataset.deleteSchoolJournal);
+      if (!prompt) return;
+      schoolJournalDeleteReturnFocus = button;
+      pendingSchoolJournalDeleteId = prompt.id;
+      document.getElementById('schoolJournalDeleteMessage').textContent = `Delete the prompt for ${prompt.subjectName} · ${prompt.sectionName} and its linked score component “${prompt.componentTitle}”?`;
+      const modal = document.getElementById('schoolJournalDeleteModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      modal.querySelector('.modal-close').focus();
+    });
+
+    document.getElementById('confirmSchoolJournalDelete').addEventListener('click', async event => {
+      if (!pendingSchoolJournalDeleteId) return;
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await window.EDUGNAY_API.deleteJournalPrompt(pendingSchoolJournalDeleteId);
+        pendingSchoolJournalDeleteId = '';
+        closeSchoolJournalModal('schoolJournalDeleteModal');
+        await openSchoolJournalHistory();
+        showAppToast('Journal prompt and score component deleted.');
+      } catch (error) { notify(error.message || 'The journal prompt could not be deleted.'); }
+      finally { button.disabled = false; }
+    });
+
     async function savePortalFeatures(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const school = activeSchool();
-      const journalSubjectId = String(form.elements.journalSubjectId?.value || '');
-      const subjects = window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
-      const journalSubjectIsConfigured = subjects.some(subject => subject.id === journalSubjectId);
+      const journalSubjectId = String(form.elements.journalSubjectId?.disabled
+        ? (state.apiActive ? state.apiJournalSubjectId : school?.journalSubjectId) || ''
+        : form.elements.journalSubjectId?.value || '');
+      const subjects = state.apiActive ? state.apiSubjects : window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
+      const journalSubjectIsConfigured = subjects.some(subject => String(subject.id) === journalSubjectId);
       if (form.elements.journalsEnabled?.checked && !journalSubjectIsConfigured) {
         notify('Select a configured subject before enabling Journals.');
         form.elements.journalSubjectId?.focus();
@@ -1385,24 +1584,33 @@
           notify('School settings are still loading. Please try again.');
           return;
         }
+        if (state.apiJournalSubjectId && journalSubjectId !== String(state.apiJournalSubjectId)) {
+          const subjectName = subjects.find(subject => String(subject.id) === journalSubjectId)?.name || 'the selected subject';
+          if (!(await confirmJournalSubjectChange(subjectName))) return;
+        }
         try {
+          const button = form.querySelector('[type="submit"]');
+          button.disabled = true;
           const result = await window.EDUGNAY_API.updatePortalFeatures({
             gradesEnabled: Boolean(form.elements.gradesPageEnabled?.checked),
             narrativeReportsEnabled: Boolean(form.elements.narrativeReportsEnabled?.checked),
             journalsEnabled: Boolean(form.elements.journalsEnabled?.checked),
+            journalSubjectId: journalSubjectId ? Number(journalSubjectId) : null,
             attendanceEnabled: Boolean(state.apiFeatures?.attendanceEnabled),
             sfTemplatesEnabled: Boolean(state.apiFeatures?.sfTemplatesEnabled)
           });
           state.apiFeatures = result.features;
+          state.apiJournalSubjectId = result.journalSubjectId;
           school.gradesPageEnabled = Boolean(result.features.gradesEnabled);
           school.narrativeReportsEnabled = Boolean(result.features.narrativeReportsEnabled);
           school.journalsEnabled = Boolean(result.features.journalsEnabled);
-          school.journalSubjectId = journalSubjectId;
+          school.journalSubjectId = result.journalSubjectId ? String(result.journalSubjectId) : null;
           applyApiContext();
           renderAll();
           showAppToast('Portal features saved.');
         } catch (error) {
           notify(error.message || 'The portal features could not be saved.');
+          form.querySelector('[type="submit"]').disabled = false;
         }
         return;
       }

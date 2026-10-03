@@ -97,9 +97,7 @@ async function updateSubject(req, res, next) {
     await connection.beginTransaction();
     transactionStarted = true;
     await connection.execute('UPDATE subjects SET subject_code=?, name=?, school_level_id=?, grade_level_id=?, is_active=? WHERE id=?', [subjectCode, name, schoolLevelId, gradeLevelId, isActive, subjectId]);
-    if (req.body.isActive !== undefined) {
-      await connection.execute('UPDATE journal_subjects SET is_active = ? WHERE subject_id = ?', [isActive, subjectId]);
-    }
+    await connection.execute('UPDATE journal_subjects SET name = ?, is_active = ? WHERE school_id = ? AND subject_id = ?', [name, isActive, req.user.schoolId, subjectId]);
     await writeAuditLog(connection, req, 'subject_updated', 'subject', subjectId, { summary: name });
     await connection.commit();
     transactionStarted = false;

@@ -1,14 +1,15 @@
 const express = require('express');
 const controller = require('../controllers/sectionsController');
 const { requireAuth } = require('../middleware/auth');
-const { requireSchoolAdmin } = require('../middleware/authorize');
+const { requireSchoolAdmin, requireSchoolUser, requireTeacher } = require('../middleware/authorize');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireSchoolUser);
 router.get('/', controller.listSections);
 router.post('/', requireSchoolAdmin, controller.createSection);
 router.get('/:sectionId/students', controller.listSectionStudents);
+router.get('/:sectionId/students/:studentId', requireTeacher, controller.getSectionStudentDetails);
 router.post('/:sectionId/students', requireSchoolAdmin, controller.enrollStudent);
 router.post('/:sectionId/students/:studentId/move', requireSchoolAdmin, controller.moveStudent);
 router.delete('/:sectionId/students/:studentId', requireSchoolAdmin, controller.withdrawStudent);

@@ -165,9 +165,11 @@
         </div>
       </section>
 
-      <!-- children[]: loop -->
+      <div class="attendance-load-state" id="attendance-load-state" role="status" aria-live="polite" hidden>
+        <span id="attendance-load-message"></span>
+        <button class="top-btn secondary" id="attendance-retry" type="button" onclick="loadAttendance()" hidden>Try again</button>
+      </div>
       <div class="child-switcher" id="child-switcher"></div>
-      <!-- end children[] loop -->
 
       <!-- Stat strip — recomputed per month, per child -->
       <div class="stat-grid attendance-stat-grid" id="summary-strip">
@@ -188,7 +190,7 @@
               <button class="cal-nav-btn" id="cal-prev" onclick="changeMonth(-1)">
                 <i data-lucide="chevron-left" style="width:15px;height:15px;"></i>
               </button>
-              <div class="cal-month-label" id="cal-month-label">June 2025</div>
+              <div class="cal-month-label" id="cal-month-label">Attendance history</div>
               <button class="cal-nav-btn" id="cal-next" onclick="changeMonth(1)">
                 <i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
               </button>
@@ -250,7 +252,7 @@
         <div class="modal-heading">
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></div>
           <div class="modal-heading-copy">
-          <div class="modal-title" id="dayDetailModalTitle">June 13, 2025</div>
+          <div class="modal-title" id="dayDetailModalTitle">Attendance details</div>
           <div class="modal-sub">Attendance details for this school day.</div>
           </div>
         </div>
@@ -270,17 +272,14 @@
   <script>
     lucide.createIcons();
 
-    let TODAY_ISO = '2025-06-13';
-
-    const PARENT_CHILDREN = window.EDUGNAY_PARENT.children;
-    if (window.EDUGNAY_API?.isBackendAvailable) PARENT_CHILDREN.splice(0);
-    const PARENT_SECTIONS = window.EDUGNAY_CONFIG.getAssignmentSections();
-    let backendAttendanceRecords = null;
+    let TODAY_ISO = '';
+    let PARENT_CHILDREN = [];
+    let backendAttendanceRecords = [];
+    let attendanceLoading = true;
     let attendanceLoadError = '';
 
     function getChildProfile(studentId) {
-      const link = PARENT_CHILDREN.find(child => child.studentId === studentId);
-      return link?.profile || window.EDUGNAY_CONFIG.getUserById(studentId);
+      return PARENT_CHILDREN.find(child => child.studentId === studentId)?.profile || null;
     }
 
     // The shared flat attendance records are grouped only for this calendar UI.
@@ -293,9 +292,7 @@
         filipino: { name: 'Filipino', color: 'var(--gold)' }
       };
 
-      const records = backendAttendanceRecords
-        ? backendAttendanceRecords.filter(record => record.studentId === studentId)
-        : window.EDUGNAY_CONFIG.getAttendanceForStudent(studentId);
+      const records = backendAttendanceRecords.filter(record => record.studentId === studentId);
       records.filter(record => record.subjectId).forEach(record => {
         const date = String(record.date || '');
         const monthKey = date.slice(0, 7);
@@ -318,27 +315,33 @@
     }
 
 
-    let currentChild = PARENT_CHILDREN[0]?.studentId || null;
-    let currentMonthKey = '2025-06';
+    let currentChild = null;
+    let currentMonthKey = '';
     let selectedDate = null;
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
       if (!switcher) return;
+      if (attendanceLoading) {
+        switcher.textContent = 'Loading linked children...';
+        return;
+      }
+      if (attendanceLoadError) {
+        switcher.replaceChildren();
+        return;
+      }
       switcher.innerHTML = PARENT_CHILDREN.length
         ? PARENT_CHILDREN.map(link => {
           const student = getChildProfile(link.studentId);
-          if (!student || (!link.profile && student.role !== PARENT_CONFIG.values.roles.STUDENT)) return '';
-          const section = PARENT_SECTIONS.find(record => record.id === student.sectionId);
-          return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" onclick="switchChild('${window.EDUGNAY_CONFIG.escapeHtml(student.id)}', this)"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(student.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(student.sectionName || section?.name || 'Unassigned')}</div></div></div>`;
+          return `<button class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" type="button"><span class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials || '')}</span><span class="child-info"><span class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName || 'Student')}</span><span class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(student.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(student.sectionName || 'Unassigned')}</span></span></button>`;
         }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();
     }
 
     function switchChild(childKey, el) {
+      if (!PARENT_CHILDREN.some(child => child.studentId === childKey)) return;
       const child = getAttendanceRecord(childKey);
-      if (!child) return;
       currentChild = childKey;
       document.querySelectorAll('.child-card').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
@@ -369,6 +372,12 @@
     }
 
     function renderAll() {
+      const state = document.getElementById('attendance-load-state');
+      state.hidden = !attendanceLoading && !attendanceLoadError;
+      state.classList.toggle('is-error', Boolean(attendanceLoadError));
+      state.setAttribute('role', attendanceLoadError ? 'alert' : 'status');
+      document.getElementById('attendance-load-message').textContent = attendanceLoadError || 'Loading attendance...';
+      document.getElementById('attendance-retry').hidden = !attendanceLoadError;
       renderSummaryStrip();
       renderCalendar();
       renderFlaggedDays();
@@ -379,7 +388,10 @@
       const month = child?.months?.[currentMonthKey];
       const summary = document.getElementById('summary-strip');
       if (!child || !month) {
-        summary.textContent = attendanceLoadError || 'No subject attendance has been recorded for this month.';
+        summary.textContent = attendanceLoading ? 'Loading attendance...'
+          : attendanceLoadError ? 'Attendance is unavailable.'
+            : !currentChild ? 'Select a linked child to view attendance.'
+              : 'No subject attendance has been recorded for this month.';
         lucide.createIcons();
         return;
       }
@@ -431,7 +443,13 @@
         monthLabel.textContent = 'Attendance history';
         prevButton.disabled = true;
         nextButton.disabled = true;
-        grid.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar', title: 'No attendance calendar', text: 'Attendance dates will appear here when a child account is linked.' });
+        grid.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'calendar',
+          title: attendanceLoading ? 'Loading attendance' : attendanceLoadError ? 'Attendance unavailable' : 'No attendance calendar',
+          text: attendanceLoadError ? 'Try loading the attendance records again.'
+            : currentChild ? 'No subject attendance has been recorded for this child.'
+              : 'Attendance dates will appear here when a child account is linked.'
+        });
         lucide.createIcons();
         return;
       }
@@ -505,11 +523,11 @@
       const entry = month.days[selectedDate];
       const subjects = Array.isArray(entry.subjects) ? entry.subjects : [];
       const b = { cls: 'present', icon: 'book-open', title: `${subjects.length} subject record${subjects.length === 1 ? '' : 's'}`,
-        sub: 'Only subjects with saved attendance are shown.', bg: 'var(--blue-xpale)', color: 'var(--blue-mid)' };
+        sub: 'Only subjects with saved attendance are shown.' };
 
       container.innerHTML = `
     <div class="day-detail-banner ${b.cls}">
-      <div class="ddb-icon" style="background:${b.bg};color:${b.color};"><i data-lucide="${b.icon}" style="width:18px;height:18px;"></i></div>
+      <div class="ddb-icon"><i data-lucide="${b.icon}" style="width:18px;height:18px;"></i></div>
       <div>
         <div class="ddb-title">${b.title}</div>
         <div class="ddb-sub">${b.sub}</div>
@@ -553,7 +571,13 @@
       const container = document.getElementById('flagged-list');
       const month = child?.months?.[currentMonthKey];
       if (!child || !childProfile || !month) {
-        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No flagged days', text: 'Absence details will appear here when a child account is linked.' });
+        container.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'calendar-x',
+          title: attendanceLoading ? 'Loading attendance' : attendanceLoadError ? 'Attendance unavailable' : 'No flagged days',
+          text: attendanceLoadError ? 'Try loading the attendance records again.'
+            : currentChild ? 'No subject absences have been recorded for this month.'
+              : 'Absence details will appear here when a child account is linked.'
+        });
         lucide.createIcons();
         return;
       }
@@ -604,36 +628,59 @@
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { toggleDrawer(false); closeDayDetailModal(); toggleProfileDropdown(false); } });
 
-    /* ── INIT ── */
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (window.EDUGNAY_API?.isBackendAvailable) {
-        try {
-          const children = await window.EDUGNAY_API.getParentChildren();
-          PARENT_CHILDREN.splice(0, PARENT_CHILDREN.length, ...children.map(child => ({
-            studentId: child.studentId,
-            profile: { ...child, id: child.studentId }
-          })));
-          try {
-            const data = await window.EDUGNAY_API.getParentAttendance();
-            backendAttendanceRecords = data.records || [];
-          } catch (error) {
-            attendanceLoadError = error?.message || 'Attendance could not be loaded.';
-            backendAttendanceRecords = [];
-          }
-          const today = new Date();
-          TODAY_ISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          currentChild = PARENT_CHILDREN[0]?.studentId || null;
-          const months = Object.keys(getAttendanceRecord(currentChild)?.months || {}).sort();
-          currentMonthKey = months[months.length - 1] || TODAY_ISO.slice(0, 7);
-        } catch (error) {
-          attendanceLoadError = error?.message || 'Linked children could not be loaded.';
-          backendAttendanceRecords = [];
-          PARENT_CHILDREN.splice(0);
-          currentChild = null;
-        }
-      }
+    async function loadAttendance() {
+      attendanceLoading = true;
+      attendanceLoadError = '';
+      PARENT_CHILDREN = [];
+      backendAttendanceRecords = [];
+      TODAY_ISO = '';
+      currentChild = null;
+      currentMonthKey = '';
+      selectedDate = null;
+      closeDayDetailModal();
       renderChildSwitcher();
       renderAll();
+
+      try {
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
+        const children = await window.EDUGNAY_API.getParentChildren();
+        const data = await window.EDUGNAY_API.getParentAttendance();
+        const schoolDate = data?.currentDate;
+        const parsedDate = new Date(`${schoolDate}T00:00:00Z`);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(schoolDate) || Number.isNaN(parsedDate.getTime())
+          || parsedDate.toISOString().slice(0, 10) !== schoolDate || !Array.isArray(data.records)) {
+          throw new Error('The attendance response is incomplete. Please try again.');
+        }
+        PARENT_CHILDREN = children.map(child => ({
+          studentId: String(child.studentId),
+          profile: { ...child, id: String(child.studentId) }
+        }));
+        backendAttendanceRecords = data.records.map(record => ({ ...record, studentId: String(record.studentId) }));
+        TODAY_ISO = schoolDate;
+        currentChild = PARENT_CHILDREN[0]?.studentId || null;
+        const months = Object.keys(getAttendanceRecord(currentChild).months).sort();
+        currentMonthKey = months[months.length - 1] || TODAY_ISO.slice(0, 7);
+      } catch (error) {
+        attendanceLoadError = error.message || 'Attendance could not be loaded.';
+        PARENT_CHILDREN = [];
+        backendAttendanceRecords = [];
+        TODAY_ISO = '';
+        currentChild = null;
+        currentMonthKey = '';
+      } finally {
+        attendanceLoading = false;
+        renderChildSwitcher();
+        renderAll();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const switcher = document.getElementById('child-switcher');
+      switcher.addEventListener('click', event => {
+        const card = event.target.closest('.child-card');
+        if (card && switcher.contains(card)) switchChild(card.dataset.child, card);
+      });
+      loadAttendance();
     });
   </script>
 

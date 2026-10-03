@@ -45,7 +45,8 @@ test('a student receives only parent links for their session identity and school
     relationship: 'mother'
   }]);
   assert.deepEqual(calls[0].values, [1, 6]);
-  assert.match(calls[0].sql, /parents\.school_id = \?/);
+  assert.match(calls[0].sql, /parents\.school_id = student_parent_links\.school_id/);
+  assert.match(calls[0].sql, /student_parent_links\.school_id = \?/);
   assert.match(calls[0].sql, /parents\.role = 'parent'/);
 });
 

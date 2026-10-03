@@ -24,9 +24,9 @@ async function notifyParents(connection, { schoolId, studentId, code, eventKey, 
       AND parents.school_id = ? AND parents.role = 'parent' AND parents.account_status = 'active'
     INNER JOIN users AS students ON students.id = links.student_user_id
       AND students.school_id = ? AND students.role = 'student' AND students.account_status = 'active'
-    WHERE links.student_user_id = ?
-    ON DUPLICATE KEY UPDATE id = id`,
-    [{ grade_below_threshold: 'grade', consecutive_absences: 'attendance', assignment_not_completed: 'assignment', narrative_report_released: 'report', journal_not_submitted: 'journal' }[code], title, message, targetPath, eventKey, schoolId, schoolId, studentId]
+    WHERE links.school_id = ? AND links.student_user_id = ?
+    ON DUPLICATE KEY UPDATE event_key = event_key`,
+    [{ grade_below_threshold: 'grade', consecutive_absences: 'attendance', assignment_not_completed: 'assignment', narrative_report_released: 'report', journal_not_submitted: 'journal' }[code], title, message, targetPath, eventKey, schoolId, schoolId, schoolId, studentId]
   );
 }
 
@@ -41,7 +41,8 @@ async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjec
   const [history] = await connection.execute(
     `SELECT sessions.id, records.attendance_status AS status
     FROM attendance_sessions AS sessions
-    INNER JOIN attendance_records AS records ON records.attendance_session_id = sessions.id
+    INNER JOIN attendance_records AS records ON records.school_id = sessions.school_id
+      AND records.attendance_session_id = sessions.id
     WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.subject_id = ?
       AND sessions.status = 'confirmed' AND records.student_user_id = ?
     ORDER BY sessions.attendance_date DESC, sessions.id DESC LIMIT ?`,

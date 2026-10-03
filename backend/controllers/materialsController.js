@@ -20,6 +20,7 @@ async function teacherAssignment(database, user, sectionId, subjectId) {
   const [rows] = await database.execute(
     `SELECT sections.id FROM section_teachers
      INNER JOIN sections ON sections.id = section_teachers.section_id
+       AND sections.school_id = section_teachers.school_id
      WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
        AND section_teachers.subject_id = ? AND section_teachers.teacher_user_id = ? LIMIT 1`,
     [sectionId, user.schoolId, subjectId, user.id]
@@ -47,9 +48,9 @@ function materialSelect() {
     materials.status, materials.posted_at AS postedAt, materials.created_at AS createdAt,
     subjects.name AS subjectName, teachers.display_name AS teacherName, academic_terms.name AS academicTermName
   FROM learning_materials AS materials
-  INNER JOIN subjects ON subjects.id = materials.subject_id
-  INNER JOIN users AS teachers ON teachers.id = materials.teacher_user_id
-  LEFT JOIN academic_terms ON academic_terms.id = materials.academic_term_id`;
+  INNER JOIN subjects ON subjects.id = materials.subject_id AND subjects.school_id = materials.school_id
+  INNER JOIN users AS teachers ON teachers.id = materials.teacher_user_id AND teachers.school_id = materials.school_id
+  LEFT JOIN academic_terms ON academic_terms.id = materials.academic_term_id AND academic_terms.school_id = materials.school_id`;
 }
 
 function publicMaterial(row) {
@@ -65,13 +66,16 @@ async function listMaterials(req, res, next) {
     if (req.user.role === 'teacher') {
       where.push('materials.teacher_user_id = ?');
       where.push(`EXISTS (SELECT 1 FROM section_teachers WHERE section_teachers.section_id = materials.section_id
+        AND section_teachers.school_id = materials.school_id
         AND section_teachers.subject_id = materials.subject_id AND section_teachers.teacher_user_id = ?)`);
       values.push(req.user.id, req.user.id);
     } else if (req.user.role === 'student') {
       where.push("materials.status = 'published'");
       where.push(`EXISTS (SELECT 1 FROM section_students
-        INNER JOIN sections ON sections.id = section_students.section_id AND sections.status = 'active'
+        INNER JOIN sections ON sections.id = section_students.section_id
+          AND sections.school_id = section_students.school_id AND sections.status = 'active'
         WHERE section_students.section_id = materials.section_id
+        AND section_students.school_id = materials.school_id
         AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)`);
       values.push(req.user.id);
     } else fail('Learning materials are available only to teachers and students.', 403);
@@ -131,8 +135,9 @@ async function createMaterial(req, res, next) {
       `SELECT academic_terms.id FROM academic_terms
        INNER JOIN sections ON sections.academic_year_id = academic_terms.academic_year_id
          AND sections.school_level_id = academic_terms.school_level_id
-       WHERE sections.id = ? AND academic_terms.status = 'active' LIMIT 1`,
-      [req.materialSectionId]
+         AND sections.school_id = academic_terms.school_id
+       WHERE sections.id = ? AND sections.school_id = ? AND academic_terms.status = 'active' LIMIT 1`,
+      [req.materialSectionId, req.user.schoolId]
     );
     const [result] = await connection.execute(
       `INSERT INTO learning_materials
@@ -166,8 +171,10 @@ async function findMaterial(req, database) {
   } else if (req.user.role === 'student') {
     where.push("materials.status = 'published'");
     where.push(`EXISTS (SELECT 1 FROM section_students
-      INNER JOIN sections ON sections.id = section_students.section_id AND sections.status = 'active'
+      INNER JOIN sections ON sections.id = section_students.section_id
+        AND sections.school_id = section_students.school_id AND sections.status = 'active'
       WHERE section_students.section_id = materials.section_id
+      AND section_students.school_id = materials.school_id
       AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)`);
     values.push(req.user.id);
   } else fail('You cannot access this material.', 403);
@@ -187,10 +194,10 @@ async function updateMaterial(req, res, next) {
     if (!['draft', 'published'].includes(status)) fail('Choose draft or published visibility.');
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can change this material.', 403);
     await database.execute(
-      `UPDATE learning_materials SET status = ?, posted_at = CASE WHEN ? = 'published' THEN COALESCE(posted_at, NOW()) ELSE NULL END WHERE id = ?`,
-      [status, status, material.id]
+      `UPDATE learning_materials SET status = ?, posted_at = CASE WHEN ? = 'published' THEN COALESCE(posted_at, NOW()) ELSE NULL END WHERE id = ? AND school_id = ? AND teacher_user_id = ?`,
+      [status, status, material.id, req.user.schoolId, req.user.id]
     );
-    const [rows] = await database.execute(`${materialSelect()} WHERE materials.id = ?`, [material.id]);
+    const [rows] = await database.execute(`${materialSelect()} WHERE materials.id = ? AND materials.school_id = ?`, [material.id, req.user.schoolId]);
     res.json({ material: publicMaterial(rows[0]) });
   } catch (error) { next(error); }
 }

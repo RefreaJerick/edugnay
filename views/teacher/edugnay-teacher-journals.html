@@ -13,6 +13,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/journal-history-viewer.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
@@ -66,18 +67,14 @@
 
       <!-- Score -->
       <div class="modal-section">
-        <div class="modal-section-label">
-          <i data-lucide="star" style="width:11px;height:11px;"></i> Score
-        </div>
         <div class="score-section">
           <div class="score-input-wrap">
-            <div class="score-input-label">Points Earned</div>
+            <label class="modal-section-label" for="modal-score-input"><i data-lucide="star" style="width:11px;height:11px;"></i> Score</label>
             <div class="score-input-row">
               <input class="score-num-input" type="number" id="modal-score-input" min="0" placeholder="—"/>
               <span class="score-divider">/</span>
               <span class="score-max-label">—</span>
             </div>
-            <div class="score-hint">Graded out of the journal's maximum score</div>
           </div>
         </div>
       </div>
@@ -203,6 +200,24 @@
     </div>
 
   </aside>
+</div>
+
+<div class="modal-backdrop" id="journalHistoryModal" aria-hidden="true">
+  <div class="modal journal-history-modal" role="dialog" aria-modal="true" aria-labelledby="journalHistoryTitle">
+    <div class="modal-head">
+      <div class="modal-heading"><div class="modal-heading-icon"><i data-lucide="history"></i></div><div class="modal-heading-copy"><div class="modal-title" id="journalHistoryTitle">Journal history</div><div class="modal-sub">Past prompts and entries remain under their original subjects and sections.</div></div></div>
+      <button class="modal-close" type="button" aria-label="Close history" onclick="closeModal('journalHistoryModal')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body journal-history-list" id="journalHistoryList"></div>
+    <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeModal('journalHistoryModal')">Close</button></div>
+  </div>
+</div>
+<div class="modal-backdrop" id="journalDeleteModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalDeleteTitle" aria-describedby="journalDeleteMessage">
+    <div class="modal-head"><div class="modal-heading"><div class="modal-heading-icon danger"><i data-lucide="trash-2"></i></div><div class="modal-heading-copy"><div class="modal-title" id="journalDeleteTitle">Delete journal prompt and component?</div><div class="modal-sub">This action cannot be undone.</div></div></div><button class="modal-close" type="button" aria-label="Close confirmation" onclick="closeModal('journalDeleteModal')"><i data-lucide="x"></i></button></div>
+    <div class="modal-body"><p id="journalDeleteMessage"></p></div>
+    <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeModal('journalDeleteModal')">Cancel</button><button class="btn btn-danger" type="button" id="journalDeleteConfirm">Delete Both</button></div>
+  </div>
 </div>
 
 <div class="shell">
@@ -381,6 +396,7 @@
           <div class="panel-title" id="panel-title">Journal Entries</div>
         </div>
         <div class="panel-head-right">
+          <button class="settings-trigger" type="button" onclick="openJournalHistory()"><i data-lucide="history"></i><span>History</span></button>
           <!-- Journal settings controls are managed by page JavaScript. -->
           <button class="settings-trigger" onclick="openSettingsDrawer()" title="Journal Settings">
             <i data-lucide="settings-2" style="width:14px;height:14px;"></i>
@@ -445,6 +461,10 @@ let settingsWeekStart = '';
 let editingPromptId = '';
 let activeStudentIds = [];
 let activeStudentIndex = 0;
+let journalHistoryPrompts = [];
+let journalHistoryEntries = [];
+let journalTeacherId = '';
+let pendingJournalDeleteId = '';
 const JOURNAL_SETTINGS = { day: 'Friday', deadline: '23:59', minWords: 50, allowLate: false };
 
 function localDate(value) {
@@ -595,7 +615,7 @@ function buildJournalSummaryCards() {
   return [
     { tone: 'purple', icon: 'notebook-pen', trend: 'All sections', trendClass: 'trend-neu', records: rosters, label: 'Total students', sub: 'Students in your sections' },
     { tone: 'green', icon: 'send', trend: 'On track', trendClass: 'trend-up', records: submittedStudents, label: 'Submitted this week', sub: 'Entries received so far' },
-    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', records: pendingReviewStudents, label: 'Pending review', sub: 'Entries waiting for feedback' },
+    { tone: 'orange', icon: 'hourglass', trend: 'Needs review', trendClass: 'trend-neu', records: pendingReviewStudents, label: 'Pending review', sub: 'Entries waiting for a score' },
     { tone: 'red', icon: 'circle-x', trend: 'Needs follow up', trendClass: 'trend-down', records: notSubmittedStudents, label: 'Not submitted', sub: 'Students to remind' },
   ];
 }
@@ -638,7 +658,7 @@ function selectSectionPrompt(section, promptId) {
       score: entry?.score ?? null,
       maxScore: entry?.maxScore || section.prompt?.maxScore || 50,
       entryText: entry?.entryText || '',
-      submittedAt: entry?.submittedAt || null
+      submittedAt: entry?.submittedAt || null,
     };
   });
 }
@@ -831,7 +851,7 @@ function populateModal(s) {
   scoreInput.disabled = !s.submitted;
   document.getElementById('markReviewedBtn').disabled = !s.submitted;
   document.querySelector('.score-max-label').textContent = maxScore;
-  document.querySelector('.score-hint').textContent = `Graded out of ${maxScore} points`;
+
 
   const statusNote = document.getElementById('modal-status-note');
   if (s.reviewed) {
@@ -890,30 +910,152 @@ async function markReviewed() {
   scoreInput.style.borderColor = '';
   const button = document.getElementById('markReviewedBtn');
   button.disabled = true;
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
+  let reviewSaved = false;
   try {
     await window.EDUGNAY_API.reviewJournalEntry(s.entryId, scoreVal);
+    reviewSaved = true;
     await loadTeacherJournals();
     const refreshed = SECTIONS[currentSection]?.students.find(student => student.studentId === s.studentId);
     if (refreshed) populateModal(refreshed);
-    showAppToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · score saved and reviewed`, 'success');
+    showAppToast(`${STUDENT_BY_ID[s.studentId]?.displayName || 'Student'} · review saved`, 'success');
   } catch (error) {
-    button.disabled = false;
-    showAppToast(error.message || 'Unable to save this journal review.', 'error');
+    showAppToast(reviewSaved ? 'Review saved, but the page could not refresh. Please reload.' : error.message || 'Unable to save this journal review.', 'error');
+  } finally {
+    button.disabled = !s.submitted;
+    document.getElementById('prevBtn').disabled = activeStudentIndex === 0;
+    document.getElementById('nextBtn').disabled = activeStudentIndex === activeStudentIds.length - 1;
   }
 }
 
 /* ══════ MODAL HELPERS ══════ */
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+let journalHistoryReturnFocus = null;
+let journalDeleteReturnFocus = null;
+function openModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  if (id === 'journalHistoryModal') {
+    journalEntryViewer.reset();
+    journalHistoryReturnFocus?.focus();
+  }
+  if (id === 'journalDeleteModal') journalDeleteReturnFocus?.focus();
+}
 
 document.querySelectorAll('.modal-backdrop').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { toggleDrawer(false); closeModal('journalModal'); closeSettingsDrawer(); }
+  if (e.key === 'Escape') {
+    toggleDrawer(false);
+    if (document.getElementById('journalDeleteModal').classList.contains('open')) closeModal('journalDeleteModal');
+    else if (document.getElementById('journalHistoryModal').classList.contains('open')) closeModal('journalHistoryModal');
+    else closeModal('journalModal');
+    closeSettingsDrawer();
+  }
   if (e.key === 'ArrowRight' && document.getElementById('journalModal').classList.contains('open')) navigateEntry(1);
   if (e.key === 'ArrowLeft'  && document.getElementById('journalModal').classList.contains('open')) navigateEntry(-1);
+});
+
+const journalEntryViewer = window.EDUGNAY_JOURNAL_HISTORY.createEntryViewer(document.getElementById('journalHistoryList'), formatJournalDate);
+
+function renderJournalHistory() {
+  const escape = window.EDUGNAY_CONFIG.escapeHtml;
+  const list = document.getElementById('journalHistoryList');
+  const promptCards = journalHistoryPrompts.map(prompt => {
+    const entries = journalHistoryEntries.filter(entry => entry.promptId === prompt.id);
+    const canDelete = prompt.gradingItemId && !prompt.usedInPublishedGrades && !prompt.entryCount && !prompt.recordedScoreCount
+      && String(prompt.componentTeacherUserId) === journalTeacherId;
+    const previous = prompt.effectiveStatus === 'inactive';
+    const status = previous ? 'Previous subject' : prompt.status === 'open' ? 'Open' : 'Closed';
+    return `<article class="journal-history-card">
+      <div class="journal-history-card-head"><div class="journal-history-card-heading"><strong class="journal-history-card-title">${escape(prompt.subjectName)} · ${escape(prompt.sectionName)}</strong><span class="journal-history-card-date">Week of ${escape(formatJournalDate(prompt.weekStartDate))}</span></div><span class="journal-history-status ${previous ? 'is-previous' : prompt.status === 'open' ? 'is-open' : ''}">${status}</span></div>
+      <p class="journal-history-card-content">${escape(prompt.promptText)}</p>
+      <div class="journal-history-card-meta"><div>Score component: <strong>${escape(prompt.componentTitle || 'Not linked')}</strong></div><div class="journal-history-facts"><span>${prompt.entryCount} ${prompt.entryCount === 1 ? 'entry' : 'entries'}</span><span>${prompt.recordedScoreCount} recorded ${prompt.recordedScoreCount === 1 ? 'score' : 'scores'}</span>${prompt.usedInPublishedGrades ? '<span class="journal-history-protected">Used in published grades</span>' : ''}</div></div>
+      ${entries.length ? `<div class="journal-history-entry-action"><button type="button" data-view-journal-entries="prompt:${escape(prompt.id)}"><i data-lucide="users" aria-hidden="true"></i>View submitted entries (${entries.length})<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>` : ''}
+      ${canDelete ? `<div class="journal-history-actions"><button class="journal-history-delete" type="button" data-delete-journal="${escape(prompt.id)}"><i data-lucide="trash-2" aria-hidden="true"></i>Delete prompt & component</button></div>` : ''}
+    </article>`;
+  }).join('');
+  const legacyCards = window.EDUGNAY_JOURNAL_HISTORY.groupLegacyEntries(journalHistoryEntries).map(group => {
+    const entryCount = group.entries.length;
+    const weekLabel = group.weekStartDate ? `Submission week of ${formatJournalDate(group.weekStartDate)}` : 'Submission date unavailable';
+    return `<article class="journal-history-card">
+      <div class="journal-history-card-head"><div class="journal-history-card-heading"><strong class="journal-history-card-title">${escape(group.journalSubjectName)} · ${escape(group.sectionName)}</strong><span class="journal-history-card-date">${escape(weekLabel)}</span></div><span class="journal-history-status is-previous">Past entries</span></div>
+      <p class="journal-history-card-content">${escape(group.promptText || 'Original prompt text unavailable.')}</p>
+      <div class="journal-history-card-meta"><div class="journal-history-facts"><span>${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}</span></div></div>
+      <div class="journal-history-entry-action"><button type="button" data-view-journal-entries="${escape(group.key)}"><i data-lucide="users" aria-hidden="true"></i>View submitted entries (${entryCount})<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
+    </article>`;
+  }).join('');
+  list.innerHTML = promptCards + legacyCards || window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'No journal history', text: 'Past prompts and entries will appear here.' });
+  lucide.createIcons();
+}
+
+async function openJournalHistory() {
+  const list = document.getElementById('journalHistoryList');
+  if (!document.getElementById('journalHistoryModal').classList.contains('open')) journalHistoryReturnFocus = document.activeElement;
+  list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'history', title: 'Loading journal history', text: 'Your prompts and entries are being loaded.' });
+  openModal('journalHistoryModal');
+  document.querySelector('#journalHistoryModal .modal-close').focus();
+  try {
+    const [user, history] = await Promise.all([
+      window.EDUGNAY_API.getCurrentUser(),
+      window.EDUGNAY_API.getJournalHistory()
+    ]);
+    journalTeacherId = String(user.id);
+    journalHistoryPrompts = history.prompts;
+    journalHistoryEntries = history.entries;
+    renderJournalHistory();
+  } catch (error) {
+    list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Journal history unavailable', text: error.message || 'Please try again.' });
+    lucide.createIcons();
+  }
+}
+
+document.getElementById('journalHistoryList').addEventListener('click', event => {
+  const entriesButton = event.target.closest('[data-view-journal-entries]');
+  if (entriesButton) {
+    const key = entriesButton.dataset.viewJournalEntries;
+    const prompt = key.startsWith('prompt:') ? journalHistoryPrompts.find(item => item.id === key.slice(7)) : null;
+    const legacyGroup = key.startsWith('legacy:')
+      ? window.EDUGNAY_JOURNAL_HISTORY.groupLegacyEntries(journalHistoryEntries).find(group => group.key === key)
+      : null;
+    const entries = prompt ? journalHistoryEntries.filter(entry => entry.promptId === prompt.id) : legacyGroup?.entries || [];
+    const first = entries[0];
+    if (!first) return;
+    journalEntryViewer.open({ groupKey: key, title: `Submitted entries · ${first.journalSubjectName} · ${first.sectionName}`, context: prompt ? `Week of ${formatJournalDate(prompt.weekStartDate)}` : legacyGroup?.weekStartDate ? `Submission week of ${formatJournalDate(legacyGroup.weekStartDate)}` : 'Submission date unavailable', entries });
+    return;
+  }
+  const button = event.target.closest('[data-delete-journal]');
+  if (!button) return;
+  const prompt = journalHistoryPrompts.find(item => item.id === button.dataset.deleteJournal);
+  if (!prompt) return;
+  journalDeleteReturnFocus = button;
+  pendingJournalDeleteId = prompt.id;
+  document.getElementById('journalDeleteMessage').textContent = `Delete the prompt for ${prompt.subjectName} · ${prompt.sectionName} and its linked score component “${prompt.componentTitle}”?`;
+  openModal('journalDeleteModal');
+  document.querySelector('#journalDeleteModal .modal-close').focus();
+});
+
+document.getElementById('journalDeleteConfirm').addEventListener('click', async event => {
+  if (!pendingJournalDeleteId) return;
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    await window.EDUGNAY_API.deleteJournalPrompt(pendingJournalDeleteId);
+    pendingJournalDeleteId = '';
+    closeModal('journalDeleteModal');
+    await openJournalHistory();
+    await loadTeacherJournals();
+    showAppToast('Journal prompt and score component deleted.');
+  } catch (error) { showAppToast(error.message || 'The journal prompt could not be deleted.', 'error'); }
+  finally { button.disabled = false; }
 });
 
 async function loadTeacherJournals() {
@@ -930,6 +1072,7 @@ async function loadTeacherJournals() {
       window.EDUGNAY_API.getJournalPrompts()
     ]);
     if (user?.role !== 'teacher') throw new Error('Only teacher accounts can review journal entries.');
+    journalTeacherId = String(user.id);
     if (!subjects.length) throw new Error('Journals are not configured for this school.');
 
     STUDENT_BY_ID = {};

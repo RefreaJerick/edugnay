@@ -227,8 +227,8 @@ async function createAcademicTerm(req, res, next) {
     await connection.beginTransaction();
     transactionStarted = true;
     const [result] = await connection.execute(
-      'INSERT INTO academic_terms (academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date) VALUES (?, ?, ?, ?, ?, ?)',
-      [data.academicYearId, data.schoolLevelId, data.name, data.sequenceNumber, data.plannedStartDate, data.plannedEndDate]
+      'INSERT INTO academic_terms (school_id, academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [req.user.schoolId, data.academicYearId, data.schoolLevelId, data.name, data.sequenceNumber, data.plannedStartDate, data.plannedEndDate]
     );
     await writeAuditLog(connection, req, 'academic_term_created', 'academic_term', result.insertId, { summary: `${data.name} · ${year.label}` });
     await connection.commit();
@@ -278,11 +278,11 @@ async function termAction(req, res, next) {
       const [unfinished] = await connection.execute('SELECT id FROM academic_terms WHERE academic_year_id = ? AND school_level_id = ? AND sequence_number < ? AND status <> \'closed\' FOR UPDATE', [term.academicYearId, term.schoolLevelId, term.sequenceNumber]);
       if (active.length || unfinished.length) throw createError('Complete the current and earlier terms before activating this one.', 409);
       await connection.execute('UPDATE academic_terms SET status = \'active\', activated_at = NOW() WHERE id = ?', [termId]);
-      await connection.execute('INSERT INTO academic_term_actions (academic_term_id, action_type, performed_by_user_id) VALUES (?, \'activated\', ?)', [termId, req.user.id]);
+      await connection.execute('INSERT INTO academic_term_actions (school_id, academic_term_id, action_type, performed_by_user_id) VALUES (?, ?, \'activated\', ?)', [req.user.schoolId, termId, req.user.id]);
     } else if (action === 'complete') {
       if (term.status !== 'active') throw createError('Only the active term can be completed.', 409);
       await connection.execute('UPDATE academic_terms SET status = \'closed\', completed_at = NOW() WHERE id = ?', [termId]);
-      await connection.execute('INSERT INTO academic_term_actions (academic_term_id, action_type, performed_by_user_id) VALUES (?, \'completed\', ?)', [termId, req.user.id]);
+      await connection.execute('INSERT INTO academic_term_actions (school_id, academic_term_id, action_type, performed_by_user_id) VALUES (?, ?, \'completed\', ?)', [req.user.schoolId, termId, req.user.id]);
     } else if (action === 'extend') {
       if (term.status !== 'active') throw createError('Only the active term can be extended.', 409);
       const newEndDate = date(req.body.newEndDate, 'New end date');
@@ -290,7 +290,7 @@ async function termAction(req, res, next) {
       if (newEndDate <= term.plannedEndDate) throw createError('The new end date must be after the current end date.');
       if (newEndDate > term.academicYearEndDate) throw createError('The new end date must be inside the academic year.');
       await connection.execute('UPDATE academic_terms SET planned_end_date = ? WHERE id = ?', [newEndDate, termId]);
-      await connection.execute('INSERT INTO academic_term_actions (academic_term_id, action_type, previous_end_date, new_end_date, reason, performed_by_user_id) VALUES (?, \'extended\', ?, ?, ?, ?)', [termId, term.plannedEndDate, newEndDate, reason, req.user.id]);
+      await connection.execute('INSERT INTO academic_term_actions (school_id, academic_term_id, action_type, previous_end_date, new_end_date, reason, performed_by_user_id) VALUES (?, ?, \'extended\', ?, ?, ?, ?)', [req.user.schoolId, termId, term.plannedEndDate, newEndDate, reason, req.user.id]);
     } else { throw createError('Term action is invalid.'); }
     const actionType = { activate: 'academic_term_activated', complete: 'academic_term_completed', extend: 'academic_term_extended' }[action];
     await writeAuditLog(connection, req, actionType, 'academic_term', termId, { summary: `${term.name} · ${term.academicYearLabel}` });

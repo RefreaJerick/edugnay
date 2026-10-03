@@ -273,7 +273,7 @@ async function importUsers(req, res, next) {
     const rows = parseCsvFile(req.file, EXPECTED_COLUMNS[role]);
     const records = validateRows(rows, role);
     addDuplicateErrors(records, role);
-    const schoolId = req.user.role === 'school_admin' ? req.user.schoolId : Number.parseInt(req.body.schoolId, 10);
+    const schoolId = req.user.schoolId;
     if (!Number.isSafeInteger(schoolId) || schoolId < 1) throw createError('A valid school ID is required.');
 
     const database = getDatabase();
@@ -306,14 +306,14 @@ async function importUsers(req, res, next) {
       account.id = result.insertId;
       if (role === 'student') {
         await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [account.id, account.lrn]);
-        await issueStudentQrCredential(connection, account.id);
+        await issueStudentQrCredential(connection, schoolId, account.id);
       }
       if (role === 'parent') {
         await connection.execute('INSERT INTO parent_profiles (user_id) VALUES (?)', [account.id]);
         for (const link of account.links) {
           await connection.execute(
-            'INSERT INTO student_parent_links (student_user_id, parent_user_id, relationship) VALUES (?, ?, ?)',
-            [link.studentId, account.id, link.relationship]
+            'INSERT INTO student_parent_links (school_id, student_user_id, parent_user_id, relationship) VALUES (?, ?, ?, ?)',
+            [schoolId, link.studentId, account.id, link.relationship]
           );
         }
       }

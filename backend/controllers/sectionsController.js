@@ -33,11 +33,6 @@ function capacity(value) {
   return result;
 }
 
-function getPlatformSchoolId(req) {
-  if (req.user.role !== 'platform_admin' || !req.query.schoolId) return null;
-  return parseId(req.query.schoolId, 'school ID');
-}
-
 function sectionSelect() {
   return `SELECT
     sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
@@ -48,24 +43,34 @@ function sectionSelect() {
     school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode,
     school_grade_levels.display_name AS gradeLevelName, strands.track_code AS strandCode,
     strands.display_name AS strandName, adviser.display_name AS adviserName,
-    (SELECT COUNT(*) FROM section_students WHERE section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL) AS studentCount
+    (SELECT COUNT(*) FROM section_students WHERE section_students.school_id = sections.school_id
+      AND section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL) AS studentCount
   FROM sections
-  INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
-  INNER JOIN school_levels ON school_levels.id = sections.school_level_id
-  INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
-  LEFT JOIN school_shs_tracks AS strands ON strands.id = sections.strand_id
-  LEFT JOIN users AS adviser ON adviser.id = sections.adviser_user_id`;
+  INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.school_id = sections.school_id
+  INNER JOIN school_levels ON school_levels.id = sections.school_level_id AND school_levels.school_id = sections.school_id
+  INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id AND school_grade_levels.school_id = sections.school_id
+  LEFT JOIN school_shs_tracks AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
+  LEFT JOIN users AS adviser ON adviser.id = sections.adviser_user_id AND adviser.school_id = sections.school_id`;
 }
 
-function getAccessFilter(req) {
-  if (req.user.role === 'platform_admin') {
-    const schoolId = getPlatformSchoolId(req);
-    return schoolId ? { sql: 'sections.school_id = ?', values: [schoolId] } : { sql: '', values: [] };
-  }
+function getAccessFilter(req, scope = '') {
   if (req.user.role === 'school_admin') return { sql: 'sections.school_id = ?', values: [req.user.schoolId] };
-  if (req.user.role === 'teacher') return { sql: `(sections.adviser_user_id = ? OR EXISTS (SELECT 1 FROM section_teachers WHERE section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?))`, values: [req.user.id, req.user.id] };
-  if (req.user.role === 'student') return { sql: `EXISTS (SELECT 1 FROM section_students WHERE section_students.section_id = sections.id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)`, values: [req.user.id] };
-  if (req.user.role === 'parent') return { sql: `EXISTS (SELECT 1 FROM section_students INNER JOIN student_parent_links ON student_parent_links.student_user_id = section_students.student_user_id WHERE section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)`, values: [req.user.id] };
+  if (req.user.role === 'teacher' && scope === 'teaching') {
+    return {
+      sql: `sections.school_id = ? AND sections.status = 'active' AND academic_years.status = 'active' AND EXISTS (
+        SELECT 1 FROM section_teachers
+        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+        WHERE section_teachers.school_id = sections.school_id
+          AND section_teachers.section_id = sections.id
+          AND section_teachers.teacher_user_id = ?
+          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
+      )`,
+      values: [req.user.schoolId, req.user.id]
+    };
+  }
+  if (req.user.role === 'teacher') return { sql: `sections.school_id = ? AND (sections.adviser_user_id = ? OR EXISTS (SELECT 1 FROM section_teachers WHERE section_teachers.school_id = sections.school_id AND section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?))`, values: [req.user.schoolId, req.user.id, req.user.id] };
+  if (req.user.role === 'student') return { sql: `sections.school_id = ? AND EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = sections.school_id AND section_students.section_id = sections.id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)`, values: [req.user.schoolId, req.user.id] };
+  if (req.user.role === 'parent') return { sql: `sections.school_id = ? AND EXISTS (SELECT 1 FROM section_students INNER JOIN student_parent_links ON student_parent_links.school_id = section_students.school_id AND student_parent_links.student_user_id = section_students.student_user_id WHERE section_students.school_id = sections.school_id AND section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)`, values: [req.user.schoolId, req.user.id] };
   return { sql: '1 = 0', values: [] };
 }
 
@@ -146,9 +151,40 @@ async function validateSectionData(connection, schoolId, values) {
 
 async function listSections(req, res, next) {
   try {
-    const access = getAccessFilter(req);
+    const scope = String(req.query?.scope || '').trim();
+    if (scope && scope !== 'teaching') throw createError('Invalid section scope.');
+    if (scope === 'teaching' && req.user.role !== 'teacher') throw createError('Teaching sections are available to teachers only.', 403);
+    const access = getAccessFilter(req, scope);
     const [sections] = await getDatabase().execute(`${sectionSelect()}${access.sql ? ` WHERE ${access.sql}` : ''} ORDER BY school_grade_levels.sort_order, sections.name`, access.values);
-    res.json({ sections: sections.map(formatSection) });
+    const formatted = sections.map(formatSection);
+    if (scope !== 'teaching' || !formatted.length) {
+      res.json({ sections: formatted });
+      return;
+    }
+
+    const sectionIds = formatted.map(section => section.id);
+    const placeholders = sectionIds.map(() => '?').join(', ');
+    const [assignments] = await getDatabase().execute(
+      `SELECT section_teachers.section_id AS sectionId, subjects.id AS subjectId,
+        subjects.subject_code AS subjectCode, subjects.name AS subjectName
+      FROM section_teachers
+      INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+        AND subjects.school_id = ? AND subjects.is_active = TRUE
+      WHERE section_teachers.school_id = ? AND section_teachers.teacher_user_id = ?
+        AND section_teachers.section_id IN (${placeholders})
+      ORDER BY subjects.name`,
+      [req.user.schoolId, req.user.schoolId, req.user.id, ...sectionIds]
+    );
+    formatted.forEach(section => {
+      section.subjectAssignments = assignments
+        .filter(assignment => String(assignment.sectionId) === String(section.id))
+        .map(assignment => ({
+          subjectId: String(assignment.subjectId),
+          subjectCode: assignment.subjectCode,
+          subjectName: assignment.subjectName
+        }));
+    });
+    res.json({ sections: formatted });
   } catch (error) { next(error); }
 }
 
@@ -247,12 +283,79 @@ async function listSectionStudents(req, res, next) {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const section = await findAccessibleSection(req, sectionId);
     if (!section) throw createError('Section not found.', 404);
-    const where = ['section_students.section_id = ?', 'section_students.withdrawn_at IS NULL'];
-    const values = [sectionId];
+    const where = ['section_students.school_id = ?', 'section_students.section_id = ?', 'section_students.withdrawn_at IS NULL'];
+    const values = [section.schoolId, sectionId];
     if (req.user.role === 'student') { where.push('students.id = ?'); values.push(req.user.id); }
-    if (req.user.role === 'parent') { where.push('EXISTS (SELECT 1 FROM student_parent_links WHERE student_parent_links.student_user_id = students.id AND student_parent_links.parent_user_id = ?)'); values.push(req.user.id); }
+    if (req.user.role === 'parent') { where.push('EXISTS (SELECT 1 FROM student_parent_links WHERE student_parent_links.school_id = section_students.school_id AND student_parent_links.student_user_id = students.id AND student_parent_links.parent_user_id = ?)'); values.push(req.user.id); }
     const [students] = await getDatabase().execute(`SELECT students.id, students.display_name AS displayName, students.school_email AS schoolEmail, students.initials, student_profiles.lrn FROM section_students INNER JOIN users AS students ON students.id = section_students.student_user_id INNER JOIN student_profiles ON student_profiles.user_id = students.id WHERE ${where.join(' AND ')} ORDER BY students.last_name, students.first_name`, values);
     res.json({ section: formatSection(section), students: students.map(student => ({ id: student.id, displayName: student.displayName, initials: student.initials, schoolEmail: student.schoolEmail, lrn: student.lrn })) });
+  } catch (error) { next(error); }
+}
+
+async function getSectionStudentDetails(req, res, next) {
+  try {
+    if (req.user.role !== 'teacher') throw createError('You do not have access to this resource.', 403);
+
+    const sectionId = parseId(req.params.sectionId, 'section ID');
+    const studentId = parseId(req.params.studentId, 'student ID');
+    const database = getDatabase();
+    const [students] = await database.execute(
+      `SELECT students.id AS studentId, students.display_name AS displayName,
+        students.school_email AS schoolEmail, student_profiles.lrn AS studentNumber,
+        school_grade_levels.display_name AS gradeLevel, sections.name AS sectionName,
+        academic_years.label AS schoolYear
+      FROM section_students
+      INNER JOIN sections ON sections.id = section_students.section_id
+        AND sections.school_id = section_students.school_id
+      INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+        AND academic_years.school_id = sections.school_id
+      INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
+      INNER JOIN users AS students ON students.id = section_students.student_user_id
+        AND students.school_id = section_students.school_id AND students.role = 'student'
+      INNER JOIN student_profiles ON student_profiles.user_id = students.id
+      WHERE section_students.school_id = ? AND section_students.section_id = ?
+        AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
+        AND sections.status = 'active' AND academic_years.status = 'active'
+        AND EXISTS (
+          SELECT 1 FROM section_teachers
+          INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+            AND subjects.school_id = section_teachers.school_id AND subjects.is_active = TRUE
+          WHERE section_teachers.school_id = section_students.school_id
+            AND section_teachers.section_id = section_students.section_id
+            AND section_teachers.teacher_user_id = ?
+        )
+      LIMIT 1`,
+      [req.user.schoolId, sectionId, studentId, req.user.id]
+    );
+    if (!students.length) throw createError('Student details were not found in your active subject sections.', 404);
+
+    const [parents] = await database.execute(
+      `SELECT parents.display_name AS displayName, student_parent_links.relationship,
+        parent_profiles.contact_number AS contactNumber, parents.personal_email AS email
+      FROM student_parent_links
+      INNER JOIN users AS parents ON parents.id = student_parent_links.parent_user_id
+        AND parents.school_id = student_parent_links.school_id AND parents.role = 'parent'
+      LEFT JOIN parent_profiles ON parent_profiles.user_id = parents.id
+      WHERE student_parent_links.school_id = ? AND student_parent_links.student_user_id = ?
+      ORDER BY parents.last_name, parents.first_name, student_parent_links.relationship`,
+      [req.user.schoolId, studentId]
+    );
+
+    const student = students[0];
+    res.json({
+      student: {
+        id: String(student.studentId),
+        displayName: student.displayName,
+        schoolEmail: student.schoolEmail,
+        studentNumber: student.studentNumber,
+        gradeLevel: student.gradeLevel,
+        sectionName: student.sectionName,
+        schoolYear: student.schoolYear,
+        enrollmentStatus: 'Enrolled'
+      },
+      parents
+    });
   } catch (error) { next(error); }
 }
 
@@ -262,32 +365,45 @@ async function enrollStudent(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const studentId = parseId(req.body.studentId, 'student ID');
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [students] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1 FOR UPDATE", [studentId, req.user.schoolId]);
+    if (!students.length) throw createError('The student was not found in this school.', 404);
+    const [lockedSections] = await connection.execute('SELECT id FROM sections WHERE id = ? AND school_id = ? FOR UPDATE', [sectionId, req.user.schoolId]);
+    if (!lockedSections.length) throw createError('An active section was not found.', 404);
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
     if (section.academicYearStatus !== 'active') throw createError('Students can only be assigned to sections in the active academic year.', 409);
     if (section.studentCount >= section.capacity) throw createError('This section has reached its capacity.', 409);
-    const [students] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1", [studentId, req.user.schoolId]);
-    if (!students.length) throw createError('The student was not found in this school.', 404);
     const [enrollments] = await connection.execute('SELECT section_students.id FROM section_students INNER JOIN sections ON sections.id = section_students.section_id WHERE section_students.student_user_id=? AND sections.academic_year_id=? AND section_students.withdrawn_at IS NULL LIMIT 1', [studentId, section.academicYearId]);
     if (enrollments.length) throw createError('This student is already enrolled in a section for the academic year.', 409);
-    await connection.beginTransaction();
-    transactionStarted = true;
-    await connection.execute('INSERT INTO section_students (section_id, student_user_id) VALUES (?, ?)', [sectionId, studentId]);
+    await connection.execute('INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)', [req.user.schoolId, sectionId, studentId]);
     await writeAuditLog(connection, req, 'student_enrolled', 'section_student', studentId, { summary: `${students[0].displayName} · ${section.name}` });
     await connection.commit();
     transactionStarted = false;
     res.status(201).json({ sectionId, studentId });
-  } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection.release(); }
+  } catch (error) {
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
+    if (error.code === 'ER_DUP_ENTRY') error = createError('This student is already enrolled in the section.', 409);
+    next(error);
+  } finally { connection.release(); }
 }
 
 async function moveStudent(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
     const sourceSectionId = parseId(req.params.sectionId, 'source section ID');
     const studentId = parseId(req.params.studentId, 'student ID');
     const targetSectionId = parseId(req.body.targetSectionId, 'target section ID');
     if (sourceSectionId === targetSectionId) throw createError('Choose a different target section.');
 
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [students] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1 FOR UPDATE", [studentId, req.user.schoolId]);
+    if (!students.length) throw createError('The student was not found in this school.', 404);
+    const [lockedSections] = await connection.execute('SELECT id FROM sections WHERE id IN (?, ?) AND school_id = ? ORDER BY id FOR UPDATE', [sourceSectionId, targetSectionId, req.user.schoolId]);
+    if (lockedSections.length !== 2) throw createError('Both sections must be active sections from this school.', 404);
     const source = await findOwnedSection(req.user.schoolId, sourceSectionId, connection);
     const target = await findOwnedSection(req.user.schoolId, targetSectionId, connection);
     if (!source || !target || source.status !== 'active' || target.status !== 'active') {
@@ -299,21 +415,20 @@ async function moveStudent(req, res, next) {
     if (source.academicYearId !== target.academicYearId) throw createError('Students can only be moved within the same academic year.');
     if (target.studentCount >= target.capacity) throw createError('The target section has reached its capacity.', 409);
 
-    const [students] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1", [studentId, req.user.schoolId]);
-    if (!students.length) throw createError('The student was not found in this school.', 404);
     const [sourceEnrollment] = await connection.execute('SELECT id FROM section_students WHERE section_id=? AND student_user_id=? AND withdrawn_at IS NULL LIMIT 1', [sourceSectionId, studentId]);
     if (!sourceEnrollment.length) throw createError('The student is not enrolled in the source section.', 404);
     const [targetEnrollment] = await connection.execute('SELECT id FROM section_students WHERE section_id=? AND student_user_id=? AND withdrawn_at IS NULL LIMIT 1', [targetSectionId, studentId]);
     if (targetEnrollment.length) throw createError('The student is already enrolled in the target section.', 409);
 
-    await connection.beginTransaction();
     await connection.execute('UPDATE section_students SET withdrawn_at = NOW() WHERE id = ?', [sourceEnrollment[0].id]);
-    await connection.execute('INSERT INTO section_students (section_id, student_user_id) VALUES (?, ?)', [targetSectionId, studentId]);
+    await connection.execute('INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)', [req.user.schoolId, targetSectionId, studentId]);
     await writeAuditLog(connection, req, 'student_moved', 'section_student', studentId, { summary: `${students[0].displayName} · ${source.name} → ${target.name}` });
     await connection.commit();
+    transactionStarted = false;
     res.status(201).json({ sourceSectionId, targetSectionId, studentId });
   } catch (error) {
-    try { await connection.rollback(); } catch {}
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
+    if (error.code === 'ER_DUP_ENTRY') error = createError('This student is already enrolled in the target section.', 409);
     next(error);
   } finally { connection.release(); }
 }
@@ -324,12 +439,16 @@ async function withdrawStudent(req, res, next) {
   try {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const studentId = parseId(req.params.studentId, 'student ID');
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [lockedStudents] = await connection.execute('SELECT id FROM users WHERE id = ? AND school_id = ? AND role = ? FOR UPDATE', [studentId, req.user.schoolId, 'student']);
+    if (!lockedStudents.length) throw createError('The student was not found in this school.', 404);
+    const [lockedSections] = await connection.execute('SELECT id FROM sections WHERE id = ? AND school_id = ? FOR UPDATE', [sectionId, req.user.schoolId]);
+    if (!lockedSections.length) throw createError('Section not found.', 404);
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section) throw createError('Section not found.', 404);
     assertSectionYearWritable(section);
     const [students] = await connection.execute("SELECT display_name AS displayName FROM users WHERE id = ? AND school_id = ? AND role = 'student' LIMIT 1", [studentId, req.user.schoolId]);
-    await connection.beginTransaction();
-    transactionStarted = true;
     const [result] = await connection.execute('UPDATE section_students SET withdrawn_at = NOW() WHERE section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL', [sectionId, studentId]);
     if (!result.affectedRows) throw createError('Active student enrollment was not found.', 404);
     await writeAuditLog(connection, req, 'student_withdrawn', 'section_student', studentId, { summary: `${students[0]?.displayName || 'Student'} · ${section.name}` });
@@ -363,7 +482,7 @@ async function assignTeacher(req, res, next) {
     if (!teachers.length || !subjects.length) throw createError('The teacher or subject is not valid for this section.', 404);
     await connection.beginTransaction();
     transactionStarted = true;
-    const [result] = await connection.execute('INSERT INTO section_teachers (section_id, teacher_user_id, subject_id) VALUES (?, ?, ?)', [sectionId, teacherId, subjectId]);
+    const [result] = await connection.execute('INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, sectionId, teacherId, subjectId]);
     await writeAuditLog(connection, req, 'teacher_assigned', 'section_teacher', result.insertId, { summary: `${teachers[0].displayName} · ${section.name} · ${subjects[0].name}` });
     await connection.commit();
     transactionStarted = false;
@@ -425,4 +544,4 @@ async function updateTeacherAssignment(req, res, next) {
   } finally { connection.release(); }
 }
 
-module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, getSection, listSectionStudents, listSectionTeachers, listSections, moveStudent, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };
+module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };

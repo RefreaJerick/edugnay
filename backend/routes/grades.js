@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/grading-items', requireAuth, requireRoles('school_admin', 'teacher'), controller.listGradingItems);
 router.post('/grading-items', requireAuth, requireTeacher, controller.createGradingItem);
 router.patch('/grading-items/:gradingItemId', requireAuth, requireRoles('school_admin', 'teacher'), controller.updateGradingItem);
+router.delete('/grading-items/:gradingItemId', requireAuth, requireRoles('school_admin', 'teacher'), controller.deleteGradingItem);
 router.get('/student-scores', requireAuth, requireRoles('school_admin', 'teacher'), controller.listStudentScores);
 router.post('/student-scores', requireAuth, requireRoles('school_admin', 'teacher'), controller.saveStudentScore);
 router.patch('/student-scores/:scoreId', requireAuth, requireRoles('school_admin', 'teacher'), controller.updateStudentScore);

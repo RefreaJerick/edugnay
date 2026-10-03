@@ -309,7 +309,8 @@ async function getApiPortalFeatures() {
   const response = await requestApi('/school/portal-features');
   return {
     features: response?.features || {},
-    journalSubjectId: response?.journalSubjectId || null
+    journalSubjectId: response?.journalSubjectId || null,
+    journalSubjectName: response?.journalSubjectName || null
   };
 }
 
@@ -444,6 +445,7 @@ function normalizeApiAssignment(record) {
     subject: record.subjectName || '',
     subjectName: record.subjectName || '',
     academicPeriodId: record.academicTermId ? String(record.academicTermId) : null,
+    gradingItemId: record.gradingItemId ? String(record.gradingItemId) : null,
     categoryId: record.gradingCategoryCode || (record.gradingCategoryId ? String(record.gradingCategoryId) : null),
     instructions: record.description || null,
     assignedDate: dueDate,
@@ -540,6 +542,19 @@ async function getApiJournalPrompts(filters = {}) {
   const query = params.toString();
   const response = await requestApi(`/journal-prompts${query ? `?${query}` : ''}`);
   return (response?.journalPrompts || []).map(normalizeApiJournalPrompt).filter(Boolean);
+}
+
+async function getApiJournalHistory(filters = {}) {
+  const query = filters.sectionId ? `?sectionId=${encodeURIComponent(filters.sectionId)}` : '';
+  const response = await requestApi(`/journal-history${query}`);
+  return {
+    prompts: (response?.prompts || []).map(normalizeApiJournalPrompt).filter(Boolean),
+    entries: (response?.entries || []).map(normalizeApiJournalEntry).filter(Boolean)
+  };
+}
+
+async function deleteApiJournalPrompt(promptId) {
+  return requestApi(`/journal-prompts/${Number(promptId)}`, { method: 'DELETE' });
 }
 
 async function createApiJournalPrompt(values = {}) {
@@ -677,7 +692,10 @@ function normalizeApiGradingItem(record) {
     cat: String(record.gradingCategoryCode || record.gradingCategoryName || '').slice(0, 3).toUpperCase(),
     name: record.title || '',
     max: Number(record.maxScore),
-    maxScore: Number(record.maxScore)
+    maxScore: Number(record.maxScore),
+    usedInPublishedGrades: Boolean(record.usedInPublishedGrades),
+    journalPromptId: record.journalPromptId ? String(record.journalPromptId) : null,
+    currentJournalSubjectId: record.currentJournalSubjectId ? String(record.currentJournalSubjectId) : null
   };
 }
 
@@ -701,6 +719,7 @@ async function createApiGradingItem(values = {}) {
       subjectId: Number(values.subjectId),
       academicTermId: Number(values.academicTermId),
       gradingCategoryId: Number(values.gradingCategoryId),
+      assignmentId: values.assignmentId ? Number(values.assignmentId) : undefined,
       title: values.title,
       maxScore: values.maxScore
     })
@@ -714,6 +733,10 @@ async function updateApiGradingItem(gradingItemId, values = {}) {
     body: JSON.stringify({ title: values.title, maxScore: values.maxScore })
   });
   return normalizeApiGradingItem(response?.gradingItem);
+}
+
+async function deleteApiGradingItem(gradingItemId) {
+  return requestApi(`/grading-items/${Number(gradingItemId)}`, { method: 'DELETE' });
 }
 
 function normalizeApiStudentScore(record) {
@@ -844,6 +867,14 @@ function normalizeApiFinalGrade(record) {
   } : null;
 }
 
+function gradeScoreClass(subject) {
+  if (subject.finalGrade === null || subject.finalGrade === undefined || !Number.isFinite(Number(subject.finalGrade))) return 'is-pending';
+  const threshold = subject.passingGradeThreshold;
+  if (threshold === null || threshold === undefined || threshold === '' || !Number.isFinite(Number(threshold))
+    || Number(threshold) < 0 || Number(threshold) > 100) return 'is-published';
+  return Number(subject.finalGrade) >= Number(threshold) ? 'is-published is-passing' : 'is-published is-below-passing';
+}
+
 function buildApiFinalGradeYears(overview) {
   const grades = Array.isArray(overview?.publishedGrades) ? overview.publishedGrades : [];
   const years = Array.isArray(overview?.academicYears) ? overview.academicYears.map(year => ({ ...year })) : [];
@@ -910,6 +941,7 @@ function buildApiFinalGradeYears(overview) {
             subjectName: subject.subjectName,
             sectionName: section.name,
             finalGrade: grade ? grade.finalGrade : null,
+            passingGradeThreshold: grade?.passingGradeThreshold ?? section.passingGradeThreshold,
             publishedAt: grade?.publishedAt || null
           });
         });
@@ -941,6 +973,7 @@ function buildApiFinalGradeYears(overview) {
         subjectName: grade.subjectName,
         sectionName: grade.sectionName,
         finalGrade: grade.finalGrade,
+        passingGradeThreshold: grade.passingGradeThreshold,
         publishedAt: grade.publishedAt
       });
     });
@@ -1570,6 +1603,8 @@ window.EDUGNAY_API = {
   getJournalSubjects: getApiJournalSubjects,
   getJournalSections: getApiJournalSections,
   getJournalPrompts: getApiJournalPrompts,
+  getJournalHistory: getApiJournalHistory,
+  deleteJournalPrompt: deleteApiJournalPrompt,
   createJournalPrompt: createApiJournalPrompt,
   updateJournalPrompt: updateApiJournalPrompt,
   getJournalEntries: getApiJournalEntries,
@@ -1582,6 +1617,7 @@ window.EDUGNAY_API = {
   getGradingItems: getApiGradingItems,
   createGradingItem: createApiGradingItem,
   updateGradingItem: updateApiGradingItem,
+  deleteGradingItem: deleteApiGradingItem,
   getStudentScores: getApiStudentScores,
   saveStudentScore: saveApiStudentScore,
   getGradingPeriodReopenRequests: getApiGradingPeriodReopenRequests,
@@ -2781,12 +2817,17 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function getJournalSubject(school = getActiveSchool()) {
+    if (window.EDUGNAY_API_PORTAL_FEATURES) {
+      const features = window.EDUGNAY_API_PORTAL_FEATURES;
+      return features.journalSubjectId && features.journalSubjectName
+        ? { id: String(features.journalSubjectId), name: features.journalSubjectName } : null;
+    }
     return getConfiguredSubjects(school).find(subject => subject.id === school?.journalSubjectId) || null;
   }
 
   function isJournalsEnabled(school = getActiveSchool()) {
-    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'journalsEnabled')) {
-      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.journalsEnabled && getJournalSubject(school));
+    if (window.EDUGNAY_API?.isBackendAvailable) {
+      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES?.journalsEnabled && getJournalSubject(school));
     }
     return Boolean(school?.journalsEnabled && getJournalSubject(school));
   }
@@ -2813,12 +2854,19 @@ function applyCurrentDateToGradingBanners() {
       adviserId: record.adviserUserId ? String(record.adviserUserId) : null,
       adviserName: record.adviserName || '',
       strand: record.strandName || '',
-      teacherAssignments: Array.isArray(record.teacherAssignments) ? record.teacherAssignments : []
+      teacherAssignments: Array.isArray(record.teacherAssignments) ? record.teacherAssignments : [],
+      subjectAssignments: Array.isArray(record.subjectAssignments)
+        ? record.subjectAssignments.map(assignment => ({
+          ...assignment,
+          subjectId: String(assignment.subjectId)
+        }))
+        : []
     };
   }
 
-  async function getApiSections() {
-    const response = await requestApi('/sections');
+  async function getApiSections(filters = {}) {
+    const query = filters.scope ? `?scope=${encodeURIComponent(filters.scope)}` : '';
+    const response = await requestApi(`/sections${query}`);
     return (response.sections || []).map(normalizeApiSection);
   }
 
@@ -2866,6 +2914,14 @@ function applyCurrentDateToGradingBanners() {
     return {
       section: normalizeApiSection(response?.section),
       students: (response?.students || []).map(normalizeApiSectionStudent).filter(Boolean)
+    };
+  }
+
+  async function getApiSectionStudentDetails(sectionId, studentId) {
+    const response = await requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}`);
+    return {
+      student: response?.student || null,
+      parents: Array.isArray(response?.parents) ? response.parents : []
     };
   }
 
@@ -3018,7 +3074,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   async function getMyTeachingSections() {
-    if (EDUGNAY_API_BASE_URL) return getApiSections();
+    if (EDUGNAY_API_BASE_URL) return getApiSections({ scope: 'teaching' });
 
     const teacherId = window.EDUGNAY_TEACHER_ACCESS?.teacherId;
     if (!teacherId) return [];
@@ -3030,10 +3086,9 @@ function applyCurrentDateToGradingBanners() {
     );
 
     return getAssignmentSections().filter(section => {
-      const isAdviser = section.adviserId === teacherId;
       const isSubjectTeacher = (section.teacherAssignments || [])
         .some(record => record.teacherId === teacherId);
-      return isAdviser || isSubjectTeacher || sectionIds.has(section.id);
+      return isSubjectTeacher || sectionIds.has(section.id);
     });
   }
 
@@ -6004,6 +6059,7 @@ function applyCurrentDateToGradingBanners() {
     materialFileUrl: apiMaterialFileUrl,
     getSections: getApiSections,
     getSectionStudents: getApiSectionStudents,
+    getSectionStudentDetails: getApiSectionStudentDetails,
     getSectionTeachers: getApiSectionTeachers,
     getSubjects: getApiSubjects,
     createSection: createApiSection,
@@ -6077,6 +6133,7 @@ function applyCurrentDateToGradingBanners() {
     getActiveSchool,
     getSchoolTypeInfo,
     buildFinalGradeYears: buildApiFinalGradeYears,
+    gradeScoreClass,
     isGradesPageEnabled,
     isNarrativeReportsEnabled,
     getSubjectAssignments,
@@ -6646,18 +6703,20 @@ function initScrollFades() {
     wrapper.appendChild(element);
 
     const isActivityFilters = element.classList.contains('activity-type-filters');
-    const scrollButtonSpace = 40;
+    const hasScrollButton = isActivityFilters || element.classList.contains('school-tabs');
+    const scrollTarget = isActivityFilters ? 'activity categories' : 'school settings tabs';
+    const scrollButtonSpace = isActivityFilters ? 40 : 0;
     let scrollButton = null;
 
-    if (isActivityFilters) {
+    if (hasScrollButton) {
       scrollButton = document.createElement('button');
       scrollButton.type = 'button';
-      scrollButton.className = 'activity-scroll-button';
-      scrollButton.setAttribute('aria-label', 'Scroll activity categories right');
+      scrollButton.className = 'scroll-fade-button';
+      scrollButton.setAttribute('aria-label', `Scroll ${scrollTarget} right`);
       scrollButton.setAttribute('aria-controls', element.id);
       scrollButton.innerHTML = `
-        <i class="activity-scroll-icon activity-scroll-icon-right" data-lucide="chevron-right" aria-hidden="true"></i>
-        <i class="activity-scroll-icon activity-scroll-icon-left" data-lucide="chevron-left" aria-hidden="true"></i>
+        <i class="scroll-fade-icon scroll-fade-icon-right" data-lucide="chevron-right" aria-hidden="true"></i>
+        <i class="scroll-fade-icon scroll-fade-icon-left" data-lucide="chevron-left" aria-hidden="true"></i>
       `;
       wrapper.appendChild(scrollButton);
       window.lucide?.createIcons?.();
@@ -6673,12 +6732,12 @@ function initScrollFades() {
     }
 
     const updateFade = () => {
-      const isDesktop = isActivityFilters && window.matchMedia('(min-width: 761px)').matches;
+      const isDesktop = hasScrollButton && window.matchMedia('(min-width: 761px)').matches;
       const hasReservedButtonSpace = isDesktop && wrapper.classList.contains('has-scroll-control');
       const reservedSpace = hasReservedButtonSpace ? scrollButtonSpace : 0;
       const contentOverflows = element.scrollWidth - element.clientWidth - reservedSpace > 4;
 
-      if (isActivityFilters) {
+      if (hasScrollButton) {
         const showButton = isDesktop && contentOverflows;
         wrapper.classList.toggle('has-scroll-control', showButton);
         scrollButton.hidden = !showButton;
@@ -6688,8 +6747,8 @@ function initScrollFades() {
         const atEnd = contentEnd - element.scrollLeft <= 4;
         scrollButton.dataset.direction = atEnd ? 'left' : 'right';
         scrollButton.setAttribute('aria-label', atEnd
-          ? 'Return to first activity category'
-          : 'Scroll activity categories right');
+          ? `Return to first ${scrollTarget}`
+          : `Scroll ${scrollTarget} right`);
 
         wrapper.classList.toggle('has-more-right', contentEnd - element.scrollLeft > 4);
         return;
@@ -6701,7 +6760,7 @@ function initScrollFades() {
 
     updateFade();
     element.addEventListener('scroll', updateFade, { passive: true });
-    if (isActivityFilters) window.addEventListener('resize', updateFade, { passive: true });
+    if (hasScrollButton) window.addEventListener('resize', updateFade, { passive: true });
     if ('ResizeObserver' in window) {
       new ResizeObserver(updateFade).observe(element);
     } else {
@@ -6867,7 +6926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (apiSession?.apiSchoolId) {
       try {
         const portal = await getApiPortalFeatures();
-        setApiPortalFeatures(portal.features);
+        setApiPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId, journalSubjectName: portal.journalSubjectName });
       } catch (error) {
         console.warn('Unable to load school portal features.', error.message);
       }

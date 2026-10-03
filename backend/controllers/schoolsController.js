@@ -266,11 +266,11 @@ async function registerSchool(req, res, next) {
       levelIds[code] = levelResult.insertId;
       for (const gradeCode of definition.grades) {
         const sortOrder = gradeCode === 'kindergarten' ? 0 : Number(gradeCode.replace('grade-', ''));
-        await connection.execute('INSERT INTO school_grade_levels (school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [levelResult.insertId, gradeCode, gradeLabel(gradeCode), sortOrder]);
+        await connection.execute('INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, gradeCode, gradeLabel(gradeCode), sortOrder]);
       }
       if (code === 'shs') {
         for (const trackCode of TRACK_DEFAULTS) {
-          await connection.execute('INSERT INTO school_shs_tracks (school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, TRUE)', [levelResult.insertId, trackCode, trackLabel(trackCode)]);
+          await connection.execute('INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackCode, trackLabel(trackCode)]);
         }
       }
     }
@@ -283,9 +283,9 @@ async function registerSchool(req, res, next) {
     for (const config of termConfigs) {
       for (const [index, period] of config.academicPeriods.entries()) {
         await connection.execute(
-          `INSERT INTO academic_terms (academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [yearResult.insertId, levelIds[config.schoolLevel], text(period.name, 80, true), index + 1, period.plannedStartDate, period.plannedEndDate]
+          `INSERT INTO academic_terms (school_id, academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [schoolId, yearResult.insertId, levelIds[config.schoolLevel], text(period.name, 80, true), index + 1, period.plannedStartDate, period.plannedEndDate]
         );
       }
     }
@@ -500,7 +500,17 @@ async function updateSchoolSettings(req, res, next) {
 }
 
 async function getPortalFeatures(req, res, next) {
-  try { res.status(200).json({ features: await getFeatures(getDatabase(), requireAuthenticatedSchool(req)) }); } catch (error) { next(error); }
+  try {
+    const schoolId = requireAuthenticatedSchool(req);
+    const database = getDatabase();
+    const [[settings]] = await database.execute(`SELECT school_settings.journal_subject_id AS journalSubjectId, journal_subjects.name AS journalSubjectName
+      FROM school_settings LEFT JOIN subjects ON subjects.id = school_settings.journal_subject_id
+        AND subjects.school_id = school_settings.school_id AND subjects.is_active = TRUE
+      LEFT JOIN journal_subjects ON journal_subjects.subject_id = subjects.id
+        AND journal_subjects.school_id = school_settings.school_id AND journal_subjects.is_active = TRUE
+      WHERE school_settings.school_id = ?`, [schoolId]);
+    res.status(200).json({ features: await getFeatures(database, schoolId), journalSubjectId: settings?.journalSubjectId || null, journalSubjectName: settings?.journalSubjectName || null });
+  } catch (error) { next(error); }
 }
 
 async function updatePortalFeatures(req, res, next) {
@@ -508,19 +518,33 @@ async function updatePortalFeatures(req, res, next) {
   let transactionStarted = false;
   try {
     const body = req.body || {};
-    const unknown = Object.keys(body).find(field => !FEATURE_FIELDS.includes(field));
+    const unknown = Object.keys(body).find(field => !FEATURE_FIELDS.includes(field) && field !== 'journalSubjectId');
     if (unknown || !Object.keys(body).length) throw createError('Provide valid portal feature settings.');
     const schoolId = requireSchoolAdminSchool(req);
     connection = await getDatabase().getConnection();
-    const current = await getFeatures(connection, schoolId);
-    FEATURE_FIELDS.forEach(field => { if (Object.hasOwn(body, field)) current[field] = boolean(body[field]); });
     await connection.beginTransaction();
     transactionStarted = true;
+    const current = await getFeatures(connection, schoolId);
+    const [[settings]] = await connection.execute('SELECT journal_subject_id AS journalSubjectId FROM school_settings WHERE school_id = ? FOR UPDATE', [schoolId]);
+    if (!settings) throw createError('School settings were not found.', 404);
+    FEATURE_FIELDS.forEach(field => { if (Object.hasOwn(body, field)) current[field] = boolean(body[field]); });
+    const journalSubjectId = Object.hasOwn(body, 'journalSubjectId')
+      ? body.journalSubjectId === null ? null : /^\d+$/.test(String(body.journalSubjectId)) ? parseId(body.journalSubjectId) : null
+      : settings.journalSubjectId;
+    if (Object.hasOwn(body, 'journalSubjectId') && body.journalSubjectId !== null && !journalSubjectId) throw createError('Select a valid journal subject.');
+    if (current.journalsEnabled && !journalSubjectId) throw createError('Select a journal subject before enabling Journals.');
+    if (journalSubjectId && (current.journalsEnabled || Number(journalSubjectId) !== Number(settings.journalSubjectId))) {
+      const [[subject]] = await connection.execute('SELECT id, name FROM subjects WHERE id = ? AND school_id = ? AND is_active = TRUE', [journalSubjectId, schoolId]);
+      if (!subject) throw createError('Select an active subject from this school.');
+      await connection.execute(`INSERT INTO journal_subjects (school_id, subject_id, name, is_active)
+        VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = TRUE`, [schoolId, journalSubjectId, subject.name]);
+    }
     await connection.execute(`UPDATE school_portal_features SET grades_enabled=?, narrative_reports_enabled=?, journals_enabled=?, attendance_enabled=?, sf_templates_enabled=? WHERE school_id=?`, [current.gradesEnabled, current.narrativeReportsEnabled, current.journalsEnabled, current.attendanceEnabled, current.sfTemplatesEnabled, schoolId]);
+    await connection.execute('UPDATE school_settings SET journal_subject_id = ? WHERE school_id = ?', [journalSubjectId, schoolId]);
     await writeAuditLog(connection, req, 'portal_features_updated', 'school_portal_features', schoolId, { summary: 'School portal features' });
     await connection.commit();
     transactionStarted = false;
-    res.status(200).json({ features: current });
+    res.status(200).json({ features: current, journalSubjectId });
   } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
@@ -549,7 +573,7 @@ async function updateAcademicStructure(req, res, next) {
           throw createError('The grade-level configuration is invalid.');
         }
         for (const grade of level.gradeLevels) {
-          await connection.execute(`INSERT INTO school_grade_levels (school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), sort_order=VALUES(sort_order), is_enabled=VALUES(is_enabled)`, [storedLevel.id, grade.gradeCode, text(grade.displayName, 80) || gradeLabel(grade.gradeCode), Number(grade.sortOrder) || (grade.gradeCode === 'kindergarten' ? 0 : Number(grade.gradeCode.replace('grade-', ''))), boolean(grade.isEnabled)]);
+          await connection.execute(`INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), sort_order=VALUES(sort_order), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, grade.gradeCode, text(grade.displayName, 80) || gradeLabel(grade.gradeCode), Number(grade.sortOrder) || (grade.gradeCode === 'kindergarten' ? 0 : Number(grade.gradeCode.replace('grade-', ''))), boolean(grade.isEnabled)]);
         }
         if (gradeCodes.length) {
           await connection.execute(`UPDATE school_grade_levels SET is_enabled = FALSE WHERE school_level_id = ? AND grade_code NOT IN (${gradeCodes.map(() => '?').join(', ')})`, [storedLevel.id, ...gradeCodes]);
@@ -563,7 +587,7 @@ async function updateAcademicStructure(req, res, next) {
           throw createError('The SHS track configuration is invalid.');
         }
         for (const track of level.tracks) {
-          await connection.execute(`INSERT INTO school_shs_tracks (school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`, [storedLevel.id, track.trackCode, text(track.displayName, 120) || trackLabel(track.trackCode), boolean(track.isEnabled)]);
+          await connection.execute(`INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, track.trackCode, text(track.displayName, 120) || trackLabel(track.trackCode), boolean(track.isEnabled)]);
         }
         if (trackCodes.length) {
           await connection.execute(`UPDATE school_shs_tracks SET is_enabled = FALSE WHERE school_level_id = ? AND track_code NOT IN (${trackCodes.map(() => '?').join(', ')})`, [storedLevel.id, ...trackCodes]);

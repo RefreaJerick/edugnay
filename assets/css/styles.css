@@ -2481,6 +2481,45 @@ select:not([multiple]):disabled {
   opacity: 1;
 }
 
+.scroll-fade-button {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--gray-600);
+  box-shadow: 0 2px 6px rgba(16, 40, 80, 0.12);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.scroll-fade-button[hidden] { display: none; }
+.scroll-fade-button:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+.scroll-fade-button:focus-visible {
+  outline: 3px solid rgba(29, 92, 180, 0.35);
+  outline-offset: 2px;
+}
+.scroll-fade-icon { width: 16px; height: 16px; }
+.scroll-fade-button[data-direction="right"] .scroll-fade-icon-left,
+.scroll-fade-button[data-direction="left"] .scroll-fade-icon-right { display: none; }
+
+@media (max-width: 760px) {
+  .scroll-fade-button { display: none; }
+}
+
 /*
   Shared portal panel system
   Page styles still own each panel's inner layout. These rules keep the outer

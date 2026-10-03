@@ -90,7 +90,6 @@ function formatAnnouncement(row, audiences = []) {
     status: row.status,
     authorUserId: row.authorUserId,
     authorName: row.authorName,
-    imagePath: row.imagePath,
     imageUrl: imageUrl(row),
     scheduledAt: row.scheduledAt,
     pinned: Boolean(row.isPinned),
@@ -102,14 +101,15 @@ function formatAnnouncement(row, audiences = []) {
   };
 }
 
-async function teacherCanAccessSection(connection, teacherId, sectionId) {
+async function teacherCanAccessSection(connection, schoolId, teacherId, sectionId) {
   const [sections] = await connection.execute(
     `SELECT sections.id FROM sections
-    LEFT JOIN section_teachers ON section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?
-    WHERE sections.id = ? AND sections.status = 'active'
+    LEFT JOIN section_teachers ON section_teachers.school_id = sections.school_id
+      AND section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?
+    WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
       AND (sections.adviser_user_id = ? OR section_teachers.id IS NOT NULL)
     LIMIT 1`,
-    [teacherId, sectionId, teacherId]
+    [teacherId, sectionId, schoolId, teacherId]
   );
   return Boolean(sections[0]);
 }
@@ -119,7 +119,7 @@ async function validateAudiences(connection, user, audiences) {
     if (audience.type !== 'section') continue;
     const [sections] = await connection.execute('SELECT id FROM sections WHERE id = ? AND school_id = ? AND status = \'active\' LIMIT 1', [audience.sectionId, user.schoolId]);
     if (!sections.length) throw createError('Announcement section was not found.', 404);
-    if (user.role === 'teacher' && !(await teacherCanAccessSection(connection, user.id, audience.sectionId))) {
+    if (user.role === 'teacher' && !(await teacherCanAccessSection(connection, user.schoolId, user.id, audience.sectionId))) {
       throw createError('You can only announce to your assigned sections.', 403);
     }
   }
@@ -164,16 +164,20 @@ async function getAudienceRecipientIds(connection, schoolId, audiences) {
   for (const audience of audiences) {
     if (audience.type === 'section') {
       const [recipients] = await connection.execute(
-        `SELECT student_user_id AS userId FROM section_students WHERE section_id = ? AND withdrawn_at IS NULL
+        `SELECT student_user_id AS userId FROM section_students
+          WHERE school_id = ? AND section_id = ? AND withdrawn_at IS NULL
         UNION
         SELECT student_parent_links.parent_user_id AS userId FROM section_students
           INNER JOIN student_parent_links ON student_parent_links.student_user_id = section_students.student_user_id
-          WHERE section_students.section_id = ? AND section_students.withdrawn_at IS NULL
+            AND student_parent_links.school_id = section_students.school_id
+          WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.withdrawn_at IS NULL
         UNION
-        SELECT adviser_user_id AS userId FROM sections WHERE id = ? AND adviser_user_id IS NOT NULL
+        SELECT adviser_user_id AS userId FROM sections
+          WHERE school_id = ? AND id = ? AND adviser_user_id IS NOT NULL
         UNION
-        SELECT teacher_user_id AS userId FROM section_teachers WHERE section_id = ?`,
-        [audience.sectionId, audience.sectionId, audience.sectionId, audience.sectionId]
+        SELECT teacher_user_id AS userId FROM section_teachers WHERE school_id = ? AND section_id = ?`,
+        [schoolId, audience.sectionId, schoolId, audience.sectionId,
+          schoolId, audience.sectionId, schoolId, audience.sectionId]
       );
       recipients.forEach(recipient => recipientIds.add(recipient.userId));
       continue;
@@ -206,10 +210,10 @@ async function queueAnnouncementEmails(connection, announcement, recipientIds) {
   if (!recipientIds.length) return;
   const placeholders = recipientIds.map(() => '?').join(', ');
   const [result] = await connection.execute(
-    `INSERT IGNORE INTO announcement_email_outbox (announcement_id, user_id)
-    SELECT ?, users.id FROM users
+    `INSERT IGNORE INTO announcement_email_outbox (school_id, announcement_id, user_id)
+    SELECT ?, ?, users.id FROM users
     WHERE users.school_id = ? AND users.account_status = 'active' AND users.id IN (${placeholders})`,
-    [announcement.id, announcement.schoolId, ...recipientIds]
+    [announcement.schoolId, announcement.id, announcement.schoolId, ...recipientIds]
   );
   return result.affectedRows > 0;
 }
@@ -217,24 +221,27 @@ async function queueAnnouncementEmails(connection, announcement, recipientIds) {
 function announcementVisibilitySql(user) {
   if (user.role === 'school_admin') return { where: 'announcements.school_id = ?', values: [user.schoolId] };
   const shared = [
-    "EXISTS (SELECT 1 FROM announcement_audiences WHERE announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'all')",
-    "EXISTS (SELECT 1 FROM announcement_audiences WHERE announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = ?)"
+    "EXISTS (SELECT 1 FROM announcement_audiences WHERE announcement_audiences.school_id = announcements.school_id AND announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'all')",
+    "EXISTS (SELECT 1 FROM announcement_audiences WHERE announcement_audiences.school_id = announcements.school_id AND announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = ?)"
   ];
   const values = [user.schoolId, user.role];
   if (user.role === 'teacher') {
     shared.push(`EXISTS (SELECT 1 FROM announcement_audiences
       INNER JOIN sections ON sections.id = announcement_audiences.section_id
-      LEFT JOIN section_teachers ON section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?
-      WHERE announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section'
+        AND sections.school_id = announcement_audiences.school_id
+      LEFT JOIN section_teachers ON section_teachers.school_id = announcement_audiences.school_id
+        AND section_teachers.section_id = sections.id AND section_teachers.teacher_user_id = ?
+      WHERE announcement_audiences.school_id = announcements.school_id
+      AND announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section'
       AND (sections.adviser_user_id = ? OR section_teachers.id IS NOT NULL))`);
     values.push(user.id, user.id);
   }
   if (user.role === 'student') {
-    shared.push("EXISTS (SELECT 1 FROM announcement_audiences INNER JOIN section_students ON section_students.section_id = announcement_audiences.section_id WHERE announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section' AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)");
+    shared.push("EXISTS (SELECT 1 FROM announcement_audiences INNER JOIN section_students ON section_students.school_id = announcement_audiences.school_id AND section_students.section_id = announcement_audiences.section_id WHERE announcement_audiences.school_id = announcements.school_id AND announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section' AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)");
     values.push(user.id);
   }
   if (user.role === 'parent') {
-    shared.push("EXISTS (SELECT 1 FROM announcement_audiences INNER JOIN section_students ON section_students.section_id = announcement_audiences.section_id INNER JOIN student_parent_links ON student_parent_links.student_user_id = section_students.student_user_id WHERE announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section' AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)");
+    shared.push("EXISTS (SELECT 1 FROM announcement_audiences INNER JOIN section_students ON section_students.school_id = announcement_audiences.school_id AND section_students.section_id = announcement_audiences.section_id INNER JOIN student_parent_links ON student_parent_links.school_id = announcement_audiences.school_id AND student_parent_links.student_user_id = section_students.student_user_id WHERE announcement_audiences.school_id = announcements.school_id AND announcement_audiences.announcement_id = announcements.id AND announcement_audiences.audience_type = 'section' AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)");
     values.push(user.id);
   }
   return {
@@ -257,7 +264,8 @@ async function listAnnouncements(req, res, next) {
         announcements.published_at AS publishedAt, announcements.created_at AS createdAt, announcements.updated_at AS updatedAt,
         announcement_reads.read_at AS readAt
       FROM announcements INNER JOIN users AS authors ON authors.id = announcements.author_user_id
-      LEFT JOIN announcement_reads ON announcement_reads.announcement_id = announcements.id AND announcement_reads.user_id = ?
+      LEFT JOIN announcement_reads ON announcement_reads.school_id = announcements.school_id
+        AND announcement_reads.announcement_id = announcements.id AND announcement_reads.user_id = ?
       WHERE ${visibility.where} ORDER BY announcements.is_pinned DESC, announcements.published_at DESC, announcements.created_at DESC`,
       [req.user.id, ...visibility.values]
     );
@@ -289,7 +297,7 @@ async function createAnnouncement(req, res, next) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${status === 'published' ? 'NOW()' : 'NULL'})`,
       [req.user.schoolId, title, body, priority, status, req.user.id, newImage || null, schedule]
     );
-    for (const audience of audiences) await connection.execute('INSERT INTO announcement_audiences (announcement_id, audience_type, section_id) VALUES (?, ?, ?)', [result.insertId, audience.type, audience.sectionId]);
+    for (const audience of audiences) await connection.execute('INSERT INTO announcement_audiences (school_id, announcement_id, audience_type, section_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, result.insertId, audience.type, audience.sectionId]);
     const announcement = await getAnnouncement(connection, result.insertId, req.user);
     const recipientIds = status === 'published'
       ? await createNotifications(connection, announcement, audiences)
@@ -346,7 +354,7 @@ async function updateAnnouncement(req, res, next) {
     );
     if (replaceAudiences) {
       await connection.execute('DELETE FROM announcement_audiences WHERE announcement_id = ?', [announcementId]);
-      for (const audience of audiences) await connection.execute('INSERT INTO announcement_audiences (announcement_id, audience_type, section_id) VALUES (?, ?, ?)', [announcementId, audience.type, audience.sectionId]);
+      for (const audience of audiences) await connection.execute('INSERT INTO announcement_audiences (school_id, announcement_id, audience_type, section_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, announcementId, audience.type, audience.sectionId]);
     }
     const updated = await getAnnouncement(connection, announcementId, req.user);
     const recipientIds = current.status !== 'published' && status === 'published'
@@ -418,7 +426,7 @@ async function markAnnouncementRead(req, res, next) {
     const visibility = announcementVisibilitySql(req.user);
     const [announcements] = await connection.execute(`SELECT announcements.id FROM announcements WHERE announcements.id = ? AND ${visibility.where} LIMIT 1`, [announcementId, ...visibility.values]);
     if (!announcements.length) throw createError('Announcement was not found.', 404);
-    await connection.execute('INSERT INTO announcement_reads (announcement_id, user_id, read_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE read_at = read_at', [announcementId, req.user.id]);
+    await connection.execute('INSERT INTO announcement_reads (school_id, announcement_id, user_id, read_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE read_at = read_at', [req.user.schoolId, announcementId, req.user.id]);
     res.status(204).send();
   } catch (error) { next(error); } finally { connection.release(); }
 }
@@ -487,7 +495,7 @@ async function publishDueAnnouncements() {
       if (!row) { await connection.rollback(); continue; }
       const [[school]] = await connection.execute('SELECT registration_status AS status FROM schools WHERE id = ?', [row.schoolId]);
       if (school?.status !== 'active') { await connection.rollback(); continue; }
-      await connection.execute("UPDATE announcements SET status = 'published', scheduled_at = NULL, published_at = NOW() WHERE id = ?", [row.id]);
+      await connection.execute("UPDATE announcements SET status = 'published', scheduled_at = NULL, published_at = NOW() WHERE id = ? AND school_id = ?", [row.id, row.schoolId]);
       const announcement = await getAnnouncement(connection, row.id, { schoolId: row.schoolId });
       const audiences = (await getAnnouncementAudiences(connection, [row.id])).get(row.id) || [];
       const recipients = await createNotifications(connection, announcement, audiences);

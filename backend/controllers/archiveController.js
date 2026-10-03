@@ -76,10 +76,12 @@ async function getYearStatistics(database, schoolId, yearId) {
         WHERE teacher_sections.academic_year_id = ? AND teacher_sections.school_id = ?) AS teachers,
       (SELECT COUNT(*) FROM published_final_grades
         INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
+          AND academic_terms.school_id = published_final_grades.school_id
         WHERE academic_terms.academic_year_id = ? AND published_final_grades.school_id = ?) AS gradeCount,
       (SELECT COALESCE(SUM(published_final_grades.final_grade >= school_levels.passing_grade_threshold), 0)
         FROM published_final_grades
         INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
+          AND academic_terms.school_id = published_final_grades.school_id
         INNER JOIN school_levels ON school_levels.id = academic_terms.school_level_id
         WHERE academic_terms.academic_year_id = ? AND published_final_grades.school_id = ?) AS passingGrades,
       (SELECT COUNT(*) FROM attendance_records
@@ -138,15 +140,18 @@ async function getSectionSummaries(database, schoolId, yearId) {
   const [sections] = await database.execute(
     `SELECT sections.id, sections.name, school_grade_levels.display_name AS grade,
       (SELECT COUNT(*) FROM section_students
-        WHERE section_students.section_id = sections.id) AS students,
+        WHERE section_students.school_id = sections.school_id
+          AND section_students.section_id = sections.id) AS students,
       (SELECT COUNT(*) FROM published_final_grades
         INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
-        WHERE published_final_grades.section_id = sections.id
+        WHERE published_final_grades.school_id = sections.school_id
+          AND published_final_grades.section_id = sections.id
           AND academic_terms.academic_year_id = sections.academic_year_id) AS gradeCount,
       (SELECT COALESCE(SUM(published_final_grades.final_grade >= school_levels.passing_grade_threshold), 0)
         FROM published_final_grades
         INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
-        WHERE published_final_grades.section_id = sections.id
+        WHERE published_final_grades.school_id = sections.school_id
+          AND published_final_grades.section_id = sections.id
           AND academic_terms.academic_year_id = sections.academic_year_id) AS passingGrades
     FROM sections
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id

@@ -9,17 +9,21 @@ async function checkAssignments(database) {
       subjects.name AS subjectName, assignment_submissions.submission_status AS savedStatus,
       assignment_submissions.file_path AS filePath, triggers.threshold
     FROM assignments
+    INNER JOIN schools ON schools.id = assignments.school_id AND schools.registration_status = 'active'
     INNER JOIN parent_notification_triggers AS triggers ON triggers.school_id = assignments.school_id
       AND triggers.trigger_code = 'assignment_not_completed' AND triggers.is_enabled = TRUE
     INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
       AND sections.status = 'active'
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN subjects ON subjects.id = assignments.subject_id
+      AND subjects.school_id = assignments.school_id
     INNER JOIN section_students ON section_students.section_id = assignments.section_id
+      AND section_students.school_id = assignments.school_id
       AND section_students.withdrawn_at IS NULL AND section_students.enrolled_at <= assignments.due_at
     INNER JOIN users AS students ON students.id = section_students.student_user_id
       AND students.school_id = assignments.school_id AND students.role = 'student' AND students.account_status = 'active'
     LEFT JOIN assignment_submissions ON assignment_submissions.assignment_id = assignments.id
+      AND assignment_submissions.school_id = assignments.school_id
       AND assignment_submissions.student_user_id = students.id
     WHERE assignments.status = 'published' AND assignments.due_at < NOW()
     ORDER BY assignments.school_id, section_students.student_user_id, assignments.section_id,
@@ -55,18 +59,24 @@ async function checkJournals(database) {
       journal_subjects.id AS journalSubjectId, students.id AS studentId,
       students.display_name AS studentName, entries.id AS entryId, triggers.threshold
     FROM journal_prompts AS prompts
-    INNER JOIN journal_subjects ON journal_subjects.id = prompts.journal_subject_id AND journal_subjects.is_active = TRUE
+    INNER JOIN journal_subjects ON journal_subjects.id = prompts.journal_subject_id
+      AND journal_subjects.school_id = prompts.school_id AND journal_subjects.is_active = TRUE
+    INNER JOIN schools ON schools.id = journal_subjects.school_id AND schools.registration_status = 'active'
     INNER JOIN school_portal_features AS features ON features.school_id = journal_subjects.school_id AND features.journals_enabled = TRUE
+    INNER JOIN school_settings AS settings ON settings.school_id = journal_subjects.school_id
+      AND settings.journal_subject_id = journal_subjects.subject_id
     INNER JOIN parent_notification_triggers AS triggers ON triggers.school_id = journal_subjects.school_id
       AND triggers.trigger_code = 'journal_not_submitted' AND triggers.is_enabled = TRUE
     INNER JOIN sections ON sections.id = prompts.section_id AND sections.school_id = journal_subjects.school_id
       AND sections.status = 'active'
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN section_students ON section_students.section_id = sections.id
+      AND section_students.school_id = journal_subjects.school_id
       AND section_students.withdrawn_at IS NULL AND section_students.enrolled_at <= prompts.due_at
     INNER JOIN users AS students ON students.id = section_students.student_user_id
       AND students.school_id = journal_subjects.school_id AND students.role = 'student' AND students.account_status = 'active'
     LEFT JOIN student_journal_entries AS entries ON entries.journal_prompt_id = prompts.id
+      AND entries.school_id = journal_subjects.school_id
       AND entries.student_user_id = students.id AND entries.entry_status IN ('submitted', 'reviewed')
     WHERE prompts.due_at < NOW() AND (prompts.allow_late = FALSE OR prompts.prompt_status = 'closed')
     ORDER BY journal_subjects.school_id, students.id, prompts.section_id, journal_subjects.id,

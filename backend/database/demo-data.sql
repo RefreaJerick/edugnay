@@ -313,9 +313,6 @@ INSERT INTO student_journal_entries (
   (3, 1, 4, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I prepared my materials before class and finished my part of the group activity on time. I learned that being ready helps the whole group work better.', 'reviewed', '2026-09-24 10:00:00'),
   (4, 1, 6, 3, 1, 'Describe one way you showed responsibility in class this week and what you learned from it.', 'I remembered to bring my notebook every day this week and completed my class reflection before going home.', 'submitted', '2026-09-25 14:00:00');
 
-INSERT INTO journal_feedback (journal_entry_id, teacher_user_id, feedback_text)
-VALUES (1, 3, 'Thank you for showing kindness and cooperation.');
-
 INSERT INTO narrative_reports (
   id, school_id, student_user_id, section_id, teacher_user_id, academic_term_id,
   report_period_key, report_period_label, teacher_note, generated_summary,

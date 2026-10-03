@@ -41,13 +41,13 @@ function createQrPayload(token) {
   return `academix:attendance:${token}`;
 }
 
-async function issueStudentQrCredential(database, studentId) {
+async function issueStudentQrCredential(database, schoolId, studentId) {
   const token = createQrToken();
   await database.execute(
     `INSERT INTO student_qr_credentials (
-      student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at
-    ) VALUES (?, ?, ?, 'active', NOW(), NULL)`,
-    [studentId, hashQrToken(token), encryptQrToken(token)]
+      school_id, student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at
+    ) VALUES (?, ?, ?, ?, 'active', NOW(), NULL)`,
+    [schoolId, studentId, hashQrToken(token), encryptQrToken(token)]
   );
   return { token, payload: createQrPayload(token) };
 }

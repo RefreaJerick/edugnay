@@ -15,21 +15,22 @@ const requireTeacher = requireRole('teacher');
 const requireStudent = requireRole('student');
 const requireParent = requireRole('parent');
 
-function requireOwnSchool(req, res, next) {
-  const schoolId = Number.parseInt(req.params.schoolId || req.body.schoolId || req.query.schoolId, 10);
-  if (!Number.isSafeInteger(schoolId) || schoolId < 1 || req.user?.role !== 'school_admin' || req.user.schoolId !== schoolId) {
-    return res.status(403).json({ message: 'You do not have access to this school.' });
+function requireSchoolUser(req, res, next) {
+  const roles = ['school_admin', 'teacher', 'student', 'parent'];
+  const schoolId = Number(req.user?.schoolId);
+  if (!roles.includes(req.user?.role) || !Number.isSafeInteger(schoolId) || schoolId < 1) {
+    return res.status(403).json({ message: 'You do not have access to this resource.' });
   }
   next();
 }
 
 module.exports = {
-  requireOwnSchool,
   requireParent,
   requirePlatformAdmin,
   requireRole,
   requireRoles,
   requireSchoolAdmin,
+  requireSchoolUser,
   requireStudent,
   requireTeacher
 };

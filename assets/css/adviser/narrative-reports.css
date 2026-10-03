@@ -1068,7 +1068,7 @@
 .btn-sm { border-radius: var(--radius-xs); }
 
 #review-modal,
-#gen-modal { background: var(--overlay-modal); backdrop-filter: blur(3px); }
+#gen-modal { background: var(--overlay-modal); }
 .review-modal {
   max-width: 700px;
   max-height: min(700px, calc(100vh - 32px));

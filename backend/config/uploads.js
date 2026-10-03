@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const multer = require('multer');
+const { getPrivateStorageDirectory } = require('./privateStorage');
 
-const uploadDirectory = path.join(__dirname, '..', 'uploads', 'assignment-submissions');
+const uploadDirectory = getPrivateStorageDirectory('ASSIGNMENT_SUBMISSION_DIRECTORY', 'assignment-submissions');
 const allowedExtensions = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']);
 
 fs.mkdirSync(uploadDirectory, { recursive: true });
@@ -26,14 +26,7 @@ const assignmentSubmissionUpload = multer({
   }
 });
 
-const workspaceDirectory = path.resolve(__dirname, '..', '..');
-const materialUploadDirectory = path.resolve(process.env.MATERIAL_UPLOAD_DIRECTORY
-  || path.join(os.homedir(), '.academix', 'uploads', 'learning-materials'));
-const materialDirectoryFromWorkspace = path.relative(workspaceDirectory, materialUploadDirectory);
-if (!materialDirectoryFromWorkspace || (!materialDirectoryFromWorkspace.startsWith(`..${path.sep}`)
-  && materialDirectoryFromWorkspace !== '..' && !path.isAbsolute(materialDirectoryFromWorkspace))) {
-  throw new Error('MATERIAL_UPLOAD_DIRECTORY must be outside the project workspace.');
-}
+const materialUploadDirectory = getPrivateStorageDirectory('MATERIAL_UPLOAD_DIRECTORY', 'learning-materials');
 fs.mkdirSync(materialUploadDirectory, { recursive: true });
 const materialTypes = {
   '.pdf': 'application/pdf', '.doc': 'application/msword',

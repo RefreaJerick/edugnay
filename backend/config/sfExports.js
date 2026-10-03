@@ -2,9 +2,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
+const { getPrivateStorageDirectory } = require('./privateStorage');
 
 const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
-const exportDirectory = path.resolve(__dirname, '..', 'uploads', 'sf-exports');
+const exportDirectory = getPrivateStorageDirectory('SF_EXPORT_DIRECTORY', 'sf-exports');
 
 fs.mkdirSync(exportDirectory, { recursive: true });
 
@@ -128,13 +129,16 @@ async function saveExport(buffer, formCode) {
   const fileName = `${String(formCode).toLowerCase()}-${crypto.randomUUID()}.xlsx`;
   const filePath = path.join(exportDirectory, fileName);
   await fs.promises.writeFile(filePath, buffer, { flag: 'wx' });
-  return { fileName, filePath, publicPath: `/uploads/sf-exports/${fileName}` };
+  return { fileName, filePath, publicPath: fileName };
 }
 
 function getExportFilePath(publicPath) {
   const fileName = path.basename(String(publicPath || ''));
-  const filePath = path.resolve(exportDirectory, fileName);
-  if (!filePath.startsWith(`${exportDirectory}${path.sep}`)) throw createError('The requested export file is invalid.', 400);
+  if (!/^sf1-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
+  const legacy = String(publicPath).replace(/^\/+/, '').startsWith('uploads/sf-exports/');
+  const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'sf-exports') : exportDirectory;
+  const filePath = path.resolve(directory, fileName);
+  if (!filePath.startsWith(`${directory}${path.sep}`)) throw createError('The requested export file is invalid.', 400);
   return filePath;
 }
 

@@ -11,6 +11,17 @@ let processing = false;
 let missingTableReported = false;
 
 async function sendQueuedEmail(database, job, claimToken) {
+  if (job.schoolStatus !== 'active') {
+    await database.execute(
+      `UPDATE announcement_email_outbox
+      SET status = 'pending', attempts = GREATEST(attempts - 1, 0),
+        next_attempt_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE), last_error = 'school_inactive',
+        claim_token = NULL, claimed_at = NULL
+      WHERE id = ? AND status = 'sending' AND claim_token = ?`,
+      [job.id, claimToken]
+    );
+    return;
+  }
   if (!job.recipientId || job.announcementStatus !== 'published') {
     await database.execute(
       `UPDATE announcement_email_outbox
@@ -94,15 +105,19 @@ async function processAnnouncementEmailQueue() {
 
     const [jobs] = await database.execute(
       `SELECT queued.id, queued.attempts,
+        schools.registration_status AS schoolStatus,
         announcements.status AS announcementStatus, announcements.title, announcements.body,
         authors.display_name AS authorName,
         recipients.id AS recipientId, recipients.display_name AS displayName,
         recipients.school_email AS schoolEmail, recipients.personal_email AS personalEmail
       FROM announcement_email_outbox AS queued
+      LEFT JOIN schools ON schools.id = queued.school_id
       LEFT JOIN announcements ON announcements.id = queued.announcement_id
+        AND announcements.school_id = queued.school_id
       LEFT JOIN users AS authors ON authors.id = announcements.author_user_id
+        AND authors.school_id = queued.school_id
       LEFT JOIN users AS recipients ON recipients.id = queued.user_id
-        AND recipients.school_id = announcements.school_id AND recipients.account_status = 'active'
+        AND recipients.school_id = queued.school_id AND recipients.account_status = 'active'
       WHERE queued.claim_token = ? ORDER BY queued.id`,
       [claimToken]
     );

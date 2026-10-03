@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "audit:tenant": "node scripts/auditTenantIsolation.js",
+    "test:tenant:two-school": "node scripts/testTwoSchoolIsolation.js",
+    "verify:tenant": "node scripts/verifyTenantConstraints.js",
+    "backup:database": "node scripts/backupDatabase.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

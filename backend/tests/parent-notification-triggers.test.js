@@ -153,6 +153,7 @@ test('notification reads restrict child-linked notices to current parent links',
     error => { throw error; }
   );
   assert.deepEqual(response, { notifications: [] });
+  assert.ok(calls[0].sql.includes('links.school_id = ?'));
   assert.ok(calls[0].sql.includes('links.parent_user_id = ?'));
-  assert.deepEqual(calls[0].values.slice(0, 4), [4, 'parent', 1, 4]);
+  assert.deepEqual(calls[0].values.slice(0, 5), [4, 'parent', 1, 1, 4]);
 });

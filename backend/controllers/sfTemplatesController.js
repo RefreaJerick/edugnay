@@ -183,7 +183,7 @@ async function validateTerm(database, schoolId, section, academicTermId, require
   return terms[0];
 }
 
-async function getSectionLearners(database, sectionId) {
+async function getSectionLearners(database, schoolId, sectionId) {
   const [learners] = await database.execute(
     `SELECT users.id AS userId, users.first_name AS firstName, users.last_name AS lastName,
       student_profiles.user_id AS profileUserId,
@@ -198,12 +198,13 @@ async function getSectionLearners(database, sectionId) {
       student_profiles.house_street AS houseStreet, student_profiles.barangay,
       student_profiles.city_municipality AS cityMunicipality, student_profiles.province
     FROM section_students
-    INNER JOIN users ON users.id = section_students.student_user_id AND users.role = 'student'
+    INNER JOIN users ON users.id = section_students.student_user_id
+      AND users.school_id = section_students.school_id AND users.role = 'student'
     LEFT JOIN student_profiles ON student_profiles.user_id = users.id
-    WHERE section_students.section_id = ? AND section_students.withdrawn_at IS NULL
+    WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.withdrawn_at IS NULL
       AND users.account_status = 'active'
     ORDER BY users.last_name, users.first_name, users.id`,
-    [sectionId]
+    [schoolId, sectionId]
   );
 
   if (!learners.length) return learners;
@@ -214,10 +215,12 @@ async function getSectionLearners(database, sectionId) {
       parent_profiles.middle_name AS middleName, parent_profiles.maiden_last_name AS maidenLastName,
       parent_profiles.contact_number AS contactNumber
     FROM student_parent_links
-    INNER JOIN users ON users.id = student_parent_links.parent_user_id AND users.role = 'parent'
+    INNER JOIN users ON users.id = student_parent_links.parent_user_id
+      AND users.school_id = student_parent_links.school_id AND users.role = 'parent'
     LEFT JOIN parent_profiles ON parent_profiles.user_id = users.id
-    WHERE student_parent_links.student_user_id IN (${placeholders}) AND users.account_status = 'active'`,
-    learners.map(learner => learner.userId)
+    WHERE student_parent_links.school_id = ?
+      AND student_parent_links.student_user_id IN (${placeholders}) AND users.account_status = 'active'`,
+    [schoolId, ...learners.map(learner => learner.userId)]
   );
 
   const parentsByStudent = new Map();
@@ -459,7 +462,7 @@ async function preparePreview(req, database) {
     [req.user.schoolId]
   );
   if (!schools[0]) throw createError('Your school could not be found.', 404);
-  const learners = await getSectionLearners(database, section.id);
+  const learners = await getSectionLearners(database, req.user.schoolId, section.id);
   const data = buildGenerationData(schools[0], section, learners);
   const mappedCells = buildMappedCells(data);
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
@@ -522,8 +525,8 @@ async function generateTemplate(req, res, next) {
     transactionStarted = true;
     await connection.execute(
       `UPDATE school_form_exports SET export_status = 'generated', file_path = ?, generated_at = NOW()
-      WHERE id = ? AND requested_by_user_id = ?`,
-      [saved.publicPath, exportId, req.user.id]
+      WHERE id = ? AND school_id = ? AND requested_by_user_id = ?`,
+      [saved.publicPath, exportId, req.user.schoolId, req.user.id]
     );
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
@@ -552,8 +555,9 @@ async function generateTemplate(req, res, next) {
     if (savedFilePath) await fs.promises.unlink(savedFilePath).catch(() => {});
     if (exportId) {
       await getDatabase().execute(
-        `UPDATE school_form_exports SET export_status = 'failed', file_path = NULL WHERE id = ?`,
-        [exportId]
+        `UPDATE school_form_exports SET export_status = 'failed', file_path = NULL
+        WHERE id = ? AND school_id = ? AND requested_by_user_id = ?`,
+        [exportId, req.user.schoolId, req.user.id]
       ).catch(() => {});
     }
     next(error);

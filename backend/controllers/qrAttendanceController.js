@@ -101,13 +101,13 @@ async function assertAttendanceFeatureEnabled(database, schoolId) {
   }
 }
 
-async function getActiveStudentIds(database, sectionId) {
+async function getActiveStudentIds(database, schoolId, sectionId) {
   const [students] = await database.execute(
     `SELECT student_user_id AS studentId
     FROM section_students
-    WHERE section_id = ? AND withdrawn_at IS NULL
+    WHERE school_id = ? AND section_id = ? AND withdrawn_at IS NULL
     ORDER BY student_user_id`,
-    [sectionId]
+    [schoolId, sectionId]
   );
   return students.map(student => student.studentId);
 }
@@ -121,9 +121,9 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
       confirmed_by_user_id AS confirmedByUserId,
       confirmed_at AS confirmedAt
     FROM attendance_sessions
-    WHERE section_id = ? AND subject_id = ? AND attendance_date = ? AND method = 'qr'
+    WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ? AND method = 'qr'
     LIMIT 1`,
-    [section.id, subjectId, attendanceDate]
+    [section.schoolId, section.id, subjectId, attendanceDate]
   );
   const session = sessions[0] || null;
   const [students] = await database.execute(
@@ -137,19 +137,22 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
       EXISTS (
         SELECT 1
         FROM qr_scan_events
-        WHERE qr_scan_events.attendance_session_id = ?
+        WHERE qr_scan_events.school_id = section_students.school_id
+          AND qr_scan_events.attendance_session_id = ?
           AND qr_scan_events.scanned_student_user_id = students.id
           AND qr_scan_events.scan_result = 'accepted'
       ) AS isScanned
     FROM section_students
     INNER JOIN users AS students ON students.id = section_students.student_user_id
+      AND students.school_id = section_students.school_id
     INNER JOIN student_profiles ON student_profiles.user_id = students.id
     LEFT JOIN attendance_records
       ON attendance_records.attendance_session_id = ?
+      AND attendance_records.school_id = section_students.school_id
       AND attendance_records.student_user_id = students.id
-    WHERE section_students.section_id = ? AND section_students.withdrawn_at IS NULL
+    WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.withdrawn_at IS NULL
     ORDER BY students.last_name, students.first_name`,
-    [session?.id || 0, session?.id || 0, section.id]
+    [session?.id || 0, session?.id || 0, section.schoolId, section.id]
   );
 
   const roster = students.map(student => ({
@@ -212,9 +215,9 @@ async function startQrAttendance(req, res, next) {
     const [sessions] = await connection.execute(
       `SELECT id, method, status
       FROM attendance_sessions
-      WHERE section_id = ? AND subject_id = ? AND attendance_date = ?
+      WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
       FOR UPDATE`,
-      [sectionId, subjectId, attendanceDate]
+      [section.schoolId, sectionId, subjectId, attendanceDate]
     );
     const existingSession = sessions[0];
     if (existingSession?.status === 'confirmed') {
@@ -294,20 +297,23 @@ async function scanQrAttendance(req, res, next) {
         student_qr_credentials.id,
         student_qr_credentials.student_user_id AS studentId,
         student_qr_credentials.credential_status AS credentialStatus,
+        users.school_id AS schoolId,
         users.display_name AS displayName,
         users.initials
       FROM student_qr_credentials
       INNER JOIN users ON users.id = student_qr_credentials.student_user_id
+        AND users.school_id = student_qr_credentials.school_id
       WHERE student_qr_credentials.token_hash = ?
       LIMIT 1`,
       [hashQrToken(qrToken)]
     );
     const credential = credentials[0];
-    if (!credential || credential.credentialStatus !== 'active') {
+    if (!credential || credential.credentialStatus !== 'active' || credential.schoolId !== session.schoolId) {
+      const matchingCredential = credential?.schoolId === session.schoolId ? credential : null;
       await connection.execute(
-        `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
-        VALUES (?, ?, ?, ?, ?)`,
-        [sessionId, credential?.id || null, credential?.studentId || null, req.user.id, credential ? 'revoked' : 'unknown']
+        `INSERT INTO qr_scan_events (school_id, attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
+        VALUES (?, ?, ?, ?, ?, ?)`,
+        [session.schoolId, sessionId, matchingCredential?.id || null, matchingCredential?.studentId || null, req.user.id, matchingCredential ? 'revoked' : 'unknown']
       );
       await connection.commit();
       return res.status(422).json({ message: 'This attendance QR is unknown or no longer valid.' });
@@ -315,15 +321,15 @@ async function scanQrAttendance(req, res, next) {
 
     const [enrollments] = await connection.execute(
       `SELECT 1 FROM section_students
-      WHERE section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL
+      WHERE school_id = ? AND section_id = ? AND student_user_id = ? AND withdrawn_at IS NULL
       LIMIT 1`,
-      [session.sectionId, credential.studentId]
+      [session.schoolId, session.sectionId, credential.studentId]
     );
     if (!enrollments[0]) {
       await connection.execute(
-        `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
-        VALUES (?, ?, ?, ?, 'not_enrolled')`,
-        [sessionId, credential.id, credential.studentId, req.user.id]
+        `INSERT INTO qr_scan_events (school_id, attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
+        VALUES (?, ?, ?, ?, ?, 'not_enrolled')`,
+        [session.schoolId, sessionId, credential.id, credential.studentId, req.user.id]
       );
       await connection.commit();
       return res.status(422).json({ message: 'This student is not enrolled in the selected section.' });
@@ -331,15 +337,15 @@ async function scanQrAttendance(req, res, next) {
 
     const [acceptedScans] = await connection.execute(
       `SELECT id FROM qr_scan_events
-      WHERE attendance_session_id = ? AND scanned_student_user_id = ? AND scan_result = 'accepted'
+      WHERE school_id = ? AND attendance_session_id = ? AND scanned_student_user_id = ? AND scan_result = 'accepted'
       LIMIT 1 FOR UPDATE`,
-      [sessionId, credential.studentId]
+      [session.schoolId, sessionId, credential.studentId]
     );
     const isDuplicate = Boolean(acceptedScans[0]);
     await connection.execute(
-      `INSERT INTO qr_scan_events (attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
-      VALUES (?, ?, ?, ?, ?)`,
-      [sessionId, credential.id, credential.studentId, req.user.id, isDuplicate ? 'duplicate' : 'accepted']
+      `INSERT INTO qr_scan_events (school_id, attendance_session_id, student_qr_credential_id, scanned_student_user_id, scanned_by_user_id, scan_result)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [session.schoolId, sessionId, credential.id, credential.studentId, req.user.id, isDuplicate ? 'duplicate' : 'accepted']
     );
     await connection.commit();
 
@@ -369,7 +375,7 @@ async function confirmQrAttendance(req, res, next) {
     if (!session) throw createError('QR attendance session not found.', 404);
     await assertAttendanceFeatureEnabled(connection, session.schoolId);
 
-    const studentIds = await getActiveStudentIds(connection, session.sectionId);
+    const studentIds = await getActiveStudentIds(connection, session.schoolId, session.sectionId);
     const submittedIds = records.map(record => record.studentId).sort((a, b) => a - b);
     if (studentIds.length !== submittedIds.length || studentIds.some((id, index) => id !== submittedIds[index])) {
       throw createError('Attendance must include every currently enrolled student.');
@@ -378,14 +384,14 @@ async function confirmQrAttendance(req, res, next) {
     for (const record of records) {
       await connection.execute(
         `INSERT INTO attendance_records (
-          attendance_session_id, student_user_id, attendance_status, remarks, marked_by_user_id, marked_at
-        ) VALUES (?, ?, ?, ?, ?, NOW())
+          school_id, attendance_session_id, student_user_id, attendance_status, remarks, marked_by_user_id, marked_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
           attendance_status = VALUES(attendance_status),
           remarks = VALUES(remarks),
           marked_by_user_id = VALUES(marked_by_user_id),
           marked_at = NOW()`,
-        [sessionId, record.studentId, record.status, record.remarks, req.user.id]
+        [session.schoolId, sessionId, record.studentId, record.status, record.remarks, req.user.id]
       );
     }
     await connection.execute(
@@ -430,7 +436,7 @@ async function getStudentQr(req, res, next) {
     const studentId = parseId(req.params.studentId, 'student ID');
     const database = getDatabase();
     await findQrStudent(database, req.user, studentId);
-    const [credentials] = await database.execute('SELECT id, credential_status AS credentialStatus, token_ciphertext AS tokenCiphertext, issued_at AS issuedAt, revoked_at AS revokedAt FROM student_qr_credentials WHERE student_user_id = ? LIMIT 1', [studentId]);
+    const [credentials] = await database.execute('SELECT id, credential_status AS credentialStatus, token_ciphertext AS tokenCiphertext, issued_at AS issuedAt, revoked_at AS revokedAt FROM student_qr_credentials WHERE school_id = ? AND student_user_id = ? LIMIT 1', [req.user.schoolId, studentId]);
     const credential = credentials[0];
     const token = credential?.credentialStatus === 'active' ? decryptQrToken(credential.tokenCiphertext) : null;
     res.json({
@@ -449,8 +455,8 @@ async function regenerateStudentQr(req, res, next) {
     await connection.beginTransaction();
     const student = await findQrStudent(connection, req.user, studentId);
     const token = createQrToken();
-    await connection.execute(`INSERT INTO student_qr_credentials (student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at) VALUES (?, ?, ?, 'active', NOW(), NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash), token_ciphertext=VALUES(token_ciphertext), credential_status='active', issued_at=NOW(), revoked_at=NULL`, [studentId, hashQrToken(token), encryptQrToken(token)]);
-    const [credentials] = await connection.execute('SELECT id, credential_status AS credentialStatus, issued_at AS issuedAt FROM student_qr_credentials WHERE student_user_id = ? LIMIT 1', [studentId]);
+    await connection.execute(`INSERT INTO student_qr_credentials (school_id, student_user_id, token_hash, token_ciphertext, credential_status, issued_at, revoked_at) VALUES (?, ?, ?, ?, 'active', NOW(), NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash), token_ciphertext=VALUES(token_ciphertext), credential_status='active', issued_at=NOW(), revoked_at=NULL`, [student.schoolId, studentId, hashQrToken(token), encryptQrToken(token)]);
+    const [credentials] = await connection.execute('SELECT id, credential_status AS credentialStatus, issued_at AS issuedAt FROM student_qr_credentials WHERE school_id = ? AND student_user_id = ? LIMIT 1', [student.schoolId, studentId]);
     await connection.execute(`INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details) VALUES (?, ?, 'qr_credential_regenerated', 'student_qr_credential', ?, JSON_OBJECT('student_id', ?, 'summary', ?))`, [student.schoolId, req.user.id, credentials[0].id, studentId, student.displayName]);
     await connection.commit();
     res.json({ credential: { id: credentials[0].id, status: credentials[0].credentialStatus, issuedAt: credentials[0].issuedAt }, qrPayload: createQrPayload(token), requiresRegeneration: false });

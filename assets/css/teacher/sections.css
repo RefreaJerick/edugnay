@@ -714,13 +714,129 @@ tbody tr:hover td.sticky-col {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  width: 100%;
+}
+
+.comp-head-title {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 24px;
+}
+
+.score-comp-menu-trigger {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+}
+
+.score-comp-menu-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+
+.score-comp-menu-trigger:hover,
+.score-comp-menu-trigger:focus-visible,
+.score-comp-menu-trigger[aria-expanded="true"] {
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+}
+
+.score-component-menu {
+  position: fixed;
+  z-index: 50;
+  width: 174px;
+  padding: 5px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
+}
+
+.score-component-menu[hidden] {
+  display: none;
+}
+
+.score-component-menu .assignment-menu-item svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.score-component-menu .assignment-menu-item:focus-visible {
+  background: var(--red-pale);
+  outline: 2px solid var(--red-border);
+  outline-offset: -2px;
+}
+
+#teacherDeleteConfirmModal .modal-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--red-border);
+  border-radius: var(--radius-sm);
+}
+
+#teacherDeleteConfirmModal .ctx-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+
+#teacherDeleteConfirmModal .ctx-label {
+  margin-bottom: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+#teacherDeleteConfirmModal .ctx-val {
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .comp-head-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 700;
   color: var(--gray-600);
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.comp-head-journal {
+  color: var(--gray-500);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .comp-head-max {
@@ -855,6 +971,13 @@ thead tr:hover .comp-delete-btn {
 
 #content-scores .panel > #quarterLockBanner {
   margin-top: 16px;
+}
+
+#quarterLockBanner .publish-banner-icon { color: var(--gray-500); }
+#quarterLockBanner.is-reopened { border-color: var(--green-border); }
+#quarterLockBanner.is-reopened .publish-banner-icon {
+  background: var(--green-pale);
+  color: var(--green-darker);
 }
 
 .publish-banner-left {
@@ -3124,5 +3247,157 @@ tbody tr:hover td.sticky-col {
 
   .attendance-entry-table .att-btn-group {
     gap: 3px;
+  }
+}
+
+.student-name-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#studentTable tbody tr[data-student-id]:hover .student-name-button {
+  color: var(--blue-mid);
+}
+
+.student-name-button:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+#studentTable tbody tr[data-student-id] {
+  cursor: pointer;
+}
+
+.teacher-student-details-modal {
+  width: min(560px, 100%);
+}
+
+.teacher-student-details-body {
+  display: grid;
+  gap: 22px;
+}
+
+.teacher-student-details-section + .teacher-student-details-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.teacher-student-details-section h3 {
+  margin: 0 0 14px;
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.teacher-student-details-grid,
+.teacher-student-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  margin: 0;
+}
+
+.teacher-student-details-grid dt,
+.teacher-student-contact-grid dt {
+  margin-bottom: 4px;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.teacher-student-details-grid dd,
+.teacher-student-contact-grid dd {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.teacher-student-guardian-list {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-student-guardian {
+  padding: 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+}
+
+.teacher-student-guardian-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.teacher-student-guardian-head h4 {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teacher-student-guardian-head span {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-xpale);
+  color: var(--blue-mid);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.teacher-student-contact-grid a {
+  color: var(--blue-mid);
+  text-decoration: none;
+}
+
+.teacher-student-contact-grid a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.teacher-student-details-empty,
+.teacher-student-details-message {
+  margin: 0;
+  color: var(--gray-500);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.teacher-student-details-message {
+  text-align: center;
+}
+
+.teacher-student-details-message.is-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: var(--red-dark);
+}
+
+.teacher-student-details-message p {
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .teacher-student-details-grid,
+  .teacher-student-contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .teacher-student-guardian {
+    padding: 12px;
   }
 }

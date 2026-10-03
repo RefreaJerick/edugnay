@@ -14,7 +14,7 @@ const upload = multer({
 });
 const router = express.Router();
 
-router.post('/', requireAuth, requireRoles('platform_admin', 'school_admin'), (req, res, next) => {
+router.post('/', requireAuth, requireRoles('school_admin'), (req, res, next) => {
   upload.single('csvFile')(req, res, error => {
     if (error) {
       error.status = error.status || 400;

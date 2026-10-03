@@ -355,9 +355,8 @@
             <div class="grade-subject-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.subjectName || 'Subject')}</div>
             <div class="grade-subject-teacher">${window.EDUGNAY_CONFIG.escapeHtml(subtitle || '')}</div>
           </div>
-          <div class="grade-subject-score ${recorded ? 'is-published' : 'is-pending'}">
+          <div class="grade-subject-score ${window.EDUGNAY_CONFIG.gradeScoreClass(subject)}">
             <div class="grade-score-value">${gradeValue}</div>
-            <span class="grade-score-remark">${recorded ? 'Published' : 'Not published'}</span>
           </div>
         </article>`;
       }).join('');

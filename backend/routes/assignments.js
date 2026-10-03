@@ -2,11 +2,11 @@ const express = require('express');
 const controller = require('../controllers/assignmentsController');
 const { assignmentSubmissionUpload } = require('../config/uploads');
 const { requireAuth } = require('../middleware/auth');
-const { requireRoles, requireTeacher } = require('../middleware/authorize');
+const { requireRoles, requireSchoolUser, requireTeacher } = require('../middleware/authorize');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireSchoolUser);
 router.get('/', controller.listAssignments);
 router.get('/activity', requireRoles('parent'), controller.getParentAssignmentActivity);
 router.post('/', requireTeacher, controller.createAssignment);

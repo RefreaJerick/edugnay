@@ -70,12 +70,14 @@ let NOTIFICATIONS = [
   .filter(record => record.schoolId === STUDENT_SCHOOL_ID);
 
 let BACKEND_COMMUNICATION = false;
+let studentJournalHistoryAvailable = false;
 
 const STUDENT_READ_STORE_KEY = `edugnay_student_notif_read:${STUDENT_SCHOOL_ID}`;
 
 function studentCanAccess(feature) {
   return feature !== 'journals'
-    || window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false;
+    || window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false
+    || studentJournalHistoryAvailable;
 }
 
 function getStudentVisibleNotifications() {
@@ -216,6 +218,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   if (backendEnabled) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
+    try {
+      const portal = await window.EDUGNAY_API.getPortalFeatures();
+      window.EDUGNAY_API.setPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId, journalSubjectName: portal.journalSubjectName });
+      try {
+        const history = await window.EDUGNAY_API.getJournalHistory();
+        studentJournalHistoryAvailable = history.entries.length > 0;
+      } catch { studentJournalHistoryAvailable = false; }
+    } catch { window.EDUGNAY_API.setPortalFeatures(null); }
   } else if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;
   applyStudentJournalAccess();
   renderTopbarNotifs();

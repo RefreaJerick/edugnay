@@ -16,6 +16,7 @@ const section = {
   enrollmentWithdrawnAt: null,
   schoolLevelId: 2,
   gradingPeriodType: 'quarterly',
+  passingGradeThreshold: '75.00',
   sectionStatus: 'active'
 };
 const historicalSection = {
@@ -49,6 +50,7 @@ const publishedGrades = [{
   academicTermName: 'Quarter 2',
   academicTermSequenceNumber: 2,
   gradingPeriodType: 'quarterly',
+  passingGradeThreshold: '75.00',
   academicYearId: 4,
   academicYearLabel: '2026-2027',
   academicYearStatus: 'active',
@@ -98,10 +100,13 @@ test('student grade overview returns assigned subjects, configured terms, and pu
   assert.equal(result.data.overview.academicYears[1].id, '3');
   assert.equal(result.data.overview.academicYears[1].sections[0].subjects[0].subjectName, 'Science');
   assert.equal(result.data.overview.current.sectionId, '8');
+  assert.equal(result.data.overview.current.passingGradeThreshold, 75);
+  assert.equal(result.data.overview.academicYears[0].sections[0].passingGradeThreshold, 75);
   assert.deepEqual(result.data.overview.current.terms.map(term => term.status), ['active', 'upcoming']);
   assert.deepEqual(result.data.overview.current.subjects.map(subject => subject.subjectName), ['English', 'Mathematics']);
   assert.equal(result.data.overview.publishedGrades.length, 1);
   assert.equal(result.data.overview.publishedGrades[0].finalGrade, 78);
+  assert.equal(result.data.overview.publishedGrades[0].passingGradeThreshold, 75);
 });
 
 test('parent grade overview requires a linked student', async () => {

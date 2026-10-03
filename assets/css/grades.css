@@ -174,38 +174,19 @@
   line-height: 1;
 }
 
-.grade-score-remark {
-  display: block;
-  margin-top: 5px;
-  color: var(--gray-500);
-  font-size: 9.5px;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
+.grade-subject-score.is-published .grade-score-value {
+  color: var(--blue-mid);
 }
 
-.grade-subject-score.is-outstanding .grade-score-value,
-.grade-subject-score.is-outstanding .grade-score-remark {
+.grade-subject-score.is-passing .grade-score-value {
   color: var(--green-dark);
 }
 
-.grade-subject-score.is-satisfactory .grade-score-value,
-.grade-subject-score.is-satisfactory .grade-score-remark {
-  color: var(--blue-mid);
+.grade-subject-score.is-below-passing .grade-score-value {
+  color: var(--red);
 }
 
-.grade-subject-score.is-published .grade-score-value,
-.grade-subject-score.is-published .grade-score-remark {
-  color: var(--blue-mid);
-}
-
-.grade-subject-score.is-review .grade-score-value,
-.grade-subject-score.is-review .grade-score-remark {
-  color: var(--orange-dark);
-}
-
-.grade-subject-score.is-pending .grade-score-value,
-.grade-subject-score.is-pending .grade-score-remark {
+.grade-subject-score.is-pending .grade-score-value {
   color: var(--gray-400);
 }
 
@@ -380,10 +361,6 @@
 
   .grade-score-value {
     font-size: 18px;
-  }
-
-  .grade-score-remark {
-    font-size: 9px;
   }
 
   .grades-note {

@@ -129,13 +129,13 @@ async function assertAttendanceFeatureEnabled(database, schoolId) {
   }
 }
 
-async function getActiveStudentIds(database, sectionId) {
+async function getActiveStudentIds(database, schoolId, sectionId) {
   const [students] = await database.execute(
     `SELECT student_user_id AS studentId
     FROM section_students
-    WHERE section_id = ? AND withdrawn_at IS NULL
+    WHERE school_id = ? AND section_id = ? AND withdrawn_at IS NULL
     ORDER BY student_user_id`,
-    [sectionId]
+    [schoolId, sectionId]
   );
   return students.map(student => student.studentId);
 }
@@ -153,9 +153,9 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
       confirmed_by_user_id AS confirmedByUserId,
       confirmed_at AS confirmedAt
     FROM attendance_sessions
-    WHERE section_id = ? AND subject_id = ? AND attendance_date = ?
+    WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
     LIMIT 1`,
-    [section.id, subjectId, attendanceDate]
+    [section.schoolId, section.id, subjectId, attendanceDate]
   );
   const session = sessions[0] || null;
   const [students] = await database.execute(
@@ -168,13 +168,15 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
       attendance_records.remarks
     FROM section_students
     INNER JOIN users AS students ON students.id = section_students.student_user_id
+      AND students.school_id = section_students.school_id
     INNER JOIN student_profiles ON student_profiles.user_id = students.id
     LEFT JOIN attendance_records
       ON attendance_records.student_user_id = students.id
       AND attendance_records.attendance_session_id = ?
-    WHERE section_students.section_id = ? AND section_students.withdrawn_at IS NULL
+      AND attendance_records.school_id = section_students.school_id
+    WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.withdrawn_at IS NULL
     ORDER BY students.last_name, students.first_name`,
-    [session?.id || 0, section.id]
+    [session?.id || 0, section.schoolId, section.id]
   );
 
   return {
@@ -304,7 +306,7 @@ async function saveSectionAttendance(req, res, next) {
     await assertAttendanceFeatureEnabled(connection, section.schoolId);
     await assertAttendanceCanBeEdited(connection, section, attendanceDate);
 
-    const studentIds = await getActiveStudentIds(connection, sectionId);
+    const studentIds = await getActiveStudentIds(connection, section.schoolId, sectionId);
     const submittedIds = records.map(record => record.studentId).sort((a, b) => a - b);
     if (studentIds.length !== submittedIds.length || studentIds.some((id, index) => id !== submittedIds[index])) {
       throw createError('Attendance must include every currently enrolled student.');
@@ -313,9 +315,9 @@ async function saveSectionAttendance(req, res, next) {
     const [sessions] = await connection.execute(
       `SELECT id, method, status
       FROM attendance_sessions
-      WHERE section_id = ? AND subject_id = ? AND attendance_date = ?
+      WHERE school_id = ? AND section_id = ? AND subject_id = ? AND attendance_date = ?
       FOR UPDATE`,
-      [sectionId, subjectId, attendanceDate]
+      [section.schoolId, sectionId, subjectId, attendanceDate]
     );
     const existingSession = sessions[0];
     if (existingSession?.method === 'qr' && existingSession.status === 'draft') {
@@ -344,14 +346,14 @@ async function saveSectionAttendance(req, res, next) {
     for (const record of records) {
       await connection.execute(
         `INSERT INTO attendance_records (
-          attendance_session_id, student_user_id, attendance_status, remarks, marked_by_user_id, marked_at
-        ) VALUES (?, ?, ?, ?, ?, NOW())
+          school_id, attendance_session_id, student_user_id, attendance_status, remarks, marked_by_user_id, marked_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
           attendance_status = VALUES(attendance_status),
           remarks = VALUES(remarks),
           marked_by_user_id = VALUES(marked_by_user_id),
           marked_at = NOW()`,
-        [sessionId, record.studentId, record.status, record.remarks, req.user.id]
+        [section.schoolId, sessionId, record.studentId, record.status, record.remarks, req.user.id]
       );
     }
 
@@ -386,7 +388,9 @@ async function getParentAttendance(req, res, next) {
         school_grade_levels.display_name AS gradeLevel, sections.name AS sectionName
       FROM student_parent_links
       INNER JOIN users AS students ON students.id = student_parent_links.student_user_id
+        AND students.school_id = student_parent_links.school_id
       LEFT JOIN section_students ON section_students.student_user_id = students.id
+        AND section_students.school_id = students.school_id
         AND section_students.withdrawn_at IS NULL
         AND EXISTS (
           SELECT 1 FROM sections AS current_section
@@ -394,11 +398,13 @@ async function getParentAttendance(req, res, next) {
           WHERE current_section.id = section_students.section_id
             AND current_section.status = 'active' AND current_year.status = 'active'
         )
-      LEFT JOIN sections ON sections.id = section_students.section_id AND sections.status = 'active'
+      LEFT JOIN sections ON sections.id = section_students.section_id
+        AND sections.school_id = section_students.school_id AND sections.status = 'active'
       LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
-      WHERE student_parent_links.parent_user_id = ? AND students.school_id = ?
+        AND school_grade_levels.school_id = sections.school_id
+      WHERE student_parent_links.school_id = ? AND student_parent_links.parent_user_id = ?
       ORDER BY students.last_name, students.first_name`,
-      [req.user.id, req.user.schoolId]
+      [req.user.schoolId, req.user.id]
     );
     const [records] = await database.execute(
       `SELECT attendance_records.student_user_id AS studentId,
@@ -410,9 +416,13 @@ async function getParentAttendance(req, res, next) {
         attendance_records.remarks AS remark
       FROM attendance_records
       INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
+        AND attendance_sessions.school_id = attendance_records.school_id
       INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id
+        AND subjects.school_id = attendance_sessions.school_id
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
+        AND sections.school_id = attendance_sessions.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+        AND academic_years.school_id = sections.school_id
       WHERE attendance_sessions.school_id = ?
         AND attendance_sessions.status = 'confirmed'
         AND attendance_sessions.attendance_date <= ?
@@ -420,7 +430,8 @@ async function getParentAttendance(req, res, next) {
         AND academic_years.status = 'active'
         AND EXISTS (
           SELECT 1 FROM student_parent_links
-          WHERE student_parent_links.student_user_id = attendance_records.student_user_id
+          WHERE student_parent_links.school_id = attendance_records.school_id
+            AND student_parent_links.student_user_id = attendance_records.student_user_id
             AND student_parent_links.parent_user_id = ?
         )
       ORDER BY attendance_sessions.attendance_date DESC, subjects.name`,
@@ -448,9 +459,13 @@ async function getSchoolAttendanceSummary(req, res, next) {
         COUNT(*) AS total
       FROM attendance_records
       INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
+        AND attendance_sessions.school_id = attendance_records.school_id
       INNER JOIN sections ON sections.id = attendance_sessions.section_id
+        AND sections.school_id = attendance_sessions.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+        AND academic_years.school_id = sections.school_id
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       WHERE attendance_sessions.school_id = ? AND ${yearFilter}
         AND attendance_sessions.subject_id IS NOT NULL
         AND attendance_sessions.status = 'confirmed'

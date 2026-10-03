@@ -1,3 +1,26 @@
+.attendance-load-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-md);
+  background: var(--blue-xpale);
+  color: var(--gray-700);
+  font-size: 13px;
+}
+
+.attendance-load-state[hidden] { display: none; }
+.attendance-load-state.is-error {
+  border-color: var(--red-border);
+  background: var(--red-pale);
+  color: var(--red-dark);
+}
+.attendance-load-state .top-btn { flex: 0 0 auto; }
+
 /* ── Child switcher — identical pattern across all parent pages ── */
 .child-switcher {
   display: flex;
@@ -24,6 +47,8 @@
   cursor: pointer;
   transition: all 0.15s;
   min-width: 200px;
+  font: inherit;
+  text-align: left;
 }
 
 .child-card:hover {
@@ -61,6 +86,7 @@
 }
 
 .child-name {
+  display: block;
   font-size: 13px;
   font-weight: 700;
   color: var(--gray-800);
@@ -68,6 +94,7 @@
 }
 
 .child-section {
+  display: block;
   font-size: 10.5px;
   color: var(--gray-400);
   margin-top: 1px;
@@ -394,6 +421,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.day-detail-banner.present .ddb-icon {
+  background: var(--white);
+  color: var(--green-darker);
 }
 
 .ddb-title {

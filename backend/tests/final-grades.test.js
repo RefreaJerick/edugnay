@@ -5,9 +5,15 @@ const databaseModule = require('../config/database');
 const queries = [];
 const savedGrades = [];
 const pendingGrades = [];
+const savedNotices = new Set();
+const pendingNotices = new Set();
+const publishedItems = new Set();
+const pendingPublishedItems = new Set();
 let assigned = true;
 let failOnInsertNumber = 0;
 let failOnAuditWrite = false;
+let failOnNotificationWrite = false;
+let failOnMarkerWrite = false;
 let context = {};
 let categories = [];
 let students = [];
@@ -16,13 +22,20 @@ let scores = [];
 let committed = false;
 let rolledBack = false;
 let parentTriggerEnabled = false;
+let gradesEnabled = true;
 
 const database = {
   async execute(sql, values = []) {
     queries.push({ sql, values });
+    if (sql.includes('SELECT grades_enabled AS gradesEnabled FROM school_portal_features')) return [[{ gradesEnabled: gradesEnabled ? 1 : 0 }]];
     if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
     if (sql.includes('SELECT passing_grade_threshold AS threshold FROM school_levels')) return [[{ threshold: 75 }]];
-    if (sql.includes('INSERT INTO notifications')) return [{ affectedRows: 1 }];
+    if (sql.includes('INSERT INTO notifications')) {
+      if (/ON DUPLICATE KEY UPDATE id = id/.test(sql)) throw new Error("Column 'id' in field list is ambiguous");
+      if (failOnNotificationWrite) throw new Error('Simulated notification failure.');
+      pendingNotices.add(`${values.at(-1)}:${values[4]}`);
+      return [{ affectedRows: 1 }];
+    }
     if (sql.includes('FROM section_teachers')) return [[assigned ? context : undefined].filter(Boolean)];
     if (sql.includes('FROM grading_categories')) return [categories];
     if (sql.includes('FROM section_students')) return [students];
@@ -32,6 +45,11 @@ const database = {
       pendingGrades.push(values);
       if (failOnInsertNumber && pendingGrades.length === failOnInsertNumber) throw new Error('Simulated database write failure.');
       return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('UPDATE grading_items SET used_in_published_grades')) {
+      if (failOnMarkerWrite) throw new Error('Simulated marker write failure.');
+      values.slice(5).forEach(id => pendingPublishedItems.add(id));
+      return [{ affectedRows: values.length - 5 }];
     }
     if (sql.includes('INSERT INTO audit_logs')) {
       if (failOnAuditWrite) throw new Error('Simulated activity log failure.');
@@ -43,8 +61,16 @@ const database = {
     return {
       execute: (...args) => database.execute(...args),
       beginTransaction: async () => {},
-      commit: async () => { committed = true; savedGrades.push(...pendingGrades); pendingGrades.length = 0; },
-      rollback: async () => { rolledBack = true; pendingGrades.length = 0; },
+      commit: async () => {
+        committed = true;
+        savedGrades.push(...pendingGrades);
+        pendingNotices.forEach(key => savedNotices.add(key));
+        pendingPublishedItems.forEach(id => publishedItems.add(id));
+        pendingGrades.length = 0;
+        pendingNotices.clear();
+        pendingPublishedItems.clear();
+      },
+      rollback: async () => { rolledBack = true; pendingGrades.length = 0; pendingNotices.clear(); pendingPublishedItems.clear(); },
       release: () => {}
     };
   }
@@ -57,12 +83,19 @@ function reset() {
   queries.length = 0;
   savedGrades.length = 0;
   pendingGrades.length = 0;
+  savedNotices.clear();
+  pendingNotices.clear();
+  publishedItems.clear();
+  pendingPublishedItems.clear();
   assigned = true;
   failOnInsertNumber = 0;
   failOnAuditWrite = false;
+  failOnNotificationWrite = false;
+  failOnMarkerWrite = false;
   committed = false;
   rolledBack = false;
   parentTriggerEnabled = false;
+  gradesEnabled = true;
   context = {
     sectionId: 8, schoolId: 1, schoolLevelId: 2, academicYearId: 4,
     sectionName: 'St. Matthew', subjectId: 2, subjectName: 'English',
@@ -164,6 +197,12 @@ test('publish saves all student grades atomically using the authenticated teache
   assert.ok(savedGrades.every(values => values[0] === 1 && values[1] === 8 && values[2] === 2 && values[3] === 14 && values[6] === 5));
   assert.equal(committed, true);
   assert.equal(rolledBack, false);
+  const studentNotices = queries.filter(query => query.sql.includes('INSERT INTO notifications') && query.sql.includes('SELECT students.id'));
+  assert.equal(studentNotices.length, 2);
+  assert.deepEqual(studentNotices.map(query => query.values.at(-1)), [101, 102]);
+  assert.ok(studentNotices.every(query => query.values[3] === '/views/student/edugnay-student-grades.html' && query.values.at(-2) === 1));
+  assert.equal(savedNotices.size, 2);
+  assert.deepEqual([...publishedItems], [11, 12, 13]);
   assert.match(queries.find(query => query.sql.includes('INSERT INTO published_final_grades')).sql, /ON DUPLICATE KEY UPDATE/);
   const audit = queries.find(query => query.sql.includes('INSERT INTO audit_logs'));
   assert.ok(audit);
@@ -175,11 +214,66 @@ test('publication notifies linked parents only for a below-passing final grade',
   parentTriggerEnabled = true;
   const result = await call(grades.publishFinalGrades, { body: scope });
   assert.equal(result.error, null);
-  const notices = queries.filter(item => item.sql.includes('INSERT INTO notifications'));
+  const notices = queries.filter(item => item.sql.includes('INSERT INTO notifications') && item.sql.includes('student_parent_links'));
   assert.equal(notices.length, 1);
   assert.equal(notices[0].values[0], 'grade');
   assert.equal(notices[0].values.at(-1), 102);
+  assert.match(notices[0].sql, /ON DUPLICATE KEY UPDATE event_key = event_key/);
+  assert.equal(savedNotices.size, 3);
   assert.equal(committed, true);
+});
+
+test('republishing the same subject and term keeps the parent alert deduplicated', async () => {
+  reset();
+  parentTriggerEnabled = true;
+  assert.equal((await call(grades.publishFinalGrades, { body: scope })).error, null);
+  assert.equal((await call(grades.publishFinalGrades, { body: scope })).error, null);
+  assert.equal(savedNotices.size, 3);
+  assert.equal(savedGrades.length, 4);
+});
+
+test('republishing marks a newly added component only after the new grades commit', async () => {
+  reset();
+  assert.equal((await call(grades.publishFinalGrades, { body: scope })).error, null);
+  items.push({ gradingItemId: 14, title: 'New quiz', gradingCategoryId: 1, maxScore: '10.00', categorySchoolId: 1, categorySchoolLevelId: 2 });
+  scores.push({ studentId: 101, gradingItemId: 14, score: '9.00' });
+  scores.push({ studentId: 102, gradingItemId: 14, score: '8.00' });
+  assert.equal(publishedItems.has(14), false);
+  assert.equal((await call(grades.publishFinalGrades, { body: scope })).error, null);
+  assert.equal(publishedItems.has(14), true);
+});
+
+test('marker failure rolls back grade publication and component protection', async () => {
+  reset();
+  failOnMarkerWrite = true;
+  const result = await call(grades.publishFinalGrades, { body: scope });
+  assert.match(result.error?.message || '', /marker write failure/);
+  assert.equal(savedGrades.length, 0);
+  assert.equal(publishedItems.size, 0);
+  assert.equal(rolledBack, true);
+});
+
+test('disabled Grades page suppresses student and parent grade notifications', async () => {
+  reset();
+  gradesEnabled = false;
+  parentTriggerEnabled = true;
+  const result = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(result.error, null);
+  assert.equal(savedGrades.length, 2);
+  assert.equal(queries.some(query => query.sql.includes('INSERT INTO notifications')), false);
+  assert.equal(savedNotices.size, 0);
+});
+
+test('a notification write failure rolls grade publication back', async () => {
+  reset();
+  parentTriggerEnabled = true;
+  failOnNotificationWrite = true;
+  const result = await call(grades.publishFinalGrades, { body: scope });
+  assert.match(result.error?.message, /notification failure/);
+  assert.equal(committed, false);
+  assert.equal(rolledBack, true);
+  assert.equal(savedGrades.length, 0);
+  assert.equal(savedNotices.size, 0);
 });
 
 test('unassigned teachers and closed terms cannot preview or publish grades', async () => {

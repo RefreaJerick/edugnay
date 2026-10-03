@@ -145,6 +145,23 @@
   display: none;
 }
 
+.school-settings-card > .scroll-fade-wrap > .scroll-fade-button {
+  top: calc(50% + 7px);
+  right: var(--panel-head-px);
+}
+
+@media (min-width: 761px) {
+  .school-settings-card > .scroll-fade-wrap.has-scroll-control {
+    box-sizing: border-box;
+    padding-right: calc(var(--panel-head-px) + 40px);
+  }
+
+  .school-settings-card > .scroll-fade-wrap.has-scroll-control::after {
+    right: calc(var(--panel-head-px) + 40px);
+    width: 28px;
+  }
+}
+
 .school-division-switcher {
   display: flex;
   align-items: center;

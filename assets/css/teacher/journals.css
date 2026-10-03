@@ -907,8 +907,10 @@ tbody td.center {
 }
 
 .modal-section {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
+
+.modal-section:last-child { margin-bottom: 0; }
 
 .modal-section-label {
   font-size: 10.5px;
@@ -924,27 +926,27 @@ tbody td.center {
 
 /* prompt card */
 .prompt-card {
-  background: var(--navy);
+  background: var(--blue-xpale);
   border-radius: var(--radius-sm);
   padding: 14px 16px;
-  border-left: 4px solid var(--gold);
-  margin-bottom: 16px;
+  border: 1px solid var(--blue-pale);
 }
 
 .prompt-label {
   font-size: 9.5px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--blue-mid);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 4px;
 }
 
 .prompt-text {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
+  font-size: 13.5px;
+  color: var(--blue);
+  line-height: 1.6;
   font-style: italic;
+  overflow-wrap: anywhere;
 }
 
 /* entry text */
@@ -952,18 +954,16 @@ tbody td.center {
   font-size: 13.5px;
   color: var(--gray-700);
   line-height: 1.75;
-  background: var(--gray-50);
-  border-radius: var(--radius-sm);
-  padding: 16px 18px;
-  border: 1px solid var(--gray-100);
+  padding: 0;
   white-space: pre-wrap;
 }
 
 .entry-body.no-entry {
-  color: var(--gray-400);
-  font-style: italic;
+  padding: 14px 16px;
+  color: var(--gray-500);
   background: var(--gray-50);
-  border: 1.5px dashed var(--gray-200);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
 }
 
 /* score section */
@@ -1025,12 +1025,6 @@ tbody td.center {
   font-weight: 800;
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--gray-300);
-}
-
-.score-hint {
-  font-size: 11px;
-  color: var(--gray-400);
-  margin-top: 5px;
 }
 
 .modal-foot {
@@ -1242,7 +1236,6 @@ tbody tr.reviewed td {
 /* Journal settings drawer refinement */
 .settings-backdrop {
   background: rgba(15, 32, 58, .34);
-  backdrop-filter: blur(4px);
 }
 
 .settings-drawer {

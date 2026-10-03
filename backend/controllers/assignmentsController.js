@@ -4,7 +4,11 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { pathToFileURL } = require('url');
+const JSZip = require('jszip');
 const { getDatabase } = require('../config/database');
+const { assertGradeWriteAccess, validateGradeItemScope } = require('./gradesController');
+const { writeAuditLog } = require('../utils/auditLog');
+const { uploadDirectory } = require('../config/uploads');
 
 const ASSIGNMENT_STATUSES = new Set(['draft', 'published', 'closed']);
 const SUBMISSION_STATUSES = new Set(['pending', 'submitted', 'not_submitted']);
@@ -88,6 +92,7 @@ function formatAssignment(row) {
     id: row.id, schoolId: row.schoolId, sectionId: row.sectionId, sectionName: row.sectionName,
     subjectId: row.subjectId, subjectName: row.subjectName, academicTermId: row.academicTermId,
     academicTermName: row.academicTermName, gradingCategoryId: row.gradingCategoryId,
+    gradingItemId: row.gradingItemId,
     gradingCategoryCode: row.gradingCategoryCode, gradingCategoryName: row.gradingCategoryName, teacherUserId: row.teacherUserId,
     teacherName: row.teacherName, title: row.title, description: row.description,
     dueAt: row.dueAt, maxScore: row.maxScore === null ? null : Number(row.maxScore),
@@ -99,19 +104,20 @@ function formatAssignment(row) {
 function assignmentSelect() {
   return `SELECT assignments.id, assignments.school_id AS schoolId, assignments.section_id AS sectionId,
     assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
-    assignments.grading_category_id AS gradingCategoryId, assignments.teacher_user_id AS teacherUserId,
+    assignments.grading_category_id AS gradingCategoryId, assignments.grading_item_id AS gradingItemId,
+    assignments.teacher_user_id AS teacherUserId,
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, academic_years.status AS academicYearStatus,
     subjects.name AS subjectName, academic_terms.name AS academicTermName,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, teachers.display_name AS teacherName
-  FROM assignments INNER JOIN sections ON sections.id = assignments.section_id
+  FROM assignments INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
   INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
-  INNER JOIN subjects ON subjects.id = assignments.subject_id
-  LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id
-  LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id
-  INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id`;
+  INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+  LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id AND academic_terms.school_id = assignments.school_id
+  LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id AND grading_categories.school_id = assignments.school_id
+  INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id`;
 }
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId) {
@@ -119,6 +125,7 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
     `SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
       sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId, sections.status
     FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id
+      AND sections.school_id = section_teachers.school_id
     WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ?
       AND sections.status = 'active' LIMIT 1`,
     [teacherId, sectionId, subjectId]
@@ -126,9 +133,9 @@ async function getTeacherSectionSubject(connection, teacherId, sectionId, subjec
   return assignments[0] || null;
 }
 
-async function getAssignmentForManagement(connection, user, assignmentId) {
+async function getAssignmentForManagement(connection, user, assignmentId, lock = false) {
   if (!['school_admin', 'teacher'].includes(user.role)) return null;
-  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1`, [assignmentId, user.schoolId]);
+  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`, [assignmentId, user.schoolId]);
   const assignment = assignments[0];
   if (!assignment || (user.role === 'teacher' && assignment.teacherUserId !== user.id)) return null;
   return assignment;
@@ -159,11 +166,11 @@ async function listAssignments(req, res, next) {
     if (req.user.role === 'teacher') { where.push('assignments.teacher_user_id = ?'); values.push(req.user.id); }
     else if (req.user.role === 'student') {
       where.push("assignments.status = 'published'");
-      where.push('EXISTS (SELECT 1 FROM section_students WHERE section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)');
+      where.push('EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)');
       values.push(req.user.id);
     } else if (req.user.role === 'parent') {
       where.push("assignments.status = 'published'");
-      where.push('EXISTS (SELECT 1 FROM section_students INNER JOIN student_parent_links ON student_parent_links.student_user_id = section_students.student_user_id WHERE section_students.section_id = assignments.section_id AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)');
+      where.push('EXISTS (SELECT 1 FROM section_students INNER JOIN student_parent_links ON student_parent_links.school_id = section_students.school_id AND student_parent_links.student_user_id = section_students.student_user_id WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.withdrawn_at IS NULL AND student_parent_links.parent_user_id = ?)');
       values.push(req.user.id);
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to assignments.', 403);
     if (req.query.sectionId) { where.push('assignments.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
@@ -181,6 +188,7 @@ async function getParentAssignmentActivity(req, res, next) {
     const [children] = await database.execute(
       `SELECT users.id FROM users
       INNER JOIN student_parent_links ON student_parent_links.student_user_id = users.id
+        AND student_parent_links.school_id = users.school_id
       WHERE users.id = ? AND users.school_id = ? AND users.role = 'student'
         AND users.account_status = 'active' AND student_parent_links.parent_user_id = ? LIMIT 1`,
       [studentId, req.user.schoolId, req.user.id]
@@ -197,19 +205,22 @@ async function getParentAssignmentActivity(req, res, next) {
         assignment_submissions.file_path AS filePath,
         DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
       FROM assignments
-      INNER JOIN sections ON sections.id = assignments.section_id
+      INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
       INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
-      INNER JOIN subjects ON subjects.id = assignments.subject_id
+      INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
       INNER JOIN section_students ON section_students.section_id = assignments.section_id
+        AND section_students.school_id = assignments.school_id
         AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
       LEFT JOIN assignment_submissions ON assignment_submissions.assignment_id = assignments.id
+        AND assignment_submissions.school_id = assignments.school_id
         AND assignment_submissions.student_user_id = ?
       WHERE assignments.school_id = ? AND sections.school_id = ? AND sections.status = 'active'
         AND assignments.status = 'published' AND assignments.due_at IS NOT NULL
         AND DATE(assignments.due_at) = ?
         AND EXISTS (
           SELECT 1 FROM student_parent_links
-          WHERE student_parent_links.student_user_id = section_students.student_user_id
+          WHERE student_parent_links.school_id = assignments.school_id
+            AND student_parent_links.student_user_id = section_students.student_user_id
             AND student_parent_links.parent_user_id = ?
         )
       ORDER BY subjects.name, assignments.title`,
@@ -274,16 +285,16 @@ async function updateStudentAssignmentStatus(req, res, next) {
     if (!students.length) throw createError('Student is not enrolled in this assignment section.', 404);
 
     const [existing] = await connection.execute(
-      'SELECT file_path AS filePath FROM assignment_submissions WHERE assignment_id = ? AND student_user_id = ? FOR UPDATE',
-      [assignmentId, studentId]
+      'SELECT file_path AS filePath FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? FOR UPDATE',
+      [req.user.schoolId, assignmentId, studentId]
     );
     if (existing[0]?.filePath) throw createError('A student file is attached, so its status cannot be changed manually.', 409);
 
     await connection.execute(
-      `INSERT INTO assignment_submissions (assignment_id, student_user_id, submission_status)
-      VALUES (?, ?, ?)
+      `INSERT INTO assignment_submissions (school_id, assignment_id, student_user_id, submission_status)
+      VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE submission_status = VALUES(submission_status), submitted_at = NULL`,
-      [assignmentId, studentId, status]
+      [req.user.schoolId, assignmentId, studentId, status]
     );
     await connection.commit();
     res.json({ assignmentId: String(assignmentId), studentId: String(studentId), submissionStatus: status });
@@ -297,7 +308,10 @@ async function updateStudentAssignmentStatus(req, res, next) {
 
 async function createAssignment(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const sectionId = parseId(req.body.sectionId, 'section ID');
     const subjectId = parseId(req.body.subjectId, 'subject ID');
     const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId);
@@ -309,20 +323,43 @@ async function createAssignment(req, res, next) {
     const description = optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = dateTime(req.body.dueAt, 'Due date');
     const maxScore = scoreValue(req.body.maxScore, 'Maximum score', false);
+    if ((gradingCategoryId === null) !== (maxScore === null)) {
+      throw createError('Choose both a grading category and maximum score for a graded assignment.');
+    }
+    if (gradingCategoryId && (!academicTermId || maxScore <= 0)) {
+      throw createError('A graded assignment needs an active grading period and a maximum score greater than zero.');
+    }
+    if (gradingCategoryId) await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId);
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
     const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, academic_term_id, grading_category_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
+    if (gradingCategoryId) {
+      const [item] = await connection.execute(
+        `INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id,
+          grading_category_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, maxScore]
+      );
+      await connection.execute(
+        'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
+        [item.insertId, result.insertId, req.user.schoolId]
+      );
+    }
     const assignment = await getAssignmentForManagement(connection, req.user, result.insertId);
+    await connection.commit();
+    transactionStarted = false;
     res.status(201).json({ assignment: formatAssignment(assignment) });
-  } catch (error) { next(error); } finally { connection.release(); }
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 async function updateAssignment(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
-    const current = await getAssignmentForManagement(connection, req.user, assignmentId);
+    const current = await getAssignmentForManagement(connection, req.user, assignmentId, true);
     if (!current) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(current);
     const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
@@ -334,39 +371,135 @@ async function updateAssignment(req, res, next) {
     const description = req.body.description === undefined ? current.description : optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
     const maxScore = req.body.maxScore === undefined ? current.maxScore : scoreValue(req.body.maxScore, 'Maximum score', false);
+    if (current.gradingItemId && (Number(academicTermId) !== Number(current.academicTermId)
+      || Number(gradingCategoryId) !== Number(current.gradingCategoryId) || maxScore === null)) {
+      throw createError('An assignment with a score component cannot change its grading period or category, or remove its maximum score.', 409);
+    }
+    if (current.gradingItemId && (title !== current.title || Number(maxScore) !== Number(current.maxScore))) {
+      await validateGradeItemScope(connection, req.user, section, current.subjectId, academicTermId, gradingCategoryId);
+    }
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
       ? Number(current.onlineSubmissionEnabled) === 1
       : req.body.onlineSubmissionEnabled === true;
     const status = req.body.status === undefined ? current.status : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
-    await connection.execute('UPDATE assignments SET academic_term_id=?, grading_category_id=?, title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=? WHERE id=?', [academicTermId, gradingCategoryId, title, description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId]);
-    res.json({ assignment: formatAssignment(await getAssignmentForManagement(connection, req.user, assignmentId)) });
-  } catch (error) { next(error); } finally { connection.release(); }
+    if (current.gradingItemId) {
+      const [[scores]] = await connection.execute(
+        'SELECT MAX(score) AS highest FROM student_scores WHERE school_id = ? AND grading_item_id = ?',
+        [req.user.schoolId, current.gradingItemId]
+      );
+      if (scores.highest !== null && maxScore < Number(scores.highest)) {
+        throw createError(`The maximum score cannot be lower than the recorded score of ${scores.highest}.`, 409);
+      }
+      if (Number(maxScore) !== Number(current.maxScore)) {
+        const [published] = await connection.execute(
+          `SELECT id FROM published_final_grades WHERE school_id = ? AND section_id = ?
+            AND subject_id = ? AND academic_term_id = ? LIMIT 1`,
+          [req.user.schoolId, current.sectionId, current.subjectId, current.academicTermId]
+        );
+        if (published.length) throw createError('Published grades prevent changing this assignment’s maximum score.', 409);
+      }
+    }
+    await connection.execute('UPDATE assignments SET academic_term_id=?, grading_category_id=?, title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=? WHERE id=? AND school_id=?', [academicTermId, gradingCategoryId, title, description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
+    if (current.gradingItemId) await connection.execute(
+      'UPDATE grading_items SET title = ?, max_score = ? WHERE id = ? AND school_id = ?',
+      [title, maxScore, current.gradingItemId, req.user.schoolId]
+    );
+    const assignment = formatAssignment(await getAssignmentForManagement(connection, req.user, assignmentId));
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ assignment });
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
 async function deleteAssignment(req, res, next) {
   const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
   try {
+    await connection.beginTransaction();
+    transactionStarted = true;
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
-    const assignment = await getAssignmentForManagement(connection, req.user, assignmentId);
+    let assignment = await getAssignmentForManagement(connection, req.user, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
-    const [[submissions]] = await connection.execute('SELECT COUNT(*) AS total FROM assignment_submissions WHERE assignment_id = ?', [assignmentId]);
-    if (submissions.total) throw createError('Assignments with student submissions cannot be deleted.', 409);
-    if (assignment.academicTermId) {
-      const [gradingItems] = await connection.execute(
-        'SELECT id FROM grading_items WHERE section_id = ? AND subject_id = ? AND academic_term_id = ? AND title = ? LIMIT 1',
-        [assignment.sectionId, assignment.subjectId, assignment.academicTermId, assignment.title]
-      );
-      if (gradingItems.length) throw createError('This assignment is linked to score records and cannot be deleted.', 409);
+    const original = assignment;
+    if (assignment.gradingItemId) {
+      const section = await getTeacherSectionSubject(connection, assignment.teacherUserId, assignment.sectionId, assignment.subjectId);
+      if (!section || Number(section.schoolId) !== Number(req.user.schoolId)) {
+        throw createError('The assignment section-subject relationship is no longer active.', 409);
+      }
+      await assertGradeWriteAccess(connection, req.user, assignment);
     }
-    await connection.execute('DELETE FROM assignments WHERE id = ?', [assignmentId]);
+    assignment = await getAssignmentForManagement(connection, req.user, assignmentId, true);
+    if (!assignment) throw createError('Assignment was not found.', 404);
+    if (['sectionId', 'subjectId', 'academicTermId', 'gradingCategoryId', 'teacherUserId', 'gradingItemId']
+      .some(field => String(assignment[field]) !== String(original[field]))) {
+      throw createError('The assignment changed while deletion was being prepared. Reload and try again.', 409);
+    }
+    assertAssignmentYearWritable(assignment);
+    const [submissions] = await connection.execute(
+      'SELECT id FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? LIMIT 1 FOR UPDATE',
+      [assignment.schoolId, assignmentId]
+    );
+    if (submissions.length) throw createError('Assignments with student submissions cannot be deleted.', 409);
+    if (assignment.gradingItemId) {
+      const [items] = await connection.execute(
+        `SELECT id, section_id AS sectionId, subject_id AS subjectId,
+          academic_term_id AS academicTermId, grading_category_id AS gradingCategoryId,
+          teacher_user_id AS teacherUserId, used_in_published_grades AS usedInPublishedGrades
+        FROM grading_items WHERE id = ? AND school_id = ? FOR UPDATE`,
+        [assignment.gradingItemId, assignment.schoolId]
+      );
+      const item = items[0];
+      if (!item || Number(item.sectionId) !== Number(assignment.sectionId)
+        || Number(item.subjectId) !== Number(assignment.subjectId)
+        || Number(item.academicTermId) !== Number(assignment.academicTermId)
+        || Number(item.gradingCategoryId) !== Number(assignment.gradingCategoryId)
+        || Number(item.teacherUserId) !== Number(assignment.teacherUserId)) {
+        throw createError('The assignment and score component no longer match.', 409);
+      }
+      if (item.usedInPublishedGrades) throw createError('This score component was used in published grades and cannot be deleted.', 409);
+      const [scores] = await connection.execute(
+        `SELECT id FROM student_scores WHERE school_id = ? AND grading_item_id = ?
+          AND (score IS NOT NULL OR (remarks IS NOT NULL AND TRIM(remarks) <> '')) LIMIT 1 FOR UPDATE`,
+        [assignment.schoolId, item.id]
+      );
+      if (scores.length) throw createError('The score component has saved student scores and cannot be deleted.', 409);
+      const [prompts] = await connection.execute(
+        'SELECT id FROM journal_prompts WHERE school_id = ? AND grading_item_id = ? LIMIT 1 FOR UPDATE',
+        [assignment.schoolId, item.id]
+      );
+      if (prompts.length) throw createError('This score component belongs to a journal prompt and cannot be deleted.', 409);
+    } else if (assignment.academicTermId) {
+      const [gradingItems] = await connection.execute(
+        'SELECT id FROM grading_items WHERE school_id = ? AND section_id = ? AND subject_id = ? AND academic_term_id = ? AND title = ? LIMIT 1',
+        [assignment.schoolId, assignment.sectionId, assignment.subjectId, assignment.academicTermId, assignment.title]
+      );
+      if (gradingItems.length) throw createError('This older assignment has no confirmed score component link. Review it before deletion.', 409);
+    }
+    await connection.execute('DELETE FROM assignments WHERE id = ? AND school_id = ?', [assignmentId, assignment.schoolId]);
+    if (assignment.gradingItemId) {
+      await connection.execute(
+        `DELETE FROM student_scores WHERE school_id = ? AND grading_item_id = ?
+          AND score IS NULL AND (remarks IS NULL OR TRIM(remarks) = '')`,
+        [assignment.schoolId, assignment.gradingItemId]
+      );
+      await connection.execute(
+        'DELETE FROM grading_items WHERE id = ? AND school_id = ?',
+        [assignment.gradingItemId, assignment.schoolId]
+      );
+    }
+    await writeAuditLog(connection, req, 'assignment_deleted', 'assignment', assignmentId, {
+      summary: assignment.title, gradingItemId: assignment.gradingItemId || null
+    });
+    await connection.commit();
+    transactionStarted = false;
     res.status(204).send();
-  } catch (error) { next(error); } finally { connection.release(); }
+  } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
-async function getStudentAssignment(connection, studentId, assignmentId) {
-  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.status = 'published' AND EXISTS (SELECT 1 FROM section_students WHERE section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL) LIMIT 1`, [assignmentId, studentId]);
+async function getStudentAssignment(connection, schoolId, studentId, assignmentId) {
+  const [assignments] = await connection.execute(`${assignmentSelect()} WHERE assignments.id = ? AND assignments.school_id = ? AND assignments.status = 'published' AND EXISTS (SELECT 1 FROM section_students WHERE section_students.school_id = assignments.school_id AND section_students.section_id = assignments.section_id AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL) LIMIT 1`, [assignmentId, schoolId, studentId]);
   return assignments[0] || null;
 }
 
@@ -376,22 +509,44 @@ async function removeUploadedFile(file) {
 }
 
 async function removeStoredSubmission(relativePath) {
-  if (typeof relativePath !== 'string' || !relativePath.startsWith('uploads/assignment-submissions/')) return;
-  await fs.unlink(path.join(__dirname, '..', 'uploads', 'assignment-submissions', path.basename(relativePath))).catch(() => {});
+  const fileName = path.basename(String(relativePath || ''));
+  if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/.test(fileName)) return;
+  const legacy = String(relativePath).replace(/^\/+/, '').startsWith('uploads/assignment-submissions/');
+  const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'assignment-submissions') : uploadDirectory;
+  await fs.unlink(path.join(directory, fileName)).catch(() => {});
+}
+
+async function checkSubmissionFile(file) {
+  const bytes = await fs.readFile(file.path);
+  const extension = path.extname(file.filename).toLowerCase();
+  const zip = bytes.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+  const ole = bytes.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+  const valid = extension === '.pdf' ? bytes.subarray(0, 5).toString() === '%PDF-'
+    : ['.docx', '.pptx', '.xlsx'].includes(extension) ? zip
+      : ['.doc', '.ppt', '.xls'].includes(extension) ? ole : false;
+  if (!valid) throw createError('The submission contents do not match its file extension.');
+  if (!zip) return;
+  const document = await JSZip.loadAsync(bytes)
+    .catch(() => { throw createError('The Office submission is invalid.'); });
+  const requiredPart = { '.docx': 'word/document.xml', '.pptx': 'ppt/presentation.xml', '.xlsx': 'xl/workbook.xml' }[extension];
+  if (!document.file(requiredPart) || Object.keys(document.files).some(name => /vbaProject\.bin$/i.test(name))) {
+    throw createError('The Office submission is invalid or contains macros.');
+  }
 }
 
 async function submitAssignment(req, res, next) {
   try {
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
     if (!req.file) throw createError('Attach one supported submission file.');
-    const assignment = await getStudentAssignment(getDatabase(), req.user.id, assignmentId);
+    await checkSubmissionFile(req.file);
+    const assignment = await getStudentAssignment(getDatabase(), req.user.schoolId, req.user.id, assignmentId);
     if (!assignment) throw createError('Assignment was not found.', 404);
     assertAssignmentYearWritable(assignment);
     if (!assignment.onlineSubmissionEnabled) throw createError('Online submissions are not enabled for this assignment.', 409);
-    const filePath = path.posix.join('uploads', 'assignment-submissions', req.file.filename);
+    const filePath = req.file.filename;
     const database = getDatabase();
-    const [existing] = await database.execute('SELECT file_path AS filePath FROM assignment_submissions WHERE assignment_id = ? AND student_user_id = ? LIMIT 1', [assignmentId, req.user.id]);
-    await database.execute(`INSERT INTO assignment_submissions (assignment_id, student_user_id, file_name, file_path, file_size_bytes, submission_status, submitted_at) VALUES (?, ?, ?, ?, ?, 'submitted', NOW()) ON DUPLICATE KEY UPDATE file_name=VALUES(file_name), file_path=VALUES(file_path), file_size_bytes=VALUES(file_size_bytes), submission_status='submitted', submitted_at=NOW()`, [assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size]);
+    const [existing] = await database.execute('SELECT file_path AS filePath FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ? LIMIT 1', [req.user.schoolId, assignmentId, req.user.id]);
+    await database.execute(`INSERT INTO assignment_submissions (school_id, assignment_id, student_user_id, file_name, file_path, file_size_bytes, submission_status, submitted_at) VALUES (?, ?, ?, ?, ?, ?, 'submitted', NOW()) ON DUPLICATE KEY UPDATE file_name=VALUES(file_name), file_path=VALUES(file_path), file_size_bytes=VALUES(file_size_bytes), submission_status='submitted', submitted_at=NOW()`, [req.user.schoolId, assignmentId, req.user.id, req.file.originalname.slice(0, 255), filePath, req.file.size]);
     if (existing[0]?.filePath !== filePath) await removeStoredSubmission(existing[0]?.filePath);
     res.status(201).json({ assignmentId, studentId: req.user.id, fileName: req.file.originalname, fileSizeBytes: req.file.size, submissionStatus: 'submitted' });
   } catch (error) {
@@ -407,15 +562,15 @@ async function listSubmissions(req, res, next) {
     const assignment = await getAssignmentForManagement(database, req.user, assignmentId);
     if (!assignment) {
       if (req.user.role !== 'student') throw createError('Assignment was not found.', 404);
-      const ownAssignment = await getStudentAssignment(database, req.user.id, assignmentId);
+      const ownAssignment = await getStudentAssignment(database, req.user.schoolId, req.user.id, assignmentId);
       if (!ownAssignment) throw createError('Assignment was not found.', 404);
-      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE assignment_id = ? AND student_user_id = ?', [assignmentId, req.user.id]);
+      const [submissions] = await database.execute('SELECT id, assignment_id AS assignmentId, student_user_id AS studentId, file_name AS fileName, file_path AS filePath, file_size_bytes AS fileSizeBytes, submission_status AS submissionStatus, submitted_at AS submittedAt, updated_at AS updatedAt FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? AND student_user_id = ?', [req.user.schoolId, assignmentId, req.user.id]);
       return res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
         ...submission,
         fileUrl: null
       })) });
     }
-    const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id WHERE assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignmentId]);
+    const [submissions] = await database.execute('SELECT assignment_submissions.id, assignment_submissions.assignment_id AS assignmentId, assignment_submissions.student_user_id AS studentId, students.display_name AS studentName, assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath, assignment_submissions.file_size_bytes AS fileSizeBytes, assignment_submissions.submission_status AS submissionStatus, assignment_submissions.submitted_at AS submittedAt, assignment_submissions.updated_at AS updatedAt FROM assignment_submissions INNER JOIN users AS students ON students.id = assignment_submissions.student_user_id AND students.school_id = assignment_submissions.school_id WHERE assignment_submissions.school_id = ? AND assignment_submissions.assignment_id = ? ORDER BY students.last_name, students.first_name', [assignment.schoolId, assignmentId]);
     res.json({ submissions: submissions.map(({ filePath, ...submission }) => ({
       ...submission,
       fileUrl: filePath ? `/api/assignments/${assignmentId}/submissions/${submission.id}/download` : null
@@ -427,18 +582,18 @@ async function getManagedSubmissionFile(database, user, assignmentId, submission
   const assignment = await getAssignmentForManagement(database, user, assignmentId);
   if (!assignment) throw createError('Assignment was not found.', 404);
   const [submissions] = await database.execute(
-    'SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions WHERE id = ? AND assignment_id = ? LIMIT 1',
-    [submissionId, assignmentId]
+    'SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions WHERE id = ? AND school_id = ? AND assignment_id = ? LIMIT 1',
+    [submissionId, assignment.schoolId, assignmentId]
   );
   const submission = submissions[0];
-  const relativePath = String(submission?.filePath || '').replace(/^\/+/, '');
-  if (!relativePath.startsWith('uploads/assignment-submissions/')) {
+  const fileName = path.basename(String(submission?.filePath || ''));
+  if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/.test(fileName)) {
     throw createError('The submitted file is not available.', 404);
   }
-
-  const uploadDirectory = path.resolve(__dirname, '..', 'uploads', 'assignment-submissions');
-  const filePath = path.resolve(__dirname, '..', relativePath);
-  if (!filePath.startsWith(`${uploadDirectory}${path.sep}`)) {
+  const legacy = String(submission.filePath).replace(/^\/+/, '').startsWith('uploads/assignment-submissions/');
+  const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'assignment-submissions') : uploadDirectory;
+  const filePath = path.resolve(directory, fileName);
+  if (!filePath.startsWith(`${directory}${path.sep}`)) {
     throw createError('The submitted file path is invalid.', 400);
   }
   return { fileName: submission.fileName || 'assignment-submission', filePath };

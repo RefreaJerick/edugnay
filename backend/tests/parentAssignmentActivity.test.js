@@ -52,7 +52,7 @@ async function executeQuery(sql, values = []) {
     return [existingFilePath ? [{ filePath: existingFilePath }] : []];
   }
   if (sql.includes('INSERT INTO assignment_submissions')) {
-    savedStatus = values[2] || null;
+    savedStatus = values[3] || null;
     return [{ affectedRows: 1 }];
   }
   throw new Error(`Unexpected query: ${sql}`);

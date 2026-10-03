@@ -18,7 +18,7 @@ const CATEGORIES = {
     'grading_period_reopen_requested', 'grading_period_reopen_approved', 'grading_period_reopen_rejected',
     'grading_period_reopen_extended', 'grading_period_reopen_revoked'
   ],
-  grades: ['final_grades_published'],
+  grades: ['final_grades_published', 'grading_item_deleted', 'assignment_deleted'],
   attendance: ['attendance_confirmed', 'qr_credential_regenerated'],
   school_forms: ['school_form_generated'],
   archives: ['academic_year_archived']
@@ -92,6 +92,8 @@ const ACTION_LABELS = {
   grading_period_reopen_extended: ['extended grade editing access', 'calendar-plus', 'gold', 'reopen_requests'],
   grading_period_reopen_revoked: ['revoked grade editing access', 'lock-keyhole', 'red', 'reopen_requests'],
   final_grades_published: ['published final grades', 'graduation-cap', 'green', 'grades'],
+  grading_item_deleted: ['deleted a score component', 'trash-2', 'red', 'grades'],
+  assignment_deleted: ['deleted an assignment', 'trash-2', 'red', 'grades'],
   attendance_confirmed: ['confirmed subject attendance', 'calendar-check', 'green', 'attendance'],
   qr_credential_regenerated: ['regenerated a student attendance QR', 'scan-line', 'blue', 'attendance'],
   school_form_generated: ['generated an official school form', 'file-spreadsheet', 'gold', 'school_forms'],

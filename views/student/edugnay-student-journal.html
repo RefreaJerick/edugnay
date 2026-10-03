@@ -25,7 +25,7 @@
 
 <body data-page-title="My Journal">
 
-  <!-- Journal entries and feedback are loaded and saved through the journal API. -->
+  <!-- Journal entries are loaded and saved through the journal API. -->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -182,7 +182,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Past Entries</div>
-            <div class="panel-sub">Your journal history this grading period</div>
+            <div class="panel-sub">Your submitted entries, including previous journal subjects</div>
           </div>
         </div>
         <div id="history-list" class="history-list-wrap">
@@ -231,6 +231,8 @@
     let pastEntries = [];
     let journalWindowOpen = false;
     let minimumWords = 50;
+    let pendingDraft = null;
+    let journalRefreshPending = false;
 
     function formatJournalDate(value) {
       const date = new Date(value);
@@ -257,16 +259,13 @@
       return `Week of ${formatJournalDate(`${prompt.weekStartDate}T00:00:00`)}`;
     }
 
-    function isPromptOpen(prompt) {
-      const now = Date.now();
-      return prompt?.status === 'open' && new Date(prompt.opensAt).getTime() <= now &&
-        (new Date(prompt.dueAt).getTime() >= now || prompt.allowLate);
-    }
-
-    function renderJournalPrompt(prompt) {
+    function renderJournalPrompt(prompt, showDeadline = true) {
       if (!prompt) return '';
       const subjectName = prompt.subjectName || 'Journal';
       const dateRange = formatJournalDateRange(prompt.weekStartDate, prompt.dueAt);
+      const deadlineLabel = prompt.submissionState === 'late'
+        ? 'Late submissions allowed · Original deadline'
+        : prompt.submissionState === 'open' ? 'Submit before' : 'Deadline';
       return `
       <section class="journal-prompt" aria-label="Weekly journal prompt">
         <div class="journal-prompt-heading">
@@ -277,10 +276,10 @@
           </div>
         </div>
         <p class="journal-prompt-text">${escapeJournalHtml(prompt.promptText)}</p>
-        <div class="journal-prompt-deadline">
+        ${showDeadline ? `<div class="journal-prompt-deadline">
           <i data-lucide="clock" style="width:13px;height:13px;"></i>
-          <span>Submit before <strong>${escapeJournalHtml(formatJournalDateTime(prompt.dueAt))}</strong></span>
-        </div>
+          <span>${deadlineLabel} <strong>${escapeJournalHtml(formatJournalDateTime(prompt.dueAt))}</strong></span>
+        </div>` : ''}
       </section>`;
     }
 
@@ -288,9 +287,15 @@
       return text.trim().split(/\s+/).filter(Boolean).length;
     }
 
+    function renderUnsentDraft() {
+      return pendingDraft?.text
+        ? `<div class="journal-unsent-draft"><label for="journal-unsent-text">Your unsent draft</label><textarea id="journal-unsent-text" readonly>${escapeJournalHtml(pendingDraft.text)}</textarea><small>Copy your text before leaving this page.</small></div>`
+        : '';
+    }
+
     function renderCurrentWeekPanel() {
       const panel = document.getElementById('current-week-panel');
-      const journalPromptMarkup = renderJournalPrompt(currentPrompt);
+      const journalPromptMarkup = renderJournalPrompt(currentPrompt, !currentEntry);
 
       if (currentEntry) {
         // Submitted entries are read-only.
@@ -324,6 +329,7 @@
         <div class="closed-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
         <div class="closed-title">Submission window closed</div>
       <div class="closed-sub">This week's journal entry is no longer accepting submissions.</div>
+      ${pendingDraft?.promptId === currentPrompt.id ? renderUnsentDraft() : ''}
       </div>`;
         lucide.createIcons();
         return;
@@ -438,6 +444,8 @@
     async function loadStudentJournals() {
       const panel = document.getElementById('current-week-panel');
       const list = document.getElementById('history-list');
+      const draftInput = document.getElementById('entry-textarea');
+      if (draftInput?.value.trim()) pendingDraft = { promptId: currentPrompt?.id, text: draftInput.value };
       panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading journal', text: 'Your journal entries are being loaded.' });
       list.innerHTML = '';
       try {
@@ -446,30 +454,52 @@
           window.EDUGNAY_API.getPortalFeatures()
         ]);
         if (user?.role !== 'student') throw new Error('Only student accounts can view journal entries.');
-        if (!portal.features.journalsEnabled) throw new Error('Journals are disabled for this school.');
-        const [subjects, prompts, entries] = await Promise.all([
-          window.EDUGNAY_API.getJournalSubjects(),
-          window.EDUGNAY_API.getJournalPrompts(),
-          window.EDUGNAY_API.getJournalEntries()
-        ]);
-        if (!subjects.length) throw new Error('Journals are not configured for this school.');
+        const history = await window.EDUGNAY_API.getJournalHistory();
+        const showHistoricalOnly = message => {
+          currentPrompt = null;
+          currentEntry = null;
+          panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
+          panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
+          pastEntries = history.entries.map(entry => {
+            const prompt = history.prompts.find(item => item.id === entry.promptId);
+            return { ...entry, week: `${entry.journalSubjectName} · Week of ${formatJournalDate(prompt?.weekStartDate || entry.submittedAt)}`, dateRange: formatJournalDate(entry.submittedAt), prompt: prompt?.promptText || entry.promptText || '', excerpt: entry.entryText.slice(0, 96) };
+          });
+          renderHistory();
+        };
+        if (!portal.features.journalsEnabled) {
+          showHistoricalOnly('You can still read your submitted entries below.');
+          return;
+        }
+        let subjects, prompts, entries;
+        try {
+          [subjects, prompts, entries] = await Promise.all([
+            window.EDUGNAY_API.getJournalSubjects(),
+            window.EDUGNAY_API.getJournalPrompts(),
+            window.EDUGNAY_API.getJournalEntries()
+          ]);
+        } catch (error) {
+          showHistoricalOnly(`${error.message || 'Current Journals are unavailable.'} You can still read your submitted entries below.`);
+          return;
+        }
+        if (!subjects.length) {
+          showHistoricalOnly('Current Journals are not configured. You can still read your submitted entries below.');
+          return;
+        }
 
         currentPrompt = prompts[0] || null;
         currentEntry = currentPrompt
           ? entries.find(entry => entry.promptId === currentPrompt.id) || null
           : null;
         minimumWords = Number(currentPrompt?.minWords) || 50;
-        journalWindowOpen = currentPrompt ? isPromptOpen(currentPrompt) : false;
+        journalWindowOpen = currentPrompt?.submissionState === 'open' || currentPrompt?.submissionState === 'late';
 
-        const historicalEntries = currentPrompt
-          ? entries.filter(entry => entry.id !== currentEntry?.id)
-          : entries;
+        const historicalEntries = history.entries.filter(entry => entry.id !== currentEntry?.id);
         pastEntries = historicalEntries.map(entry => {
-          const prompt = prompts.find(item => item.id === entry.promptId);
+          const prompt = history.prompts.find(item => item.id === entry.promptId);
           const weekDate = prompt?.weekStartDate || entry.submittedAt;
-          const week = prompt
+          const week = `${entry.journalSubjectName} · ${prompt
             ? formatJournalDateRange(prompt.weekStartDate, prompt.dueAt)
-            : `Week of ${formatJournalDate(weekDate)}`;
+            : `Week of ${formatJournalDate(weekDate)}`}`;
           return {
             ...entry,
             week,
@@ -479,9 +509,18 @@
           };
         });
         renderCurrentWeekPanel();
+        if (journalWindowOpen && pendingDraft?.promptId === currentPrompt.id) {
+          const textarea = document.getElementById('entry-textarea');
+          if (textarea) {
+            textarea.value = pendingDraft.text;
+            updateWordCount();
+          }
+        }
+        if (currentEntry) pendingDraft = null;
         renderHistory();
       } catch (error) {
         panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Unable to load journal', text: error.message || 'Please refresh and try again.' });
+        panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
         list.innerHTML = '';
         lucide.createIcons();
       }
@@ -490,6 +529,23 @@
     document.addEventListener('DOMContentLoaded', async () => {
       await loadStudentJournals();
     });
+
+    async function refreshJournalWindow() {
+      if (document.hidden || journalRefreshPending) return;
+      journalRefreshPending = true;
+      try {
+        const prompts = await window.EDUGNAY_API.getJournalPrompts();
+        const latest = prompts[0] || null;
+        if (latest?.id !== currentPrompt?.id || latest?.submissionState !== currentPrompt?.submissionState) {
+          await loadStudentJournals();
+        }
+      } catch {
+        if (currentPrompt) await loadStudentJournals();
+      } finally { journalRefreshPending = false; }
+    }
+
+    document.addEventListener('visibilitychange', refreshJournalWindow);
+    setInterval(refreshJournalWindow, 60000);
 
   </script>
 
