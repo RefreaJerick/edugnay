@@ -165,6 +165,7 @@
             <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
             <input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" oninput="renderAssignments()" />
           </div>
+          <select class="filter-select assignment-period-filter" id="assignmentPeriodFilter" aria-label="Filter by school year and grading period"></select>
           <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" onchange="renderAssignments()" aria-label="Filter by subject"></select>
         </div>
         <div class="assignment-list-head" aria-hidden="true">
@@ -245,8 +246,50 @@
     let ASSIGNMENTS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
     let STUDENT_SUBMISSIONS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentSubmissions()
       .filter(function (record) { return record.studentId === STUDENT_ID; });
+    let ASSIGNMENT_PERIODS = [];
+    let selectedAssignmentPeriodId = '';
     let backendAssignmentsLoading = BACKEND_ASSIGNMENTS_ENABLED;
     let backendAssignmentsError = '';
+
+    function setAssignmentPeriods(terms) {
+      const termById = new Map(terms.map(function (term) { return [String(term.id), term]; }));
+      const assignedTerms = ASSIGNMENTS.map(function (assignment) {
+        return termById.get(String(assignment.academicPeriodId));
+      }).filter(Boolean);
+      const levels = new Set(assignedTerms.map(function (term) { return String(term.schoolLevelId); }));
+      const years = new Set(assignedTerms.map(function (term) { return String(term.academicYearId); }));
+      ASSIGNMENT_PERIODS = terms.filter(function (term) {
+        return levels.has(String(term.schoolLevelId)) &&
+          (years.has(String(term.academicYearId)) || term.status === 'active');
+      }).sort(function (first, second) {
+        return String(second.academicYearLabel).localeCompare(String(first.academicYearLabel)) ||
+          Number(second.sequenceNumber) - Number(first.sequenceNumber);
+      });
+      if (!ASSIGNMENT_PERIODS.some(function (term) { return String(term.id) === selectedAssignmentPeriodId; })) {
+        const current = ASSIGNMENT_PERIODS.find(function (term) { return term.status === 'active'; }) ||
+          ASSIGNMENT_PERIODS.find(function (term) { return term.status === 'closed'; });
+        selectedAssignmentPeriodId = current ? String(current.id) : '';
+      }
+    }
+
+    function renderPeriodFilter() {
+      const select = document.getElementById('assignmentPeriodFilter');
+      select.innerHTML = ASSIGNMENT_PERIODS.length
+        ? ASSIGNMENT_PERIODS.map(function (term) {
+            const label = term.academicYearLabel + ' · ' + term.name;
+            return '<option value="' + escapeHtml(String(term.id)) + '"' +
+              (term.status === 'upcoming' ? ' disabled' : '') + '>' + escapeHtml(label) + '</option>';
+          }).join('')
+        : '<option value="">No grading periods</option>';
+      select.disabled = !ASSIGNMENT_PERIODS.length || Boolean(backendAssignmentsError);
+      select.value = selectedAssignmentPeriodId;
+    }
+
+    function getAssignmentsInSelectedPeriod() {
+      return ASSIGNMENTS.filter(function (assignment) {
+        return assignment.academicPeriodId === selectedAssignmentPeriodId;
+      });
+    }
 
     async function loadBackendAssignments() {
       if (!window.EDUGNAY_API?.isBackendAvailable) return false;
@@ -255,7 +298,10 @@
         if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
         STUDENT_ID = String(session.apiUserId || session.userId);
         if (!STUDENT_ID || STUDENT_ID === 'undefined') throw new Error('Your student account could not be identified.');
-        const assignments = await window.EDUGNAY_API.getAssignments();
+        const [assignments, terms] = await Promise.all([
+          window.EDUGNAY_API.getAssignments(),
+          window.EDUGNAY_API.getAcademicTerms()
+        ]);
         const submissions = (await Promise.all(assignments.map(function (assignment) {
           return window.EDUGNAY_API.getAssignmentSubmissions(assignment.id);
         }))).flat();
@@ -272,6 +318,7 @@
           const pastDue = assignment.dueDate && assignment.dueDate < today;
           return { ...assignment, status: submitted ? 'submitted' : pastDue ? 'not_submitted' : 'pending' };
         });
+        setAssignmentPeriods(terms);
         backendAssignmentsError = '';
         return true;
       } catch (error) {
@@ -279,6 +326,8 @@
         backendAssignmentsError = 'Assignments could not be loaded. Please refresh and try again.';
         ASSIGNMENTS = [];
         STUDENT_SUBMISSIONS = [];
+        ASSIGNMENT_PERIODS = [];
+        selectedAssignmentPeriodId = '';
         return false;
       } finally {
         backendAssignmentsLoading = false;
@@ -307,13 +356,13 @@
     }
 
     function getStatusCount(status) {
-      return ASSIGNMENTS.filter(function (item) { return item.status === status; }).length;
+      return getAssignmentsInSelectedPeriod().filter(function (item) { return item.status === status; }).length;
     }
 
     function renderFilterTabs() {
       const filters = document.getElementById('assignmentFilters');
       filters.innerHTML = ASSIGNMENT_FILTERS.map(function (filter) {
-        const count = filter.key === 'all' ? ASSIGNMENTS.length : getStatusCount(filter.key);
+        const count = filter.key === 'all' ? getAssignmentsInSelectedPeriod().length : getStatusCount(filter.key);
         return '<button class="filter-tab assignment-filter-tab' + (currentFilter === filter.key ? ' active' : '') + '" type="button" onclick="setAssignmentFilter(&quot;' + filter.key + '&quot;)">' +
           escapeHtml(filter.label) + '<span class="assignment-filter-count">' + count + '</span></button>';
       }).join('');
@@ -329,7 +378,7 @@
     function getVisibleAssignments() {
       const search = document.getElementById('assignmentSearch').value.trim().toLowerCase();
       const subject = document.getElementById('assignmentSubjectFilter').value;
-      return ASSIGNMENTS.filter(function (item) {
+      return getAssignmentsInSelectedPeriod().filter(function (item) {
         const matchesFilter = currentFilter === 'all' || item.status === currentFilter;
         const matchesSubject = subject === 'all' || item.subject === subject;
         const matchesSearch = !search || (item.title + ' ' + item.subject + ' ' + item.teacher).toLowerCase().includes(search);
@@ -355,7 +404,7 @@
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
           icon: 'clipboard-check',
           title: 'No assignments found',
-          text: 'Try another status, subject, or search term.'
+          text: selectedAssignmentPeriodId ? 'Try another status, subject, or search term.' : 'Assignments will appear when a grading period is available.'
         });
         if (window.lucide) lucide.createIcons();
         return;
@@ -393,7 +442,7 @@
 
     function populateSubjectFilter() {
       const subjects = [];
-      ASSIGNMENTS.forEach(function (item) {
+      getAssignmentsInSelectedPeriod().forEach(function (item) {
         if (!subjects.includes(item.subject)) subjects.push(item.subject);
       });
       document.getElementById('assignmentSubjectFilter').innerHTML =
@@ -509,6 +558,8 @@
           button.textContent = originalLabel;
         }
         closeAssignmentSubmissionModal();
+        renderPeriodFilter();
+        populateSubjectFilter();
         renderFilterTabs();
         renderAssignments();
         return;
@@ -543,9 +594,29 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       await loadBackendAssignments();
+      if (!BACKEND_ASSIGNMENTS_ENABLED) {
+        const school = window.EDUGNAY_CONFIG.getActiveSchool();
+        const configured = window.EDUGNAY_CONFIG.getAcademicPeriods();
+        const used = new Set(ASSIGNMENTS.map(function (assignment) { return assignment.academicPeriodId; }));
+        ASSIGNMENT_PERIODS = configured.filter(function (period) { return used.has(period.id); }).map(function (period) {
+          return { ...period, academicYearLabel: school?.schoolYear || '', name: period.name || period.label };
+        });
+        selectedAssignmentPeriodId = String(window.EDUGNAY_CONFIG.getCurrentAcademicPeriod()?.id || ASSIGNMENT_PERIODS[0]?.id || '');
+        if (!ASSIGNMENT_PERIODS.some(function (period) { return period.id === selectedAssignmentPeriodId; })) {
+          selectedAssignmentPeriodId = String(ASSIGNMENT_PERIODS[0]?.id || '');
+        }
+      }
+      renderPeriodFilter();
       populateSubjectFilter();
       renderFilterTabs();
       renderAssignments();
+
+      document.getElementById('assignmentPeriodFilter').addEventListener('change', function () {
+        selectedAssignmentPeriodId = this.value;
+        populateSubjectFilter();
+        renderFilterTabs();
+        renderAssignments();
+      });
 
       document.addEventListener('click', function (event) {
         const action = event.target.closest('.assignment-submit-action');

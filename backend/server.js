@@ -4,8 +4,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { checkDatabaseConnection, isDatabaseConfigured } = require('./config/database');
+const { apiRateLimit, networkRateLimit } = require('./config/apiRateLimit');
 const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
 const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
 const { startScheduledAnnouncementWorker } = require('./workers/scheduledAnnouncementWorker');
@@ -43,16 +43,11 @@ const trustProxyHops = getTrustProxyHops();
 if (trustProxyHops) app.set('trust proxy', trustProxyHops);
 
 app.use(helmet());
-app.use(cors({ origin: frontendOrigin, credentials: true }));
+app.use(cors({ origin: frontendOrigin, credentials: true, exposedHeaders: ['Retry-After'] }));
 app.use(createRequestOriginGuard(frontendOrigin));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false
-}));
+app.use('/api', networkRateLimit, apiRateLimit);
 
 app.get('/api/health', async (req, res) => {
   const databaseConnected = await checkDatabaseConnection();

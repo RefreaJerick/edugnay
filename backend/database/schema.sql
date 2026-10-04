@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   subject_id BIGINT UNSIGNED NOT NULL,
-  academic_term_id BIGINT UNSIGNED NULL,
+  academic_term_id BIGINT UNSIGNED NOT NULL,
   grading_category_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -516,7 +516,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   CONSTRAINT fk_assignments_subject
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_term
-    FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL,
+    FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_category
     FOREIGN KEY (grading_category_id) REFERENCES grading_categories(id) ON DELETE SET NULL,
   CONSTRAINT fk_assignments_teacher

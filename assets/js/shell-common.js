@@ -80,6 +80,20 @@ function showAppToast(message, type = 'success') {
   appToastTimer = setTimeout(() => { toast.hidden = true; }, type === 'success' ? 4000 : 7000);
 }
 
+function apiResponseError(response, data, fallback) {
+  const retryAfter = Number(response.headers.get('Retry-After') || data?.retryAfterSeconds);
+  const message = response.status === 429
+    ? 'Too many requests. Please try again' + (Number.isFinite(retryAfter) && retryAfter > 0
+      ? ' in ' + Math.ceil(retryAfter / 60) + ' minute' + (retryAfter > 60 ? 's' : '') + '.'
+      : ' in a few minutes.')
+    : data?.message || fallback;
+  const error = new Error(message);
+  error.status = response.status;
+  error.data = data;
+  error.retryAfterSeconds = Number.isFinite(retryAfter) ? retryAfter : null;
+  return error;
+}
+
 async function requestApi(path, options = {}) {
   if (!EDUGNAY_API_BASE_URL) throw new Error('The API address has not been configured.');
 
@@ -94,10 +108,7 @@ async function requestApi(path, options = {}) {
   const data = response.status === 204 ? null : await response.json().catch(() => null);
 
   if (!response.ok) {
-    const error = new Error(data?.message || 'The request could not be completed.');
-    error.status = response.status;
-    error.data = data;
-    throw error;
+    throw apiResponseError(response, data, 'The request could not be completed.');
   }
 
   return data;
@@ -113,10 +124,7 @@ async function requestApiFile(path, options = {}) {
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    const error = new Error(data?.message || 'The file could not be downloaded.');
-    error.status = response.status;
-    error.data = data;
-    throw error;
+    throw apiResponseError(response, data, 'The file could not be downloaded.');
   }
   return {
     buffer: await response.arrayBuffer(),
@@ -137,10 +145,7 @@ async function requestApiMultipart(path, formData, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const error = new Error(data?.message || 'The upload could not be completed.');
-    error.status = response.status;
-    error.data = data;
-    throw error;
+    throw apiResponseError(response, data, 'The upload could not be completed.');
   }
 
   return data;
@@ -1856,8 +1861,10 @@ function applyCurrentUserToShell(session) {
 }
 
 let avatarRefreshInFlight = null;
+let lastAvatarRefreshAt = 0;
 function refreshCurrentUserAvatar() {
-  if (!EDUGNAY_API_BASE_URL || avatarRefreshInFlight) return avatarRefreshInFlight;
+  if (!EDUGNAY_API_BASE_URL || avatarRefreshInFlight || Date.now() - lastAvatarRefreshAt < 10000) return avatarRefreshInFlight;
+  lastAvatarRefreshAt = Date.now();
   avatarRefreshInFlight = getCurrentUser()
     .then(applyCurrentUserToShell)
     .catch(error => { if (error.status !== 401) console.warn('Avatar refresh failed.', error.message); })
@@ -3838,6 +3845,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function createAssignment(values = {}) {
+    if (!values.academicPeriodId) return null;
     const categoryId = String(values.categoryId || '').trim().toLowerCase() || null;
     const maxScore = Number(values.maxScore);
     const assignment = {
@@ -3896,7 +3904,8 @@ function applyCurrentDateToGradingBanners() {
     }
 
     if (values.academicPeriodId !== undefined) {
-      assignment.academicPeriodId = values.academicPeriodId || null;
+      if (!values.academicPeriodId) return null;
+      assignment.academicPeriodId = values.academicPeriodId;
     }
 
     if (values.categoryId !== undefined || values.maxScore !== undefined) {

@@ -135,6 +135,10 @@
   min-width: 150px;
 }
 
+.assignment-toolbar .assignment-period-filter {
+  min-width: 220px;
+}
+
 .assignment-list {
   display: grid;
   gap: 10px;
@@ -453,6 +457,7 @@
   }
 
   .assignment-search,
+  .assignment-period-filter,
   .assignment-subject-filter {
     width: 100%;
   }

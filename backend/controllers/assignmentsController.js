@@ -34,6 +34,13 @@ function optionalId(value, label) {
   return parseId(value, label);
 }
 
+function requiredAcademicTermId(value) {
+  if (value === undefined || value === null || value === '') {
+    throw createError('Select a grading period for the assignment.');
+  }
+  return parseId(value, 'academic term ID');
+}
+
 function requiredText(value, maximum, label) {
   const result = String(value || '').trim();
   if (!result) throw createError(`${label} is required.`);
@@ -148,10 +155,8 @@ function assertAssignmentYearWritable(assignment) {
 }
 
 async function validateTermAndCategory(connection, section, academicTermId, gradingCategoryId) {
-  if (academicTermId) {
-    const [terms] = await connection.execute("SELECT id FROM academic_terms WHERE id = ? AND academic_year_id = ? AND school_level_id = ? AND status = 'active' LIMIT 1", [academicTermId, section.academicYearId, section.schoolLevelId]);
-    if (!terms.length) throw createError('The grading period must be active and match the section.', 404);
-  }
+  const [terms] = await connection.execute("SELECT id FROM academic_terms WHERE id = ? AND academic_year_id = ? AND school_level_id = ? AND status = 'active' LIMIT 1", [academicTermId, section.academicYearId, section.schoolLevelId]);
+  if (!terms.length) throw createError('The grading period must be active and match the section.', 404);
   if (gradingCategoryId) {
     const [categories] = await connection.execute('SELECT id FROM grading_categories WHERE id = ? AND school_id = ? AND school_level_id = ? LIMIT 1', [gradingCategoryId, section.schoolId, section.schoolLevelId]);
     if (!categories.length) throw createError('The grading category does not match the section.', 404);
@@ -316,7 +321,7 @@ async function createAssignment(req, res, next) {
     const subjectId = parseId(req.body.subjectId, 'subject ID');
     const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId);
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
-    const academicTermId = optionalId(req.body.academicTermId, 'academic term ID');
+    const academicTermId = requiredAcademicTermId(req.body.academicTermId);
     const gradingCategoryId = optionalId(req.body.gradingCategoryId, 'grading category ID');
     await validateTermAndCategory(connection, section, academicTermId, gradingCategoryId);
     const title = requiredText(req.body.title, 255, 'Assignment title');
@@ -326,7 +331,7 @@ async function createAssignment(req, res, next) {
     if ((gradingCategoryId === null) !== (maxScore === null)) {
       throw createError('Choose both a grading category and maximum score for a graded assignment.');
     }
-    if (gradingCategoryId && (!academicTermId || maxScore <= 0)) {
+    if (gradingCategoryId && maxScore <= 0) {
       throw createError('A graded assignment needs an active grading period and a maximum score greater than zero.');
     }
     if (gradingCategoryId) await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId);
@@ -364,7 +369,7 @@ async function updateAssignment(req, res, next) {
     assertAssignmentYearWritable(current);
     const section = await getTeacherSectionSubject(connection, current.teacherUserId, current.sectionId, current.subjectId);
     if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
-    const academicTermId = req.body.academicTermId === undefined ? current.academicTermId : optionalId(req.body.academicTermId, 'academic term ID');
+    const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
     await validateTermAndCategory(connection, section, academicTermId, gradingCategoryId);
     const title = req.body.title === undefined ? current.title : requiredText(req.body.title, 255, 'Assignment title');

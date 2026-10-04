@@ -86,5 +86,5 @@ test('narrative report detail modals use compact shared avatar sizes', () => {
   const parentReports = read('views/parent/edugnay-parent-reports.html');
   assert.match(teacherReports, /EDUGNAY_AVATAR\.render\(document\.getElementById\('rm-avatar'\), reportStudentPerson\(r\), \{ size: 'compact' \}\)/);
   assert.match(parentReports, /EDUGNAY_AVATAR\.render\(document\.getElementById\('rm-foot-avatar'\), reportTeacherPerson\(r\), \{ size: 'sm' \}\)/);
-  assert.match(read('assets/css/styles.css'), /\.person-avatar--compact\s*\{\s*--avatar-size:\s*32px;/);
+  assert.match(read('assets/css/styles.css'), /\.person-avatar--compact\s*\{\s*--avatar-size:\s*43px;/);
 });

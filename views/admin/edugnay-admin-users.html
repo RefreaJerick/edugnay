@@ -174,18 +174,18 @@
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="regenerateAttendanceQrModalTitle" style="max-width:440px;">
       <div class="modal-head">
         <div class="modal-heading">
-          <div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="refresh-cw"></i></div>
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="refresh-cw"></i></div>
           <div class="modal-heading-copy">
             <div class="modal-title" id="regenerateAttendanceQrModalTitle">Reissue attendance QR?</div>
             <div class="modal-sub">The student's current QR will stop working.</div>
           </div>
         </div>
-        <button type="button" class="modal-close" aria-label="Close QR reissue confirmation" onclick="closeRegenerateAttendanceQrModal()">
+        <button type="button" class="modal-close" id="regenerateAttendanceQrModalClose" aria-label="Close QR reissue confirmation" onclick="closeRegenerateAttendanceQrModal()">
           <i data-lucide="x"></i>
         </button>
       </div>
       <div class="modal-body">
-        <div class="modal-context">
+        <div class="modal-context qr-reissue-context">
           <div class="ctx-icon"><i data-lucide="qr-code"></i></div>
           <div>
             <div class="ctx-label">Student</div>
@@ -198,8 +198,8 @@
         </form>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-cancel" onclick="closeRegenerateAttendanceQrModal()">Cancel</button>
-        <button type="submit" form="regenerateAttendanceQrForm" class="btn btn-save">Reissue QR</button>
+        <button type="button" class="btn btn-cancel" id="regenerateAttendanceQrCancel" onclick="closeRegenerateAttendanceQrModal()">Cancel</button>
+        <button type="submit" form="regenerateAttendanceQrForm" class="btn btn-save" id="regenerateAttendanceQrConfirm">Reissue QR</button>
       </div>
     </section>
   </div>
@@ -642,7 +642,7 @@
           <select class="filter-select" id="gradeLevelFilter" onchange="filterTable()" hidden aria-label="Filter students by grade level">
             <option value="all">All Grade Levels</option>
           </select>
-          <select class="filter-select" id="sectionFilter" onchange="filterTable()">
+          <select class="filter-select" id="sectionFilter" onchange="filterTable()" hidden aria-label="Filter students by section">
             <option value="all">All Sections</option>
           </select>
         </div>
@@ -659,6 +659,10 @@
         <div class="panel-head">
           <div class="panel-title">All User Accounts</div>
           <div class="panel-meta">Showing <strong id="rowCount">0</strong> of <strong id="totalUserCount">0</strong> users</div>
+        </div>
+        <div class="users-load-notice" id="usersLoadNotice" role="status" hidden>
+          <span id="usersLoadNoticeText"></span>
+          <button class="top-btn secondary" type="button" onclick="loadManagedUsers()">Retry</button>
         </div>
 
         <div class="table-wrap">
@@ -708,6 +712,7 @@
     let userDetailsTrigger = null;
     let userDetailsAttendanceQrDataUrl = '';
     let userDetailsQrStudent = null;
+    let userDetailsQrRequestId = 0;
 
     const ROLE_META = {
       school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield' },
@@ -768,17 +773,21 @@
         ])));
         usersApiActive = true;
       } catch (error) {
-        usersApiActive = false;
-        USERS = [];
-        backendUserSections = [];
-        backendParentChildren.clear();
-        usersLoadError = error.status === 401 || error.status === 403
-          ? 'Sign in as a school administrator to load user accounts.'
-          : 'User accounts could not be loaded from the backend.';
+        if (error.status === 401 || error.status === 403) {
+          usersApiActive = false;
+          USERS = [];
+          backendUserSections = [];
+          backendParentChildren.clear();
+          usersLoadError = 'Sign in as a school administrator to load user accounts.';
+        } else {
+          usersLoadError = error.status === 429 ? error.message
+            : error.status === 503 ? 'The server or database is temporarily unavailable.'
+            : 'User accounts could not be loaded from the backend.';
+        }
         console.warn(usersLoadError, error.message);
       } finally {
         usersLoading = false;
-        if (addAccountButton) addAccountButton.disabled = !usersApiActive;
+        if (addAccountButton) addAccountButton.disabled = !usersApiActive || Boolean(usersLoadError);
         renderUsers();
       }
     }
@@ -887,16 +896,20 @@
       select.value = sections.some(section => section.id === currentValue) ? currentValue : 'all';
     }
 
-    function updateGradeLevelFilter() {
+    function updateStudentFilters() {
       const select = document.getElementById('gradeLevelFilter');
-      if (!select) return;
+      const sectionSelect = document.getElementById('sectionFilter');
+      if (!select || !sectionSelect) return;
 
       const isStudentView = activeRole === 'student';
       select.hidden = !isStudentView;
       select.disabled = !isStudentView;
+      sectionSelect.hidden = !isStudentView;
+      sectionSelect.disabled = !isStudentView;
 
       if (!isStudentView) {
         select.value = 'all';
+        sectionSelect.value = 'all';
         return;
       }
 
@@ -949,12 +962,17 @@
     }
 
     function renderUsers() {
-      updateGradeLevelFilter();
+      updateStudentFilters();
       renderSectionFilterOptions();
+      const notice = document.getElementById('usersLoadNotice');
+      notice.hidden = !usersLoadError || !USERS.length;
+      document.getElementById('usersLoadNoticeText').textContent = usersLoadError
+        ? usersLoadError + ' Showing previously loaded accounts.' : '';
       const tbody = document.getElementById('tableBody');
-      if (usersLoading || usersLoadError) {
+      if ((usersLoading || usersLoadError) && !USERS.length) {
         const message = usersLoading ? 'Loading user accounts…' : usersLoadError;
-        tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: usersLoading ? 'loader-circle' : 'triangle-alert', title: message, text: usersLoading ? 'Reading accounts from the school workspace.' : 'Refresh the page after confirming your account access.' })}</td></tr>`;
+        const retry = usersLoading ? '' : '<button class="top-btn secondary" type="button" onclick="loadManagedUsers()">Retry</button>';
+        tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="6">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: usersLoading ? 'loader-circle' : 'triangle-alert', title: message, text: usersLoading ? 'Reading accounts from the school workspace.' : 'Try again when the connection is ready.' })}${retry}</td></tr>`;
         updateRoleSummary();
         renderPagination(0, 1);
         document.getElementById('rowCount').textContent = '0';
@@ -1669,14 +1687,15 @@
             <h3 id="userDetailsQrTitle">Student Attendance QR</h3>
           </div>
           <div class="user-details-qr">
-            <img id="userDetailsAttendanceQrImage" alt="${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)} attendance QR code" />
+            <img id="userDetailsAttendanceQrImage" alt="${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)} attendance QR code" hidden />
             <div class="user-details-qr-copy">
               <p>Download a replacement copy or reissue the token if the current QR is no longer secure.</p>
               <div class="user-details-qr-actions">
                 <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrDownload" onclick="downloadUserDetailsAttendanceQr()" disabled><i data-lucide="download"></i>Download QR</button>
-                <button type="button" class="top-btn secondary" onclick="openRegenerateAttendanceQrModal()"><i data-lucide="refresh-cw"></i>Reissue QR</button>
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrReissue" onclick="openRegenerateAttendanceQrModal()"><i data-lucide="refresh-cw"></i>Reissue QR</button>
+                <button type="button" class="top-btn secondary" id="userDetailsAttendanceQrReload" onclick="renderUserDetailsAttendanceQr(userDetailsQrStudent)" hidden><i data-lucide="rotate-cw"></i>Reload QR</button>
               </div>
-              <div class="user-details-qr-status" id="userDetailsAttendanceQrStatus" role="status" hidden>Replacement QR generated. The previous QR is no longer valid.</div>
+              <div class="user-details-qr-status" id="userDetailsAttendanceQrStatus" role="status" hidden></div>
             </div>
           </div>
         </section>` : ''}
@@ -1706,26 +1725,64 @@
       modal.setAttribute('aria-hidden', 'true');
       if (wasOpen && userDetailsTrigger?.isConnected) userDetailsTrigger.focus();
       userDetailsTrigger = null;
+      userDetailsQrStudent = null;
+      userDetailsQrRequestId += 1;
+    }
+
+    function setUserDetailsQrStatus(message, isError = false, isSuccess = false) {
+      const status = document.getElementById('userDetailsAttendanceQrStatus');
+      status.textContent = message;
+      status.hidden = !message;
+      status.classList.toggle('error', isError);
+      status.classList.toggle('success', isSuccess);
+    }
+
+    function clearUserDetailsQr() {
+      userDetailsAttendanceQrDataUrl = '';
+      const image = document.getElementById('userDetailsAttendanceQrImage');
+      image.removeAttribute('src');
+      image.hidden = true;
+      image.parentElement.classList.add('no-image');
+      document.getElementById('userDetailsAttendanceQrDownload').disabled = true;
+    }
+
+    async function displayUserDetailsQr(token, studentId, requestId) {
+      if (!token) throw new Error('The QR data is unavailable.');
+      const dataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(token);
+      if (!dataUrl) throw new Error('The QR image could not be created.');
+      if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(studentId)) return;
+      const image = document.getElementById('userDetailsAttendanceQrImage');
+      image.src = dataUrl;
+      image.hidden = false;
+      image.parentElement.classList.remove('no-image');
+      userDetailsAttendanceQrDataUrl = dataUrl;
+      document.getElementById('userDetailsAttendanceQrDownload').disabled = false;
+      document.getElementById('userDetailsAttendanceQrReload').hidden = true;
     }
 
     async function renderUserDetailsAttendanceQr(student) {
-      const image = document.getElementById('userDetailsAttendanceQrImage');
-      const button = document.getElementById('userDetailsAttendanceQrDownload');
-      userDetailsAttendanceQrDataUrl = '';
-      button.disabled = true;
-      let token = student?.attendanceQrToken || '';
-      if (usersApiActive && student?.apiId) {
-        let response = await window.EDUGNAY_API.getStudentQr(student.apiId);
-        if (response?.requiresRegeneration) {
-          response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId);
+      if (!student) return;
+      const requestId = ++userDetailsQrRequestId;
+      clearUserDetailsQr();
+      setUserDetailsQrStatus('');
+      document.getElementById('userDetailsAttendanceQrReload').hidden = true;
+      try {
+        let token = student.attendanceQrToken || '';
+        if (usersApiActive) {
+          const response = await window.EDUGNAY_API.getStudentQr(student.apiId || student.id);
+          token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
         }
-        token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+        if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(student.id)) return;
+        if (!token) {
+          setUserDetailsQrStatus('QR unavailable. Reissue it to create a new copy.');
+          return;
+        }
+        await displayUserDetailsQr(token, student.id, requestId);
+      } catch (error) {
+        if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(student.id)) return;
+        setUserDetailsQrStatus(error.message || 'The QR could not be loaded.', true);
+        document.getElementById('userDetailsAttendanceQrReload').hidden = false;
       }
-      if (!token) return;
-
-      userDetailsAttendanceQrDataUrl = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(token);
-      image.src = userDetailsAttendanceQrDataUrl;
-      button.disabled = false;
     }
 
     function downloadUserDetailsAttendanceQr() {
@@ -1742,47 +1799,101 @@
       link.click();
     }
 
+    let regenerateAttendanceQrBusy = false;
+    let regenerateAttendanceQrReturnFocus = null;
+
     function openRegenerateAttendanceQrModal() {
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
       const student = userDetailsQrStudent || findManagedUser(studentId);
-      if (!student || student.role !== 'student') return;
+      const details = document.getElementById('userDetailsModalBackdrop');
+      if (!student || student.role !== 'student' || !details.classList.contains('open')) return;
 
+      regenerateAttendanceQrReturnFocus = document.activeElement;
       document.getElementById('regenerateAttendanceQrStudentName').textContent = student.displayName;
+      details.classList.remove('open');
+      details.setAttribute('aria-hidden', 'true');
+      details.hidden = true;
       const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       lucide.createIcons();
+      document.getElementById('regenerateAttendanceQrModalClose').focus();
     }
 
     function closeRegenerateAttendanceQrModal() {
+      if (regenerateAttendanceQrBusy) return;
       const modal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      if (!modal.classList.contains('open')) return;
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
+      const details = document.getElementById('userDetailsModalBackdrop');
+      details.hidden = false;
+      details.classList.add('open');
+      details.setAttribute('aria-hidden', 'false');
+      if (regenerateAttendanceQrReturnFocus?.isConnected) regenerateAttendanceQrReturnFocus.focus();
+      regenerateAttendanceQrReturnFocus = null;
     }
 
     document.getElementById('regenerateAttendanceQrForm').addEventListener('submit', async function (event) {
       event.preventDefault();
+      if (regenerateAttendanceQrBusy) return;
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
       let student = userDetailsQrStudent || findManagedUser(studentId);
-      if (!student) return;
+      if (!student || student.role !== 'student') return;
 
-      if (usersApiActive) {
-        try {
-          await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
-          student = await window.EDUGNAY_API.getUser(student.apiId || student.id) || student;
+      regenerateAttendanceQrBusy = true;
+      const requestId = ++userDetailsQrRequestId;
+      const confirmationModal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      confirmationModal.setAttribute('aria-busy', 'true');
+      const confirmButton = document.getElementById('regenerateAttendanceQrConfirm');
+      const cancelButton = document.getElementById('regenerateAttendanceQrCancel');
+      const closeButton = document.getElementById('regenerateAttendanceQrModalClose');
+      confirmButton.disabled = true;
+      cancelButton.disabled = true;
+      closeButton.disabled = true;
+      confirmButton.textContent = 'Reissuing...';
+      let token = '';
+      let rotated = false;
+
+      try {
+        if (usersApiActive) {
+          const response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
+          rotated = true;
+          token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
+        } else {
+          student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
+          if (!student) throw new Error('The student QR could not be reissued.');
+          rotated = true;
           userDetailsQrStudent = student;
-        } catch (error) {
-          showAppToast(error.message || 'The attendance QR could not be reissued.', 'error');
-          return;
+          token = student?.attendanceQrToken || '';
         }
-      } else {
-        student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
+        clearUserDetailsQr();
+        await displayUserDetailsQr(token, studentId, requestId);
+        setUserDetailsQrStatus('Replacement QR generated. The previous QR is no longer valid.', false, true);
+        showAppToast(usersApiActive ? 'Attendance QR reissued.' : 'Attendance QR updated in local demo data.', usersApiActive ? 'success' : 'info');
+      } catch (error) {
+        if (rotated) {
+          clearUserDetailsQr();
+          setUserDetailsQrStatus('QR reissued, but its new image could not be displayed. Reload the QR to get the new copy.', true);
+          document.getElementById('userDetailsAttendanceQrReload').hidden = false;
+          showAppToast('QR reissued, but its new image could not be displayed.', 'error');
+        } else {
+          if (!error.status || error.status >= 500) {
+            clearUserDetailsQr();
+            setUserDetailsQrStatus('Reissue could not be confirmed. Reload the QR before using or downloading it.', true);
+            document.getElementById('userDetailsAttendanceQrReload').hidden = false;
+          }
+          showAppToast(error.message || 'The attendance QR could not be reissued.', 'error');
+        }
+      } finally {
+        regenerateAttendanceQrBusy = false;
+        confirmationModal.removeAttribute('aria-busy');
+        confirmButton.disabled = false;
+        cancelButton.disabled = false;
+        closeButton.disabled = false;
+        confirmButton.textContent = 'Reissue QR';
       }
-
       closeRegenerateAttendanceQrModal();
-      await renderUserDetailsAttendanceQr(student);
-      document.getElementById('userDetailsAttendanceQrStatus').hidden = false;
-      showAppToast(usersApiActive ? 'Attendance QR reissued.' : 'Attendance QR updated in local demo data.', usersApiActive ? 'success' : 'info');
     });
 
     document.getElementById('regenerateAttendanceQrModalBackdrop').addEventListener('click', function (event) {
@@ -1910,7 +2021,22 @@
 
     /* ── ESCAPE KEY ── */
     document.addEventListener('keydown', e => {
+      const qrModal = document.getElementById('regenerateAttendanceQrModalBackdrop');
+      if (qrModal.classList.contains('open') && e.key === 'Tab') {
+        const buttons = [...qrModal.querySelectorAll('button:not([disabled])')];
+        if (!buttons.length) { e.preventDefault(); return; }
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        return;
+      }
       if (e.key === 'Escape') {
+        if (qrModal.classList.contains('open')) {
+          e.preventDefault();
+          closeRegenerateAttendanceQrModal();
+          return;
+        }
         closeUserMenus();
         closeAccountModal();
         closeUserDetailsModal();

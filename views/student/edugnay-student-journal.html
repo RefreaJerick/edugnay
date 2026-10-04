@@ -530,8 +530,9 @@
       await loadStudentJournals();
     });
 
+    let journalRetryPending = false;
     async function refreshJournalWindow() {
-      if (document.hidden || journalRefreshPending) return;
+      if (document.hidden || journalRefreshPending || journalRetryPending) return;
       journalRefreshPending = true;
       try {
         const prompts = await window.EDUGNAY_API.getJournalPrompts();
@@ -539,8 +540,11 @@
         if (latest?.id !== currentPrompt?.id || latest?.submissionState !== currentPrompt?.submissionState) {
           await loadStudentJournals();
         }
-      } catch {
-        if (currentPrompt) await loadStudentJournals();
+      } catch (error) {
+        if (error.status === 429) {
+          journalRetryPending = true;
+          setTimeout(() => { journalRetryPending = false; }, (error.retryAfterSeconds || 60) * 1000);
+        } else if (currentPrompt) await loadStudentJournals();
       } finally { journalRefreshPending = false; }
     }
 

@@ -50,7 +50,7 @@ const connection = {
 };
 
 databaseModule.getDatabase = () => ({ getConnection: async () => connection });
-const { createAssignment } = require('../controllers/assignmentsController');
+const { createAssignment, updateAssignment } = require('../controllers/assignmentsController');
 
 async function create(options = {}) {
   queries = [];
@@ -100,5 +100,32 @@ test('a closed period does not allow creating a graded assignment', async () => 
   const result = await create({ termStatus: 'closed' });
   assert.equal(result.error?.status, 409);
   assert.equal(queries.some(sql => sql.startsWith('INSERT INTO')), false);
+  assert.equal(queries.at(-1), 'ROLLBACK');
+});
+
+test('an ungraded assignment still requires a grading period', async () => {
+  queries = [];
+  assigned = true;
+  const result = { error: null };
+  await createAssignment({
+    user: { id: 5, schoolId: 1, role: 'teacher' },
+    body: { sectionId: 8, subjectId: 4, title: 'Homework' }
+  }, {}, error => { result.error = error; });
+  assert.match(result.error?.message || '', /Select a grading period/);
+  assert.equal(queries.some(sql => sql.startsWith('INSERT INTO')), false);
+  assert.equal(queries.at(-1), 'ROLLBACK');
+});
+
+test('an assignment cannot be updated to remove its grading period', async () => {
+  queries = [];
+  assigned = true;
+  const result = { error: null };
+  await updateAssignment({
+    user: { id: 5, schoolId: 1, role: 'teacher' },
+    params: { assignmentId: '14' },
+    body: { academicTermId: null }
+  }, {}, error => { result.error = error; });
+  assert.match(result.error?.message || '', /Select a grading period/);
+  assert.equal(queries.some(sql => sql.startsWith('UPDATE assignments')), false);
   assert.equal(queries.at(-1), 'ROLLBACK');
 });

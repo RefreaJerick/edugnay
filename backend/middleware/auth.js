@@ -3,7 +3,7 @@ const { clearSessionCookie, getSessionToken, getSessionUser } = require('../conf
 async function requireAuth(req, res, next) {
   try {
     const token = getSessionToken(req);
-    const user = await getSessionUser(token);
+    const user = req.sessionToken === token && req.user ? req.user : await getSessionUser(token);
 
     if (!user) {
       clearSessionCookie(res);

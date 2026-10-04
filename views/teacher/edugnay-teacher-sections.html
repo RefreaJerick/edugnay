@@ -4429,6 +4429,10 @@
       showAppToast('Select an assigned subject before adding an assignment.', 'error');
       return;
     }
+    if (!academicPeriodId) {
+      showAppToast('Select a grading period before adding an assignment.', 'error');
+      return;
+    }
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
     if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
       alert('Please select a grading category and enter the highest possible score.');
