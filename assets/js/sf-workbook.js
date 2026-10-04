@@ -3,6 +3,17 @@
   const SF1_TEMPLATE_ID = 'sf1-school-register-v1';
 
   const SF_TEMPLATE_DEFINITIONS = Object.freeze({
+    'sf2-daily-attendance-v1': {
+      templateId: 'sf2-daily-attendance-v1',
+      sheetName: 'School Form 2 (SF2)',
+      requiredSheets: ['School Form 2 (SF2)'],
+      previewRows: 93,
+      previewColumns: 36,
+      mergeCount: 179,
+      anchors: { A2: 'School Form 2', B6: 'School ID', B8: 'Name of School', A10: "LEARNER'S NAME" },
+      fields: {},
+      rows: []
+    },
     [SF1_TEMPLATE_ID]: {
       templateId: SF1_TEMPLATE_ID,
       sheetName: 'School Form 1 (SF1)',
@@ -84,7 +95,7 @@
 
   async function fetchTemplate(url) {
     const response = await fetch(url);
-    if (!response.ok) throw new Error('The official SF1 workbook could not be loaded.');
+    if (!response.ok) throw new Error('The official SF workbook could not be loaded.');
     return response.arrayBuffer();
   }
 
@@ -110,7 +121,7 @@
     const relationshipsPath = 'xl/_rels/workbook.xml.rels';
     const workbookFile = zip.file(workbookPath);
     const relationshipsFile = zip.file(relationshipsPath);
-    if (!workbookFile || !relationshipsFile) throw new Error('The SF1 workbook package is incomplete.');
+    if (!workbookFile || !relationshipsFile) throw new Error('The SF workbook package is incomplete.');
 
     const workbook = parseXml(await workbookFile.async('string'), 'workbook');
     const relationships = parseXml(await relationshipsFile.async('string'), 'workbook relationships');
@@ -137,7 +148,7 @@
     const zip = await JSZip.loadAsync(source);
     const worksheet = await getWorksheetPackage(zip, template.sheetName);
     const stylesFile = zip.file('xl/styles.xml');
-    if (!stylesFile) throw new Error('The SF1 template is missing its cell styles.');
+    if (!stylesFile) throw new Error('The SF template is missing its cell styles.');
 
     const styles = parseXml(await stylesFile.async('string'), 'styles');
     const borderCount = styles.getElementsByTagNameNS('*', 'border').length;
@@ -153,16 +164,16 @@
     const fileNames = Object.keys(zip.files);
 
     if (borderCount <= 1 || invalidCell) {
-      throw new Error('The SF1 template is missing its required cell formatting.');
+      throw new Error('The SF template is missing its required cell formatting.');
     }
     if (mergeCount !== getTemplateDefinition(template).mergeCount) {
-      throw new Error('The SF1 template has an unexpected merged-cell layout.');
+      throw new Error('The SF template has an unexpected merged-cell layout.');
     }
     if (!fileNames.some(name => /^xl\/media\/[^/]+$/i.test(name))) {
-      throw new Error('The SF1 template is missing its official image.');
+      throw new Error('The SF template is missing its official image.');
     }
     if (!fileNames.some(name => /^xl\/printerSettings\/[^/]+$/i.test(name))) {
-      throw new Error('The SF1 template is missing its printer settings.');
+      throw new Error('The SF template is missing its printer settings.');
     }
     return { zip, worksheet, styles: await stylesFile.async('string') };
   }
@@ -322,7 +333,7 @@
       Object.entries(definition.anchors).forEach(([cellAddress, expectedText]) => {
         const actualText = String(worksheet.getCell(cellAddress).text || '').toLowerCase();
         if (!actualText.includes(expectedText.toLowerCase())) {
-          issues.push(issue('anchor_mismatch', 'error', `SF1 anchor ${cellAddress} no longer contains "${expectedText}".`, {
+          issues.push(issue('anchor_mismatch', 'error', `${template.formCode} anchor ${cellAddress} no longer contains "${expectedText}".`, {
             sheetName: definition.sheetName,
             cellAddress,
             field: 'mapping'
@@ -441,7 +452,7 @@
     mappedCells.forEach(record => {
       const address = String(record.cellAddress || '').toUpperCase();
       const cell = cellMap.get(address);
-      if (!cell) throw new Error(`Mapped cell ${address} is missing from the SF1 template.`);
+      if (!cell) throw new Error(`Mapped cell ${address} is missing from the SF template.`);
       setXmlCellValue(packageData.worksheet.document, cell, record.value, record.type);
     });
 
@@ -457,7 +468,7 @@
     const worksheetXml = new XMLSerializer().serializeToString(packageData.worksheet.document);
     packageData.zip.file(packageData.worksheet.path, worksheetXml);
     if (await packageData.zip.file('xl/styles.xml').async('string') !== packageData.styles) {
-      throw new Error('The SF1 workbook styles changed unexpectedly during export.');
+      throw new Error('The SF workbook styles changed unexpectedly during export.');
     }
     return packageData.zip.generateAsync({
       type: 'arraybuffer',
@@ -477,12 +488,46 @@
     return worksheetPreview(worksheet, template);
   }
 
+  async function getOfficialTemplateFile(template) {
+    if (!template?.templateFileUrl || !getTemplateDefinition(template)) {
+      throw new Error('This official template is not available for download.');
+    }
+    const source = await fetchTemplate(template.templateFileUrl);
+    await validateTemplatePackage(source, template);
+    const workbook = await loadWorkbook(source);
+    const mapping = validateDefinition(workbook, template);
+    if (mapping.mappingStatus !== 'ready') {
+      throw new Error(mapping.issues[0]?.message || 'This official template failed its workbook checks.');
+    }
+    return source;
+  }
+
+  async function getOfficialCombinedTemplateFile(templates) {
+    const formCodes = Array.isArray(templates) ? templates.map(template => template.formCode).sort() : [];
+    if (formCodes.join(',') !== 'SF1,SF2') {
+      throw new Error('The blank combined workbook requires one SF1 and one SF2 template.');
+    }
+
+    const source = await fetchTemplate('../../assets/templates/school-forms/sf1-sf2.xlsx');
+    for (const template of templates) await validateTemplatePackage(source, template);
+
+    const workbook = await loadWorkbook(source);
+    if (workbook.worksheets.length !== 2 || formCodes.some(formCode => {
+      const template = templates.find(record => record.formCode === formCode);
+      return validateDefinition(workbook, template).mappingStatus !== 'ready';
+    })) {
+      throw new Error('The blank combined workbook failed its official template checks.');
+    }
+
+    return source;
+  }
+
   async function generatePreview(template, context) {
     const source = await fetchTemplate(template.templateFileUrl);
     await validateTemplatePackage(source, template);
     const workbook = await loadWorkbook(source);
     const mapping = validateDefinition(workbook, template);
-    if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF1 template mapping is invalid.');
+    if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF template mapping is invalid.');
     applyDefinition(workbook, template, context);
     const worksheet = workbook.getWorksheet(template.sheetName);
     return {
@@ -498,7 +543,7 @@
     await validateTemplatePackage(source, template);
     const workbook = await loadWorkbook(source);
     const mapping = validateDefinition(workbook, template);
-    if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF1 template mapping is invalid.');
+    if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF template mapping is invalid.');
 
     const worksheet = workbook.getWorksheet(template.sheetName);
     const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
@@ -528,6 +573,8 @@
   window.EDUGNAY_SF_WORKBOOK = {
     getTemplateDefinition,
     getFilePreview,
+    getOfficialTemplateFile,
+    getOfficialCombinedTemplateFile,
     generatePreview,
     generatePreviewFromMappedCells,
     exportWorkbook

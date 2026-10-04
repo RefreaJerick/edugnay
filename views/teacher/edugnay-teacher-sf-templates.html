@@ -138,7 +138,7 @@
         <div class="sf-info-banner-icon"><i data-lucide="info"></i></div>
         <div>
           <div class="sf-info-banner-title">Automatic form completion</div>
-          <div class="sf-info-banner-text">The form will be auto-populated using available system records. Any information not stored in the system must be completed manually before downloading.</div>
+          <div class="sf-info-banner-text">Forms use only supported school records. Unavailable fields stay blank; review the downloaded draft before using it as an official record.</div>
         </div>
       </div>
 
@@ -175,7 +175,6 @@
           <div class="sf-template-columns" role="row">
             <span role="columnheader">Form</span>
             <span role="columnheader">Workbook</span>
-            <span role="columnheader">Version</span>
             <span role="columnheader">Actions</span>
           </div>
           <div class="sf-template-list" id="sfTemplateList"></div>
@@ -185,16 +184,33 @@
           <div class="sf-panel-head">
             <div>
               <h2 class="sf-panel-title" id="sfGeneratorTitle">Generate form</h2>
-              <p class="sf-panel-sub">Choose an active template and one of your advisory classes.</p>
+              <p class="sf-panel-sub">Download a blank workbook or choose a class to generate populated forms.</p>
             </div>
           </div>
           <form class="sf-generator-form" id="sfGeneratorForm">
-            <label class="sf-field" for="sfGenerateTemplate"><span>Template</span><select id="sfGenerateTemplate" disabled><option value="">No active templates</option></select></label>
+            <div class="sf-field">
+              <span id="sfGenerateTemplatesLabel">Templates</span>
+              <div class="sf-template-picker" id="sfTemplatePicker">
+                <button class="sf-template-trigger" id="sfTemplateTrigger" type="button" aria-labelledby="sfGenerateTemplatesLabel sfTemplateSummary" aria-expanded="false" aria-controls="sfTemplateDropdown">
+                  <span id="sfTemplateSummary">Select templates</span><i data-lucide="chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="sf-template-dropdown" id="sfTemplateDropdown" hidden>
+                  <input class="sf-template-search" id="sfTemplateSearch" type="search" placeholder="Search forms..." aria-label="Search templates">
+                  <div class="sf-template-choices" id="sfGenerateTemplates" role="group" aria-labelledby="sfGenerateTemplatesLabel"></div>
+                  <p class="sf-template-no-results" id="sfTemplateNoResults" hidden>No templates found.</p>
+                  <div class="sf-template-picker-actions">
+                    <button type="button" id="sfTemplateClear">Clear selection</button>
+                    <button type="button" id="sfTemplateDone">Done</button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <label class="sf-field" for="sfGenerateSection"><span>Advisory class</span><select id="sfGenerateSection" disabled><option value="">No class selected</option></select></label>
             <label class="sf-field" for="sfGenerateSchoolYear"><span>School year</span><input id="sfGenerateSchoolYear" type="text" disabled></label>
-            <button class="top-btn primary sf-generate-button" id="sfGenerateButton" type="submit" disabled><i data-lucide="wand-sparkles"></i> Generate preview</button>
+            <label class="sf-field" for="sfGenerateMonth" id="sfGenerateMonthField" hidden><span>Reporting month</span><input id="sfGenerateMonth" type="month"></label>
+            <button class="top-btn primary sf-generate-button" id="sfGenerateButton" type="submit" disabled><i data-lucide="wand-sparkles"></i> Preview with school data</button>
+            <button class="top-btn secondary sf-blank-download" id="sfBlankCombinedDownload" type="button" hidden><i data-lucide="download" aria-hidden="true"></i> Download blank combined XLSX</button>
           </form>
-          <div class="sf-access-note"><i data-lucide="shield-check"></i><span>Only records from your advisory classes will be available.</span></div>
         </aside>
       </div>
 

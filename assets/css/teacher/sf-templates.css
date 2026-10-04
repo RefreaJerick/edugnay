@@ -60,6 +60,12 @@
   background: var(--panel-bg);
 }
 
+.sf-generator-panel {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+
 .sf-panel-head {
   display: flex;
   align-items: center;
@@ -101,6 +107,8 @@
   min-width: 0;
 }
 
+.sf-field[hidden] { display: none; }
+
 .sf-filter-field > span,
 .sf-field > span {
   color: var(--gray-500);
@@ -118,18 +126,31 @@
 }
 
 .sf-field input {
-  min-height: 40px;
-  padding: 9px 11px;
-  border: 1px solid var(--gray-200);
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   outline: 0;
-  background: var(--white);
+  background: var(--gray-50);
   color: var(--gray-700);
-  font: 500 12px 'Plus Jakarta Sans', sans-serif;
+  font: 400 12px/1.3 'Plus Jakarta Sans', sans-serif;
+}
+
+.sf-field input[type='month']::-webkit-datetime-edit {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.sf-field input[type='month']::-webkit-calendar-picker-indicator {
+  opacity: .65;
+  cursor: pointer;
 }
 
 .sf-field input:focus {
   border-color: var(--blue-mid);
+  background: var(--white);
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
@@ -163,7 +184,7 @@
 
 .sf-template-columns,
 .sf-template-row {
-  grid-template-columns: 36px minmax(110px, .7fr) minmax(200px, 1.5fr) minmax(90px, .55fr) 64px;
+  grid-template-columns: 36px minmax(110px, .7fr) minmax(200px, 1.5fr) 112px;
 }
 
 .sf-template-columns span:first-child {
@@ -259,7 +280,34 @@
   color: var(--blue-mid);
   font: 650 11px 'Plus Jakarta Sans', sans-serif;
   cursor: pointer;
-  justify-self: end;
+}
+
+.sf-template-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sf-template-download {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--blue-mid);
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.sf-template-download svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
 }
 
 .sf-template-preview:hover {
@@ -268,9 +316,25 @@
   color: var(--blue-dark);
 }
 
+.sf-template-download:hover {
+  border-color: var(--blue-mid);
+  background: var(--blue-xpale);
+  color: var(--blue-dark);
+}
+
 .sf-template-preview:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+.sf-template-download:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+.sf-template-download:disabled {
+  cursor: wait;
+  opacity: .6;
 }
 
 .sf-generator-form {
@@ -279,31 +343,140 @@
   padding: 18px;
 }
 
+.sf-template-picker {
+  position: relative;
+}
+
+.sf-template-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font: 400 12px/1.3 'Plus Jakarta Sans', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sf-template-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sf-template-trigger svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--gray-400);
+}
+
+.sf-template-trigger[aria-expanded='true'],
+.sf-template-trigger:focus-visible {
+  border-color: var(--blue-mid);
+  outline: 0;
+  background: var(--white);
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+.sf-template-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  z-index: 5;
+  padding: 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  box-shadow: 0 10px 28px rgba(15, 35, 65, .14);
+}
+
+.sf-template-dropdown[hidden],
+.sf-template-choice[hidden],
+.sf-template-no-results[hidden] {
+  display: none;
+}
+
+.sf-template-search {
+  margin-bottom: 8px;
+}
+
+.sf-template-choices {
+  display: grid;
+  gap: 7px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.sf-template-select-empty {
+  padding: 10px 11px;
+  border: 1px dashed var(--gray-200);
+  border-radius: var(--radius-sm);
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.sf-template-choice:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.sf-template-no-results {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+.sf-template-picker-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gray-100);
+}
+
+.sf-template-picker-actions button {
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--blue-mid);
+  font: 700 11px 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+}
+
+.sf-template-picker-actions button:hover,
+.sf-template-picker-actions button:focus-visible {
+  outline: 0;
+  background: var(--blue-xpale);
+}
+
+.sf-template-picker-actions button:disabled,
+.sf-template-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
 .sf-generate-button {
   justify-content: center;
   margin-top: 2px;
 }
 
-.sf-access-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0 18px 18px;
-  padding: 10px 11px;
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-sm);
-  background: var(--blue-xpale);
-  color: var(--gray-600);
-  font-size: 11px;
-  line-height: 1.45;
+.sf-blank-download {
+  justify-content: center;
 }
 
-.sf-access-note svg {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-  color: var(--blue-mid);
-  stroke-width: 1.9;
+.sf-blank-download[hidden] {
+  display: none;
 }
 
 .sf-validation-summary {
@@ -391,7 +564,8 @@
 }
 
 .sf-main-sheet-tabs,
-.sf-sheet-tabs {
+.sf-sheet-tabs,
+.sf-generated-form-tabs {
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -629,12 +803,11 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .sf-template-file,
-  .sf-template-version {
+  .sf-template-file {
     grid-column: 2;
   }
 
-  .sf-template-preview {
+  .sf-template-actions {
     grid-column: 3;
     grid-row: 1;
   }

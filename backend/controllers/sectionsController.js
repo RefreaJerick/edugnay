@@ -39,6 +39,8 @@ function sectionSelect() {
     sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId,
     sections.strand_id AS strandId, sections.name, sections.capacity, sections.adviser_user_id AS adviserUserId,
     sections.status, academic_years.label AS academicYearLabel, academic_years.status AS academicYearStatus,
+    DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
+    DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate,
     school_levels.level_code AS schoolLevelCode,
     school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode,
     school_grade_levels.display_name AS gradeLevelName, strands.track_code AS strandCode,
@@ -78,6 +80,8 @@ function formatSection(row) {
   return {
     id: row.id, schoolId: row.schoolId, academicYearId: row.academicYearId, academicYearLabel: row.academicYearLabel,
     academicYearStatus: row.academicYearStatus,
+    academicYearStartDate: row.academicYearStartDate,
+    academicYearEndDate: row.academicYearEndDate,
     schoolLevelId: row.schoolLevelId, schoolLevelCode: row.schoolLevelCode, schoolLevelName: row.schoolLevelName,
     gradeLevelId: row.gradeLevelId, gradeCode: row.gradeCode, gradeLevelName: row.gradeLevelName,
     strandId: row.strandId, strandCode: row.strandCode, strandName: row.strandName,

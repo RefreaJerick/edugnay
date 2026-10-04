@@ -38,7 +38,7 @@ async function playToastSound(type, message) {
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(frequency, start);
       gain.gain.setValueAtTime(.0001, start);
-      gain.gain.linearRampToValueAtTime(.05, start + .015);
+      gain.gain.linearRampToValueAtTime(0.65, start + .015);
       gain.gain.exponentialRampToValueAtTime(.0001, start + .18);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -3156,6 +3156,14 @@ function applyCurrentDateToGradingBanners() {
       sheets: [{ name: 'School Form 1 (SF1)', hidden: false }],
       updatedAt: null,
       updatedBy: null
+    },
+    {
+      id: 'sf2-daily-attendance-v1', formCode: 'SF2', formName: 'Daily Attendance Report of Learners',
+      version: '1.0', schoolLevels: ['elementary', 'jhs', 'shs'], source: 'official',
+      status: RECORD_VALUES.statuses.ACTIVE, mappingStatus: 'ready', fileName: 'SF2.xlsx',
+      templateFileUrl: '../../assets/templates/school-forms/sf2.xlsx',
+      sheetName: 'School Form 2 (SF2)', requiresAcademicPeriod: false,
+      sheets: [{ name: 'School Form 2 (SF2)', hidden: false }], updatedAt: null, updatedBy: null
     }
   ]);
 
@@ -3163,7 +3171,8 @@ function applyCurrentDateToGradingBanners() {
     if (EDUGNAY_API_BASE_URL) {
       const response = await requestApi('/sf-templates');
       return (response.templates || []).map(record => ({
-        id: record.formCode === 'SF1' ? 'sf1-school-register-v1' : `sf-${record.id}`,
+        id: record.formCode === 'SF1' ? 'sf1-school-register-v1'
+          : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1' : `sf-${record.id}`,
         apiId: String(record.id),
         formCode: record.formCode,
         formName: record.formName,
@@ -3173,7 +3182,7 @@ function applyCurrentDateToGradingBanners() {
         status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
         mappingStatus: record.mappingStatus,
         fileName: `${record.formCode}.xlsx`,
-        templateFileUrl: '../../assets/templates/school-forms/sf1.xlsx',
+        templateFileUrl: `../../assets/templates/school-forms/${record.formCode.toLowerCase()}.xlsx`,
         sheetName: record.sheetName,
         requiresAcademicPeriod: Boolean(record.requiresAcademicTerm),
         sheets: [{ name: record.sheetName, hidden: false }],
@@ -3200,6 +3209,29 @@ function applyCurrentDateToGradingBanners() {
       template: { ...template },
       preview
     };
+  }
+
+  async function downloadSfTemplate(templateId) {
+    const template = (await getSfTemplates()).find(record => record.id === String(templateId));
+    if (!template || template.source !== 'official' || template.status !== RECORD_VALUES.statuses.ACTIVE) {
+      throw new Error('The selected official template is unavailable.');
+    }
+    const buffer = await window.EDUGNAY_SF_WORKBOOK.getOfficialTemplateFile(template);
+    return { buffer, fileName: `${template.formCode}-blank-template.xlsx` };
+  }
+
+  async function downloadBlankCombinedSfTemplates(templateIds) {
+    const selectedIds = Array.isArray(templateIds) ? [...new Set(templateIds.map(String))] : [];
+    const templates = (await getSfTemplates()).filter(template => selectedIds.includes(template.id));
+    const formCodes = templates.map(template => template.formCode).sort().join(',');
+    if (selectedIds.length !== 2 || templates.length !== 2 || formCodes !== 'SF1,SF2'
+      || templates.some(template => template.source !== 'official'
+        || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready')) {
+      throw new Error('Select the active, verified SF1 and SF2 templates to download a blank combined workbook.');
+    }
+
+    const buffer = await window.EDUGNAY_SF_WORKBOOK.getOfficialCombinedTemplateFile(templates);
+    return { buffer, fileName: 'SF1_SF2_blank.xlsx' };
   }
 
   function formatSfDateValue(value) {
@@ -3371,7 +3403,8 @@ function applyCurrentDateToGradingBanners() {
     if (!schoolYear) throw new Error('Select a school year.');
 
     if (EDUGNAY_API_BASE_URL) {
-      const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}`);
+      const monthQuery = template.formCode === 'SF2' ? `&month=${encodeURIComponent(values.month || '')}` : '';
+      const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}${monthQuery}`);
       const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
         template,
         response.mappedCells || [],
@@ -3381,8 +3414,10 @@ function applyCurrentDateToGradingBanners() {
         templateId: template.id,
         apiTemplateId: template.apiId,
         sectionId: section.id,
+        month: template.formCode === 'SF2' ? values.month : null,
+        pages: response.pages || [response.mappedCells || []],
         schoolYear,
-        fileName: `${template.formCode}_${section.grade}-${section.name}_${schoolYear}.xlsx`
+        fileName: `${template.formCode}_${section.grade}-${section.name}_${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}.xlsx`
           .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
         issues: response.issues || [],
         previewFingerprint: response.previewFingerprint,
@@ -3392,6 +3427,7 @@ function applyCurrentDateToGradingBanners() {
       };
     }
 
+    if (template.formCode === 'SF2') throw new Error('SF2 generation requires the live school database. The demo has no verified attendance roster.');
     const school = getActiveSchool();
     const teacher = getUserById(window.EDUGNAY_TEACHER_ACCESS?.teacherId);
     if (!school || !teacher) throw new Error('The school or teacher account could not be found.');
@@ -3415,6 +3451,93 @@ function applyCurrentDateToGradingBanners() {
     };
   }
 
+  async function generateCombinedSfForms(values = {}) {
+    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined SF1 and SF2 generation requires the live school database.');
+    const templateIds = [...new Set((Array.isArray(values.templateIds) ? values.templateIds : []).map(String))];
+    const templates = (await getSfTemplates()).filter(template => templateIds.includes(template.id));
+    if (templates.length !== 2 || templates.some(template => template.status !== RECORD_VALUES.statuses.ACTIVE
+      || template.mappingStatus !== 'ready') || templates.map(template => template.formCode).sort().join(',') !== 'SF1,SF2') {
+      throw new Error('Select the active, verified SF1 and SF2 templates to create one combined workbook.');
+    }
+
+    const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
+    if (!section) throw new Error('You do not have access to the selected class.');
+    const schoolYear = String(values.schoolYear || section.academicYear || '').trim();
+    if (!schoolYear) throw new Error('Select a school year.');
+    const preview = await requestApi('/sf-templates/combined/preview', {
+      method: 'POST',
+      body: JSON.stringify({
+        templateIds: templates.map(template => Number(template.apiId)),
+        sectionId: Number(section.id),
+        month: values.month || ''
+      })
+    });
+    const forms = await Promise.all((preview.forms || []).map(async form => {
+      const template = templates.find(record => record.apiId === String(form.templateId));
+      if (!template) throw new Error('The generated preview did not match the selected SF templates.');
+      const previewTemplate = {
+        ...template,
+        templateFileUrl: '../../assets/templates/school-forms/sf1-sf2.xlsx'
+      };
+      const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
+        previewTemplate,
+        form.mappedCells || [],
+        []
+      );
+      return {
+        templateId: template.id,
+        apiTemplateId: template.apiId,
+        formCode: template.formCode,
+        sectionId: section.id,
+        month: template.formCode === 'SF2' ? values.month : null,
+        schoolYear,
+        pages: form.pages?.length ? form.pages : [form.mappedCells || []],
+        issues: form.issues || [],
+        hasBlockingIssues: (form.issues || []).some(issue => issue.severity === 'error'),
+        selectedPage: 0,
+        exportId: null,
+        ...generated
+      };
+    }));
+    forms.sort((left, right) => left.formCode.localeCompare(right.formCode));
+    return {
+      templateIds: templates.map(template => template.id),
+      sectionId: section.id,
+      month: values.month || null,
+      schoolYear,
+      previewFingerprint: preview.previewFingerprint,
+      fileName: `SF1_SF2_${section.grade}-${section.name}_${values.month || schoolYear}.xlsx`
+        .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
+      hasBlockingIssues: forms.some(form => form.hasBlockingIssues),
+      forms
+    };
+  }
+
+  async function exportCombinedSfForms(values = {}) {
+    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined SF1 and SF2 downloads require the live school database.');
+    const templates = await getSfTemplates();
+    const apiTemplateIds = (values.templateIds || []).map(id => {
+      const template = templates.find(record => record.id === String(id));
+      if (!template?.apiId) throw new Error('A selected SF template is no longer available. Generate a new preview.');
+      return Number(template.apiId);
+    });
+    const response = await requestApiFile('/sf-templates/combined/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        templateIds: apiTemplateIds,
+        sectionId: Number(values.sectionId),
+        month: values.month || '',
+        previewFingerprint: values.previewFingerprint,
+        forms: (values.forms || []).map(form => ({
+          templateId: Number(form.apiTemplateId),
+          edits: Array.isArray(form.edits) ? form.edits : []
+        }))
+      })
+    });
+    return { buffer: response.buffer, fileName: response.fileName || values.fileName };
+  }
+
   async function exportSfForm(values = {}) {
     const template = (await getSfTemplates()).find(record => record.id === String(values.templateId));
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
@@ -3429,13 +3552,20 @@ function applyCurrentDateToGradingBanners() {
           method: 'POST',
           body: JSON.stringify({
             sectionId: Number(section.id),
+            month: template.formCode === 'SF2' ? values.month : undefined,
             previewFingerprint: values.previewFingerprint,
             edits: Array.isArray(values.edits) ? values.edits : []
           })
         });
         exportId = response.export.id;
       }
-      const file = await requestApiFile(`/sf-exports/${encodeURIComponent(exportId)}/download`);
+      let file;
+      try {
+        file = await requestApiFile(`/sf-exports/${encodeURIComponent(exportId)}/download`);
+      } catch (error) {
+        error.exportId = exportId;
+        throw error;
+      }
       return { buffer: file.buffer, fileName: file.fileName || String(values.fileName || template.fileName), exportId };
     }
 
@@ -6148,8 +6278,12 @@ function applyCurrentDateToGradingBanners() {
     getMyAdvisorySections,
     getSfTemplates,
     getSfTemplatePreview,
+    downloadSfTemplate,
+    downloadBlankCombinedSfTemplates,
     generateSfForm,
+    generateCombinedSfForms,
     exportSfForm,
+    exportCombinedSfForms,
     assignments: ASSIGNMENT_DIRECTORY,
     getAssignments,
     getAssignmentsForSection,

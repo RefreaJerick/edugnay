@@ -3224,7 +3224,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 
 .onboarding-field .onboarding-level-option,
 .school-field .school-level-option,
-.school-academic-pane .academic-option {
+.school-academic-pane .academic-option,
+.sf-template-choice {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -3246,7 +3247,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 
 .onboarding-field .onboarding-level-option:hover,
 .school-field .school-level-option:hover,
-.school-academic-pane .academic-option:hover {
+.school-academic-pane .academic-option:hover,
+.sf-template-choice:hover {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
   color: var(--blue-mid);
@@ -3254,7 +3256,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 
 .onboarding-field .onboarding-level-option:has(input:checked),
 .school-field .school-level-option:has(input:checked),
-.school-academic-pane .academic-option:has(input:checked) {
+.school-academic-pane .academic-option:has(input:checked),
+.sf-template-choice:has(input:checked) {
   border-color: var(--blue-mid);
   background: var(--blue-xpale);
   color: var(--blue-mid);
@@ -3262,7 +3265,8 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 
 .onboarding-field .onboarding-level-option span,
 .school-field .school-level-option span,
-.school-academic-pane .academic-option span {
+.school-academic-pane .academic-option span,
+.sf-template-choice span {
   min-width: 0;
 }
 

@@ -1,9 +1,13 @@
 const sfState = {
   templates: [],
   sections: [],
+  selectedTemplateIds: [],
   selectedTemplate: null,
   generated: null,
+  combined: null,
   editing: false,
+  generationInProgress: false,
+  blankDownloadInProgress: false,
   preview: null,
   zoomMode: 'fit',
   zoom: 1
@@ -17,10 +21,21 @@ const sfElements = {
   codeFilter: document.getElementById('sfCodeFilter'),
   levelFilter: document.getElementById('sfLevelFilter'),
   generatorForm: document.getElementById('sfGeneratorForm'),
-  templateSelect: document.getElementById('sfGenerateTemplate'),
+  templatePicker: document.getElementById('sfTemplatePicker'),
+  templateTrigger: document.getElementById('sfTemplateTrigger'),
+  templateSummary: document.getElementById('sfTemplateSummary'),
+  templateDropdown: document.getElementById('sfTemplateDropdown'),
+  templateSearch: document.getElementById('sfTemplateSearch'),
+  templateNoResults: document.getElementById('sfTemplateNoResults'),
+  templateClear: document.getElementById('sfTemplateClear'),
+  templateDone: document.getElementById('sfTemplateDone'),
+  templateList: document.getElementById('sfGenerateTemplates'),
   sectionSelect: document.getElementById('sfGenerateSection'),
   schoolYear: document.getElementById('sfGenerateSchoolYear'),
+  monthField: document.getElementById('sfGenerateMonthField'),
+  month: document.getElementById('sfGenerateMonth'),
   generateButton: document.getElementById('sfGenerateButton'),
+  blankCombinedDownloadButton: document.getElementById('sfBlankCombinedDownload'),
   previewTitle: document.getElementById('sfPreviewTitle'),
   previewSubtitle: document.getElementById('sfPreviewSubtitle'),
   previewContent: document.getElementById('sfPreviewContent'),
@@ -84,11 +99,14 @@ function renderTemplateLibrary() {
         <div class="sf-template-file" title="${escapeHtml(template.fileName || 'Official XLSX template')}">${escapeHtml(template.fileName || 'Official XLSX template')}</div>
         <div class="sf-template-meta">${escapeHtml(schoolLevelsLabel(template.schoolLevels))}</div>
       </div>
-      <div class="sf-template-version">
-        <div class="sf-template-code">v${escapeHtml(template.version)}</div>
-        <div class="sf-template-meta">${escapeHtml(template.updatedAt ? `Updated ${formatTemplateDate(template.updatedAt)}` : 'Official source workbook')}</div>
+      <div class="sf-template-actions">
+        <button class="sf-template-preview" type="button" data-template-preview="${escapeHtml(template.id)}">Preview</button>
+        <button class="sf-template-download" type="button" data-template-download="${escapeHtml(template.id)}"
+          aria-label="Download blank ${escapeHtml(template.formCode)} template"
+          title="Download blank ${escapeHtml(template.formCode)} template">
+          <i data-lucide="download" aria-hidden="true"></i>
+        </button>
       </div>
-      <button class="sf-template-preview" type="button" data-template-preview="${escapeHtml(template.id)}">Preview</button>
     </article>
   `).join('');
   if (window.lucide) lucide.createIcons();
@@ -96,28 +114,110 @@ function renderTemplateLibrary() {
 
 function renderGenerationOptions() {
   const activeTemplates = sfState.templates.filter(template => template.status === 'active' && template.mappingStatus === 'ready');
-  sfElements.templateSelect.innerHTML = activeTemplates.length
-    ? `<option value="">Select a template</option>${activeTemplates.map(template => `<option value="${escapeHtml(template.id)}">${escapeHtml(`${template.formCode} - ${template.formName}`)}</option>`).join('')}`
-    : '<option value="">No active templates</option>';
+  sfState.selectedTemplateIds = sfState.selectedTemplateIds.filter(id => activeTemplates.some(template => template.id === id));
+  sfElements.templateList.innerHTML = activeTemplates.length
+    ? activeTemplates.map(template => `
+      <label class="sf-template-choice">
+        <input type="checkbox" value="${escapeHtml(template.id)}" ${sfState.selectedTemplateIds.includes(template.id) ? 'checked' : ''}>
+        <span>${escapeHtml(template.formCode)} · ${escapeHtml(template.formName)}</span>
+      </label>
+    `).join('')
+    : '<div class="sf-template-select-empty">No active templates are available.</div>';
+  sfElements.templateTrigger.disabled = !activeTemplates.length;
+  sfElements.templateSearch.disabled = !activeTemplates.length;
+  updateTemplatePicker();
 
   sfElements.sectionSelect.innerHTML = sfState.sections.length
     ? `<option value="">Select an advisory class</option>${sfState.sections.map(section => `<option value="${escapeHtml(section.id)}">${escapeHtml(`${section.grade} - ${section.name}`)}</option>`).join('')}`
     : '<option value="">No advisory classes</option>';
 
-  sfElements.templateSelect.disabled = !activeTemplates.length;
   sfElements.sectionSelect.disabled = !activeTemplates.length || !sfState.sections.length;
   sfElements.schoolYear.value = sfState.sections[0]?.academicYear
     || window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear
     || '';
+  updateMonthField();
   updateGenerateButton();
 }
 
+function selectedTemplates() {
+  const selectedIds = Array.from(sfElements.templateList.querySelectorAll('input[type="checkbox"]:checked'))
+    .map(input => input.value);
+  return sfState.templates.filter(template => selectedIds.includes(template.id));
+}
+
+function hasBlankCombinedSelection() {
+  return selectedTemplates().map(template => template.formCode).sort().join(',') === 'SF1,SF2';
+}
+
+function updateTemplatePicker() {
+  const templates = selectedTemplates();
+  sfElements.templateSummary.textContent = !templates.length ? 'Select templates'
+    : templates.length <= 2 ? `${templates.map(template => template.formCode).join(', ')} selected`
+      : `${templates.length} templates selected`;
+  sfElements.templateClear.disabled = !templates.length;
+}
+
+function closeTemplatePicker() {
+  sfElements.templateDropdown.hidden = true;
+  sfElements.templateTrigger.setAttribute('aria-expanded', 'false');
+}
+
+function filterTemplateChoices() {
+  const query = sfElements.templateSearch.value.trim().toLowerCase();
+  let visible = 0;
+  sfElements.templateList.querySelectorAll('.sf-template-choice').forEach(choice => {
+    choice.hidden = !choice.textContent.toLowerCase().includes(query);
+    if (!choice.hidden) visible += 1;
+  });
+  sfElements.templateNoResults.hidden = visible > 0;
+}
+
+function updateMonthField() {
+  const isSf2 = selectedTemplates().some(template => template.formCode === 'SF2');
+  sfElements.monthField.hidden = !isSf2;
+  sfElements.month.disabled = !isSf2;
+  if (!isSf2) return;
+  const section = sfState.sections.find(record => record.id === sfElements.sectionSelect.value);
+  const year = String(section?.academicYear || sfElements.schoolYear.value).match(/^(\d{4})-(\d{4})$/);
+  sfElements.month.min = section?.academicYearStartDate?.slice(0, 7) || (year ? `${year[1]}-01` : '');
+  sfElements.month.max = section?.academicYearEndDate?.slice(0, 7) || (year ? `${year[2]}-12` : '');
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  if (!sfElements.month.value || (sfElements.month.min && sfElements.month.value < sfElements.month.min)
+    || (sfElements.month.max && sfElements.month.value > sfElements.month.max)) {
+    sfElements.month.value = currentMonth >= sfElements.month.min && currentMonth <= sfElements.month.max
+      ? currentMonth : sfElements.month.min;
+  }
+}
+
+function setGenerationInputsBusy(isBusy) {
+  sfState.generationInProgress = isBusy;
+  if (isBusy) closeTemplatePicker();
+  const templateInputs = sfElements.templateList.querySelectorAll('input[type="checkbox"]');
+  templateInputs.forEach(input => { input.disabled = isBusy; });
+  sfElements.templateTrigger.disabled = isBusy || !templateInputs.length;
+  sfElements.templateSearch.disabled = isBusy || !templateInputs.length;
+  sfElements.templateClear.disabled = isBusy || !selectedTemplates().length;
+  sfElements.templateDone.disabled = isBusy;
+  sfElements.blankCombinedDownloadButton.disabled = isBusy || sfState.blankDownloadInProgress;
+  sfElements.sectionSelect.disabled = isBusy || !templateInputs.length || !sfState.sections.length;
+  sfElements.month.disabled = isBusy || sfElements.monthField.hidden;
+}
+
 function updateGenerateButton() {
-  sfElements.generateButton.disabled = !(
-    sfElements.templateSelect.value &&
-    sfElements.sectionSelect.value &&
-    sfElements.schoolYear.value
+  const templates = selectedTemplates();
+  const validSelection = templates.length === 1 || (
+    templates.length === 2 && templates.map(template => template.formCode).sort().join(',') === 'SF1,SF2'
   );
+  sfElements.generateButton.disabled = !(
+    validSelection &&
+    (window.EDUGNAY_API?.isBackendAvailable || (templates.length === 1 && templates[0].formCode === 'SF1')) &&
+    sfElements.sectionSelect.value &&
+    sfElements.schoolYear.value &&
+    (sfElements.monthField.hidden || sfElements.month.value)
+  );
+  sfElements.blankCombinedDownloadButton.hidden = !hasBlankCombinedSelection();
+  sfElements.blankCombinedDownloadButton.disabled = sfState.generationInProgress || sfState.blankDownloadInProgress;
 }
 
 function renderSheetTabs(container, sheets, selectedName) {
@@ -263,6 +363,7 @@ async function openTemplatePreview(templateId, sheetName = '') {
   if (!template) return;
   sfState.selectedTemplate = template;
   sfState.generated = null;
+  sfState.combined = null;
   sfState.editing = false;
   sfState.zoomMode = 'fit';
   sfElements.previewTitle.textContent = `${template.formCode} template preview`;
@@ -272,6 +373,7 @@ async function openTemplatePreview(templateId, sheetName = '') {
   sfElements.previewContent.innerHTML = '<div class="sf-preview-loading">Opening workbook...</div>';
   sfElements.editButton.disabled = true;
   sfElements.downloadButton.disabled = true;
+  sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
 
   try {
     const result = await window.EDUGNAY_CONFIG.getSfTemplatePreview(template.id, sheetName);
@@ -285,41 +387,137 @@ async function openTemplatePreview(templateId, sheetName = '') {
   }
 }
 
-async function generateForm(event) {
-  event.preventDefault();
+function setGeneratedForm(form) {
+  form.selectedPage = 0;
+  form.baseCellTexts = Object.fromEntries(
+    form.preview.rows.flatMap(row => row.cells
+      .filter(cell => cell.editable)
+      .map(cell => [cell.address, cell.text]))
+  );
+}
+
+function invalidateGeneratedPreview() {
+  const hadGeneratedPreview = Boolean(sfState.generated || sfState.combined);
   sfState.generated = null;
+  sfState.combined = null;
   sfState.editing = false;
   sfElements.editButton.disabled = true;
   sfElements.downloadButton.disabled = true;
+  sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
+  if (!hadGeneratedPreview) return;
+  sfState.preview = null;
+  sfState.selectedTemplate = null;
+  sfElements.previewTitle.textContent = 'Workbook preview';
+  sfElements.previewSubtitle.textContent = 'Generate a preview for the current templates and advisory class.';
+  sfElements.previewContent.innerHTML = `
+    <div class="sf-preview-empty">
+      <div class="sf-preview-empty-icon"><i data-lucide="sheet"></i></div>
+      <strong>No current preview</strong>
+      <span>Generate a new preview after changing the selected forms or class.</span>
+    </div>`;
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderGeneratedPreview() {
+  const form = sfState.generated;
+  if (!form) return;
+  const forms = sfState.combined?.forms || [];
+  const formTabs = forms.length > 1
+    ? `<div class="sf-generated-form-tabs" role="tablist" aria-label="Generated forms">${forms.map((item, index) => `
+      <button class="sf-sheet-tab ${item === form ? 'active' : ''}" type="button" role="tab"
+        aria-selected="${item === form}" data-combined-form-index="${index}">${escapeHtml(item.formCode)}</button>
+    `).join('')}</div>` : '';
+  const pageTabs = form.formCode === 'SF2' && form.pages.length > 1
+    ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="SF2 pages">${form.pages.map((_, index) => `
+      <button class="sf-sheet-tab ${index === form.selectedPage ? 'active' : ''}" type="button" role="tab"
+        aria-selected="${index === form.selectedPage}" data-sf2-page="${index}">Page ${index + 1}</button>
+    `).join('')}</div>` : '';
+  const issues = forms.length > 1
+    ? forms.flatMap(item => item.issues.map(issue => ({ ...issue, message: `${item.formCode}: ${issue.message}` })))
+    : form.issues;
+  sfState.preview = form.preview;
+  sfElements.previewContent.innerHTML = `${renderIssueSummary(issues)}${formTabs}${pageTabs}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
+  renderWorkbook(document.getElementById('sfMainWorkbook'), form.preview);
+  sfElements.editButton.textContent = 'Edit generated form';
+  sfElements.editButton.disabled = form.formCode === 'SF2' || form.hasBlockingIssues || !form.editableCells?.length;
+  sfElements.downloadButton.innerHTML = `<i data-lucide="download"></i> ${forms.length > 1 ? 'Download combined XLSX' : 'Download XLSX'}`;
+  sfElements.downloadButton.disabled = sfState.combined
+    ? sfState.combined.hasBlockingIssues
+    : Boolean(form.hasBlockingIssues);
+  if (window.lucide) lucide.createIcons();
+}
+
+async function generateForm(event) {
+  event.preventDefault();
+  const templates = selectedTemplates();
+  invalidateGeneratedPreview();
+  sfState.generationInProgress = true;
   sfElements.generateButton.disabled = true;
-  sfElements.generateButton.textContent = 'Generating...';
+  sfElements.generateButton.textContent = 'Preparing preview...';
+  setGenerationInputsBusy(true);
   try {
-    sfState.generated = await window.EDUGNAY_CONFIG.generateSfForm({
-      templateId: sfElements.templateSelect.value,
+    const values = {
       sectionId: sfElements.sectionSelect.value,
-      schoolYear: sfElements.schoolYear.value
-    });
-    sfState.generated.baseCellTexts = Object.fromEntries(
-      sfState.generated.preview.rows.flatMap(row => row.cells
-        .filter(cell => cell.editable)
-        .map(cell => [cell.address, cell.text]))
-    );
+      schoolYear: sfElements.schoolYear.value,
+      month: sfElements.month.value
+    };
+    if (templates.length > 1) {
+      sfState.combined = await window.EDUGNAY_CONFIG.generateCombinedSfForms({
+        ...values,
+        templateIds: templates.map(template => template.id)
+      });
+      sfState.combined.forms.forEach(setGeneratedForm);
+      sfState.combined.hasBlockingIssues = sfState.combined.forms.some(form => form.hasBlockingIssues);
+      sfState.combined.selectedFormIndex = 0;
+      sfState.generated = sfState.combined.forms[0];
+    } else {
+      sfState.generated = await window.EDUGNAY_CONFIG.generateSfForm({
+        ...values,
+        templateId: templates[0].id
+      });
+      sfState.generated.formCode = templates[0].formCode;
+      setGeneratedForm(sfState.generated);
+    }
     sfState.selectedTemplate = sfState.templates.find(template => template.id === sfState.generated.templateId) || null;
     sfState.editing = false;
     sfState.zoomMode = 'fit';
     sfElements.previewTitle.textContent = 'Generated form preview';
     sfElements.previewSubtitle.textContent = window.EDUGNAY_API?.isBackendAvailable
-      ? 'Review current system records before downloading the XLSX file.'
+      ? 'Review the selected form previews before downloading the XLSX file.'
       : 'Demo preview uses sample records stored in this browser.';
-    sfElements.previewContent.innerHTML = `${renderIssueSummary(sfState.generated.issues)}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
-    renderWorkbook(document.getElementById('sfMainWorkbook'), sfState.generated.preview);
-    sfElements.editButton.disabled = sfState.generated.hasBlockingIssues || !sfState.generated.editableCells?.length;
-    sfElements.downloadButton.disabled = Boolean(sfState.generated.hasBlockingIssues);
+    renderGeneratedPreview();
   } catch (error) {
+    sfState.generated = null;
+    sfState.combined = null;
     showAppToast(error.message, 'error');
   } finally {
-    sfElements.generateButton.textContent = 'Generate preview';
+    sfElements.generateButton.textContent = 'Preview with school data';
+    setGenerationInputsBusy(false);
     updateGenerateButton();
+  }
+}
+
+async function downloadBlankCombinedWorkbook() {
+  if (!hasBlankCombinedSelection() || sfState.blankDownloadInProgress || sfState.generationInProgress) return;
+
+  sfState.blankDownloadInProgress = true;
+  sfElements.blankCombinedDownloadButton.disabled = true;
+  sfElements.blankCombinedDownloadButton.setAttribute('aria-busy', 'true');
+  sfElements.blankCombinedDownloadButton.innerHTML = 'Preparing blank workbook...';
+  try {
+    const result = await window.EDUGNAY_CONFIG.downloadBlankCombinedSfTemplates(
+      selectedTemplates().map(template => template.id)
+    );
+    startXlsxDownload(result.buffer, result.fileName);
+    showAppToast('Blank SF1 and SF2 workbook download started.');
+  } catch (error) {
+    showAppToast(error.message || 'The blank combined workbook could not be downloaded.', 'error');
+  } finally {
+    sfState.blankDownloadInProgress = false;
+    sfElements.blankCombinedDownloadButton.innerHTML = '<i data-lucide="download" aria-hidden="true"></i> Download blank combined XLSX';
+    sfElements.blankCombinedDownloadButton.removeAttribute('aria-busy');
+    updateGenerateButton();
+    if (window.lucide) lucide.createIcons();
   }
 }
 
@@ -341,7 +539,7 @@ function toggleGeneratedEditing() {
 }
 
 async function downloadGeneratedWorkbook() {
-  if (!sfState.generated || sfState.generated.hasBlockingIssues) return;
+  if (!sfState.generated || (sfState.combined ? sfState.combined.hasBlockingIssues : sfState.generated.hasBlockingIssues)) return;
   if (sfState.editing) {
     preservePreviewEdits();
     sfState.editing = false;
@@ -352,29 +550,34 @@ async function downloadGeneratedWorkbook() {
   sfElements.downloadButton.disabled = true;
   sfElements.downloadButton.textContent = 'Preparing XLSX...';
   try {
-    const result = await window.EDUGNAY_CONFIG.exportSfForm({
-      templateId: sfState.generated.templateId,
-      sectionId: sfState.generated.sectionId,
-      fileName: sfState.generated.fileName,
-      mappedCells: sfState.generated.mappedCells,
-      edits: sfState.generated.edits,
-      previewFingerprint: sfState.generated.previewFingerprint,
-      exportId: sfState.generated.exportId
-    });
-    sfState.generated.exportId = result.exportId || null;
-    const blob = new Blob([result.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const link = document.createElement('a');
-    const objectUrl = URL.createObjectURL(blob);
-    link.href = objectUrl;
-    link.download = result.fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-    showAppToast('Workbook download started.');
+    const result = sfState.combined
+      ? await window.EDUGNAY_CONFIG.exportCombinedSfForms({
+        templateIds: sfState.combined.templateIds,
+        sectionId: sfState.combined.sectionId,
+        month: sfState.combined.month,
+        fileName: sfState.combined.fileName,
+        previewFingerprint: sfState.combined.previewFingerprint,
+        forms: sfState.combined.forms
+      })
+      : await window.EDUGNAY_CONFIG.exportSfForm({
+        templateId: sfState.generated.templateId,
+        sectionId: sfState.generated.sectionId,
+        month: sfState.generated.month,
+        fileName: sfState.generated.fileName,
+        mappedCells: sfState.generated.mappedCells,
+        edits: sfState.generated.edits,
+        previewFingerprint: sfState.generated.previewFingerprint,
+        exportId: sfState.generated.exportId
+      });
+    if (sfState.generated) sfState.generated.exportId = result.exportId || null;
+    startXlsxDownload(result.buffer, result.fileName);
+    showAppToast(sfState.combined ? 'Combined SF1 and SF2 workbook download started.' : 'Workbook download started.');
   } catch (error) {
+    if (sfState.generated && error.exportId) sfState.generated.exportId = error.exportId;
     if (error.status === 409) {
       sfState.generated = null;
+      sfState.combined = null;
+      sfState.preview = null;
       sfState.editing = false;
       sfElements.editButton.disabled = true;
       sfElements.previewSubtitle.textContent = 'The system records changed. Generate a new preview before downloading.';
@@ -382,9 +585,39 @@ async function downloadGeneratedWorkbook() {
     }
     showAppToast(error.message, 'error');
   } finally {
-    sfElements.downloadButton.innerHTML = '<i data-lucide="download"></i> Download XLSX';
-    sfElements.downloadButton.disabled = !sfState.generated || Boolean(sfState.generated.hasBlockingIssues);
+    sfElements.downloadButton.innerHTML = `<i data-lucide="download"></i> ${sfState.combined ? 'Download combined XLSX' : 'Download XLSX'}`;
+    sfElements.downloadButton.disabled = !sfState.generated || (sfState.combined
+      ? sfState.combined.hasBlockingIssues
+      : Boolean(sfState.generated.hasBlockingIssues));
     if (window.lucide) lucide.createIcons();
+  }
+}
+
+function startXlsxDownload(buffer, fileName) {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  const objectUrl = URL.createObjectURL(blob);
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+}
+
+async function downloadBlankTemplate(templateId, button) {
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const result = await window.EDUGNAY_CONFIG.downloadSfTemplate(templateId);
+    startXlsxDownload(result.buffer, result.fileName);
+    const template = sfState.templates.find(record => record.id === String(templateId));
+    showAppToast(`${template?.formCode || 'SF'} blank template download started.`);
+  } catch (error) {
+    showAppToast(error.message || 'The blank template could not be downloaded.', 'error');
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
   }
 }
 
@@ -419,19 +652,96 @@ async function initializeSfTemplatesPage() {
 }
 
 sfElements.generatorForm.addEventListener('submit', generateForm);
-[sfElements.templateSelect, sfElements.sectionSelect, sfElements.schoolYear].forEach(select => select.addEventListener('change', () => {
-  sfState.generated = null;
-  sfState.editing = false;
-  sfElements.editButton.disabled = true;
-  sfElements.downloadButton.disabled = true;
+sfElements.templateList.addEventListener('change', event => {
+  if (!event.target.matches('input[type="checkbox"]')) return;
+  sfState.selectedTemplateIds = selectedTemplates().map(template => template.id);
+  updateTemplatePicker();
+  invalidateGeneratedPreview();
+  updateMonthField();
+  updateGenerateButton();
+});
+sfElements.templateTrigger.addEventListener('click', () => {
+  if (!sfElements.templateDropdown.hidden) {
+    closeTemplatePicker();
+    return;
+  }
+  sfElements.templateSearch.value = '';
+  filterTemplateChoices();
+  sfElements.templateDropdown.hidden = false;
+  sfElements.templateTrigger.setAttribute('aria-expanded', 'true');
+  sfElements.templateSearch.focus();
+});
+sfElements.templateSearch.addEventListener('input', filterTemplateChoices);
+sfElements.templateSearch.addEventListener('keydown', event => {
+  if (event.key === 'Enter') event.preventDefault();
+});
+sfElements.templateClear.addEventListener('click', () => {
+  sfElements.templateList.querySelectorAll('input[type="checkbox"]:checked').forEach(input => { input.checked = false; });
+  sfState.selectedTemplateIds = [];
+  updateTemplatePicker();
+  invalidateGeneratedPreview();
+  updateMonthField();
+  updateGenerateButton();
+});
+sfElements.templateDone.addEventListener('click', () => {
+  closeTemplatePicker();
+  sfElements.templateTrigger.focus();
+});
+document.addEventListener('click', event => {
+  if (!sfElements.templatePicker.contains(event.target)) closeTemplatePicker();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !sfElements.templateDropdown.hidden) {
+    closeTemplatePicker();
+    sfElements.templateTrigger.focus();
+  }
+});
+[sfElements.sectionSelect, sfElements.schoolYear, sfElements.month].forEach(select => select.addEventListener('change', () => {
+  if (select === sfElements.sectionSelect) {
+    const section = sfState.sections.find(record => record.id === sfElements.sectionSelect.value);
+    sfElements.schoolYear.value = section?.academicYear || '';
+  }
+  updateMonthField();
+  invalidateGeneratedPreview();
   updateGenerateButton();
 }));
 [sfElements.codeFilter, sfElements.levelFilter]
   .forEach(select => select.addEventListener('change', renderTemplateLibrary));
 sfElements.editButton.addEventListener('click', toggleGeneratedEditing);
 sfElements.downloadButton.addEventListener('click', downloadGeneratedWorkbook);
+sfElements.blankCombinedDownloadButton.addEventListener('click', downloadBlankCombinedWorkbook);
 
 sfElements.previewContent.addEventListener('click', event => {
+  const formTab = event.target.closest('[data-combined-form-index]');
+  if (formTab && sfState.combined) {
+    if (sfState.editing) {
+      preservePreviewEdits();
+      sfState.editing = false;
+    }
+    const formIndex = Number(formTab.dataset.combinedFormIndex);
+    const form = sfState.combined.forms[formIndex];
+    if (!form) return;
+    sfState.combined.selectedFormIndex = formIndex;
+    sfState.generated = form;
+    sfState.selectedTemplate = sfState.templates.find(template => template.id === form.templateId) || null;
+    renderGeneratedPreview();
+    return;
+  }
+  const pageButton = event.target.closest('[data-sf2-page]');
+  if (pageButton && sfState.generated?.pages) {
+    const generated = sfState.generated;
+    const pageIndex = Number(pageButton.dataset.sf2Page);
+    sfState.generated.selectedPage = pageIndex;
+    window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(sfState.selectedTemplate, sfState.generated.pages[pageIndex], [])
+      .then(result => {
+        if (sfState.generated !== generated || generated.selectedPage !== pageIndex) return;
+        generated.preview = result.preview;
+        sfState.preview = result.preview;
+        sfElements.previewContent.querySelectorAll('[data-sf2-page]').forEach(button => button.classList.toggle('active', Number(button.dataset.sf2Page) === pageIndex));
+        renderWorkbook(document.getElementById('sfMainWorkbook'), result.preview);
+      }).catch(error => showAppToast(error.message, 'error'));
+    return;
+  }
   const zoomButton = event.target.closest('[data-preview-zoom]');
   if (zoomButton) {
     changePreviewZoom(zoomButton.dataset.previewZoom);
@@ -442,6 +752,11 @@ sfElements.previewContent.addEventListener('click', event => {
 });
 
 sfElements.list.addEventListener('click', event => {
+  const downloadButton = event.target.closest('[data-template-download]');
+  if (downloadButton) {
+    downloadBlankTemplate(downloadButton.dataset.templateDownload, downloadButton);
+    return;
+  }
   const previewButton = event.target.closest('[data-template-preview]');
   if (previewButton) {
     openTemplatePreview(previewButton.dataset.templatePreview);
