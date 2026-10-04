@@ -25,6 +25,7 @@ function createPage(api) {
     document,
     window: {
       EDUGNAY_API: api,
+      EDUGNAY_AVATAR: { html: person => `<span>${String(person.displayName || '')}</span>` },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
         renderPanelEmptyState: ({ title }) => title

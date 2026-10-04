@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { avatarFields } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 
 const SECTION_STATUSES = new Set(['active', 'archived']);
@@ -45,6 +46,7 @@ function sectionSelect() {
     school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode,
     school_grade_levels.display_name AS gradeLevelName, strands.track_code AS strandCode,
     strands.display_name AS strandName, adviser.display_name AS adviserName,
+    adviser.avatar_filename AS adviserAvatarFilename, adviser.avatar_version AS adviserAvatarVersion,
     (SELECT COUNT(*) FROM section_students WHERE section_students.school_id = sections.school_id
       AND section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL) AS studentCount
   FROM sections
@@ -86,7 +88,9 @@ function formatSection(row) {
     gradeLevelId: row.gradeLevelId, gradeCode: row.gradeCode, gradeLevelName: row.gradeLevelName,
     strandId: row.strandId, strandCode: row.strandCode, strandName: row.strandName,
     name: row.name, capacity: row.capacity, studentCount: Number(row.studentCount),
-    adviserUserId: row.adviserUserId, adviserName: row.adviserName, status: row.status
+    adviserUserId: row.adviserUserId, adviserName: row.adviserName,
+    adviserAvatar: avatarFields({ id: row.adviserUserId, avatarFilename: row.adviserAvatarFilename,
+      avatarVersion: row.adviserAvatarVersion }), status: row.status
   };
 }
 
@@ -291,8 +295,10 @@ async function listSectionStudents(req, res, next) {
     const values = [section.schoolId, sectionId];
     if (req.user.role === 'student') { where.push('students.id = ?'); values.push(req.user.id); }
     if (req.user.role === 'parent') { where.push('EXISTS (SELECT 1 FROM student_parent_links WHERE student_parent_links.school_id = section_students.school_id AND student_parent_links.student_user_id = students.id AND student_parent_links.parent_user_id = ?)'); values.push(req.user.id); }
-    const [students] = await getDatabase().execute(`SELECT students.id, students.display_name AS displayName, students.school_email AS schoolEmail, students.initials, student_profiles.lrn FROM section_students INNER JOIN users AS students ON students.id = section_students.student_user_id INNER JOIN student_profiles ON student_profiles.user_id = students.id WHERE ${where.join(' AND ')} ORDER BY students.last_name, students.first_name`, values);
-    res.json({ section: formatSection(section), students: students.map(student => ({ id: student.id, displayName: student.displayName, initials: student.initials, schoolEmail: student.schoolEmail, lrn: student.lrn })) });
+    const [students] = await getDatabase().execute(`SELECT students.id, students.display_name AS displayName, students.school_email AS schoolEmail, students.initials, students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion, student_profiles.lrn FROM section_students INNER JOIN users AS students ON students.id = section_students.student_user_id INNER JOIN student_profiles ON student_profiles.user_id = students.id WHERE ${where.join(' AND ')} ORDER BY students.last_name, students.first_name`, values);
+    res.json({ section: formatSection(section), students: students.map(({ avatarFilename, avatarVersion, ...student }) => ({
+      ...student, ...avatarFields({ id: student.id, avatarFilename, avatarVersion })
+    })) });
   } catch (error) { next(error); }
 }
 
@@ -467,8 +473,10 @@ async function listSectionTeachers(req, res, next) {
     const sectionId = parseId(req.params.sectionId, 'section ID');
     const section = await findAccessibleSection(req, sectionId);
     if (!section) throw createError('Section not found.', 404);
-    const [teachers] = await getDatabase().execute('SELECT section_teachers.id AS assignmentId, teachers.id AS teacherId, teachers.display_name AS teacherName, teachers.school_email AS teacherEmail, teachers.initials, subjects.id AS subjectId, subjects.subject_code AS subjectCode, subjects.name AS subjectName FROM section_teachers INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.section_id = ? ORDER BY teachers.last_name, subjects.name', [sectionId]);
-    res.json({ section: formatSection(section), teachers });
+    const [teachers] = await getDatabase().execute('SELECT section_teachers.id AS assignmentId, teachers.id AS teacherId, teachers.display_name AS teacherName, teachers.school_email AS teacherEmail, teachers.initials, teachers.avatar_filename AS avatarFilename, teachers.avatar_version AS avatarVersion, subjects.id AS subjectId, subjects.subject_code AS subjectCode, subjects.name AS subjectName FROM section_teachers INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.section_id = ? ORDER BY teachers.last_name, subjects.name', [sectionId]);
+    res.json({ section: formatSection(section), teachers: teachers.map(({ avatarFilename, avatarVersion, ...teacher }) => ({
+      ...teacher, ...avatarFields({ id: teacher.teacherId, avatarFilename, avatarVersion })
+    })) });
   } catch (error) { next(error); }
 }
 

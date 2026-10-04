@@ -167,6 +167,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_name VARCHAR(100) NOT NULL,
   display_name VARCHAR(220) NOT NULL,
   initials VARCHAR(10) NOT NULL,
+  avatar_filename VARCHAR(64) NULL,
+  avatar_version BIGINT UNSIGNED NOT NULL DEFAULT 0,
   setup_completed_at DATETIME NULL,
   last_login_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

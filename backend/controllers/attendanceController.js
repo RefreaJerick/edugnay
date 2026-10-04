@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
@@ -163,6 +164,7 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
       students.id AS studentId,
       students.display_name AS displayName,
       students.initials,
+      students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
       student_profiles.lrn,
       attendance_records.attendance_status AS attendanceStatus,
       attendance_records.remarks
@@ -197,6 +199,7 @@ async function getAttendanceData(database, section, subjectId, attendanceDate) {
       id: student.studentId,
       displayName: student.displayName,
       initials: student.initials,
+      ...avatarFields({ ...student, id: student.studentId }),
       lrn: student.lrn,
       attendanceStatus: student.attendanceStatus,
       remarks: student.remarks
@@ -239,6 +242,7 @@ async function getSectionAttendanceHistory(req, res, next) {
         attendance_records.student_user_id AS studentId,
         students.display_name AS displayName,
         students.initials,
+        students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
         attendance_records.attendance_status AS attendanceStatus,
         attendance_records.remarks
       FROM attendance_sessions
@@ -274,6 +278,7 @@ async function getSectionAttendanceHistory(req, res, next) {
           id: String(row.studentId),
           displayName: row.displayName,
           initials: row.initials,
+          ...avatarFields({ ...row, id: row.studentId }),
           attendanceStatus: row.attendanceStatus,
           remarks: row.remarks
         });
@@ -385,6 +390,7 @@ async function getParentAttendance(req, res, next) {
     await assertAttendanceFeatureEnabled(database, req.user.schoolId);
     const [children] = await database.execute(
       `SELECT students.id AS studentId, students.display_name AS displayName, students.initials,
+        students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
         school_grade_levels.display_name AS gradeLevel, sections.name AS sectionName
       FROM student_parent_links
       INNER JOIN users AS students ON students.id = student_parent_links.student_user_id
@@ -437,7 +443,9 @@ async function getParentAttendance(req, res, next) {
       ORDER BY attendance_sessions.attendance_date DESC, subjects.name`,
       [req.user.schoolId, getCurrentDate(), req.user.id]
     );
-    res.json({ currentDate: getCurrentDate(), children: children.map(child => ({ ...child, studentId: String(child.studentId) })), records: records.map(record => ({ ...record, studentId: String(record.studentId), sectionId: String(record.sectionId), subjectId: String(record.subjectId) })) });
+    res.json({ currentDate: getCurrentDate(), children: children.map(({ avatarFilename, avatarVersion, ...child }) => ({
+      ...child, ...avatarFields({ id: child.studentId, avatarFilename, avatarVersion }), studentId: String(child.studentId)
+    })), records: records.map(record => ({ ...record, studentId: String(record.studentId), sectionId: String(record.sectionId), subjectId: String(record.subjectId) })) });
   } catch (error) { next(error); }
 }
 

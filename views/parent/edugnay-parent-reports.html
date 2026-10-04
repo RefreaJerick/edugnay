@@ -334,6 +334,20 @@
     }
 
     let activeReportId = null;
+    const reportTeachers = new Map();
+
+    function reportTeacherPerson(report) {
+      const teacher = reportTeachers.get(String(report.teacherId))
+        || reportTeachers.get(`email:${String(report.teacherEmail || '').toLowerCase()}`)
+        || reportTeachers.get(String(report.teacherName || '').toLowerCase());
+      return {
+        id: teacher?.teacherId || report.teacherId,
+        name: report.teacherName,
+        initials: teacher?.initials || report.teacherInitials,
+        avatarUrl: teacher?.avatarUrl || report.teacherAvatarUrl,
+        role: 'teacher'
+      };
+    }
 
     function renderChildSwitcher() {
       const switcher = document.getElementById('child-switcher');
@@ -361,7 +375,7 @@
 
       switcher.innerHTML = PARENT_CHILDREN.map(child => {
         const isActive = child.studentId === currentChildId;
-        return `<div class="child-card ${isActive ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${isActive}"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(child.initials || '--')}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student')}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned')}</div></div></div>`;
+        return `<div class="child-card ${isActive ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${isActive}">${window.EDUGNAY_AVATAR.html(child, { className: 'child-avatar', role: 'student' })}<div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student')}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned')}</div></div></div>`;
       }).join('');
       switcher.removeAttribute('role');
       switcher.querySelectorAll('[data-child]').forEach(card => {
@@ -430,7 +444,7 @@
       ${renderRecommendedActions(latest.recommendedActions)}
       <div class="lr-foot">
         <div class="lr-meta">
-          <span class="lr-teacher-avatar">${window.EDUGNAY_CONFIG.escapeHtml(latest.teacherInitials || window.EDUGNAY_CONFIG.getInitials(latest.teacherName))}</span>
+          ${window.EDUGNAY_AVATAR.html(reportTeacherPerson(latest), { className: 'lr-teacher-avatar', size: 'sm' })}
           <span>Confirmed by ${window.EDUGNAY_CONFIG.escapeHtml(latest.teacherName)} · ${window.EDUGNAY_CONFIG.escapeHtml(latest.confirmedAtLabel)}</span>
         </div>
       </div>
@@ -497,7 +511,7 @@
             <div class="rc-excerpt">${window.EDUGNAY_CONFIG.escapeHtml(r.text)}</div>
             <div class="rc-foot">
               <div class="rc-foot-left">
-                <span class="rc-teacher-avatar">${window.EDUGNAY_CONFIG.escapeHtml(r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName))}</span>
+                ${window.EDUGNAY_AVATAR.html(reportTeacherPerson(r), { className: 'rc-teacher-avatar', size: 'sm' })}
                 <span>${window.EDUGNAY_CONFIG.escapeHtml(r.teacherName)} · ${window.EDUGNAY_CONFIG.escapeHtml(r.confirmedAtLabel)}</span>
               </div>
               <button class="rc-read-link" data-report-id="${window.EDUGNAY_CONFIG.escapeHtml(r.id)}" onclick="event.stopPropagation(); openReportModal(this.dataset.reportId)">
@@ -522,7 +536,7 @@
       document.getElementById('rm-child').textContent = `${child.displayName} · ${child.gradeLevel || 'Unassigned'} – ${section?.name || 'Unassigned'}`;
       document.getElementById('rm-text').textContent = r.text;
       document.getElementById('rm-recommended-actions').innerHTML = renderRecommendedActions(r.recommendedActions);
-      document.getElementById('rm-foot-avatar').textContent = r.teacherInitials || window.EDUGNAY_CONFIG.getInitials(r.teacherName);
+      window.EDUGNAY_AVATAR.render(document.getElementById('rm-foot-avatar'), reportTeacherPerson(r), { size: 'sm' });
       document.getElementById('rm-foot-meta-text').textContent = `Confirmed by ${r.teacherName} · ${r.confirmedAtLabel}`;
 
       const riskBanner = document.getElementById('rm-risk-banner');
@@ -562,6 +576,18 @@
           studentId: String(child.studentId),
           sectionId: child.sectionId == null ? null : String(child.sectionId)
         }));
+      const sectionIds = [...new Set(PARENT_CHILDREN.map(child => child.sectionId).filter(Boolean))];
+      const sectionTeachers = await Promise.all(sectionIds.map(sectionId =>
+        window.EDUGNAY_API.getSectionTeachers(sectionId).then(result => result.teachers || []).catch(() => [])));
+      reportTeachers.clear();
+      sectionTeachers.flat().forEach(teacher => {
+        reportTeachers.set(String(teacher.teacherId), teacher);
+        const email = String(teacher.teacherEmail || '').toLowerCase();
+        if (email) reportTeachers.set(`email:${email}`, teacher);
+        const name = String(teacher.teacherName || '').toLowerCase();
+        if (name && !reportTeachers.has(name)) reportTeachers.set(name, teacher);
+        else if (name && reportTeachers.get(name)?.teacherId !== teacher.teacherId) reportTeachers.set(name, null);
+      });
     }
 
     function setInitialChild() {

@@ -379,16 +379,6 @@
       padding: 16px 16px 0;
     }
 
-    .report-avatar {
-      width: 40px; height: 40px;
-      border-radius: var(--radius-md);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700;
-      flex-shrink: 0;
-      background: var(--blue-xpale);
-      color: var(--blue-mid);
-    }
-
     .report-card-name {
       font-size: 13.5px;
       font-weight: 700;
@@ -583,16 +573,6 @@
       position: relative;
     }
 
-    .review-avatar {
-      width: 44px; height: 44px;
-      border-radius: var(--radius-md);
-      background: var(--blue-xpale);
-      color: var(--blue-mid);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 700;
-      flex-shrink: 0;
-    }
-
     .review-modal-title {
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 17px;
@@ -683,6 +663,7 @@
 
     /* â”€â”€ ICON COLOR VARIANTS (shared bg+color pairs) â”€â”€ */
     .icon-purple { background: var(--purple-pale); color: var(--purple); }
+    .review-avatar.icon-purple { width: 44px; height: 44px; border-radius: var(--radius-md); }
     .icon-orange { background: var(--orange-pale); color: var(--orange-dark); }
     .icon-green  { background: var(--green-pale);  color: var(--green-dark); }
     .icon-red    { background: var(--red-pale);    color: var(--red); }
@@ -1032,7 +1013,6 @@
 }
 .report-card.at-risk { border-color: var(--red-border); }
 .report-card-head { padding: 16px 16px 0; }
-.report-avatar { width: 38px; height: 38px; border-radius: var(--radius-sm); background: var(--blue-xpale); border: 1px solid var(--blue-pale); }
 .report-card-name { font-size: 13px; }
 .report-card-meta { font-size: 10px; }
 .at-risk-flag { border-radius: var(--radius-xs); padding: 4px 7px; font-size: 9px; }
@@ -1082,7 +1062,6 @@
   border-bottom: 1px solid var(--gray-200);
   align-items: center;
 }
-.review-avatar { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--blue-pale); }
 .review-modal-title { font-size: 16px; }
 .review-modal-sub { font-size: 10.5px; }
 .modal-close { top: 15px; right: 15px; width: 28px; height: 28px; border: 1px solid var(--gray-200); background: var(--white); }

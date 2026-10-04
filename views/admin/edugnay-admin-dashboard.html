@@ -823,7 +823,7 @@
       if (!student) {
         preview?.classList.remove('visible');
       } else {
-        document.getElementById('spAv').textContent = student.initials;
+        window.EDUGNAY_AVATAR.render(document.getElementById('spAv'), { ...student, role: 'student' });
         document.getElementById('spName').textContent = student.displayName;
         document.getElementById('spDetail').textContent = student.schoolEmail;
         preview?.classList.add('visible');

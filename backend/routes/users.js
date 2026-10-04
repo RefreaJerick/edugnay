@@ -13,10 +13,15 @@ const {
 } = require('../controllers/usersController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/authorize');
+const { avatarUpload } = require('../config/avatars');
+const { getAvatar, removeMyAvatar, uploadMyAvatar } = require('../controllers/avatarsController');
 
 const router = express.Router();
 
 router.use(requireAuth);
+router.post('/me/avatar', avatarUpload.single('avatar'), uploadMyAvatar);
+router.delete('/me/avatar', removeMyAvatar);
+router.get('/:userId/avatar', getAvatar);
 router.get('/me/profile', getMyProfile);
 router.patch('/me/profile', updateMyProfile);
 router.get('/me/parents', requireRoles('student'), getMyParents);

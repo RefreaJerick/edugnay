@@ -1695,6 +1695,96 @@ function saveFrontendSession(session) {
   }
 }
 
+function renderAvatar(element, person = {}, options = {}) {
+  if (!element) return;
+  const sizes = ['sm', 'compact', 'md', 'lg', 'profile'];
+  const tones = ['navy', 'blue', 'gold', 'green', 'purple', 'orange', 'teal'];
+  const roleTone = { platform_admin: 'blue', school_admin: 'blue', teacher: 'gold',
+    student: 'green', parent: 'purple' };
+  const identity = String(person.id || person.name || person.initials || '');
+  const hash = [...identity].reduce((value, character) => value + character.charCodeAt(0), 0);
+  const tone = tones.includes(options.color) ? options.color
+    : roleTone[person.role] || tones[hash % tones.length];
+  const name = String(person.name || '').trim();
+  const initials = String(person.initials || name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') || '--').trim().toUpperCase();
+  const size = sizes.includes(options.size) ? options.size : 'md';
+
+  element.classList.add('person-avatar');
+  sizes.forEach(value => element.classList.toggle(`person-avatar--${value}`, value === size));
+  element.dataset.avatarTone = tone;
+  if (options.decorative !== false) {
+    element.setAttribute('aria-hidden', 'true');
+    element.removeAttribute('role');
+    element.removeAttribute('aria-label');
+  } else {
+    element.removeAttribute('aria-hidden');
+    element.setAttribute('role', 'img');
+    element.setAttribute('aria-label', options.label || `${name || 'User'} avatar`);
+  }
+
+  const fallback = document.createElement('span');
+  fallback.textContent = initials;
+  const value = String(person.avatarUrl || '').trim();
+  let photoUrl = null;
+  if (value && EDUGNAY_API_BASE_URL) {
+    try {
+      const url = new URL(value, EDUGNAY_API_BASE_URL);
+      if (url.origin === new URL(EDUGNAY_API_BASE_URL).origin
+        && /^\/api\/users\/[1-9]\d*\/avatar$/.test(url.pathname)) photoUrl = url.href;
+    } catch { /* Invalid photo URLs use initials. */ }
+  }
+  const existing = element.querySelector(':scope > img');
+  if (photoUrl && existing?.src === photoUrl) {
+    element.replaceChildren(fallback, existing);
+    return;
+  }
+  element.replaceChildren(fallback);
+  if (!photoUrl) return;
+  const image = document.createElement('img');
+  image.alt = '';
+  image.crossOrigin = 'use-credentials';
+  image.addEventListener('error', () => image.remove(), { once: true });
+  element.appendChild(image);
+  image.src = photoUrl;
+}
+
+function avatarHtml(person = {}, options = {}) {
+  const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+  const name = person.name || person.displayName || person.studentName || person.teacherName || '';
+  const initials = person.initials || person.studentInitials || person.teacherInitials
+    || String(name).split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase() || '--';
+  const details = {
+    id: person.id || person.studentId || person.teacherId || person.parentId,
+    name, initials, avatarUrl: person.avatarUrl, role: options.role || person.role
+  };
+  const size = ['sm', 'compact', 'md', 'lg', 'profile'].includes(options.size) ? options.size : 'md';
+  const className = String(options.className || '').replace(/[^a-zA-Z0-9_ -]/g, '').trim();
+  return `<span class="${escape(className)} person-avatar person-avatar--${size}" data-person-avatar="${escape(JSON.stringify(details))}" aria-hidden="true">${escape(initials)}</span>`;
+}
+
+function hydrateAvatars(root = document) {
+  const elements = root.matches?.('[data-person-avatar]') ? [root] : [];
+  elements.push(...(root.querySelectorAll?.('[data-person-avatar]:not([data-avatar-ready])') || []));
+  elements.forEach(element => {
+    if (element.hasAttribute('data-avatar-ready')) return;
+    element.setAttribute('data-avatar-ready', '');
+    try { renderAvatar(element, JSON.parse(element.dataset.personAvatar), {
+      size: element.classList.contains('person-avatar--compact') ? 'compact'
+        : element.classList.contains('person-avatar--sm') ? 'sm'
+        : element.classList.contains('person-avatar--lg') ? 'lg' : 'md'
+    }); } catch { element.removeAttribute('data-avatar-ready'); }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  hydrateAvatars();
+  new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+    if (node.nodeType === 1) hydrateAvatars(node);
+  }))).observe(document.body, { childList: true, subtree: true });
+});
+
 async function getCurrentUser() {
   if (!EDUGNAY_API_BASE_URL) return window.EDUGNAY_SESSION;
 
@@ -1715,6 +1805,9 @@ async function getCurrentUser() {
     lastName: user.lastName,
     displayName: user.displayName,
     initials: user.initials,
+    hasAvatar: user.hasAvatar,
+    avatarUrl: user.avatarUrl,
+    avatarVersion: user.avatarVersion,
     accountStatus: user.accountStatus,
     setupCompletedAt: user.setupCompletedAt
   };
@@ -1747,10 +1840,134 @@ function applyCurrentUserToShell(session) {
   document.querySelectorAll('.tb-profile-role').forEach(element => {
     element.textContent = roleLabel || element.textContent;
   });
+  document.querySelectorAll('.tb-profile-trigger').forEach(element => {
+    element.setAttribute('aria-label', `Open profile menu for ${session.displayName || 'your account'}`);
+  });
   document.querySelectorAll('.tb-avatar').forEach(element => {
-    element.textContent = session.initials || element.textContent;
+    renderAvatar(element, {
+      id: session.apiUserId || session.userId,
+      name: session.displayName,
+      initials: session.initials || element.textContent,
+      avatarUrl: session.avatarUrl,
+      role: session.role
+    });
+  });
+  document.dispatchEvent(new CustomEvent('edugnay:current-user-updated', { detail: session }));
+}
+
+let avatarRefreshInFlight = null;
+function refreshCurrentUserAvatar() {
+  if (!EDUGNAY_API_BASE_URL || avatarRefreshInFlight) return avatarRefreshInFlight;
+  avatarRefreshInFlight = getCurrentUser()
+    .then(applyCurrentUserToShell)
+    .catch(error => { if (error.status !== 401) console.warn('Avatar refresh failed.', error.message); })
+    .finally(() => { avatarRefreshInFlight = null; });
+  return avatarRefreshInFlight;
+}
+
+window.EDUGNAY_AVATAR = { render: renderAvatar, html: avatarHtml, hydrate: hydrateAvatars,
+  refreshCurrentUser: refreshCurrentUserAvatar };
+
+function initProfileAvatar() {
+  const avatar = document.getElementById('profileAvatar');
+  const trigger = document.getElementById('avatarEditTrigger');
+  const menu = document.getElementById('avatarMenu');
+  const uploadButton = document.getElementById('avatarUploadBtn');
+  const removeButton = document.getElementById('avatarRemoveBtn');
+  const input = document.getElementById('avatarFileInput');
+  if (!avatar || !trigger || !menu || !uploadButton || !removeButton || !input) return;
+  const status = document.createElement('span');
+  status.className = 'avatar-save-status';
+  status.setAttribute('role', 'status');
+  status.hidden = true;
+  avatar.parentElement.appendChild(status);
+
+  const closeMenu = () => {
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+  };
+  const setBusy = (busy, message = '') => {
+    avatar.classList.toggle('is-saving', busy);
+    avatar.parentElement.classList.toggle('is-saving', busy);
+    trigger.disabled = busy;
+    uploadButton.disabled = busy;
+    removeButton.disabled = busy;
+    avatar.setAttribute('aria-busy', String(busy));
+    status.textContent = busy ? message : '';
+    status.hidden = !busy;
+  };
+  const render = user => {
+    if (!user) return;
+    renderAvatar(avatar, {
+      id: user.apiUserId || user.id || user.userId,
+      name: user.displayName,
+      initials: user.initials,
+      avatarUrl: user.avatarUrl,
+      role: user.role
+    }, { size: 'profile' });
+    removeButton.hidden = !user.hasAvatar;
+  };
+  document.addEventListener('edugnay:current-user-updated', event => render(event.detail));
+  render(readFrontendSession() || window.EDUGNAY_SESSION);
+  if (EDUGNAY_API_BASE_URL) refreshCurrentUserAvatar();
+
+  trigger.addEventListener('click', () => {
+    menu.hidden = !menu.hidden;
+    trigger.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  uploadButton.addEventListener('click', () => { closeMenu(); input.click(); trigger.focus(); });
+  document.addEventListener('click', event => {
+    if (!trigger.contains(event.target) && !menu.contains(event.target)) closeMenu();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !menu.hidden) { closeMenu(); trigger.focus(); }
+  });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      showAppToast('Choose a valid PNG, JPEG, or WebP photo that is 2 MB or smaller.', 'error');
+      return;
+    }
+    const form = new FormData();
+    form.append('avatar', file);
+    setBusy(true, 'Saving photo…');
+    try {
+      const response = await requestApiMultipart('/users/me/avatar', form);
+      const current = readFrontendSession() || window.EDUGNAY_SESSION;
+      const user = { ...current, ...response.avatar };
+      saveFrontendSession(user);
+      applyCurrentUserToShell(user);
+      showAppToast('Profile photo saved.');
+    } catch (error) {
+      showAppToast(error.message || 'Unable to save your photo.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  });
+  removeButton.addEventListener('click', async () => {
+    closeMenu();
+    setBusy(true, 'Removing photo…');
+    try {
+      await requestApi('/users/me/avatar', { method: 'DELETE' });
+      const current = readFrontendSession() || window.EDUGNAY_SESSION;
+      const user = { ...current, hasAvatar: false, avatarUrl: null,
+        avatarVersion: Number(current?.avatarVersion || 0) + 1 };
+      saveFrontendSession(user);
+      applyCurrentUserToShell(user);
+      showAppToast('Profile photo removed.');
+    } catch (error) {
+      showAppToast(error.message || 'Unable to remove your photo.', 'error');
+    } finally {
+      setBusy(false);
+    }
   });
 }
+document.addEventListener('DOMContentLoaded', initProfileAvatar);
+window.addEventListener('focus', () => { if (!document.hidden) refreshCurrentUserAvatar(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCurrentUserAvatar(); });
+window.addEventListener('pageshow', event => { if (event.persisted) refreshCurrentUserAvatar(); });
 
 window.EDUGNAY_API.getCurrentUser = getCurrentUser;
 
@@ -6015,11 +6232,14 @@ function applyCurrentDateToGradingBanners() {
       ...academicContext,
       studentName: student?.displayName || '',
       studentEmail: student?.schoolEmail || '',
+      studentAvatarUrl: student?.avatarUrl || null,
       sectionLabel: section
         ? `${academicContext.gradeLevel || 'Grade level not available'} - ${section.name}`
         : '',
       teacherName,
+      teacherEmail: teacher?.schoolEmail || '',
       teacherInitials: record.teacherInitials || getInitials(teacherName),
+      teacherAvatarUrl: teacher?.avatarUrl || null,
       generatedAtLabel: formatDateTime(record.generatedAt),
       confirmedAtLabel: record.confirmedAt ? formatDateTime(record.confirmedAt) : ''
     };
@@ -7065,6 +7285,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Unable to load school portal features.', error.message);
       }
     }
+  } else {
+    applyCurrentUserToShell(window.EDUGNAY_SESSION);
   }
   applyCurrentDateToGradingBanners();
   applyActiveSchoolToShell();

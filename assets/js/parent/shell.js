@@ -50,7 +50,17 @@ function renderParentIdentity() {
     element.textContent = firstName;
   });
   document.querySelectorAll('[data-parent-initials]').forEach(element => {
-    element.textContent = initials;
+    if (element.classList.contains('tb-avatar')) {
+      window.EDUGNAY_AVATAR.render(element, {
+        id: parent?.apiUserId || parent?.id,
+        name: displayName,
+        initials,
+        avatarUrl: parent?.avatarUrl,
+        role: 'parent'
+      });
+    } else {
+      element.textContent = initials;
+    }
   });
 }
 

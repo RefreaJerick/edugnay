@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
 const { createQrPayload, createQrToken, decryptQrToken, encryptQrToken, hashQrToken } = require('../config/qrCredentials');
 
@@ -131,6 +132,7 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
       students.id AS studentId,
       students.display_name AS displayName,
       students.initials,
+      students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
       student_profiles.lrn,
       attendance_records.attendance_status AS attendanceStatus,
       attendance_records.remarks,
@@ -159,6 +161,7 @@ async function getQrAttendanceData(database, section, subjectId, attendanceDate)
     id: student.studentId,
     displayName: student.displayName,
     initials: student.initials,
+    ...avatarFields({ ...student, id: student.studentId }),
     lrn: student.lrn,
     isScanned: Boolean(student.isScanned),
     attendanceStatus: student.attendanceStatus,
@@ -299,7 +302,7 @@ async function scanQrAttendance(req, res, next) {
         student_qr_credentials.credential_status AS credentialStatus,
         users.school_id AS schoolId,
         users.display_name AS displayName,
-        users.initials
+        users.initials, users.avatar_filename AS avatarFilename, users.avatar_version AS avatarVersion
       FROM student_qr_credentials
       INNER JOIN users ON users.id = student_qr_credentials.student_user_id
         AND users.school_id = student_qr_credentials.school_id
@@ -352,7 +355,8 @@ async function scanQrAttendance(req, res, next) {
     res.status(200).json({
       scanned: !isDuplicate,
       duplicate: isDuplicate,
-      student: { id: credential.studentId, displayName: credential.displayName, initials: credential.initials }
+      student: { id: credential.studentId, displayName: credential.displayName, initials: credential.initials,
+        ...avatarFields({ ...credential, id: credential.studentId }) }
     });
   } catch (error) {
     if (connection) await connection.rollback();

@@ -1,9 +1,13 @@
+const { AVATAR_ERROR } = require('../config/avatars');
+
 function errorHandler(error, req, res, next) {
   console.error(error);
 
   const status = String(error.code || '').startsWith('LIMIT_') ? 400 : Number(error.status) || 500;
   const message = error.code === 'LIMIT_FILE_SIZE'
-    ? (req.originalUrl?.startsWith('/api/schools/register') || req.originalUrl?.startsWith('/api/school/logo')
+    ? (req.originalUrl?.startsWith('/api/users/me/avatar')
+      ? AVATAR_ERROR
+      : req.originalUrl?.startsWith('/api/schools/register') || req.originalUrl?.startsWith('/api/school/logo')
       ? 'School logos must be 2 MB or smaller.'
       : req.originalUrl?.startsWith('/api/announcements')
       ? 'Announcement images must be 5 MB or smaller.'

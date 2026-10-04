@@ -668,21 +668,6 @@ tbody tr:hover {
   margin-bottom: 13px;
 }
 
-.adviser-av {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-circle);
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  font-size: 11px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 3px var(--blue-xpale);
-}
-
 .adviser-label {
   font-size: 10px;
   color: var(--gray-400);
@@ -1027,20 +1012,6 @@ tbody tr:hover {
   min-width: 180px;
 }
 
-.teacher-av {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-circle);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 3px var(--gray-50);
-}
-
 .av-blue {
   background: var(--blue-mid);
 }
@@ -1147,33 +1118,6 @@ tbody tr:hover {
 .teacher-preview.visible,
 .student-preview.visible {
   display: flex;
-}
-
-.tp-av,
-.sp-av {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-circle);
-  background: var(--blue-mid);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.student-preview .sp-av {
-  background: linear-gradient(135deg, #16a34a, #22c55e);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.teacher-preview .tp-av {
-  background: var(--gold);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .tp-name,
@@ -1325,20 +1269,6 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.user-av {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-circle);
-  background: var(--blue-mid);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .user-name {

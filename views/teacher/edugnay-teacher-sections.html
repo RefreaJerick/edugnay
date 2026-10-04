@@ -2203,7 +2203,7 @@
       return `
         <tr data-student-id="${student.id}">
           <td style="color:var(--gray-400);font-size:12px;">${index + 1}</td>
-          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div><div class="student-name">${BACKEND_SECTION_MODE ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</button>` : window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
+          <td><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student' })}<div><div class="student-name">${BACKEND_SECTION_MODE ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</button>` : window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
           <td style="font-size:12px;color:var(--gray-400);">${window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '')}</td>
           <td><span class="badge badge-${progress.attendanceTone}">${progress.attendanceRate}</span></td>
           <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.gradeTone] || 'var(--gray-400)'};">${progress.grade}</span></td>
@@ -2231,7 +2231,7 @@
       return `
         <tr class="attendance-entry-row" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}">
           <td class="attendance-number-cell">${index + 1}</td>
-          <td class="attendance-student-cell"><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></td>
+          <td class="attendance-student-cell"><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></td>
           <td class="center attendance-status-cell"><div class="att-btn-group">${buttons}</div></td>
           <td class="attendance-remarks-cell"><input class="attendance-remarks-input" type="text" value="${window.EDUGNAY_CONFIG.escapeHtml(recordByStudent[student.id]?.remark || '')}" placeholder="Optional remark" aria-label="Optional attendance remark for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}" data-attendance-remark></td>
         </tr>`;
@@ -2785,7 +2785,7 @@
       let cellsHtml =
         '<td class="sticky-col">' +
           '<div class="student-cell">' +
-            '<div class="student-av av-' + String.fromCharCode(97 + (idx % 7)) + '" style="width:26px;height:26px;font-size:10px;">' + window.EDUGNAY_CONFIG.escapeHtml(student.initials) + '</div>' +
+            window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student', size: 'sm' }) +
             '<div>' +
               '<div class="student-name" style="font-size:12px;">' + window.EDUGNAY_CONFIG.escapeHtml(student.displayName) + '</div>' +
               '<div class="student-num">#' + (idx + 1) + '</div>' +
@@ -3455,7 +3455,7 @@
     const renderStudents = (students, scanned) => students.length
       ? students.map(student => `
           <div class="qr-attendance-student">
-            <span class="qr-attendance-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</span>
+            ${window.EDUGNAY_AVATAR.html(student, { className: 'qr-attendance-avatar', role: 'student', size: 'sm' })}
             <span class="qr-attendance-student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</span>
             <span class="qr-attendance-state ${scanned ? 'present' : 'waiting'}">
               <i data-lucide="${scanned ? 'check' : 'clock-3'}"></i>
@@ -3519,7 +3519,6 @@
     document.getElementById('qrAttendanceFinalList').innerHTML = qrAttendanceDraft.map(record => {
       const student = getAttendanceStudents().find(item => String(item.id) === String(record.studentId));
       const name = window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student');
-      const initials = window.EDUGNAY_CONFIG.escapeHtml(student?.initials || '--');
       const studentId = window.EDUGNAY_CONFIG.escapeHtml(record.studentId);
       const buttons = statuses.map(status => {
         const selected = record.status === status.value;
@@ -3527,7 +3526,7 @@
       }).join('');
       return `
         <div class="qr-attendance-final-row">
-          <span class="qr-attendance-avatar">${initials}</span>
+          ${window.EDUGNAY_AVATAR.html(student || { id: record.studentId, name }, { className: 'qr-attendance-avatar', role: 'student', size: 'sm' })}
           <span class="qr-attendance-student-name">${name}</span>
           <div class="att-btn-group" role="group" aria-label="Attendance status for ${name}">${buttons}</div>
         </div>
@@ -4772,7 +4771,7 @@
       const statusClass = currentStatus === 'submitted' ? 'badge-green' : currentStatus === 'not_submitted' ? 'badge-red' : 'badge-orange';
       return `
         <tr>
-          <td><div class="student-cell"><div class="student-av av-${String.fromCharCode(97 + (index % 7))}" style="width:28px;height:28px;font-size:10px;">${s.initials}</div><div class="student-name">${s.displayName}</div></div></td>
+          <td><div class="student-cell">${window.EDUGNAY_AVATAR.html(s, { className: 'student-av', role: 'student', size: 'sm' })}<div class="student-name">${s.displayName}</div></div></td>
           <td class="center" style="width:150px;">
             ${statusReadOnly ? `<span class="badge ${statusClass}">${statusLabel}</span>` : `<div class="status-btn-group">
               <button class="status-btn submitted ${currentStatus === 'submitted' ? 'selected' : ''}" onclick="setStudentStatus('${s.id}', 'submitted', this)" title="Submitted" aria-label="Submitted">

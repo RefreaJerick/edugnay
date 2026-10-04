@@ -269,18 +269,18 @@
       <div class="login-top">
         <div class="login-eyebrow">Account Recovery</div>
         <h1 class="login-title" id="forgotTitle">Reset your password</h1>
-        <p class="login-sub">Enter the school email connected to your account. We will prepare a secure reset link.</p>
+        <p class="login-sub">Enter the personal email saved on your account. We will send a secure reset link there.</p>
       </div>
       <form class="login-form" id="forgotPasswordForm" onsubmit="requestPasswordReset(event)">
         <div class="form-group">
-          <label class="form-label" for="resetEmailInput">School Email</label>
+          <label class="form-label" for="resetEmailInput">Personal Email</label>
           <div class="input-wrap">
             <input
               class="form-input"
               type="email"
               id="resetEmailInput"
-              name="schoolEmail"
-              placeholder="name@school.edu.ph"
+              name="personalEmail"
+              placeholder="you@example.com"
               autocomplete="email"
               required
             />
@@ -296,7 +296,7 @@
       <div class="login-top">
         <div class="login-eyebrow">Request Received</div>
         <h1 class="login-title" id="resetSentTitle">Check your email</h1>
-        <p class="login-sub">If an account exists for this address, password reset instructions have been sent.</p>
+        <p class="login-sub">If an account exists for this address, password reset instructions have been sent. Check this inbox and its spam folder.</p>
         <p class="auth-status-email" id="resetEmailSummary"></p>
       </div>
       <div class="auth-actions">
@@ -384,7 +384,7 @@
     'platform.admin@academix.test': 'platform-1'
   };
   const AUTH_STATE = {
-    pendingSchoolEmail: '',
+    pendingRecoveryEmail: '',
     resetToken: new URLSearchParams(window.location.search).get('token')
       || new URLSearchParams(window.location.search).get('resetToken')
       || ''
@@ -405,9 +405,6 @@
   }
 
   function openForgotPassword() {
-    const signInSchoolEmail = document.getElementById('emailInput').value.trim();
-    const resetEmail = document.getElementById('resetEmailInput');
-    if (signInSchoolEmail.includes('@')) resetEmail.value = signInSchoolEmail;
     setAuthMessage('forgotMessage', '');
     showAuthView('forgot');
   }
@@ -446,13 +443,13 @@
   async function requestPasswordReset(event) {
     event.preventDefault();
     const form = event.currentTarget;
-    const schoolEmailInput = document.getElementById('resetEmailInput');
-    const schoolEmail = schoolEmailInput.value.trim();
+    const personalEmailInput = document.getElementById('resetEmailInput');
+    const personalEmail = personalEmailInput.value.trim();
     const submitButton = form.querySelector('button[type="submit"]');
 
-    if (!schoolEmail || !schoolEmailInput.checkValidity()) {
-      setAuthMessage('forgotMessage', 'Enter a valid school email address.', true);
-      schoolEmailInput.focus();
+    if (!personalEmail || !personalEmailInput.checkValidity()) {
+      setAuthMessage('forgotMessage', 'Enter a valid personal email address.', true);
+      personalEmailInput.focus();
       return;
     }
 
@@ -465,9 +462,9 @@
     setSubmitting(submitButton, true, 'Preparing Reset...');
 
     try {
-      await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { schoolEmail });
-      AUTH_STATE.pendingSchoolEmail = schoolEmail;
-      document.getElementById('resetEmailSummary').textContent = schoolEmail;
+      await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { personalEmail });
+      AUTH_STATE.pendingRecoveryEmail = personalEmail;
+      document.getElementById('resetEmailSummary').textContent = personalEmail;
       showAuthView('sent');
     } catch (error) {
       setAuthMessage('forgotMessage', 'Unable to process the request right now. Please try again.', true);
@@ -484,7 +481,7 @@
   }
 
   function goBackFromReset() {
-    showAuthView(AUTH_STATE.pendingSchoolEmail ? 'sent' : 'signin');
+    showAuthView(AUTH_STATE.pendingRecoveryEmail ? 'sent' : 'signin');
   }
 
   async function completePasswordReset(event) {
@@ -527,7 +524,7 @@
   }
 
   function returnToSignIn() {
-    AUTH_STATE.pendingSchoolEmail = '';
+    AUTH_STATE.pendingRecoveryEmail = '';
     AUTH_STATE.resetToken = '';
     document.getElementById('passwordInput').value = '';
     setAuthMessage('signInMessage', '');

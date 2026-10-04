@@ -350,7 +350,7 @@
         const student = link.profile;
         if (!student) return '';
         const sectionLabel = `${student.gradeLevel || 'Unassigned'} – ${student.sectionName || 'Unassigned'}`;
-        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" role="button" tabindex="0"><div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div><div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(sectionLabel)}</div></div></div>`;
+        return `<div class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" role="button" tabindex="0">${window.EDUGNAY_AVATAR.html(student, { className: 'child-avatar', role: 'student' })}<div class="child-info"><div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div><div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(sectionLabel)}</div></div></div>`;
       }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       switcher.querySelectorAll('.child-card').forEach(card => {
         const selectChild = () => switchChild(card.dataset.child, card);

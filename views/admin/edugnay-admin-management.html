@@ -1412,7 +1412,10 @@ function renderSections() {
                 <div class="cs-item"><div class="cs-num">${section.capacity}</div><div class="cs-label">Capacity</div></div>
               </div>
               ${section.adviser
-                ? `<div class="card-adviser"><div class="adviser-av">${section.adviserInitials || section.adviser.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div><div class="adviser-label">Class Adviser</div><div class="adviser-name">${section.adviser}</div></div></div>`
+                ? `<div class="card-adviser">${window.EDUGNAY_AVATAR.html({
+                  id: section.adviserId, name: section.adviser, initials: section.adviserInitials,
+                  avatarUrl: section.adviserAvatar?.avatarUrl, role: 'teacher'
+                }, { className: 'adviser-av' })}<div><div class="adviser-label">Class Adviser</div><div class="adviser-name">${section.adviser}</div></div></div>`
                 : `<div class="no-adviser"><div class="no-adviser-icon"><i data-lucide="alert-circle" style="width:18px;height:18px;"></i></div><div class="no-adviser-text">No adviser assigned yet</div></div>`}
               <div class="card-foot">
                 <button class="card-btn view" type="button">View Students</button>
@@ -1764,7 +1767,7 @@ function renderTeacherAssignments() {
       <div class="subject-row" data-subject-id="${subject.subjectId || ''}" data-assignment-id="${subject.assignmentId || ''}">
         <div class="subj-name-wrap"><div><div class="subj-name">${subject.name}</div><div class="subj-code">${subject.code || ''}</div></div></div>
         ${subject.teacherId ? `
-          <div class="teacher-assign"><div class="teacher-av ${subject.avClass || 'av-blue'}">${teacherInitials(teacher)}</div><div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.schoolEmail || ''}</div></div></div>
+          <div class="teacher-assign">${window.EDUGNAY_AVATAR.html(teacher || {}, { className: 'teacher-av', role: 'teacher' })}<div><div class="teacher-name">${teacher?.displayName || 'Teacher'}</div><div class="teacher-email">${teacher?.schoolEmail || ''}</div></div></div>
           <div class="row-actions"><button class="row-btn change">Change</button><button class="row-btn remove">Remove</button></div>
         ` : `
           <div class="unassigned"><span class="unassigned-text"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> No teacher assigned</span></div>
@@ -1880,12 +1883,11 @@ function renderStudentGradeSubTabs(level) {
 function renderEnrolledTable() {
   const tbody = document.getElementById('enrolledBody');
   tbody.innerHTML = STUDENTS_DATA.map(student => {
-    const initials = student.initials || window.EDUGNAY_CONFIG.getInitials(student.displayName);
     const section = student.sectionId ? managementSectionById(student.sectionId) : null;
     if (section) {
       return `
       <tr data-grade="${managementSectionFilterKey(section)}" data-section="${section.id}" data-assigned="true" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
+        <td><div class="user-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'user-av', role: 'student' })}<div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
         <td><span class="enrolled-section-name">${section.name}</span><div class="table-secondary">${managementSectionContext(section)}</div></td>
         <td><span class="badge gb-${managementSectionTone(section.level, section.gradeValue)}">${section.grade}</span></td>
         <td><div class="row-actions enrolled-actions"><button class="row-btn move" onclick="openMoveStudentModal('${student.displayName}', '${student.id}', '${section.id}')">Move</button><button class="row-btn remove" onclick="removeStudentFromClass('${student.displayName}', '${section.name}', '${student.id}', '${section.id}', this)">Remove</button></div></td>
@@ -1893,7 +1895,7 @@ function renderEnrolledTable() {
     }
     return `
       <tr data-grade="unassigned" data-section="none" data-assigned="false" data-id="${student.id}">
-        <td><div class="user-cell"><div class="user-av" style="background:var(--orange);">${initials}</div><div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
+        <td><div class="user-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'user-av', role: 'student' })}<div><div class="user-name">${student.displayName}</div><div class="user-email">${student.schoolEmail}</div></div></div></td>
         <td><span class="table-warning">Unassigned</span></td>
         <td><span class="badge badge-gray">Not set</span></td>
         <td><button class="row-btn assign" onclick="openStudentAssignModal('${student.id}')">+ Assign</button></td>
@@ -2479,8 +2481,8 @@ function previewTeacher(select) {
   const option = select.selectedOptions[0];
   const name = option.dataset.name;
   const schoolEmail = option.dataset.schoolEmail;
-  const initials = option.dataset.initials;
-  document.getElementById('tpAv').textContent = initials;
+  window.EDUGNAY_AVATAR.render(document.getElementById('tpAv'), teacherRecordById(select.value)
+    || { id: select.value, name, initials: option.dataset.initials, role: 'teacher' });
   document.getElementById('tpName').textContent = name;
   document.getElementById('tpDetail').textContent = schoolEmail;
   preview.classList.add('visible');
@@ -2918,7 +2920,7 @@ function handleManagementStudentChange(studentId) {
   if (!student) {
     preview?.classList.remove('visible');
   } else {
-    document.getElementById('spAv').textContent = student.initials;
+    window.EDUGNAY_AVATAR.render(document.getElementById('spAv'), { ...student, role: 'student' });
     document.getElementById('spName').textContent = student.displayName;
     document.getElementById('spDetail').textContent = student.schoolEmail;
     preview?.classList.add('visible');
@@ -2954,7 +2956,7 @@ function openStudentAssignModal(studentId = '') {
     managementAssignState.grade = matchedStudent.gradeLevel || '';
     managementAssignState.strand = matchedStudent.strand || '';
     document.getElementById('studentSelect').value = matchedStudent.id;
-    document.getElementById('spAv').textContent = matchedStudent.initials;
+    window.EDUGNAY_AVATAR.render(document.getElementById('spAv'), { ...matchedStudent, role: 'student' });
     document.getElementById('spName').textContent = matchedStudent.displayName;
     document.getElementById('spDetail').textContent = matchedStudent.schoolEmail;
     document.getElementById('studentPreview').classList.add('visible');

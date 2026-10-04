@@ -508,6 +508,40 @@
   const REPORTS = window.EDUGNAY_CONFIG.getReportsForTeacher(REPORT_TEACHER_ID, REPORT_WEEK_ID);
   const GENERATION_STUDENTS = [...new Map(REPORTS.map(report => [report.studentId, report])).values()];
   const MAX_RECOMMENDED_ACTIONS = 5;
+  const reportStudents = new Map();
+
+  function reportStudentPerson(report) {
+    const student = reportStudents.get(`id:${report.studentId}`)
+      || reportStudents.get(`email:${String(report.studentEmail || '').toLowerCase()}`)
+      || reportStudents.get(`name:${String(report.studentName || '').toLowerCase()}`);
+    return {
+      id: student?.id || report.studentId,
+      name: report.studentName,
+      initials: student?.initials || window.EDUGNAY_CONFIG.getInitials(report.studentName),
+      avatarUrl: student?.avatarUrl || report.studentAvatarUrl,
+      role: 'student'
+    };
+  }
+
+  async function loadReportStudentAvatars() {
+    if (!window.EDUGNAY_API?.isBackendAvailable) return;
+    try {
+      const sections = await window.EDUGNAY_API.getSections();
+      const rosters = await Promise.all(sections.map(section =>
+        window.EDUGNAY_API.getSectionStudents(section.id).then(result => result.students || []).catch(() => [])));
+      rosters.flat().forEach(student => {
+        reportStudents.set(`id:${student.id}`, student);
+        const email = String(student.schoolEmail || '').toLowerCase();
+        if (email) reportStudents.set(`email:${email}`, student);
+        const name = `name:${String(student.displayName || '').toLowerCase()}`;
+        if (!reportStudents.has(name)) reportStudents.set(name, student);
+        else if (reportStudents.get(name)?.id !== student.id) reportStudents.set(name, null);
+      });
+      renderReports();
+    } catch (error) {
+      console.warn('Report student photos could not be loaded.', error.message);
+    }
+  }
 
   function getGenerationContext() {
     const firstReport = GENERATION_STUDENTS[0];
@@ -758,7 +792,7 @@
         <div class="report-card${r.atRisk ? ' at-risk' : ''}">
 
           <div class="report-card-head">
-            <div class="report-avatar">${window.EDUGNAY_CONFIG.escapeHtml(window.EDUGNAY_CONFIG.getInitials(r.studentName))}</div>
+            ${window.EDUGNAY_AVATAR.html(reportStudentPerson(r), { className: 'report-avatar', role: 'student' })}
             <div style="flex:1;min-width:0;">
               <div class="report-card-name">${window.EDUGNAY_CONFIG.escapeHtml(r.studentName)}</div>
               <div class="report-card-meta">${window.EDUGNAY_CONFIG.escapeHtml(r.studentEmail || 'Email not available')}</div>
@@ -816,7 +850,7 @@
     if (!r) return;
     activeReportId = String(id);
 
-    document.getElementById('rm-avatar').textContent = window.EDUGNAY_CONFIG.getInitials(r.studentName);
+    window.EDUGNAY_AVATAR.render(document.getElementById('rm-avatar'), reportStudentPerson(r), { size: 'compact' });
     document.getElementById('rm-name').textContent   = r.studentName;
     document.getElementById('rm-sub').textContent    = `${r.sectionLabel || 'Section not assigned'} · ${r.weekLabel}`;
 
@@ -1025,6 +1059,7 @@
     renderReports();
     renderGenerationStudents();
     lucide.createIcons();
+    await loadReportStudentAvatars();
   });
 </script>
 </body>

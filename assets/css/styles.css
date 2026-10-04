@@ -1787,26 +1787,53 @@ select:not([multiple]):disabled {
 }
 .tb-profile-trigger:hover, .tb-profile-trigger.open { background: var(--white); border-color: var(--blue-pale); }
 
-.tb-avatar {
-  width: 35px; height: 35px;
+.person-avatar, .tb-avatar {
+  --avatar-size: 35px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
   border-radius: var(--radius-circle);
   color: var(--white);
-  font-size: 13px;
+  background: var(--avatar-bg, var(--blue-mid));
+  font-size: calc(var(--avatar-size) * .37);
   font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  line-height: 1;
 }
-.tb-avatar.admin {
-  background-color: var(--blue-mid);
+.person-avatar--sm { --avatar-size: 26px; }
+.person-avatar--compact { --avatar-size: 43px; }
+.person-avatar--lg { --avatar-size: 54px; }
+.person-avatar--profile { --avatar-size: 104px; }
+.person-avatar[data-avatar-tone="navy"] { --avatar-bg: var(--navy); }
+.person-avatar[data-avatar-tone="blue"], .tb-avatar.admin { --avatar-bg: var(--blue-mid); }
+.person-avatar[data-avatar-tone="gold"], .tb-avatar.faculty { --avatar-bg: var(--gold); }
+.person-avatar[data-avatar-tone="green"], .tb-avatar.student { --avatar-bg: var(--green); }
+.person-avatar[data-avatar-tone="purple"], .tb-avatar.parent { --avatar-bg: var(--purple); }
+.person-avatar[data-avatar-tone="orange"] { --avatar-bg: var(--orange-dark); }
+.person-avatar[data-avatar-tone="teal"] { --avatar-bg: var(--teal); }
+.person-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
-.tb-avatar.faculty {
-  background-color: var(--gold);
-}
-.tb-avatar.student {
-  background-color: var(--green);
-}
-.tb-avatar.parent {
-  background-color: var(--purple);
+.person-avatar.person-avatar {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  min-width: var(--avatar-size);
+  border-radius: var(--radius-circle);
+  border: 0;
+  background: var(--avatar-bg, var(--blue-mid));
+  color: var(--white);
+  font-size: calc(var(--avatar-size) * .37);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .tb-profile-info { text-align: left; }

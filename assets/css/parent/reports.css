@@ -37,25 +37,6 @@
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
 }
 
-.child-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-circle);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--white);
-  background: var(--blue-mid);
-}
-
-.child-card:nth-child(2) .child-avatar {
-  background: var(--purple);
-}
-
 .child-info {
   min-width: 0;
 }
@@ -207,21 +188,6 @@
   gap: 8px;
   font-size: 11px;
   color: var(--gray-500);
-}
-
-.lr-teacher-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-xs);
-  flex-shrink: 0;
-  background: var(--blue-xpale);
-  border: 1px solid var(--blue-pale);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--blue-mid);
 }
 
 .lr-risk-pill {
@@ -478,20 +444,6 @@
   color: var(--gray-400);
 }
 
-.rc-teacher-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-xs);
-  flex-shrink: 0;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8.5px;
-  font-weight: 800;
-}
-
 .rc-read-link {
   display: inline-flex;
   align-items: center;
@@ -599,20 +551,6 @@
   gap: 8px;
   font-size: 11.5px;
   color: var(--gray-400);
-}
-
-.rm-foot-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-xs);
-  flex-shrink: 0;
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9.5px;
-  font-weight: 800;
 }
 
 .btn-close-modal {

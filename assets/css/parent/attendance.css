@@ -62,25 +62,6 @@
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
 }
 
-.child-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-circle);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--white);
-  background: linear-gradient(135deg, var(--blue-mid), var(--blue-light));
-}
-
-.child-card:nth-child(2) .child-avatar {
-  background: linear-gradient(135deg, var(--purple), #9333ea);
-}
-
 .child-info {
   min-width: 0;
 }

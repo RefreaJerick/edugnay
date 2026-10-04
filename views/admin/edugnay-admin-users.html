@@ -57,7 +57,7 @@
             <div class="form-group">
               <label class="form-label" for="accountPersonalEmail">Personal Email</label>
               <input class="form-input" name="personalEmail" id="accountPersonalEmail" type="email" placeholder="e.g. maria.reyes@gmail.com" autocomplete="email" required />
-              <span class="form-hint">Credentials will be sent here when backend email delivery is connected.</span>
+              <span class="form-hint">Used for account emails and password recovery. Enter an inbox the user can access.</span>
             </div>
             <div class="form-group">
               <label class="form-label" for="accountSchoolEmail">School Email</label>
@@ -710,10 +710,10 @@
     let userDetailsQrStudent = null;
 
     const ROLE_META = {
-      school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield', avatarClass: 'av-navy' },
-      teacher: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open', avatarClass: 'av-blue' },
-      student: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap', avatarClass: 'av-green' },
-      parent: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake', avatarClass: 'av-orange' },
+      school_admin: { label: 'Admin', badgeClass: 'badge-blue', icon: 'shield' },
+      teacher: { label: 'Faculty', badgeClass: 'badge-gold', icon: 'book-open' },
+      student: { label: 'Student', badgeClass: 'badge-gray', icon: 'graduation-cap' },
+      parent: { label: 'Parent', badgeClass: 'badge-purple', icon: 'heart-handshake' },
     };
 
     // Modal option values map to the canonical account-role values.
@@ -977,7 +977,6 @@
         const displayName = u.displayName || [u.firstName, u.lastName].filter(Boolean).join(' ');
         const safeDisplayName = window.EDUGNAY_CONFIG.escapeHtml(displayName || 'Unnamed user');
         const safeSchoolEmail = window.EDUGNAY_CONFIG.escapeHtml(u.schoolEmail || 'No school email');
-        const initials = ((u.firstName || '?').charAt(0) + (u.lastName || '?').charAt(0)).toUpperCase();
         const statusBadge = u.status === 'active'
           ? '<span class="badge badge-green">● Active</span>'
           : '<span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span>';
@@ -1008,7 +1007,7 @@
       <tr data-role="${u.role}" data-user-id="${u.id}" data-status="${u.status}" tabindex="0" aria-haspopup="dialog" aria-label="View ${safeDisplayName}'s information">
         <td class="account-user-cell">
           <div class="user-cell">
-            <div class="user-av ${meta.avatarClass}">${initials}</div>
+            ${window.EDUGNAY_AVATAR.html(u, { className: 'user-av', role: u.role })}
             <div>
               <div class="user-name">${safeDisplayName}</div>
               <div class="user-email">${safeSchoolEmail}</div>
@@ -1552,7 +1551,6 @@
         }
       }
       const meta = ROLE_META[user.role];
-      const initials = ((user.firstName || '?').charAt(0) + (user.lastName || '?').charAt(0)).toUpperCase();
       const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
       const statusIcon = user.status === 'active' ? 'circle-check' : 'circle-x';
       const schoolLevel = window.EDUGNAY_CONFIG.grades.find(level => level.key === user.schoolLevel)?.label || user.schoolLevel;
@@ -1634,7 +1632,7 @@
       document.getElementById('regenerateAttendanceQrStudentId').value = user.role === 'student' ? user.id : '';
       modalBody.innerHTML = `
         <div class="user-details-profile">
-          <div class="user-details-avatar ${meta.avatarClass}">${initials}</div>
+          ${window.EDUGNAY_AVATAR.html(user, { className: 'user-details-avatar', role: user.role, size: 'lg' })}
           <div class="user-details-profile-copy">
             <div class="user-details-name">${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)}</div>
             <div class="user-details-email">${window.EDUGNAY_CONFIG.escapeHtml(user.schoolEmail || 'No school email')}</div>

@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database');
+const { avatarFields } = require('../config/avatars');
 const { assertGradeWriteAccess, upsertStudentScore } = require('./gradesController');
 const { writeAuditLog } = require('../utils/auditLog');
 
@@ -93,6 +94,8 @@ function entryFields(row) {
     studentId: row.studentId,
     studentName: row.studentName,
     studentInitials: row.studentInitials,
+    ...avatarFields({ id: row.studentId, avatarFilename: row.studentAvatarFilename,
+      avatarVersion: row.studentAvatarVersion }),
     sectionId: row.sectionId,
     sectionName: row.sectionName,
     promptText: row.promptText,
@@ -187,6 +190,7 @@ function entriesSelect() {
     student_journal_entries.journal_subject_id AS journalSubjectId,
     journal_subjects.name AS journalSubjectName, student_journal_entries.student_user_id AS studentId,
     students.display_name AS studentName, students.initials AS studentInitials,
+    students.avatar_filename AS studentAvatarFilename, students.avatar_version AS studentAvatarVersion,
     student_journal_entries.section_id AS sectionId, sections.name AS sectionName,
     student_journal_entries.prompt_text AS promptText, student_journal_entries.entry_text AS entryText,
     student_journal_entries.entry_status AS status,

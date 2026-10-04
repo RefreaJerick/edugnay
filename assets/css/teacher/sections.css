@@ -437,47 +437,6 @@ tbody tr:hover td.sticky-col {
   gap: 10px;
 }
 
-.student-av {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-circle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-}
-
-.av-a {
-  background: var(--blue-mid);
-}
-
-.av-b {
-  background: #16a34a;
-}
-
-.av-c {
-  background: #d97706;
-}
-
-.av-d {
-  background: #7c3aed;
-}
-
-.av-e {
-  background: #0d9488;
-}
-
-.av-f {
-  background: #be185d;
-}
-
-.av-g {
-  background: var(--navy);
-}
-
 .student-name {
   font-size: 13px;
   font-weight: 700;
@@ -1217,12 +1176,6 @@ thead tr:hover .comp-delete-btn {
 .attendance-number-cell {
   color: var(--gray-400);
   font-size: 12px;
-}
-
-.attendance-entry-table .student-av {
-  width: 28px;
-  height: 28px;
-  font-size: 10px;
 }
 
 .attendance-remarks-input {
@@ -2281,19 +2234,6 @@ thead tr:hover .comp-delete-btn {
   background: var(--gray-50);
 }
 
-.qr-attendance-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-circle);
-  background: var(--blue-pale);
-  color: var(--blue-mid);
-  font-size: 9px;
-  font-weight: 800;
-}
-
 .qr-attendance-student-name {
   overflow: hidden;
   color: var(--gray-800);
@@ -2886,10 +2826,6 @@ tbody tr:hover td.sticky-col {
   gap: 11px;
 }
 
-.student-av {
-  box-shadow: 0 0 0 3px var(--blue-xpale);
-}
-
 .att-summary {
   padding: 10px 20px;
   background: var(--white);
@@ -3176,12 +3112,6 @@ tbody tr:hover td.sticky-col {
   .attendance-entry-table .student-cell {
     min-width: 0;
     gap: 8px;
-  }
-
-  .attendance-entry-table .student-av {
-    width: 28px;
-    height: 28px;
-    font-size: 10px;
   }
 
   .attendance-entry-table .student-name {

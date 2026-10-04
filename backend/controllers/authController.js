@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { getDatabase } = require('../config/database');
+const { avatarFields } = require('../config/avatars');
 const { isEmailConfigured, sendPasswordResetEmail } = require('../config/email');
 const {
   clearSessionCookie,
@@ -43,6 +44,8 @@ async function login(req, res, next) {
         last_name AS lastName,
         display_name AS displayName,
         initials,
+        avatar_filename AS avatarFilename,
+        avatar_version AS avatarVersion,
         setup_completed_at AS setupCompletedAt,
         password_hash AS passwordHash,
         schools.registration_status AS schoolStatus
@@ -64,6 +67,8 @@ async function login(req, res, next) {
     await database.execute('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
     delete user.passwordHash;
     delete user.schoolStatus;
+    Object.assign(user, avatarFields(user));
+    delete user.avatarFilename;
     setSessionCookie(res, token);
 
     res.status(200).json({ user });
@@ -125,8 +130,8 @@ async function changePassword(req, res, next) {
 
 async function requestPasswordReset(req, res, next) {
   try {
-    const schoolEmail = String(req.body.schoolEmail || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(schoolEmail) || schoolEmail.length > 255) {
+    const personalEmail = String(req.body.personalEmail || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail) || personalEmail.length > 255) {
       return res.status(204).send();
     }
     if (!isEmailConfigured()) {
@@ -137,11 +142,11 @@ async function requestPasswordReset(req, res, next) {
 
     const database = getDatabase();
     const [users] = await database.execute(
-      `SELECT id, school_email AS schoolEmail, personal_email AS personalEmail, display_name AS displayName
+      `SELECT id, personal_email AS personalEmail, display_name AS displayName
       FROM users
-      WHERE school_email = ? AND account_status = 'active'
+      WHERE personal_email = ? AND account_status = 'active'
       LIMIT 1`,
-      [schoolEmail]
+      [personalEmail]
     );
     const user = users[0];
     if (!user) return res.status(204).send();

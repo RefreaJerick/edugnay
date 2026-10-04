@@ -258,7 +258,7 @@
 
       switcher.innerHTML = PARENT_CHILDREN.map(child => `
         <div class="child-card ${child.studentId === activeChildId ? 'active' : ''}" data-student-id="${window.EDUGNAY_CONFIG.escapeHtml(child.studentId)}" role="button" tabindex="0" aria-pressed="${child.studentId === activeChildId}">
-          <div class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(child.initials || '--')}</div>
+          ${window.EDUGNAY_AVATAR.html(child, { className: 'child-avatar', role: 'student' })}
           <div class="child-info">
             <div class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(child.displayName || 'Student')}</div>
             <div class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(child.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(child.sectionName || 'Unassigned')}</div>

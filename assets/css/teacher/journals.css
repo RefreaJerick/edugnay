@@ -647,43 +647,6 @@ tbody td.center {
   gap: 10px;
 }
 
-.student-av {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-circle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-}
-
-.av-a {
-  background: var(--blue-mid);
-}
-
-.av-b {
-  background: #16a34a;
-}
-
-.av-c {
-  background: #d97706;
-}
-
-.av-d {
-  background: #7c3aed;
-}
-
-.av-e {
-  background: #0d9488;
-}
-
-.av-f {
-  background: #be185d;
-}
-
 .student-name {
   font-size: 13px;
   font-weight: 700;
@@ -853,19 +816,6 @@ tbody td.center {
   gap: 14px;
   flex: 1;
   min-width: 0;
-}
-
-.modal-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
 }
 
 .modal-title {

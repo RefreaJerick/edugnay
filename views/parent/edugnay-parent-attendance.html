@@ -333,7 +333,7 @@
       switcher.innerHTML = PARENT_CHILDREN.length
         ? PARENT_CHILDREN.map(link => {
           const student = getChildProfile(link.studentId);
-          return `<button class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" type="button"><span class="child-avatar">${window.EDUGNAY_CONFIG.escapeHtml(student.initials || '')}</span><span class="child-info"><span class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName || 'Student')}</span><span class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(student.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(student.sectionName || 'Unassigned')}</span></span></button>`;
+          return `<button class="child-card ${student.id === currentChild ? 'active' : ''}" data-child="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" type="button">${window.EDUGNAY_AVATAR.html(student, { className: 'child-avatar', role: 'student' })}<span class="child-info"><span class="child-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName || 'Student')}</span><span class="child-section">${window.EDUGNAY_CONFIG.escapeHtml(student.gradeLevel || 'Unassigned')} – ${window.EDUGNAY_CONFIG.escapeHtml(student.sectionName || 'Unassigned')}</span></span></button>`;
         }).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No linked children', text: 'Children linked to this parent account will appear here.' });
       lucide.createIcons();

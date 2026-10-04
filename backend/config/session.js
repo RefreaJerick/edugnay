@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { getDatabase } = require('./database');
+const { avatarFields } = require('./avatars');
 
 const SESSION_COOKIE_NAME = 'academix_session';
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
@@ -85,6 +86,8 @@ async function getSessionUser(token) {
       users.last_name AS lastName,
       users.display_name AS displayName,
       users.initials,
+      users.avatar_filename AS avatarFilename,
+      users.avatar_version AS avatarVersion,
       users.setup_completed_at AS setupCompletedAt
     FROM user_sessions
     INNER JOIN users ON users.id = user_sessions.user_id
@@ -97,7 +100,9 @@ async function getSessionUser(token) {
     [hashSessionToken(token)]
   );
 
-  return users[0] || null;
+  if (!users[0]) return null;
+  const { avatarFilename, avatarVersion, ...user } = users[0];
+  return { ...user, ...avatarFields(users[0]) };
 }
 
 function setSessionCookie(res, token) {

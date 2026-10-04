@@ -25,7 +25,7 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-heading modal-head-left">
-        <div class="modal-heading-icon modal-avatar av-a" id="modal-avatar">JD</div>
+        <div class="modal-heading-icon modal-avatar" id="modal-avatar">JD</div>
         <div class="modal-heading-copy">
           <div class="modal-title" id="modal-student-name">Juan Dela Cruz</div>
           <div class="modal-sub" id="modal-meta">Grade 7 – St. Matthew · Week 3 · June 9–14, 2025</div>
@@ -781,7 +781,7 @@ function renderTable() {
         <td style="color:var(--gray-400);font-size:12px;">${i + 1}</td>
         <td>
           <div class="student-cell">
-            <div class="student-av av-${String.fromCharCode(97 + (i % 6))}">${window.EDUGNAY_CONFIG.escapeHtml(student.initials)}</div>
+            ${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student' })}
             <div>
               <div class="student-name">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div>
             </div>
@@ -829,8 +829,7 @@ function populateModal(s) {
   const student = STUDENT_BY_ID[s.studentId];
   if (!student) return;
 
-  document.getElementById('modal-avatar').textContent = student.initials;
-  document.getElementById('modal-avatar').className = 'modal-avatar av-a';
+  window.EDUGNAY_AVATAR.render(document.getElementById('modal-avatar'), student, { size: 'lg' });
   document.getElementById('modal-student-name').textContent = student.displayName;
   document.getElementById('modal-meta').textContent = `${sec.label} · ${s.week || 'Journal'} · ${s.dateRange || ''}`;
   document.getElementById('modal-prompt').textContent = s.promptText || sec.prompt?.promptText || 'Journal prompt unavailable';

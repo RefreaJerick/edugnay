@@ -40,6 +40,9 @@ test('a student receives only parent links for their session identity and school
     parentId: '9',
     displayName: 'Rosa Lim',
     initials: 'RL',
+    hasAvatar: false,
+    avatarUrl: null,
+    avatarVersion: 0,
     personalEmail: 'rosa.lim@example.com',
     contactNumber: '09171234567',
     relationship: 'mother'

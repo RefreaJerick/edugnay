@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const { randomBytes } = require('crypto');
 const { getDatabase } = require('../config/database');
+const { avatarFields, deleteAvatar } = require('../config/avatars');
 const { sendAccountCreatedEmail, sendAccountStatusEmail } = require('../config/email');
 const { deleteSessionsForUser } = require('../config/session');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
@@ -60,6 +61,8 @@ function userSelect() {
     users.last_name AS lastName,
     users.display_name AS displayName,
     users.initials,
+    users.avatar_filename AS avatarFilename,
+    users.avatar_version AS avatarVersion,
     users.setup_completed_at AS setupCompletedAt,
     users.last_login_at AS lastLoginAt,
     users.created_at AS createdAt,
@@ -115,6 +118,7 @@ function formatUser(row) {
     lastName: row.lastName,
     displayName: row.displayName,
     initials: row.initials,
+    ...avatarFields(row),
     setupCompletedAt: row.setupCompletedAt,
     lastLoginAt: row.lastLoginAt,
     createdAt: row.createdAt
@@ -428,7 +432,8 @@ async function getMyParents(req, res, next) {
     const database = getDatabase();
     const [parents] = await database.execute(
       `SELECT parents.id AS parentId, parents.display_name AS displayName,
-        parents.initials, parents.personal_email AS personalEmail,
+        parents.initials, parents.avatar_filename AS avatarFilename, parents.avatar_version AS avatarVersion,
+        parents.personal_email AS personalEmail,
         parent_profiles.contact_number AS contactNumber,
         student_parent_links.relationship
       FROM student_parent_links
@@ -441,8 +446,9 @@ async function getMyParents(req, res, next) {
     );
 
     res.status(200).json({ parents: parents.map(parent => ({
-      ...parent,
-      parentId: String(parent.parentId)
+      parentId: String(parent.parentId), displayName: parent.displayName, initials: parent.initials,
+      personalEmail: parent.personalEmail, contactNumber: parent.contactNumber,
+      relationship: parent.relationship, ...avatarFields({ ...parent, id: parent.parentId })
     })) });
   } catch (error) {
     next(error);
@@ -469,7 +475,8 @@ async function getParentChildren(req, res, next) {
     if (!parents.length) throw createError('Parent not found.', 404);
     const [children] = await database.execute(
       `SELECT students.id AS studentId, students.display_name AS displayName,
-        students.initials, student_profiles.lrn, links.relationship,
+        students.initials, students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
+        student_profiles.lrn, links.relationship,
         sections.id AS sectionId, sections.name AS sectionName,
         grade_levels.display_name AS gradeLevel, school_levels.level_code AS schoolLevel,
         advisers.display_name AS adviserName
@@ -495,8 +502,10 @@ async function getParentChildren(req, res, next) {
       ORDER BY students.last_name, students.first_name`,
       [req.user.schoolId, parentId]
     );
-    res.json({ children: children.map(child => ({
-      ...child, studentId: String(child.studentId),
+    res.json({ children: children.map(({ avatarFilename, avatarVersion, ...child }) => ({
+      ...child,
+      ...avatarFields({ id: child.studentId, avatarFilename, avatarVersion }),
+      studentId: String(child.studentId),
       sectionId: child.sectionId == null ? null : String(child.sectionId)
     })) });
   } catch (error) { next(error); }
@@ -782,7 +791,7 @@ async function deleteUser(req, res, next) {
 
     await connection.execute('SELECT id FROM schools WHERE id = ? FOR UPDATE', [req.user.schoolId]);
     const [users] = await connection.execute(
-      'SELECT id, school_id AS schoolId, role, display_name AS displayName FROM users WHERE id = ? AND school_id = ? FOR UPDATE',
+      'SELECT id, school_id AS schoolId, role, display_name AS displayName, avatar_filename AS avatarFilename FROM users WHERE id = ? AND school_id = ? FOR UPDATE',
       [userId, req.user.schoolId]
     );
     const user = users[0];
@@ -813,6 +822,7 @@ async function deleteUser(req, res, next) {
 
     await connection.commit();
     transactionStarted = false;
+    await deleteAvatar(user.avatarFilename).catch(console.error);
     res.status(204).end();
   } catch (error) {
     if (transactionStarted) { try { await connection.rollback(); } catch {} }

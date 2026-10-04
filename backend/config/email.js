@@ -115,7 +115,7 @@ function sendAnnouncementEmail(user, announcement) {
 function sendPasswordResetEmail(user, token) {
   const resetUrl = `${String(process.env.FRONTEND_ORIGIN || '').replace(/\/$/, '')}/index.html?token=${encodeURIComponent(token)}`;
   return sendEmail({
-    to: getRecipient(user),
+    to: user?.personalEmail,
     subject: 'Reset your Academix password',
     text: [
       `Hello ${user.displayName},`,
