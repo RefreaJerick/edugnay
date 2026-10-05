@@ -401,6 +401,27 @@
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.055);
 }
 
+#panel-subjects > #inactiveSubjectsPanel {
+  margin-top: 20px;
+}
+
+#inactiveSubjectsPanel .inactive-subject-card {
+  column-gap: 16px;
+}
+
+#inactiveSubjectsPanel .inactive-subject-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+#inactiveSubjectsPanel .inactive-subject-placement {
+  color: var(--gray-600);
+  font-weight: 600;
+}
+
 .panel-head {
   display: flex;
   justify-content: space-between;

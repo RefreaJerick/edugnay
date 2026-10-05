@@ -1034,6 +1034,8 @@ function managementApiSubjectRecord(subject) {
     schoolId: subject.schoolId,
     name: subject.name,
     code: subject.code,
+    schoolLevelName: subject.schoolLevelName || (level ? managementLevelLabel(level) : ''),
+    gradeLevelName: grade,
     type: 'Core Subject',
     isActive: subject.isActive,
     grades: [...new Set(grades)]
@@ -1118,6 +1120,7 @@ async function refreshManagementViews() {
   renderManagementTabPills();
   renderSections();
   renderSubjects();
+  filterSubjects();
   renderTeacherAssignments();
   renderStudentsTab();
 }
@@ -1502,14 +1505,22 @@ function renderInactiveSubjects() {
   if (!panel || !list) return;
   const subjects = MANAGEMENT_API_CONTEXT.inactiveSubjects || [];
   panel.hidden = !MANAGEMENT_API_ENABLED || !subjects.length;
-  list.innerHTML = subjects.map(subject => `
-    <article class="subject-card" data-id="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}">
+  list.innerHTML = subjects.map(subject => {
+    const placement = subject.schoolLevelName
+      ? `${subject.schoolLevelName} · ${subject.gradeLevelName || 'All grades'}`
+      : 'All school levels';
+    return `
+    <article class="subject-card inactive-subject-card" data-id="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}">
       <div class="subject-card-content">
         <div class="subj-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</div>
-        <div class="subj-code-text">${window.EDUGNAY_CONFIG.escapeHtml(subject.code)} · Inactive; linked records preserved</div>
+        <div class="subj-code-text inactive-subject-meta">
+          <span>${window.EDUGNAY_CONFIG.escapeHtml(subject.code)}</span>
+          <span class="inactive-subject-placement">${window.EDUGNAY_CONFIG.escapeHtml(placement)}</span>
+        </div>
       </div>
       <div class="subject-card-actions row-actions"><button class="row-btn edit" type="button" data-restore-subject>Restore</button></div>
-    </article>`).join('');
+    </article>`;
+  }).join('');
   list.querySelectorAll('[data-restore-subject]').forEach(button => {
     button.addEventListener('click', async () => {
       const subject = subjects.find(item => item.id === button.closest('.subject-card')?.dataset.id);
