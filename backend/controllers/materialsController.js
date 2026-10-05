@@ -241,6 +241,9 @@ async function openMaterial(req, res, next) {
     if (!stats?.isFile()) fail('The material file is unavailable.', 404);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, no-store');
+    if (req.query.download === '1') {
+      return res.download(filePath, material.originalFileName, { dotfiles: 'allow' });
+    }
     if (material.type === 'mp4') {
       const match = /^bytes=(\d+)-(\d*)$/.exec(String(req.headers.range || ''));
       const start = match ? Number(match[1]) : 0;
@@ -261,9 +264,9 @@ async function openMaterial(req, res, next) {
     if (['pdf', 'jpg', 'png'].includes(material.type)) {
       res.setHeader('Content-Type', material.mimeType);
       res.setHeader('Content-Disposition', `inline; filename="material.${material.type}"`);
-      return res.sendFile(filePath);
+      return res.sendFile(filePath, { dotfiles: 'allow' });
     }
-    res.download(filePath, material.originalFileName);
+    res.download(filePath, material.originalFileName, { dotfiles: 'allow' });
   } catch (error) { next(error); }
 }
 

@@ -40,7 +40,7 @@ async function main() {
     const base = `http://127.0.0.1:${process.env.PORT || 3000}/api/materials`;
     async function request(route, token, options = {}) {
       return fetch(`${base}${route}`, {
-        ...options, headers: { cookie: `academix_session=${token}`, ...(options.headers || {}) }
+        ...options, headers: { cookie: `academix_session=${token}`, origin: process.env.FRONTEND_ORIGIN, ...(options.headers || {}) }
       });
     }
 
@@ -70,6 +70,10 @@ async function main() {
     const file = await request(`/${materialId}/file`, studentToken);
     assert.equal(file.status, 200);
     assert.ok(Buffer.from(await file.arrayBuffer()).equals(png));
+    const download = await request(`/${materialId}/file?download=1`, studentToken);
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get('content-disposition'), /^attachment;/);
+    assert.ok(Buffer.from(await download.arrayBuffer()).equals(png));
     if (otherTeacherToken) {
       const otherTeacherFile = await request(`/${materialId}/file`, otherTeacherToken);
       assert.equal(otherTeacherFile.status, 404);

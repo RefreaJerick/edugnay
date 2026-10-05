@@ -12,6 +12,8 @@ const { errorHandler } = require('../middleware/errorHandler');
 let submissionCount = 0;
 let gradingItemFound = false;
 let assignmentDeleted = false;
+let submissionsDeleted = false;
+let submissionFileNames = [];
 let submissionFilePath = null;
 let listedSubmissionRows = [];
 const assignment = {
@@ -25,10 +27,14 @@ async function executeQuery(sql) {
   if (sql.includes('SELECT file_name AS fileName, file_path AS filePath FROM assignment_submissions')) {
     return [submissionFilePath ? [{ fileName: path.basename(submissionFilePath), filePath: submissionFilePath }] : []];
   }
-  if (sql.includes('FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? LIMIT 1 FOR UPDATE')) {
-    return [submissionCount ? [{ id: 1 }] : []];
+  if (sql.includes('FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? FOR UPDATE')) {
+    return [Array.from({ length: submissionCount }, (_, index) => ({ id: index + 1, filePath: submissionFileNames[index] || null }))];
   }
   if (sql.includes('FROM grading_items WHERE')) return [gradingItemFound ? [{ id: 12 }] : []];
+  if (sql.startsWith('DELETE FROM assignment_submissions')) {
+    submissionsDeleted = true;
+    return [{ affectedRows: submissionCount }];
+  }
   if (sql.startsWith('DELETE FROM assignments')) {
     assignmentDeleted = true;
     return [{ affectedRows: 1 }];
@@ -46,11 +52,12 @@ databaseModule.getDatabase = () => ({
 
 const { deleteAssignment, listSubmissions, previewSubmission, submitAssignment } = require('../controllers/assignmentsController');
 
-async function callDelete(user = { id: 3, schoolId: 1, role: 'teacher' }) {
-  const result = { status: 200, sent: false, error: null };
-  await deleteAssignment({ params: { assignmentId: '4' }, user }, {
+async function callDelete(user = { id: 3, schoolId: 1, role: 'teacher' }, expectedSubmissionCount = submissionCount) {
+  const result = { status: 200, sent: false, body: null, error: null };
+  await deleteAssignment({ params: { assignmentId: '4' }, query: { expectedSubmissionCount }, user }, {
     status(code) { result.status = code; return this; },
-    send() { result.sent = true; }
+    send() { result.sent = true; },
+    json(body) { result.body = body; }
   }, error => { result.error = error; });
   return result;
 }
@@ -100,13 +107,92 @@ test('assignment submission rejects content that does not match its extension', 
   await assert.rejects(fs.stat(filePath), error => error.code === 'ENOENT');
 });
 
-test('assignment deletion is blocked when student submissions exist', async () => {
-  submissionCount = 1;
+test('assignment deletion removes submitted records and their private files', async () => {
+  submissionCount = 2;
   gradingItemFound = false;
   assignmentDeleted = false;
-  const result = await callDelete();
-  assert.equal(result.error.status, 409);
+  submissionsDeleted = false;
+  await fs.mkdir(uploadDirectory, { recursive: true });
+  submissionFileNames = [randomUUID() + '.pdf', randomUUID() + '.pdf'];
+  const filePaths = submissionFileNames.map(name => path.join(uploadDirectory, name));
+  try {
+    await Promise.all(filePaths.map(filePath => fs.writeFile(filePath, '%PDF-1.7\nTest')));
+    const result = await callDelete();
+    assert.ifError(result.error);
+    assert.equal(result.status, 204);
+    assert.equal(submissionsDeleted, true);
+    assert.equal(assignmentDeleted, true);
+    for (const filePath of filePaths) {
+      await assert.rejects(fs.stat(filePath), error => error.code === 'ENOENT');
+    }
+  } finally {
+    submissionFileNames = [];
+    await Promise.all(filePaths.map(filePath => fs.rm(filePath, { force: true })));
+  }
+});
+
+test('changed submission count prevents deletion until the teacher confirms again', async () => {
+  submissionCount = 2;
+  submissionsDeleted = false;
+  assignmentDeleted = false;
+  const result = await callDelete(undefined, 1);
+  assert.match(result.error?.message || '', /Submissions changed/);
+  assert.equal(submissionsDeleted, false);
   assert.equal(assignmentDeleted, false);
+});
+
+test('deletion requires a reviewed submission count', async () => {
+  assignmentDeleted = false;
+  let rejection;
+  await deleteAssignment({ params: { assignmentId: '4' }, query: {}, user: { id: 3, schoolId: 1, role: 'teacher' } }, {}, error => { rejection = error; });
+  assert.equal(rejection?.status, 400);
+  assert.equal(assignmentDeleted, false);
+});
+
+test('a missing uploaded file does not prevent confirmed deletion', async () => {
+  submissionCount = 1;
+  submissionFileNames = [randomUUID() + '.pdf'];
+  try {
+    const result = await callDelete();
+    assert.ifError(result.error);
+    assert.equal(result.status, 204);
+  } finally { submissionFileNames = []; }
+});
+
+test('file cleanup failure is reported after database deletion succeeds', async () => {
+  submissionCount = 1;
+  submissionFileNames = [randomUUID() + '.pdf'];
+  const originalUnlink = fs.unlink;
+  fs.unlink = async () => { const error = new Error('Denied'); error.code = 'EPERM'; throw error; };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const result = await callDelete();
+    assert.ifError(result.error);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.fileCleanupPending, true);
+    assert.equal(assignmentDeleted, true);
+  } finally {
+    fs.unlink = originalUnlink;
+    console.error = originalError;
+    submissionFileNames = [];
+  }
+});
+
+test('an invalid stored file path is never followed during deletion', async () => {
+  submissionCount = 1;
+  submissionFileNames = ['../unexpected.pdf'];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const result = await callDelete();
+    assert.ifError(result.error);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.fileCleanupPending, true);
+  } finally {
+    console.error = originalError;
+    submissionFileNames = [];
+  }
 });
 
 test('assignment deletion is blocked when a matching score item exists', async () => {

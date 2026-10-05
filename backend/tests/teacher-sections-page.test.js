@@ -112,7 +112,7 @@ test('assignment creation uses the selected subject ID even if a label is stale'
 });
 
 test('delete modal allows a new component even when its subject has published grades', () => {
-  const openSource = sectionsSource.match(/function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
+  const openSource = sectionsSource.match(/async function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
     .replace(/\n\n  async function confirmTeacherDelete$/, '');
   const elements = new Map();
   const element = id => {
@@ -139,8 +139,8 @@ test('delete modal allows a new component even when its subject has published gr
   assert.match(element('teacherDeleteConfirmDescription').textContent, /used in published grades/);
 });
 
-test('linked score component opens the combined assignment deletion confirmation', () => {
-  const openSource = sectionsSource.match(/function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
+test('linked score component opens the combined assignment deletion confirmation', async () => {
+  const openSource = sectionsSource.match(/async function openTeacherDeleteModal\(kind, id, name\) \{[\s\S]*?\n  \}\n\n  async function confirmTeacherDelete/)[0]
     .replace(/\n\n  async function confirmTeacherDelete$/, '');
   const elements = new Map();
   const element = id => {
@@ -149,23 +149,63 @@ test('linked score component opens the combined assignment deletion confirmation
   };
   const context = {
     document: { getElementById: element },
-    window: { lucide: { createIcons() {} } },
+    window: { lucide: { createIcons() {} }, EDUGNAY_API: { getAssignmentSubmissions: async () => [] } },
     BACKEND_GRADING_ITEMS: [{ id: '12', name: 'Quiz', usedInPublishedGrades: false }],
     BACKEND_ASSIGNMENTS: [{ id: '4', title: 'test', gradingItemId: '12' }],
     BACKEND_STUDENT_SCORES: [{ gradingItemId: '12', score: null, remarks: null }], BACKEND_SUBMISSIONS: new Map(),
     openModal() {}
   };
-  vm.runInNewContext(`${openSource}; openTeacherDeleteModal('scoreComponent', '12', 'Quiz');`, context);
+  await vm.runInNewContext(`${openSource}; openTeacherDeleteModal('scoreComponent', '12', 'Quiz');`, context);
   assert.equal(element('teacherDeleteConfirmTitle').textContent, 'Delete assignment and component?');
   assert.equal(element('teacherDeleteConfirmName').textContent, 'Quiz');
   assert.equal(element('teacherDeleteConfirmButton').disabled, false);
   assert.equal(element('teacherDeleteConfirmButton').textContent, 'Delete Both');
-  assert.equal(element('teacherDeleteConfirmDescription').textContent, 'Its linked assignment will also be deleted.');
-  vm.runInNewContext("openTeacherDeleteModal('assignment', '4', 'test');", context);
+  assert.equal(element('teacherDeleteConfirmDescription').textContent, 'This will permanently remove the assignment and its linked score component.');
+  await vm.runInNewContext("openTeacherDeleteModal('assignment', '4', 'test');", context);
   assert.equal(element('teacherDeleteConfirmName').textContent, 'test');
-  assert.equal(element('teacherDeleteConfirmDescription').textContent, 'Its linked score component will also be deleted.');
+  assert.equal(element('teacherDeleteConfirmDescription').textContent, 'This will permanently remove the assignment and its linked score component.');
   assert.match(sectionsSource, /data-delete-assignment=.*?Delete Assignment & Component/s);
-  assert.match(sectionsSource, /if \(request\.kind === 'assignment'\) \{[\s\S]*?EDUGNAY_API\.deleteAssignment\(request\.id\)/);
+  assert.match(sectionsSource, /if \(request\.kind === 'assignment'\) \{[\s\S]*?EDUGNAY_API\.deleteAssignment\(request\.id, request\.expectedSubmissionCount\)/);
+
+  context.window.EDUGNAY_API.getAssignmentSubmissions = async () => [{ id: 1 }, { id: 2 }];
+  await vm.runInNewContext("openTeacherDeleteModal('assignment', '4', 'test');", context);
+  assert.match(element('teacherDeleteConfirmDescription').textContent, /2 student submission records/);
+  assert.match(element('teacherDeleteConfirmDescription').textContent, /uploaded files/);
+  assert.equal(element('teacherDeleteConfirmButton').disabled, false);
+  assert.equal(context.pendingTeacherDelete.expectedSubmissionCount, 2);
+
+  context.BACKEND_ASSIGNMENTS = [{ id: '5', title: 'Ungraded task' }];
+  await vm.runInNewContext("openTeacherDeleteModal('assignment', '5', 'Ungraded task');", context);
+  assert.match(element('teacherDeleteConfirmDescription').textContent, /2 student submission records/);
+  assert.equal(element('teacherDeleteConfirmButton').disabled, false);
+
+  context.window.EDUGNAY_API.getAssignmentSubmissions = async () => { throw new Error('Offline'); };
+  context.showAppToast = () => {};
+  await vm.runInNewContext("openTeacherDeleteModal('assignment', '5', 'Ungraded task');", context);
+  assert.match(element('teacherDeleteConfirmDescription').textContent, /Could not check current submissions/);
+  assert.equal(element('teacherDeleteConfirmButton').disabled, true);
+});
+
+test('a changed submission count reopens the delete warning', async () => {
+  const confirmSource = sectionsSource.match(/async function confirmTeacherDelete\(\) \{[\s\S]*?\n  \}\n\n  document\.getElementById\('teacherDeleteConfirmButton'\)/)[0]
+    .replace(/\n\n  document\.getElementById\('teacherDeleteConfirmButton'\)$/, '');
+  const button = { disabled: false, textContent: 'Delete Assignment' };
+  const refreshed = [];
+  const context = {
+    pendingTeacherDelete: { kind: 'assignment', id: '4', gradingItemId: null, expectedSubmissionCount: 2 },
+    teacherDeletePending: false,
+    document: { getElementById: id => id === 'teacherDeleteConfirmButton' ? button : { textContent: 'Wrong task' } },
+    window: { EDUGNAY_API: { async deleteAssignment(id, count) {
+      assert.equal(id, '4');
+      assert.equal(count, 2);
+      throw { status: 409, message: 'Submissions changed. Review the updated count and confirm deletion again.' };
+    } } },
+    showAppToast() {},
+    openTeacherDeleteModal: (...args) => refreshed.push(args)
+  };
+  await vm.runInNewContext(`${confirmSource}; confirmTeacherDelete();`, context);
+  assert.deepEqual(refreshed, [['assignment', '4', 'Wrong task']]);
+  assert.equal(context.teacherDeletePending, false);
 });
 
 test('modified teacher page scripts still parse', () => {

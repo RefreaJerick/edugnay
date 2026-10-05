@@ -421,6 +421,11 @@ async function deleteAssignment(req, res, next) {
   const connection = await getDatabase().getConnection();
   let transactionStarted = false;
   try {
+    const expectedSubmissionCount = Number(req.query?.expectedSubmissionCount);
+    if (!/^\d+$/.test(String(req.query?.expectedSubmissionCount ?? ''))
+      || !Number.isSafeInteger(expectedSubmissionCount)) {
+      throw createError('Review the current submissions before deleting this assignment.');
+    }
     await connection.beginTransaction();
     transactionStarted = true;
     const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
@@ -443,10 +448,12 @@ async function deleteAssignment(req, res, next) {
     }
     assertAssignmentYearWritable(assignment);
     const [submissions] = await connection.execute(
-      'SELECT id FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? LIMIT 1 FOR UPDATE',
+      'SELECT id, file_path AS filePath FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? FOR UPDATE',
       [assignment.schoolId, assignmentId]
     );
-    if (submissions.length) throw createError('Assignments with student submissions cannot be deleted.', 409);
+    if (submissions.length !== expectedSubmissionCount) {
+      throw createError('Submissions changed. Review the updated count and confirm deletion again.', 409);
+    }
     if (assignment.gradingItemId) {
       const [items] = await connection.execute(
         `SELECT id, section_id AS sectionId, subject_id AS subjectId,
@@ -482,6 +489,7 @@ async function deleteAssignment(req, res, next) {
       );
       if (gradingItems.length) throw createError('This older assignment has no confirmed score component link. Review it before deletion.', 409);
     }
+    await connection.execute('DELETE FROM assignment_submissions WHERE school_id = ? AND assignment_id = ?', [assignment.schoolId, assignmentId]);
     await connection.execute('DELETE FROM assignments WHERE id = ? AND school_id = ?', [assignmentId, assignment.schoolId]);
     if (assignment.gradingItemId) {
       await connection.execute(
@@ -495,10 +503,32 @@ async function deleteAssignment(req, res, next) {
       );
     }
     await writeAuditLog(connection, req, 'assignment_deleted', 'assignment', assignmentId, {
-      summary: assignment.title, gradingItemId: assignment.gradingItemId || null
+      summary: assignment.title, gradingItemId: assignment.gradingItemId || null,
+      submissionCount: submissions.length
     });
     await connection.commit();
     transactionStarted = false;
+    let fileCleanupPending = false;
+    for (const submission of submissions) {
+      if (!submission.filePath) continue;
+      const fileName = path.basename(String(submission.filePath));
+      if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/.test(fileName)) {
+        fileCleanupPending = true;
+        console.error('A deleted assignment submission has an invalid stored file path.', submission.id);
+        continue;
+      }
+      const legacy = String(submission.filePath).replace(/^\/+/, '').startsWith('uploads/assignment-submissions/');
+      const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'assignment-submissions') : uploadDirectory;
+      try {
+        await fs.unlink(path.join(directory, fileName));
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          fileCleanupPending = true;
+          console.error('A deleted assignment submission file needs cleanup.', error);
+        }
+      }
+    }
+    if (fileCleanupPending) return res.status(200).json({ deleted: true, fileCleanupPending: true });
     res.status(204).send();
   } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }

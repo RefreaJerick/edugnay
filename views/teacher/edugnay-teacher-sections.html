@@ -1272,7 +1272,7 @@
     loadTeacherStudentDetails();
   }
 
-  function openTeacherDeleteModal(kind, id, name) {
+  async function openTeacherDeleteModal(kind, id, name) {
     const journalItem = kind === 'scoreComponent' ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(id) && item.journalPromptId) : null;
     const linkedAssignment = kind === 'scoreComponent'
       ? BACKEND_ASSIGNMENTS.find(assignment => String(assignment.gradingItemId) === String(id))
@@ -1281,7 +1281,8 @@
       ? BACKEND_GRADING_ITEMS.find(item => String(item.id) === String(linkedAssignment.gradingItemId)) : null;
     const isPair = Boolean(linkedAssignment?.gradingItemId);
     const deleteKind = isPair ? 'assignment' : kind;
-    pendingTeacherDelete = { kind: journalItem ? 'journalPrompt' : deleteKind, id: String(journalItem ? journalItem.journalPromptId : isPair ? linkedAssignment.id : id), gradingItemId: journalItem ? journalItem.id : isPair ? linkedAssignment.gradingItemId : null };
+    const request = { kind: journalItem ? 'journalPrompt' : deleteKind, id: String(journalItem ? journalItem.journalPromptId : isPair ? linkedAssignment.id : id), gradingItemId: journalItem ? journalItem.id : isPair ? linkedAssignment.gradingItemId : null };
+    pendingTeacherDelete = request;
     const isMaterial = kind === 'material';
     const isComponent = deleteKind === 'scoreComponent';
     document.getElementById('teacherDeleteConfirmTitle').textContent = `Delete ${journalItem ? 'journal prompt and component' : isPair ? 'assignment and component' : isComponent ? 'score component' : isMaterial ? 'learning material' : 'assignment'}?`;
@@ -1294,28 +1295,41 @@
       && (score.score !== null && score.score !== undefined || String(score.remarks || '').trim())).length : 0;
     const item = isComponent ? BACKEND_GRADING_ITEMS.find(record => String(record.id) === String(id)) : null;
     const published = Boolean((linkedItem || item)?.usedInPublishedGrades);
-    const submissionCount = isPair ? (BACKEND_SUBMISSIONS.get(String(linkedAssignment.id)) || []).length : 0;
+    const isAssignmentDelete = deleteKind === 'assignment' && !journalItem;
+    const blocked = Boolean(published || ((isPair || journalItem) && scoreCount));
     document.getElementById('teacherDeleteConfirmDescription').textContent = journalItem
       ? published ? 'This component was used in published grades and must remain.'
         : scoreCount ? 'This component has saved scores and cannot be deleted.'
           : 'Its linked journal prompt will also be deleted. Prompts with student entries cannot be deleted.'
       : isPair
       ? published ? 'The score component was used in published grades and cannot be deleted.'
-        : submissionCount ? 'This assignment has student submission records and cannot be deleted.'
-          : scoreCount ? 'The score component has saved student scores and cannot be deleted.'
-            : kind === 'scoreComponent'
-              ? 'Its linked assignment will also be deleted.'
-              : 'Its linked score component will also be deleted.'
+        : scoreCount ? 'The score component has saved student scores and cannot be deleted.'
+          : 'Checking current submissions…'
       : isComponent
         ? published ? 'This component was used in published grades and cannot be deleted.'
           : `This will permanently remove the component and ${scoreCount} saved student score ${scoreCount === 1 ? 'record' : 'records'}.`
       : isMaterial ? 'The material and its uploaded file will be permanently removed.'
-        : 'Assignments with student submissions or unconfirmed score links cannot be deleted.';
+        : 'Checking current submissions…';
     const button = document.getElementById('teacherDeleteConfirmButton');
     button.textContent = `Delete ${journalItem || isPair ? 'Both' : isComponent ? 'Component' : isMaterial ? 'Material' : 'Assignment'}`;
-    button.disabled = Boolean(published || ((isPair || journalItem) && (submissionCount || scoreCount)));
+    button.disabled = blocked || isAssignmentDelete;
     openModal('teacherDeleteConfirmModal');
     window.lucide?.createIcons?.();
+    if (!isAssignmentDelete || blocked) return;
+    try {
+      const submissions = await window.EDUGNAY_API.getAssignmentSubmissions(request.id);
+      if (pendingTeacherDelete !== request) return;
+      BACKEND_SUBMISSIONS.set(request.id, submissions);
+      request.expectedSubmissionCount = submissions.length;
+      document.getElementById('teacherDeleteConfirmDescription').textContent = submissions.length
+        ? `This assignment has ${submissions.length} student submission ${submissions.length === 1 ? 'record' : 'records'}. Deleting it permanently removes the assignment, these records, and any uploaded files${isPair ? ' and its linked score component' : ''}. Students will need to submit again to the correct or recreated assignment.`
+        : `This will permanently remove the assignment${isPair ? ' and its linked score component' : ''}.`;
+      button.disabled = false;
+    } catch (error) {
+      if (pendingTeacherDelete !== request) return;
+      document.getElementById('teacherDeleteConfirmDescription').textContent = 'Could not check current submissions. Close this dialog and try again.';
+      showAppToast(error.message || 'Submissions could not be checked.', 'error');
+    }
   }
 
   async function confirmTeacherDelete() {
@@ -1323,13 +1337,14 @@
     const button = document.getElementById('teacherDeleteConfirmButton');
     if (!request || !button || teacherDeletePending) return;
     const originalLabel = button.textContent;
+    let refreshConfirmation = false;
     teacherDeletePending = true;
     button.disabled = true;
     button.textContent = 'Deleting…';
     try {
       if (request.kind === 'assignment') {
         if (request.gradingItemId) await flushPendingBackendScoreSaves();
-        await window.EDUGNAY_API.deleteAssignment(request.id);
+        const deletion = await window.EDUGNAY_API.deleteAssignment(request.id, request.expectedSubmissionCount);
         BACKEND_ASSIGNMENTS = BACKEND_ASSIGNMENTS.filter(item => String(item.id) !== request.id);
         if (request.gradingItemId) {
           BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.filter(item => String(item.id) !== String(request.gradingItemId));
@@ -1352,9 +1367,10 @@
         closeModal('teacherDeleteConfirmModal');
         renderAssignments();
         renderScoreTable(document.getElementById('academicPeriodSelect').value);
-        showAppToast(refreshFailed ? 'Deletion succeeded, but the lists could not refresh.'
+        showAppToast(deletion?.fileCleanupPending ? 'Assignment deleted, but a stored submission file still needs cleanup.'
+          : refreshFailed ? 'Deletion succeeded, but the lists could not refresh.'
           : request.gradingItemId ? 'Assignment and score component deleted.' : 'Assignment deleted.',
-        refreshFailed ? 'info' : 'success');
+        deletion?.fileCleanupPending || refreshFailed ? 'info' : 'success');
       } else if (request.kind === 'journalPrompt') {
         await flushPendingBackendScoreSaves();
         await window.EDUGNAY_API.deleteJournalPrompt(request.id);
@@ -1394,11 +1410,15 @@
         needsInfo ? 'info' : 'success');
       }
     } catch (error) {
-      showAppToast(error.message || 'The item could not be deleted.', 'error');
+      refreshConfirmation = request.kind === 'assignment' && error.status === 409
+        && /Submissions changed\./.test(error.message);
+      showAppToast(refreshConfirmation ? 'Submissions changed. Review the updated warning before deleting.'
+        : error.message || 'The item could not be deleted.', 'error');
     } finally {
       teacherDeletePending = false;
-      button.disabled = false;
       button.textContent = originalLabel;
+      if (refreshConfirmation) openTeacherDeleteModal('assignment', request.id, document.getElementById('teacherDeleteConfirmName').textContent);
+      else button.disabled = false;
     }
   }
 
@@ -1958,11 +1978,7 @@
 
   function getBackendTermId(academicPeriodId) {
     if (!isBackendGradeMode()) return null;
-    const period = ACADEMIC_PERIODS.find(item => item.id === academicPeriodId);
-    const sequence = String(academicPeriodId || '').match(/\d+/)?.[0];
-    const term = BACKEND_TERMS.find(item => String(item.id) === String(academicPeriodId))
-      || BACKEND_TERMS.find(item => sequence && String(item.sequenceNumber) === sequence)
-      || BACKEND_TERMS.find(item => period && String(item.name).toLowerCase() === String(period.name).toLowerCase());
+    const term = BACKEND_TERMS.find(item => String(item.id) === String(academicPeriodId));
     return term ? String(term.id) : null;
   }
 
@@ -2053,11 +2069,15 @@
       const subjectAssignment = CURRENT_SUBJECT_ASSIGNMENT;
       const teacherId = String(session.apiUserId || session.userId);
       if (teacherId !== CURRENT_TEACHER_ID) throw new Error('Your session changed. Reload this page to continue.');
+      if (!section.academicYearId || !section.schoolLevelId) {
+        throw new Error('The section academic year or school level is unavailable.');
+      }
 
       const [terms, categories] = await Promise.all([
-        window.EDUGNAY_API.getAcademicTerms({ schoolLevelId: section.schoolLevelId }),
+        window.EDUGNAY_API.getAcademicTerms({ academicYearId: section.academicYearId, schoolLevelId: section.schoolLevelId }),
         window.EDUGNAY_API.getGradingCategories({ schoolLevelId: section.schoolLevelId })
       ]);
+      if (!terms.length) throw new Error('No grading periods are configured for this section’s academic year. Ask your administrator to set them up.');
 
       const [assignments, gradingItems, scores, publishedGrades] = await Promise.all([
         window.EDUGNAY_API.getAssignments({ sectionId: section.id, subjectId: subjectAssignment.subjectId }),
@@ -2111,6 +2131,10 @@
     } catch (error) {
       console.warn('Assignments and scores API could not be loaded.', error.message);
       BACKEND_GRADE_ERROR = error?.message || 'Grade data could not be loaded from the backend.';
+      BACKEND_GRADE_CONTEXT = null;
+      BACKEND_TERMS = [];
+      ACADEMIC_PERIODS = [];
+      ACTIVE_ACADEMIC_PERIOD_ID = '';
       return false;
     }
   }
@@ -4878,7 +4902,9 @@
     renderTeacherAttendanceRows();
     renderAttendanceHistory();
     const periodSelect = document.getElementById('academicPeriodSelect');
-    periodSelect.innerHTML = ACADEMIC_PERIODS.map(period => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}" ${period.id === ACTIVE_ACADEMIC_PERIOD_ID ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}${period.status === 'active' ? ' (Active)' : ''}</option>`).join('');
+    periodSelect.innerHTML = ACADEMIC_PERIODS.length
+      ? ACADEMIC_PERIODS.map(period => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}" ${period.id === ACTIVE_ACADEMIC_PERIOD_ID ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}${period.status === 'active' ? ' (Active)' : ''}</option>`).join('')
+      : '<option value="">No grading periods available</option>';
     periodSelect.disabled = !ACADEMIC_PERIODS.length;
     document.getElementById('publishedPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);
     document.getElementById('sectionPeriodName').textContent = academicPeriodName(ACTIVE_ACADEMIC_PERIOD_ID);

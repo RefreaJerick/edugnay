@@ -677,9 +677,9 @@ async function updateApiAssignmentStudentStatus(assignmentId, studentId, status)
   } : null;
 }
 
-async function deleteApiAssignment(assignmentId) {
-  await requestApi(`/assignments/${Number(assignmentId)}`, { method: 'DELETE' });
-  return true;
+async function deleteApiAssignment(assignmentId, expectedSubmissionCount) {
+  const query = new URLSearchParams({ expectedSubmissionCount: String(expectedSubmissionCount) });
+  return await requestApi(`/assignments/${Number(assignmentId)}?${query}`, { method: 'DELETE' }) || { deleted: true };
 }
 
 function normalizeApiGradingItem(record) {
@@ -3360,6 +3360,10 @@ function applyCurrentDateToGradingBanners() {
 
   function apiMaterialFileUrl(materialId) {
     return `${EDUGNAY_API_BASE_URL}/materials/${encodeURIComponent(materialId)}/file`;
+  }
+
+  function getApiMaterialFile(materialId, download = false) {
+    return requestApiFile(`/materials/${encodeURIComponent(materialId)}/file${download ? '?download=1' : ''}`);
   }
 
   // Replace this fixed list with GET /api/teacher/sf-templates.
@@ -6416,6 +6420,7 @@ function applyCurrentDateToGradingBanners() {
     updateMaterial: updateApiMaterial,
     deleteMaterial: deleteApiMaterial,
     materialFileUrl: apiMaterialFileUrl,
+    getMaterialFile: getApiMaterialFile,
     getSections: getApiSections,
     getSectionStudents: getApiSectionStudents,
     getSectionStudentDetails: getApiSectionStudentDetails,

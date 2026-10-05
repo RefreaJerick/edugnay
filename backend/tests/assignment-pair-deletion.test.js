@@ -27,8 +27,8 @@ const connection = {
     }
     if (sql.includes('SELECT 1 FROM section_teachers')) return [[{ 1: 1 }]];
     if (sql.includes('FROM grading_period_reopen_requests')) return [[]];
-    if (sql.includes('FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? LIMIT 1 FOR UPDATE')) {
-      return [state.submissions ? [{ id: 20 }] : []];
+    if (sql.includes('FROM assignment_submissions WHERE school_id = ? AND assignment_id = ? FOR UPDATE')) {
+      return [state.submissions ? [{ id: 20, filePath: null }] : []];
     }
     if (sql.includes('FROM grading_items WHERE id = ? AND school_id = ? FOR UPDATE')) {
       return [[{
@@ -43,6 +43,7 @@ const connection = {
     if (sql.includes('FROM journal_prompts WHERE school_id = ? AND grading_item_id = ?')) {
       return [state.journal ? [{ id: 40 }] : []];
     }
+    if (sql.startsWith('DELETE FROM assignment_submissions')) return [{ affectedRows: state.submissions ? 1 : 0 }];
     if (sql.startsWith('DELETE FROM assignments')) return [{ affectedRows: 1 }];
     if (sql.startsWith('DELETE FROM student_scores')) return [{ affectedRows: state.blankRows ? 2 : 0 }];
     if (sql.startsWith('DELETE FROM grading_items')) {
@@ -69,9 +70,10 @@ async function remove(overrides = {}, user = { id: 5, schoolId: 1, role: 'teache
   };
   queries = [];
   const result = { status: null, sent: false, error: null };
-  await deleteAssignment({ params: { assignmentId: '4' }, user }, {
+  await deleteAssignment({ params: { assignmentId: '4' }, query: { expectedSubmissionCount: state.submissions ? 1 : 0 }, user }, {
     status(code) { result.status = code; return this; },
-    send() { result.sent = true; }
+    send() { result.sent = true; },
+    json() { result.sent = true; }
   }, error => { result.error = error; });
   return result;
 }
@@ -97,8 +99,25 @@ test('blank score placeholders do not block linked-pair deletion', async () => {
   assert.ok(queries.some(sql => sql.includes("score IS NULL AND (remarks IS NULL OR TRIM(remarks) = '')")));
 });
 
+test('submitted work and its linked score component are deleted together', async () => {
+  const result = await remove({ submissions: true });
+  assert.ifError(result.error);
+  assert.equal(state.committed, true);
+  assert.ok(queries.findIndex(sql => sql.startsWith('DELETE FROM assignment_submissions'))
+    < queries.findIndex(sql => sql.startsWith('DELETE FROM assignments')));
+  assert.ok(queries.findIndex(sql => sql.startsWith('DELETE FROM assignments'))
+    < queries.findIndex(sql => sql.startsWith('DELETE FROM grading_items')));
+});
+
+test('a later failure rolls back submission and assignment deletion together', async () => {
+  const result = await remove({ submissions: true, itemDeleteFails: true });
+  assert.ok(result.error);
+  assert.equal(state.committed, false);
+  assert.equal(state.rolledBack, true);
+  assert.ok(queries.some(sql => sql.startsWith('DELETE FROM assignment_submissions')));
+});
+
 for (const [reason, flags] of [
-  ['student submissions', { submissions: true }],
   ['saved scores', { scores: true }],
   ['published use', { published: true }],
   ['journal link', { journal: true }],

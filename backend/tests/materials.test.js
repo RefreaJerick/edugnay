@@ -5,8 +5,9 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { after } = require('node:test');
+const express = require('express');
 
-const testUploadDirectory = path.join(os.tmpdir(), `academix-material-tests-${crypto.randomUUID()}`);
+const testUploadDirectory = path.join(os.tmpdir(), `.academix-material-tests-${crypto.randomUUID()}`);
 process.env.MATERIAL_UPLOAD_DIRECTORY = testUploadDirectory;
 after(async () => fs.rm(testUploadDirectory, { recursive: true, force: true }));
 
@@ -19,6 +20,7 @@ let lastValues = [];
 let committed = false;
 let rolledBack = false;
 let failMaterialDelete = false;
+let studentEnrolled = true;
 const material = {
   id: 42, schoolId: 1, sectionId: 8, subjectId: 2, teacherUserId: 3,
   title: 'Test material', type: 'pdf', mimeType: 'application/pdf',
@@ -36,7 +38,12 @@ const database = {
       if (failMaterialDelete) throw new Error('Database delete failed.');
       return [{ affectedRows: 1 }];
     }
-    if (sql.includes('FROM learning_materials AS materials')) return [[material]];
+    if (sql.includes('FROM learning_materials AS materials')) {
+      if (sql.includes('LIMIT 1') && (values[1] !== material.schoolId
+        || (sql.includes("materials.status = 'published'") && material.status !== 'published')
+        || (sql.includes('FROM section_students') && !studentEnrolled))) return [[]];
+      return [[material]];
+    }
     throw new Error(`Unexpected query: ${sql}`);
   },
   async getConnection() {
@@ -51,6 +58,23 @@ const database = {
 };
 databaseModule.getDatabase = () => database;
 const controller = require('../controllers/materialsController');
+
+async function requestMaterial(user, headers = {}, query = '') {
+  const app = express();
+  app.get('/material/:materialId', (req, res, next) => {
+    req.user = user;
+    controller.openMaterial(req, res, next);
+  });
+  app.use((error, req, res, next) => res.status(error.status || 500).json({ message: error.message }));
+  const server = await new Promise(resolve => {
+    const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
+  });
+  try {
+    return await fetch(`http://127.0.0.1:${server.address().port}/material/42${query}`, { headers });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+}
 
 async function call(handler, req) {
   const result = { status: 200, data: null, error: null };
@@ -82,6 +106,119 @@ test('student list is published and enrollment scoped', async () => {
   assert.match(lastQuery, /materials\.status = 'published'/);
   assert.match(lastQuery, /section_students\.student_user_id = \?/);
   assert.deepEqual(lastValues, [1, 12]);
+});
+
+test('assigned student can open a PDF from the private dot-directory', async () => {
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, '%PDF-1.4\nTest material');
+  try {
+    const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /^application\/pdf/);
+    assert.match(response.headers.get('content-disposition'), /^inline/);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(await response.text(), '%PDF-1.4\nTest material');
+    const teacherResponse = await requestMaterial({ id: 3, schoolId: 1, role: 'teacher' });
+    assert.equal(teacherResponse.status, 200);
+    assert.equal(await teacherResponse.text(), '%PDF-1.4\nTest material');
+  } finally { await fs.rm(filePath, { force: true }); }
+});
+
+test('assigned student can explicitly download a PDF from the private dot-directory', async () => {
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, '%PDF-1.4\nTest material');
+  try {
+    const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' }, {}, '?download=1');
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-disposition'), /attachment; filename="sample\.pdf"/);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(await response.text(), '%PDF-1.4\nTest material');
+  } finally { await fs.rm(filePath, { force: true }); }
+});
+
+test('assigned student can open an image from the private dot-directory', async () => {
+  const original = { type: material.type, mimeType: material.mimeType, storedFileName: material.storedFileName };
+  material.type = 'png';
+  material.mimeType = 'image/png';
+  material.storedFileName = `${crypto.randomUUID()}.png`;
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, 'Image material');
+  try {
+    const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /^image\/png/);
+    assert.match(response.headers.get('content-disposition'), /^inline/);
+    assert.equal(await response.text(), 'Image material');
+  } finally {
+    await fs.rm(filePath, { force: true });
+    Object.assign(material, original);
+  }
+});
+
+test('assigned student can download an Office file from the private dot-directory', async () => {
+  const original = { type: material.type, mimeType: material.mimeType,
+    originalFileName: material.originalFileName, storedFileName: material.storedFileName };
+  material.type = 'docx';
+  material.mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  material.originalFileName = 'lesson.docx';
+  material.storedFileName = `${crypto.randomUUID()}.docx`;
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, 'Office material');
+  try {
+    const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-disposition'), /attachment; filename="lesson\.docx"/);
+    assert.equal(await response.text(), 'Office material');
+  } finally {
+    await fs.rm(filePath, { force: true });
+    Object.assign(material, original);
+  }
+});
+
+test('video byte ranges still stream from the private dot-directory', async () => {
+  const original = { type: material.type, mimeType: material.mimeType, storedFileName: material.storedFileName };
+  material.type = 'mp4';
+  material.mimeType = 'video/mp4';
+  material.storedFileName = `${crypto.randomUUID()}.mp4`;
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, '0123456789');
+  try {
+    const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' }, { Range: 'bytes=2-5' });
+    assert.equal(response.status, 206);
+    assert.equal(response.headers.get('content-range'), 'bytes 2-5/10');
+    assert.equal(await response.text(), '2345');
+  } finally {
+    await fs.rm(filePath, { force: true });
+    Object.assign(material, original);
+  }
+});
+
+test('material files remain scoped to published, enrolled, same-school access', async () => {
+  const filePath = path.join(materialUploadDirectory, material.storedFileName);
+  await fs.writeFile(filePath, '%PDF-1.4\nTest material');
+  try {
+    studentEnrolled = false;
+    assert.equal((await requestMaterial({ id: 12, schoolId: 1, role: 'student' })).status, 404);
+    studentEnrolled = true;
+    material.status = 'draft';
+    assert.equal((await requestMaterial({ id: 12, schoolId: 1, role: 'student' })).status, 404);
+    material.status = 'published';
+    assert.equal((await requestMaterial({ id: 12, schoolId: 2, role: 'student' })).status, 404);
+    assert.equal((await requestMaterial({ id: 12, schoolId: 2, role: 'student' }, {}, '?download=1')).status, 404);
+    assigned = false;
+    assert.equal((await requestMaterial({ id: 3, schoolId: 1, role: 'teacher' })).status, 404);
+  } finally {
+    assigned = true;
+    studentEnrolled = true;
+    material.status = 'published';
+    await fs.rm(filePath, { force: true });
+  }
+});
+
+test('a missing material file returns a clean not-found response', async () => {
+  const response = await requestMaterial({ id: 12, schoolId: 1, role: 'student' });
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { message: 'The material file is unavailable.' });
 });
 
 test('unassigned teacher is rejected before multipart upload', async () => {
