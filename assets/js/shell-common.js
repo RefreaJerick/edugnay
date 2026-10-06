@@ -236,6 +236,13 @@ async function createApiUser(values = {}) {
   };
 }
 
+async function importApiUsers(file, role) {
+  const form = new FormData();
+  form.append('csvFile', file);
+  form.append('role', role);
+  return requestApiMultipart('/users/import', form);
+}
+
 async function updateApiUser(userId, values = {}) {
   const numericId = Number(userId);
   if (!Number.isInteger(numericId) || numericId < 1) throw new Error('The user ID is invalid.');
@@ -1581,6 +1588,7 @@ window.EDUGNAY_API = {
   getAllUsers: getAllApiUsers,
   getUser: getApiUser,
   createUser: createApiUser,
+  importUsers: importApiUsers,
   updateUser: updateApiUser,
   deleteUser: deleteApiUser,
   setUserStatus: setApiUserStatus,

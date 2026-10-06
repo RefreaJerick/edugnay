@@ -21,6 +21,10 @@ const connection = {
     if (sql.includes('FROM student_parent_links WHERE parent_user_id = ? OR student_user_id = ?')) {
       return [scenario.parentLink ? [{ id: 1 }] : []];
     }
+    if (sql.includes('FROM section_students') && sql.includes('AS withdrawnAt')) {
+      return [scenario.enrollments || []];
+    }
+    if (sql.includes('DELETE FROM section_students')) return [{ affectedRows: scenario.enrollments?.length || 0 }];
     if (sql.includes('FROM sections WHERE id = ? AND school_id = ? FOR UPDATE')) {
       return [scenario.section ? [{ id: 8 }] : []];
     }
@@ -145,6 +149,62 @@ test('user delete maps protected academic records to a safe conflict response', 
   assert.equal(result.error?.status, 409);
   assert.match(result.error.message, /Deactivate it instead/);
   assert.ok(calls.some(call => call.type === 'rollback'));
+});
+
+test('student deletion removes only withdrawn assignments from the active year', async t => {
+  const request = { user: { id: 2, schoolId: 1, role: 'school_admin' }, params: { userId: '21' } };
+  const withdrawn = { withdrawnAt: new Date(), academicYearStatus: 'active' };
+
+  await t.test('fresh student has no assignment to remove', async () => {
+    reset({ user: { role: 'student' } });
+    const result = await call(usersController.deleteUser, request);
+    assert.equal(result.error, null);
+    assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM section_students')));
+    assert.ok(calls.some(call => call.sql?.includes('DELETE FROM users')));
+  });
+
+  await t.test('one or more withdrawn assignments are removed in the same transaction', async () => {
+    reset({ user: { role: 'student' }, enrollments: [withdrawn, withdrawn] });
+    const result = await call(usersController.deleteUser, request);
+    assert.equal(result.error, null);
+    const cleanup = calls.findIndex(call => call.sql?.includes('DELETE FROM section_students'));
+    const deletion = calls.findIndex(call => call.sql?.includes('DELETE FROM users'));
+    assert.ok(cleanup > 0 && cleanup < deletion);
+    assert.deepEqual(calls[cleanup].values, [1, 21]);
+    assert.ok(calls.some(call => call.type === 'commit'));
+  });
+
+  for (const [label, enrollments, message] of [
+    ['active assignment', [{ withdrawnAt: null, academicYearStatus: 'active' }], /current section/],
+    ['older academic year', [{ withdrawnAt: new Date(), academicYearStatus: 'archived' }], /another academic year/],
+    ['mixed assignments', [withdrawn, { withdrawnAt: null, academicYearStatus: 'active' }], /current section/]
+  ]) {
+    await t.test(label + ' remains protected', async () => {
+      reset({ user: { role: 'student' }, enrollments });
+      const result = await call(usersController.deleteUser, request);
+      assert.equal(result.error?.status, 409);
+      assert.match(result.error.message, message);
+      assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM section_students')));
+      assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM users')));
+      assert.ok(calls.some(call => call.type === 'rollback'));
+    });
+  }
+
+  await t.test('parent link remains protected', async () => {
+    reset({ user: { role: 'student' }, parentLink: true, enrollments: [withdrawn] });
+    const result = await call(usersController.deleteUser, request);
+    assert.equal(result.error?.status, 409);
+    assert.ok(!calls.some(call => call.sql?.includes('DELETE FROM section_students')));
+  });
+
+  await t.test('protected records roll back withdrawn-assignment cleanup', async () => {
+    reset({ user: { role: 'student' }, enrollments: [withdrawn], failUserDelete: true });
+    const result = await call(usersController.deleteUser, request);
+    assert.equal(result.error?.status, 409);
+    assert.ok(calls.some(call => call.sql?.includes('DELETE FROM section_students')));
+    assert.ok(calls.some(call => call.type === 'rollback'));
+    assert.ok(!calls.some(call => call.type === 'commit'));
+  });
 });
 
 test('section delete rejects every section with saved or linked records', async t => {

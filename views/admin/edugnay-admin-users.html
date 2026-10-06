@@ -285,8 +285,8 @@
           </div>
         </div>
         <p style="margin:0;font-size:13px;color:var(--gray-mid);line-height:1.6;">
-          Permanently delete <strong id="deleteModalNameInline">this account</strong>? Accounts with parent/student links,
-          enrollments, grades, attendance, submissions, or other protected records cannot be deleted. Deactivate those accounts instead.
+          Permanently delete <strong id="deleteModalNameInline">this account</strong>? Family links, active or past-year
+          section assignments, grades, attendance, submissions, and other protected records prevent deletion. Deactivate those accounts instead.
         </p>
         <form id="deleteForm" method="post" action="/users/delete">
           <input type="hidden" name="userId" id="deleteUserId" />
@@ -308,7 +308,7 @@
           <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="upload"></i></div>
           <div class="modal-heading-copy">
           <div class="modal-title">Import Users</div>
-          <div class="modal-sub">School email and login details will be prepared using each person's personal email.</div>
+          <div class="modal-sub">Account credentials are emailed to each person's personal address when delivery is configured.</div>
           </div>
         </div>
         <button class="modal-close" onclick="closeImportModal()"><i data-lucide="x"
@@ -321,7 +321,7 @@
             <label class="form-label">Role</label>
             <input type="hidden" id="importUserRole" name="role" value="" />
             <div class="role-opts" id="importRoleOpts" role="group" aria-label="Account role">
-              <button type="button" class="role-opt" data-role="adm" aria-pressed="false" onclick="selectImportRole('adm')">
+              <button type="button" class="role-opt" data-role="adm" aria-pressed="false" disabled title="Administrator accounts cannot be imported" onclick="selectImportRole('adm')">
                 <div class="role-opt-icon" style="background:var(--blue-xpale);color:var(--blue-mid);"><i
                     data-lucide="shield" style="width:14px;height:14px;"></i></div><span>Admin</span>
               </button>
@@ -338,6 +338,7 @@
                     style="width:14px;height:14px;"></i></div><span>Parent</span>
               </button>
             </div>
+            <span class="form-hint">Administrator accounts cannot be imported. Add them individually.</span>
           </div>
 
           <div class="form-group" style="margin-bottom:0">
@@ -647,7 +648,7 @@
           </select>
         </div>
         <div class="toolbar-actions">
-          <button class="top-btn secondary" onclick="openImportModal()"><i data-lucide="file-up"
+          <button class="top-btn secondary" id="importUsersButton" onclick="openImportModal()" disabled><i data-lucide="file-up"
               style="width:16px;height:16px;"></i>Import Users</button>
           <button class="top-btn primary" id="addAccountButton" onclick="openAddModal()" disabled><i data-lucide="user-plus"
               style="width:16px;height:16px;"></i>Add Account</button>
@@ -734,6 +735,7 @@
     let usersLoading = false;
     let usersLoadError = '';
     let importState = { role: '', parsed: null, validation: null };
+    let importSubmitting = false;
 
     function findManagedUser(userId) {
       return USERS.find(user => String(user.id) === String(userId))
@@ -749,7 +751,9 @@
       usersLoading = true;
       usersLoadError = '';
       const addAccountButton = document.getElementById('addAccountButton');
+      const importUsersButton = document.getElementById('importUsersButton');
       if (addAccountButton) addAccountButton.disabled = true;
+      if (importUsersButton) importUsersButton.disabled = true;
       renderUsers();
 
       if (!ADMIN_USERS_API_ENABLED) {
@@ -765,6 +769,7 @@
           window.EDUGNAY_API.getSections()
         ]);
         USERS = users;
+        sortUsersByDate();
         backendUserSections = sections.filter(section =>
           section.status === 'active' && section.academicYearStatus === 'active'
         );
@@ -788,6 +793,7 @@
       } finally {
         usersLoading = false;
         if (addAccountButton) addAccountButton.disabled = !usersApiActive || Boolean(usersLoadError);
+        if (importUsersButton) importUsersButton.disabled = !usersApiActive || Boolean(usersLoadError);
         renderUsers();
       }
     }
@@ -1444,28 +1450,73 @@
     document.getElementById('importUsersForm').addEventListener('submit', async function (e) {
       e.preventDefault();
 
+      if (importSubmitting) return;
+      if (!usersApiActive || usersLoading || usersLoadError) {
+        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        return;
+      }
+
       const validation = importState.validation;
-      if (!validation || validation.errors.length || !validation.accountRecords.length) {
+      const file = document.getElementById('importUsersFileInput').files[0];
+      if (!file || !validation || validation.errors.length || !validation.accountRecords.length) {
         renderImportPreview();
         return;
       }
 
       const submitButton = document.getElementById('importUsersSubmitBtn');
+      importSubmitting = true;
       submitButton.disabled = true;
       submitButton.textContent = 'Importing...';
+      document.getElementById('importUsersFileInput').disabled = true;
+      document.querySelectorAll('#importRoleOpts .role-opt:not([data-role="adm"])').forEach(option => { option.disabled = true; });
+      let imported = false;
 
       try {
-        const result = await window.EDUGNAY_CONFIG.importUsers(validation.accountRecords);
+        const role = ROLE_OPT_TO_TABLE[importState.role];
+        const result = await window.EDUGNAY_API.importUsers(file, role);
+        imported = true;
+        importSubmitting = false;
         closeImportModal();
-        renderUsers();
-        await openCredentialDeliveryModal(result.accounts);
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = 'all';
+        document.getElementById('gradeLevelFilter').value = 'all';
+        document.getElementById('sectionFilter').value = 'all';
+        dateSortOrder = 'desc';
+        document.getElementById('sortDateAdded').textContent = 'Date Added ↓';
+        currentPage = 1;
+        await loadManagedUsers();
+        if (usersLoadError) throw new Error('The user list could not refresh.');
+        const cardClass = { teacher: 'fac', student: 'stud', parent: 'par' }[role];
+        const card = document.querySelector(`.rs-card.${cardClass}`);
+        if (card) filterRole(role, card);
+        const count = result.summary?.accountsCreated || 0;
+        const delivery = Object.entries(result.summary?.emailDelivery || {})
+          .map(([status, total]) => `${total} ${status.replaceAll('_', ' ')}`).join(', ');
+        showAppToast(`${count} account(s) imported.${delivery ? ` Credential email: ${delivery}.` : ''}`,
+          delivery && Object.keys(result.summary.emailDelivery).some(status => status !== 'sent') ? 'info' : 'success');
       } catch (error) {
-        submitButton.disabled = false;
+        if (imported) {
+          showAppToast('Accounts imported, but the user list could not refresh. Do not import the file again; reload the page.', 'info');
+        } else {
+          if (error.status === 422 && Array.isArray(error.data?.rows)) {
+            const errorsByRow = new Map(error.data.rows.map(row => [row.rowNumber, row.errors || []]));
+            validation.records.forEach(record => { record.errors = errorsByRow.get(record.rowNumber) || []; });
+            validation.errors = validation.records.flatMap(record => record.errors.map(message => `Row ${record.rowNumber}: ${message}`));
+          }
+          renderImportPreview();
+          const status = document.getElementById('importUsersStatus');
+          status.className = 'import-status error';
+          status.hidden = false;
+          status.textContent = error.status && error.status < 500
+            ? error.message || 'The accounts could not be imported.'
+            : `${error.message || 'The import response was lost.'} Check the user list before trying again; the import may have completed.`;
+        }
+      } finally {
+        importSubmitting = false;
+        document.getElementById('importUsersFileInput').disabled = false;
+        document.querySelectorAll('#importRoleOpts .role-opt:not([data-role="adm"])').forEach(option => { option.disabled = false; });
+        submitButton.disabled = Boolean(importState.validation?.errors.length) || !importState.validation?.accountRecords.length;
         submitButton.textContent = 'Import Accounts';
-        const status = document.getElementById('importUsersStatus');
-        status.className = 'import-status error';
-        status.hidden = false;
-        status.textContent = error.message || 'The accounts could not be imported.';
       }
     });
 
@@ -1988,15 +2039,18 @@
     /* ── SORT BY DATE ADDED ── */
     let dateSortOrder = 'desc';
 
+    function sortUsersByDate() {
+      USERS.sort((a, b) => {
+        const difference = new Date(a.createdAt) - new Date(b.createdAt);
+        return dateSortOrder === 'asc' ? difference : -difference;
+      });
+    }
+
     document.getElementById('sortDateAdded').addEventListener('click', function () {
       dateSortOrder = dateSortOrder === 'desc' ? 'asc' : 'desc';
       this.textContent = `Date Added ${dateSortOrder === 'asc' ? '↑' : '↓'}`;
 
-      USERS.sort((a, b) => {
-        const aDate = new Date(a.createdAt);
-        const bDate = new Date(b.createdAt);
-        return dateSortOrder === 'asc' ? aDate - bDate : bDate - aDate;
-      });
+      sortUsersByDate();
 
       currentPage = 1;
       renderUsers();
@@ -2047,6 +2101,10 @@
 
     /* ── IMPORT USERS MODAL ── */
     function openImportModal() {
+      if (!usersApiActive || usersLoading || usersLoadError) {
+        showAppToast('User accounts must be connected to the backend before importing.', 'error');
+        return;
+      }
       document.getElementById('importUsersForm').reset();
       importState = { role: '', parsed: null, validation: null };
 
@@ -2066,6 +2124,7 @@
     }
 
     function closeImportModal() {
+      if (importSubmitting) return;
       document.getElementById('importModalBackdrop').classList.remove('open');
     }
 
@@ -2675,8 +2734,8 @@
         previewWrap.hidden = true;
       }
 
-      submitButton.disabled = !validation || validationErrors.length > 0 || !validation.accountRecords.length;
-      submitButton.textContent = 'Import Accounts';
+      submitButton.disabled = importSubmitting || !validation || validationErrors.length > 0 || !validation.accountRecords.length;
+      submitButton.textContent = importSubmitting ? 'Importing...' : 'Import Accounts';
     }
 
 

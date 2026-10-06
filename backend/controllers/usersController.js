@@ -811,6 +811,29 @@ async function deleteUser(req, res, next) {
     );
     if (parentLinks.length) throw createError('Remove this account’s parent or student links before deleting it.', 409);
 
+    if (user.role === 'student') {
+      const [enrollments] = await connection.execute(
+        `SELECT section_students.withdrawn_at AS withdrawnAt, academic_years.status AS academicYearStatus
+         FROM section_students
+         INNER JOIN sections ON sections.id = section_students.section_id AND sections.school_id = section_students.school_id
+         INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.school_id = section_students.school_id
+         WHERE section_students.school_id = ? AND section_students.student_user_id = ? FOR UPDATE`,
+        [req.user.schoolId, userId]
+      );
+      if (enrollments.some(enrollment => !enrollment.withdrawnAt)) {
+        throw createError('Remove this student from their current section before deleting the account.', 409);
+      }
+      if (enrollments.some(enrollment => enrollment.academicYearStatus !== 'active')) {
+        throw createError('This student has section history from another academic year. Deactivate the account instead.', 409);
+      }
+      if (enrollments.length) {
+        await connection.execute(
+          'DELETE FROM section_students WHERE school_id = ? AND student_user_id = ? AND withdrawn_at IS NOT NULL',
+          [req.user.schoolId, userId]
+        );
+      }
+    }
+
     await writeAuditLog(connection, req, 'user_deleted', 'user', userId, {
       summary: `${user.displayName} · ${user.role.replace(/_/g, ' ')}`
     }, req.user.schoolId);
