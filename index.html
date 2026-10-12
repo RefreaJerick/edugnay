@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Academix</title>
   <link rel="icon" href="./assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="./assets/css/styles.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
     /* Login page layout */
-    html, body { background: var(--white); }
+    html,
+    body {
+      background: var(--white);
+    }
+
     .page {
       grid-template-columns: minmax(0, 60%) minmax(0, 1fr);
       min-height: 100dvh;
@@ -20,12 +27,14 @@
       padding: 0;
       background: var(--white);
     }
+
     .login-brand-panel {
       min-height: 100dvh;
       border-radius: 0;
       box-shadow: none;
       border-right: 1px solid var(--gray-200);
     }
+
     .login-panel {
       margin: 0;
       border-radius: 0;
@@ -35,27 +44,71 @@
       align-self: stretch;
       align-items: center;
     }
-    .login-panel::before { display: none; }
+
+    .login-panel::before {
+      display: none;
+    }
+
     .auth-view {
       display: none;
       width: 100%;
       max-width: 370px;
     }
-    .auth-view.active { display: block; }
-    .login-top, .login-form, .login-footer { width: 100%; max-width: 370px; }
-    .login-top { margin-bottom: 34px; }
+
+    .auth-view.active {
+      display: block;
+    }
+
+    .login-top,
+    .login-form,
+    .login-footer {
+      width: 100%;
+      max-width: 370px;
+    }
+
+    .login-top {
+      margin-bottom: 34px;
+    }
+
     .login-eyebrow {
       color: var(--blue-mid);
       letter-spacing: 1.5px;
     }
-    .login-title { font-size: clamp(30px, 3vw, 38px); letter-spacing: -.8px; }
+
+    .login-title {
+      font-size: clamp(30px, 3vw, 38px);
+      letter-spacing: -.8px;
+    }
+
     #signInView .login-title,
-    #resetPasswordView .login-title { margin-bottom: 0; }
-    .login-sub { color: var(--gray-500); line-height: 1.6; }
-    .form-group { margin-bottom: 20px; }
-    .form-input { min-height: 50px; border-radius: var(--button-radius); background: var(--gray-50); }
-    .form-input:not(:focus):hover { border-color: var(--gray-400); }
-    .form-bottom { margin-top: 4px; margin-bottom: 26px; }
+    #resetPasswordView .login-title {
+      margin-bottom: 0;
+    }
+
+    .login-sub {
+      color: var(--gray-500);
+      line-height: 1.6;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-input {
+      min-height: 50px;
+      border-radius: var(--button-radius);
+      background: var(--gray-50);
+    }
+
+    .form-input:not(:focus):hover {
+      border-color: var(--gray-400);
+    }
+
+    .form-bottom {
+      margin-top: 4px;
+      margin-bottom: 26px;
+    }
+
     button.forgot {
       padding: 0;
       border: 0;
@@ -63,11 +116,33 @@
       font-family: inherit;
       cursor: pointer;
     }
-    .btn-login { min-height: 51px; border-radius: var(--button-radius); box-shadow: none; }
-    .btn-login::after { display: none; }
-    .btn-login:hover { box-shadow: none; transform: none; }
-    .login-footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--gray-200); text-align: center; }
-    .login-footer p { color: var(--gray-500); }
+
+    .btn-login {
+      min-height: 51px;
+      border-radius: var(--button-radius);
+      box-shadow: none;
+    }
+
+    .btn-login::after {
+      display: none;
+    }
+
+    .btn-login:hover {
+      box-shadow: none;
+      transform: none;
+    }
+
+    .login-footer {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--gray-200);
+      text-align: center;
+    }
+
+    .login-footer p {
+      color: var(--gray-500);
+    }
+
     .school-onboarding-link {
       display: inline-flex;
       align-items: center;
@@ -78,7 +153,11 @@
       font-weight: 800;
       text-decoration: none;
     }
-    .school-onboarding-link:hover { color: var(--blue); }
+
+    .school-onboarding-link:hover {
+      color: var(--blue);
+    }
+
     .auth-back,
     .auth-text-action {
       display: inline-flex;
@@ -93,9 +172,16 @@
       font-weight: 700;
       cursor: pointer;
     }
-    .auth-back { margin-bottom: 30px; }
+
+    .auth-back {
+      margin-bottom: 30px;
+    }
+
     .auth-back:hover,
-    .auth-text-action:hover { color: var(--blue); }
+    .auth-text-action:hover {
+      color: var(--blue);
+    }
+
     .auth-inline-message {
       min-height: 18px;
       margin-top: 12px;
@@ -103,14 +189,22 @@
       font-size: 12px;
       line-height: 1.5;
     }
-    .auth-inline-message.error { color: var(--red); }
+
+    .auth-inline-message.error {
+      color: var(--red);
+    }
+
     .auth-status-icon {
       width: 38px;
       height: 38px;
       margin-bottom: 20px;
       color: var(--blue-mid);
     }
-    .auth-status-icon.success { color: var(--green-dark); }
+
+    .auth-status-icon.success {
+      color: var(--green-dark);
+    }
+
     .auth-status-email {
       margin-top: 8px;
       color: var(--gray-700);
@@ -118,18 +212,27 @@
       font-weight: 700;
       overflow-wrap: anywhere;
     }
-    .auth-actions { margin-top: 0; }
+
+    .auth-actions {
+      margin-top: 0;
+    }
+
     .auth-text-action {
       display: flex;
       width: fit-content;
       margin: 18px auto 0;
     }
+
     .password-guidance {
       color: var(--gray-500);
       font-size: 11.5px;
       line-height: 1.6;
     }
-    .password-guidance { margin: -8px 0 20px; }
+
+    .password-guidance {
+      margin: -8px 0 20px;
+    }
+
     .btn-login:disabled {
       background: var(--gray-300);
       color: var(--white);
@@ -137,12 +240,26 @@
     }
 
     @media (max-width: 1100px) and (min-width: 861px) {
-      .login-brand-panel { min-height: 100dvh; }
-      .login-panel { padding: 44px 36px; }
+      .login-brand-panel {
+        min-height: 100dvh;
+      }
+
+      .login-panel {
+        padding: 44px 36px;
+      }
     }
+
     @media (max-width: 860px) {
-      .page { display: block; min-height: 100dvh; padding: 0; }
-      .login-brand-panel { display: none; }
+      .page {
+        display: block;
+        min-height: 100dvh;
+        padding: 0;
+      }
+
+      .login-brand-panel {
+        display: none;
+      }
+
       .login-panel {
         min-height: 100dvh;
         padding: 38px clamp(24px, 8vw, 48px);
@@ -150,448 +267,460 @@
         justify-content: center;
       }
     }
+
     @media (max-width: 460px) {
-      .login-panel { min-height: 100dvh; padding: 28px 20px; border-radius: 0; }
-      .login-top { margin-bottom: 26px; }
-      .login-title { font-size: 29px; }
-      .form-input { min-height: 48px; font-size: 13px; }
+      .login-panel {
+        min-height: 100dvh;
+        padding: 28px 20px;
+        border-radius: 0;
+      }
+
+      .login-top {
+        margin-bottom: 26px;
+      }
+
+      .login-title {
+        font-size: 29px;
+      }
+
+      .form-input {
+        min-height: 48px;
+        font-size: 13px;
+      }
+
       .form-bottom {
         align-items: center;
         flex-direction: row;
         flex-wrap: nowrap;
         gap: 8px;
       }
+
       .form-bottom .forgot {
         flex: 0 0 auto;
         font-size: 12px;
         white-space: nowrap;
       }
-      .login-footer { margin-top: 24px; padding-top: 18px; }
+
+      .login-footer {
+        margin-top: 24px;
+        padding-top: 18px;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<div class="page">
+  <div class="page">
 
-  <div class="login-brand-panel" aria-label="Academix">
-    <img class="login-brand-watermark" src="./assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
-    <div class="login-brand-content">
-      <div class="system-mark">
-        <div class="system-crest">
-          <img src="./assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
+    <div class="login-brand-panel" aria-label="Academix">
+      <img class="login-brand-watermark" src="./assets/images/edUgnay-logo-icon.png" alt="" aria-hidden="true" />
+      <div class="login-brand-content">
+        <div class="system-mark">
+          <div class="system-crest">
+            <img src="./assets/images/edUgnay-logo-circle.png" alt="Academix logo" />
+          </div>
+          <div class="system-info">
+            <div class="brand-name">Acade<span>Mix</span></div>
+          </div>
         </div>
-        <div class="system-info">
-          <div class="brand-name">Acade<span>Mix</span></div>
+
+        <div class="login-brand-copy">
+          <div class="login-brand-kicker">One connected school community</div>
+          <h2 class="login-brand-heading">
+            Where every student<br />
+            <em>is seen, heard,</em><br />
+            and supported.
+          </h2>
+          <p class="login-brand-description">Bring academic monitoring, parent engagement, and school operations into
+            one clear view.</p>
         </div>
       </div>
+    </div>
 
-      <div class="login-brand-copy">
-        <div class="login-brand-kicker">One connected school community</div>
-        <h2 class="login-brand-heading">
-          Where every student<br/>
-          <em>is seen, heard,</em><br/>
-          and supported.
-        </h2>
-        <p class="login-brand-description">Bring academic monitoring, parent engagement, and school operations into one clear view.</p>
+    <div class="login-panel">
+      <div class="login-mobile-brand" aria-label="Academix">
+        <img src="./assets/images/edUgnay-logo-circle.png" alt="" />
       </div>
+      <section class="auth-view active" id="signInView" data-auth-view="signin" aria-labelledby="signInTitle">
+        <div class="login-top">
+          <div class="login-eyebrow">Academix Portal</div>
+          <h1 class="login-title" id="signInTitle">Sign in to<br />your account</h1>
+        </div>
+
+        <form class="login-form" id="signInForm" action="" method="post" onsubmit="checkEmail(event)" novalidate>
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="emailInput">School Email</label>
+            <div class="input-wrap">
+              <input class="form-input" type="email" id="emailInput" name="schoolEmail" placeholder="name@school.edu.ph"
+                autocomplete="email" required />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="passwordInput">Password</label>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="passwordInput" name="password"
+                placeholder="Enter your password" autocomplete="current-password" required />
+            </div>
+          </div>
+
+          <div class="form-bottom">
+            <button type="button" class="forgot" onclick="openForgotPassword()">Forgot password?</button>
+          </div>
+
+          <button class="btn-login" type="submit">
+            Sign In
+          </button>
+          <div class="auth-inline-message" id="signInMessage" role="alert" aria-live="polite"></div>
+        </form>
+
+        <div class="login-footer">
+          <p>
+            Contact your administrator if you cannot log in.
+          </p>
+          <a class="school-onboarding-link" href="./views/onboarding/edugnay-school-onboarding.html">
+            <i data-lucide="building-2" style="width:14px;height:14px;"></i>
+            Create an account for an organization/school
+          </a>
+        </div>
+      </section>
+
+      <section class="auth-view" id="forgotView" data-auth-view="forgot" aria-labelledby="forgotTitle"
+        aria-hidden="true">
+        <button type="button" class="auth-back" onclick="showAuthView('signin')">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to sign in
+        </button>
+        <div class="login-top">
+          <div class="login-eyebrow">Account Recovery</div>
+          <h1 class="login-title" id="forgotTitle">Reset your password</h1>
+          <p class="login-sub">Enter the personal email saved on your account. We will send a secure reset link there.
+          </p>
+        </div>
+        <form class="login-form" id="forgotPasswordForm" onsubmit="requestPasswordReset(event)">
+          <div class="form-group">
+            <label class="form-label" for="resetEmailInput">Personal Email</label>
+            <div class="input-wrap">
+              <input class="form-input" type="email" id="resetEmailInput" name="personalEmail"
+                placeholder="you@example.com" autocomplete="email" required />
+            </div>
+          </div>
+          <button class="btn-login" type="submit">Send Reset Link</button>
+          <div class="auth-inline-message" id="forgotMessage" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="auth-view" id="resetSentView" data-auth-view="sent" aria-labelledby="resetSentTitle"
+        aria-hidden="true">
+        <i class="auth-status-icon" data-lucide="mail-check" aria-hidden="true"></i>
+        <div class="login-top">
+          <div class="login-eyebrow">Request Received</div>
+          <h1 class="login-title" id="resetSentTitle">Check your email</h1>
+          <p class="login-sub">If an account exists for this address, password reset instructions have been sent. Check
+            this inbox and its spam folder.</p>
+          <p class="auth-status-email" id="resetEmailSummary"></p>
+        </div>
+        <div class="auth-actions">
+          <button class="btn-login" id="resetFlowButton" type="button" onclick="openResetPassword()">Continue to Reset
+            Password</button>
+          <button class="auth-text-action" type="button" onclick="showAuthView('signin')">Back to sign in</button>
+        </div>
+      </section>
+
+      <section class="auth-view" id="resetPasswordView" data-auth-view="reset" aria-labelledby="resetPasswordTitle"
+        aria-hidden="true">
+        <button type="button" class="auth-back" onclick="goBackFromReset()">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back
+        </button>
+        <div class="login-top">
+          <div class="login-eyebrow">Create New Password</div>
+          <h1 class="login-title" id="resetPasswordTitle">Choose a new password</h1>
+        </div>
+        <form class="login-form" id="resetPasswordForm" onsubmit="completePasswordReset(event)" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="newPasswordInput">New Password</label>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="newPasswordInput" name="password"
+                autocomplete="new-password" minlength="12" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirmPasswordInput">Confirm Password</label>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="confirmPasswordInput" name="confirmPassword"
+                autocomplete="new-password" minlength="12" required />
+            </div>
+          </div>
+          <p class="password-guidance">Use at least 8 characters. Both password fields must match.</p>
+          <button class="btn-login" type="submit">Reset Password</button>
+          <div class="auth-inline-message" id="resetPasswordMessage" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="auth-view" id="resetCompleteView" data-auth-view="complete" aria-labelledby="resetCompleteTitle"
+        aria-hidden="true">
+        <i class="auth-status-icon success" data-lucide="circle-check-big" aria-hidden="true"></i>
+        <div class="login-top">
+          <div class="login-eyebrow">Password Updated</div>
+          <h1 class="login-title" id="resetCompleteTitle">Reset complete</h1>
+          <p class="login-sub">Your password has been updated. You can now sign in using your new password.</p>
+        </div>
+        <div class="auth-actions">
+          <button class="btn-login" type="button" onclick="returnToSignIn()">Return to Sign In</button>
+        </div>
+      </section>
+
     </div>
   </div>
 
-  <div class="login-panel">
-    <div class="login-mobile-brand" aria-label="Academix">
-      <img src="./assets/images/edUgnay-logo-circle.png" alt="" />
-    </div>
-    <section class="auth-view active" id="signInView" data-auth-view="signin" aria-labelledby="signInTitle">
-    <div class="login-top">
-      <div class="login-eyebrow">Academix Portal</div>
-      <h1 class="login-title" id="signInTitle">Sign in to<br/>your account</h1>
-    </div>
+  <script src="./assets/js/api-config.js"></script>
+  <script>
 
-    <form class="login-form" id="signInForm" action="" method="post" onsubmit="checkEmail(event)" novalidate>
-      <!-- Email -->
-    <div class="form-group">
-      <label class="form-label" for="emailInput">School Email</label>
-      <div class="input-wrap">
-        <input
-          class="form-input"
-          type="email"
-          id="emailInput"
-          name="schoolEmail"
-          placeholder="name@school.edu.ph"
-          autocomplete="email"
-          required
-        />
-      </div>
-    </div>
+    const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 
-    <!-- Password -->
-    <div class="form-group">
-      <label class="form-label" for="passwordInput">Password</label>
-      <div class="input-wrap">
-        <input
-          class="form-input"
-          type="password"
-          id="passwordInput"
-          name="password"
-          placeholder="Enter your password"
-          autocomplete="current-password"
-          required
-        />
-      </div>
-    </div>
-
-    <div class="form-bottom">
-      <button type="button" class="forgot" onclick="openForgotPassword()">Forgot password?</button>
-    </div>
-
-    <button class="btn-login" type="submit">
-      Sign In
-    </button>
-    <div class="auth-inline-message" id="signInMessage" role="alert" aria-live="polite"></div>
-    </form>
-
-    <div class="login-footer">
-      <p>
-        Contact your administrator if you cannot log in.
-      </p>
-      <a class="school-onboarding-link" href="./views/onboarding/edugnay-school-onboarding.html">
-        <i data-lucide="building-2" style="width:14px;height:14px;"></i>
-        Create an account for an organization/school
-      </a>
-    </div>
-    </section>
-
-    <section class="auth-view" id="forgotView" data-auth-view="forgot" aria-labelledby="forgotTitle" aria-hidden="true">
-      <button type="button" class="auth-back" onclick="showAuthView('signin')">
-        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to sign in
-      </button>
-      <div class="login-top">
-        <div class="login-eyebrow">Account Recovery</div>
-        <h1 class="login-title" id="forgotTitle">Reset your password</h1>
-        <p class="login-sub">Enter the personal email saved on your account. We will send a secure reset link there.</p>
-      </div>
-      <form class="login-form" id="forgotPasswordForm" onsubmit="requestPasswordReset(event)">
-        <div class="form-group">
-          <label class="form-label" for="resetEmailInput">Personal Email</label>
-          <div class="input-wrap">
-            <input
-              class="form-input"
-              type="email"
-              id="resetEmailInput"
-              name="personalEmail"
-              placeholder="you@example.com"
-              autocomplete="email"
-              required
-            />
-          </div>
-        </div>
-        <button class="btn-login" type="submit">Send Reset Link</button>
-        <div class="auth-inline-message" id="forgotMessage" role="alert" aria-live="polite"></div>
-      </form>
-    </section>
-
-    <section class="auth-view" id="resetSentView" data-auth-view="sent" aria-labelledby="resetSentTitle" aria-hidden="true">
-      <i class="auth-status-icon" data-lucide="mail-check" aria-hidden="true"></i>
-      <div class="login-top">
-        <div class="login-eyebrow">Request Received</div>
-        <h1 class="login-title" id="resetSentTitle">Check your email</h1>
-        <p class="login-sub">If an account exists for this address, password reset instructions have been sent. Check this inbox and its spam folder.</p>
-        <p class="auth-status-email" id="resetEmailSummary"></p>
-      </div>
-      <div class="auth-actions">
-        <button class="btn-login" id="resetFlowButton" type="button" onclick="openResetPassword()">Continue to Reset Password</button>
-        <button class="auth-text-action" type="button" onclick="showAuthView('signin')">Back to sign in</button>
-      </div>
-    </section>
-
-    <section class="auth-view" id="resetPasswordView" data-auth-view="reset" aria-labelledby="resetPasswordTitle" aria-hidden="true">
-      <button type="button" class="auth-back" onclick="goBackFromReset()">
-        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back
-      </button>
-      <div class="login-top">
-        <div class="login-eyebrow">Create New Password</div>
-        <h1 class="login-title" id="resetPasswordTitle">Choose a new password</h1>
-      </div>
-      <form class="login-form" id="resetPasswordForm" onsubmit="completePasswordReset(event)" novalidate>
-        <div class="form-group">
-          <label class="form-label" for="newPasswordInput">New Password</label>
-          <div class="input-wrap">
-            <input class="form-input" type="password" id="newPasswordInput" name="password" autocomplete="new-password" minlength="12" required/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="confirmPasswordInput">Confirm Password</label>
-          <div class="input-wrap">
-            <input class="form-input" type="password" id="confirmPasswordInput" name="confirmPassword" autocomplete="new-password" minlength="12" required/>
-          </div>
-        </div>
-        <p class="password-guidance">Use at least 8 characters. Both password fields must match.</p>
-        <button class="btn-login" type="submit">Reset Password</button>
-        <div class="auth-inline-message" id="resetPasswordMessage" role="alert" aria-live="polite"></div>
-      </form>
-    </section>
-
-    <section class="auth-view" id="resetCompleteView" data-auth-view="complete" aria-labelledby="resetCompleteTitle" aria-hidden="true">
-      <i class="auth-status-icon success" data-lucide="circle-check-big" aria-hidden="true"></i>
-      <div class="login-top">
-        <div class="login-eyebrow">Password Updated</div>
-        <h1 class="login-title" id="resetCompleteTitle">Reset complete</h1>
-        <p class="login-sub">Your password has been updated. You can now sign in using your new password.</p>
-      </div>
-      <div class="auth-actions">
-        <button class="btn-login" type="button" onclick="returnToSignIn()">Return to Sign In</button>
-      </div>
-    </section>
-
-  </div>
-</div>
-
-<script src="./assets/js/api-config.js"></script>
-<script>
-
-  const API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
-
-  const AUTH_CONFIG = {
-    frontendOnly: false,
-    apiBaseUrl: API_BASE_URL,
-    endpoints: {
-      requestPasswordReset: '/auth/password-reset/request',
-      confirmPasswordReset: '/auth/password-reset/confirm'
-    }
-  };
-
-  const AUTH_VIEWS = ['signin', 'forgot', 'sent', 'reset', 'complete'];
-  const DASHBOARD_BY_ROLE = {
-    school_admin: './views/admin/edugnay-admin-dashboard.html',
-    teacher: './views/teacher/edugnay-teacher-dashboard.html',
-    student: './views/student/edugnay-student-dashboard.html',
-    parent: './views/parent/edugnay-parent-dashboard.html',
-    platform_admin: './views/platform/edugnay-platform-dashboard.html'
-  };
-
-  // Temporary bridge while portal pages still read their local demonstration arrays.
-  // The backend user ID remains in apiUserId; a later phase removes legacyUserId.
-  const LEGACY_USER_ID_BY_EMAIL = {
-    'admin.adm@stcolumban.edu.ph': 'admin-1',
-    'm.reyes.fac@stcolumban.edu.ph': 'teacher-2',
-    'carlo.mendoza.stud@stcolumban.edu.ph': 'cm-001',
-    'liza.reyes.stud@stcolumban.edu.ph': 'lr-002',
-    'juan.delacruz.stud@stcolumban.edu.ph': 'jd-004',
-    'maya.torres.stud@stcolumban.edu.ph': 'mt-012',
-    'sofia.cruz.stud@stcolumban.edu.ph': 'sc-013',
-    'rosa.lim.par@stcolumban.edu.ph': 'parent-7',
-    'platform.admin@academix.test': 'platform-1'
-  };
-  const AUTH_STATE = {
-    pendingRecoveryEmail: '',
-    resetToken: new URLSearchParams(window.location.search).get('token')
-      || new URLSearchParams(window.location.search).get('resetToken')
-      || ''
-  };
-
-  function showAuthView(viewName) {
-    AUTH_VIEWS.forEach(name => {
-      const view = document.querySelector(`[data-auth-view="${name}"]`);
-      if (!view) return;
-      const isActive = name === viewName;
-      view.classList.toggle('active', isActive);
-      view.setAttribute('aria-hidden', String(!isActive));
-    });
-
-    const activeView = document.querySelector(`[data-auth-view="${viewName}"]`);
-    const firstInput = activeView?.querySelector('input');
-    if (firstInput) window.setTimeout(() => firstInput.focus(), 0);
-  }
-
-  function openForgotPassword() {
-    setAuthMessage('forgotMessage', '');
-    showAuthView('forgot');
-  }
-
-  function setAuthMessage(elementId, message, isError = false) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    element.textContent = message;
-    element.classList.toggle('error', isError);
-  }
-
-  function setSubmitting(button, isSubmitting, loadingLabel) {
-    if (!button) return;
-    if (isSubmitting) {
-      button.dataset.originalLabel = button.textContent;
-      button.textContent = loadingLabel;
-      button.disabled = true;
-      return;
-    }
-    button.textContent = button.dataset.originalLabel || button.textContent;
-    button.disabled = false;
-  }
-
-  async function postAuthData(endpoint, payload) {
-    const response = await fetch(`${AUTH_CONFIG.apiBaseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-    const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || 'The request could not be completed.');
-    return data;
-  }
-
-  async function requestPasswordReset(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const personalEmailInput = document.getElementById('resetEmailInput');
-    const personalEmail = personalEmailInput.value.trim();
-    const submitButton = form.querySelector('button[type="submit"]');
-
-    if (!personalEmail || !personalEmailInput.checkValidity()) {
-      setAuthMessage('forgotMessage', 'Enter a valid personal email address.', true);
-      personalEmailInput.focus();
-      return;
-    }
-
-    if (AUTH_CONFIG.frontendOnly) {
-      setAuthMessage('forgotMessage', 'Password recovery will be available after verified email delivery is configured.', true);
-      return;
-    }
-
-    setAuthMessage('forgotMessage', '');
-    setSubmitting(submitButton, true, 'Preparing Reset...');
-
-    try {
-      await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { personalEmail });
-      AUTH_STATE.pendingRecoveryEmail = personalEmail;
-      document.getElementById('resetEmailSummary').textContent = personalEmail;
-      showAuthView('sent');
-    } catch (error) {
-      setAuthMessage('forgotMessage', 'Unable to process the request right now. Please try again.', true);
-    } finally {
-      setSubmitting(submitButton, false, 'Send Reset Link');
-    }
-  }
-
-  function openResetPassword() {
-    if (AUTH_CONFIG.frontendOnly) return;
-    document.getElementById('resetPasswordForm').reset();
-    setAuthMessage('resetPasswordMessage', '');
-    showAuthView('reset');
-  }
-
-  function goBackFromReset() {
-    showAuthView(AUTH_STATE.pendingRecoveryEmail ? 'sent' : 'signin');
-  }
-
-  async function completePasswordReset(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const password = document.getElementById('newPasswordInput').value;
-    const confirmation = document.getElementById('confirmPasswordInput').value;
-    const submitButton = form.querySelector('button[type="submit"]');
-
-    if (password.length < 12) {
-      setAuthMessage('resetPasswordMessage', 'Your password must contain at least 12 characters.', true);
-      return;
-    }
-    if (password !== confirmation) {
-      setAuthMessage('resetPasswordMessage', 'The passwords do not match.', true);
-      return;
-    }
-    if (!AUTH_STATE.resetToken) {
-      setAuthMessage('resetPasswordMessage', 'This reset link is missing or invalid.', true);
-      return;
-    }
-
-    setAuthMessage('resetPasswordMessage', '');
-    setSubmitting(submitButton, true, 'Updating Password...');
-
-    try {
-      if (!AUTH_CONFIG.frontendOnly) {
-        await postAuthData(AUTH_CONFIG.endpoints.confirmPasswordReset, {
-          token: AUTH_STATE.resetToken,
-          password
-        });
+    const AUTH_CONFIG = {
+      frontendOnly: false,
+      apiBaseUrl: API_BASE_URL,
+      endpoints: {
+        requestPasswordReset: '/auth/password-reset/request',
+        confirmPasswordReset: '/auth/password-reset/confirm'
       }
-      form.reset();
-      showAuthView('complete');
-    } catch (error) {
-      setAuthMessage('resetPasswordMessage', 'Unable to reset the password. The link may have expired.', true);
-    } finally {
-      setSubmitting(submitButton, false, 'Reset Password');
-    }
-  }
+    };
 
-  function returnToSignIn() {
-    AUTH_STATE.pendingRecoveryEmail = '';
-    AUTH_STATE.resetToken = '';
-    document.getElementById('passwordInput').value = '';
-    setAuthMessage('signInMessage', '');
-    if (window.history.replaceState) {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    showAuthView('signin');
-  }
+    const AUTH_VIEWS = ['signin', 'forgot', 'sent', 'reset', 'complete'];
+    const DASHBOARD_BY_ROLE = {
+      school_admin: './views/admin/edugnay-admin-dashboard.html',
+      teacher: './views/teacher/edugnay-teacher-dashboard.html',
+      student: './views/student/edugnay-student-dashboard.html',
+      parent: './views/parent/edugnay-parent-dashboard.html',
+      platform_admin: './views/platform/edugnay-platform-dashboard.html'
+    };
 
-  async function checkEmail(event) {
-    if (event) event.preventDefault();
-    const form = document.getElementById('signInForm');
-    const schoolEmailInput = document.getElementById('emailInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const schoolEmail = schoolEmailInput.value.trim();
-    const password = passwordInput.value;
-    const submitButton = form.querySelector('button[type="submit"]');
+    // Temporary bridge while portal pages still read their local demonstration arrays.
+    // The backend user ID remains in apiUserId; a later phase removes legacyUserId.
+    const LEGACY_USER_ID_BY_EMAIL = {
+      'admin.adm@stcolumban.edu.ph': 'admin-1',
+      'm.reyes.fac@stcolumban.edu.ph': 'teacher-2',
+      'carlo.mendoza.stud@stcolumban.edu.ph': 'cm-001',
+      'liza.reyes.stud@stcolumban.edu.ph': 'lr-002',
+      'juan.delacruz.stud@stcolumban.edu.ph': 'jd-004',
+      'maya.torres.stud@stcolumban.edu.ph': 'mt-012',
+      'sofia.cruz.stud@stcolumban.edu.ph': 'sc-013',
+      'rosa.lim.par@stcolumban.edu.ph': 'parent-7',
+      'platform.admin@academix.test': 'platform-1'
+    };
+    const AUTH_STATE = {
+      pendingRecoveryEmail: '',
+      resetToken: new URLSearchParams(window.location.search).get('token')
+        || new URLSearchParams(window.location.search).get('resetToken')
+        || ''
+    };
 
-    if (!schoolEmail || !schoolEmailInput.checkValidity()) {
-      setAuthMessage('signInMessage', 'Enter your school email.', true);
-      return;
-    }
-    if (!password) {
-      setAuthMessage('signInMessage', 'Enter your password.', true);
-      passwordInput.focus();
-      return;
+    function showAuthView(viewName) {
+      AUTH_VIEWS.forEach(name => {
+        const view = document.querySelector(`[data-auth-view="${name}"]`);
+        if (!view) return;
+        const isActive = name === viewName;
+        view.classList.toggle('active', isActive);
+        view.setAttribute('aria-hidden', String(!isActive));
+      });
+
+      const activeView = document.querySelector(`[data-auth-view="${viewName}"]`);
+      const firstInput = activeView?.querySelector('input');
+      if (firstInput) window.setTimeout(() => firstInput.focus(), 0);
     }
 
-    setAuthMessage('signInMessage', '');
-    setSubmitting(submitButton, true, 'Signing in...');
-    try {
-      if (!AUTH_CONFIG.apiBaseUrl) {
-        throw new Error('The API address has not been configured.');
+    function openForgotPassword() {
+      setAuthMessage('forgotMessage', '');
+      showAuthView('forgot');
+    }
+
+    function setAuthMessage(elementId, message, isError = false) {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+      element.textContent = message;
+      element.classList.toggle('error', isError);
+    }
+
+    function setSubmitting(button, isSubmitting, loadingLabel) {
+      if (!button) return;
+      if (isSubmitting) {
+        button.dataset.originalLabel = button.textContent;
+        button.textContent = loadingLabel;
+        button.disabled = true;
+        return;
+      }
+      button.textContent = button.dataset.originalLabel || button.textContent;
+      button.disabled = false;
+    }
+
+    async function postAuthData(endpoint, payload) {
+      const response = await fetch(`${AUTH_CONFIG.apiBaseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'The request could not be completed.');
+      return data;
+    }
+
+    async function requestPasswordReset(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const personalEmailInput = document.getElementById('resetEmailInput');
+      const personalEmail = personalEmailInput.value.trim();
+      const submitButton = form.querySelector('button[type="submit"]');
+
+      if (!personalEmail || !personalEmailInput.checkValidity()) {
+        setAuthMessage('forgotMessage', 'Enter a valid personal email address.', true);
+        personalEmailInput.focus();
+        return;
       }
 
-      const { user } = await postAuthData('/auth/login', { schoolEmail, password });
-      const dashboard = DASHBOARD_BY_ROLE[user.role];
-      if (!dashboard) throw new Error('This account does not have a portal route.');
+      if (AUTH_CONFIG.frontendOnly) {
+        setAuthMessage('forgotMessage', 'Password recovery will be available after verified email delivery is configured.', true);
+        return;
+      }
 
-      const legacyUserId = LEGACY_USER_ID_BY_EMAIL[user.schoolEmail] || String(user.id);
-      sessionStorage.setItem('edugnay_session', JSON.stringify({
-        userId: legacyUserId,
-        apiUserId: user.id,
-        role: user.role,
-        schoolId: user.schoolId === 1 ? 'scc' : user.schoolId,
-        apiSchoolId: user.schoolId,
-        schoolEmail: user.schoolEmail
-      }));
+      setAuthMessage('forgotMessage', '');
+      setSubmitting(submitButton, true, 'Preparing Reset...');
 
-      window.location.href = dashboard;
-    } catch (error) {
-      setAuthMessage('signInMessage', error.message || 'Unable to sign in right now. Please try again.', true);
-      passwordInput.focus();
-    } finally {
-      setSubmitting(submitButton, false, 'Sign In');
+      try {
+        await postAuthData(AUTH_CONFIG.endpoints.requestPasswordReset, { personalEmail });
+        AUTH_STATE.pendingRecoveryEmail = personalEmail;
+        document.getElementById('resetEmailSummary').textContent = personalEmail;
+        showAuthView('sent');
+      } catch (error) {
+        setAuthMessage('forgotMessage', 'Unable to process the request right now. Please try again.', true);
+      } finally {
+        setSubmitting(submitButton, false, 'Send Reset Link');
+      }
     }
-  }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('resetFlowButton').hidden = !AUTH_CONFIG.frontendOnly;
-    if (AUTH_STATE.resetToken) showAuthView('reset');
-  });
-</script>
+    function openResetPassword() {
+      if (AUTH_CONFIG.frontendOnly) return;
+      document.getElementById('resetPasswordForm').reset();
+      setAuthMessage('resetPasswordMessage', '');
+      showAuthView('reset');
+    }
 
-<script>
-  lucide.createIcons();
-</script>
+    function goBackFromReset() {
+      showAuthView(AUTH_STATE.pendingRecoveryEmail ? 'sent' : 'signin');
+    }
+
+    async function completePasswordReset(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const password = document.getElementById('newPasswordInput').value;
+      const confirmation = document.getElementById('confirmPasswordInput').value;
+      const submitButton = form.querySelector('button[type="submit"]');
+
+      if (password.length < 12) {
+        setAuthMessage('resetPasswordMessage', 'Your password must contain at least 12 characters.', true);
+        return;
+      }
+      if (password !== confirmation) {
+        setAuthMessage('resetPasswordMessage', 'The passwords do not match.', true);
+        return;
+      }
+      if (!AUTH_STATE.resetToken) {
+        setAuthMessage('resetPasswordMessage', 'This reset link is missing or invalid.', true);
+        return;
+      }
+
+      setAuthMessage('resetPasswordMessage', '');
+      setSubmitting(submitButton, true, 'Updating Password...');
+
+      try {
+        if (!AUTH_CONFIG.frontendOnly) {
+          await postAuthData(AUTH_CONFIG.endpoints.confirmPasswordReset, {
+            token: AUTH_STATE.resetToken,
+            password
+          });
+        }
+        form.reset();
+        showAuthView('complete');
+      } catch (error) {
+        setAuthMessage('resetPasswordMessage', 'Unable to reset the password. The link may have expired.', true);
+      } finally {
+        setSubmitting(submitButton, false, 'Reset Password');
+      }
+    }
+
+    function returnToSignIn() {
+      AUTH_STATE.pendingRecoveryEmail = '';
+      AUTH_STATE.resetToken = '';
+      document.getElementById('passwordInput').value = '';
+      setAuthMessage('signInMessage', '');
+      if (window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      showAuthView('signin');
+    }
+
+    async function checkEmail(event) {
+      if (event) event.preventDefault();
+      const form = document.getElementById('signInForm');
+      const schoolEmailInput = document.getElementById('emailInput');
+      const passwordInput = document.getElementById('passwordInput');
+      const schoolEmail = schoolEmailInput.value.trim();
+      const password = passwordInput.value;
+      const submitButton = form.querySelector('button[type="submit"]');
+
+      if (!schoolEmail || !schoolEmailInput.checkValidity()) {
+        setAuthMessage('signInMessage', 'Enter your school email.', true);
+        return;
+      }
+      if (!password) {
+        setAuthMessage('signInMessage', 'Enter your password.', true);
+        passwordInput.focus();
+        return;
+      }
+
+      setAuthMessage('signInMessage', '');
+      setSubmitting(submitButton, true, 'Signing in...');
+      try {
+        if (!AUTH_CONFIG.apiBaseUrl) {
+          throw new Error('The API address has not been configured.');
+        }
+
+        const { user } = await postAuthData('/auth/login', { schoolEmail, password });
+        const dashboard = DASHBOARD_BY_ROLE[user.role];
+        if (!dashboard) throw new Error('This account does not have a portal route.');
+
+        const legacyUserId = LEGACY_USER_ID_BY_EMAIL[user.schoolEmail] || String(user.id);
+        sessionStorage.setItem('edugnay_session', JSON.stringify({
+          userId: legacyUserId,
+          apiUserId: user.id,
+          role: user.role,
+          schoolId: user.schoolId === 1 ? 'scc' : user.schoolId,
+          apiSchoolId: user.schoolId,
+          schoolEmail: user.schoolEmail
+        }));
+
+        window.location.href = dashboard;
+      } catch (error) {
+        setAuthMessage('signInMessage', error.message || 'Unable to sign in right now. Please try again.', true);
+        passwordInput.focus();
+      } finally {
+        setSubmitting(submitButton, false, 'Sign In');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('resetFlowButton').hidden = !AUTH_CONFIG.frontendOnly;
+      if (AUTH_STATE.resetToken) showAuthView('reset');
+    });
+  </script>
+
+  <script>
+    lucide.createIcons();
+  </script>
 
 </body>
+
 </html>

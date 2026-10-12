@@ -255,24 +255,6 @@
     </section>
   </main>
 
-  <div class="onboarding-preview-modal" id="onboardingPreviewModal" aria-hidden="true" onclick="handleOnboardingPreviewBackdrop(event)">
-    <section class="onboarding-preview-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="onboardingPreviewModalTitle">
-      <div class="onboarding-preview-modal-head">
-        <div>
-          <span class="onboarding-preview-modal-index" id="onboardingPreviewModalIndex">01 / 05</span>
-          <h2 id="onboardingPreviewModalTitle">Feature preview</h2>
-          <p>Scroll to view the full screenshot.</p>
-        </div>
-        <button class="onboarding-preview-modal-close" id="onboardingPreviewModalClose" type="button" aria-label="Close full preview" onclick="closeOnboardingFeaturePreview()">
-          <i data-lucide="x" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div class="onboarding-preview-modal-media">
-        <img id="onboardingPreviewModalImage" alt="" decoding="async" />
-      </div>
-    </section>
-  </div>
-
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
     const ONBOARDING_FEATURES = [
@@ -332,15 +314,7 @@
         const hasPreviewImage = Boolean(feature.imageSrc);
         const previewContent = hasPreviewImage
           ? `<div class="onboarding-showcase-preview-media">
-              <button class="onboarding-showcase-preview-trigger" type="button" aria-label="Open full ${feature.previewLabel}" onclick="openOnboardingFeaturePreview('${feature.id}')">
-                <img class="onboarding-showcase-preview-image" src="${feature.imageSrc}" alt="${feature.imageAlt || `${feature.previewLabel} screenshot`}" decoding="async" />
-                <span class="onboarding-showcase-preview-overlay" aria-hidden="true">
-                  <span class="onboarding-showcase-preview-hint">
-                    <i data-lucide="maximize-2" aria-hidden="true"></i>
-                    <span>View full preview</span>
-                  </span>
-                </span>
-              </button>
+              <img class="onboarding-showcase-preview-image" src="${feature.imageSrc}" alt="${feature.imageAlt || `${feature.previewLabel} screenshot`}" decoding="async" />
             </div>`
           : `<div class="onboarding-showcase-placeholder" role="img" aria-label="${feature.previewLabel} screenshot placeholder">
               <i data-lucide="image" aria-hidden="true"></i>
@@ -359,60 +333,7 @@
       }).join('');
     }
 
-    let onboardingPreviewTrigger = null;
-
-    function openOnboardingFeaturePreview(featureId) {
-      const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
-      if (!feature?.imageSrc) return;
-
-      stopOnboardingFeatureAutoPlay();
-
-      const featureIndex = String(ONBOARDING_FEATURES.indexOf(feature) + 1).padStart(2, '0');
-      const featureCount = String(ONBOARDING_FEATURES.length).padStart(2, '0');
-      const previewModal = document.getElementById('onboardingPreviewModal');
-      const previewImage = document.getElementById('onboardingPreviewModalImage');
-
-      onboardingPreviewTrigger = document.activeElement;
-      document.getElementById('onboardingPreviewModalIndex').textContent = `${featureIndex} / ${featureCount}`;
-      document.getElementById('onboardingPreviewModalTitle').textContent = feature.title;
-      previewImage.src = feature.imageSrc;
-      previewImage.alt = feature.imageAlt || `${feature.previewLabel} screenshot`;
-      previewModal.classList.add('open');
-      previewModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('onboarding-preview-modal-open');
-      document.getElementById('onboardingPreviewModalClose').focus();
-    }
-
-    function closeOnboardingFeaturePreview() {
-      const previewModal = document.getElementById('onboardingPreviewModal');
-      if (!previewModal.classList.contains('open')) return;
-
-      previewModal.classList.remove('open');
-      previewModal.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('onboarding-preview-modal-open');
-      onboardingPreviewTrigger?.focus();
-      onboardingPreviewTrigger = null;
-    }
-
-    function handleOnboardingPreviewBackdrop(event) {
-      if (event.target === event.currentTarget) closeOnboardingFeaturePreview();
-    }
-
-    function handleOnboardingPreviewKeydown(event) {
-      if (!document.getElementById('onboardingPreviewModal').classList.contains('open')) return;
-
-      if (event.key === 'Escape') {
-        closeOnboardingFeaturePreview();
-        return;
-      }
-
-      if (event.key === 'Tab') {
-        event.preventDefault();
-        document.getElementById('onboardingPreviewModalClose').focus();
-      }
-    }
-
-    function selectOnboardingFeature(featureId, shouldScrollPreview = true) {
+    function selectOnboardingFeature(featureId) {
       const feature = ONBOARDING_FEATURES.find(item => item.id === featureId);
       const selectedTab = document.getElementById(`onboardingFeatureTab-${featureId}`);
       const selectedSlide = Array.from(document.querySelectorAll('.onboarding-showcase-preview-slide'))
@@ -442,29 +363,6 @@
       } else if (tabBounds.right > stripBounds.right) {
         tabStrip.scrollBy({ left: tabBounds.right - stripBounds.right, behavior });
       }
-
-      if (shouldScrollPreview && window.matchMedia('(max-width: 760px)').matches) {
-        const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
-        const slideLeft = previewTrack.scrollLeft + selectedSlide.getBoundingClientRect().left
-          - previewTrack.getBoundingClientRect().left;
-        previewTrack.scrollTo({ left: slideLeft, behavior });
-      }
-    }
-
-    function initOnboardingFeaturePreviewSwipe() {
-      const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
-      if (!previewTrack || !('IntersectionObserver' in window)) return;
-
-      const slideObserver = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (!window.matchMedia('(max-width: 760px)').matches || !entry.isIntersecting || entry.intersectionRatio < 0.6) return;
-          selectOnboardingFeature(entry.target.dataset.featureId, false);
-        });
-      }, { root: previewTrack, threshold: 0.6 });
-
-      previewTrack.querySelectorAll('.onboarding-showcase-preview-slide').forEach(slide => {
-        slideObserver.observe(slide);
-      });
     }
 
     function showNextOnboardingFeature() {
@@ -489,11 +387,8 @@
 
     function initOnboardingFeatureAutoPlay() {
       const featureTabs = document.querySelector('.onboarding-feature-tabs');
-      const previewTrack = document.getElementById('onboardingFeaturePreviewTrack');
-
       featureTabs?.addEventListener('pointerdown', stopOnboardingFeatureAutoPlay);
       featureTabs?.addEventListener('focusin', stopOnboardingFeatureAutoPlay);
-      previewTrack?.addEventListener('pointerdown', stopOnboardingFeatureAutoPlay);
       window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => {
         if (event.matches) stopOnboardingFeatureAutoPlay();
       });
@@ -791,10 +686,8 @@
     document.addEventListener('DOMContentLoaded', () => {
       initOnboardingReveal();
       renderOnboardingFeaturePreviews();
-      selectOnboardingFeature('school-management', false);
-      initOnboardingFeaturePreviewSwipe();
+      selectOnboardingFeature('school-management');
       initOnboardingFeatureAutoPlay();
-      document.addEventListener('keydown', handleOnboardingPreviewKeydown);
       populateSchoolLevels();
       renderAcademicTermConfigurations();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
