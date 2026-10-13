@@ -359,7 +359,7 @@
         <div>
           <div class="publish-warn-title">All grading items need a recorded score</div>
           <div class="publish-warn-text">
-            The server calculates final grades using the school's grading rules. A score of 0 is valid; missing scores must be entered before publishing. Publishing saves the grades for <strong id="publishSectionSubject">Grade 7 – St. Matthew · Values Education</strong>.
+            The server calculates final grades using the school's grading rules. A score of 0 is valid; missing scores must be entered before publishing. Publishing saves the grades for <strong id="publishSectionSubject">the selected section and subject</strong>.
           </div>
         </div>
       </div>
@@ -699,9 +699,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar faculty">MR</div>
+          <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -736,7 +736,7 @@
       <div class="section-header-left">
         <div class="section-badge" id="sectionGradeBadge" aria-hidden="true">G7</div>
         <div class="section-info">
-          <h2 class="section-name" id="sectionHeaderName">St. Matthew</h2>
+          <h2 class="section-name" id="sectionHeaderName">Loading section...</h2>
           <div class="section-subject">
             <i data-lucide="book-open"></i>
             <span>Subject:</span>
@@ -801,7 +801,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Student List</div>
-            <div class="panel-sub" id="studentListMeta">Grade 7 – St. Matthew</div>
+            <div class="panel-sub" id="studentListMeta">Loading section...</div>
           </div>
         </div>
         <div class="search-toolbar">
@@ -856,7 +856,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title" id="scorePanelTitle">Score Recording: Values Education</div>
-            <div class="panel-sub"><span id="scoreSectionName">Grade 7 – St. Matthew</span> · <span id="scorePanelPeriodName">Current period</span> · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
+            <div class="panel-sub"><span id="scoreSectionName">Loading section...</span> · <span id="scorePanelPeriodName">Current period</span> · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
           </div>
           <div class="panel-head-actions">
             <button class="top-btn secondary" data-requires-subject onclick="openModal('addCompModal')">
@@ -951,7 +951,7 @@
         <div class="panel-head attendance-entry-head">
           <div>
             <div class="panel-title" id="attPanelTitle">Attendance: Today</div>
-            <div class="panel-sub" id="attendancePanelSub">Grade 7 – St. Matthew</div>
+            <div class="panel-sub" id="attendancePanelSub">Loading section...</div>
           </div>
           <div class="panel-head-actions attendance-entry-actions">
             <button class="top-btn secondary" id="qrAttendanceButton" type="button" onclick="openQrAttendance()">
@@ -1045,7 +1045,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title" id="assignmentPanelTitle">Assignments: Values Education</div>
-            <div class="panel-sub" id="assignmentPanelSub">Grade 7 – St. Matthew</div>
+            <div class="panel-sub" id="assignmentPanelSub">Loading section...</div>
           </div>
           <div class="panel-head-actions">
             <button class="top-btn primary" data-requires-subject onclick="openModal('addAssignmentModal')">
@@ -1063,7 +1063,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title">Learning Materials</div>
-            <div class="panel-sub">Grade 7 – St. Matthew · Values Education · 6 files uploaded</div>
+            <div class="panel-sub">Materials for the selected section and subject</div>
           </div>
           <div class="panel-head-actions">
             <button class="top-btn primary" type="button" data-requires-subject onclick="openMaterialUploadModal()">
@@ -1489,11 +1489,10 @@
   }
 
   /* ── SECTION AND TEACHER CONTEXT ── */
-  // Backend mode resolves the selected section from the signed-in teacher's
-  // assigned sections. Local defaults are used only in demo mode.
-  let CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || 'teacher-2';
-  let CURRENT_SECTION_ID = 'jhs-grade7-matthew';
-  let CURRENT_SECTION_RECORD = window.EDUGNAY_CONFIG.getAssignmentSections().find(section => section.id === CURRENT_SECTION_ID);
+  // Resolve the selected section from the signed-in teacher's assignments.
+  let CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || null;
+  let CURRENT_SECTION_ID = '';
+  let CURRENT_SECTION_RECORD = null;
   let CURRENT_BACKEND_SECTION = null;
   let CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [];
   let CURRENT_SUBJECT_ASSIGNMENT = null;
@@ -1504,17 +1503,17 @@
     schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
     teacherId: CURRENT_TEACHER_ID,
     sectionId: CURRENT_SECTION_ID,
-    subjectId: 'values-education',
+    subjectId: '',
     adviserId: CURRENT_SECTION_RECORD?.adviserId || null,
     isAdviser: CURRENT_SECTION_RECORD?.adviserId === CURRENT_TEACHER_ID
   };
-  let CURRENT_SUBJECT_RECORD = window.EDUGNAY_CONFIG.subjects.find(subject => subject.id === CURRENT_TEACHER_ASSIGNMENT.subjectId);
+  let CURRENT_SUBJECT_RECORD = null;
   let CURRENT_SECTION = CURRENT_SECTION_RECORD ? `${CURRENT_SECTION_RECORD.grade} – ${CURRENT_SECTION_RECORD.name}` : 'Section';
   let CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
   let CURRENT_SUBJECT = CURRENT_SUBJECT_RECORD?.name || 'Subject';
   let CURRENT_LEVEL = CURRENT_SECTION_RECORD?.level || 'jhs';
   let CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
-  let ACADEMIC_PERIODS = window.EDUGNAY_CONFIG.getAcademicPeriods(window.EDUGNAY_CONFIG.getActiveSchoolId(), CURRENT_LEVEL);
+  let ACADEMIC_PERIODS = [];
   let ACTIVE_ACADEMIC_PERIOD_ID = CURRENT_DIVISION.activeAcademicPeriodId || ACADEMIC_PERIODS.find(period => period.status === 'active')?.id || ACADEMIC_PERIODS[0]?.id || '';
   let CURRENT_GRADING_RULES = CURRENT_DIVISION.gradingRules || [];
   let GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
@@ -1529,14 +1528,10 @@
   );
 
   function refreshSectionSettings() {
-    const schoolId = CURRENT_SECTION_RECORD?.schoolId || window.EDUGNAY_CONFIG.getActiveSchoolId();
     CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
-    ACADEMIC_PERIODS = BACKEND_SECTION_MODE ? [] : window.EDUGNAY_CONFIG.getAcademicPeriods(schoolId, CURRENT_LEVEL);
-    CURRENT_GRADING_RULES = BACKEND_SECTION_MODE ? [] : (CURRENT_DIVISION.gradingRules || []);
-    ACTIVE_ACADEMIC_PERIOD_ID = BACKEND_SECTION_MODE ? '' : CURRENT_DIVISION.activeAcademicPeriodId
-      || ACADEMIC_PERIODS.find(period => period.status === 'active')?.id
-      || ACADEMIC_PERIODS[0]?.id
-      || '';
+    ACADEMIC_PERIODS = [];
+    CURRENT_GRADING_RULES = [];
+    ACTIVE_ACADEMIC_PERIOD_ID = '';
     GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
       ? CURRENT_DIVISION.gradeRounding
       : 'round';
@@ -1561,70 +1556,8 @@
 
   async function initializeTeacherSectionContext() {
     if (!window.EDUGNAY_API?.isBackendAvailable) {
-      BACKEND_SECTION_MODE = false;
-      try {
-        const sections = (await window.EDUGNAY_CONFIG.getMyTeachingSections()).filter(section =>
-          (!section.status || section.status === 'active')
-          && (!section.academicYearStatus || section.academicYearStatus === 'active')
-        );
-        const requestedSectionId = new URLSearchParams(window.location.search).get('sectionId');
-        const selectedSection = requestedSectionId
-          ? sections.find(section => String(section.id) === requestedSectionId)
-          : sections[0];
-        if (!selectedSection) {
-          throw new Error(requestedSectionId
-            ? 'This section has no subject assigned to your account.'
-            : 'No active subject sections are assigned to your account.');
-        }
-
-        CURRENT_SECTION_RECORD = selectedSection;
-        CURRENT_SECTION_ID = String(selectedSection.id);
-        keepSectionInUrl();
-        const assignments = window.EDUGNAY_CONFIG.getAssignmentsForSection(CURRENT_SECTION_ID)
-          .filter(item => String(item.teacherId) === CURRENT_TEACHER_ID);
-        const subjects = window.EDUGNAY_CONFIG.subjects;
-        CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [...new Map(assignments.map(item => [
-          String(item.subjectId), {
-            teacherId: CURRENT_TEACHER_ID,
-            subjectId: String(item.subjectId),
-            subjectName: subjects.find(subject => String(subject.id) === String(item.subjectId))?.name || String(item.subjectId)
-          }
-        ])).values()];
-        const requestedSubjectId = new URLSearchParams(window.location.search).get('subjectId');
-        CURRENT_SUBJECT_ASSIGNMENT = requestedSubjectId
-          ? CURRENT_TEACHER_SUBJECT_ASSIGNMENTS.find(item => item.subjectId === requestedSubjectId)
-          : CURRENT_TEACHER_SUBJECT_ASSIGNMENTS[0] || null;
-        if (requestedSubjectId && !CURRENT_SUBJECT_ASSIGNMENT) {
-          throw new Error('That subject is not assigned to you in this section.');
-        }
-
-        STUDENTS = window.EDUGNAY_CONFIG
-          .getUsersByRole(window.EDUGNAY_CONFIG.values.roles.STUDENT)
-          .filter(student => String(student.sectionId) === CURRENT_SECTION_ID);
-        CURRENT_LEVEL = selectedSection.level || 'jhs';
-        CURRENT_SECTION = [selectedSection.grade, selectedSection.name].filter(Boolean).join(' – ') || 'Section';
-        CURRENT_TEACHER_ASSIGNMENT = {
-          schoolId: selectedSection.schoolId || window.EDUGNAY_CONFIG.getActiveSchoolId(),
-          teacherId: CURRENT_TEACHER_ID,
-          sectionId: CURRENT_SECTION_ID,
-          subjectId: CURRENT_SUBJECT_ASSIGNMENT?.subjectId || '',
-          adviserId: selectedSection.adviserId || null,
-          isAdviser: String(selectedSection.adviserId || '') === CURRENT_TEACHER_ID
-        };
-        CURRENT_SUBJECT_ID = CURRENT_TEACHER_ASSIGNMENT.subjectId;
-        CURRENT_SUBJECT = CURRENT_SUBJECT_ASSIGNMENT?.subjectName
-          || (CURRENT_TEACHER_ASSIGNMENT.isAdviser ? 'Advisory section' : 'No subject assigned');
-        CURRENT_SUBJECT_RECORD = CURRENT_SUBJECT_ASSIGNMENT
-          ? { id: CURRENT_SUBJECT_ID, name: CURRENT_SUBJECT }
-          : null;
-        TEACHER_SECTION_SCHOOL_ID = CURRENT_TEACHER_ASSIGNMENT.schoolId;
-        refreshSectionSettings();
-        updateSectionSubjectControl();
-        return true;
-      } catch (error) {
-        BACKEND_SECTION_ERROR = error?.message || 'Assigned sections could not be loaded.';
-        return false;
-      }
+      BACKEND_SECTION_ERROR = 'The school API is required to load assigned sections.';
+      return false;
     }
 
     BACKEND_SECTION_MODE = true;
@@ -1632,6 +1565,7 @@
     STUDENTS = [];
 
     try {
+      await window.EDUGNAY_SCHOOL_READY;
       const session = await window.EDUGNAY_API.getCurrentUser();
       if (session?.role !== 'teacher' || !session.apiUserId) {
         throw new Error('Sign in with a teacher account to view assigned sections.');
@@ -1729,41 +1663,32 @@
       );
   }
 
-  // Attendance rows keep the existing UI field names while their source can
-  // switch between backend records and local demo records.
+  // Attendance rows keep the existing UI field names for API records.
   const ATTENDANCE_STATUS_BY_CODE = { P: 'present', A: 'absent', L: 'late', E: 'excused' };
   const ATTENDANCE_CODE_BY_STATUS = { present: 'P', absent: 'A', late: 'L', excused: 'E' };
   function isBackendAttendanceMode() {
-    return Boolean(BACKEND_SECTION_MODE || BACKEND_ATTENDANCE_CONTEXT || window.EDUGNAY_SESSION?.apiUserId);
+    return Boolean(BACKEND_SECTION_MODE);
   }
 
   function getAttendanceStudents() {
-    return isBackendAttendanceMode() ? (BACKEND_ATTENDANCE_CONTEXT?.students || []) : STUDENTS;
+    return BACKEND_ATTENDANCE_CONTEXT?.students || [];
   }
 
   function getTeacherAttendanceRecords(date = '') {
-    if (isBackendAttendanceMode()) {
-      const dataSets = date
-        ? [BACKEND_ATTENDANCE_BY_DATE.get(date)].filter(Boolean)
-        : Array.from(BACKEND_ATTENDANCE_BY_DATE.values());
-      return dataSets.flatMap(data => (data.students || [])
-        .filter(student => student.attendanceStatus)
-        .map(student => ({
-          studentId: String(student.id),
-          date: data.attendanceDate,
-          status: student.attendanceStatus,
-          remark: student.remark || null
-        })));
-    }
-    return window.EDUGNAY_CONFIG.getAttendanceRecords({
-      sectionId: CURRENT_SECTION_ID,
-      subjectId: CURRENT_SUBJECT_ID,
-      ...(date ? { date } : {})
-    });
+    const dataSets = date
+      ? [BACKEND_ATTENDANCE_BY_DATE.get(date)].filter(Boolean)
+      : Array.from(BACKEND_ATTENDANCE_BY_DATE.values());
+    return dataSets.flatMap(data => (data.students || [])
+      .filter(student => student.attendanceStatus)
+      .map(student => ({
+        studentId: String(student.id),
+        date: data.attendanceDate,
+        status: student.attendanceStatus,
+        remark: student.remark || null
+      })));
   }
 
-  let TEACHER_MATERIALS = window.EDUGNAY_API?.isBackendAvailable ? []
-    : window.EDUGNAY_CONFIG.getLearningMaterialsForSection(CURRENT_SECTION_ID, CURRENT_SUBJECT_ID);
+  let TEACHER_MATERIALS = [];
   let BACKEND_MATERIAL_CONTEXT = null;
   let backendMaterialsError = '';
   let materialsFeedbackTimeout = null;
@@ -1919,8 +1844,8 @@
 
   async function loadBackendMaterials() {
     if (!window.EDUGNAY_API?.isBackendAvailable) {
-      TEACHER_MATERIALS = window.EDUGNAY_CONFIG.getLearningMaterialsForSection(CURRENT_SECTION_ID, CURRENT_SUBJECT_ID);
-      backendMaterialsError = '';
+      TEACHER_MATERIALS = [];
+      backendMaterialsError = 'The materials API is unavailable.';
       renderTeacherMaterials();
       return;
     }
@@ -1944,11 +1869,7 @@
     renderTeacherMaterials();
   }
 
-  // Shared learner identities. Score data remains page-specific; attendance
-  // records come from the shared attendance source in shell-common.
-  let STUDENTS = window.EDUGNAY_CONFIG
-    .getUsersByRole(window.EDUGNAY_CONFIG.values.roles.STUDENT)
-    .filter(student => student.sectionId === CURRENT_SECTION_ID);
+  let STUDENTS = [];
 
   let BACKEND_ATTENDANCE_CONTEXT = null;
   const BACKEND_ATTENDANCE_BY_DATE = new Map();
@@ -1973,7 +1894,7 @@
   }
 
   function getGradeStudents() {
-    return isBackendGradeMode() ? BACKEND_GRADE_CONTEXT.students : STUDENTS;
+    return BACKEND_GRADE_CONTEXT?.students || [];
   }
 
   function getBackendTermId(academicPeriodId) {
@@ -1993,8 +1914,11 @@
   }
 
   function updatePublishedGradesBanner(academicPeriodId) {
-    if (!isBackendGradeMode()) return;
     const banner = document.getElementById('publishedGradesBanner');
+    if (!isBackendGradeMode()) {
+      banner.style.display = 'none';
+      return;
+    }
     const status = document.getElementById('publishedPeriodStatus');
     const button = document.getElementById('republishGradesButton');
     const grades = getPublishedGradesForPeriod(academicPeriodId);
@@ -2141,7 +2065,7 @@
 
   async function loadBackendAttendanceData() {
     if (!window.EDUGNAY_API?.isBackendAvailable) {
-      if (window.EDUGNAY_SESSION?.apiUserId) BACKEND_ATTENDANCE_ERROR = 'The attendance API is not available.';
+      BACKEND_ATTENDANCE_ERROR = 'The attendance API is not available.';
       return false;
     }
 
@@ -2194,9 +2118,7 @@
       if (otherControl && otherControl !== detailButton) return;
       openTeacherStudentDetails(row.dataset.studentId, row.querySelector('[data-student-details]'));
     };
-    const students = isBackendGradeMode()
-      ? getGradeStudents()
-      : (isBackendAttendanceMode() ? getAttendanceStudents() : STUDENTS);
+    const students = isBackendGradeMode() ? getGradeStudents() : getAttendanceStudents();
     const attendanceByStudent = new Map();
     if (isBackendAttendanceMode() && !BACKEND_ATTENDANCE_HISTORY_ERROR) {
       getTeacherAttendanceRecords().forEach(record => {
@@ -2268,14 +2190,9 @@
     if (!tbody) return;
     const attendanceStudents = getAttendanceStudents();
     const attendanceRecords = getTeacherAttendanceRecords();
-    const backendDates = isBackendAttendanceMode()
-      ? Array.from(BACKEND_ATTENDANCE_BY_DATE.entries())
-        .filter(([, data]) => data.session?.status === 'confirmed')
-        .map(([date]) => date)
-      : [];
-    const dates = isBackendAttendanceMode()
-      ? backendDates
-      : [...new Set(attendanceRecords.map(record => record.date))].sort();
+    const dates = Array.from(BACKEND_ATTENDANCE_BY_DATE.entries())
+      .filter(([, data]) => data.session?.status === 'confirmed')
+      .map(([date]) => date);
     const recordsByStudentDate = Object.fromEntries(attendanceRecords.map(record => [record.studentId + '|' + record.date, record]));
     const headRow = document.getElementById('attendanceHistoryHeadRow');
     if (headRow) {
@@ -2502,12 +2419,7 @@
     document.getElementById('scorePanelPeriodName').textContent = period?.name || 'Grading period';
     document.getElementById('publishPeriodName').textContent = period?.name || 'current grading period';
     document.getElementById('publishedPeriodName').textContent = period?.name || 'Grading period';
-      if (isBackendGradeMode()) {
-      updatePublishedGradesBanner(academicPeriodId);
-    } else {
-      document.getElementById('publishedPeriodStatus').textContent = 'Demo mode publication status is not saved to the database.';
-      document.getElementById('publishedGradesBanner').style.display = 'none';
-    }
+    updatePublishedGradesBanner(academicPeriodId);
 
     const showLockBanner = locked || reopened;
     document.getElementById('quarterLockBanner').style.display = showLockBanner ? 'flex' : 'none';
@@ -2654,8 +2566,7 @@
       return;
     }
 
-    closeModal('addCompModal');
-    alert(`Component "${name}" (/${max}) added to ${selectedCompCat}. Refresh score table to see it.`);
+    showAppToast(BACKEND_GRADE_ERROR || 'Grade recording requires the API.', 'error');
   }
 
   /* ── GRADE COMPUTATION ── */
@@ -3183,8 +3094,7 @@
   let BACKEND_QR_ATTENDANCE_DATA = null;
   let qrAttendanceSaving = false;
   let qrAttendanceReturnFocus = null;
-  const QR_SCANNER_SOUND_STORAGE_KEY = 'edugnay_qr_scanner_sound_enabled';
-  let qrScannerSoundEnabled = localStorage.getItem(QR_SCANNER_SOUND_STORAGE_KEY) !== 'false';
+  let qrScannerSoundEnabled = true;
   let qrScannerAudioContext = null;
   let lastQrScannerToneValue = '';
   let lastQrScannerToneAt = 0;
@@ -3277,7 +3187,7 @@
     title.textContent = dateStr === APP_TODAY ? 'Attendance: Today' : 'Attendance: ' + formatAttDate(dateStr);
     const isPast = dateStr < APP_TODAY;
     const dateData = BACKEND_ATTENDANCE_BY_DATE.get(dateStr);
-    const locked = isPast && (isBackendAttendanceMode() ? dateData?.canEdit !== true : false);
+    const locked = isPast && dateData?.canEdit !== true;
     const qrDraft = dateData?.session?.method === 'qr' && dateData.session.status === 'draft';
     const attendanceUnavailable = isBackendAttendanceMode() && (!CURRENT_SUBJECT_ASSIGNMENT || Boolean(BACKEND_ATTENDANCE_ERROR));
     const lockBanner = document.getElementById('attLockBanner');
@@ -3343,8 +3253,6 @@
       return;
     }
 
-    if (!isBackendAttendanceMode()) APP_TODAY = getCurrentAttendanceDate();
-
     const dateInput = document.getElementById('attDate');
     dateInput.max = APP_TODAY;
     if (dateInput.value !== APP_TODAY) {
@@ -3353,26 +3261,24 @@
     }
 
     qrAttendanceContext = {
-      schoolId: isBackendAttendanceMode() ? BACKEND_ATTENDANCE_CONTEXT.schoolId : window.EDUGNAY_CONFIG.getActiveSchoolId(),
-      sectionId: isBackendAttendanceMode() ? BACKEND_ATTENDANCE_CONTEXT.sectionId : CURRENT_SECTION_ID,
+      schoolId: BACKEND_ATTENDANCE_CONTEXT.schoolId,
+      sectionId: BACKEND_ATTENDANCE_CONTEXT.sectionId,
       subjectId: CURRENT_SUBJECT_ID,
-      teacherId: isBackendAttendanceMode() ? BACKEND_ATTENDANCE_CONTEXT.teacherId : CURRENT_TEACHER_ID,
+      teacherId: BACKEND_ATTENDANCE_CONTEXT.teacherId,
       date: APP_TODAY,
       sessionId: null
     };
 
-    if (isBackendAttendanceMode()) {
-      try {
-        await prepareBackendQrAttendance();
-        APP_TODAY = qrAttendanceContext.date;
-        dateInput.value = APP_TODAY;
-        dateInput.max = APP_TODAY;
-        await loadAttendanceForDate(APP_TODAY);
-      } catch (error) {
-        alert(error?.message || 'QR attendance could not be started.');
-        qrAttendanceContext = null;
-        return;
-      }
+    try {
+      await prepareBackendQrAttendance();
+      APP_TODAY = qrAttendanceContext.date;
+      dateInput.value = APP_TODAY;
+      dateInput.max = APP_TODAY;
+      await loadAttendanceForDate(APP_TODAY);
+    } catch (error) {
+      alert(error?.message || 'QR attendance could not be started.');
+      qrAttendanceContext = null;
+      return;
     }
 
     document.getElementById('qrAttendanceSection').textContent = `${CURRENT_SECTION} · ${CURRENT_SUBJECT}`;
@@ -3395,7 +3301,6 @@
 
   function setQrScannerSoundEnabled(enabled) {
     qrScannerSoundEnabled = Boolean(enabled);
-    localStorage.setItem(QR_SCANNER_SOUND_STORAGE_KEY, String(qrScannerSoundEnabled));
     if (qrScannerSoundEnabled) prepareQrScannerAudio();
   }
 
@@ -3456,7 +3361,7 @@
     lastDetectedQrValue = '';
     lastQrScannerToneValue = '';
     lastQrScannerToneAt = 0;
-    qrAttendanceScans = isBackendAttendanceMode() ? getBackendQrScans() : [];
+    qrAttendanceScans = getBackendQrScans();
     qrAttendanceDraft = [];
     qrAttendanceSaving = false;
     document.getElementById('qrScannerEmpty').hidden = false;
@@ -3584,12 +3489,10 @@
     const validStatuses = ['present', 'absent', 'late', 'excused'];
     const attendanceStudents = getAttendanceStudents();
     const studentIds = new Set(qrAttendanceDraft.map(record => record.studentId));
-    const currentQrDate = isBackendAttendanceMode()
-      ? BACKEND_QR_ATTENDANCE_DATA?.attendanceDate
-      : getCurrentAttendanceDate();
+    const currentQrDate = BACKEND_QR_ATTENDANCE_DATA?.attendanceDate;
     const validDraft = qrAttendanceContext?.date === currentQrDate &&
       Boolean(CURRENT_SUBJECT_ASSIGNMENT) &&
-      (!isBackendAttendanceMode() || Boolean(qrAttendanceContext.sessionId)) &&
+      Boolean(qrAttendanceContext.sessionId) &&
       qrAttendanceDraft.length === attendanceStudents.length &&
       studentIds.size === attendanceStudents.length &&
       attendanceStudents.every(student => studentIds.has(String(student.id))) &&
@@ -3622,14 +3525,9 @@
 
     let confirmed = false;
     try {
-      if (isBackendAttendanceMode()) {
-        const savedData = await window.EDUGNAY_API.confirmQrAttendance(qrAttendanceContext.sessionId, records);
-        syncBackendQrAttendance(savedData);
-        BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
-      } else {
-        const savedRecords = await window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
-        if (savedRecords.length !== records.length) throw new Error('Attendance records were incomplete.');
-      }
+      const savedData = await window.EDUGNAY_API.confirmQrAttendance(qrAttendanceContext.sessionId, records);
+      syncBackendQrAttendance(savedData);
+      BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
       confirmed = true;
       qrAttendanceSaving = false;
       await loadAttendanceForDate(APP_TODAY);
@@ -3754,95 +3652,41 @@
     if (qrScannerActive) qrScannerFrameId = requestAnimationFrame(scanQrCameraFrame);
   }
 
-  function validateQrAttendanceScan(rawValue) {
-    if (!qrAttendanceContext || qrAttendanceContext.date !== getCurrentAttendanceDate()) {
-      return { valid: false, message: 'This QR attendance session is no longer current.' };
-    }
-
-    const token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(rawValue);
-    if (!token) return { valid: false, message: 'This is not a valid edUgnay attendance QR.' };
-
-    const student = window.EDUGNAY_CONFIG.getStudentByAttendanceQrToken(token);
-    if (!student) return { valid: false, message: 'This attendance QR is unknown or no longer valid.' };
-    if (student.status !== window.EDUGNAY_CONFIG.values.statuses.ACTIVE) {
-      return { valid: false, message: `${student.displayName}'s account is inactive.` };
-    }
-    if (student.sectionId !== qrAttendanceContext?.sectionId) {
-      return { valid: false, message: `${student.displayName} is not assigned to this section.` };
-    }
-    if (!getAttendanceStudents().some(record => String(record.id) === String(student.id))) {
-      return { valid: false, message: `${student.displayName} is not included in this attendance roster.` };
-    }
-    if (qrAttendanceScans.some(scan => scan.studentId === student.id)) {
-      return { valid: false, duplicate: true, message: `${student.displayName} has already been scanned.` };
-    }
-
-    return { valid: true, student };
-  }
-
   async function handleQrAttendanceScan(rawValue) {
-    if (isBackendAttendanceMode()) {
-      if (!qrAttendanceContext?.sessionId) {
-        setQrScannerStatus('Start the attendance session before scanning.', 'error');
-        playQrScannerTone('error', rawValue);
-        return;
-      }
-
-      try {
-        const result = await window.EDUGNAY_API.scanQrAttendance(qrAttendanceContext.sessionId, rawValue);
-        if (result?.duplicate) {
-          const duplicateName = result.student?.displayName || 'This student';
-          setQrScannerStatus(`${duplicateName} has already been scanned.`, 'active');
-          playQrScannerTone('error', rawValue);
-        } else if (result?.scanned && result.student) {
-          const student = result.student;
-          qrAttendanceScans.push({
-            studentId: String(student.id),
-            status: 'present',
-            scannedAt: new Date().toISOString()
-          });
-          if (BACKEND_QR_ATTENDANCE_DATA?.students) {
-            const scannedStudent = BACKEND_QR_ATTENDANCE_DATA.students.find(item => String(item.id) === String(student.id));
-            if (scannedStudent) scannedStudent.isScanned = true;
-          }
-          renderQrAttendanceReview();
-          setQrScannerStatus(`${student.displayName} scanned successfully. ${qrAttendanceScans.length} student${qrAttendanceScans.length === 1 ? '' : 's'} scanned.`, 'success');
-          playQrScannerTone('success', rawValue);
-        }
-      } catch (error) {
-        setQrScannerStatus(error?.message || 'This attendance QR could not be accepted.', 'error');
-        playQrScannerTone('error', rawValue);
-      }
-      window.setTimeout(() => {
-        if (lastDetectedQrValue === rawValue) lastDetectedQrValue = '';
-      }, 1200);
-      return;
-    }
-
-    const result = validateQrAttendanceScan(rawValue);
-    if (!result.valid) {
-      setQrScannerStatus(result.message, result.duplicate ? 'active' : 'error');
+    if (!qrAttendanceContext?.sessionId) {
+      setQrScannerStatus('Start the attendance session before scanning.', 'error');
       playQrScannerTone('error', rawValue);
-      window.setTimeout(() => {
-        if (lastDetectedQrValue === rawValue) lastDetectedQrValue = '';
-      }, 1200);
       return;
     }
 
-    const student = result.student;
-    qrAttendanceScans.push({
-      schoolId: qrAttendanceContext.schoolId,
-      sectionId: qrAttendanceContext.sectionId,
-      subjectId: qrAttendanceContext.subjectId,
-      teacherId: qrAttendanceContext.teacherId,
-      studentId: student.id,
-      date: qrAttendanceContext.date,
-      status: 'present',
-      scannedAt: new Date().toISOString()
-    });
-    renderQrAttendanceReview();
-    setQrScannerStatus(`${student.displayName} scanned successfully. ${qrAttendanceScans.length} student${qrAttendanceScans.length === 1 ? '' : 's'} scanned.`, 'success');
-    playQrScannerTone('success', rawValue);
+    try {
+      const result = await window.EDUGNAY_API.scanQrAttendance(qrAttendanceContext.sessionId, rawValue);
+      if (result?.duplicate) {
+        const duplicateName = result.student?.displayName || 'This student';
+        setQrScannerStatus(`${duplicateName} has already been scanned.`, 'active');
+        playQrScannerTone('error', rawValue);
+      } else if (result?.scanned && result.student) {
+        const student = result.student;
+        qrAttendanceScans.push({
+          studentId: String(student.id),
+          status: 'present',
+          scannedAt: new Date().toISOString()
+        });
+        if (BACKEND_QR_ATTENDANCE_DATA?.students) {
+          const scannedStudent = BACKEND_QR_ATTENDANCE_DATA.students.find(item => String(item.id) === String(student.id));
+          if (scannedStudent) scannedStudent.isScanned = true;
+        }
+        renderQrAttendanceReview();
+        setQrScannerStatus(`${student.displayName} scanned successfully. ${qrAttendanceScans.length} student${qrAttendanceScans.length === 1 ? '' : 's'} scanned.`, 'success');
+        playQrScannerTone('success', rawValue);
+      }
+    } catch (error) {
+      setQrScannerStatus(error?.message || 'This attendance QR could not be accepted.', 'error');
+      playQrScannerTone('error', rawValue);
+    }
+    window.setTimeout(() => {
+      if (lastDetectedQrValue === rawValue) lastDetectedQrValue = '';
+    }, 1200);
   }
 
   function stopQrScanner() {
@@ -3949,20 +3793,13 @@
 
     let saved = false;
     try {
-      if (isBackendAttendanceMode()) {
-        const savedData = await window.EDUGNAY_API.saveSectionAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, {
-          attendanceDate: date,
-          records
-        });
-        saved = true;
-        BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
-        await loadAttendanceForDate(date);
-      } else {
-        await window.EDUGNAY_CONFIG.upsertAttendanceRecords(records);
-        saved = true;
-        renderTeacherAttendanceRows();
-        renderAttendanceHistory();
-      }
+      const savedData = await window.EDUGNAY_API.saveSectionAttendance(BACKEND_ATTENDANCE_CONTEXT.sectionId, CURRENT_SUBJECT_ID, {
+        attendanceDate: date,
+        records
+      });
+      saved = true;
+      BACKEND_ATTENDANCE_BY_DATE.set(savedData.attendanceDate, savedData);
+      await loadAttendanceForDate(date);
       showAppToast('Attendance saved.');
     } catch (error) {
       showAppToast(saved ? `Attendance was saved, but the view could not refresh: ${error?.message || 'Reload the page.'}` : error?.message || 'Attendance could not be saved. Please try again.', saved ? 'info' : 'error');
@@ -4089,7 +3926,7 @@
 
     if (!isBackendGradeMode()) {
       confirmButton.disabled = true;
-      setPublishGradeFeedback('Demo mode is active. Publishing here will not save grades to the database.');
+      setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grade publishing requires the API.', true);
       return;
     }
 
@@ -4103,8 +3940,7 @@
 
   async function publishGrades() {
     if (!isBackendGradeMode()) {
-      closeModal('publishModal');
-      alert('Demo mode: grades were not saved to the database.');
+      setPublishGradeFeedback(BACKEND_GRADE_ERROR || 'Grade publishing requires the API.', true);
       return;
     }
     if (publishInProgress) return;
@@ -4164,16 +4000,10 @@
 
   /* ── ASSIGNMENTS ── */
   function getTeacherAssignments() {
-    if (isBackendGradeMode()) return BACKEND_ASSIGNMENTS;
-    return window.EDUGNAY_CONFIG.getAssignmentsForSection(CURRENT_SECTION_ID)
-      .filter(assignment =>
-        assignment.teacherId === CURRENT_TEACHER_ID &&
-        assignment.subjectId === CURRENT_SUBJECT_ID
-      );
+    return BACKEND_ASSIGNMENTS;
   }
 
   function getTeacherAssignmentStatuses(assignmentId) {
-    if (!isBackendGradeMode()) return window.EDUGNAY_CONFIG.getAssignmentStatuses(assignmentId);
     const submissions = BACKEND_SUBMISSIONS.get(String(assignmentId)) || [];
     return getGradeStudents().map(student => {
       const submission = submissions.find(record => String(record.studentId) === String(student.id));
@@ -4257,9 +4087,9 @@
                 <button class="assignment-menu-item" type="button" role="menuitem" onclick="closeAssignmentMenus(); openEditAssignmentModal('${a.id}')">
                   <i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit Assignment
                 </button>
-                ${BACKEND_SECTION_MODE ? `<button class="assignment-menu-item delete" type="button" role="menuitem" data-delete-assignment="${window.EDUGNAY_CONFIG.escapeHtml(a.id)}" data-assignment-title="${window.EDUGNAY_CONFIG.escapeHtml(a.title)}">
+                <button class="assignment-menu-item delete" type="button" role="menuitem" data-delete-assignment="${window.EDUGNAY_CONFIG.escapeHtml(a.id)}" data-assignment-title="${window.EDUGNAY_CONFIG.escapeHtml(a.title)}">
                   <i data-lucide="trash-2" style="width:14px;height:14px;"></i> ${a.gradingItemId ? 'Delete Assignment & Component' : 'Delete Assignment'}
-                </button>` : ''}
+                </button>
               </div>
             </div>
           </div>
@@ -4325,7 +4155,6 @@
           <div class="material-meta">${meta.label} · ${window.EDUGNAY_CONFIG.escapeHtml(material.fileSize || 'Size unavailable')} · Uploaded ${formatTeacherMaterialDate(material.postedAt || material.createdAt)} · <span style="color:${isDraft ? 'var(--orange-dark)' : 'var(--green)'};font-weight:600;">${status}</span></div>
         </div>
         <div class="material-actions">
-          ${window.EDUGNAY_API?.isBackendAvailable ? '' : `<span class="badge ${isDraft ? 'badge-gray' : 'badge-green'}" style="font-size:10px;">${Number(material.views) || 0} views</span>`}
           <button class="row-btn edit" type="button" data-material-action="${isDraft ? 'publish' : 'preview'}" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(material.id)}">
             <i data-lucide="${isDraft ? 'send' : 'eye'}" style="width:11px;height:11px;"></i> ${isDraft ? 'Publish' : 'Preview'}
           </button>
@@ -4356,13 +4185,9 @@
       return false;
     }
 
-    const type = file.name.split('.').pop().toLowerCase();
-
-    if (window.EDUGNAY_API?.isBackendAvailable) {
-      if (!BACKEND_MATERIAL_CONTEXT) {
-        setMaterialUploadHelp('Your section and subject assignment is unavailable. Try refreshing the page.', 'error');
-        return false;
-      }
+    if (!BACKEND_MATERIAL_CONTEXT) {
+      setMaterialUploadHelp('Your section and subject assignment is unavailable. Try refreshing the page.', 'error');
+      return false;
     }
 
     materialUploadInProgress = true;
@@ -4374,38 +4199,15 @@
     lucide.createIcons();
 
     try {
-      if (window.EDUGNAY_API?.isBackendAvailable) {
-        await window.EDUGNAY_API.uploadMaterial(BACKEND_MATERIAL_CONTEXT.sectionId, BACKEND_MATERIAL_CONTEXT.subjectId,
-          { file, title, status });
-        materialUploadInProgress = false;
-        closeModal('uploadModal');
-        await loadBackendMaterials();
-        showAppToast(backendMaterialsError
-          ? `The file was uploaded, but the materials list could not refresh: ${backendMaterialsError}`
-          : `"${title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`,
-        backendMaterialsError ? 'info' : 'success');
-      } else {
-        const material = window.EDUGNAY_CONFIG.createLearningMaterial({
-          schoolId: TEACHER_SECTION_SCHOOL_ID,
-          sectionId: CURRENT_SECTION_ID,
-          subjectId: CURRENT_SUBJECT_ID,
-          teacherId: CURRENT_TEACHER_ID,
-          title,
-          type,
-          postedAt: status === 'published' ? new Date().toISOString() : null,
-          fileSize: file.size ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : null,
-          fileUrl: null,
-          status,
-          visibleToStudents: status === 'published'
-        });
-
-        if (!material) throw new Error('The material could not be saved. Please try again.');
-        TEACHER_MATERIALS.push(material);
-        renderTeacherMaterials();
-        materialUploadInProgress = false;
-        closeModal('uploadModal');
-        showAppToast(`"${material.title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`, 'info');
-      }
+      await window.EDUGNAY_API.uploadMaterial(BACKEND_MATERIAL_CONTEXT.sectionId, BACKEND_MATERIAL_CONTEXT.subjectId,
+        { file, title, status });
+      materialUploadInProgress = false;
+      closeModal('uploadModal');
+      await loadBackendMaterials();
+      showAppToast(backendMaterialsError
+        ? `The file was uploaded, but the materials list could not refresh: ${backendMaterialsError}`
+        : `"${title}" was ${status === 'published' ? 'published' : 'saved as a draft'} for ${CURRENT_SECTION}.`,
+      backendMaterialsError ? 'info' : 'success');
     } catch (error) {
       setMaterialUploadHelp(error.message || 'Upload failed. Your file is still selected; try again.', 'error');
     } finally {
@@ -4503,24 +4305,7 @@
       return;
     }
 
-    window.EDUGNAY_CONFIG.createAssignment({
-      schoolId: TEACHER_SECTION_SCHOOL_ID,
-      teacherId: CURRENT_TEACHER_ID,
-      sectionId: CURRENT_SECTION_ID,
-      subjectId: CURRENT_SUBJECT_ID,
-      academicPeriodId,
-      title,
-      instructions: instructions || null,
-      assignedDate: due,
-      dueDate: due,
-      onlineSubmissionEnabled,
-      categoryId,
-      maxScore
-    });
-    resetAssignmentForm();
-    closeModal('addAssignmentModal');
-    renderAssignments();
-    renderScoreTable(document.getElementById('academicPeriodSelect').value);
+    showAppToast(BACKEND_GRADE_ERROR || 'Assignments require the API.', 'error');
   }
 
   function resetAssignmentForm() {
@@ -4642,20 +4427,7 @@
       return;
     }
 
-    const assignment = window.EDUGNAY_CONFIG.updateAssignment(activeAssignmentId, {
-      title,
-      instructions: instructions || null,
-      dueDate,
-      onlineSubmissionEnabled,
-      categoryId,
-      maxScore
-    });
-    if (!assignment) return;
-
-    closeModal('editAssignmentModal');
-    activeAssignmentId = null;
-    renderAssignments();
-    renderScoreTable(document.getElementById('academicPeriodSelect').value);
+    showAppToast(BACKEND_GRADE_ERROR || 'Assignments require the API.', 'error');
   }
 
   function openAssignmentSubmissionsModal(assignmentId) {
@@ -4664,29 +4436,18 @@
 
     activeAssignmentId = assignment.id;
     document.getElementById('assignmentSubmissionsModalSub').textContent = assignment.title;
-    const submissions = (isBackendGradeMode()
-      ? (BACKEND_SUBMISSIONS.get(String(assignment.id)) || [])
-      : window.EDUGNAY_CONFIG.getAssignmentSubmissions(assignment.id))
+    const submissions = (BACKEND_SUBMISSIONS.get(String(assignment.id)) || [])
       .filter(submission => submission.fileName);
-    const scores = isBackendGradeMode() ? getAssignmentScoreRecords(assignment.id) : [];
+    const scores = getAssignmentScoreRecords(assignment.id);
     document.getElementById('assignmentSubmissionsTbody').innerHTML = submissions.length ? submissions.map(submission => {
-      const student = isBackendGradeMode()
-        ? getGradeStudents().find(item => String(item.id) === String(submission.studentId))
-        : window.EDUGNAY_CONFIG.getUserById(submission.studentId);
+      const student = getGradeStudents().find(item => String(item.id) === String(submission.studentId));
       const studentName = student?.displayName || 'Unknown student';
       const score = scores.find(record => record.studentId === submission.studentId)?.score ?? '';
       const scoreInput = assignment.categoryId && Number(assignment.maxScore) > 0
-        ? (isBackendGradeMode()
-          ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
-          : '<span class="assignment-file-unavailable">Grade data unavailable</span>')
+        ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
         : '<span class="assignment-file-unavailable">Not graded</span>';
-      const backendMode = isBackendGradeMode();
-      const fileUrl = backendMode
-        ? (submission.fileUrl && window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, submission.id))
-        : submission.fileUrl;
-      const previewAction = backendMode
-        ? `<button class="row-btn view" type="button" onclick="openAssignmentSubmissionPreview(${Number(assignment.id)}, ${Number(submission.id)})"><i data-lucide="eye" style="width:13px;height:13px;"></i> View</button>`
-        : `<a class="row-btn view" href="${window.EDUGNAY_CONFIG.escapeHtml(submission.fileUrl || '')}" target="_blank" rel="noopener noreferrer"><i data-lucide="eye" style="width:13px;height:13px;"></i> View</a>`;
+      const fileUrl = submission.fileUrl && window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, submission.id);
+      const previewAction = `<button class="row-btn view" type="button" onclick="openAssignmentSubmissionPreview(${Number(assignment.id)}, ${Number(submission.id)})"><i data-lucide="eye" style="width:13px;height:13px;"></i> View</button>`;
       const fileAction = fileUrl
         ? `<div class="assignment-submission-actions">${previewAction}<a class="row-btn view" href="${window.EDUGNAY_CONFIG.escapeHtml(fileUrl)}"><i data-lucide="download" style="width:13px;height:13px;"></i> Download</a></div>`
         : '<span class="assignment-file-unavailable">File unavailable</span>';
@@ -4829,27 +4590,24 @@
     buttons.forEach(button => { button.disabled = true; });
 
     try {
-      if (isBackendGradeMode()) {
-        const saved = await window.EDUGNAY_API.updateAssignmentStudentStatus(activeAssignmentId, studentId, status);
-        const records = BACKEND_SUBMISSIONS.get(String(activeAssignmentId)) || [];
-        const existing = records.find(record => String(record.studentId) === String(studentId));
-        if (existing) {
-          existing.status = saved.status;
-          existing.submissionStatus = saved.status;
-        } else {
-          records.push({
-            assignmentId: String(activeAssignmentId),
-            studentId: String(studentId),
-            fileName: null,
-            fileUrl: null,
-            status: saved.status,
-            submissionStatus: saved.status
-          });
-        }
-        BACKEND_SUBMISSIONS.set(String(activeAssignmentId), records);
+      if (!isBackendGradeMode()) throw new Error(BACKEND_GRADE_ERROR || 'Assignments require the API.');
+      const saved = await window.EDUGNAY_API.updateAssignmentStudentStatus(activeAssignmentId, studentId, status);
+      const records = BACKEND_SUBMISSIONS.get(String(activeAssignmentId)) || [];
+      const existing = records.find(record => String(record.studentId) === String(studentId));
+      if (existing) {
+        existing.status = saved.status;
+        existing.submissionStatus = saved.status;
       } else {
-        window.EDUGNAY_CONFIG.setAssignmentStatus(activeAssignmentId, studentId, status);
+        records.push({
+          assignmentId: String(activeAssignmentId),
+          studentId: String(studentId),
+          fileName: null,
+          fileUrl: null,
+          status: saved.status,
+          submissionStatus: saved.status
+        });
       }
+      BACKEND_SUBMISSIONS.set(String(activeAssignmentId), records);
 
       buttons.forEach(button => button.classList.remove('selected'));
       btn.classList.add('selected');

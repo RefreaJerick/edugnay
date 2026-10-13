@@ -138,9 +138,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar student">JD</div>
+            <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -178,7 +178,7 @@
         <div class="panel-head">
           <div>
             <div class="panel-title" id="panel-title">Mathematics Materials</div>
-            <div class="panel-sub" id="panel-sub">Ms. Maria Reyes · 7 files</div>
+            <div class="panel-sub" id="panel-sub">Loading materials...</div>
           </div>
         </div>
 
@@ -238,12 +238,8 @@
   <script>
     lucide.createIcons();
 
-    const MATERIAL_STUDENT = window.EDUGNAY_API?.isBackendAvailable ? null
-      : window.EDUGNAY_CONFIG.getUserById('jd-004');
-    let MATERIAL_RECORDS = window.EDUGNAY_API?.isBackendAvailable ? []
-      : window.EDUGNAY_CONFIG.getLearningMaterialsForStudent(MATERIAL_STUDENT.id);
-    const MATERIAL_PERIODS = window.EDUGNAY_API?.isBackendAvailable ? []
-      : window.EDUGNAY_CONFIG.getAcademicPeriods(MATERIAL_STUDENT.schoolId, MATERIAL_STUDENT.schoolLevel);
+    let MATERIAL_RECORDS = [];
+    const MATERIAL_PERIODS = [];
     const MATERIALS_BY_SUBJECT = {};
     let currentSubject = '';
     let previewRequest = 0;
@@ -377,9 +373,8 @@
             </div>
           </div>
           <div class="material-actions">
-            ${!window.EDUGNAY_API?.isBackendAvailable ? '<span class="material-sample-note">Sample only</span>' : `
-              ${['pdf', 'jpg', 'png', 'mp4'].includes(m.type) ? `<button class="material-action" type="button" data-material-action="preview" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Preview ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="eye"></i><span class="material-action-label">Preview</span></button>` : ''}
-              <button class="material-action" type="button" data-material-action="download" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Download ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="download"></i><span class="material-action-label">Download</span></button>`}
+            ${['pdf', 'jpg', 'png', 'mp4'].includes(m.type) ? `<button class="material-action" type="button" data-material-action="preview" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Preview ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="eye"></i><span class="material-action-label">Preview</span></button>` : ''}
+            <button class="material-action" type="button" data-material-action="download" data-material-id="${window.EDUGNAY_CONFIG.escapeHtml(m.id)}" aria-label="Download ${window.EDUGNAY_CONFIG.escapeHtml(m.title)}"><i data-lucide="download"></i><span class="material-action-label">Download</span></button>
           </div>
         </div>`;
       }).join('')}
@@ -478,16 +473,16 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      if (window.EDUGNAY_API?.isBackendAvailable) {
-        document.getElementById('materials-container').innerHTML = '<div class="panel-empty-state" role="status">Loading learning materials...</div>';
-        try {
-          MATERIAL_RECORDS = await window.EDUGNAY_API.getMaterials();
-        } catch (error) {
-          document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-            icon: 'cloud-off', title: 'Materials unavailable', text: error.message
-          });
-          return;
-        }
+      document.getElementById('materials-container').innerHTML = '<div class="panel-empty-state" role="status">Loading learning materials...</div>';
+      try {
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The school API is unavailable. Try again when the connection is ready.');
+        await window.EDUGNAY_SCHOOL_READY;
+        MATERIAL_RECORDS = await window.EDUGNAY_API.getMaterials();
+      } catch (error) {
+        document.getElementById('materials-container').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+          icon: 'cloud-off', title: 'Materials unavailable', text: error.message || 'Try again when the connection is ready.'
+        });
+        return;
       }
       groupMaterials();
       renderSubjectTabs();

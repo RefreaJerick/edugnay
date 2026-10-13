@@ -98,13 +98,17 @@ test('assignment creation uses the selected subject ID even if a label is stale'
   };
   const context = {
     document: { getElementById: id => fields[id] },
-    window: { EDUGNAY_CONFIG: { createAssignment: values => { saved = values; } } },
+    window: { EDUGNAY_API: { createAssignment: async values => { saved = values; return { id: '42', ...values }; } } },
     CURRENT_SUBJECT_ASSIGNMENT: { subjectId: 'english' },
     CURRENT_SUBJECT_ID: 'english',
     CURRENT_SECTION_ID: 'grade-7',
     CURRENT_TEACHER_ID: 'teacher-1',
     TEACHER_SECTION_SCHOOL_ID: 'school-1',
-    isBackendGradeMode: () => false,
+    BACKEND_GRADE_CONTEXT: { sectionId: 'grade-7', subjectId: 'english' },
+    BACKEND_ASSIGNMENTS: [],
+    getBackendTermId: () => 'q1',
+    isBackendGradeMode: () => true,
+    showAppToast() {},
     resetAssignmentForm() {}, closeModal() {}, renderAssignments() {}, renderScoreTable() {}
   };
   await vm.runInNewContext(`${addSource}; addAssignment();`, context);

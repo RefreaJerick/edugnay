@@ -1,7 +1,13 @@
-const { sendEmail, verifyEmailConnection } = require('../config/email');
+const { normalizeRecipient, sendEmail, verifyEmailConnection } = require('../config/email');
 
 async function sendTestEmail(req, res, next) {
   try {
+    const recipient = normalizeRecipient(req.user.personalEmail);
+    if (!recipient) {
+      const error = new Error('Add a valid personal email to your account before sending a test email.');
+      error.status = 400;
+      throw error;
+    }
     const connection = await verifyEmailConnection();
     if (connection.status !== 'ready') {
       const error = new Error('Email delivery is not configured or the SMTP server is unavailable.');
@@ -10,7 +16,7 @@ async function sendTestEmail(req, res, next) {
     }
 
     const result = await sendEmail({
-      to: req.user.personalEmail || req.user.schoolEmail,
+      to: recipient,
       subject: 'Academix email delivery test',
       text: `Hello ${req.user.displayName},\n\nThis confirms that your Academix SMTP email configuration is working.`
     });

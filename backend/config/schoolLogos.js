@@ -46,9 +46,8 @@ async function saveSchoolLogo(file) {
 
 function getSchoolLogoUrl(school) {
   const logoPath = school.logoPath || '';
-  return /^\/assets\/images\/[A-Za-z0-9_-][A-Za-z0-9._-]*\.(png|jpg|jpeg|webp)$/.test(logoPath)
-    || /^[a-f0-9-]{36}\.(png|jpg|webp)$/.test(logoPath)
+  return /^[a-f0-9-]{36}\.(png|jpg|webp)$/.test(logoPath)
     ? `/api/schools/${school.id}/logo` : null;
 }
 
-module.exports = { schoolLogoUpload, saveSchoolLogo, getSchoolLogoUrl, logoDirectory };
+module.exports = { schoolLogoUpload, saveSchoolLogo, getSchoolLogoUrl, logoDirectory, logoExtension };

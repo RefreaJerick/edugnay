@@ -323,7 +323,7 @@
       studentId: child.studentId,
       attendance: Object.fromEntries(DAYS.map(day => [
         day.key,
-        getDashboardAttendance(child.studentId, day.isoDate || '2025-06-' + String(day.date).padStart(2, '0'))
+        getDashboardAttendance(child.studentId, day.isoDate)
       ]))
     }));
 
@@ -367,7 +367,6 @@
 
     function updateChildContext() {
       const child = getCurrentChild();
-      const data = getCurrentDashboardRecord();
       const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
       if (dashboardPeriod && child?.schoolLevel) {
         dashboardPeriod.dataset.schoolLevel = child.schoolLevel;
@@ -380,24 +379,7 @@
         hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'file-text', title, text });
         if (window.lucide) lucide.createIcons();
       };
-      if (PARENT_CHILDREN_ERROR) {
-        showEmptyReport('Report context unavailable', 'Linked child information could not be loaded.');
-        return;
-      }
-      if (!child || !data) {
-        showEmptyReport('No weekly report yet', 'A weekly report will appear here when a child account is linked.');
-        return;
-      }
-      const report = window.EDUGNAY_CONFIG.getReportsForStudent(currentChild, true)[0] || null;
-      if (!report || !String(report.text || '').trim()) {
-        showEmptyReport('No weekly report yet', `A weekly report will appear here when it is confirmed for ${child.displayName}.`);
-        return;
-      }
-      hero?.classList.remove('is-empty');
-      const reportTitle = document.getElementById('report-status-title');
-      const reportLink = document.getElementById('report-hero-link');
-      if (reportTitle) reportTitle.textContent = `This week's report is ready for ${child.displayName}.`;
-      if (reportLink) reportLink.href = `edugnay-parent-reports.html?studentId=${encodeURIComponent(currentChild)}`;
+      showEmptyReport('Narrative reports unavailable', 'Report data is not connected yet.');
     }
 
     function switchChild(childKey, el) {
@@ -618,6 +600,7 @@
       await window.EDUGNAY_COMMUNICATION_READY;
       if (window.EDUGNAY_API?.isBackendAvailable) {
         try {
+          await window.EDUGNAY_SCHOOL_READY;
           const session = await window.EDUGNAY_API.getCurrentUser();
           if (session?.role !== 'parent') throw new Error('This dashboard requires a parent session.');
           const children = await window.EDUGNAY_API.getParentChildren();

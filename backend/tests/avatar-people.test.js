@@ -64,12 +64,10 @@ test('all audited other-person surfaces use the shared renderer', () => {
     'views/admin/edugnay-admin-dashboard.html',
     'views/teacher/edugnay-teacher-sections.html',
     'views/teacher/edugnay-teacher-journals.html',
-    'views/teacher/edugnay-teacher-reports.html',
     'views/student/edugnay-student-profile.html',
     'views/parent/edugnay-parent-dashboard.html',
     'views/parent/edugnay-parent-attendance.html',
     'views/parent/edugnay-parent-grades.html',
-    'views/parent/edugnay-parent-reports.html',
     'views/parent/edugnay-parent-profile.html'
   ];
   for (const page of pages) assert.match(read(page), /EDUGNAY_AVATAR\.(html|render)\(/, page);
@@ -81,10 +79,12 @@ test('all audited other-person surfaces use the shared renderer', () => {
   }
 });
 
-test('narrative report detail modals use compact shared avatar sizes', () => {
+test('narrative reports do not show demo people while generation is unavailable', () => {
   const teacherReports = read('views/teacher/edugnay-teacher-reports.html');
   const parentReports = read('views/parent/edugnay-parent-reports.html');
-  assert.match(teacherReports, /EDUGNAY_AVATAR\.render\(document\.getElementById\('rm-avatar'\), reportStudentPerson\(r\), \{ size: 'compact' \}\)/);
-  assert.match(parentReports, /EDUGNAY_AVATAR\.render\(document\.getElementById\('rm-foot-avatar'\), reportTeacherPerson\(r\), \{ size: 'sm' \}\)/);
+  assert.match(teacherReports, /Narrative reports are unavailable/);
+  assert.match(parentReports, /Narrative reports are unavailable/);
+  assert.doesNotMatch(teacherReports, /reportStudentPerson|generateReports/);
+  assert.doesNotMatch(parentReports, /reportTeacherPerson|getReportsForStudent/);
   assert.match(read('assets/css/styles.css'), /\.person-avatar--compact\s*\{\s*--avatar-size:\s*43px;/);
 });

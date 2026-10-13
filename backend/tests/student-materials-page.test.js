@@ -13,6 +13,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
   const messages = [];
   const requests = [];
   const revoked = [];
+  const documentEvents = {};
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
       id, value: id === 'type-filter' ? 'all' : '', hidden: id === 'materialPreviewModal',
@@ -21,6 +22,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       replaceChildren() { this.children = []; },
       append(child) { this.children.push(child); },
       querySelector() { return null; },
+      querySelectorAll() { return []; },
       focus() {}
     });
     return elements.get(id);
@@ -29,7 +31,7 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
     activeElement: { focus() {} },
     body: { classList: { add() {}, remove() {} }, append() {} },
     getElementById: element,
-    addEventListener() {},
+    addEventListener(name, callback) { documentEvents[name] = callback; },
     createElement(tagName) {
       return tagName === 'a' ? {
         click() { downloads.push(this.download); }, remove() {}
@@ -55,14 +57,14 @@ function createPage(records, getMaterialFile = async () => ({ buffer: new ArrayB
       },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
-        renderPanelEmptyState: () => 'No materials'
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`
       }
     },
     records
   });
   vm.runInContext(script, context);
   vm.runInContext('MATERIAL_RECORDS = records; groupMaterials(); renderMaterials();', context);
-  return { context, element, downloads, messages, requests, revoked };
+  return { context, element, downloads, messages, requests, revoked, documentEvents };
 }
 
 function material(type, id) {
@@ -78,6 +80,24 @@ test('student material rows show preview only for browser-supported types and do
   assert.match(html, /aria-label="Preview pdf lesson"[^>]*><i data-lucide="eye"><\/i><span class="material-action-label">Preview<\/span>/);
   assert.match(html, /aria-label="Download pdf lesson"[^>]*><i data-lucide="download"><\/i><span class="material-action-label">Download<\/span>/);
   assert.doesNotMatch(html, /class="material-row" data-material-id=/);
+});
+
+test('student materials distinguish an empty API result from a failed or missing API', async () => {
+  const empty = createPage([]);
+  empty.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
+  empty.context.window.EDUGNAY_API.getMaterials = async () => [];
+  await empty.documentEvents.DOMContentLoaded();
+  assert.match(empty.element('materials-container').innerHTML, /No learning materials yet/);
+
+  const failed = createPage([]);
+  failed.context.window.EDUGNAY_SCHOOL_READY = Promise.resolve();
+  failed.context.window.EDUGNAY_API.getMaterials = async () => { throw new Error('Materials request failed.'); };
+  await failed.documentEvents.DOMContentLoaded();
+  assert.match(failed.element('materials-container').innerHTML, /Materials unavailable: Materials request failed/);
+  const unavailable = createPage([]);
+  unavailable.context.window.EDUGNAY_API.isBackendAvailable = false;
+  await unavailable.documentEvents.DOMContentLoaded();
+  assert.match(unavailable.element('materials-container').innerHTML, /Materials unavailable: The school API is unavailable/);
 });
 
 test('download requests the authorized attachment and uses the original filename', async () => {

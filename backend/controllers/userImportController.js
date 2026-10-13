@@ -5,6 +5,7 @@ const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { sendAccountCreatedEmail } = require('../config/email');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
+const { schoolEmailBase, schoolEmailCandidate, storedSchoolDomain } = require('../utils/schoolUserEmail');
 
 const ROLE_ALIASES = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
 const EXPECTED_COLUMNS = {
@@ -244,22 +245,12 @@ function createTemporaryPassword() {
   return `Edu-${crypto.randomBytes(12).toString('base64url')}!`;
 }
 
-function getSchoolEmailDomain(school) {
-  const email = String(school.email || '').trim();
-  if (email.includes('@')) return email.split('@').pop().toLowerCase();
-  const website = String(school.website || '').trim().replace(/^https?:\/\//, '').split('/')[0];
-  return website || `school-${school.id}.academix.local`;
-}
-
 function createSchoolEmail(record, role, domain, usedEmails) {
-  const first = record.firstName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-  const last = record.lastName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'account';
-  const suffix = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'par' }[role];
-  const base = `${first.charAt(0)}.${last}.${suffix}`;
-  let candidate = `${base}@${domain}`;
+  const base = schoolEmailBase(record.firstName, record.lastName, role);
+  let candidate = schoolEmailCandidate(base, domain);
   let index = 2;
   while (usedEmails.has(candidate)) {
-    candidate = `${base}${index}@${domain}`;
+    candidate = schoolEmailCandidate(base, domain, index);
     index += 1;
   }
   usedEmails.add(candidate);
@@ -282,13 +273,13 @@ async function importUsers(req, res, next) {
       return res.status(422).json(createValidationResponse(records));
     }
 
-    const [[school]] = await database.execute('SELECT id, email, website FROM schools WHERE id = ? LIMIT 1', [schoolId]);
+    const [[school]] = await database.execute('SELECT id, school_email_domain AS schoolEmailDomain FROM schools WHERE id = ? LIMIT 1', [schoolId]);
     if (!school) throw createError('School not found.', 404);
     const [existingEmails] = await database.execute('SELECT school_email AS schoolEmail FROM users');
     const usedEmails = new Set(existingEmails.map(user => String(user.schoolEmail).toLowerCase()));
     const accounts = getAccountRecords(records, role).map(record => ({
       ...record,
-      schoolEmail: createSchoolEmail(record, role, getSchoolEmailDomain(school), usedEmails),
+      schoolEmail: createSchoolEmail(record, role, storedSchoolDomain(school), usedEmails),
       temporaryPassword: createTemporaryPassword()
     }));
 

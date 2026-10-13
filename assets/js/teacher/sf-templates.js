@@ -482,9 +482,7 @@ async function generateForm(event) {
     sfState.editing = false;
     sfState.zoomMode = 'fit';
     sfElements.previewTitle.textContent = 'Generated form preview';
-    sfElements.previewSubtitle.textContent = window.EDUGNAY_API?.isBackendAvailable
-      ? 'Review the selected form previews before downloading the XLSX file.'
-      : 'Demo preview uses sample records stored in this browser.';
+    sfElements.previewSubtitle.textContent = 'Review the selected form previews before downloading the XLSX file.';
     renderGeneratedPreview();
   } catch (error) {
     sfState.generated = null;
@@ -623,13 +621,15 @@ async function downloadBlankTemplate(templateId, button) {
 
 async function initializeSfTemplatesPage() {
   if (!window.EDUGNAY_API?.isBackendAvailable) {
-    document.querySelector('.sf-info-banner-title').textContent = 'Demo preview';
-    document.querySelector('.sf-info-banner-text').textContent = 'This static-host preview uses sample records in your browser, not live MySQL data.';
+    document.querySelector('.sf-info-banner-title').textContent = 'School data unavailable';
+    document.querySelector('.sf-info-banner-text').textContent = 'Connect to the school API to use templates.';
+    return;
   }
   sfElements.count.textContent = 'Loading templates...';
   sfElements.list.innerHTML = '<div class="sf-preview-loading" role="status">Loading official templates...</div>';
 
   try {
+    await window.EDUGNAY_SCHOOL_READY;
     [sfState.templates, sfState.sections] = await Promise.all([
       window.EDUGNAY_CONFIG.getSfTemplates(),
       window.EDUGNAY_CONFIG.getMyAdvisorySections()

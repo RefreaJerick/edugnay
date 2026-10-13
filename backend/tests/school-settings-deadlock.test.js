@@ -8,7 +8,8 @@ const { updateSchoolSettings } = require('../controllers/schoolsController');
 
 async function saveWithDeadlocks(deadlocks) {
   const calls = [];
-  const school = { id: 12, name: 'Current School', email: 'school@example.com' };
+  const school = { id: 12, name: 'Current School', email: 'school@example.com', schoolEmailDomain: 'cs.academix.test' };
+  let updateSql = '';
   const connection = {
     async beginTransaction() { calls.push('begin'); },
     async commit() { calls.push('commit'); },
@@ -17,6 +18,7 @@ async function saveWithDeadlocks(deadlocks) {
     async execute(sql) {
       if (sql.includes('FROM schools LEFT JOIN school_settings')) return [[school]];
       if (sql.startsWith('UPDATE schools SET name=')) {
+        updateSql = sql;
         calls.push('update');
         if (deadlocks-- > 0) throw Object.assign(new Error('Deadlock'), { code: 'ER_LOCK_DEADLOCK' });
       }
@@ -31,7 +33,7 @@ async function saveWithDeadlocks(deadlocks) {
     { status(code) { this.code = code; return this; }, json(data) { response = { status: this.code, data }; } },
     error => { failure = error; }
   );
-  return { calls, response, failure };
+  return { calls, response, failure, updateSql };
 }
 
 test('school settings retries one deadlock and responds after commit', async () => {
@@ -49,4 +51,10 @@ test('school settings stops after a second deadlock', async () => {
   assert.equal(failure.code, 'ER_LOCK_DEADLOCK');
   assert.equal(calls.filter(call => call === 'rollback').length, 2);
   assert.equal(calls.filter(call => call === 'commit').length, 0);
+});
+
+test('editing school contact settings never changes its login domain', async () => {
+  const { response, updateSql } = await saveWithDeadlocks(0);
+  assert.doesNotMatch(updateSql, /school_email_domain/);
+  assert.equal(response.data.school.schoolEmailDomain, 'cs.academix.test');
 });

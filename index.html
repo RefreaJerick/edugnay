@@ -498,19 +498,6 @@
       platform_admin: './views/platform/edugnay-platform-dashboard.html'
     };
 
-    // Temporary bridge while portal pages still read their local demonstration arrays.
-    // The backend user ID remains in apiUserId; a later phase removes legacyUserId.
-    const LEGACY_USER_ID_BY_EMAIL = {
-      'admin.adm@stcolumban.edu.ph': 'admin-1',
-      'm.reyes.fac@stcolumban.edu.ph': 'teacher-2',
-      'carlo.mendoza.stud@stcolumban.edu.ph': 'cm-001',
-      'liza.reyes.stud@stcolumban.edu.ph': 'lr-002',
-      'juan.delacruz.stud@stcolumban.edu.ph': 'jd-004',
-      'maya.torres.stud@stcolumban.edu.ph': 'mt-012',
-      'sofia.cruz.stud@stcolumban.edu.ph': 'sc-013',
-      'rosa.lim.par@stcolumban.edu.ph': 'parent-7',
-      'platform.admin@academix.test': 'platform-1'
-    };
     const AUTH_STATE = {
       pendingRecoveryEmail: '',
       resetToken: new URLSearchParams(window.location.search).get('token')
@@ -691,16 +678,6 @@
         const { user } = await postAuthData('/auth/login', { schoolEmail, password });
         const dashboard = DASHBOARD_BY_ROLE[user.role];
         if (!dashboard) throw new Error('This account does not have a portal route.');
-
-        const legacyUserId = LEGACY_USER_ID_BY_EMAIL[user.schoolEmail] || String(user.id);
-        sessionStorage.setItem('edugnay_session', JSON.stringify({
-          userId: legacyUserId,
-          apiUserId: user.id,
-          role: user.role,
-          schoolId: user.schoolId === 1 ? 'scc' : user.schoolId,
-          apiSchoolId: user.schoolId,
-          schoolEmail: user.schoolEmail
-        }));
 
         window.location.href = dashboard;
       } catch (error) {

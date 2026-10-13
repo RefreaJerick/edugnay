@@ -14,7 +14,7 @@
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
 </head>
-<body>
+<body data-public-page="true">
   <main class="onboarding-page onboarding-registration-page">
     <header class="onboarding-topbar">
       <a class="onboarding-topbar-brand" href="../../index.html" aria-label="Academix home">
@@ -168,11 +168,11 @@
                 <label for="schoolPhone">Contact number</label>
                 <input id="schoolPhone" name="schoolPhone" type="tel" placeholder="(049) 123 4567" />
               </div>
-              <div class="onboarding-field full">
+              <div class="onboarding-field">
                 <label for="schoolWebsite">Website</label>
                 <input id="schoolWebsite" name="schoolWebsite" type="url" placeholder="https://school.edu.ph" />
               </div>
-              <div class="onboarding-field full">
+              <div class="onboarding-field">
                 <label for="schoolLogo">Logo or branding image</label>
                 <div class="onboarding-logo-preview">
                   <span class="onboarding-logo-placeholder" id="schoolLogoPlaceholder" aria-hidden="true">
@@ -199,10 +199,6 @@
               <div class="onboarding-field">
                 <label for="adminName">Administrator name</label>
                 <input id="adminName" name="adminName" type="text" placeholder="Full name" required />
-              </div>
-              <div class="onboarding-field">
-                <label for="adminEmail">Administrator email</label>
-                <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@school.edu.ph" autocomplete="email" required />
               </div>
               <div class="onboarding-field">
                 <label for="notificationEmail">Notification email</label>
@@ -618,7 +614,6 @@
       const temporaryPassword = values.adminPassword;
       const notificationEmail = values.notificationEmail.trim().toLowerCase();
       const schoolEmail = values.schoolEmail.trim().toLowerCase();
-      const administratorSchoolEmail = values.adminEmail.trim().toLowerCase();
       const schoolLevels = selectedSchoolLevels();
       if (!schoolLevels.length) {
         document.getElementById('schoolLevelsError').hidden = false;
@@ -654,7 +649,6 @@
         initialAdministrator: {
           firstName: adminNames[0],
           lastName: adminNames.slice(1).join(' '),
-          schoolEmail: administratorSchoolEmail,
           temporaryPassword
         }
       };
@@ -669,11 +663,14 @@
         const createdSchool = await window.EDUGNAY_API.registerSchool(registration, logoInput.files?.[0]);
         if (!createdSchool) throw new Error('The school registration could not be created.');
 
-        sessionStorage.setItem('edugnay_pending_registration', JSON.stringify({
-          registrationId: createdSchool.id,
-          schoolName: createdSchool.name,
-          notificationEmail: createdSchool.notificationEmail
-        }));
+        try {
+          sessionStorage.removeItem('edugnay_pending_registration');
+          if (createdSchool.registrationStatusToken) {
+            sessionStorage.setItem('edugnay_registration_status_token', createdSchool.registrationStatusToken);
+          }
+        } catch (storageError) {
+          // The registration has already been saved; the status page will explain if the token could not be retained.
+        }
         window.location.href = './edugnay-registration-pending.html';
       } catch (error) {
         submitButton.disabled = false;

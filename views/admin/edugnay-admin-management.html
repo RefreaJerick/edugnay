@@ -281,10 +281,10 @@
             <option value="">Select a student</option>
           </select>
           <div class="student-preview" id="studentPreview">
-            <div class="sp-av" id="spAv">JD</div>
+            <div class="sp-av" id="spAv"></div>
             <div>
-              <div class="sp-name" id="spName">Juan Dela Cruz</div>
-              <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+              <div class="sp-name" id="spName">Select a student</div>
+              <div class="sp-detail" id="spDetail">Select a student</div>
             </div>
           </div>
         </div>
@@ -601,9 +601,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
+          <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -947,7 +947,7 @@ function closeSectionAddModal() { document.getElementById('sectionAddModalBackdr
 document.getElementById('sectionAddModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeSectionAddModal(); });
 
 function teacherAccounts() {
-  return MANAGEMENT_API_ENABLED ? MANAGEMENT_API_TEACHERS : window.EDUGNAY_CONFIG.getUsersByRole('teacher');
+  return MANAGEMENT_API_TEACHERS;
 }
 
 function teacherInitials(teacher) {
@@ -986,16 +986,6 @@ function renderTeacherOptions() {
   });
   select.value = teachers.some(teacher => teacher.id === selected) ? selected : '';
   window.syncSearchableSelect?.(select);
-}
-
-function saveManagementSchool(school) {
-  if (!school?.id) return false;
-  const schools = window.EDUGNAY_CONFIG.getSchools();
-  const index = schools.findIndex(record => record.id === school.id);
-  if (index < 0) return false;
-  schools[index] = school;
-  window.EDUGNAY_CONFIG.saveSchools(schools);
-  return true;
 }
 
 function normalizeManagementApiTeacher(user) {
@@ -1108,12 +1098,7 @@ async function loadManagementApiData() {
 }
 
 async function refreshManagementViews() {
-  if (MANAGEMENT_API_ENABLED) await loadManagementApiData();
-  else {
-    const sections = await window.EDUGNAY_CONFIG.getSections();
-    SECTION_RECORDS = Array.isArray(sections) ? sections : [];
-  }
-  syncManagementStudentRecords();
+  await loadManagementApiData();
   renderManagementGradeFilters();
   renderTeacherOptions();
   renderManagementSubjectTabs();
@@ -1169,7 +1154,7 @@ async function saveSectionForm(event, mode) {
     adviserId
   };
 
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
     let saved = false;
@@ -1193,45 +1178,6 @@ async function saveSectionForm(event, mode) {
     return;
   }
 
-  if (mode === 'edit') {
-    const sectionId = form.elements.sectionId?.value || '';
-    const submitButton = event.submitter;
-    if (submitButton) submitButton.disabled = true;
-    let saved = false;
-    try {
-      const updatedSection = await window.EDUGNAY_CONFIG.updateSection(sectionId, sectionData);
-      if (!updatedSection) {
-        window.alert('The section could not be updated.');
-        return;
-      }
-      closeSectionEditModal();
-      await refreshManagementViews();
-    } catch (error) {
-      window.alert(error?.message || 'The section could not be updated.');
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
-    return;
-  }
-
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  if (!school) return;
-  school.divisions ||= {};
-  school.schoolLevels = Array.isArray(school.schoolLevels) ? school.schoolLevels : [];
-  if (!school.schoolLevels.includes(level)) school.schoolLevels.push(level);
-  const targetDivision = school.divisions[level] || window.EDUGNAY_CONFIG.createDivision(level);
-  targetDivision.sections = Array.isArray(targetDivision.sections) ? targetDivision.sections : [];
-  targetDivision.sections.push({
-    id: `section-${Date.now()}`,
-    schoolId: school.id,
-    ...sectionData,
-    enrolled: 0
-  });
-  school.divisions[level] = targetDivision;
-  school.activeDivision = level;
-  if (!saveManagementSchool(school)) return;
-  closeSectionAddModal();
-  await refreshManagementViews();
 }
 
 document.getElementById('createSectionForm').addEventListener('submit', event => saveSectionForm(event, 'create'));
@@ -1243,7 +1189,6 @@ document.getElementById('editSectionForm').addEventListener('submit', event => s
 // Sections come from the active school's divisions. The separate array below
 // stores only teacher-assignment relationships keyed by sectionId.
 const BAR_CLASS_BY_GRADE = { 7: 'bar-blue', 8: 'bar-gold', 9: 'bar-green', 10: 'bar-orange' };
-const MANAGEMENT_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
 const MANAGEMENT_API_CONTEXT = {
   school: null,
   structure: [],
@@ -1256,26 +1201,7 @@ let SECTION_RECORDS = [];
 
 // Subject placement is stored once in shell-common.js. Each row represents
 // one subject offered to one grade/strand combination of one school.
-const SUBJECT_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.getSubjectAssignments();
-const SUBJECTS_DATA = window.EDUGNAY_CONFIG.subjects
-  .map(subject => ({
-    id: subject.id,
-    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    name: subject.name,
-    code: subject.code,
-    type: subject.levels.length === 1 && subject.levels.includes('shs')
-      ? 'Specialized Subject'
-      : 'Core Subject',
-    grades: [...new Set(SUBJECT_ASSIGNMENTS_DATA
-      .filter(record => record.schoolId === window.EDUGNAY_CONFIG.getActiveSchoolId())
-      .filter(record => record.subjectId === subject.id)
-      .filter(record => subject.levels?.includes(record.schoolLevel))
-      .filter(record => managementSchoolLevels().includes(record.schoolLevel))
-      .filter(record => managementGradeOptions(record.schoolLevel)
-        .some(grade => managementGradeKey(grade) === managementGradeKey(record.gradeLevel)))
-       .map(record => managementSubjectPlacementKey(record)))]
-  }))
-  .filter(subject => subject.grades.length);
+const SUBJECTS_DATA = [];
 
 const SUBJECT_AVATAR_CLASSES = {
   mathematics: 'av-blue',
@@ -1292,58 +1218,12 @@ const SUBJECT_AVATAR_CLASSES = {
   'practical-research': 'av-orange'
 };
 
-// Assignment records store relationships only. Names and emails come from
-// the shared teacher accounts/profiles in shell-common.js.
-const JHS_SUBJECT_TEACHERS = {
-  mathematics: 'teacher-2',
-  english: 'teacher-9',
-  science: 'teacher-rico-santos',
-  'araling-panlipunan': 'teacher-3',
-  esp: 'teacher-jana-mendez',
-  tle: 'teacher-ana-garcia',
-  mapeh: 'teacher-2'
-};
-
-function seededTeacherAssignments(subjectIds) {
-  return subjectIds.map(subjectId => ({
-    subjectId,
-    teacherId: JHS_SUBJECT_TEACHERS[subjectId] || null
-  }));
-}
-
-const TEACHER_ASSIGNMENT_SEEDS = [
-  { sectionId: 'jhs-grade7-matthew', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade7-mark', collapsed: false, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp']) },
-  { sectionId: 'jhs-grade8-luke', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade8-john', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science']) },
-  { sectionId: 'jhs-grade9-peter', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade9-paul', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade10-james', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) },
-  { sectionId: 'jhs-grade10-thomas', collapsed: true, subjects: seededTeacherAssignments(['mathematics', 'english', 'science', 'araling-panlipunan', 'esp', 'tle', 'mapeh']) }
-];
-
-const TEACHER_ASSIGNMENTS_DATA = window.EDUGNAY_CONFIG.withActiveSchool(
-  TEACHER_ASSIGNMENT_SEEDS.map(record => ({
-    ...record,
-    subjects: record.subjects.map(assignment => ({
-      ...assignment,
-      id: `${record.sectionId}-${assignment.subjectId}`,
-      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-      sectionId: record.sectionId
-    }))
-  }))
-);
+const TEACHER_ASSIGNMENTS_DATA = [];
 
 // Keep the management table on the canonical user records. The service
 // refreshes this reference after a placement or import mutation.
-let STUDENTS_DATA = window.EDUGNAY_CONFIG.getStudents();
-let MANAGEMENT_ASSIGNMENT_STUDENTS = STUDENTS_DATA;
-
-function syncManagementStudentRecords() {
-  if (MANAGEMENT_API_ENABLED) return;
-  STUDENTS_DATA = window.EDUGNAY_CONFIG.getStudents();
-  MANAGEMENT_ASSIGNMENT_STUDENTS = STUDENTS_DATA;
-}
+let STUDENTS_DATA = [];
+let MANAGEMENT_ASSIGNMENT_STUDENTS = [];
 
 /* ══════════════════════════════════════════════
    RENDER FUNCTIONS
@@ -1504,7 +1384,7 @@ function renderInactiveSubjects() {
   const list = document.getElementById('inactiveSubjectList');
   if (!panel || !list) return;
   const subjects = MANAGEMENT_API_CONTEXT.inactiveSubjects || [];
-  panel.hidden = !MANAGEMENT_API_ENABLED || !subjects.length;
+  panel.hidden = !subjects.length;
   list.innerHTML = subjects.map(subject => {
     const placement = subject.schoolLevelName
       ? `${subject.schoolLevelName} · ${subject.gradeLevelName || 'All grades'}`
@@ -1654,9 +1534,7 @@ function getManagementTeacherSlots() {
 
 function teacherRecordById(teacherId) {
   if (!teacherId) return null;
-  if (MANAGEMENT_API_ENABLED) return MANAGEMENT_API_TEACHERS.find(teacher => teacher.id === String(teacherId)) || null;
-  const teacher = window.EDUGNAY_CONFIG.getUserById(teacherId);
-  return teacher?.role === 'teacher' ? teacher : null;
+  return MANAGEMENT_API_TEACHERS.find(teacher => teacher.id === String(teacherId)) || null;
 }
 
 function teacherAssignmentsForSection(section) {
@@ -1978,10 +1856,6 @@ function openSectionEditModal(card) {
 }
 
 function openSectionDeleteConfirmation(section) {
-  if (!MANAGEMENT_API_ENABLED) {
-    showAppToast('Connect to the backend to delete a section.', 'error');
-    return;
-  }
   const placement = managementSectionPlacement(section);
   openConfirmRemoveModal({
     type: 'section',
@@ -2158,7 +2032,7 @@ function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = n
         ? `Applies to ${context.label}`
         : `Applies to ${context.label} Grade Level(s)`;
   }
-  if (MANAGEMENT_API_ENABLED) {
+  {
     group.style.display = '';
     const placement = subject?.grades?.[0] || context.scopeKeys[0] || '';
     const [placementLevel, placementGrade] = placement.split(':');
@@ -2170,51 +2044,6 @@ function renderSubjectGradeChecks(contextValue = activeSubjectGrade, subject = n
       : '<small class="form-help">Configure a school level and grade before adding a subject.</small>';
     return;
   }
-  if (lockedToGrade) return;
-
-  const existingGrades = new Set(subject?.grades || []);
-  const levels = context.mode === 'division' ? [context.level] : managementSchoolLevels();
-  target.innerHTML = levels.map(level => {
-    const grades = managementGradeOptions(level);
-    if (!grades.length) return '';
-    if (level === 'shs') {
-      const strands = managementStrandOptions(level).filter(option => (
-        context.strand === 'all' || managementStrandKey(option) === context.strand
-      ));
-      const availableStrands = strands.length ? strands : [null];
-      const gradeOptions = context.mode === 'grade'
-        ? grades.filter(grade => managementGradeKey(grade) === context.grade)
-        : grades;
-      return gradeOptions.map(grade => {
-        const gradeKey = managementGradeKey(grade);
-        return `
-          <div class="grade-check-group">
-            <div class="grade-check-group-title">${managementLevelLabel(level)} · ${grade}</div>
-            <div class="grade-check-grid">
-              ${availableStrands.map(strand => {
-                const strandKey = managementStrandKey(strand) || 'all';
-                const value = `shs:${gradeKey}:${strandKey}`;
-                const checked = subject
-                  ? existingGrades.has(value) || existingGrades.has(`shs:${gradeKey}:all`)
-                  : true;
-                return `<label class="grade-check-item"><input type="checkbox" name="grades" value="${value}"${checked ? ' checked' : ''}/><span>${strand || 'All strands'}</span></label>`;
-              }).join('')}
-            </div>
-          </div>`;
-      }).join('');
-    }
-    return `
-      <div class="grade-check-group">
-        <div class="grade-check-group-title">${managementLevelLabel(level)}</div>
-        <div class="grade-check-grid">
-          ${grades.map(grade => {
-            const value = `${level}:${managementGradeKey(grade)}`;
-            const checked = subject ? existingGrades.has(value) : true;
-            return `<label class="grade-check-item"><input type="checkbox" name="grades" value="${value}"${checked ? ' checked' : ''}/><span>${grade}</span></label>`;
-          }).join('')}
-        </div>
-      </div>`;
-  }).join('');
 }
 
 function openSubjectModal(subjectKey) {
@@ -2254,41 +2083,6 @@ document.getElementById('subjectModalBackdrop').addEventListener('click', functi
   if (e.target === this) closeSubjectModal();
 });
 
-function updateSubjectAssignments(subjectId, grades) {
-  const schoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
-  const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === subjectId);
-  const assignments = window.EDUGNAY_CONFIG.getSubjectAssignments();
-  const selectedGrades = [...new Set(grades || [])];
-
-  for (let index = assignments.length - 1; index >= 0; index -= 1) {
-    const record = assignments[index];
-    if (record.schoolId === schoolId && record.subjectId === subjectId) assignments.splice(index, 1);
-  }
-
-  selectedGrades.forEach(key => {
-    const [schoolLevel, gradeKey, strandKey = ''] = String(key).split(':');
-    const grade = managementGradeOptions(schoolLevel).find(item => managementGradeKey(item) === gradeKey);
-    if (!subject?.levels?.includes(schoolLevel) || !grade) return;
-    const strands = schoolLevel === 'shs'
-      ? managementStrandOptions(schoolLevel).filter(option => !strandKey || strandKey === 'all' || managementStrandKey(option) === strandKey)
-      : [null];
-    (strands.length ? strands : [null]).forEach(strand => {
-      const selectedStrand = schoolLevel === 'shs' ? strand : null;
-      const selectedStrandKey = managementStrandKey(selectedStrand) || 'all';
-      assignments.push({
-        id: `${schoolId}-${subjectId}-${schoolLevel}-${gradeKey}-${selectedStrandKey}`,
-        schoolId,
-        subjectId,
-        schoolLevel,
-        gradeLevel: grade,
-        strand: selectedStrand
-      });
-    });
-  });
-
-  window.EDUGNAY_CONFIG.saveSubjectAssignments();
-}
-
 document.getElementById('createSubjectForm').addEventListener('submit', async function(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -2323,7 +2117,7 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
     return;
   }
 
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const [levelCode, gradeKey] = String(grades[0]).split(':');
     const level = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === levelCode);
     const grade = level?.gradeLevels?.find(item => managementGradeKey(item.displayName) === gradeKey);
@@ -2354,35 +2148,6 @@ document.getElementById('createSubjectForm').addEventListener('submit', async fu
     return;
   }
 
-  const subjectId = existing?.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `subject-${Date.now()}`;
-  const localIndex = SUBJECTS_DATA.findIndex(item => item.id === subjectId);
-  const localRecord = {
-    id: subjectId,
-    schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-    name,
-    code,
-    type: existing?.type || 'Core Subject',
-    grades
-  };
-  if (localIndex >= 0) SUBJECTS_DATA[localIndex] = { ...SUBJECTS_DATA[localIndex], ...localRecord };
-  else SUBJECTS_DATA.push(localRecord);
-
-  const catalog = window.EDUGNAY_CONFIG.subjects;
-  const catalogIndex = catalog.findIndex(item => item.id === subjectId);
-  const subjectLevels = [...new Set(grades.map(key => String(key).split(':')[0]))];
-  const catalogRecord = { id: subjectId, name, code, levels: subjectLevels };
-  if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...catalogRecord };
-  else catalog.push(catalogRecord);
-  updateSubjectAssignments(subjectId, grades);
-
-  /* Backend integration: replace this local merge with fetch(form.action, ...),
-     then merge the returned subject into the same local record collection. */
-  closeSubjectModal();
-  renderManagementSubjectTabs();
-  renderSubjects();
-  renderTeacherAssignments();
-  renderManagementTabPills();
-  filterSubjects();
 });
 
 let activeSubjectGrade = 'all';
@@ -2510,7 +2275,7 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
     return;
   }
 
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
     let saved = false;
@@ -2539,28 +2304,6 @@ document.getElementById('assignTeacherForm').addEventListener('submit', async ev
     return;
   }
 
-  let section = TEACHER_ASSIGNMENTS_DATA.find(record => record.sectionId === sectionId);
-  if (!section) {
-    section = { schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(), sectionId, adviserId: null, collapsed: true, subjects: [] };
-    TEACHER_ASSIGNMENTS_DATA.push(section);
-  }
-  let assignment = section.subjects.find(record => record.subjectId === subjectId);
-  if (!assignment) {
-    assignment = {
-      id: `${sectionId}-${subjectId}`,
-      schoolId: window.EDUGNAY_CONFIG.getActiveSchoolId(),
-      sectionId,
-      subjectId,
-      teacherId: null
-    };
-    section.subjects.push(assignment);
-  }
-  assignment.teacherId = teacherId;
-
-  closeTeacherModal();
-  renderTeacherAssignments();
-  renderManagementTabPills();
-  renderSubjects();
 });
 
 function filterTeacherBlocks() {
@@ -2600,11 +2343,7 @@ function managementStrandKey(value) {
 }
 
 function managementLevelLabel(level) {
-  if (MANAGEMENT_API_ENABLED) {
-    const apiLevel = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level);
-    if (apiLevel?.displayName) return apiLevel.displayName;
-  }
-  return window.EDUGNAY_CONFIG.grades.find(item => item.key === level)?.label || level;
+  return MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level)?.displayName || level;
 }
 
 function managementLevelShortLabel(level) {
@@ -2612,32 +2351,19 @@ function managementLevelShortLabel(level) {
 }
 
 function managementSchoolLevels() {
-  if (MANAGEMENT_API_ENABLED && MANAGEMENT_API_CONTEXT.structure.length) {
-    return MANAGEMENT_API_CONTEXT.structure.filter(level => level.isEnabled !== false).map(level => level.levelCode);
-  }
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  return Array.isArray(school?.schoolLevels) && school.schoolLevels.length
-    ? school.schoolLevels
-    : (school?.schoolType === 'k12' ? window.EDUGNAY_CONFIG.grades.map(item => item.key) : [school?.schoolType || 'jhs']);
+  return MANAGEMENT_API_CONTEXT.structure.filter(level => level.isEnabled !== false).map(level => level.levelCode);
 }
 
 function managementDefaultLevel() {
-  if (MANAGEMENT_API_ENABLED) return managementSchoolLevels()[0] || '';
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  const levels = managementSchoolLevels();
-  return levels.includes(school?.activeDivision) ? school.activeDivision : levels[0];
+  return managementSchoolLevels()[0] || '';
 }
 
 function managementDivision(level) {
-  if (MANAGEMENT_API_ENABLED) {
-    const apiLevel = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level);
-    return {
-      enabledGrades: (apiLevel?.gradeLevels || []).filter(item => item.isEnabled !== false).map(item => item.displayName),
-      strands: (apiLevel?.tracks || []).filter(item => item.isEnabled !== false).map(item => item.displayName)
-    };
-  }
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
-  return school?.divisions?.[level] || {};
+  const apiLevel = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level);
+  return {
+    enabledGrades: (apiLevel?.gradeLevels || []).filter(item => item.isEnabled !== false).map(item => item.displayName),
+    strands: (apiLevel?.tracks || []).filter(item => item.isEnabled !== false).map(item => item.displayName)
+  };
 }
 
 function managementSectionStudentCount(sectionId) {
@@ -2646,28 +2372,15 @@ function managementSectionStudentCount(sectionId) {
 }
 
 function managementSectionRecords() {
-  const school = window.EDUGNAY_CONFIG.getActiveSchool();
   return SECTION_RECORDS.map(section => {
     const teacherSection = TEACHER_ASSIGNMENTS_DATA.find(item => item.sectionId === section.id);
-    const sectionSubjectIds = MANAGEMENT_API_ENABLED
-      ? new Set(SUBJECTS_DATA
+    const sectionSubjectIds = new Set(SUBJECTS_DATA
         .filter(subject => managementSubjectFilterMatches(managementSubjectSectionKey(section), subject.grades))
-        .map(subject => subject.id))
-      : new Set(SUBJECT_ASSIGNMENTS_DATA
-        .filter(record => record.schoolId === school?.id)
-        .filter(record => managementSubjectFilterMatches(
-          managementSubjectSectionKey(section),
-          [managementSubjectPlacementKey(record)]
-        ))
-        .map(record => record.subjectId));
-    const subjects = [...sectionSubjectIds].filter(subjectId => {
-      if (MANAGEMENT_API_ENABLED) return SUBJECTS_DATA.some(item => item.id === subjectId);
-      const subject = window.EDUGNAY_CONFIG.subjects.find(item => item.id === subjectId);
-      return subject?.levels?.includes(section.level);
-    }).length;
+        .map(subject => subject.id));
+    const subjects = sectionSubjectIds.size;
     const students = managementSectionStudentCount(section.id);
     const adviserId = section.adviserId || null;
-    const adviserProfile = MANAGEMENT_API_ENABLED ? teacherRecordById(adviserId) : window.EDUGNAY_CONFIG.getUserById(adviserId);
+    const adviserProfile = teacherRecordById(adviserId);
     const adviser = section.adviserName || adviserProfile?.displayName || null;
     return {
       ...section,
@@ -2680,7 +2393,7 @@ function managementSectionRecords() {
       adviserInitials: adviserProfile
         ? `${adviserProfile.firstName?.[0] || ''}${adviserProfile.lastName?.[0] || ''}`.toUpperCase()
         : section.adviserInitials || '',
-      teacherAssignments: MANAGEMENT_API_ENABLED ? (section.teacherAssignments || []) : (teacherSection?.subjects || []),
+      teacherAssignments: section.teacherAssignments || [],
       collapsed: managementTeacherCollapseState[section.id] ?? teacherSection?.collapsed ?? true
     };
   });
@@ -2774,32 +2487,16 @@ function managementSetOptions(select, options, placeholder, selectedValue) {
 }
 
 function managementGradeOptions(level) {
-  if (MANAGEMENT_API_ENABLED) {
-    return (MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level)?.gradeLevels || [])
-      .filter(item => item.isEnabled !== false)
-      .map(item => item.displayName);
-  }
-  const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || {};
-  const division = managementDivision(level);
-  const enabled = Array.isArray(division.enabledGrades) && division.enabledGrades.length
-    ? division.enabledGrades
-    : catalog.grades || [];
-  return (catalog.grades || []).filter(grade => enabled.some(item => managementGradeKey(item) === managementGradeKey(grade)));
+  return (MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level)?.gradeLevels || [])
+    .filter(item => item.isEnabled !== false)
+    .map(item => item.displayName);
 }
 
 function managementStrandOptions(level) {
   if (level !== 'shs') return [];
-  if (MANAGEMENT_API_ENABLED) {
-    return (MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level)?.tracks || [])
-      .filter(item => item.isEnabled !== false)
-      .map(item => item.displayName);
-  }
-  const division = managementDivision(level);
-  const sectionStrands = managementSectionRecords().filter(section => section.level === level).map(section => section.strand).filter(Boolean);
-  return [...new Set([
-    ...(Array.isArray(division.strands) ? division.strands : []),
-    ...sectionStrands
-  ])];
+  return (MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === level)?.tracks || [])
+    .filter(item => item.isEnabled !== false)
+    .map(item => item.displayName);
 }
 
 function managementSectionLabel(section) {
@@ -2808,9 +2505,7 @@ function managementSectionLabel(section) {
 }
 
 function managementStudentMeta(studentId) {
-  if (MANAGEMENT_API_ENABLED) return STUDENTS_DATA.find(student => student.id === String(studentId)) || null;
-  const student = window.EDUGNAY_CONFIG.getUserById(studentId);
-  return student?.role === 'student' ? student : null;
+  return STUDENTS_DATA.find(student => student.id === String(studentId)) || null;
 }
 
 function managementRenderStudentOptions(selectedId = '') {
@@ -3105,9 +2800,7 @@ function openSubjectRemoveConfirmation(subject) {
     icon: 'book-minus',
     action: '/subjects/remove',
     messageParts: [
-      { text: MANAGEMENT_API_ENABLED
-        ? `Remove this subject from ${scopeLabel}? If school records use it, it will be deactivated and those records will stay available; otherwise, it will be permanently deleted.`
-        : `Remove this subject from ${scopeLabel}?` }
+      { text: `Remove this subject from ${scopeLabel}? If school records use it, it will be deactivated and those records will stay available; otherwise, it will be permanently deleted.` }
     ]
   });
 }
@@ -3144,7 +2837,7 @@ document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', 
 
 async function saveManagementStudentPlacement(studentId, section) {
   if (!studentId || !section) return null;
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const student = managementStudentMeta(studentId);
     if (!student) return null;
     if (student.sectionId && student.sectionId !== section.id) {
@@ -3156,73 +2849,6 @@ async function saveManagementStudentPlacement(studentId, section) {
     }
     return true;
   }
-  const student = window.EDUGNAY_CONFIG.updateUser(studentId, {
-    schoolLevel: section.level,
-    gradeLevel: section.grade,
-    strand: section.strand || '',
-    sectionId: section.id
-  });
-  if (student) {
-    syncManagementStudentRecords();
-  }
-  return student;
-}
-
-function renderManagementStudentChanges() {
-  renderSections();
-  renderStudentsTab();
-  renderManagementTabPills();
-}
-
-function removeTeacherAssignment(sectionId, subjectId) {
-  const section = TEACHER_ASSIGNMENTS_DATA.find(record => record.sectionId === sectionId);
-  const assignment = section?.subjects?.find(subject => subject.subjectId === subjectId);
-  if (!assignment || !assignment.teacherId) return false;
-  assignment.teacherId = null;
-  return true;
-}
-
-function removeSubjectRecord(subjectId, contextValue = 'all', contextStrand = 'all') {
-  const index = SUBJECTS_DATA.findIndex(subject => subject.id === subjectId);
-  if (index < 0) return false;
-  const scope = getSubjectModalContext(contextValue, contextStrand);
-  const assignments = window.EDUGNAY_CONFIG.getSubjectAssignments();
-  const schoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
-  let removedCount = 0;
-
-  for (let assignmentIndex = assignments.length - 1; assignmentIndex >= 0; assignmentIndex -= 1) {
-    const assignment = assignments[assignmentIndex];
-    if (assignment.schoolId !== schoolId || assignment.subjectId !== subjectId) continue;
-    if (scope.mode !== 'all' && assignment.schoolLevel !== scope.level) continue;
-    if (scope.mode === 'grade' && managementGradeKey(assignment.gradeLevel) !== scope.grade) continue;
-    if (scope.level === 'shs' && scope.strand !== 'all' && assignment.strand && managementStrandKey(assignment.strand) !== scope.strand) continue;
-    assignments.splice(assignmentIndex, 1);
-    removedCount += 1;
-  }
-
-  if (!removedCount && scope.mode !== 'all') return false;
-
-  const sections = window.EDUGNAY_CONFIG.getAssignmentSections();
-  TEACHER_ASSIGNMENTS_DATA.forEach(sectionRecord => {
-    const section = sections.find(item => item.id === sectionRecord.sectionId);
-    const inScope = scope.mode === 'all'
-      || (section?.level === scope.level
-        && (scope.mode !== 'grade' || managementGradeKey(section.grade) === scope.grade)
-        && (scope.level !== 'shs' || scope.strand === 'all' || managementStrandKey(section.strand) === scope.strand));
-    if (inScope) sectionRecord.subjects = sectionRecord.subjects.filter(assignment => assignment.subjectId !== subjectId);
-  });
-
-  const remainingGrades = assignments
-    .filter(assignment => assignment.schoolId === schoolId && assignment.subjectId === subjectId)
-    .map(assignment => managementSubjectPlacementKey(assignment));
-  if (remainingGrades.length) {
-    SUBJECTS_DATA[index].grades = [...new Set(remainingGrades)];
-  } else {
-    SUBJECTS_DATA.splice(index, 1);
-  }
-
-  window.EDUGNAY_CONFIG.saveSubjectAssignments();
-  return true;
 }
 
 document.getElementById('assignStudentForm').addEventListener('submit', async function (event) {
@@ -3245,9 +2871,8 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
     if (!(await saveManagementStudentPlacement(studentId, section))) throw new Error('That student could not be updated.');
     saved = true;
     closeStudentAssignModal();
-    if (MANAGEMENT_API_ENABLED) await refreshManagementViews();
-    else renderManagementStudentChanges();
-    showAppToast(MANAGEMENT_API_ENABLED ? 'Student assigned to section.' : 'Student assignment saved in local demo data.', MANAGEMENT_API_ENABLED ? 'success' : 'info');
+    await refreshManagementViews();
+    showAppToast('Student assigned to section.');
   } catch (error) {
     showAppToast(saved ? 'Student assignment saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
   } finally {
@@ -3268,9 +2893,8 @@ document.getElementById('moveStudentForm').addEventListener('submit', async func
     if (!(await saveManagementStudentPlacement(studentId, section))) throw new Error('That student could not be updated.');
     saved = true;
     closeStudentAssignModal();
-    if (MANAGEMENT_API_ENABLED) await refreshManagementViews();
-    else renderManagementStudentChanges();
-    showAppToast(MANAGEMENT_API_ENABLED ? 'Student moved to section.' : 'Student placement saved in local demo data.', MANAGEMENT_API_ENABLED ? 'success' : 'info');
+    await refreshManagementViews();
+    showAppToast('Student moved to section.');
   } catch (error) {
     showAppToast(saved ? 'Student placement saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
   } finally {
@@ -3285,7 +2909,7 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
 
   if (type === 'teacher') {
     const request = pendingRemoveRequest || {};
-    if (MANAGEMENT_API_ENABLED) {
+    {
       const submitButton = event.submitter;
       if (submitButton) submitButton.disabled = true;
       let removed = false;
@@ -3302,11 +2926,6 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
       }
       return;
     }
-    const removed = removeTeacherAssignment(request.sectionId, request.subjectId);
-    closeConfirmRemoveModal();
-    if (!removed) return;
-    renderTeacherAssignments();
-    return;
   }
 
   if (type === 'section') {
@@ -3329,7 +2948,7 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
   }
 
   if (type === 'subject') {
-    if (MANAGEMENT_API_ENABLED) {
+    {
       const submitButton = event.submitter;
       const originalLabel = submitButton?.textContent || 'Yes, Remove';
       if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Removing…'; }
@@ -3347,25 +2966,13 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
       }
       return;
     }
-    const removed = removeSubjectRecord(
-      targetId,
-      pendingRemoveRequest?.contextValue || 'all',
-      pendingRemoveRequest?.contextStrand || 'all'
-    );
-    closeConfirmRemoveModal();
-    if (!removed) return;
-    renderManagementSubjectTabs();
-    renderSubjects();
-    filterSubjects();
-    renderTeacherAssignments();
-    return;
   }
 
   const studentId = document.getElementById('removeStudentId').value || targetId;
-  const student = MANAGEMENT_API_ENABLED ? managementStudentMeta(studentId) : window.EDUGNAY_CONFIG.getUserById(studentId);
+  const student = managementStudentMeta(studentId);
   if (!student) { closeConfirmRemoveModal(); return; }
 
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
     let removed = false;
@@ -3385,13 +2992,6 @@ document.getElementById('removeStudentForm').addEventListener('submit', async fu
     return;
   }
 
-  window.EDUGNAY_CONFIG.updateUser(student.id, {
-    sectionId: null
-  });
-  syncManagementStudentRecords();
-  closeConfirmRemoveModal();
-  closeSectionStudentsModal();
-  renderManagementStudentChanges();
 });
 
 function openImportStudentsModal() {
@@ -3459,12 +3059,10 @@ function previewCSV(input) {
 
 /* ── IMPORT & AUTO-SORT SUBMIT (mirrors importUsersForm on the users page) ── */
 async function createImportedStudentAccount(record, level, grade, strand, section) {
-  const config = window.EDUGNAY_CONFIG;
   const firstName = String(record.firstName || '').trim();
   const lastName = String(record.lastName || '').trim();
-  const name = `${firstName} ${lastName}`.trim() || 'Unnamed Student';
   const schoolEmail = String(record.schoolEmail || '').trim().toLowerCase();
-  if (MANAGEMENT_API_ENABLED) {
+  {
     const existing = STUDENTS_DATA.find(item => String(item.schoolEmail || '').toLowerCase() === schoolEmail);
     let user = existing;
     if (user) {
@@ -3477,45 +3075,10 @@ async function createImportedStudentAccount(record, level, grade, strand, sectio
     await window.EDUGNAY_API.enrollStudent(section.id, user.id);
     return user;
   }
-  let user = schoolEmail && config.getUsers().find(item => item.schoolEmail === schoolEmail);
-
-  if (!user) {
-    const recordId = `stu-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    user = config.createUser({
-      id: `student-${recordId}`,
-      schoolId: config.getActiveSchoolId(),
-      schoolEmail,
-      role: 'student',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      firstName,
-      lastName,
-      displayName: name,
-      lrn: String(record.lrn || '').trim(),
-      schoolLevel: level,
-      gradeLevel: grade,
-      strand: strand || null,
-      sectionId: section.id
-    });
-    return user;
-  }
-
-  return config.updateUser(user.id, {
-    role: 'student',
-    schoolEmail: schoolEmail || user.schoolEmail,
-    firstName,
-    lastName,
-    displayName: name,
-    lrn: String(record.lrn || '').trim(),
-    schoolLevel: level,
-    gradeLevel: grade,
-    strand: strand || null,
-    sectionId: section.id
-  });
 }
 
 document.getElementById('importStudentsForm').addEventListener('submit', async function (e) {
-  e.preventDefault(); // remove this line once a real backend handles the POST
+  e.preventDefault();
 
   const level = document.getElementById('importSchoolLevel').value;
   const grade = document.getElementById('importGrade').value;
@@ -3540,7 +3103,7 @@ document.getElementById('importStudentsForm').addEventListener('submit', async f
       return record;
     });
 
-    const users = MANAGEMENT_API_ENABLED ? STUDENTS_DATA : window.EDUGNAY_CONFIG.getUsers();
+    const users = STUDENTS_DATA;
     const importedLrns = new Set();
     const importedEmails = new Set();
     for (let index = 0; index < records.length; index += 1) {
@@ -3552,8 +3115,8 @@ document.getElementById('importStudentsForm').addEventListener('submit', async f
         : null;
       const lrnOwner = users.find(user => user.role === 'student' && String(user.lrn || '').trim() === lrn);
 
-      if (MANAGEMENT_API_ENABLED && !schoolEmail) {
-        alert(`Row ${index + 2}: School email is required when the backend is enabled.`);
+      if (!schoolEmail) {
+        alert(`Row ${index + 2}: School email is required.`);
         return;
       }
 
@@ -3576,7 +3139,6 @@ document.getElementById('importStudentsForm').addEventListener('submit', async f
       if (schoolEmail) importedEmails.add(schoolEmail);
     }
 
-    // --- SYNC (current, GitHub Pages friendly) ---
     // Highest averages get seated first, then distributed round-robin
     // across this grade's sections so no single section overfills first.
     records.sort((a, b) => (parseFloat(b.average) || 0) - (parseFloat(a.average) || 0));
@@ -3610,10 +3172,8 @@ document.getElementById('importStudentsForm').addEventListener('submit', async f
       sectionIdx = (sectionIdx + 1) % gradeSections.length;
     }
 
-    if (MANAGEMENT_API_ENABLED) await refreshManagementViews();
-    else syncManagementStudentRecords();
+    await refreshManagementViews();
     closeImportStudentsModal();
-    if (!MANAGEMENT_API_ENABLED) renderManagementStudentChanges();
     alert(importError
       ? `${placed} of ${records.length} student(s) were imported before the error: ${importError.message}`
       : `${placed} of ${records.length} student(s) auto-sorted into ${managementLevelLabel(level)} ${grade} sections.`);
@@ -3699,10 +3259,11 @@ function applyStudentFilters() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  updateSectionFormFields('create');
-  updateSectionFormFields('edit');
-  updateImportGradeOptions();
   try {
+    await window.EDUGNAY_SCHOOL_READY;
+    updateSectionFormFields('create');
+    updateSectionFormFields('edit');
+    updateImportGradeOptions();
     await refreshManagementViews();
   } catch (error) {
     window.alert(error?.message || 'The class management data could not be loaded.');

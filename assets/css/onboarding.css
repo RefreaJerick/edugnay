@@ -1524,6 +1524,21 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   padding: 24px var(--panel-head-px) 30px;
 }
 
+.pending-registration-error {
+  margin: 18px 0 0;
+  color: var(--red);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pending-registration-actions {
+  margin-top: 16px;
+}
+
+.pending-registration-actions button[hidden] {
+  display: none;
+}
+
 @media (max-width: 860px) and (min-width: 561px) {
   .onboarding-showcase-inner {
     width: min(820px, calc(100% - 40px));

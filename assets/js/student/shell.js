@@ -1,78 +1,19 @@
 /* ══════════════════════════════════════════
    STUDENT SHELL — shared across all student pages
    Nav, topbar, notif dropdown, profile dropdown
-   Communication data uses the backend when it is available and keeps the
-   local array as an offline fallback.
+   Communication data comes from the backend.
    ══════════════════════════════════════════ */
 
 /* ── NOTIFICATIONS DATA ── */
-const STUDENT_SHELL_USERS = window.EDUGNAY_CONFIG.getUsersByRole(window.EDUGNAY_CONFIG.values.roles.STUDENT);
-const STUDENT_CURRENT_USER = STUDENT_SHELL_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
-  || STUDENT_SHELL_USERS.find(user => user.id === 'jd-004')
-  || STUDENT_SHELL_USERS.find(user => user.status === window.EDUGNAY_CONFIG.values.statuses.ACTIVE)
-  || STUDENT_SHELL_USERS[0]
-  || null;
+window.EDUGNAY_STUDENT = { currentUser: null };
+document.addEventListener('edugnay:current-user-updated', event => {
+  if (event.detail?.role === 'student') window.EDUGNAY_STUDENT.currentUser = event.detail;
+});
 
-window.EDUGNAY_STUDENT = { currentUser: STUDENT_CURRENT_USER };
-
-const STUDENT_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
-const STUDENT_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
-let NOTIFICATIONS = [
-  ...(STUDENT_NO_CLASS_DAY ? [{
-    id: `student-notif-no-class-${STUDENT_NO_CLASS_DAY.date}`,
-    schoolId: STUDENT_SCHOOL_ID,
-    icon: 'calendar-off',
-    tone: 'gold',
-    type: 'Calendar',
-    read: false,
-    title: STUDENT_NO_CLASS_DAY.title || 'No classes today',
-    message: STUDENT_NO_CLASS_DAY.detail || 'Classes are suspended today.',
-    link: { page: 'announcements' },
-    createdAt: `${STUDENT_NO_CLASS_DAY.date}T00:00:00.000Z`
-  }] : []),
-  {
-    id: 'student-notif-materials-001', icon: 'folder-open', tone: 'blue', type: 'Materials', read: false,
-    title: 'New learning material posted',
-    message: '"Solving for X — Video Lesson" was added to Mathematics.',
-    link: { page: 'materials' },
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
-  },
-  {
-    id: 'student-notif-journal-001', icon: 'notebook-pen', tone: 'purple', type: 'Journal', read: false, access: 'journals',
-    title: 'Journal window closing soon',
-    message: 'Submit your weekly reflection before Friday, 11:59 PM.',
-    link: { page: 'journal' },
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 4)).toISOString()
-  },
-  {
-    id: 'student-notif-announcement-001', icon: 'megaphone', tone: 'gold', type: 'Announcement', read: true,
-    title: 'New announcement',
-    message: 'Foundation Day — June 20. Classes suspended.',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
-  },
-  {
-    id: 'student-notif-event-001', icon: 'calendar-clock', tone: 'blue', type: 'Event', read: true,
-    title: 'Upcoming event',
-    message: 'Intramurals sign-up is open at the Student Affairs table.',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-  },
-  {
-    id: 'student-notif-journal-002', icon: 'notebook-pen', tone: 'gray', type: 'Reminder', read: true, access: 'journals',
-    title: 'Journal window reminder',
-    message: 'Weekly journal entries close Friday, 11:59 PM.',
-    link: { page: 'journal' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
-  }
-]
-  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
-  .filter(record => record.schoolId === STUDENT_SCHOOL_ID);
-
+let NOTIFICATIONS = [];
 let BACKEND_COMMUNICATION = false;
 let studentJournalHistoryAvailable = false;
 
-const STUDENT_READ_STORE_KEY = `edugnay_student_notif_read:${STUDENT_SCHOOL_ID}`;
 
 function studentCanAccess(feature) {
   return feature !== 'journals'
@@ -86,9 +27,6 @@ function getStudentVisibleNotifications() {
 
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  if (!BACKEND_COMMUNICATION) {
-    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, STUDENT_READ_STORE_KEY);
-  }
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -105,8 +43,8 @@ function renderTopbarNotifs() {
     container.innerHTML = `
       <div class="tb-notif-empty" id="tbNotifEmpty">
         <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="tb-notif-empty-title">No notifications yet</div>
-        <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+        <div class="tb-notif-empty-title">${window.EDUGNAY_COMMUNICATION?.error ? 'Notifications unavailable' : 'No notifications yet'}</div>
+        <div class="tb-notif-empty-text">${window.EDUGNAY_COMMUNICATION?.error ? 'Please try again when the connection is ready.' : "You're all caught up. New alerts will show up here."}</div>
       </div>
     `;
     if (dot) dot.style.display = 'none';
@@ -140,7 +78,6 @@ function goToTopbarNotif(link, id) {
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
-  storageKey: STUDENT_READ_STORE_KEY,
   records: NOTIFICATIONS,
   getItems: getStudentVisibleNotifications
 };
@@ -166,6 +103,11 @@ async function loadStudentCommunication() {
 }
 
 window.EDUGNAY_COMMUNICATION_READY = loadStudentCommunication();
+document.addEventListener('edugnay:calendar-notices-updated', async () => {
+  if (!BACKEND_COMMUNICATION) return;
+  await loadStudentCommunication();
+  renderTopbarNotifs();
+});
 
 
 /* ── NAVIGATION ── */
@@ -214,6 +156,8 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
+  try { await window.EDUGNAY_SCHOOL_READY; }
+  catch { showAppToast('School information could not be loaded.', 'error'); }
   await window.EDUGNAY_COMMUNICATION_READY;
   const backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   if (backendEnabled) {
@@ -226,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         studentJournalHistoryAvailable = history.entries.length > 0;
       } catch { studentJournalHistoryAvailable = false; }
     } catch { window.EDUGNAY_API.setPortalFeatures(null); }
-  } else if (window.EDUGNAY_CONFIG.enforceProfileSetup(STUDENT_CURRENT_USER?.id, 'edugnay-student-profile.html')) return;
+  }
   applyStudentJournalAccess();
   renderTopbarNotifs();
 });

@@ -1,8 +1,7 @@
 /* ══════════════════════════════════════════
    ADMIN SHELL — shared across all admin pages
    Nav, topbar, notif dropdown, profile dropdown
-   API notifications are used when the backend is available; local alerts remain
-   only as the frontend-only fallback.
+   Notifications and related alerts come from the backend.
    ══════════════════════════════════════════ */
 
 /* ── REOPEN REQUEST DATA (source: grading-period reopen request system) ── */
@@ -17,7 +16,7 @@ function enforceSchoolAccess() {
     return false;
   }
 
-  if (school?.platformStatus !== statuses.ACTIVE) {
+  if (school && school.platformStatus !== statuses.ACTIVE) {
     window.location.replace('../../index.html');
     return false;
   }
@@ -26,8 +25,12 @@ function enforceSchoolAccess() {
 }
 
 enforceSchoolAccess();
-const ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
-const ADMIN_READ_STORE_KEY = `edugnay_admin_notif_read:${ADMIN_SCHOOL_ID}`;
+document.addEventListener('edugnay:school-context-updated', enforceSchoolAccess);
+let ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
+document.addEventListener('edugnay:school-context-updated', () => {
+  ADMIN_SCHOOL_ID = window.EDUGNAY_CONFIG.getActiveSchoolId();
+  renderTopbarNotifs();
+});
 // This in-memory list is refreshed from the grading-period reopen API.
 let ADMIN_REOPEN_REQUESTS = [];
 
@@ -59,7 +62,6 @@ function getReopenPeriodName(request) {
 
 /* ── NOTIFICATIONS DATA ──
    Reopen-request notifications are derived from the database-backed request API. */
-const ADMIN_NO_CLASS_DAY = window.EDUGNAY_CONFIG.getNoClassDay();
 
 function getAcademicPeriodNotifications() {
   const school = window.EDUGNAY_CONFIG.getActiveSchool();
@@ -84,149 +86,12 @@ function getAcademicPeriodNotifications() {
   }).filter(Boolean);
 }
 
-let NOTIFICATIONS = [
-  ...(ADMIN_NO_CLASS_DAY ? [{
-    id: `admin-notif-no-class-${ADMIN_NO_CLASS_DAY.date}`,
-    schoolId: ADMIN_SCHOOL_ID,
-    icon: 'calendar-off',
-    tone: 'gold',
-    type: 'Calendar',
-    read: false,
-    title: ADMIN_NO_CLASS_DAY.title || 'No classes today',
-    message: ADMIN_NO_CLASS_DAY.detail || 'Classes are suspended today.',
-    link: { page: 'announcements' },
-    createdAt: `${ADMIN_NO_CLASS_DAY.date}T00:00:00.000Z`
-  }] : []),
-  {
-    id: 'admin-notif-announcement',
-    icon: 'megaphone',
-    tone: 'gold',
-    type: 'Announcement',
-    read: true,
-    title: 'Announcement published',
-    message: 'The Q2 grade encoding deadline was sent to teachers.',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
-  },
-  {
-    id: 'admin-notif-calendar',
-    icon: 'calendar-clock',
-    tone: 'gray',
-    type: 'Calendar',
-    read: true,
-    title: 'No-class day configured',
-    message: 'Foundation Day has been added to the school calendar.',
-    link: { page: 'schools' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-  }
-]
-  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
-  .filter(record => record.schoolId === ADMIN_SCHOOL_ID);
-
+let NOTIFICATIONS = [];
 let BACKEND_COMMUNICATION = false;
 
 /* ── ADMIN ACTIVITY DATA (shared by the dashboard and activity page) ──
-   Historical mock records below are disabled; live data comes from the API.
    GET /api/school/activity serves the dashboard and full activity page. */
-/* const ADMIN_ACTIVITY = [
-  {
-    id: 'admin-activity-announcement-001',
-    schoolId: 'scc',
-    actor: 'Admin',
-    title: 'posted an announcement to Teachers',
-    detail: '"Q2 Grade Encoding Deadline."',
-    icon: 'megaphone',
-    tone: 'purple',
-    type: 'Announcement',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setHours(10, 20, 0, 0)).toISOString()
-  },
-  {
-    id: 'admin-activity-assignment-001',
-    schoolId: 'scc',
-    actor: 'Admin',
-    title: 'assigned Mr. Paolo Tan',
-    detail: 'to Grade 8 – Mathematics.',
-    icon: 'user-check',
-    tone: 'blue',
-    type: 'Assignment',
-    link: { page: 'management', tab: 'teachers' },
-    createdAt: new Date(new Date().setHours(8, 15, 0, 0)).toISOString()
-  },
-  {
-    id: 'admin-activity-config-001',
-    schoolId: 'scc',
-    actor: 'System Config',
-    title: 'updated',
-    detail: 'Q2 grading period activated.',
-    icon: 'settings-2',
-    tone: 'gold',
-    type: 'Config',
-    link: { page: 'system-config' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
-  },
-  {
-    id: 'admin-activity-alert-001',
-    schoolId: 'scc',
-    actor: 'Ana Santos',
-    title: 'was flagged by the system',
-    detail: '4 consecutive absences.',
-    icon: 'alert-triangle',
-    tone: 'red',
-    type: 'Alert',
-    link: { page: 'reports' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-  },
-  {
-    id: 'admin-activity-account-001',
-    schoolId: 'scc',
-    actor: 'Admin',
-    title: 'created a new teacher account',
-    detail: 'for Ms. Carla Dizon.',
-    icon: 'user-plus',
-    tone: 'blue',
-    type: 'Account',
-    link: { page: 'users' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString()
-  },
-  {
-    id: 'admin-activity-announcement-002',
-    schoolId: 'scc',
-    actor: 'Admin',
-    title: 'posted an announcement to All Users',
-    detail: '"Foundation Week Schedule."',
-    icon: 'megaphone',
-    tone: 'purple',
-    type: 'Announcement',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString()
-  },
-  {
-    id: 'admin-activity-alert-002',
-    schoolId: 'scc',
-    actor: 'Ben Garcia',
-    title: 'was flagged by the system',
-    detail: 'Failing grade in 2 subjects.',
-    icon: 'alert-triangle',
-    tone: 'red',
-    type: 'Alert',
-    link: { page: 'reports' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString()
-  },
-  {
-    id: 'admin-activity-config-002',
-    schoolId: 'scc',
-    actor: 'System Config',
-    title: 'updated',
-    detail: 'Archive policy set to 3 school years.',
-    icon: 'settings-2',
-    tone: 'gold',
-    type: 'Config',
-    link: { page: 'system-config' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
-  }
-]
-  .filter(record => record.schoolId === ADMIN_SCHOOL_ID); */
+
 
 function getAdminNotifItems() {
   const reopenNotifications = getAdminReopenRequestCache()
@@ -241,7 +106,7 @@ function getAdminNotifItems() {
         type: 'Reopen request',
         title: `Reopen requested: ${getReopenPeriodName(request)}`,
         message: `${details.teacher} · ${details.section} · ${details.subject}`,
-        read: false,
+        read: window.EDUGNAY_API.isSyntheticNotificationRead(`admin-notif-reopen-${request.id}`),
         link: { page: 'system-config', hash: 'reopen-requests' },
         createdAt: request.requestedAt
       };
@@ -251,15 +116,7 @@ function getAdminNotifItems() {
     return [...NOTIFICATIONS, ...reopenNotifications].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  const currentNotifications = [...getAcademicPeriodNotifications(), ...NOTIFICATIONS];
-  window.EDUGNAY_CONFIG.applyNotificationReadState(currentNotifications, ADMIN_READ_STORE_KEY);
-  const readIds = window.EDUGNAY_CONFIG.getNotificationReadIds(ADMIN_READ_STORE_KEY);
-  const localNotifications = currentNotifications.map(notification => ({ ...notification }));
-  reopenNotifications.forEach(notification => {
-    notification.read = readIds.includes(notification.id);
-  });
-
-  return [...localNotifications, ...reopenNotifications]
+  return [...getAcademicPeriodNotifications(), ...NOTIFICATIONS, ...reopenNotifications]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -278,8 +135,8 @@ function renderTopbarNotifs() {
     list.innerHTML = `
       <div class="tb-notif-empty" id="tbNotifEmpty">
         <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="tb-notif-empty-title">No notifications yet</div>
-        <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+        <div class="tb-notif-empty-title">${window.EDUGNAY_COMMUNICATION?.error ? 'Notifications unavailable' : 'No notifications yet'}</div>
+        <div class="tb-notif-empty-text">${window.EDUGNAY_COMMUNICATION?.error ? 'Please try again when the connection is ready.' : "You're all caught up. New alerts will show up here."}</div>
       </div>
     `;
     if (dot) dot.style.display = 'none';
@@ -329,12 +186,10 @@ function navigate(page, hash) {
 window.EDUGNAY_ADMIN = {
   notifications: NOTIFICATIONS,
   getNotifications: getAdminNotifItems,
-  notificationStorageKey: ADMIN_READ_STORE_KEY,
   refreshReopenRequests: refreshAdminReopenRequests
 };
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
-  storageKey: ADMIN_READ_STORE_KEY,
   getItems: getAdminNotifItems
 };
 
@@ -359,6 +214,11 @@ async function loadAdminCommunication() {
 }
 
 window.EDUGNAY_COMMUNICATION_READY = loadAdminCommunication();
+document.addEventListener('edugnay:calendar-notices-updated', async () => {
+  if (!BACKEND_COMMUNICATION) return;
+  await loadAdminCommunication();
+  renderTopbarNotifs();
+});
 
 function toggleNavGroup(group) {
   group.classList.toggle('open');
@@ -395,6 +255,8 @@ function ensureAdminConfigurationNav() {
 
 /* ── ACTIVE NAV ITEM ON CLICK ── */
 document.addEventListener('DOMContentLoaded', async () => {
+  try { await window.EDUGNAY_SCHOOL_READY; }
+  catch { showAppToast('School information could not be loaded.', 'error'); }
   await Promise.all([window.EDUGNAY_COMMUNICATION_READY, refreshAdminReopenRequests()]);
   ensureAdminConfigurationNav();
   document.querySelectorAll('.nav-item').forEach(item => {

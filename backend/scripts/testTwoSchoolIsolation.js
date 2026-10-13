@@ -93,8 +93,8 @@ async function main() {
     started = true;
     const marker = crypto.randomUUID();
     const [school] = await connection.execute(
-      "INSERT INTO schools (name, registration_status) VALUES (?, 'active')",
-      [`Isolation test ${marker}`]
+      "INSERT INTO schools (name, school_email_domain, registration_status) VALUES (?, ?, 'active')",
+      [`Isolation test ${marker}`, `${marker}.isolation.invalid`]
     );
     attackerSchoolId = school.insertId;
     await connection.execute(

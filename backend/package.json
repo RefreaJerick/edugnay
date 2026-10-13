@@ -9,6 +9,7 @@
     "audit:tenant": "node scripts/auditTenantIsolation.js",
     "test:tenant:two-school": "node scripts/testTwoSchoolIsolation.js",
     "verify:tenant": "node scripts/verifyTenantConstraints.js",
+    "migrate:school-logos": "node scripts/migrateSchoolLogoStorage.js",
     "backup:database": "node scripts/backupDatabase.js"
   },
   "dependencies": {

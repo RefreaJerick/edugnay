@@ -167,7 +167,6 @@
   window.markAllPlatformNotificationsRead = markAllPlatformNotificationsRead;
   window.navigatePlatform = navigatePlatform;
   window.EDUGNAY_NOTIFICATION_CONTEXT = {
-    storageKey: '',
     records: [],
     getItems: getPlatformNotifications
   };

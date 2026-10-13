@@ -253,51 +253,7 @@
           </div>
         </div>
         <div id="student-subject-list">
-          <!-- subjects[]: loop -->
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">Mathematics</div>
-              <div class="subject-teacher">Ms. Maria Reyes</div>
-            </div>
-            <span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">English</div>
-              <div class="subject-teacher">Mr. Paolo Santos</div>
-            </div>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">Science</div>
-              <div class="subject-teacher">Mrs. Liza Ramos</div>
-            </div>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">Filipino</div>
-              <div class="subject-teacher">Mr. Andres Cruz</div>
-            </div>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">Araling Panlipunan</div>
-              <div class="subject-teacher">Mrs. Carmen Reyes</div>
-            </div>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">Values Education</div>
-              <div class="subject-teacher">Ms. Maria Reyes</div>
-            </div>
-          </div>
-          <div class="subject-row">
-            <div class="subject-info">
-              <div class="subject-name">MAPEH</div>
-              <div class="subject-teacher">Mr. Jun Bautista</div>
-            </div>
-          </div>
-          <!-- end subjects[] loop -->
+          <p>Loading subjects...</p>
         </div>
       </div>
       </div>
@@ -565,30 +521,20 @@
 lucide.createIcons();
 
 /* ── AVATAR UPLOAD ── */
-// Subject assignment relationships use canonical subject and teacher IDs.
-// Replace this array with the enrolled-subjects endpoint later.
 const STUDENT_CONFIG = window.EDUGNAY_CONFIG;
-const STUDENT_USERS = STUDENT_CONFIG.getUsersByRole('student');
-// Use the authenticated session when available; keep the demo record as the frontend fallback.
-const STUDENT_ID = window.EDUGNAY_STUDENT?.currentUser?.id
-  || STUDENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)?.id
-  || STUDENT_USERS.find(user => user.id === 'jd-004')?.id
-  || STUDENT_USERS.find(user => user.status === 'active')?.id
-  || STUDENT_USERS[0]?.id
-  || null;
+const STUDENT_PROFILE_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
 const escapeProfileHtml = STUDENT_CONFIG.escapeHtml;
 let studentSetupRequired = false;
 let studentSetupStatus = null;
 let studentAttendanceQrDataUrl = '';
-const STUDENT_PROFILE_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
 let studentApiUser = null;
 let studentProfileLoading = STUDENT_PROFILE_API_ENABLED;
 let studentClassSection = null;
 let studentClassLoading = STUDENT_PROFILE_API_ENABLED;
-let studentClassError = '';
+let studentClassError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
 let studentLinkedParents = [];
 let studentLinkedParentsLoading = STUDENT_PROFILE_API_ENABLED;
-let studentLinkedParentsError = '';
+let studentLinkedParentsError = STUDENT_PROFILE_API_ENABLED ? '' : 'The school API is unavailable.';
 
 function setStudentText(id, value, fallback = 'Not provided') {
   const element = document.getElementById(id);
@@ -601,8 +547,7 @@ function setStudentInput(id, value) {
 }
 
 function renderStudentProfile() {
-  const localStudent = !STUDENT_PROFILE_API_ENABLED && STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null;
-  const student = studentApiUser || localStudent;
+  const student = studentApiUser;
   if (!student) {
     const profileMessage = studentProfileLoading ? 'Loading profile...' : 'Profile unavailable';
     setStudentText('student-profile-name', profileMessage);
@@ -615,8 +560,8 @@ function renderStudentProfile() {
     return;
   }
 
-  const savedUser = studentApiUser || student;
-  const profile = STUDENT_PROFILE_API_ENABLED ? (studentApiUser?.profile || {}) : STUDENT_CONFIG.getUserProfile(student.id);
+  const savedUser = student;
+  const profile = student.profile || {};
   const schoolEmail = savedUser.schoolEmail || '';
   const displayName = savedUser.displayName || [savedUser.firstName, savedUser.lastName].filter(Boolean).join(' ');
   const lrn = profile?.lrn || student.lrn;
@@ -664,38 +609,27 @@ function renderStudentProfile() {
 }
 
 function renderStudentClassContext(student) {
-  if (STUDENT_PROFILE_API_ENABLED) {
-    if (studentClassLoading) {
-      setStudentText('student-profile-placement', 'Loading class placement...');
-      setStudentText('student-record-placement', 'Loading...');
-      setStudentText('student-record-adviser', 'Loading...');
-      setStudentText('student-record-school-year', 'Loading...');
-      return;
-    }
-    if (studentClassError) {
-      setStudentText('student-profile-placement', 'Class placement unavailable');
-      setStudentText('student-record-placement', 'Unavailable');
-      setStudentText('student-record-adviser', 'Unavailable');
-      setStudentText('student-record-school-year', 'Unavailable');
-      return;
-    }
-
-    const section = studentClassSection;
-    const placement = section ? [section.grade, section.name].filter(Boolean).join(' – ') : 'Unassigned';
-    setStudentText('student-profile-placement', placement, 'Unassigned');
-    setStudentText('student-record-placement', placement, 'Unassigned');
-    setStudentText('student-record-adviser', section?.adviserName, 'Not assigned');
-    setStudentText('student-record-school-year', section?.academicYear, 'Not available');
+  if (studentClassLoading) {
+    setStudentText('student-profile-placement', 'Loading class placement...');
+    setStudentText('student-record-placement', 'Loading...');
+    setStudentText('student-record-adviser', 'Loading...');
+    setStudentText('student-record-school-year', 'Loading...');
+    return;
+  }
+  if (studentClassError) {
+    setStudentText('student-profile-placement', 'Class placement unavailable');
+    setStudentText('student-record-placement', 'Unavailable');
+    setStudentText('student-record-adviser', 'Unavailable');
+    setStudentText('student-record-school-year', 'Unavailable');
     return;
   }
 
-  const section = STUDENT_CONFIG.getAssignmentSections().find(record => record.id === student?.sectionId);
-  const adviser = section?.adviserId ? STUDENT_CONFIG.getUserById(section.adviserId) : null;
-  const placement = [student?.gradeLevel, section?.name].filter(Boolean).join(' – ');
+  const section = studentClassSection;
+  const placement = section ? [section.grade, section.name].filter(Boolean).join(' – ') : 'Unassigned';
   setStudentText('student-profile-placement', placement, 'Unassigned');
   setStudentText('student-record-placement', placement, 'Unassigned');
-  setStudentText('student-record-adviser', adviser?.displayName, 'Not assigned');
-  setStudentText('student-record-school-year', STUDENT_CONFIG.getActiveSchool()?.schoolYear, 'Not available');
+  setStudentText('student-record-adviser', section?.adviserName, 'Not assigned');
+  setStudentText('student-record-school-year', section?.academicYear, 'Not available');
 }
 
 async function renderStudentAttendanceQr(student) {
@@ -708,7 +642,7 @@ async function renderStudentAttendanceQr(student) {
   downloadButton.disabled = true;
 
   try {
-    let token = student?.attendanceQrToken || '';
+    let token = '';
     const apiStudentId = Number(student?.apiId || student?.id);
     if (STUDENT_PROFILE_API_ENABLED && Number.isInteger(apiStudentId) && apiStudentId > 0) {
       let response = await window.EDUGNAY_API.getStudentQr(apiStudentId);
@@ -734,7 +668,7 @@ async function renderStudentAttendanceQr(student) {
 }
 
 function downloadStudentAttendanceQr() {
-  const student = studentApiUser || (STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null);
+  const student = studentApiUser;
   if (!studentAttendanceQrDataUrl || !student) return;
 
   const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
@@ -774,9 +708,7 @@ function studentFieldRequired(field) {
 }
 
 function applyStudentProfileSetupState() {
-  studentSetupRequired = STUDENT_PROFILE_API_ENABLED && studentSetupStatus
-    ? Boolean(studentSetupStatus.required && !studentSetupStatus.complete)
-    : (STUDENT_ID ? STUDENT_CONFIG.isProfileSetupRequired(STUDENT_ID) : false);
+  studentSetupRequired = Boolean(studentSetupStatus?.required && !studentSetupStatus.complete);
 
   document.body.classList.toggle('profile-setup-required', studentSetupRequired);
   document.getElementById('student-profile-setup-notice').hidden = !studentSetupRequired;
@@ -824,7 +756,7 @@ function renderStudentLinkedParents(studentId) {
   const list = document.getElementById('student-linked-parent-list');
   if (!list) return;
 
-  if (STUDENT_PROFILE_API_ENABLED && (studentLinkedParentsLoading || studentLinkedParentsError)) {
+  if (studentLinkedParentsLoading || studentLinkedParentsError) {
     const loading = studentLinkedParentsLoading;
     list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
       icon: loading ? 'loader-circle' : 'circle-alert',
@@ -835,12 +767,7 @@ function renderStudentLinkedParents(studentId) {
     return;
   }
 
-  const links = STUDENT_PROFILE_API_ENABLED
-    ? studentLinkedParents.map(parent => ({ link: parent, parent }))
-    : STUDENT_CONFIG.getParentStudentLinks()
-      .filter(link => link.studentId === String(studentId))
-      .map(link => ({ link, parent: STUDENT_CONFIG.getUserById(link.parentId) }))
-      .filter(record => record.parent?.role === 'parent');
+  const links = studentLinkedParents.map(parent => ({ link: parent, parent }));
 
   if (!links.length) {
     list.innerHTML = STUDENT_CONFIG.renderPanelEmptyState({
@@ -853,7 +780,7 @@ function renderStudentLinkedParents(studentId) {
   }
 
   list.innerHTML = links.map(({ link, parent }) => {
-    const profile = parent.profile || (!STUDENT_PROFILE_API_ENABLED ? STUDENT_CONFIG.getUserProfile(parent.id) : null);
+    const profile = parent.profile;
     const relationship = link.relationship
       ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
       : 'Relationship not set';
@@ -872,30 +799,19 @@ function renderStudentLinkedParents(studentId) {
   lucide.createIcons();
 }
 
-let studentSubjects = STUDENT_PROFILE_API_ENABLED ? [] : STUDENT_CONFIG.withActiveSchool([
-  { subjectId: 'mathematics', teacherId: 'teacher-2', adviserId: 'teacher-2' },
-  { subjectId: 'english', teacherId: 'teacher-3' },
-  { subjectId: 'science', teacherId: 'teacher-rico-santos' },
-  { subjectId: 'araling-panlipunan', teacherId: 'teacher-9' },
-  { subjectId: 'values-education', teacherId: 'teacher-2' },
-  { subjectId: 'mapeh', teacherId: 'teacher-jana-mendez' }
-]);
+let studentSubjects = [];
 
 function renderStudentSubjects() {
   const list = document.getElementById('student-subject-list');
   if (!list) return;
-  if (STUDENT_PROFILE_API_ENABLED && studentClassLoading) {
+  if (studentClassLoading) {
     list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading subjects', text: 'Reading your class assignments.' });
-  } else if (STUDENT_PROFILE_API_ENABLED && studentClassError) {
+  } else if (studentClassError) {
     list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Subjects could not be loaded', text: studentClassError });
   } else {
     list.innerHTML = studentSubjects.length ? studentSubjects.map(assignment => {
-      const subjectName = STUDENT_PROFILE_API_ENABLED
-        ? assignment.subjectName
-        : window.EDUGNAY_CONFIG.subjects.find(record => record.id === assignment.subjectId)?.name;
-      const teacherName = STUDENT_PROFILE_API_ENABLED
-        ? assignment.teacherName
-        : window.EDUGNAY_CONFIG.getUserById(assignment.teacherId)?.displayName;
+      const subjectName = assignment.subjectName;
+      const teacherName = assignment.teacherName;
       const isAdviser = String(studentClassSection?.adviserId || assignment.adviserId || '') === String(assignment.teacherId || '');
       return `<div class="subject-row"><div class="subject-info"><div class="subject-name">${escapeProfileHtml(subjectName || 'Subject')}</div><div class="subject-teacher">${escapeProfileHtml(teacherName || 'Teacher not assigned')}</div></div>${isAdviser ? '<span class="subject-tag-adviser"><i data-lucide="star" style="width:9px;height:9px;"></i> Adviser</span>' : ''}</div>`;
   }).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No subjects assigned', text: 'Your subjects and teachers will appear here.' });
@@ -929,7 +845,7 @@ async function loadStudentLinkedParents() {
     studentLinkedParentsError = error.message || 'Parent links could not be loaded.';
   } finally {
     studentLinkedParentsLoading = false;
-    renderStudentLinkedParents(studentApiUser?.id || STUDENT_ID);
+    renderStudentLinkedParents(studentApiUser?.id);
   }
 }
 
@@ -1024,7 +940,7 @@ function switchTab(tabKey, btn) {
 
 async function submitProfile(event) {
   event.preventDefault();
-  const student = studentApiUser || (STUDENT_ID ? STUDENT_CONFIG.getUserById(STUDENT_ID) : null);
+  const student = studentApiUser;
   if (!student) return false;
   const wasSetupRequired = studentSetupRequired;
 
@@ -1064,39 +980,25 @@ async function submitProfile(event) {
   };
 
   try {
-    if (STUDENT_PROFILE_API_ENABLED) {
-      const endpoint = wasSetupRequired ? '/account-setup/student' : '/users/me/profile';
-      await window.EDUGNAY_API.request(endpoint, {
-        method: 'PATCH',
-        body: JSON.stringify(profileData)
-      });
-      const [profileResponse, setupResponse] = await Promise.all([
-        window.EDUGNAY_API.request('/users/me/profile'),
-        window.EDUGNAY_API.request('/account-setup/status')
-      ]);
-      studentApiUser = profileResponse.user;
-      studentSetupStatus = setupResponse.setup || null;
-      renderStudentProfile();
-      if (wasSetupRequired && !studentSetupRequired) {
-        alert('Profile setup complete.');
-        window.location.replace('./edugnay-student-dashboard.html');
-      } else {
-        showAppToast('Profile updated.');
-      }
-      return false;
-    }
-
-    if (studentSetupRequired) {
-      await STUDENT_CONFIG.completeProfileSetup(student.id, { personalEmail, ...profileData });
+    if (!STUDENT_PROFILE_API_ENABLED) throw new Error('Profile updates require a configured API connection.');
+    const endpoint = wasSetupRequired ? '/account-setup/student' : '/users/me/profile';
+    await window.EDUGNAY_API.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(profileData)
+    });
+    const [profileResponse, setupResponse] = await Promise.all([
+      window.EDUGNAY_API.request('/users/me/profile'),
+      window.EDUGNAY_API.request('/account-setup/status')
+    ]);
+    studentApiUser = profileResponse.user;
+    studentSetupStatus = setupResponse.setup || null;
+    renderStudentProfile();
+    if (wasSetupRequired && !studentSetupRequired) {
       alert('Profile setup complete.');
       window.location.replace('./edugnay-student-dashboard.html');
-      return false;
+    } else {
+      showAppToast('Profile updated.');
     }
-
-    STUDENT_CONFIG.updateUser(student.id, { personalEmail });
-    await STUDENT_CONFIG.updateUserProfile(student.id, profileData);
-    renderStudentProfile();
-    showAppToast('Profile updated.');
   } catch (error) {
     showAppToast(error.message || 'Unable to update profile.', 'error');
   }

@@ -1,6 +1,8 @@
 -- =========================================================
 -- Academix Demo Data
 -- MySQL 8.0+ | Run schema.sql before this file
+-- After importing, run npm run migrate:school-logos from backend/ to move seeded school logos
+-- into SCHOOL_LOGO_DIRECTORY (review with a dry run first; use -- --apply to apply).
 -- Demo password for every account below: password
 -- Replace all demo accounts before production use.
 -- =========================================================
@@ -14,15 +16,15 @@ USE academix;
 INSERT INTO schools (
   id, school_code, name, short_name, school_type, deped_school_id,
   region_name, division_name, district_name, address_line, phone, email,
-  website, logo_path, registration_status, submitted_at, approved_at
+  website, school_email_domain, logo_path, registration_status, submitted_at, approved_at
 ) VALUES
   (1, 'scc', 'Saint Columban''s College', 'SAINT COLUMBAN''S COLLEGE', 'k12', '400168',
    'Region I', 'Pangasinan I, Lingayen', 'Lingayen I',
    'Avenida Rizal, Lingayen, Pangasinan, Philippines', '(049) 123 4567',
-   'info@stcolumban.edu.ph', 'stcolumban.edu.ph',
+   'info@stcolumban.edu.ph', 'stcolumban.edu.ph', 'stcolumban.edu.ph',
    '/assets/images/st-columban-logo.png', 'active', '2025-01-01 08:00:00', '2025-01-02 08:00:00'),
   (2, 'manghi', 'Mangaldan National High School', 'MANGHI', 'multi-level', NULL,
-   NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'mnhs.academix.test',
    '/assets/images/manghi-logo.jpg', 'pending', '2026-08-30 09:00:00', NULL);
 
 INSERT INTO school_settings (school_id, notification_email, current_school_year_label)

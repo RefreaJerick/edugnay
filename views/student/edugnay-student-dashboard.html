@@ -136,9 +136,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar student">JD</div>
+            <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -491,6 +491,7 @@
         document.getElementById('student-materials-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading materials', text: 'Please wait while your learning materials are loaded.' });
         document.getElementById('student-announcements-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading announcements', text: 'Please wait while school updates are loaded.' });
         try {
+          await window.EDUGNAY_SCHOOL_READY;
           const session = await window.EDUGNAY_API.getCurrentUser();
           if (session?.role !== 'student') throw new Error('This dashboard requires a student session.');
           const greeting = document.getElementById('greeting-time-label');

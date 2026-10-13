@@ -123,9 +123,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar student">JD</div>
+            <div class="tb-avatar student"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Juan Dela Cruz</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Student</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -242,10 +242,9 @@
     lucide.createIcons();
 
     const BACKEND_ASSIGNMENTS_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
-    let STUDENT_ID = BACKEND_ASSIGNMENTS_ENABLED ? null : 'jd-004';
-    let ASSIGNMENTS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
-    let STUDENT_SUBMISSIONS = BACKEND_ASSIGNMENTS_ENABLED ? [] : window.EDUGNAY_CONFIG.getAssignmentSubmissions()
-      .filter(function (record) { return record.studentId === STUDENT_ID; });
+    let STUDENT_ID = null;
+    let ASSIGNMENTS = [];
+    let STUDENT_SUBMISSIONS = [];
     let ASSIGNMENT_PERIODS = [];
     let selectedAssignmentPeriodId = '';
     let backendAssignmentsLoading = BACKEND_ASSIGNMENTS_ENABLED;
@@ -292,8 +291,9 @@
     }
 
     async function loadBackendAssignments() {
-      if (!window.EDUGNAY_API?.isBackendAvailable) return false;
       try {
+        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('The school API is required to load assignments.');
+        await window.EDUGNAY_SCHOOL_READY;
         const session = await window.EDUGNAY_API.getCurrentUser();
         if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
         STUDENT_ID = String(session.apiUserId || session.userId);
@@ -545,67 +545,27 @@
       button.disabled = true;
       button.textContent = 'Submitting...';
       const file = document.getElementById('assignmentSubmissionFile').files[0];
-      if (BACKEND_ASSIGNMENTS_ENABLED) {
-        try {
-          await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
-          const refreshed = await loadBackendAssignments();
-          showAppToast(refreshed ? 'Assignment submitted.' : 'Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.', refreshed ? 'success' : 'info');
-        } catch (error) {
-          showAppToast(error.message || 'The assignment could not be submitted.', 'error');
-          return;
-        } finally {
-          button.disabled = false;
-          button.textContent = originalLabel;
-        }
-        closeAssignmentSubmissionModal();
-        renderPeriodFilter();
-        populateSubjectFilter();
-        renderFilterTabs();
-        renderAssignments();
+      try {
+        if (!BACKEND_ASSIGNMENTS_ENABLED) throw new Error('The school API is required to submit assignments.');
+        await window.EDUGNAY_API.submitAssignment(activeSubmissionAssignmentId, file);
+        const refreshed = await loadBackendAssignments();
+        showAppToast(refreshed ? 'Assignment submitted.' : 'Your work was submitted, but the assignment list could not refresh. Reload the page to confirm.', refreshed ? 'success' : 'info');
+      } catch (error) {
+        showAppToast(error.message || 'The assignment could not be submitted.', 'error');
         return;
-      }
-
-      const type = file.name.split('.').pop().toLowerCase();
-      const submission = window.EDUGNAY_CONFIG.submitAssignment({
-        assignmentId: activeSubmissionAssignmentId,
-        studentId: STUDENT_ID,
-        fileName: file.name,
-        type,
-        fileSize: file.size,
-        fileUrl: null
-      });
-
-      if (!submission) {
+      } finally {
         button.disabled = false;
         button.textContent = originalLabel;
-        return;
       }
-
-      ASSIGNMENTS = window.EDUGNAY_CONFIG.getAssignmentsForStudent(STUDENT_ID);
-      STUDENT_SUBMISSIONS = window.EDUGNAY_CONFIG.getAssignmentSubmissions()
-        .filter(function (record) { return record.studentId === STUDENT_ID; });
       closeAssignmentSubmissionModal();
+      renderPeriodFilter();
+      populateSubjectFilter();
       renderFilterTabs();
       renderAssignments();
-      showAppToast('Assignment saved in local demo data.', 'info');
-      button.disabled = false;
-      button.textContent = originalLabel;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
       await loadBackendAssignments();
-      if (!BACKEND_ASSIGNMENTS_ENABLED) {
-        const school = window.EDUGNAY_CONFIG.getActiveSchool();
-        const configured = window.EDUGNAY_CONFIG.getAcademicPeriods();
-        const used = new Set(ASSIGNMENTS.map(function (assignment) { return assignment.academicPeriodId; }));
-        ASSIGNMENT_PERIODS = configured.filter(function (period) { return used.has(period.id); }).map(function (period) {
-          return { ...period, academicYearLabel: school?.schoolYear || '', name: period.name || period.label };
-        });
-        selectedAssignmentPeriodId = String(window.EDUGNAY_CONFIG.getCurrentAcademicPeriod()?.id || ASSIGNMENT_PERIODS[0]?.id || '');
-        if (!ASSIGNMENT_PERIODS.some(function (period) { return period.id === selectedAssignmentPeriodId; })) {
-          selectedAssignmentPeriodId = String(ASSIGNMENT_PERIODS[0]?.id || '');
-        }
-      }
       renderPeriodFilter();
       populateSubjectFilter();
       renderFilterTabs();

@@ -248,9 +248,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
+          <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -522,27 +522,17 @@
     const activeButton = status === 'draft' ? draftButton : postButton;
     const activeLabel = activeButton?.querySelector('span');
     const originalLabel = activeLabel?.textContent || (status === 'draft' ? 'Save Draft' : 'Post');
-    let backendEnabled = false;
     announcementSaving = true;
     buttons.forEach(button => { button.disabled = true; });
     if (activeLabel) activeLabel.textContent = status === 'draft' ? 'Saving…' : values.status === 'scheduled' ? 'Scheduling…' : 'Posting…';
 
     try {
-      backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
-      if (!backendEnabled && (values.image || values.status === 'scheduled')) {
-        setAnnouncementFeedback('Connect to the backend to upload an image or schedule an announcement.');
-        return;
-      }
-      if (backendEnabled) {
-        const announcement = await window.EDUGNAY_API.createAnnouncement(values);
-        if (!announcement) throw new Error('The server did not confirm the announcement save.');
-        ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcement.id))];
-        if (window.EDUGNAY_COMMUNICATION) window.EDUGNAY_COMMUNICATION.announcements = ANNOUNCEMENTS;
-      } else {
-        const announcement = window.EDUGNAY_CONFIG.createAnnouncement({ ...values, audience: values.audiences });
-        if (!announcement) throw new Error('The announcement could not be saved.');
-        ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
-      }
+      await window.EDUGNAY_SCHOOL_READY;
+      const announcement = await window.EDUGNAY_API.createAnnouncement(values);
+      if (!announcement) throw new Error('The server did not confirm the announcement save.');
+      announcementLoadError = '';
+      ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcement.id))];
+      if (window.EDUGNAY_COMMUNICATION) window.EDUGNAY_COMMUNICATION.announcements = ANNOUNCEMENTS;
 
       form.reset();
       document.getElementById('composePreview').style.display = 'none';
@@ -557,7 +547,7 @@
 
       const message = values.status === 'draft' ? 'Announcement saved as a draft.'
         : values.status === 'scheduled' ? 'Announcement scheduled.' : 'Announcement posted.';
-      showAppToast(backendEnabled ? message : `${message} Saved in local demo data only.`, backendEnabled ? 'success' : 'info');
+      showAppToast(message, 'success');
     } catch (error) {
       showAppToast(error.message || 'The announcement could not be saved.', 'error');
     } finally {
@@ -591,7 +581,8 @@
     });
   });
 
-  let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAllAnnouncements();
+  let ANNOUNCEMENTS = [];
+  let announcementLoadError = '';
 
   function renderAdminAnnouncements() {
     const list = document.getElementById('annList');
@@ -631,23 +622,24 @@
 
     const empty = document.getElementById('adminAnnEmpty');
     if (empty) {
-      empty.hidden = visibleCount > 0;
-      if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+      empty.hidden = visibleCount > 0 && !announcementLoadError;
+      if (!empty.hidden) empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(announcementLoadError ? {
+        icon: 'alert-circle',
+        title: 'Announcements unavailable',
+        text: announcementLoadError
+      } : {
         icon: 'megaphone',
         title: 'No announcements found',
-        text: 'Try adjusting your filters or search query.'
+        text: ANNOUNCEMENTS.length ? 'Try adjusting your filters or search query.' : 'No announcements have been posted yet.'
       });
     }
     lucide.createIcons();
   }
 
   async function setAnnouncementPin(button, pinned) {
-    if (!window.EDUGNAY_API?.isBackendAvailable) {
-      showAppToast('Connect to the backend to pin announcements.', 'info');
-      return;
-    }
     button.disabled = true;
     try {
+      await window.EDUGNAY_SCHOOL_READY;
       const id = button.closest('.ann-card').dataset.id;
       const updated = await window.EDUGNAY_API.setAnnouncementPinned(id, pinned);
       const announcement = ANNOUNCEMENTS.find(item => String(item.id) === String(id));
@@ -684,11 +676,8 @@
     deleteButton.disabled = true;
     deleteButton.textContent = 'Deleting...';
     try {
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        await window.EDUGNAY_API.deleteAnnouncement(announcementId);
-      } else if (!window.EDUGNAY_CONFIG.deleteAnnouncement(announcementId)) {
-        throw new Error('Announcement was not found.');
-      }
+      await window.EDUGNAY_SCHOOL_READY;
+      await window.EDUGNAY_API.deleteAnnouncement(announcementId);
 
       ANNOUNCEMENTS = ANNOUNCEMENTS.filter(item => String(item.id) !== String(announcementId));
       closeDeleteModal();
@@ -765,9 +754,8 @@
     saveButton.disabled = true;
     saveButton.textContent = 'Saving...';
     try {
-      const updated = window.EDUGNAY_COMMUNICATION?.backend
-        ? await window.EDUGNAY_API.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, values)
-        : window.EDUGNAY_CONFIG.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, { ...values, audience: values.audiences });
+      await window.EDUGNAY_SCHOOL_READY;
+      const updated = await window.EDUGNAY_API.updateAnnouncement(ACTIVE_ANNOUNCEMENT_ID, values);
       const index = ANNOUNCEMENTS.findIndex(item => String(item.id) === ACTIVE_ANNOUNCEMENT_ID);
       if (index >= 0) ANNOUNCEMENTS[index] = updated || ANNOUNCEMENTS[index];
       closeModal();
@@ -791,9 +779,9 @@
     await window.EDUGNAY_COMMUNICATION_READY;
     document.getElementById('announcementDraftButton').disabled = false;
     document.getElementById('announcementPostButton').disabled = false;
-    if (window.EDUGNAY_COMMUNICATION?.backend) {
-      ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
-    }
+    const communication = window.EDUGNAY_COMMUNICATION;
+    announcementLoadError = communication?.error || (!communication?.backend ? 'Connect to the backend and reload to view announcements.' : '');
+    ANNOUNCEMENTS = announcementLoadError ? [] : communication.announcements;
     renderAdminAnnouncements();
     setupDropzone('composeUploadArea', 'composeImageInput', 'composePreview', 'composePlaceholder');
     setupDropzone('editUploadArea', 'editImageInput', 'editPreview', 'editPlaceholder');

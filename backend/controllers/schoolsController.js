@@ -1,9 +1,12 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
 const { getDatabase } = require('../config/database');
 const { getSchoolLogoUrl, logoDirectory, saveSchoolLogo } = require('../config/schoolLogos');
 const { writeAuditLog } = require('../utils/auditLog');
+const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
+const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
 const {
   sendSchoolRegistrationDecisionEmail,
   sendSchoolRegistrationSubmittedEmail
@@ -110,7 +113,7 @@ async function getSchoolRecord(database, schoolId) {
     `SELECT schools.id, schools.school_code AS schoolCode, schools.name, schools.short_name AS shortName,
       schools.school_type AS schoolType, schools.deped_school_id AS depedSchoolId, schools.region_name AS regionName,
       schools.division_name AS divisionName, schools.district_name AS districtName, schools.address_line AS addressLine,
-      schools.phone, schools.email, schools.website, schools.logo_path AS logoPath,
+      schools.phone, schools.email, schools.website, schools.school_email_domain AS schoolEmailDomain, schools.logo_path AS logoPath,
       schools.registration_status AS registrationStatus, schools.submitted_at AS submittedAt,
       schools.approved_at AS approvedAt, schools.rejected_at AS rejectedAt, schools.rejection_reason AS rejectionReason,
       school_settings.notification_email AS notificationEmail, school_settings.current_school_year_label AS currentSchoolYearLabel
@@ -171,7 +174,7 @@ async function listPlatformSchools(req, res, next) {
     const [schools] = await database.execute(
       `SELECT schools.id, schools.school_code AS schoolCode, schools.deped_school_id AS depedSchoolId,
         schools.name, schools.short_name AS shortName, schools.school_type AS schoolType,
-        schools.email, schools.logo_path AS logoPath,
+        schools.email, schools.school_email_domain AS schoolEmailDomain, schools.logo_path AS logoPath,
         schools.registration_status AS registrationStatus,
         CASE WHEN schools.registration_status = 'active' THEN 'active'
           ELSE schools.registration_status END AS platformStatus,
@@ -236,20 +239,34 @@ async function registerSchool(req, res, next) {
     const initialAdministrator = body.initialAdministrator || {};
     const adminFirstName = text(initialAdministrator.firstName, 100, true);
     const adminLastName = text(initialAdministrator.lastName, 100, true);
-    const adminSchoolEmail = email(initialAdministrator.schoolEmail, true);
+    const emailBase = schoolEmailBase(adminFirstName, adminLastName, 'school_admin');
     const temporaryPassword = String(initialAdministrator.temporaryPassword || '');
     if (temporaryPassword.length < 12 || temporaryPassword.length > 128) throw createError('The administrator temporary password must contain 12 to 128 characters.');
     const levels = normalizeLevels(body.schoolLevels);
     const schoolYear = text(body.currentSchoolYearLabel, 30, true);
     const termConfigs = registrationTerms(body, levels);
+    const registrationStatusToken = crypto.randomBytes(32).toString('hex');
+    const registrationStatusTokenHash = crypto.createHash('sha256').update(registrationStatusToken).digest('hex');
     logoName = await saveSchoolLogo(req.file);
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
-    const [schoolResult] = await connection.execute(
-      `INSERT INTO schools (school_code, name, short_name, school_type, deped_school_id, address_line, phone, email, website, logo_path, registration_status, submitted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-      [text(body.schoolCode, 50), name, text(body.shortName, 120) || name.toUpperCase(), schoolTypeForLevels(levels), text(body.depedSchoolId, 50), text(body.addressLine, 255), text(body.phone, 30), schoolEmail, text(body.website, 255), logoName]
-    );
+    let schoolEmailDomain = schoolDomainCandidate(name);
+    let schoolResult;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        [schoolResult] = await connection.execute(
+          `INSERT INTO schools (school_code, name, short_name, school_type, deped_school_id, address_line, phone, email, website, school_email_domain, logo_path, registration_status, registration_status_token_hash, registration_status_token_expires_at, submitted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, DATE_ADD(NOW(), INTERVAL 90 DAY), NOW())`,
+          [text(body.schoolCode, 50), name, text(body.shortName, 120) || name.toUpperCase(), schoolTypeForLevels(levels), text(body.depedSchoolId, 50), text(body.addressLine, 255), text(body.phone, 30), schoolEmail, text(body.website, 255), schoolEmailDomain, logoName, registrationStatusTokenHash]
+        );
+        break;
+      } catch (error) {
+        if (error.code !== 'ER_DUP_ENTRY') throw error;
+        const [[existingDomain]] = await connection.execute('SELECT id FROM schools WHERE school_email_domain = ? LIMIT 1', [schoolEmailDomain]);
+        if (!existingDomain || attempt === 2) throw error;
+        schoolEmailDomain = schoolDomainCandidate(name, crypto.randomBytes(3).toString('hex'));
+      }
+    }
     const schoolId = schoolResult.insertId;
     await connection.execute('INSERT INTO school_settings (school_id, notification_email, current_school_year_label) VALUES (?, ?, ?)', [schoolId, notificationEmail, schoolYear]);
     await connection.execute('INSERT INTO school_portal_features (school_id) VALUES (?)', [schoolId]);
@@ -291,11 +308,27 @@ async function registerSchool(req, res, next) {
     }
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
     const displayName = `${adminFirstName} ${adminLastName}`;
-    const [adminResult] = await connection.execute(
-      `INSERT INTO users (school_id, role, school_email, personal_email, password_hash, account_status, first_name, last_name, display_name, initials)
-      VALUES (?, 'school_admin', ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-      [schoolId, adminSchoolEmail, notificationEmail, passwordHash, adminFirstName, adminLastName, displayName, `${adminFirstName[0]}${adminLastName[0]}`.toUpperCase()]
-    );
+    let adminSchoolEmail;
+    let adminResult;
+    for (let suffix = 1; suffix <= 100; suffix += 1) {
+      const candidate = schoolEmailCandidate(emailBase, schoolEmailDomain, suffix);
+      const [[existing]] = await connection.execute('SELECT id FROM users WHERE school_email = ? LIMIT 1 FOR UPDATE', [candidate]);
+      if (existing) continue;
+      try {
+        [adminResult] = await connection.execute(
+          `INSERT INTO users (school_id, role, school_email, personal_email, password_hash, account_status, first_name, last_name, display_name, initials)
+          VALUES (?, 'school_admin', ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+          [schoolId, candidate, notificationEmail, passwordHash, adminFirstName, adminLastName, displayName, `${adminFirstName[0]}${adminLastName[0]}`.toUpperCase()]
+        );
+        adminSchoolEmail = candidate;
+        break;
+      } catch (error) {
+        if (error.code !== 'ER_DUP_ENTRY') throw error;
+        const [[conflict]] = await connection.execute('SELECT id FROM users WHERE school_email = ? LIMIT 1 FOR UPDATE', [candidate]);
+        if (!conflict) throw error;
+      }
+    }
+    if (!adminResult) throw createError('No available administrator email address was found.', 409);
     await connection.execute('INSERT INTO school_admin_profiles (user_id) VALUES (?)', [adminResult.insertId]);
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
@@ -312,13 +345,66 @@ async function registerSchool(req, res, next) {
     await connection.commit();
     committed = true;
     platformAdmins.forEach(user => { sendSchoolRegistrationSubmittedEmail(user, { name }).catch(console.error); });
-    res.status(201).json({ school: { id: schoolId, name, registrationStatus: 'pending', notificationEmail } });
+    res.status(201).json({
+      school: { id: schoolId, name, schoolEmailDomain, administratorSchoolEmail: adminSchoolEmail, registrationStatus: 'pending', notificationEmail },
+      registrationStatusToken
+    });
   } catch (error) {
     if (connection && !committed) await connection.rollback();
     if (logoName && !committed) await fs.unlink(path.join(logoDirectory, logoName)).catch(() => {});
     if (error.code === 'ER_DUP_ENTRY') error = createError('A school or administrator email already exists.', 409);
     next(error);
   } finally { connection?.release(); }
+}
+
+function maskNotificationEmail(value) {
+  const emailAddress = String(value || '');
+  const at = emailAddress.lastIndexOf('@');
+  if (at < 1 || at === emailAddress.length - 1) return null;
+  const localPart = emailAddress.slice(0, at);
+  const visibleLength = Math.min(2, Math.max(0, localPart.length - 1));
+  return `${localPart.slice(0, visibleLength)}***@${emailAddress.slice(at + 1)}`;
+}
+
+async function getRegistrationStatus(req, res, next) {
+  let connection;
+  try {
+    res.set('Cache-Control', 'no-store');
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    if (!/^[a-f0-9]{64}$/i.test(token)) throw createError('Registration status could not be found.', 404);
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    connection = await getDatabase().getConnection();
+    const [[registration]] = await connection.execute(
+      `SELECT schools.name AS schoolName,
+        schools.registration_status AS registrationStatus,
+        schools.submitted_at AS submittedAt,
+        schools.approved_at AS approvedAt,
+        schools.rejected_at AS rejectedAt,
+        (SELECT users.school_email FROM users WHERE users.school_id = schools.id AND users.role = 'school_admin' ORDER BY users.id LIMIT 1) AS administratorSchoolEmail,
+        (SELECT school_settings.notification_email FROM school_settings WHERE school_settings.school_id = schools.id LIMIT 1) AS notificationEmail
+       FROM schools
+       WHERE schools.registration_status_token_hash = ?
+         AND schools.registration_status_token_expires_at > NOW()
+       LIMIT 1`,
+      [tokenHash]
+    );
+    if (!registration) throw createError('Registration status could not be found.', 404);
+
+    res.json({ registration: {
+      schoolName: registration.schoolName,
+      registrationStatus: registration.registrationStatus,
+      administratorSchoolEmail: registration.administratorSchoolEmail || null,
+      notificationEmailMasked: maskNotificationEmail(registration.notificationEmail),
+      submittedAt: registration.submittedAt,
+      approvedAt: registration.approvedAt,
+      rejectedAt: registration.rejectedAt
+    } });
+  } catch (error) {
+    next(error);
+  } finally {
+    connection?.release();
+  }
 }
 
 async function reviewSchool(req, res, next) {
@@ -379,16 +465,28 @@ async function getSchoolLogo(req, res, next) {
     }
     const school = await getSchoolRecord(getDatabase(), schoolId);
     if (!school?.logoUrl) throw createError('School logo not found.', 404);
-    const legacy = /^\/assets\/images\/([A-Za-z0-9_-][A-Za-z0-9._-]*\.(?:png|jpg|jpeg|webp))$/.exec(school.logoPath);
-    const filePath = legacy
-      ? path.resolve(__dirname, '..', '..', 'assets', 'images', legacy[1])
-      : path.join(logoDirectory, school.logoPath);
-    res.set('Cache-Control', 'no-store');
-    res.set('X-Content-Type-Options', 'nosniff');
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.sendFile(filePath, error => {
-      if (error) next(error.code === 'ENOENT' ? createError('School logo not found.', 404) : error);
+    const filePath = path.join(logoDirectory, school.logoPath);
+    let image;
+    try {
+      image = await fs.readFile(filePath);
+    } catch (error) {
+      if (error.code === 'ENOENT') throw createError('School logo not found.', 404);
+      throw error;
+    }
+    const extension = path.extname(school.logoPath).toLowerCase();
+    const contentType = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp'
+    }[extension];
+    res.set({
+      'Content-Type': contentType,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Cross-Origin-Resource-Policy': 'cross-origin'
     });
+    res.status(200).send(image);
   } catch (error) { next(error); }
 }
 
@@ -604,4 +702,4 @@ async function updateAcademicStructure(req, res, next) {
   } catch (error) { if (connection) await connection.rollback(); next(error); } finally { connection?.release(); }
 }
 
-module.exports = { changeSchoolAccess, getAcademicStructure, getPlatformSchool, getPortalFeatures, getSchoolLogo, getSchoolSettings, listPlatformSchools, registerSchool, reviewSchool, updateAcademicStructure, updatePortalFeatures, updateSchoolLogo, updateSchoolSettings };
+module.exports = { changeSchoolAccess, getAcademicStructure, getPlatformSchool, getPortalFeatures, getRegistrationStatus, getSchoolLogo, getSchoolSettings, listPlatformSchools, registerSchool, reviewSchool, updateAcademicStructure, updatePortalFeatures, updateSchoolLogo, updateSchoolSettings };

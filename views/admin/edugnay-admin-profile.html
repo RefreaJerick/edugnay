@@ -153,9 +153,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar admin">SA</div>
+          <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Sr. Admin</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Admin</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -185,11 +185,19 @@
       </div>
     </section>
 
+    <div class="profile-setup-notice" id="admin-profile-load-notice" hidden role="status" aria-live="polite">
+      <span class="profile-setup-notice-icon" aria-hidden="true"><i data-lucide="circle-alert" style="width:16px;height:16px;"></i></span>
+      <div>
+        <div class="profile-setup-notice-title" id="admin-profile-load-title"></div>
+        <div class="profile-setup-notice-text" id="admin-profile-load-text"></div>
+      </div>
+    </div>
+
     <!-- Profile header -->
     <!-- Profile and avatar controls are handled by this page's JavaScript. -->
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profileAvatar" aria-hidden="true">SA</div>
+        <div class="profile-avatar" id="profileAvatar" aria-hidden="true"></div>
         <button type="button" class="profile-avatar-edit" id="avatarEditTrigger" aria-label="Change profile photo" aria-expanded="false" aria-controls="avatarMenu">
           <i data-lucide="pencil" style="width:14px;height:14px;"></i>
         </button>
@@ -206,9 +214,9 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name">Sr. Admin</div>
+        <div class="profile-header-name">Loading profile...</div>
         <div class="profile-header-meta">
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> admin.adm@stcolumban.edu.ph</span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value">Loading...</span></span>
         </div>
       </div>
     </div>
@@ -229,12 +237,12 @@
           <div class="config-panel-body profile-fields">
             <div class="form-group">
               <label class="form-label">Full Name</label>
-              <input class="form-input" type="text" name="fullName" value="Sr. Admin" disabled/>
+              <input class="form-input" type="text" name="fullName" disabled/>
               <span class="form-hint">Managed through account administration.</span>
             </div>
             <div class="form-group">
               <label class="form-label">School Email</label>
-              <input class="form-input" type="email" name="schoolEmail" value="admin.adm@stcolumban.edu.ph" disabled/>
+              <input class="form-input" type="email" name="schoolEmail" disabled/>
               <span class="form-hint">Used to sign in to your account.</span>
             </div>
             <div class="form-group">
@@ -244,7 +252,7 @@
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">Contact Number</label>
-              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 555 2210" placeholder="e.g. 0917 123 4567" autocomplete="tel"/>
+              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" placeholder="e.g. 0917 123 4567" autocomplete="tel"/>
               <span class="form-hint">Optional contact number.</span>
             </div>
           </div>
@@ -333,8 +341,15 @@
 </div>
 
 <script>
-  const ADMIN_PROFILE_API_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   let adminApiUser = null;
+
+  function setAdminProfileLoadState(title = '', message = '', isError = false) {
+    const notice = document.getElementById('admin-profile-load-notice');
+    notice.hidden = !message;
+    notice.setAttribute('role', isError ? 'alert' : 'status');
+    document.getElementById('admin-profile-load-title').textContent = title;
+    document.getElementById('admin-profile-load-text').textContent = message;
+  }
 
   function renderAdminProfile(user) {
     if (!user) return;
@@ -342,22 +357,29 @@
     const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
     document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
     document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
+    document.querySelectorAll('.profile-email-value').forEach(element => { element.textContent = user.schoolEmail || ''; });
     document.getElementById('adminEmployeeNoInput').value = user.profile?.employeeNumber || '';
     document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
     document.querySelectorAll('.profile-header-name, .tb-profile-name').forEach(element => { element.textContent = displayName; });
   }
 
-  async function loadAdminProfile() {
-    if (!ADMIN_PROFILE_API_ENABLED) return;
+  renderAdminProfile({ displayName: 'Loading profile...', schoolEmail: '', profile: {} });
+  setAdminProfileLoadState('Loading profile', 'Reading your account from the school database.');
 
+  async function loadAdminProfile() {
     try {
+      await window.EDUGNAY_SCHOOL_READY;
       const response = await window.EDUGNAY_API.request('/users/me/profile');
-      if (response.user.role === 'school_admin') {
-        adminApiUser = response.user;
-        renderAdminProfile(adminApiUser);
-      }
+      if (response.user.role !== 'school_admin') throw new Error('Sign in with a school administrator account to view this profile.');
+      adminApiUser = response.user;
+      renderAdminProfile(adminApiUser);
+      renderAdminAccessDetails(adminApiUser);
+      setAdminProfileLoadState();
     } catch (error) {
       console.warn('Unable to load the saved profile.', error.message);
+      renderAdminProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
+      renderAdminAccessDetails();
+      setAdminProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
     }
   }
 
@@ -380,10 +402,6 @@
       alert('New password and confirmation do not match.');
       return false;
     }
-    if (!ADMIN_PROFILE_API_ENABLED) {
-      alert('Password updates require a configured API connection.');
-      return false;
-    }
     try {
       await window.EDUGNAY_API.request('/auth/change-password', {
         method: 'POST',
@@ -403,17 +421,19 @@
 
   async function submitProfile(event) {
     event.preventDefault();
+    if (!adminApiUser) {
+      showAppToast('Your profile is unavailable. Refresh the page before saving.', 'error');
+      return false;
+    }
     const contactNumber = document.getElementById('contactNumberInput').value.trim();
 
     try {
-      if (ADMIN_PROFILE_API_ENABLED) {
-        const response = await window.EDUGNAY_API.request('/users/me/profile', {
-          method: 'PATCH',
-          body: JSON.stringify({ contactNumber })
-        });
-        adminApiUser = response.user;
-        renderAdminProfile(adminApiUser);
-      }
+      const response = await window.EDUGNAY_API.request('/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ contactNumber })
+      });
+      adminApiUser = response.user;
+      renderAdminProfile(adminApiUser);
       showAppToast('Contact info updated.');
     } catch (error) {
       showAppToast(error.message || 'Unable to update your profile.', 'error');
@@ -421,41 +441,30 @@
     return false;
   }
 
-  const activeSchool = window.EDUGNAY_CONFIG?.getActiveSchool?.();
-  const schoolAdmin = window.EDUGNAY_CONFIG?.getUsers?.()
-    ?.find(user => user.role === 'school_admin' && user.schoolId === activeSchool?.id);
-  const ADMIN_ACCESS_DETAILS = [
-    { label: 'Account status', value: schoolAdmin?.status ? schoolAdmin.status.charAt(0).toUpperCase() + schoolAdmin.status.slice(1) : 'Unknown' },
-    { label: 'Access scope', value: schoolAdmin?.schoolId === activeSchool?.id ? 'Current school only' : 'School assignment unavailable' },
-    { label: 'Role', value: schoolAdmin?.role === 'school_admin' ? 'School Administrator' : schoolAdmin?.role || 'Unknown' }
-  ];
-
-  function renderAdminAccessDetails() {
+  function renderAdminAccessDetails(apiUser = null) {
     const panel = document.getElementById('admin-access-details');
     if (!panel) return;
-    panel.innerHTML = ADMIN_ACCESS_DETAILS.map(detail => `
+    const schoolAdmin = apiUser;
+    const accountStatus = schoolAdmin?.accountStatus || schoolAdmin?.status;
+    const role = schoolAdmin?.role === 'school_admin' ? 'School Administrator' : schoolAdmin?.role;
+    const details = [
+      { label: 'Account status', value: accountStatus ? accountStatus.charAt(0).toUpperCase() + accountStatus.slice(1) : 'Unavailable' },
+      { label: 'Access scope', value: schoolAdmin?.schoolId ? 'Current school only' : 'Unavailable' },
+      { label: 'Role', value: role || 'Unavailable' }
+    ];
+    panel.innerHTML = details.map(detail => `
       <div class="profile-detail-row">
         <span class="profile-detail-label">${escapeHtml(detail.label)}</span>
         <span class="profile-detail-value">${escapeHtml(detail.value)}</span>
       </div>`).join('');
   }
 
-  // The school administrator is a canonical user record. Replace this lookup
-  // with the authenticated administrator returned by the API later.
-  function renderAdminEmployeeNumber() {
-    const profile = window.EDUGNAY_CONFIG?.getUsers?.()
-      ?.find(user => user.role === 'school_admin');
-    const input = document.getElementById('adminEmployeeNoInput');
-    if (input) input.value = profile?.employeeNo || 'Not assigned';
-  }
-
   function resetProfile() {
-    document.getElementById('contactNumberInput').value = adminApiUser?.profile?.contactNumber || '0917 555 2210';
+    document.getElementById('contactNumberInput').value = adminApiUser?.profile?.contactNumber || '';
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderAdminAccessDetails();
-    renderAdminEmployeeNumber();
     await loadAdminProfile();
     lucide.createIcons();
   });

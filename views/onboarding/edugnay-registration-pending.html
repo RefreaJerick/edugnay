@@ -14,7 +14,7 @@
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
 </head>
-<body>
+<body data-public-page="true">
   <main class="onboarding-page onboarding-pending-page">
     <header class="onboarding-topbar">
       <a class="onboarding-topbar-brand" href="../../index.html" aria-label="Academix home">
@@ -29,8 +29,8 @@
     <section class="onboarding-pending" aria-labelledby="pendingRegistrationTitle">
       <div class="onboarding-pending-intro">
         <p class="onboarding-showcase-kicker">School onboarding</p>
-        <h1 id="pendingRegistrationTitle">Registration submitted</h1>
-        <p>Your school registration is awaiting Platform Admin review.</p>
+        <h1 id="pendingRegistrationTitle">Checking registration status...</h1>
+        <p id="pendingRegistrationMessage">Your saved registration status is being loaded.</p>
       </div>
 
       <div class="onboarding-card pending-registration-card">
@@ -40,62 +40,120 @@
               <i data-lucide="clock-3"></i>
             </span>
             <div>
-              <h2>Review in progress</h2>
-              <p>Platform Admin will review the submitted school details before access is activated.</p>
+              <h2 id="pendingRegistrationState">Loading status...</h2>
+              <p id="pendingRegistrationStateMessage">Please wait while we retrieve the latest status.</p>
             </div>
           </div>
         </div>
 
         <div class="pending-registration-content">
-          <p class="pending-registration-intro">We’ll notify you at the email below once a decision has been made. The school administrator account cannot be used until the registration is approved.</p>
+          <p class="pending-registration-intro" id="pendingRegistrationIntro">We will send updates to the masked notification address shown below.</p>
 
           <dl class="pending-registration-details">
             <div>
               <dt>School</dt>
-              <dd id="pendingSchoolName">Your school</dd>
+              <dd id="pendingSchoolName">Loading...</dd>
             </div>
             <div>
               <dt>Notification email</dt>
-              <dd id="pendingNotificationEmail">Your notification email</dd>
+              <dd id="pendingNotificationEmail">Loading...</dd>
+            </div>
+            <div>
+              <dt>Administrator login email</dt>
+              <dd id="pendingAdministratorSchoolEmail">Loading...</dd>
             </div>
           </dl>
+          <p class="pending-registration-error" id="pendingRegistrationError" role="alert" hidden></p>
+          <div class="pending-registration-actions">
+            <button class="onboarding-submit" id="pendingRegistrationRetry" type="button" hidden>Try again</button>
+          </div>
         </div>
       </div>
     </section>
   </main>
 
   <script>
-    function maskEmail(email) {
-      const parts = String(email || '').split('@');
-      if (parts.length !== 2 || !parts[0] || !parts[1]) return 'Not available';
-      return `${parts[0].slice(0, 2)}***@${parts[1]}`;
-    }
-
-    async function getPendingRegistration() {
-      let summary;
-      try {
-        summary = JSON.parse(sessionStorage.getItem('edugnay_pending_registration') || 'null');
-      } catch (error) {
-        return null;
+    const REGISTRATION_STATUS_TOKEN_KEY = 'edugnay_registration_status_token';
+    const REGISTRATION_STATUS_COPY = {
+      pending: {
+        title: 'Registration submitted',
+        heading: 'Review in progress',
+        message: 'Platform Admin will review the submitted school details before access is activated.'
+      },
+      active: {
+        title: 'Registration approved',
+        heading: 'School approved',
+        message: 'The administrator account is active. Sign in with the administrator login shown below.'
+      },
+      rejected: {
+        title: 'Registration not approved',
+        heading: 'Review decision available',
+        message: 'Check the notification email for decision details or contact Platform Admin.'
+      },
+      suspended: {
+        title: 'School access suspended',
+        heading: 'Access is suspended',
+        message: 'Contact Platform Admin for help with this school account.'
       }
+    };
 
-      return summary;
+    function showRegistrationError(message, retryable) {
+      const error = document.getElementById('pendingRegistrationError');
+      error.textContent = message;
+      error.hidden = false;
+      document.getElementById('pendingRegistrationRetry').hidden = !retryable;
     }
 
     async function renderPendingRegistration() {
-      const registration = await getPendingRegistration();
-      if (!registration) return;
+      const retryButton = document.getElementById('pendingRegistrationRetry');
+      const error = document.getElementById('pendingRegistrationError');
+      error.hidden = true;
+      retryButton.hidden = true;
+      retryButton.disabled = true;
 
-      document.getElementById('pendingSchoolName').textContent = registration.name || registration.schoolName || 'Your school';
-      document.getElementById('pendingNotificationEmail').textContent = maskEmail(registration.notificationEmail);
+      let token = '';
+      try {
+        token = sessionStorage.getItem(REGISTRATION_STATUS_TOKEN_KEY) || '';
+        sessionStorage.removeItem('edugnay_pending_registration');
+      } catch (storageError) {
+        token = '';
+      }
+
+      if (!token) {
+        showRegistrationError('This tab does not have a registration status token. If you already submitted a registration, contact Platform Admin; do not submit it again.', false);
+        retryButton.disabled = false;
+        return;
+      }
+
+      try {
+        const registration = await window.EDUGNAY_API.getRegistrationStatus(token);
+        if (!registration) throw new Error('Registration status could not be found.');
+        const copy = REGISTRATION_STATUS_COPY[registration.registrationStatus] || REGISTRATION_STATUS_COPY.pending;
+        document.title = `${copy.title} | Academix`;
+        document.getElementById('pendingRegistrationTitle').textContent = copy.title;
+        document.getElementById('pendingRegistrationMessage').textContent = copy.message;
+        document.getElementById('pendingRegistrationState').textContent = copy.heading;
+        document.getElementById('pendingRegistrationStateMessage').textContent = copy.message;
+        document.getElementById('pendingSchoolName').textContent = registration.schoolName || 'Not available';
+        document.getElementById('pendingNotificationEmail').textContent = registration.notificationEmailMasked || 'Not available';
+        document.getElementById('pendingAdministratorSchoolEmail').textContent = registration.administratorSchoolEmail || 'Not available';
+        document.getElementById('pendingRegistrationIntro').textContent = registration.submittedAt
+          ? `Submitted ${new Date(registration.submittedAt).toLocaleString()}. Updates will be sent to the notification address shown below.`
+          : 'Updates will be sent to the notification address shown below.';
+      } catch (requestError) {
+        const message = requestError?.status === 404
+          ? 'Registration status could not be found or the access token has expired. If you already submitted, contact Platform Admin; do not submit again.'
+          : 'Registration status could not be loaded. Check your connection and try again.';
+        showRegistrationError(message, requestError?.status !== 404);
+      } finally {
+        retryButton.disabled = false;
+        if (window.lucide) window.lucide.createIcons();
+      }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        await renderPendingRegistration();
-      } catch (error) {
-        window.alert(error?.message || 'The registration information could not be loaded.');
-      }
+      document.getElementById('pendingRegistrationRetry').addEventListener('click', renderPendingRegistration);
+      await renderPendingRegistration();
       if (window.lucide) window.lucide.createIcons();
     });
   </script>

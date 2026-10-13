@@ -6,6 +6,7 @@ const { sendAccountCreatedEmail, sendAccountStatusEmail } = require('../config/e
 const { deleteSessionsForUser } = require('../config/session');
 const { issueStudentQrCredential } = require('../config/qrCredentials');
 const { writeAuditLog } = require('../utils/auditLog');
+const { schoolEmailBase, schoolEmailCandidate, storedSchoolDomain } = require('../utils/schoolUserEmail');
 
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'pending']);
 const MANAGED_ROLES = new Set(['school_admin', 'teacher', 'student', 'parent']);
@@ -567,8 +568,9 @@ async function createUser(req, res, next) {
     const firstName = normalizeText(body.firstName, 100);
     const lastName = normalizeText(body.lastName, 100);
     if (!firstName || !lastName) throw createError('First name and last name are required.');
-    const schoolEmail = normalizeEmail(body.schoolEmail, 'School email');
-    const personalEmail = body.personalEmail ? normalizeEmail(body.personalEmail, 'Personal email') : null;
+    const emailBase = schoolEmailBase(firstName, lastName, role);
+    if (!body.personalEmail) throw createError('Personal email is required.');
+    const personalEmail = normalizeEmail(body.personalEmail, 'Personal email');
     const temporaryPassword = body.temporaryPassword
       ? String(body.temporaryPassword)
       : generateTemporaryPassword();
@@ -589,6 +591,9 @@ async function createUser(req, res, next) {
     const database = getDatabase();
     connection = await database.getConnection();
     await connection.beginTransaction();
+    const [[school]] = await connection.execute('SELECT school_email_domain AS schoolEmailDomain FROM schools WHERE id = ? LIMIT 1', [schoolId]);
+    if (!school) throw createError('School not found.', 404);
+    const domain = storedSchoolDomain(school);
     if (employeeNo) {
       const [staffMatches] = await connection.execute(
         `SELECT users.id
@@ -602,11 +607,25 @@ async function createUser(req, res, next) {
       );
       if (staffMatches.length) throw createError('That employee number is already assigned in this school.', 409);
     }
-    const [result] = await connection.execute(
-      `INSERT INTO users (school_id, role, school_email, personal_email, password_hash, account_status, honorific, first_name, last_name, display_name, initials)
-      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
-      [schoolId, role, schoolEmail, personalEmail, passwordHash, body.honorific ? normalizeText(body.honorific, 30) : null, firstName, lastName, displayName, initials]
-    );
+    let result;
+    for (let suffix = 1; suffix <= 100; suffix += 1) {
+      const candidate = schoolEmailCandidate(emailBase, domain, suffix);
+      const [[existing]] = await connection.execute('SELECT id FROM users WHERE school_email = ? LIMIT 1 FOR UPDATE', [candidate]);
+      if (existing) continue;
+      try {
+        [result] = await connection.execute(
+          `INSERT INTO users (school_id, role, school_email, personal_email, password_hash, account_status, honorific, first_name, last_name, display_name, initials)
+          VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
+          [schoolId, role, candidate, personalEmail, passwordHash, body.honorific ? normalizeText(body.honorific, 30) : null, firstName, lastName, displayName, initials]
+        );
+        break;
+      } catch (error) {
+        if (error.code !== 'ER_DUP_ENTRY') throw error;
+        const [[conflict]] = await connection.execute('SELECT id FROM users WHERE school_email = ? LIMIT 1 FOR UPDATE', [candidate]);
+        if (!conflict) throw error;
+      }
+    }
+    if (!result) throw createError('No available school email address was found.', 409);
     const userId = result.insertId;
     if (role === 'student') {
       await connection.execute('INSERT INTO student_profiles (user_id, lrn) VALUES (?, ?)', [userId, lrn]);
@@ -665,8 +684,7 @@ async function updateUser(req, res, next) {
     const values = {
       firstName: Object.hasOwn(body, 'firstName') ? normalizeText(body.firstName, 100) : user.firstName,
       lastName: Object.hasOwn(body, 'lastName') ? normalizeText(body.lastName, 100) : user.lastName,
-      schoolEmail: Object.hasOwn(body, 'schoolEmail') ? normalizeEmail(body.schoolEmail, 'School email') : user.schoolEmail,
-      personalEmail: Object.hasOwn(body, 'personalEmail') ? (body.personalEmail ? normalizeEmail(body.personalEmail, 'Personal email') : null) : user.personalEmail,
+      personalEmail: Object.hasOwn(body, 'personalEmail') ? normalizeEmail(body.personalEmail, 'Personal email') : user.personalEmail,
       accountStatus: Object.hasOwn(body, 'accountStatus') ? String(body.accountStatus) : user.accountStatus
     };
     if (Object.hasOwn(body, 'employeeNo') && !['school_admin', 'teacher'].includes(user.role)) {
@@ -688,6 +706,9 @@ async function updateUser(req, res, next) {
       ? (Object.hasOwn(body, 'lrn') ? normalizeLrn(body.lrn) : null)
       : null;
     if (!values.firstName || !values.lastName || !ACCOUNT_STATUSES.has(values.accountStatus)) throw createError('User details are invalid.');
+    if (Object.hasOwn(body, 'schoolEmail') && String(body.schoolEmail || '').trim().toLowerCase() !== user.schoolEmail.toLowerCase()) {
+      throw createError('School login email cannot be changed.');
+    }
     if (userId === req.user.id && values.accountStatus !== 'active') {
       throw createError('You cannot deactivate your own account.');
     }
@@ -726,8 +747,8 @@ async function updateUser(req, res, next) {
       }
     }
     await connection.execute(
-      `UPDATE users SET first_name = ?, last_name = ?, school_email = ?, personal_email = ?, account_status = ?, display_name = ?, initials = ? WHERE id = ?`,
-      [values.firstName, values.lastName, values.schoolEmail, values.personalEmail, values.accountStatus, displayName, initials, userId]
+      `UPDATE users SET first_name = ?, last_name = ?, personal_email = ?, account_status = ?, display_name = ?, initials = ? WHERE id = ?`,
+      [values.firstName, values.lastName, values.personalEmail, values.accountStatus, displayName, initials, userId]
     );
     if (employeeNo !== null) {
       const table = user.role === 'teacher' ? 'teacher_profiles' : 'school_admin_profiles';

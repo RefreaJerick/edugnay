@@ -3,14 +3,19 @@ const rateLimit = require('express-rate-limit');
 const controller = require('../controllers/schoolsController');
 const activityController = require('../controllers/activityController');
 const parentNotificationTriggersController = require('../controllers/parentNotificationTriggersController');
+const { getSchoolContext } = require('../controllers/schoolContextController');
+const calendarNoticesController = require('../controllers/calendarNoticesController');
+const attendanceSettingsController = require('../controllers/attendanceSettingsController');
 const { requireAuth } = require('../middleware/auth');
 const { requirePlatformAdmin, requireSchoolAdmin, requireSchoolUser } = require('../middleware/authorize');
 const { schoolLogoUpload } = require('../config/schoolLogos');
 
 const router = express.Router();
 const registrationLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
+const registrationStatusLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 
 router.post('/schools/register', registrationLimiter, schoolLogoUpload.single('logo'), controller.registerSchool);
+router.post('/schools/registration-status', registrationStatusLimiter, controller.getRegistrationStatus);
 router.get('/schools/:schoolId/logo', requireAuth, controller.getSchoolLogo);
 router.get('/platform/schools', requireAuth, requirePlatformAdmin, controller.listPlatformSchools);
 router.get('/platform/schools/:schoolId', requireAuth, requirePlatformAdmin, controller.getPlatformSchool);
@@ -32,6 +37,12 @@ router.post('/platform/schools/:schoolId/reactivate', requireAuth, requirePlatfo
   controller.changeSchoolAccess(req, res, next);
 });
 router.get('/school/settings', requireAuth, requireSchoolAdmin, controller.getSchoolSettings);
+router.get('/school/context', requireAuth, requireSchoolUser, getSchoolContext);
+router.get('/school/calendar-notices', requireAuth, requireSchoolUser, calendarNoticesController.listCalendarNotices);
+router.post('/school/calendar-notices', requireAuth, requireSchoolAdmin, calendarNoticesController.createCalendarNotice);
+router.delete('/school/calendar-notices/:noticeId', requireAuth, requireSchoolAdmin, calendarNoticesController.deleteCalendarNotice);
+router.get('/school/attendance-settings', requireAuth, requireSchoolAdmin, attendanceSettingsController.getAttendanceSettings);
+router.patch('/school/attendance-settings', requireAuth, requireSchoolAdmin, attendanceSettingsController.updateAttendanceSettings);
 router.get('/school/logo', requireAuth, requireSchoolAdmin, controller.getSchoolLogo);
 router.post('/school/logo', requireAuth, requireSchoolAdmin, schoolLogoUpload.single('logo'), controller.updateSchoolLogo);
 router.get('/school/parent-notification-triggers', requireAuth, requireSchoolAdmin, parentNotificationTriggersController.getSettings);

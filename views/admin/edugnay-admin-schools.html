@@ -130,9 +130,9 @@
         </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar admin">SA</div>
+            <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -252,11 +252,9 @@
 
   <script>
     const SCHOOL_LEVELS = window.EDUGNAY_CONFIG.grades.map(item => ({ value: item.key, label: item.label }));
-    const initialSchool = window.EDUGNAY_CONFIG.getActiveSchool();
-    const SCHOOL_SETTINGS_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
     const state = {
-      school: initialSchool,
-      division: initialSchool.activeDivision || initialSchool.schoolType || 'jhs',
+      school: null,
+      division: 'jhs',
       tab: 'profile',
       logoData: '',
       termDraft: null,
@@ -271,9 +269,13 @@
       apiSubjects: [],
       apiStructure: [],
       apiGradingCategories: [],
+      apiAttendanceRules: null,
       apiAcademicYears: [],
       apiAcademicYear: null,
-      apiTerms: []
+      apiTerms: [],
+      calendarNotices: [],
+      calendarError: '',
+      calendarLoading: true
     };
 
     function activeSchool() { return state.school; }
@@ -298,16 +300,8 @@
       const level = currentDivisionKey(school);
       return { level, data: ensureDivision(school, level) };
     }
-    function getAttendanceRules(school) {
-      const fallback = window.EDUGNAY_CONFIG.attendanceDefaults || {};
-      const configured = school?.attendanceRules || {};
-      return {
-        ...fallback,
-        ...configured,
-        statusCodes: Array.isArray(configured.statusCodes) && configured.statusCodes.length
-          ? configured.statusCodes
-          : (fallback.statusCodes || [])
-      };
+    function getAttendanceRules() {
+      return state.apiAttendanceRules || window.EDUGNAY_CONFIG.attendanceDefaults || {};
     }
     function renderDivisionSwitcher(school) {
       const levels = schoolLevels(school);
@@ -319,14 +313,6 @@
       document.querySelectorAll('[data-school-division]').forEach(button => button.addEventListener('click', () => { state.division = button.dataset.schoolDivision; renderPane(); }));
     }
     function notify(message) { showAppToast(message, 'error'); }
-    function persistSchool() {
-      const schools = window.EDUGNAY_CONFIG.getSchools();
-      const index = schools.findIndex(school => school.id === state.school.id);
-      if (index >= 0) schools[index] = state.school;
-      else schools.push(state.school);
-      window.EDUGNAY_CONFIG.saveSchools(schools);
-    }
-
     function frontendPeriodType(type) {
       return { semestral: 'semester', trimestral: 'three_term' }[type] || 'quarterly';
     }
@@ -352,6 +338,7 @@
       state.apiSchoolId = Number(apiSchool.id) || null;
       state.school = {
         ...school,
+        id: apiSchool.id,
         name: apiSchool.name || school.name,
         shortName: apiSchool.shortName || school.shortName,
         schoolType: apiSchool.schoolType || type.value,
@@ -744,13 +731,13 @@
     function renderPortalFeaturesPane() {
       const school = activeSchool();
       setSettingsHeading('Portal features', 'Control optional features across each portal.');
-      const subjects = state.apiActive ? state.apiSubjects : window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
-      const journalSubjectId = state.apiActive ? String(state.apiJournalSubjectId || '') : String(school?.journalSubjectId || '');
+      const subjects = state.apiSubjects;
+      const journalSubjectId = String(state.apiJournalSubjectId || '');
       const hasJournalSubject = subjects.some(subject => String(subject.id) === journalSubjectId);
       const features = state.apiFeatures || {};
-      const gradesPageEnabled = state.apiActive ? Boolean(features.gradesEnabled) : Boolean(school?.gradesPageEnabled);
-      const narrativeReportsEnabled = state.apiActive ? Boolean(features.narrativeReportsEnabled) : Boolean(school?.narrativeReportsEnabled);
-      const journalsEnabled = Boolean(state.apiActive ? features.journalsEnabled : school?.journalsEnabled);
+      const gradesPageEnabled = Boolean(features.gradesEnabled);
+      const narrativeReportsEnabled = Boolean(features.narrativeReportsEnabled);
+      const journalsEnabled = Boolean(features.journalsEnabled);
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
@@ -797,7 +784,7 @@
                 </div>
               </div>
             </div>
-            ${state.apiActive ? '<div class="school-section-block"><button class="top-btn" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>' : ''}
+            <div class="school-section-block"><button class="top-btn" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save portal features</button></div>
           </form>
         </div>`;
@@ -819,7 +806,7 @@
     function renderAttendancePane() {
       const school = activeSchool();
       setSettingsHeading('Attendance rules', 'Configure attendance codes and alert thresholds.');
-      const rules = getAttendanceRules(school);
+      const rules = getAttendanceRules();
       const codes = Array.isArray(rules.statusCodes) ? rules.statusCodes : [];
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-attendance-pane active">
@@ -847,15 +834,32 @@
     }
 
     function renderCalendarPane() {
-      const holidays = window.EDUGNAY_CONFIG.getHolidays();
-      document.getElementById('schoolCalendarBody').innerHTML = `<form id="holidayForm"><div class="school-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today."></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="plus"></i> Add calendar notice</button></div></form><div class="calendar-list"><div class="calendar-list-title">Saved notices</div>${holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
+      const holidays = state.calendarNotices;
+      document.getElementById('schoolCalendarBody').innerHTML = `<form id="holidayForm"><div class="school-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today."></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="plus"></i> Add calendar notice</button></div></form><div class="calendar-list"><div class="calendar-list-title">Saved notices</div>${state.calendarLoading ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading notices', text: 'Please wait.' }) : state.calendarError ? `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Notices unavailable', text: state.calendarError })}<button class="top-btn" type="button" id="retryCalendarNotices">Retry</button>` : holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
       document.getElementById('holidayForm').addEventListener('submit', addHoliday);
       document.querySelectorAll('[data-remove-holiday]').forEach(button => button.addEventListener('click', () => removeHoliday(button.dataset.removeHoliday)));
+      document.getElementById('retryCalendarNotices')?.addEventListener('click', loadCalendarNotices);
       if (window.lucide) lucide.createIcons();
     }
 
+    async function loadCalendarNotices() {
+      state.calendarLoading = true;
+      state.calendarError = '';
+      renderCalendarPane();
+      try {
+        await window.EDUGNAY_SCHOOL_READY;
+        state.calendarNotices = await window.EDUGNAY_API.getCalendarNotices();
+      } catch (error) {
+        state.calendarNotices = [];
+        state.calendarError = error.message || 'Could not load calendar notices.';
+      } finally {
+        state.calendarLoading = false;
+        renderCalendarPane();
+      }
+    }
+
     function renderPane() {
-      if (SCHOOL_SETTINGS_API_ENABLED && !state.apiActive) {
+      if (!state.apiActive) {
         renderSettingsApiState();
         return;
       }
@@ -869,26 +873,24 @@
     function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
 
     async function loadBackendSchoolSettings() {
-      if (!SCHOOL_SETTINGS_API_ENABLED) {
-        renderAll();
-        return;
-      }
-
       state.apiLoading = true;
       renderSettingsApiState();
       try {
-        const [apiSchool, portal, structure, years, gradingCategories, subjects] = await Promise.all([
+        await window.EDUGNAY_SCHOOL_READY;
+        const [apiSchool, portal, structure, years, gradingCategories, subjects, attendance] = await Promise.all([
           window.EDUGNAY_API.getSchoolSettings(),
           window.EDUGNAY_API.getPortalFeatures(),
           window.EDUGNAY_API.getAcademicStructure(),
           window.EDUGNAY_API.getAcademicYears(),
           window.EDUGNAY_API.getGradingCategories(),
-          window.EDUGNAY_API.getSubjects()
+          window.EDUGNAY_API.getSubjects(),
+          window.EDUGNAY_API.request('/school/attendance-settings')
         ]);
         if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
         applyApiSchoolSettings(apiSchool);
         applyApiAcademicStructure(structure);
         state.apiGradingCategories = gradingCategories;
+        state.apiAttendanceRules = attendance.settings;
         const activeYear = years.find(year => year.status === 'active') || years[0] || null;
         const terms = activeYear
           ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
@@ -954,7 +956,7 @@
         return;
       }
 
-      if (SCHOOL_SETTINGS_API_ENABLED) {
+      {
         if (!state.apiActive) {
           notify('School settings are still loading. Please try again.');
           return;
@@ -1012,36 +1014,6 @@
         return;
       }
 
-      const type = schoolTypeInfo(selectedLevels);
-      Object.assign(school, {
-        name: values.name.trim(),
-        shortName: values.name.trim().toUpperCase(),
-        schoolType: type.value,
-        typeLabel: type.label,
-        schoolId: values.schoolId.trim() || null,
-        regionName: values.regionName.trim() || null,
-        divisionName: values.divisionName.trim() || null,
-        districtName: values.districtName.trim() || null,
-        address: values.address.trim(),
-        phone: values.phone.trim() || null,
-        email: values.email.trim(),
-        website: values.website.trim() || null
-      });
-      school.schoolLevels = selectedLevels;
-      school.activeDivision = selectedLevels.includes(state.division)
-        ? state.division
-        : (selectedLevels.includes('jhs') ? 'jhs' : selectedLevels[0]);
-      school.divisions ||= {};
-      selectedLevels.forEach(level => ensureDivision(school, level));
-      Object.keys(school.divisions).forEach(level => {
-        if (!selectedLevels.includes(level)) delete school.divisions[level];
-      });
-      state.division = currentDivisionKey(school);
-      if (state.logoData) school.logoUrl = state.logoData;
-      persistSchool();
-      window.refreshEdUgnayShellContext?.();
-      renderAll();
-      showAppToast('School profile saved in local demo data.', 'info');
     }
     async function saveAcademic(event) {
       event.preventDefault();
@@ -1052,7 +1024,7 @@
       const selectedGrades = values.getAll('grades');
       const selectedTracks = values.getAll('tracks');
 
-      if (SCHOOL_SETTINGS_API_ENABLED) {
+      {
         if (!state.apiActive) {
           notify('School settings are still loading. Please try again.');
           return;
@@ -1071,20 +1043,12 @@
         return;
       }
 
-      const target = ensureDivision(school, level);
-      target.enabledGrades = selectedGrades;
-      target.tracks = selectedTracks;
-      state.division = level;
-      school.activeDivision = level;
-      persistSchool();
-      renderAll();
-      showAppToast(`${levelLabel(level)} academic structure saved in local demo data.`, 'info');
     }
 
     function changeAcademicPeriodType(event) {
       const school = activeSchool();
       const { level } = activeDivision(school);
-      if (SCHOOL_SETTINGS_API_ENABLED && state.apiActive && getApiTermsForLevel(level).length) {
+      if (state.apiActive && getApiTermsForLevel(level).length) {
         event.target.value = frontendPeriodType(getApiLevel(level)?.gradingPeriodType);
         notify('The period structure cannot change after terms have been configured.');
         return;
@@ -1210,7 +1174,7 @@
       };
 
       try {
-        if (SCHOOL_SETTINGS_API_ENABLED) {
+        {
           if (!state.apiActive) throw new Error('School settings are still loading. Please try again.');
           await saveBackendAcademicTerms(values, level);
           state.termDraft = null;
@@ -1220,12 +1184,6 @@
           showAppToast(`${levelLabel(level)} academic terms saved.`);
           return;
         }
-        await window.EDUGNAY_CONFIG.saveAcademicTermConfig(school.id, values);
-        state.termDraft = null;
-        state.school = window.EDUGNAY_CONFIG.getActiveSchool();
-        renderAcademicTermsPane();
-        window.refreshEdUgnayShellContext?.();
-        showAppToast(`${levelLabel(level)} academic terms saved in local demo data.`, 'info');
       } catch (error) {
         notify(error.message || 'The academic terms could not be saved.');
       }
@@ -1268,24 +1226,8 @@
       } else {
         title.textContent = `Close ${period.name}`;
         subtitle.textContent = 'Review incomplete records before closing this grading period.';
-        if (SCHOOL_SETTINGS_API_ENABLED) {
-          body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p><div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>The backend will verify the active-period rule and record this action.</span></div>`;
-          confirmButton.textContent = 'Close period';
-        } else {
-          let readiness;
-          try {
-            readiness = await window.EDUGNAY_CONFIG.getAcademicPeriodCloseReadiness(activeSchool().id, level, periodId);
-          } catch (error) {
-            state.termAction = null;
-            state.termTrigger = null;
-            notify(error.message || 'The grading-period readiness could not be loaded.');
-            return;
-          }
-          const issues = [...readiness.blockingIssues.map(item => `<li class="blocking">${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`), ...readiness.warnings.map(item => `<li>${window.EDUGNAY_CONFIG.escapeHtml(item)}</li>`)].join('');
-          body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p>${issues ? `<ul class="term-readiness-list">${issues}</ul>` : '<div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>No blocking issues were found.</span></div>'}`;
-          confirmButton.textContent = 'Close period';
-          confirmButton.disabled = !readiness.canClose;
-        }
+        body.innerHTML = `<p class="term-modal-message">Closing <strong>${window.EDUGNAY_CONFIG.escapeHtml(period.name)}</strong> makes its grades read-only. The next period will not start automatically.</p><div class="term-modal-ready"><i data-lucide="check-circle-2"></i><span>The backend will verify the active-period rule and record this action.</span></div>`;
+        confirmButton.textContent = 'Close period';
       }
 
       modal.classList.add('open');
@@ -1297,13 +1239,12 @@
     async function submitTermAction(event) {
       event.preventDefault();
       if (!state.termAction) return;
-      const schoolId = activeSchool().id;
-      const { action, schoolLevel, periodId } = state.termAction;
+      const { action, periodId } = state.termAction;
       const confirmButton = document.getElementById('confirmTermAction');
       confirmButton.disabled = true;
 
       try {
-        if (SCHOOL_SETTINGS_API_ENABLED) {
+        {
           const apiTermId = Number(periodId);
           if (!Number.isInteger(apiTermId) || apiTermId < 1) throw new Error('The academic-term identifier is invalid.');
           if (action === 'start') await window.EDUGNAY_API.activateAcademicTerm(apiTermId);
@@ -1314,14 +1255,6 @@
           });
           await reloadBackendAcademicTerms();
           applyApiContext();
-        } else {
-          if (action === 'start') await window.EDUGNAY_CONFIG.startAcademicPeriod(schoolId, schoolLevel, periodId);
-          else if (action === 'close') await window.EDUGNAY_CONFIG.closeAcademicPeriod(schoolId, schoolLevel, periodId);
-          else await window.EDUGNAY_CONFIG.extendAcademicPeriod(schoolId, schoolLevel, periodId, {
-            plannedEndDate: document.getElementById('extendedEndDate').value,
-            reason: document.getElementById('extensionReason').value
-          });
-          state.school = window.EDUGNAY_CONFIG.getActiveSchool();
         }
         closeTermActionModal();
         renderAcademicTermsPane();
@@ -1365,7 +1298,7 @@
         return;
       }
 
-      if (SCHOOL_SETTINGS_API_ENABLED) {
+      {
         if (!state.apiActive) {
           notify('School settings are still loading. Please try again.');
           return;
@@ -1403,13 +1336,6 @@
         return;
       }
 
-      target.gradingRules = rules.map(rule => ({ ...rule, weight: Number(form.elements[rule.id].value || 0) }));
-      target.passingGradeThreshold = passingGradeThreshold;
-      target.gradeRounding = gradeRounding;
-      school.activeDivision = level;
-      persistSchool();
-      window.refreshEdUgnayShellContext?.();
-      showAppToast(`${levelLabel(level)} grading rules saved in local demo data.`, 'info');
     }
     function confirmJournalSubjectChange(subjectName) {
       return new Promise(resolve => {
@@ -1569,9 +1495,9 @@
       const form = event.currentTarget;
       const school = activeSchool();
       const journalSubjectId = String(form.elements.journalSubjectId?.disabled
-        ? (state.apiActive ? state.apiJournalSubjectId : school?.journalSubjectId) || ''
+        ? state.apiJournalSubjectId || ''
         : form.elements.journalSubjectId?.value || '');
-      const subjects = state.apiActive ? state.apiSubjects : window.EDUGNAY_CONFIG.getConfiguredSubjects(school);
+      const subjects = state.apiSubjects;
       const journalSubjectIsConfigured = subjects.some(subject => String(subject.id) === journalSubjectId);
       if (form.elements.journalsEnabled?.checked && !journalSubjectIsConfigured) {
         notify('Select a configured subject before enabling Journals.');
@@ -1579,7 +1505,7 @@
         return;
       }
 
-      if (SCHOOL_SETTINGS_API_ENABLED) {
+      {
         if (!state.apiActive) {
           notify('School settings are still loading. Please try again.');
           return;
@@ -1615,35 +1541,47 @@
         return;
       }
 
-      school.gradesPageEnabled = Boolean(form.elements.gradesPageEnabled?.checked);
-      school.narrativeReportsEnabled = Boolean(form.elements.narrativeReportsEnabled?.checked);
-      school.journalsEnabled = Boolean(form.elements.journalsEnabled?.checked);
-      school.journalSubjectId = journalSubjectId;
-      persistSchool();
-      window.refreshEdUgnayShellContext?.();
-      renderAll();
-      showAppToast('Portal features saved in local demo data.', 'info');
     }
-    function saveAttendance(event) {
+    async function saveAttendance(event) {
       event.preventDefault();
       const school = activeSchool();
       const form = event.currentTarget;
       const values = new FormData(form);
-      const currentRules = getAttendanceRules(school);
       const toPositiveNumber = (name, fallback) => Math.max(1, Number(values.get(name)) || fallback);
-      school.attendanceRules = {
-        ...currentRules,
+      const settings = {
         maxUnexcusedAbsences: toPositiveNumber('maxUnexcusedAbsences', 5),
         consecutiveAbsencesAlert: toPositiveNumber('consecutiveAbsencesAlert', 3),
         lateCountAsAbsence: toPositiveNumber('lateCountAsAbsence', 3),
         countExcusedAbsences: values.has('countExcusedAbsences'),
         allowEditPastAttendance: values.has('allowEditPastAttendance')
       };
-      persistSchool();
-      showAppToast('Attendance rules saved.');
+      try {
+        const result = await window.EDUGNAY_API.request('/school/attendance-settings', {
+          method: 'PATCH', body: JSON.stringify(settings)
+        });
+        state.apiAttendanceRules = result.settings;
+        renderAttendancePane();
+        showAppToast('Attendance rules saved.');
+      } catch (error) { notify(error.message || 'Attendance rules could not be saved.'); }
     }
-    function addHoliday(event) { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); const holidays = window.EDUGNAY_CONFIG.getHolidays(); holidays.push({ id: `holiday-${Date.now()}`, date: values.date, title: values.title.trim(), detail: values.detail.trim() || 'No classes today.', type: 'holiday', appliesTo: 'all' }); window.EDUGNAY_CONFIG.saveHolidays(holidays); event.currentTarget.reset(); renderCalendarPane(); showAppToast('Calendar notice added in local demo data.', 'info'); }
-    function removeHoliday(id) { window.EDUGNAY_CONFIG.saveHolidays(window.EDUGNAY_CONFIG.getHolidays().filter(day => day.id !== id)); renderCalendarPane(); showAppToast('Calendar notice removed from local demo data.', 'info'); }
+    async function addHoliday(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const values = Object.fromEntries(new FormData(form).entries());
+      try {
+        await window.EDUGNAY_API.request('/school/calendar-notices', { method: 'POST', body: JSON.stringify(values) });
+        form.reset();
+        await loadCalendarNotices();
+        showAppToast('Calendar notice added.');
+      } catch (error) { notify(error.message || 'The notice could not be added.'); }
+    }
+    async function removeHoliday(id) {
+      try {
+        await window.EDUGNAY_API.request(`/school/calendar-notices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        await loadCalendarNotices();
+        showAppToast('Calendar notice removed.');
+      } catch (error) { notify(error.message || 'The notice could not be removed.'); }
+    }
 
     document.getElementById('termActionForm').addEventListener('submit', submitTermAction);
     document.getElementById('closeTermActionModal').addEventListener('click', closeTermActionModal);
@@ -1657,6 +1595,7 @@
         document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item.dataset.schoolTab === 'terms'));
       }
       loadBackendSchoolSettings();
+      loadCalendarNotices();
     });
   </script>
 </body>

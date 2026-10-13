@@ -190,9 +190,9 @@
 
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar faculty">MR</div>
+          <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -263,7 +263,7 @@
           </div>
           <div class="rail-body" style="font-size:12px;color:var(--gray-500);line-height:1.7;">
             Announcements are posted by the <strong style="color:var(--gray-700);">School Administrator</strong>. As a teacher, you receive announcements directed at <strong style="color:var(--gray-700);">teachers</strong> and <strong style="color:var(--gray-700);">all users</strong>.<br/><br/>
-            To request an announcement be posted, please contact the admin office or email <a href="mailto:admin@stcolumban.edu.ph" style="color:var(--blue-mid);font-weight:600;">admin@stcolumban.edu.ph</a>.
+            To request an announcement be posted, please contact the school administrator.
           </div>
         </div>
 
@@ -274,7 +274,8 @@
 </div>
 
 <script>
-  let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('teachers');
+  let ANNOUNCEMENTS = [];
+  let announcementLoadError = '';
 
   function renderTeacherAnnouncements() {
     const list = document.getElementById('annList');
@@ -316,13 +317,17 @@
     });
 
       const empty = document.getElementById('annEmpty');
-      const isEmpty = visible === 0;
+      const isEmpty = visible === 0 || Boolean(announcementLoadError);
       empty.hidden = !isEmpty;
       if (isEmpty) {
-        empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(announcementLoadError ? {
+          icon: 'alert-circle',
+          title: 'Announcements unavailable',
+          text: announcementLoadError
+        } : {
           icon: 'megaphone',
           title: 'No announcements found',
-          text: 'Try adjusting your filters or search query.'
+          text: ANNOUNCEMENTS.length ? 'Try adjusting your filters or search query.' : 'No announcements have been posted yet.'
         });
         if (window.lucide) lucide.createIcons();
       } else empty.innerHTML = '';
@@ -380,9 +385,7 @@
     card.dataset.markingRead = 'true';
 
     try {
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        await window.EDUGNAY_API.markAnnouncementRead(card.dataset.id);
-      }
+      await window.EDUGNAY_API.markAnnouncementRead(card.dataset.id);
     } catch (error) {
       window.alert(error?.message || 'The announcement could not be marked as read.');
       return;
@@ -403,9 +406,9 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     await window.EDUGNAY_COMMUNICATION_READY;
-    if (window.EDUGNAY_COMMUNICATION?.backend) {
-      ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
-    }
+    const communication = window.EDUGNAY_COMMUNICATION;
+    announcementLoadError = communication?.error || (!communication?.backend ? 'Connect to the backend and reload to view announcements.' : '');
+    ANNOUNCEMENTS = announcementLoadError ? [] : communication.announcements;
     renderTeacherAnnouncements();
     filterCards();
   });

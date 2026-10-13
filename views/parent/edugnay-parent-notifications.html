@@ -177,9 +177,6 @@
   }
 
   function renderNotifList() {
-    if (!window.EDUGNAY_COMMUNICATION?.backend) {
-      window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, PARENT_READ_STORE_KEY);
-    }
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();

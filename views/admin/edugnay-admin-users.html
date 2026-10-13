@@ -551,9 +551,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar admin">SA</div>
+            <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -661,11 +661,6 @@
           <div class="panel-title">All User Accounts</div>
           <div class="panel-meta">Showing <strong id="rowCount">0</strong> of <strong id="totalUserCount">0</strong> users</div>
         </div>
-        <div class="users-load-notice" id="usersLoadNotice" role="status" hidden>
-          <span id="usersLoadNoticeText"></span>
-          <button class="top-btn secondary" type="button" onclick="loadManagedUsers()">Retry</button>
-        </div>
-
         <div class="table-wrap">
           <table id="userTable">
             <thead>
@@ -726,25 +721,22 @@
     const ROLE_OPT_TO_TABLE = { adm: 'school_admin', fac: 'teacher', stud: 'student', parents: 'parent' };
     const TABLE_TO_ROLE_OPT = { school_admin: 'adm', teacher: 'fac', student: 'stud', parent: 'parents' };
 
-    const ADMIN_USERS_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
-    const LOCAL_USERS = ADMIN_USERS_API_ENABLED ? [] : window.EDUGNAY_CONFIG.getUsers();
-    let USERS = LOCAL_USERS;
+    let USERS = [];
     let backendUserSections = [];
     let backendParentChildren = new Map();
     let usersApiActive = false;
+    let managedSchoolDomain = '';
     let usersLoading = false;
     let usersLoadError = '';
     let importState = { role: '', parsed: null, validation: null };
     let importSubmitting = false;
 
     function findManagedUser(userId) {
-      return USERS.find(user => String(user.id) === String(userId))
-        || (!usersApiActive ? window.EDUGNAY_CONFIG.getUserById(userId) : null);
+      return USERS.find(user => String(user.id) === String(userId));
     }
 
     async function getManagedUser(userId) {
-      if (usersApiActive) return window.EDUGNAY_API.getUser(userId);
-      return findManagedUser(userId);
+      return usersApiActive ? window.EDUGNAY_API.getUser(userId) : null;
     }
 
     async function loadManagedUsers() {
@@ -756,18 +748,16 @@
       if (importUsersButton) importUsersButton.disabled = true;
       renderUsers();
 
-      if (!ADMIN_USERS_API_ENABLED) {
-        usersLoading = false;
-        if (addAccountButton) addAccountButton.disabled = false;
-        renderUsers();
-        return;
-      }
-
       try {
-        const [users, sections] = await Promise.all([
+        await window.EDUGNAY_SCHOOL_READY;
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The backend is not configured.');
+        const [users, sections, school] = await Promise.all([
           window.EDUGNAY_API.getAllUsers(),
-          window.EDUGNAY_API.getSections()
+          window.EDUGNAY_API.getSections(),
+          window.EDUGNAY_API.getSchoolSettings()
         ]);
+        if (!school?.schoolEmailDomain) throw new Error('School email domain is not configured.');
+        managedSchoolDomain = school.schoolEmailDomain;
         USERS = users;
         sortUsersByDate();
         backendUserSections = sections.filter(section =>
@@ -778,16 +768,17 @@
         ])));
         usersApiActive = true;
       } catch (error) {
+        usersApiActive = false;
+        USERS = [];
+        backendUserSections = [];
+        backendParentChildren.clear();
+        managedSchoolDomain = '';
         if (error.status === 401 || error.status === 403) {
-          usersApiActive = false;
-          USERS = [];
-          backendUserSections = [];
-          backendParentChildren.clear();
           usersLoadError = 'Sign in as a school administrator to load user accounts.';
         } else {
           usersLoadError = error.status === 429 ? error.message
             : error.status === 503 ? 'The server or database is temporarily unavailable.'
-            : 'User accounts could not be loaded from the backend.';
+            : error.message || 'User accounts could not be loaded from the backend.';
         }
         console.warn(usersLoadError, error.message);
       } finally {
@@ -812,22 +803,11 @@
       return [formatGradeLevel(user.gradeLevel)].filter(Boolean);
     }
 
-    function getLinkedStudentGrade(link) {
-      const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-      return formatGradeLevel(student?.gradeLevel);
-    }
-
     function getLinkedStudents(user) {
       if (user?.role !== 'parent') return [];
-      if (usersApiActive) return (backendParentChildren.get(String(user.id)) || []).map(child => ({
-        studentId: child.studentId, relationship: child.relationship
+      return (backendParentChildren.get(String(user.id)) || []).map(child => ({
+        studentId: String(child.studentId), relationship: child.relationship
       }));
-      return window.EDUGNAY_CONFIG.getParentStudentLinks()
-        .filter(link => link.parentId === user.id)
-        .map(link => ({
-          studentId: link.studentId,
-          relationship: link.relationship || ''
-        }));
     }
 
     function getGradeLinkDisplay(user) {
@@ -835,14 +815,8 @@
         const linkedStudents = getLinkedStudents(user);
         if (!linkedStudents.length) return 'No linked students';
         return 'Linked: ' + linkedStudents.map(link => {
-          if (usersApiActive) {
-            const child = (backendParentChildren.get(String(user.id)) || []).find(item => item.studentId === link.studentId);
-            return child ? child.displayName + (child.gradeLevel ? ` (${child.gradeLevel})` : '') : 'Student';
-          }
-          const student = usersApiActive ? findManagedUser(link.studentId) : window.EDUGNAY_CONFIG.getUserById(link.studentId);
-          if (!student) return 'Student';
-          const gradeLevel = getLinkedStudentGrade(link);
-          return student.displayName + (gradeLevel ? ` (${gradeLevel})` : '');
+          const child = (backendParentChildren.get(String(user.id)) || []).find(item => String(item.studentId) === String(link.studentId));
+          return child ? child.displayName + (child.gradeLevel ? ` (${child.gradeLevel})` : '') : 'Student';
         }).join(', ');
       }
 
@@ -863,23 +837,13 @@
         const linkedStudents = getLinkedStudents(user);
         if (!linkedStudents.length) return 'No linked students';
         return 'Linked: ' + linkedStudents.map(link => {
-          if (usersApiActive) {
-            const child = (backendParentChildren.get(String(user.id)) || []).find(item => item.studentId === link.studentId);
-            return child ? `${child.displayName} (${[child.gradeLevel, child.sectionName].filter(Boolean).join(' / ') || 'Unassigned'})` : 'Student';
-          }
-          const sections = window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool());
-          const student = window.EDUGNAY_CONFIG.getUserById(link.studentId);
-          const section = sections.find(record => record.id === student?.sectionId);
-          return (student?.displayName || 'Student') + (section ? ` (${section.grade} / ${section.name})` : '');
+          const child = (backendParentChildren.get(String(user.id)) || []).find(item => String(item.studentId) === String(link.studentId));
+          return child ? `${child.displayName} (${[child.gradeLevel, child.sectionName].filter(Boolean).join(' / ') || 'Unassigned'})` : 'Student';
         }).join(', ');
       }
       if (user.role === 'school_admin') return '—';
       if (user.role !== 'student') return '—';
-      if (usersApiActive) return [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
-      const section = window.EDUGNAY_CONFIG
-        .getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
-        .find(record => record.id === user.sectionId);
-      return section ? `${section.grade} / ${section.name}` : 'Unassigned';
+      return [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
     }
 
     function renderSectionFilterOptions() {
@@ -887,9 +851,7 @@
       const selectedGrade = document.getElementById('gradeLevelFilter').value;
 
       const currentValue = select.value;
-      const sections = (usersApiActive
-        ? backendUserSections
-        : window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool()))
+      const sections = backendUserSections
         .filter(section => selectedGrade === 'all' || section.grade === selectedGrade)
         .sort((a, b) => (
           gradeLevelSortValue(a.grade) - gradeLevelSortValue(b.grade)
@@ -970,10 +932,6 @@
     function renderUsers() {
       updateStudentFilters();
       renderSectionFilterOptions();
-      const notice = document.getElementById('usersLoadNotice');
-      notice.hidden = !usersLoadError || !USERS.length;
-      document.getElementById('usersLoadNoticeText').textContent = usersLoadError
-        ? usersLoadError + ' Showing previously loaded accounts.' : '';
       const tbody = document.getElementById('tableBody');
       if ((usersLoading || usersLoadError) && !USERS.length) {
         const message = usersLoading ? 'Loading user accounts…' : usersLoadError;
@@ -1044,7 +1002,7 @@
         <td class="date-cell account-date-cell">${formatAccountDate(u.createdAt)}</td>
         <td class="account-actions-cell"><div class="row-actions">${actionButtons}</div></td>
       </tr>`;
-      }).join('') : `<tr class="panel-empty-row"><td colspan="${showGradeLinkColumn ? 6 : 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No user accounts found', text: 'Try adjusting the role, status, grade level, or search filters.' })}</td></tr>`;
+      }).join('') : `<tr class="panel-empty-row"><td colspan="${showGradeLinkColumn ? 6 : 5}">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No user accounts found', text: USERS.length ? 'Try adjusting the role, status, grade level, or search filters.' : 'No accounts have been added to this school yet.' })}</td></tr>`;
 
       lucide.createIcons();
       wireRowButtons();
@@ -1162,7 +1120,6 @@
         firstName: accountFieldValue('accountFirstName'),
         lastName: accountFieldValue('accountLastName'),
         personalEmail: accountFieldValue('accountPersonalEmail').toLowerCase(),
-        schoolEmail: accountFieldValue('accountSchoolEmail').toLowerCase(),
         role
       };
 
@@ -1220,58 +1177,6 @@
       return '';
     }
 
-    async function openCredentialDeliveryModal(accounts) {
-      const users = (Array.isArray(accounts) ? accounts : [accounts]).filter(Boolean);
-      const deliveries = users
-        .map(user => ({ user, delivery: window.EDUGNAY_CONFIG.prepareCredentialDelivery(user.id) }))
-        .filter(item => item.delivery);
-      if (!deliveries.length) return;
-
-      const backdrop = document.getElementById('credentialDeliveryModalBackdrop');
-      const singleView = document.getElementById('credentialSingleView');
-      const batchView = document.getElementById('credentialBatchView');
-      const notice = document.getElementById('credentialDeliveryNotice');
-      const single = deliveries.length === 1;
-
-      singleView.hidden = !single;
-      batchView.hidden = single;
-      notice.textContent = 'This is a frontend delivery preview. The backend will email these credentials and each student attendance QR to the personal email when delivery is connected.';
-
-      if (single) {
-        const { user, delivery } = deliveries[0];
-        const qrSection = document.getElementById('credentialQrSection');
-        document.getElementById('credentialDeliveryModalSub').textContent = `Prepared for ${delivery.personalEmail || 'the account owner'}.`;
-        document.getElementById('credentialSchoolEmail').textContent = delivery.schoolEmail || 'Not set';
-        document.getElementById('credentialTemporaryPassword').textContent = delivery.temporaryPassword;
-        qrSection.hidden = !delivery.attendanceQrToken;
-
-        if (delivery.attendanceQrToken) {
-          document.getElementById('credentialQrImage').src = await window.EDUGNAY_CONFIG.generateAttendanceQrDataUrl(delivery.attendanceQrToken);
-        } else {
-          document.getElementById('credentialQrImage').removeAttribute('src');
-        }
-      } else {
-        const studentCount = deliveries.filter(item => item.delivery.attendanceQrToken).length;
-        document.getElementById('credentialDeliveryModalSub').textContent = `${deliveries.length} account deliveries prepared.`;
-        document.getElementById('credentialBatchSummary').textContent = studentCount
-          ? `${studentCount} student delivery${studentCount === 1 ? '' : 'ies'} include a Student Attendance QR.`
-          : 'The account credentials are ready for backend email delivery.';
-        document.getElementById('credentialBatchList').innerHTML = deliveries.map(({ user, delivery }) => `
-          <div class="credential-batch-row">
-            <div>
-              <strong>${window.EDUGNAY_CONFIG.escapeHtml(user.displayName)}</strong>
-              <span>${window.EDUGNAY_CONFIG.escapeHtml(delivery.personalEmail || 'No personal email')}</span>
-            </div>
-            ${delivery.attendanceQrToken ? '<div class="credential-batch-qr">Attendance QR included</div>' : ''}
-          </div>
-        `).join('');
-      }
-
-      backdrop.classList.add('open');
-      backdrop.setAttribute('aria-hidden', 'false');
-      lucide.createIcons();
-    }
-
     function openBackendCredentialDeliveryModal(user, emailDelivery) {
       if (!user) return;
 
@@ -1324,7 +1229,6 @@
         firstName: data.firstName,
         lastName: data.lastName,
         personalEmail: data.personalEmail,
-        schoolEmail: data.schoolEmail,
         role: data.role
       };
       if (data.employeeNo !== undefined) payload.employeeNo = data.employeeNo;
@@ -1336,33 +1240,21 @@
       }
 
       try {
-        if (ADMIN_USERS_API_ENABLED && !usersApiActive) {
+        if (!usersApiActive) {
           throw new Error('User accounts are unavailable from the backend. Refresh the page and try again.');
         }
 
-        if (usersApiActive) {
-          const result = data.userId
-            ? await window.EDUGNAY_API.updateUser(data.userId, payload)
-            : await window.EDUGNAY_API.createUser(payload);
-          if (!result.user) throw new Error('The account could not be saved.');
+        const result = data.userId
+          ? await window.EDUGNAY_API.updateUser(data.userId, payload)
+          : await window.EDUGNAY_API.createUser(payload);
+        if (!result.user) throw new Error('The account could not be saved.');
 
-          closeAccountModal();
-          await loadManagedUsers();
-          if (data.userId) {
-            showAppToast(usersLoadError ? 'Account updated, but the user list could not refresh.' : 'Account updated.', usersLoadError ? 'info' : 'success');
-          } else {
-            openBackendCredentialDeliveryModal(result.user, result.emailDelivery);
-          }
+        closeAccountModal();
+        await loadManagedUsers();
+        if (data.userId) {
+          showAppToast(usersLoadError ? 'Account updated, but the user list could not refresh.' : 'Account updated.', usersLoadError ? 'info' : 'success');
         } else {
-          const user = data.userId
-            ? await window.EDUGNAY_CONFIG.updateUser(data.userId, payload)
-            : await window.EDUGNAY_CONFIG.createUser(payload);
-          if (!user) throw new Error('The account could not be saved.');
-
-          closeAccountModal();
-          renderUsers();
-          if (data.userId) showAppToast('Account updated.');
-          else await openCredentialDeliveryModal(user);
+          openBackendCredentialDeliveryModal(result.user, result.emailDelivery);
         }
       } catch (error) {
         showAppToast(error.message || 'The account could not be saved.', 'error');
@@ -1378,14 +1270,9 @@
       const userId = document.getElementById('deactivateUserId').value;
       const action = document.getElementById('deactivateAction').value; // 'deactivate' | 'reactivate'
       try {
-        if (usersApiActive) {
-          await window.EDUGNAY_API.setUserStatus(userId, action === 'deactivate' ? 'inactive' : 'active');
-          await loadManagedUsers();
-        } else {
-          const user = findManagedUser(userId);
-          if (user) window.EDUGNAY_CONFIG.updateUser(user.id, { status: action === 'deactivate' ? 'inactive' : 'active' });
-          renderUsers();
-        }
+        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        await window.EDUGNAY_API.setUserStatus(userId, action === 'deactivate' ? 'inactive' : 'active');
+        await loadManagedUsers();
         closeDeactivateModal();
         showAppToast(usersLoadError ? 'Account status changed, but the user list could not refresh.' : action === 'deactivate' ? 'Account deactivated.' : 'Account reactivated.', usersLoadError ? 'info' : 'success');
       } catch (error) {
@@ -1398,52 +1285,29 @@
       e.preventDefault();
 
       const userId = document.getElementById('deleteUserId').value;
-      if (ADMIN_USERS_API_ENABLED && !usersApiActive) {
+      if (!usersApiActive) {
         showAppToast('User accounts are not connected to the backend. Try again after they load.', 'error');
         return;
       }
 
-      if (usersApiActive) {
-        const button = document.getElementById('deleteUserConfirmButton');
-        const originalLabel = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Deleting…';
-        let deleted = false;
-        try {
-          await window.EDUGNAY_API.deleteUser(userId);
-          deleted = true;
-          closeDeleteModal();
-          currentPage = 1;
-          await loadManagedUsers();
-          showAppToast(usersLoadError ? 'Account deleted, but the user list could not refresh.' : 'Account deleted.', usersLoadError ? 'info' : 'success');
-        } catch (error) {
-          showAppToast(deleted ? 'Account deleted, but the user list could not refresh.' : error.message || 'The account could not be deleted.', deleted ? 'info' : 'error');
-        } finally {
-          button.disabled = false;
-          button.textContent = originalLabel;
-        }
-        return;
+      const button = document.getElementById('deleteUserConfirmButton');
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      let deleted = false;
+      try {
+        await window.EDUGNAY_API.deleteUser(userId);
+        deleted = true;
+        closeDeleteModal();
+        currentPage = 1;
+        await loadManagedUsers();
+        showAppToast(usersLoadError ? 'Account deleted, but the user list could not refresh.' : 'Account deleted.', usersLoadError ? 'info' : 'success');
+      } catch (error) {
+        showAppToast(deleted ? 'Account deleted, but the user list could not refresh.' : error.message || 'The account could not be deleted.', deleted ? 'info' : 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
       }
-
-      const user = window.EDUGNAY_CONFIG.getUserById(userId);
-      if (user) {
-        const links = window.EDUGNAY_CONFIG.getParentStudentLinks();
-        const parentIds = [...new Set(links
-          .filter(link => link.studentId === user.id)
-          .map(link => link.parentId))];
-
-        if (user.role === 'parent') window.EDUGNAY_CONFIG.setParentStudentLinks(user.id, []);
-        window.EDUGNAY_CONFIG.deleteUser(user.id);
-
-        parentIds.forEach(parentId => {
-          const remainingLinks = window.EDUGNAY_CONFIG.getParentStudentLinks()
-            .filter(link => link.parentId === parentId && link.studentId !== user.id)
-            .map(link => ({ studentId: link.studentId, relationship: link.relationship }));
-          window.EDUGNAY_CONFIG.setParentStudentLinks(parentId, remainingLinks);
-        });
-      }
-      closeDeleteModal();
-      renderUsers();
 
     });
 
@@ -1524,7 +1388,7 @@
     /* ── SHARED ACCOUNT MODAL (Add / Edit) ── */
 
     function openAddModal() {
-      if (ADMIN_USERS_API_ENABLED && (!usersApiActive || usersLoading)) {
+      if (!usersApiActive || usersLoading || usersLoadError) {
         return;
       }
       const form = document.getElementById('accountForm');
@@ -1597,38 +1461,30 @@
 
     /* USER DETAILS MODAL */
     async function openUserDetailsModal(userId, trigger) {
-      const user = await getManagedUser(userId);
-      if (!user) return;
-
-      const profile = user.profile || await window.EDUGNAY_CONFIG.getUserProfile(user.id);
-      const sections = !usersApiActive && ['student', 'parent'].includes(user.role)
-        ? await window.EDUGNAY_CONFIG.getAssignmentSections(window.EDUGNAY_CONFIG.getActiveSchool())
-        : [];
+      if (!usersApiActive) return;
+      let user;
       let parentLinks = [];
-      if (user.role === 'parent') {
-        if (usersApiActive) {
-          try {
-            parentLinks = await window.EDUGNAY_API.getParentChildren(user.id);
-            backendParentChildren.set(String(user.id), parentLinks);
-          } catch (error) {
-            alert(error.message || 'Linked students could not be loaded.');
-            return;
-          }
-        } else {
-          parentLinks = (await window.EDUGNAY_CONFIG.getParentStudentLinks())
-            .filter(link => String(link.parentId) === String(user.id));
+      try {
+        user = await getManagedUser(userId);
+        if (!user) throw new Error('The account could not be loaded.');
+        if (user.role === 'parent') {
+          parentLinks = await window.EDUGNAY_API.getParentChildren(user.id);
+          backendParentChildren.set(String(user.id), parentLinks);
         }
+      } catch (error) {
+        showAppToast(error.message || 'The account details could not be loaded.', 'error');
+        return;
       }
+      const profile = user.profile || {};
       const meta = ROLE_META[user.role];
       const statusLabel = user.status === 'active' ? 'Active' : 'Inactive';
       const statusIcon = user.status === 'active' ? 'circle-check' : 'circle-x';
       const schoolLevel = window.EDUGNAY_CONFIG.grades.find(level => level.key === user.schoolLevel)?.label || user.schoolLevel;
-      const section = sections.find(item => String(item.id) === String(user.sectionId));
       const address = [profile?.houseStreet, profile?.barangay, profile?.cityMunicipality, profile?.province]
         .filter(Boolean)
         .join(', ');
       const setupStatus = ['student', 'parent'].includes(user.role)
-        ? (usersApiActive ? (user.setupCompletedAt ? 'Complete' : 'Required') : (await window.EDUGNAY_CONFIG.isProfileSetupRequired(user.id) ? 'Required' : 'Complete'))
+        ? (user.setupCompletedAt ? 'Complete' : 'Required')
         : 'Not required';
 
       const accountDetails = [
@@ -1645,9 +1501,7 @@
         roleDetails.push(['Employee number', user.employeeNo]);
       }
       if (user.role === 'student') {
-        const sectionDisplay = usersApiActive
-          ? [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned'
-          : section ? `${section.grade} / ${section.name}` : 'Unassigned';
+        const sectionDisplay = [user.gradeLevel, user.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
         roleDetails.push(
           ['LRN', user.lrn],
           ['School level', schoolLevel],
@@ -1680,14 +1534,11 @@
       }
 
       const linkedStudents = parentLinks.map(link => {
-        const student = usersApiActive ? link : window.EDUGNAY_CONFIG.getUserById(link.studentId);
-        const studentSection = sections.find(item => item.id === student?.sectionId);
+        const student = link;
         const relationship = link.relationship
           ? link.relationship.charAt(0).toUpperCase() + link.relationship.slice(1)
           : 'Not specified';
-        const scope = usersApiActive
-          ? [student?.gradeLevel, student?.sectionName].filter(Boolean).join(' / ') || 'Unassigned'
-          : studentSection ? `${studentSection.grade} / ${studentSection.name}` : student?.gradeLevel || 'Unassigned';
+        const scope = [student?.gradeLevel, student?.sectionName].filter(Boolean).join(' / ') || 'Unassigned';
         return `<div class="user-details-linked-row">
           <div>
             <div class="user-details-linked-name">${window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student')}</div>
@@ -1818,11 +1669,8 @@
       setUserDetailsQrStatus('');
       document.getElementById('userDetailsAttendanceQrReload').hidden = true;
       try {
-        let token = student.attendanceQrToken || '';
-        if (usersApiActive) {
-          const response = await window.EDUGNAY_API.getStudentQr(student.apiId || student.id);
-          token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
-        }
+        const response = await window.EDUGNAY_API.getStudentQr(student.apiId || student.id);
+        const token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
         if (requestId !== userDetailsQrRequestId || String(userDetailsQrStudent?.id) !== String(student.id)) return;
         if (!token) {
           setUserDetailsQrStatus('QR unavailable. Reissue it to create a new copy.');
@@ -1838,7 +1686,7 @@
 
     function downloadUserDetailsAttendanceQr() {
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
-      const student = userDetailsQrStudent || window.EDUGNAY_CONFIG.getUserById(studentId);
+      const student = userDetailsQrStudent;
       if (!userDetailsAttendanceQrDataUrl || !student) return;
 
       const name = `${student.firstName || 'student'}-${student.lastName || 'attendance'}`
@@ -1889,7 +1737,7 @@
       event.preventDefault();
       if (regenerateAttendanceQrBusy) return;
       const studentId = document.getElementById('regenerateAttendanceQrStudentId').value;
-      let student = userDetailsQrStudent || findManagedUser(studentId);
+      const student = userDetailsQrStudent || findManagedUser(studentId);
       if (!student || student.role !== 'student') return;
 
       regenerateAttendanceQrBusy = true;
@@ -1907,21 +1755,14 @@
       let rotated = false;
 
       try {
-        if (usersApiActive) {
-          const response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
-          rotated = true;
-          token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
-        } else {
-          student = window.EDUGNAY_CONFIG.regenerateStudentAttendanceQr(studentId);
-          if (!student) throw new Error('The student QR could not be reissued.');
-          rotated = true;
-          userDetailsQrStudent = student;
-          token = student?.attendanceQrToken || '';
-        }
+        if (!usersApiActive) throw new Error('User accounts are unavailable from the backend.');
+        const response = await window.EDUGNAY_API.regenerateStudentQr(student.apiId || student.id);
+        rotated = true;
+        token = window.EDUGNAY_CONFIG.parseAttendanceQrPayload(response?.qrPayload) || '';
         clearUserDetailsQr();
         await displayUserDetailsQr(token, studentId, requestId);
         setUserDetailsQrStatus('Replacement QR generated. The previous QR is no longer valid.', false, true);
-        showAppToast(usersApiActive ? 'Attendance QR reissued.' : 'Attendance QR updated in local demo data.', usersApiActive ? 'success' : 'info');
+        showAppToast('Attendance QR reissued.', 'success');
       } catch (error) {
         if (rotated) {
           clearUserDetailsQr();
@@ -2196,18 +2037,11 @@
       const values = {
         firstName: accountFieldValue('accountFirstName'),
         lastName: accountFieldValue('accountLastName'),
-        role: ROLE_OPT_TO_TABLE[document.getElementById('accountRole').value]
+        role: ROLE_OPT_TO_TABLE[document.getElementById('accountRole').value],
+        schoolEmailDomain: managedSchoolDomain,
+        existingUsers: USERS
       };
-      let candidate = window.EDUGNAY_CONFIG.generateSchoolEmail(values);
-      if (usersApiActive && candidate.includes('@')) {
-        const [localPart, domain] = candidate.split('@');
-        let suffix = 2;
-        while (USERS.some(user => String(user.schoolEmail || '').toLowerCase() === candidate.toLowerCase())) {
-          candidate = `${localPart}${suffix}@${domain}`;
-          suffix += 1;
-        }
-      }
-      schoolEmail.value = candidate;
+      schoolEmail.value = window.EDUGNAY_CONFIG.generateSchoolEmail(values);
     }
 
     function updateAccountModalFields() {
@@ -2517,8 +2351,7 @@
         return record;
       });
 
-      const activeSchoolId = window.EDUGNAY_CONFIG.getActiveSchoolId();
-      const existingSchoolUsers = USERS.filter(user => user.schoolId === activeSchoolId);
+      const existingSchoolUsers = USERS;
       const existingEmails = new Set(existingSchoolUsers
         .map(user => String(user.personalEmail || '').trim().toLowerCase())
         .filter(Boolean));
@@ -2745,7 +2578,7 @@
 
       await loadManagedUsers();
 
-      if (!openAddOnLoad || (ADMIN_USERS_API_ENABLED && !usersApiActive)) return;
+      if (!openAddOnLoad || !usersApiActive) return;
 
       openAddModal();
       pageUrl.searchParams.delete('action');

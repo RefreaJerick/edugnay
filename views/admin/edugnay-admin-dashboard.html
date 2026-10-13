@@ -53,10 +53,10 @@
               <option value="">Select a student</option>
             </select>
             <div class="student-preview" id="studentPreview">
-              <div class="sp-av" id="spAv">JD</div>
+              <div class="sp-av" id="spAv"></div>
               <div>
-                <div class="sp-name" id="spName">Juan Dela Cruz</div>
-                <div class="sp-detail" id="spDetail">j.delacruz.stud@stcolumban.edu.ph</div>
+                <div class="sp-name" id="spName">Select a student</div>
+                <div class="sp-detail" id="spDetail">Select a student</div>
               </div>
             </div>
           </div>
@@ -426,9 +426,9 @@
 
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-            <div class="tb-avatar admin">SA</div>
+            <div class="tb-avatar admin"></div>
             <div class="tb-profile-info">
-              <div class="tb-profile-name">Sr. Admin</div>
+              <div class="tb-profile-name">Loading account...</div>
               <div class="tb-profile-role">Admin</div>
             </div>
             <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -886,6 +886,7 @@
     }
 
     async function loadAdminDashboardData() {
+      await window.EDUGNAY_SCHOOL_READY;
       const session = await window.EDUGNAY_API.getCurrentUser();
       if (session?.role !== 'school_admin') throw new Error('This dashboard requires a school administrator session.');
       const greeting = document.querySelector('.grading-welcome-name');

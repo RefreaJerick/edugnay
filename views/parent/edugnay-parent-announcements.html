@@ -262,9 +262,8 @@
 
 
   <script>
-    // Read the shared school announcement source; replace the getter with the
-    // parent's announcements query later without changing this page's renderer.
-    let ANNOUNCEMENTS = window.EDUGNAY_CONFIG.getAnnouncements('parents');
+    let ANNOUNCEMENTS = [];
+    let announcementLoadError = '';
 
     function renderParentAnnouncements() {
       const list = document.getElementById('annList');
@@ -310,13 +309,17 @@
       });
 
       const empty = document.getElementById('annEmpty');
-      const isEmpty = visible === 0;
+      const isEmpty = visible === 0 || Boolean(announcementLoadError);
       empty.hidden = !isEmpty;
       if (isEmpty) {
-        empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        empty.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState(announcementLoadError ? {
+          icon: 'alert-circle',
+          title: 'Announcements unavailable',
+          text: announcementLoadError
+        } : {
           icon: 'megaphone',
           title: 'No announcements found',
-          text: 'Try adjusting your filters or search query.'
+          text: ANNOUNCEMENTS.length ? 'Try adjusting your filters or search query.' : 'No announcements have been posted yet.'
         });
         if (window.lucide) lucide.createIcons();
       } else empty.innerHTML = '';
@@ -374,9 +377,7 @@
       card.dataset.markingRead = 'true';
 
       try {
-        if (window.EDUGNAY_COMMUNICATION?.backend) {
-          await window.EDUGNAY_API.markAnnouncementRead(card.dataset.id);
-        }
+        await window.EDUGNAY_API.markAnnouncementRead(card.dataset.id);
       } catch (error) {
         window.alert(error?.message || 'The announcement could not be marked as read.');
         return;
@@ -407,9 +408,9 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       await window.EDUGNAY_COMMUNICATION_READY;
-      if (window.EDUGNAY_COMMUNICATION?.backend) {
-        ANNOUNCEMENTS = window.EDUGNAY_COMMUNICATION.announcements;
-      }
+      const communication = window.EDUGNAY_COMMUNICATION;
+      announcementLoadError = communication?.error || (!communication?.backend ? 'Connect to the backend and reload to view announcements.' : '');
+      ANNOUNCEMENTS = announcementLoadError ? [] : communication.announcements;
       renderParentAnnouncements();
       filterCards();
     });

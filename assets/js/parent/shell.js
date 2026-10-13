@@ -1,38 +1,15 @@
 /* ══════════════════════════════════════════
    PARENT SHELL — shared across all parent pages
    Nav, topbar, notif dropdown, profile dropdown
-   Communication data uses the backend when it is available and keeps the
-   local array as an offline fallback.
+   Communication data comes from the backend.
    ══════════════════════════════════════════ */
 
 /* ── LINKED CHILDREN DATA ── */
 const PARENT_CONFIG = window.EDUGNAY_CONFIG;
-const PARENT_SCHOOL_ID = PARENT_CONFIG.getActiveSchoolId();
-const PARENT_NO_CLASS_DAY = PARENT_CONFIG.getNoClassDay();
-const PARENT_USERS = PARENT_CONFIG.getUsersByRole(PARENT_CONFIG.values.roles.PARENT);
 const PARENT_BACKEND_MODE = Boolean(window.EDUGNAY_API?.isBackendAvailable);
-const PARENT_CURRENT_USER = PARENT_BACKEND_MODE ? null : (
-  PARENT_USERS.find(user => user.id === window.EDUGNAY_SESSION?.userId)
-  || PARENT_USERS.find(user => user.id === 'parent-7')
-  || PARENT_USERS.find(user => user.status === PARENT_CONFIG.values.statuses.ACTIVE)
-  || PARENT_USERS[0]
-  || null
-);
-
-// Parent-child links stay as relationship records. Pages resolve the student
-// with getUserById(link.studentId) when they need display details.
-const PARENT_CHILD_DIRECTORY = (PARENT_BACKEND_MODE ? [] : PARENT_CONFIG.getParentStudentLinks())
-  .filter(link => (
-    (link.schoolId || PARENT_SCHOOL_ID) === PARENT_SCHOOL_ID
-    && link.parentId === PARENT_CURRENT_USER?.id
-    && PARENT_CONFIG.getUserById(link.studentId)?.role === PARENT_CONFIG.values.roles.STUDENT
-  ));
-const PARENT_PRIMARY_CHILD = PARENT_CONFIG.getUserById(PARENT_CHILD_DIRECTORY[0]?.studentId);
-const PARENT_CHILD_LABEL = PARENT_PRIMARY_CHILD?.firstName || 'Your child';
-
 window.EDUGNAY_PARENT = {
-  currentUser: PARENT_CURRENT_USER,
-  children: PARENT_CHILD_DIRECTORY
+  currentUser: null,
+  children: []
 };
 
 function renderParentIdentity() {
@@ -65,61 +42,9 @@ function renderParentIdentity() {
 }
 
 /* ── NOTIFICATIONS DATA ── */
-let NOTIFICATIONS = [
-  ...(PARENT_NO_CLASS_DAY ? [{
-    id: `parent-notif-no-class-${PARENT_NO_CLASS_DAY.date}`,
-    schoolId: PARENT_SCHOOL_ID,
-    icon: 'calendar-off',
-    tone: 'gold',
-    type: 'Calendar',
-    read: false,
-    title: PARENT_NO_CLASS_DAY.title || 'No classes today',
-    message: PARENT_NO_CLASS_DAY.detail || 'Classes are suspended today.',
-    link: { page: 'announcements' },
-    createdAt: `${PARENT_NO_CLASS_DAY.date}T00:00:00.000Z`
-  }] : []),
-  {
-    id: 'parent-notif-report-001', icon: 'sparkles', tone: 'purple', type: 'Report', read: false, access: 'reports',
-    title: 'Weekly report sent',
-    message: `${PARENT_CHILD_LABEL}'s weekly report for June 9–14 is now available.`,
-    link: { page: 'reports' },
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 1)).toISOString()
-  },
-  {
-    id: 'parent-notif-attendance-001', icon: 'circle-alert', tone: 'red', type: 'Attendance', read: false,
-    title: 'Absence recorded',
-    message: `${PARENT_CHILD_LABEL} was marked absent today. Contact the adviser if this seems incorrect.`,
-    link: { page: 'attendance' },
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 3)).toISOString()
-  },
-  {
-    id: 'parent-notif-announcement-001', icon: 'megaphone', tone: 'gold', type: 'Announcement', read: true,
-    title: 'New announcement',
-    message: 'Foundation Day — June 20. Classes suspended.',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString()
-  },
-  {
-    id: 'parent-notif-report-002', icon: 'file-text', tone: 'blue', type: 'Report', read: true, access: 'reports',
-    title: 'Narrative report confirmed',
-    message: 'Q2 narrative reports are now viewable on your dashboard.',
-    link: { page: 'reports' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
-  },
-  {
-    id: 'parent-notif-event-001', icon: 'calendar-clock', tone: 'gray', type: 'Reminder', read: true,
-    title: 'Upcoming event',
-    message: 'Intramurals sign-up is open at the Student Affairs table.',
-    link: { page: 'announcements' },
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
-  }
-]
-  .map(record => ({ ...record, schoolId: record.schoolId || 'scc' }))
-  .filter(record => record.schoolId === PARENT_SCHOOL_ID);
-
+let NOTIFICATIONS = [];
 let BACKEND_COMMUNICATION = false;
 
-const PARENT_READ_STORE_KEY = `edugnay_parent_notif_read:${PARENT_SCHOOL_ID}`;
 
 function getParentVisibleNotifications() {
   const reportsEnabled = window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
@@ -128,9 +53,6 @@ function getParentVisibleNotifications() {
 
 /* ── TOPBAR NOTIF DROPDOWN ── */
 function renderTopbarNotifs() {
-  if (!BACKEND_COMMUNICATION) {
-    window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, PARENT_READ_STORE_KEY);
-  }
   const container = document.getElementById('tbNotifList');
   const dot = document.querySelector('.tb-notif-dot');
   if (!container) return;
@@ -147,8 +69,8 @@ function renderTopbarNotifs() {
     container.innerHTML = `
       <div class="tb-notif-empty" id="tbNotifEmpty">
         <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
-        <div class="tb-notif-empty-title">No notifications yet</div>
-        <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+        <div class="tb-notif-empty-title">${window.EDUGNAY_COMMUNICATION?.error ? 'Notifications unavailable' : 'No notifications yet'}</div>
+        <div class="tb-notif-empty-text">${window.EDUGNAY_COMMUNICATION?.error ? 'Please try again when the connection is ready.' : "You're all caught up. New alerts will show up here."}</div>
       </div>
     `;
     if (dot) dot.style.display = 'none';
@@ -182,7 +104,6 @@ function goToTopbarNotif(link, id) {
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
-  storageKey: PARENT_READ_STORE_KEY,
   records: NOTIFICATIONS,
   getItems: getParentVisibleNotifications
 };
@@ -208,6 +129,11 @@ async function loadParentCommunication() {
 }
 
 window.EDUGNAY_COMMUNICATION_READY = loadParentCommunication();
+document.addEventListener('edugnay:calendar-notices-updated', async () => {
+  if (!BACKEND_COMMUNICATION) return;
+  await loadParentCommunication();
+  renderTopbarNotifs();
+});
 
 
 /* ── NAVIGATION ── */
@@ -262,6 +188,8 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
+  try { await window.EDUGNAY_SCHOOL_READY; }
+  catch { showAppToast('School information could not be loaded.', 'error'); }
   await window.EDUGNAY_COMMUNICATION_READY;
   if (PARENT_BACKEND_MODE) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-parent-profile.html', 'parent')) return;
@@ -272,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.warn('Parent identity could not be loaded.', error.message);
     }
-  } else if (PARENT_CONFIG.enforceProfileSetup(PARENT_CURRENT_USER?.id, 'edugnay-parent-profile.html')) return;
+  }
   renderParentIdentity();
   applyParentReportAccess();
   renderTopbarNotifs();

@@ -27,14 +27,18 @@ CREATE TABLE IF NOT EXISTS schools (
   phone VARCHAR(30) NULL,
   email VARCHAR(255) NULL,
   website VARCHAR(255) NULL,
+  school_email_domain VARCHAR(253) NOT NULL UNIQUE,
   logo_path VARCHAR(500) NULL,
   registration_status VARCHAR(30) NOT NULL DEFAULT 'pending',
   submitted_at DATETIME NULL,
   approved_at DATETIME NULL,
   rejected_at DATETIME NULL,
   rejection_reason TEXT NULL,
+  registration_status_token_hash CHAR(64) NULL,
+  registration_status_token_expires_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_schools_registration_status_token_hash (registration_status_token_hash),
   CONSTRAINT chk_schools_registration_status CHECK (registration_status IN ('pending', 'active', 'rejected', 'suspended'))
 ) ENGINE=InnoDB;
 

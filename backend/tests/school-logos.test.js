@@ -3,9 +3,9 @@ const test = require('node:test');
 const { getSchoolLogoUrl, saveSchoolLogo } = require('../config/schoolLogos');
 
 test('school logo URLs only expose stored image paths', () => {
-  assert.equal(getSchoolLogoUrl({ id: 2, logoPath: '/assets/images/manghi-logo.jpg' }), '/api/schools/2/logo');
   assert.equal(getSchoolLogoUrl({ id: 2, logoPath: '123e4567-e89b-12d3-a456-426614174000.png' }), '/api/schools/2/logo');
-  assert.equal(getSchoolLogoUrl({ id: 2, logoPath: '/assets/images/..' }), null);
+  assert.equal(getSchoolLogoUrl({ id: 2, logoPath: '/assets/images/manghi-logo.jpg' }), null);
+  assert.equal(getSchoolLogoUrl({ id: 2, logoPath: '/assets/images/../secret.png' }), null);
   assert.equal(getSchoolLogoUrl({ id: 2, logoPath: 'https://example.com/tracker.png' }), null);
 });
 

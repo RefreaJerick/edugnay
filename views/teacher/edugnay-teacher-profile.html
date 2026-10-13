@@ -143,9 +143,9 @@
       </div>
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar faculty">MR</div>
+          <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -175,10 +175,18 @@
       </div>
     </section>
 
+    <div class="profile-setup-notice" id="teacher-profile-load-notice" hidden role="status" aria-live="polite">
+      <span class="profile-setup-notice-icon" aria-hidden="true"><i data-lucide="circle-alert" style="width:16px;height:16px;"></i></span>
+      <div>
+        <div class="profile-setup-notice-title" id="teacher-profile-load-title"></div>
+        <div class="profile-setup-notice-text" id="teacher-profile-load-text"></div>
+      </div>
+    </div>
+
     <!-- Profile header -->
     <div class="profile-header-card">
       <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profileAvatar" aria-hidden="true">MR</div>
+        <div class="profile-avatar" id="profileAvatar" aria-hidden="true"></div>
         <button type="button" class="profile-avatar-edit" id="avatarEditTrigger" aria-label="Change profile photo" aria-expanded="false" aria-controls="avatarMenu">
           <i data-lucide="pencil" style="width:14px;height:14px;"></i>
         </button>
@@ -198,9 +206,9 @@
         </div>
       </div>
       <div class="profile-header-info">
-        <div class="profile-header-name">Ms. Maria Reyes</div>
+        <div class="profile-header-name">Loading profile...</div>
         <div class="profile-header-meta">
-          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> m.reyes.fac@stcolumban.edu.ph</span>
+          <span class="profile-email-meta"><i data-lucide="mail" style="width:13px;height:13px;"></i> <span class="profile-email-value">Loading...</span></span>
         </div>
       </div>
     </div>
@@ -222,12 +230,12 @@
           <div class="config-panel-body">
             <div class="form-group">
               <label class="form-label">Full Name</label>
-              <input class="form-input" type="text" name="fullName" value="Maria Reyes" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="text" name="fullName" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
               <span class="form-hint">Managed by your school administrator.</span>
             </div>
             <div class="form-group">
               <label class="form-label">School Email</label>
-              <input class="form-input" type="email" name="schoolEmail" value="m.reyes.fac@stcolumban.edu.ph" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
+              <input class="form-input" type="email" name="schoolEmail" disabled style="color:var(--gray-400);cursor:not-allowed;"/>
               <span class="form-hint">Used to sign in to your account.</span>
             </div>
             <div class="form-group">
@@ -237,7 +245,7 @@
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">Contact Number</label>
-              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" value="0917 123 4567" placeholder="e.g. 0917 123 4567"/>
+              <input class="form-input" type="tel" name="contactNumber" id="contactNumberInput" placeholder="e.g. 0917 123 4567"/>
               <span class="form-hint">Optional contact number.</span>
             </div>
           </div>
@@ -262,12 +270,7 @@
           </div>
         </div>
         <div class="config-panel-body" id="teacher-employment-details">
-          <div class="section-list" role="list" aria-label="Sections handled">
-            <span class="badge badge-blue">Gr. 7 – St. Matthew</span>
-            <span class="badge badge-blue">Gr. 8 – St. Luke</span>
-            <span class="badge badge-blue">Gr. 9 – St. Peter</span>
-            <span class="badge badge-blue">Gr. 10 – St. Andrew</span>
-          </div>
+          <div class="section-list" role="list" aria-label="Sections handled">Loading sections...</div>
         </div>
       </div>
 
@@ -335,11 +338,18 @@
 </div>
 
 <script>
-  const EMPLOYMENT_DETAILS = window.EDUGNAY_CONFIG.withActiveSchool([{
-    sections: ['Gr. 7 – St. Matthew', 'Gr. 8 – St. Luke', 'Gr. 9 – St. Peter', 'Gr. 10 – St. Andrew']
-  }]);
-  const TEACHER_PROFILE_API_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   let teacherApiUser = null;
+  let teacherSections = [];
+  let teacherSectionsLoading = true;
+  let teacherSectionsError = '';
+
+  function setTeacherProfileLoadState(title = '', message = '', isError = false) {
+    const notice = document.getElementById('teacher-profile-load-notice');
+    notice.hidden = !message;
+    notice.setAttribute('role', isError ? 'alert' : 'status');
+    document.getElementById('teacher-profile-load-title').textContent = title;
+    document.getElementById('teacher-profile-load-text').textContent = message;
+  }
 
   function renderTeacherProfile(user) {
     if (!user) return;
@@ -347,37 +357,65 @@
     const displayName = user.displayName || [user.firstName, user.lastName].filter(Boolean).join(' ');
     document.querySelectorAll('[name="fullName"]').forEach(input => { input.value = displayName; });
     document.querySelectorAll('[name="schoolEmail"]').forEach(input => { input.value = user.schoolEmail || ''; });
+    document.querySelectorAll('.profile-email-value').forEach(element => { element.textContent = user.schoolEmail || ''; });
     document.querySelectorAll('[name="employeeNo"]').forEach(input => { input.value = user.profile?.employeeNumber || ''; });
     document.querySelectorAll('.profile-header-name, .tb-profile-name').forEach(element => { element.textContent = displayName; });
     document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
   }
 
-  async function loadTeacherProfile() {
-    if (!TEACHER_PROFILE_API_ENABLED) return;
+  renderTeacherProfile({ displayName: 'Loading profile...', schoolEmail: '', profile: {} });
+  setTeacherProfileLoadState('Loading profile', 'Reading your account from the school database.');
 
+  async function loadTeacherProfile() {
     try {
+      await window.EDUGNAY_SCHOOL_READY;
       const response = await window.EDUGNAY_API.request('/users/me/profile');
-      if (response.user.role === 'teacher') {
-        teacherApiUser = response.user;
-        renderTeacherProfile(teacherApiUser);
-      }
+      if (response.user.role !== 'teacher') throw new Error('Sign in with a teacher account to view this profile.');
+      teacherApiUser = response.user;
+      renderTeacherProfile(teacherApiUser);
+      setTeacherProfileLoadState();
     } catch (error) {
       console.warn('Unable to load the saved profile.', error.message);
+      renderTeacherProfile({ displayName: 'Profile unavailable', schoolEmail: '', profile: {} });
+      setTeacherProfileLoadState('Profile unavailable', error.message || 'Your account could not be loaded from the school database. Refresh when the connection is restored.', true);
+    }
+  }
+
+  async function loadTeacherSections() {
+    try {
+      await window.EDUGNAY_SCHOOL_READY;
+      teacherSections = await window.EDUGNAY_CONFIG.getMyTeachingSections();
+    } catch (error) {
+      teacherSectionsError = error.message || 'Your assigned sections could not be loaded from the school database.';
+    } finally {
+      teacherSectionsLoading = false;
+      renderEmploymentDetails();
     }
   }
 
   function renderEmploymentDetails() {
     const panel = document.getElementById('teacher-employment-details');
     if (!panel) return;
-    const details = EMPLOYMENT_DETAILS[0];
-    panel.innerHTML = details?.sections?.length
-      ? `<div class="section-list" role="list" aria-label="Sections handled">${details.sections.map(section => `<span class="badge badge-blue" role="listitem">${section}</span>`).join('')}</div>`
+    if (teacherSectionsLoading) {
+      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assigned sections', text: 'Reading section assignments from the school database.' });
+      lucide.createIcons();
+      return;
+    }
+    if (teacherSectionsError) {
+      panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'circle-alert', title: 'Sections unavailable', text: teacherSectionsError });
+      lucide.createIcons();
+      return;
+    }
+    const sections = teacherSections.map(section => [section.grade, section.name].filter(Boolean).join(' - '));
+    panel.innerHTML = sections.length
+      ? `<div class="section-list" role="list" aria-label="Sections handled">${sections.map(section => `<span class="badge badge-blue" role="listitem">${window.EDUGNAY_CONFIG.escapeHtml(section)}</span>`).join('')}</div>`
       : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'door-open', title: 'No sections assigned', text: 'Sections assigned to this teacher will appear here.' });
+    lucide.createIcons();
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderEmploymentDetails();
-    await loadTeacherProfile();
+    await Promise.all([loadTeacherProfile(), loadTeacherSections()]);
     lucide.createIcons();
   });
 
@@ -398,10 +436,6 @@
     }
     if (newPass !== confirmPass) {
       alert('New password and confirmation do not match.');
-      return false;
-    }
-    if (!TEACHER_PROFILE_API_ENABLED) {
-      alert('Password updates require a configured API connection.');
       return false;
     }
     try {
@@ -426,17 +460,19 @@
 
   async function submitProfile(event) {
     event.preventDefault();
+    if (!teacherApiUser) {
+      showAppToast('Your profile is unavailable. Refresh the page before saving.', 'error');
+      return false;
+    }
     const contactNumber = document.getElementById('contactNumberInput').value.trim();
 
     try {
-      if (TEACHER_PROFILE_API_ENABLED) {
-        const response = await window.EDUGNAY_API.request('/users/me/profile', {
-          method: 'PATCH',
-          body: JSON.stringify({ contactNumber })
-        });
-        teacherApiUser = response.user;
-        renderTeacherProfile(teacherApiUser);
-      }
+      const response = await window.EDUGNAY_API.request('/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ contactNumber })
+      });
+      teacherApiUser = response.user;
+      renderTeacherProfile(teacherApiUser);
       showAppToast('Contact number updated.');
     } catch (error) {
       showAppToast(error.message || 'Unable to update your profile.', 'error');
@@ -445,7 +481,7 @@
   }
 
   function resetProfile() {
-    document.getElementById('contactNumberInput').value = teacherApiUser?.profile?.contactNumber || '0917 123 4567';
+    document.getElementById('contactNumberInput').value = teacherApiUser?.profile?.contactNumber || '';
   }
 </script>
 

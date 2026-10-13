@@ -59,7 +59,7 @@ async function sendEmail({ to, subject, text }) {
 }
 
 function getRecipient(user) {
-  return normalizeRecipient(user?.personalEmail) || normalizeRecipient(user?.schoolEmail);
+  return normalizeRecipient(user?.personalEmail);
 }
 
 function sendAccountCreatedEmail(user, temporaryPassword) {
@@ -144,7 +144,7 @@ function sendSchoolRegistrationDecisionEmail(user, school, approved, reason = ''
       `Hello ${user.displayName},`,
       '',
       approved
-        ? `${school.name} has been approved. Your administrator account is now active.`
+        ? `${school.name} has been approved. Your administrator account is now active. Sign in with ${user.schoolEmail}.`
         : `${school.name} was not approved at this time.${reason ? ` Reason: ${reason}` : ''}`
     ].join('\n')
   });
@@ -164,6 +164,7 @@ async function verifyEmailConnection() {
 
 module.exports = {
   isEmailConfigured,
+  normalizeRecipient,
   sendAccountCreatedEmail,
   sendAccountStatusEmail,
   sendAnnouncementEmail,

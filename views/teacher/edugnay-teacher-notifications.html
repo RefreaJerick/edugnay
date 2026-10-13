@@ -105,9 +105,9 @@
     <div class="topbar-right">
       <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
-          <div class="tb-avatar faculty">MR</div>
+          <div class="tb-avatar faculty"></div>
           <div class="tb-profile-info">
-            <div class="tb-profile-name">Ms. Maria Reyes</div>
+            <div class="tb-profile-name">Loading account...</div>
             <div class="tb-profile-role">Faculty</div>
           </div>
           <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
@@ -194,9 +194,6 @@
   }
 
   function renderNotifList() {
-    if (!window.EDUGNAY_COMMUNICATION?.backend) {
-      window.EDUGNAY_CONFIG.applyNotificationReadState(NOTIFICATIONS, TEACHER_READ_STORE_KEY);
-    }
     const container = document.getElementById('notifList');
     const emptyState = document.getElementById('notifEmptyState');
     const filtered = getFilteredNotifs();
