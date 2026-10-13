@@ -399,6 +399,56 @@ async function enrollStudent(req, res, next) {
   } finally { connection.release(); }
 }
 
+async function enrollStudentsBulk(req, res, next) {
+  const rawIds = req.body?.studentIds;
+  if (!Array.isArray(rawIds) || rawIds.length < 1 || rawIds.length > 100 ||
+      rawIds.some(value => !Number.isSafeInteger(value) || value < 1) ||
+      new Set(rawIds).size !== rawIds.length) {
+    return next(createError('Choose between 1 and 100 distinct students with valid IDs.'));
+  }
+
+  const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
+  try {
+    const sectionId = parseId(req.params.sectionId, 'section ID');
+    const studentIds = [...rawIds].sort((a, b) => a - b);
+    const placeholders = studentIds.map(() => '?').join(', ');
+    await connection.beginTransaction();
+    transactionStarted = true;
+
+    const [students] = await connection.execute(
+      `SELECT id, display_name AS displayName FROM users WHERE school_id = ? AND role = 'student' AND account_status = 'active' AND id IN (${placeholders}) ORDER BY id FOR UPDATE`,
+      [req.user.schoolId, ...studentIds]
+    );
+    if (students.length !== studentIds.length) throw createError('One or more selected students are inactive or do not belong to this school.', 409);
+
+    const [lockedSections] = await connection.execute('SELECT id FROM sections WHERE id = ? AND school_id = ? FOR UPDATE', [sectionId, req.user.schoolId]);
+    if (!lockedSections.length) throw createError('An active section was not found.', 404);
+    const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
+    if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    if (section.academicYearStatus !== 'active') throw createError('Students can only be assigned to sections in the active academic year.', 409);
+    if (section.studentCount + studentIds.length > section.capacity) throw createError('The section does not have enough remaining seats for all selected students.', 409);
+
+    const [enrollments] = await connection.execute(
+      `SELECT section_students.student_user_id AS studentId FROM section_students INNER JOIN sections ON sections.id = section_students.section_id WHERE section_students.school_id = ? AND sections.academic_year_id = ? AND section_students.student_user_id IN (${placeholders}) AND section_students.withdrawn_at IS NULL LIMIT 1`,
+      [req.user.schoolId, section.academicYearId, ...studentIds]
+    );
+    if (enrollments.length) throw createError('One or more selected students are already enrolled for this academic year.', 409);
+
+    for (const student of students) {
+      await connection.execute('INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)', [req.user.schoolId, sectionId, student.id]);
+      await writeAuditLog(connection, req, 'student_enrolled', 'section_student', student.id, { summary: `${student.displayName} · ${section.name}` });
+    }
+    await connection.commit();
+    transactionStarted = false;
+    res.status(201).json({ sectionId, studentIds: rawIds, assignedCount: rawIds.length });
+  } catch (error) {
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
+    if (error.code === 'ER_DUP_ENTRY') error = createError('One or more selected students are already enrolled.', 409);
+    next(error);
+  } finally { connection.release(); }
+}
+
 async function moveStudent(req, res, next) {
   const connection = await getDatabase().getConnection();
   let transactionStarted = false;
@@ -556,4 +606,4 @@ async function updateTeacherAssignment(req, res, next) {
   } finally { connection.release(); }
 }
 
-module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };
+module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, enrollStudentsBulk, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };

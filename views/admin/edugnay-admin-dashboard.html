@@ -16,6 +16,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/admin/student-multi-select.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
 </head>
@@ -48,15 +49,13 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="modalStudent-search">Student</label>
-            <select class="form-select" id="modalStudent" name="studentId" onchange="handleDashboardStudentChange(this.value)" required>
-              <option value="">Select a student</option>
-            </select>
-            <div class="student-preview" id="studentPreview">
-              <div class="sp-av" id="spAv"></div>
-              <div>
-                <div class="sp-name" id="spName">Select a student</div>
-                <div class="sp-detail" id="spDetail">Select a student</div>
+            <span class="form-label" id="dashboardStudentLabel">Students</span>
+            <div class="student-multi-picker" id="dashboardStudentPicker">
+              <button class="student-multi-trigger" type="button" data-student-trigger aria-labelledby="dashboardStudentLabel dashboardStudentSummary" aria-expanded="false" aria-controls="dashboardStudentDropdown"><span id="dashboardStudentSummary" data-student-summary aria-live="polite">Select students</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+              <div class="student-multi-dropdown" id="dashboardStudentDropdown" data-student-dropdown hidden>
+                <input class="form-input" type="search" id="dashboardStudentMultiSearch" data-student-search placeholder="Search unassigned students" aria-label="Search unassigned students">
+                <div class="student-multi-list" data-student-list role="group" aria-labelledby="dashboardStudentLabel"></div>
+                <div class="student-multi-actions"><button type="button" data-student-clear>Clear selection</button><button type="button" data-student-done>Done</button></div>
               </div>
             </div>
           </div>
@@ -570,7 +569,6 @@
     let ADMIN_PARENTS = [];
     let ADMIN_DASHBOARD_SECTIONS = [];
     let ADMIN_DASHBOARD_STRUCTURE = [];
-    let ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
     let ADMIN_ASSIGNMENT_ERROR = '';
     let ADMIN_USER_ERRORS = { students: '', teachers: '', parents: '' };
     let DASHBOARD_ACTIVITY_ERROR = '';
@@ -655,6 +653,7 @@
       strand: '',
       section: ''
     };
+    let dashboardStudentPicker;
 
     function dashboardGradeKey(value) {
       const text = String(value || '').trim().toLowerCase();
@@ -711,12 +710,7 @@
     }
 
     function renderDashboardStudentOptions(selectedId = '') {
-      const select = document.getElementById('modalStudent');
-      if (!select) return;
-      dashboardSetOptions(select, DASHBOARD_ASSIGNMENT_STUDENTS.map(student => ({
-        value: student.id,
-        label: `${student.displayName} \u00b7 ${student.schoolEmail}`
-      })), 'Select a student', selectedId);
+      dashboardStudentPicker.setStudents(DASHBOARD_ASSIGNMENT_STUDENTS, selectedId);
     }
 
     function renderDashboardAssignmentSections() {
@@ -734,7 +728,7 @@
       const options = sections.map(section => ({
         value: section.id,
         label: dashboardSectionLabel(section),
-        disabled: section.enrolled >= section.capacity
+        disabled: section.enrolled + (dashboardStudentPicker?.getSelectedIds().length || 1) > section.capacity
       }));
       if (!options.length) options.push({ value: '', label: level && grade && (level !== 'shs' || strand) ? 'No matching active sections' : 'Choose a level and grade first', disabled: true });
       dashboardSetOptions(select, options, 'Select a section', dashboardAssignmentState.section);
@@ -812,24 +806,15 @@
       updateDashboardAssignmentContext();
     }
 
-    function handleDashboardStudentChange(studentId) {
-      const student = DASHBOARD_ASSIGNMENT_STUDENTS.find(item => item.id === studentId) || null;
-      dashboardAssignmentState.student = student;
-      dashboardAssignmentState.level = student?.schoolLevel || '';
-      dashboardAssignmentState.grade = student?.gradeLevel || '';
-      dashboardAssignmentState.strand = student?.strand || '';
-      dashboardAssignmentState.section = '';
-      const preview = document.getElementById('studentPreview');
-      if (!student) {
-        preview?.classList.remove('visible');
-      } else {
-        window.EDUGNAY_AVATAR.render(document.getElementById('spAv'), { ...student, role: 'student' });
-        document.getElementById('spName').textContent = student.displayName;
-        document.getElementById('spDetail').textContent = student.schoolEmail;
-        preview?.classList.add('visible');
+    function handleDashboardStudentChange(studentIds) {
+      const student = DASHBOARD_ASSIGNMENT_STUDENTS.find(item => String(item.id) === String(studentIds[0])) || null;
+      if (!dashboardAssignmentState.student || !student) {
+        dashboardAssignmentState.level = student?.schoolLevel || '';
+        dashboardAssignmentState.grade = student?.gradeLevel || '';
+        dashboardAssignmentState.strand = student?.strand || '';
       }
+      dashboardAssignmentState.student = student;
       updateDashboardAssignmentFields();
-      window.syncSearchableSelect?.(document.getElementById('modalStudent'));
     }
 
     const ADMIN_QUICK_ACTIONS = [
@@ -918,28 +903,9 @@
           }));
         if (students.status !== 'fulfilled') {
           ADMIN_ASSIGNMENT_ERROR = students.reason?.message || 'Student choices could not be loaded.';
-        } else {
-          try {
-            const rosters = await Promise.all(sections.value.map(section => window.EDUGNAY_API.getSectionStudents(section.id)));
-            ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
-            rosters.forEach(result => result.students.forEach(student => {
-              const key = String(student.apiId || student.id);
-              const enrollments = ADMIN_STUDENT_SECTION_ENROLLMENTS.get(key) || [];
-              enrollments.push({
-                id: String(result.section.id),
-                academicYearId: String(result.section.academicYearId),
-                name: result.section.name
-              });
-              ADMIN_STUDENT_SECTION_ENROLLMENTS.set(key, enrollments);
-            }));
-          } catch (error) {
-            ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
-            ADMIN_ASSIGNMENT_ERROR = error.message || 'Student enrollment choices could not be loaded.';
-          }
         }
       } else {
         ADMIN_DASHBOARD_SECTIONS = [];
-        ADMIN_STUDENT_SECTION_ENROLLMENTS = new Map();
         ADMIN_ASSIGNMENT_ERROR = sections.reason?.message || 'Sections could not be loaded.';
       }
       if (structure.status === 'fulfilled') ADMIN_DASHBOARD_STRUCTURE = structure.value;
@@ -1115,6 +1081,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      dashboardStudentPicker = window.createStudentMultiSelect(document.getElementById('dashboardStudentPicker'), handleDashboardStudentChange);
       await window.EDUGNAY_COMMUNICATION_READY;
       if (ADMIN_DASHBOARD_API_ENABLED) {
         document.getElementById('admin-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while school records are loaded.' });
@@ -1157,12 +1124,6 @@
         if (event.target === event.currentTarget) closeAdminTodoDeleteModal();
       });
       renderDashboardStudentOptions();
-      window.initSearchableSelect?.(document.getElementById('modalStudent'), {
-        placeholder: 'Select a student',
-        searchPlaceholder: 'Search students...',
-        emptyText: 'No matching students',
-        ariaLabel: 'Student'
-      });
       dashboardAssignmentState.level = '';
       updateDashboardAssignmentFields();
       renderWeekCalendar();
@@ -1205,13 +1166,12 @@
     }
     async function openStudentModal() {
       const title = document.getElementById('studentModalTitle');
-      title.textContent = 'Assign Student';
+      title.textContent = 'Assign Students';
       dashboardAssignmentState.student = null;
       dashboardAssignmentState.level = '';
       dashboardAssignmentState.grade = '';
       dashboardAssignmentState.strand = '';
       dashboardAssignmentState.section = '';
-      document.getElementById('studentPreview').classList.remove('visible');
       document.getElementById('studentModalBackdrop').classList.add('open');
       setDashboardFeedback('assignStudentFeedback');
       const saveButton = document.getElementById('assignStudentSaveButton');
@@ -1248,10 +1208,10 @@
 
     document.getElementById('assignStudentForm').addEventListener('submit', async function (event) {
       event.preventDefault();
-      const student = dashboardAssignmentState.student;
+      const studentIds = dashboardStudentPicker.getSelectedIds();
       const section = dashboardAssignmentSections().find(item => item.id === dashboardAssignmentState.section);
-      if (!student || !section || !dashboardAssignmentState.level || !dashboardAssignmentState.grade || (dashboardAssignmentState.level === 'shs' && !dashboardAssignmentState.strand)) {
-        setDashboardFeedback('assignStudentFeedback', 'Choose a student, school level, grade, and matching section first.');
+      if (!studentIds.length || !section || !dashboardAssignmentState.level || !dashboardAssignmentState.grade || (dashboardAssignmentState.level === 'shs' && !dashboardAssignmentState.strand)) {
+        setDashboardFeedback('assignStudentFeedback', 'Choose students, school level, grade, and matching section first.');
         return;
       }
       if (section.level !== dashboardAssignmentState.level || dashboardGradeKey(section.grade) !== dashboardGradeKey(dashboardAssignmentState.grade) || (section.level === 'shs' && dashboardGradeKey(section.strand) !== dashboardGradeKey(dashboardAssignmentState.strand))) {
@@ -1265,31 +1225,24 @@
       }
       const saveButton = document.getElementById('assignStudentSaveButton');
       saveButton.disabled = true;
+      dashboardStudentPicker.setDisabled(true);
       setDashboardFeedback('assignStudentFeedback');
       let assignmentSaved = false;
       try {
         if (ADMIN_ASSIGNMENT_ERROR) throw new Error(ADMIN_ASSIGNMENT_ERROR);
-        const studentId = student.apiId || student.id;
-        const enrollments = ADMIN_STUDENT_SECTION_ENROLLMENTS.get(String(studentId)) || [];
-        const currentEnrollments = enrollments.filter(item => item.academicYearId === String(section.academicYearId));
-        if (currentEnrollments.length > 1) {
-          throw new Error('This student has more than one section in the selected school year. Ask an administrator to review the enrollment.');
-        }
-        const currentSection = currentEnrollments[0];
-        if (currentSection?.id === section.id) throw new Error('This student is already assigned to the selected section.');
-        if (currentSection) await window.EDUGNAY_API.moveStudent(currentSection.id, studentId, section.id);
-        else await window.EDUGNAY_API.enrollStudent(section.id, studentId);
+        await window.EDUGNAY_API.enrollStudentsBulk(section.id, studentIds);
         assignmentSaved = true;
         closeStudentModal();
         await loadAdminDashboardData();
-        renderDashboardStudentOptions(student.id);
         renderAdminDashboard();
-        showAppToast(ADMIN_ASSIGNMENT_ERROR ? `Student assignment was saved, but section data could not refresh: ${ADMIN_ASSIGNMENT_ERROR}` : 'Student assigned to section.', ADMIN_ASSIGNMENT_ERROR ? 'info' : 'success');
+        renderDashboardStudentOptions();
+        showAppToast(ADMIN_ASSIGNMENT_ERROR ? `Student assignments were saved, but section data could not refresh: ${ADMIN_ASSIGNMENT_ERROR}` : `${studentIds.length} student${studentIds.length === 1 ? '' : 's'} assigned to section.`, ADMIN_ASSIGNMENT_ERROR ? 'info' : 'success');
       } catch (error) {
         if (assignmentSaved) showAppToast(`Student assignment was saved, but the dashboard could not refresh: ${error.message || 'reload the page.'}`, 'info');
         else setDashboardFeedback('assignStudentFeedback', error.message || 'The student could not be assigned to this section.');
       } finally {
         saveButton.disabled = false;
+        dashboardStudentPicker.setDisabled(false);
       }
     });
 

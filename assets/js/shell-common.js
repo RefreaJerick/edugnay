@@ -2716,6 +2716,13 @@ function applyCurrentDateToGradingBanners() {
     });
   }
 
+  async function enrollApiStudentsBulk(sectionId, studentIds) {
+    return requestApi(`/sections/${Number(sectionId)}/students/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ studentIds: studentIds.map(Number) })
+    });
+  }
+
   async function moveApiStudent(sectionId, studentId, targetSectionId) {
     return requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}/move`, {
       method: 'POST',
@@ -3147,6 +3154,7 @@ function applyCurrentDateToGradingBanners() {
     updateSubject: updateApiSubject,
     deleteSubject: deleteApiSubject,
     enrollStudent: enrollApiStudent,
+    enrollStudentsBulk: enrollApiStudentsBulk,
     moveStudent: moveApiStudent,
     withdrawStudent: withdrawApiStudent,
     assignTeacher: assignApiTeacher,

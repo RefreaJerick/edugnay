@@ -1416,6 +1416,36 @@ body .row-btn.delete > svg {
 .journal-entry-detail-note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-100); color: var(--gray-600); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .journal-entry-no-results { padding: 16px 0; color: var(--gray-500); font-size: 12px; }
 
+.student-multi-picker { min-width: 0; }
+.student-multi-trigger { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); color: var(--gray-700); font: 400 12px/1.3 'Plus Jakarta Sans', sans-serif; text-align: left; cursor: pointer; }
+.student-multi-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.student-multi-trigger svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--gray-400); }
+.student-multi-trigger[aria-expanded="true"], .student-multi-trigger:focus-visible { border-color: var(--blue-mid); outline: 0; background: var(--white); box-shadow: 0 0 0 3px var(--button-focus-ring); }
+.student-multi-dropdown { display: grid; gap: 8px; margin-top: 5px; padding: 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); box-shadow: 0 10px 28px rgba(15, 35, 65, .14); }
+.student-multi-dropdown[hidden] { display: none; }
+.student-multi-picker input[type="search"] { width: 100%; padding: 10px 12px; font-size: 13px; }
+.student-multi-list { display: grid; gap: 7px; max-height: 220px; overflow-y: auto; }
+.student-multi-empty { margin: 0; padding: 12px; border: 1px dashed var(--gray-200); border-radius: var(--radius-sm); color: var(--gray-500); font-size: 12px; text-align: center; line-height: 1.5; }
+.student-multi-option { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: var(--button-radius); background: var(--gray-50); cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+.student-multi-option:hover { border-color: var(--blue-pale); background: var(--blue-xpale); }
+.student-multi-option:has(input:checked) { border-color: var(--blue-mid); background: var(--blue-xpale); }
+.student-multi-option:has(input:focus-visible) { outline: 0; box-shadow: 0 0 0 3px var(--button-focus-ring); }
+.student-multi-option input { flex: none; }
+.student-multi-identity { display: grid; min-width: 0; gap: 2px; line-height: 1.3; }
+.student-multi-identity > * { min-width: 0; overflow-wrap: anywhere; }
+.student-multi-identity strong { color: var(--gray-800); font-size: 12px; }
+.student-multi-identity span { color: var(--gray-500); font-size: 11px; font-weight: 400; }
+.student-multi-avatar { flex: none; width: 36px; height: 36px; }
+.student-multi-avatar .person-avatar { --avatar-size: 36px; width: 100%; height: 100%; border-radius: 50%; }
+.student-multi-actions { display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--gray-100); }
+.student-multi-actions button { padding: 5px 6px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--blue-mid); font: 700 11px 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+.student-multi-actions button:hover, .student-multi-actions button:focus-visible { outline: 0; background: var(--blue-xpale); }
+.student-multi-actions button:disabled, .student-multi-trigger:disabled { cursor: not-allowed; opacity: .6; }
+
+/* Keep assignment actions visible when the picker fills a short viewport. */
+.student-modal-backdrop .modal-body,
+#studentAssignModalBackdrop.is-assigning .modal-body { overflow-y: auto !important; }
+
 @media (max-width: 600px) {
   .journal-history-card { padding: 14px; }
   .journal-history-card-head { flex-wrap: wrap; }

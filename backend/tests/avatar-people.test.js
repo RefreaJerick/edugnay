@@ -61,7 +61,7 @@ test('all audited other-person surfaces use the shared renderer', () => {
   const pages = [
     'views/admin/edugnay-admin-users.html',
     'views/admin/edugnay-admin-management.html',
-    'views/admin/edugnay-admin-dashboard.html',
+    'assets/js/admin/student-multi-select.js',
     'views/teacher/edugnay-teacher-sections.html',
     'views/teacher/edugnay-teacher-journals.html',
     'views/student/edugnay-student-profile.html',
