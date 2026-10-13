@@ -65,6 +65,7 @@
           </dl>
           <p class="pending-registration-error" id="pendingRegistrationError" role="alert" hidden></p>
           <div class="pending-registration-actions">
+            <button class="onboarding-submit" id="pendingRegistrationResubmit" type="button" hidden>Revise and resubmit</button>
             <button class="onboarding-submit" id="pendingRegistrationRetry" type="button" hidden>Try again</button>
           </div>
         </div>
@@ -88,7 +89,7 @@
       rejected: {
         title: 'Registration not approved',
         heading: 'Review decision available',
-        message: 'Check the notification email for decision details or contact Platform Admin.'
+        message: 'Check the notification email for decision details, then revise and resubmit this application if needed.'
       },
       suspended: {
         title: 'School access suspended',
@@ -96,6 +97,14 @@
         message: 'Contact Platform Admin for help with this school account.'
       }
     };
+    let pendingRegistrationRequest = null;
+    let pendingRegistrationCheckAfterCurrent = false;
+    let pendingRegistrationPollTimer = null;
+    let pendingRegistrationStatus = null;
+    let pendingRegistrationLastReturnAt = 0;
+    let pendingRegistrationRetryAt = 0;
+    let pendingRegistrationTokenInvalid = false;
+    let pendingRegistrationReady = false;
 
     function showRegistrationError(message, retryable) {
       const error = document.getElementById('pendingRegistrationError');
@@ -104,11 +113,34 @@
       document.getElementById('pendingRegistrationRetry').hidden = !retryable;
     }
 
-    async function renderPendingRegistration() {
+    function stopPendingRegistrationPolling() {
+      if (pendingRegistrationPollTimer) window.clearInterval(pendingRegistrationPollTimer);
+      pendingRegistrationPollTimer = null;
+    }
+
+    function startPendingRegistrationPolling() {
+      if (document.hidden || pendingRegistrationStatus !== 'pending' || pendingRegistrationPollTimer) return;
+      pendingRegistrationPollTimer = window.setInterval(() => {
+        if (!document.hidden) return renderPendingRegistration();
+      }, 60000);
+    }
+
+    function checkPendingRegistrationOnReturn() {
+      if (document.hidden || pendingRegistrationTokenInvalid || !pendingRegistrationReady) return;
+      startPendingRegistrationPolling();
+      if (Date.now() - pendingRegistrationLastReturnAt < 1000) return;
+      pendingRegistrationLastReturnAt = Date.now();
+      if (pendingRegistrationRequest) {
+        pendingRegistrationCheckAfterCurrent = true;
+        return;
+      }
+      renderPendingRegistration();
+    }
+
+    async function loadPendingRegistration() {
       const retryButton = document.getElementById('pendingRegistrationRetry');
+      const resubmitButton = document.getElementById('pendingRegistrationResubmit');
       const error = document.getElementById('pendingRegistrationError');
-      error.hidden = true;
-      retryButton.hidden = true;
       retryButton.disabled = true;
 
       let token = '';
@@ -120,6 +152,9 @@
       }
 
       if (!token) {
+        pendingRegistrationTokenInvalid = true;
+        stopPendingRegistrationPolling();
+        resubmitButton.hidden = true;
         showRegistrationError('This tab does not have a registration status token. If you already submitted a registration, contact Platform Admin; do not submit it again.', false);
         retryButton.disabled = false;
         return;
@@ -128,6 +163,10 @@
       try {
         const registration = await window.EDUGNAY_API.getRegistrationStatus(token);
         if (!registration) throw new Error('Registration status could not be found.');
+        pendingRegistrationStatus = registration.registrationStatus;
+        pendingRegistrationRetryAt = 0;
+        error.hidden = true;
+        retryButton.hidden = true;
         const copy = REGISTRATION_STATUS_COPY[registration.registrationStatus] || REGISTRATION_STATUS_COPY.pending;
         document.title = `${copy.title} | Academix`;
         document.getElementById('pendingRegistrationTitle').textContent = copy.title;
@@ -137,12 +176,28 @@
         document.getElementById('pendingSchoolName').textContent = registration.schoolName || 'Not available';
         document.getElementById('pendingNotificationEmail').textContent = registration.notificationEmailMasked || 'Not available';
         document.getElementById('pendingAdministratorSchoolEmail').textContent = registration.administratorSchoolEmail || 'Not available';
+        resubmitButton.hidden = registration.registrationStatus !== 'rejected';
+        if (registration.registrationStatus !== 'rejected') {
+          try { sessionStorage.removeItem('edugnay_registration_resubmit_mode'); } catch {}
+        }
         document.getElementById('pendingRegistrationIntro').textContent = registration.submittedAt
           ? `Submitted ${new Date(registration.submittedAt).toLocaleString()}. Updates will be sent to the notification address shown below.`
           : 'Updates will be sent to the notification address shown below.';
+        if (pendingRegistrationStatus === 'pending') startPendingRegistrationPolling();
+        else stopPendingRegistrationPolling();
       } catch (requestError) {
+        if (requestError?.status === 429) {
+          pendingRegistrationRetryAt = Date.now() + Math.max(60, requestError.retryAfterSeconds || 60) * 1000;
+        }
+        if (requestError?.status === 404) {
+          pendingRegistrationTokenInvalid = true;
+          resubmitButton.hidden = true;
+          stopPendingRegistrationPolling();
+        }
         const message = requestError?.status === 404
           ? 'Registration status could not be found or the access token has expired. If you already submitted, contact Platform Admin; do not submit again.'
+          : requestError?.status === 429
+            ? requestError.message || 'Too many status checks. Please try again later.'
           : 'Registration status could not be loaded. Check your connection and try again.';
         showRegistrationError(message, requestError?.status !== 404);
       } finally {
@@ -151,11 +206,43 @@
       }
     }
 
+    async function renderPendingRegistration() {
+      if (pendingRegistrationRequest) return pendingRegistrationRequest;
+      if (pendingRegistrationTokenInvalid || Date.now() < pendingRegistrationRetryAt) return;
+      const request = loadPendingRegistration();
+      pendingRegistrationRequest = request;
+      try { await request; }
+      finally {
+        if (pendingRegistrationRequest === request) pendingRegistrationRequest = null;
+        const checkAgain = pendingRegistrationCheckAfterCurrent;
+        pendingRegistrationCheckAfterCurrent = false;
+        if (checkAgain && !document.hidden && !pendingRegistrationTokenInvalid) renderPendingRegistration();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+      pendingRegistrationReady = true;
+      pendingRegistrationLastReturnAt = Date.now();
       document.getElementById('pendingRegistrationRetry').addEventListener('click', renderPendingRegistration);
+      document.getElementById('pendingRegistrationResubmit').addEventListener('click', () => {
+        try {
+          sessionStorage.setItem('edugnay_registration_resubmit_mode', 'true');
+        } catch {
+          showRegistrationError('This browser tab could not save the resubmission state. Allow session storage and try again.', false);
+          return;
+        }
+        window.location.href = './edugnay-school-onboarding.html';
+      });
       await renderPendingRegistration();
       if (window.lucide) window.lucide.createIcons();
     });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { pendingRegistrationLastReturnAt = 0; stopPendingRegistrationPolling(); }
+      else checkPendingRegistrationOnReturn();
+    });
+    window.addEventListener('focus', checkPendingRegistrationOnReturn);
+    window.addEventListener('pagehide', () => { pendingRegistrationLastReturnAt = 0; stopPendingRegistrationPolling(); });
+    window.addEventListener('pageshow', checkPendingRegistrationOnReturn);
   </script>
 </body>
 </html>

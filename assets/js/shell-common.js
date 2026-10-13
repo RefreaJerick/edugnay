@@ -300,6 +300,22 @@ async function getApiRegistrationStatus(token) {
   return response?.registration || null;
 }
 
+async function getApiRegistrationDetails(token) {
+  const response = await requestApi('/schools/registration-details', {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  });
+  return response?.application || null;
+}
+
+async function resubmitApiSchool(token, values, logoFile) {
+  const body = new FormData();
+  body.append('payload', JSON.stringify({ ...values, registrationStatusToken: token }));
+  if (logoFile) body.append('logo', logoFile);
+  const response = await requestApi('/schools/registration-resubmit', { method: 'POST', body });
+  return response?.school ? { ...response.school, registrationStatusToken: response.registrationStatusToken } : null;
+}
+
 async function updateApiSchoolLogo(file) {
   const body = new FormData();
   body.append('logo', file);
@@ -1569,11 +1585,23 @@ async function getApiPlatformSchool(schoolId) {
   return { ...response, school: { ...response.school, logoUrl: resolveApiSchoolLogo(response.school?.logoUrl) } };
 }
 
+async function deleteApiPlatformSchool(schoolId) {
+  const id = Number(schoolId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('The school ID is invalid.');
+  return requestApi(`/platform/schools/${id}`, { method: 'DELETE' });
+}
+
 async function changeApiPlatformSchool(schoolId, action, reason) {
   if (!['approve', 'reject', 'suspend', 'reactivate'].includes(action)) throw new Error('School action is invalid.');
   return requestApi(`/platform/schools/${Number(schoolId)}/${action}`, {
     method: 'POST', body: JSON.stringify(reason ? { reason } : {})
   });
+}
+
+async function retryApiPlatformSchoolRegistrationEmail(schoolId) {
+  const id = Number(schoolId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('The school ID is invalid.');
+  return requestApi('/platform/schools/' + id + '/registration-email/retry', { method: 'POST' });
 }
 
 async function getApiPlatformActivityPage(filters = {}) {
@@ -1653,6 +1681,8 @@ window.EDUGNAY_API = {
   setUserStatus: setApiUserStatus,
   getSchoolSettings: getApiSchoolSettings,
   getRegistrationStatus: getApiRegistrationStatus,
+  getRegistrationDetails: getApiRegistrationDetails,
+  resubmitSchool: resubmitApiSchool,
   getSchoolContext: getApiSchoolContext,
   getCalendarNotices: loadApiCalendarNotices,
   getParentNotificationTriggers: getApiParentNotificationTriggers,
@@ -1741,7 +1771,9 @@ window.EDUGNAY_API = {
   deleteTask: deleteApiTask,
   getPlatformSchools: getApiPlatformSchools,
   getPlatformSchool: getApiPlatformSchool,
+  deletePlatformSchool: deleteApiPlatformSchool,
   changePlatformSchool: changeApiPlatformSchool,
+  retryPlatformSchoolRegistrationEmail: retryApiPlatformSchoolRegistrationEmail,
   getPlatformActivityPage: getApiPlatformActivityPage,
   getDashboardActivity: getApiDashboardActivity,
   getSchoolActivityPage: getApiSchoolActivityPage,

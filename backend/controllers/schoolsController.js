@@ -4,11 +4,12 @@ const fs = require('fs/promises');
 const path = require('path');
 const { getDatabase } = require('../config/database');
 const { getSchoolLogoUrl, logoDirectory, saveSchoolLogo } = require('../config/schoolLogos');
+const { deleteAvatar } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
 const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
 const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
+const { wakeSchoolRegistrationEmailWorker } = require('../workers/schoolRegistrationEmailWorker');
 const {
-  sendSchoolRegistrationDecisionEmail,
   sendSchoolRegistrationSubmittedEmail
 } = require('../config/email');
 
@@ -19,6 +20,13 @@ const LEVEL_DEFAULTS = {
 };
 const TRACK_DEFAULTS = ['academic', 'tvl', 'arts-design', 'sports'];
 const FEATURE_FIELDS = ['gradesEnabled', 'narrativeReportsEnabled', 'journalsEnabled', 'attendanceEnabled', 'sfTemplatesEnabled'];
+const SCHOOL_ACTIVITY_TABLES = [
+  'attendance_status_codes', 'parent_notification_triggers', 'subjects', 'sections',
+  'section_students', 'section_teachers', 'grading_categories', 'assignments',
+  'published_final_grades', 'attendance_sessions', 'grading_period_reopen_requests',
+  'announcements', 'learning_materials', 'journal_subjects', 'narrative_reports',
+  'intervention_plans', 'school_form_exports', 'holidays'
+];
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -218,8 +226,15 @@ async function getPlatformSchool(req, res, next) {
     const [[journalSubject]] = await database.execute(
       'SELECT name FROM journal_subjects WHERE school_id = ? AND is_active = TRUE ORDER BY id LIMIT 1', [school.id]
     );
+    const [[emailDelivery]] = await database.execute(
+      `SELECT decision, status, attempts, recipient_email AS recipientEmail, sent_at AS sentAt,
+        smtp_message_id AS smtpMessageId, last_error AS lastError
+      FROM school_registration_email_outbox WHERE school_id = ? ORDER BY id DESC LIMIT 1`,
+      [school.id]
+    );
     res.status(200).json({ school, administrators, features: await getFeatures(database, school.id),
-      structure: await getStructure(database, school.id), academicTerms, journalSubject: journalSubject || null });
+      structure: await getStructure(database, school.id), academicTerms, journalSubject: journalSubject || null,
+      emailDelivery: emailDelivery || null });
   } catch (error) { next(error); }
 }
 
@@ -407,6 +422,301 @@ async function getRegistrationStatus(req, res, next) {
   }
 }
 
+function getRegistrationToken(req) {
+  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+  if (!/^[a-f0-9]{64}$/i.test(token)) throw createError('Registration status could not be found.', 404);
+  return { token, tokenHash: crypto.createHash('sha256').update(token).digest('hex') };
+}
+
+async function getRegistrationDetails(req, res, next) {
+  let connection;
+  try {
+    res.set('Cache-Control', 'no-store');
+    const { tokenHash } = getRegistrationToken(req);
+    connection = await getDatabase().getConnection();
+    const [[school]] = await connection.execute(
+      `SELECT schools.id, schools.name, schools.short_name AS shortName,
+        schools.school_code AS schoolCode, schools.deped_school_id AS depedSchoolId,
+        schools.address_line AS addressLine, schools.phone, schools.email, schools.website,
+        schools.school_email_domain AS schoolEmailDomain,
+        schools.registration_status AS registrationStatus,
+        school_settings.notification_email AS notificationEmail,
+        school_settings.current_school_year_label AS currentSchoolYearLabel
+      FROM schools LEFT JOIN school_settings ON school_settings.school_id = schools.id
+      WHERE schools.registration_status_token_hash = ?
+        AND schools.registration_status_token_expires_at > NOW()
+      LIMIT 1`,
+      [tokenHash]
+    );
+    if (!school) throw createError('Registration details could not be found.', 404);
+    if (school.registrationStatus !== 'rejected') throw createError('Only rejected registrations can be revised.', 409);
+
+    const [[administrator]] = await connection.execute(
+      `SELECT first_name AS firstName, last_name AS lastName, school_email AS schoolEmail
+      FROM users WHERE school_id = ? AND role = 'school_admin' ORDER BY id LIMIT 1`,
+      [school.id]
+    );
+    if (!administrator) throw createError('The registration administrator could not be found.', 409);
+    const [levels] = await connection.execute(
+      `SELECT level_code AS schoolLevel, grading_period_type AS storedPeriodType
+      FROM school_levels WHERE school_id = ? AND is_enabled = TRUE ORDER BY id`,
+      [school.id]
+    );
+    const [periods] = await connection.execute(
+      `SELECT school_levels.level_code AS schoolLevel, academic_terms.name,
+        academic_terms.sequence_number AS sequenceNumber,
+        DATE_FORMAT(academic_terms.planned_start_date, '%Y-%m-%d') AS plannedStartDate,
+        DATE_FORMAT(academic_terms.planned_end_date, '%Y-%m-%d') AS plannedEndDate
+      FROM academic_terms
+      INNER JOIN academic_years ON academic_years.id = academic_terms.academic_year_id
+      INNER JOIN school_levels ON school_levels.id = academic_terms.school_level_id
+      WHERE academic_years.school_id = ? AND academic_years.label = ?
+        AND school_levels.is_enabled = TRUE
+      ORDER BY school_levels.id, academic_terms.sequence_number`,
+      [school.id, school.currentSchoolYearLabel]
+    );
+    const academicTermConfigs = levels.map(level => ({
+      schoolLevel: level.schoolLevel,
+      gradingPeriodType: ({ quarterly: 'quarterly', trimestral: 'three_term', semestral: 'semester' })[level.storedPeriodType] || 'quarterly',
+      academicPeriods: periods.filter(period => period.schoolLevel === level.schoolLevel).map(period => ({
+        name: period.name,
+        plannedStartDate: period.plannedStartDate,
+        plannedEndDate: period.plannedEndDate
+      }))
+    }));
+    const [[yearDates]] = await connection.execute(
+      `SELECT DATE_FORMAT(start_date, '%Y-%m-%d') AS schoolYearStartDate,
+        DATE_FORMAT(end_date, '%Y-%m-%d') AS schoolYearEndDate
+      FROM academic_years WHERE school_id = ? AND label = ? LIMIT 1`,
+      [school.id, school.currentSchoolYearLabel]
+    );
+    res.json({ application: {
+      school: {
+        name: school.name, shortName: school.shortName, schoolCode: school.schoolCode,
+        depedSchoolId: school.depedSchoolId, addressLine: school.addressLine,
+        phone: school.phone, email: school.email, website: school.website,
+        schoolEmailDomain: school.schoolEmailDomain
+      },
+      notificationEmail: school.notificationEmail,
+      initialAdministrator: { firstName: administrator.firstName, lastName: administrator.lastName },
+      administratorSchoolEmail: administrator.schoolEmail,
+      schoolLevels: levels.map(level => level.schoolLevel),
+      currentSchoolYearLabel: school.currentSchoolYearLabel,
+      schoolYearStartDate: yearDates?.schoolYearStartDate || null,
+      schoolYearEndDate: yearDates?.schoolYearEndDate || null,
+      academicTermConfigs
+    } });
+  } catch (error) {
+    next(error);
+  } finally {
+    connection?.release();
+  }
+}
+
+async function resubmitSchoolRegistration(req, res, next) {
+  let connection;
+  let logoName;
+  let committed = false;
+  try {
+    res.set('Cache-Control', 'no-store');
+    let body = req.body || {};
+    if (body.payload) {
+      try { body = JSON.parse(body.payload); } catch { throw createError('The registration details are invalid.'); }
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw createError('The registration details are invalid.');
+    const token = typeof body.registrationStatusToken === 'string' ? body.registrationStatusToken.trim() : '';
+    if (!/^[a-f0-9]{64}$/i.test(token)) throw createError('Registration status could not be found.', 404);
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const name = text(body.name, 255, true);
+    const schoolEmail = email(body.email, true);
+    const notificationEmail = email(body.notificationEmail, true);
+    const initialAdministrator = body.initialAdministrator || {};
+    const adminFirstName = text(initialAdministrator.firstName, 100, true);
+    const adminLastName = text(initialAdministrator.lastName, 100, true);
+    const temporaryPassword = String(initialAdministrator.temporaryPassword || '');
+    if (temporaryPassword.length < 12 || temporaryPassword.length > 128) throw createError('The administrator temporary password must contain 12 to 128 characters.');
+    const levels = normalizeLevels(body.schoolLevels);
+    const schoolYear = text(body.currentSchoolYearLabel, 30, true);
+    const termConfigs = registrationTerms(body, levels);
+    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    logoName = await saveSchoolLogo(req.file);
+    const registrationStatusToken = crypto.randomBytes(32).toString('hex');
+    const registrationStatusTokenHash = crypto.createHash('sha256').update(registrationStatusToken).digest('hex');
+
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const [[school]] = await connection.execute(
+      `SELECT schools.id, schools.name, schools.school_email_domain AS schoolEmailDomain,
+        schools.registration_status AS registrationStatus, schools.rejection_reason AS rejectionReason,
+        schools.logo_path AS logoPath,
+        school_settings.current_school_year_label AS currentSchoolYearLabel
+      FROM schools LEFT JOIN school_settings ON school_settings.school_id = schools.id
+      WHERE schools.registration_status_token_hash = ?
+        AND schools.registration_status_token_expires_at > NOW()
+      LIMIT 1 FOR UPDATE`,
+      [tokenHash]
+    );
+    if (!school) throw createError('Registration status could not be found.', 404);
+    if (school.registrationStatus !== 'rejected') throw createError('Only rejected registrations can be resubmitted.', 409);
+    const [[administrator]] = await connection.execute(
+      `SELECT id, school_email AS schoolEmail FROM users
+      WHERE school_id = ? AND role = 'school_admin' ORDER BY id LIMIT 1 FOR UPDATE`,
+      [school.id]
+    );
+    if (!administrator) throw createError('The registration administrator could not be found.', 409);
+
+    const [[year]] = await connection.execute(
+      `SELECT id FROM academic_years
+      WHERE school_id = ? AND label = ? LIMIT 1 FOR UPDATE`,
+      [school.id, school.currentSchoolYearLabel]
+    );
+    let academicYearId = year?.id;
+    const today = new Date().toISOString().slice(0, 10);
+    const yearStatus = body.schoolYearStartDate <= today && today <= body.schoolYearEndDate ? 'active' : 'upcoming';
+    if (academicYearId) {
+      await connection.execute(
+        'UPDATE academic_years SET label = ?, start_date = ?, end_date = ?, status = ? WHERE id = ? AND school_id = ?',
+        [schoolYear, body.schoolYearStartDate, body.schoolYearEndDate, yearStatus, academicYearId, school.id]
+      );
+    } else {
+      const [yearResult] = await connection.execute(
+        'INSERT INTO academic_years (school_id, label, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
+        [school.id, schoolYear, body.schoolYearStartDate, body.schoolYearEndDate, yearStatus]
+      );
+      academicYearId = yearResult.insertId;
+    }
+
+    const levelIds = {};
+    for (const code of levels) {
+      const definition = LEVEL_DEFAULTS[code];
+      const config = termConfigs.find(item => item.schoolLevel === code);
+      const periodType = { quarterly: 'quarterly', three_term: 'trimestral', semester: 'semestral' }[config.gradingPeriodType];
+      await connection.execute(
+        `INSERT INTO school_levels (school_id, level_code, display_name, grading_period_type, is_enabled)
+        VALUES (?, ?, ?, ?, TRUE)
+        ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), grading_period_type = VALUES(grading_period_type), is_enabled = TRUE`,
+        [school.id, code, definition.displayName, periodType]
+      );
+      const [[level]] = await connection.execute(
+        'SELECT id FROM school_levels WHERE school_id = ? AND level_code = ? FOR UPDATE',
+        [school.id, code]
+      );
+      for (const gradeCode of definition.grades) {
+        const sortOrder = gradeCode === 'kindergarten' ? 0 : Number(gradeCode.replace('grade-', ''));
+        await connection.execute(
+          `INSERT INTO school_grade_levels (school_id, school_level_id, grade_code, display_name, sort_order, is_enabled)
+          VALUES (?, ?, ?, ?, ?, TRUE)
+          ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), sort_order = VALUES(sort_order), is_enabled = TRUE`,
+          [school.id, level.id, gradeCode, gradeLabel(gradeCode), sortOrder]
+        );
+      }
+      if (code === 'shs') {
+        for (const trackCode of TRACK_DEFAULTS) {
+          await connection.execute(
+            `INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled)
+            VALUES (?, ?, ?, ?, TRUE)
+            ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), is_enabled = TRUE`,
+            [school.id, level.id, trackCode, trackLabel(trackCode)]
+          );
+        }
+      }
+      const [storedTerms] = await connection.execute(
+        'SELECT id, sequence_number AS sequenceNumber FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ? FOR UPDATE',
+        [school.id, academicYearId, level.id]
+      );
+      for (const [index, period] of config.academicPeriods.entries()) {
+        const sequenceNumber = index + 1;
+        const existingTerm = storedTerms.find(term => Number(term.sequenceNumber) === sequenceNumber);
+        if (existingTerm) {
+          await connection.execute(
+            `UPDATE academic_terms SET name = ?, planned_start_date = ?, planned_end_date = ?,
+              status = 'upcoming', activated_at = NULL, completed_at = NULL WHERE id = ?`,
+            [text(period.name, 80, true), period.plannedStartDate, period.plannedEndDate, existingTerm.id]
+          );
+        } else {
+          await connection.execute(
+            `INSERT INTO academic_terms (school_id, academic_year_id, school_level_id, name, sequence_number, planned_start_date, planned_end_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [school.id, academicYearId, level.id, text(period.name, 80, true), sequenceNumber, period.plannedStartDate, period.plannedEndDate]
+          );
+        }
+      }
+      for (const oldTerm of storedTerms.filter(term => Number(term.sequenceNumber) > config.academicPeriods.length)) {
+        await connection.execute('DELETE FROM academic_terms WHERE id = ?', [oldTerm.id]);
+      }
+    }
+    for (const code of Object.keys(LEVEL_DEFAULTS)) {
+      if (!levels.includes(code)) {
+        await connection.execute('UPDATE school_levels SET is_enabled = FALSE WHERE school_id = ? AND level_code = ?', [school.id, code]);
+      }
+    }
+    await connection.execute(
+      'UPDATE schools SET name = ?, short_name = ?, school_type = ?, deped_school_id = ?, address_line = ?, phone = ?, email = ?, website = ?, logo_path = COALESCE(?, logo_path) WHERE id = ?',
+      [name, text(body.shortName, 120) || name.toUpperCase(), schoolTypeForLevels(levels),
+        text(body.depedSchoolId, 50), text(body.addressLine, 255), text(body.phone, 30),
+        schoolEmail, text(body.website, 255), logoName, school.id]
+    );
+    await connection.execute(
+      'UPDATE school_settings SET notification_email = ?, current_school_year_label = ? WHERE school_id = ?',
+      [notificationEmail, schoolYear, school.id]
+    );
+    const displayName = adminFirstName + ' ' + adminLastName;
+    await connection.execute(
+      `UPDATE users SET first_name = ?, last_name = ?, display_name = ?, initials = ?,
+        personal_email = ?, password_hash = ?, account_status = 'pending'
+      WHERE id = ? AND school_id = ? AND role = 'school_admin'`,
+      [adminFirstName, adminLastName, displayName, (adminFirstName[0] + adminLastName[0]).toUpperCase(),
+        notificationEmail, passwordHash, administrator.id, school.id]
+    );
+    await connection.execute(
+      `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
+      VALUES (?, NULL, 'school_registration_resubmitted', 'school', ?, ?)`,
+      [school.id, school.id, JSON.stringify({ summary: name + ' registration resubmitted', previousRejectionReason: school.rejectionReason || null })]
+    );
+    const [statusUpdate] = await connection.execute(
+      `UPDATE schools SET registration_status = 'pending', approved_at = NULL,
+        rejected_at = NULL, rejection_reason = NULL, submitted_at = NOW(),
+        registration_status_token_hash = ?, registration_status_token_expires_at = DATE_ADD(NOW(), INTERVAL 90 DAY)
+      WHERE id = ? AND registration_status = 'rejected' AND registration_status_token_hash = ?
+        AND registration_status_token_expires_at > NOW()`,
+      [registrationStatusTokenHash, school.id, tokenHash]
+    );
+    if (statusUpdate.affectedRows !== 1) throw createError('Only rejected registrations can be resubmitted.', 409);
+    const [platformAdmins] = await connection.execute(
+      `SELECT id, display_name AS displayName, school_email AS schoolEmail, personal_email AS personalEmail
+      FROM users WHERE role = 'platform_admin' AND account_status = 'active'`
+    );
+    for (const user of platformAdmins) {
+      await connection.execute(
+        `INSERT INTO notifications (user_id, type, title, message, target_path)
+        VALUES (?, 'school_account', 'School registration resubmitted', ?, ?)`,
+        [user.id, name + ' revised and resubmitted its registration.', '/views/platform/edugnay-platform-school-accounts.html']
+      );
+    }
+    await connection.commit();
+    committed = true;
+    if (logoName && /^[a-f0-9-]{36}\.(png|jpg|webp)$/.test(school.logoPath || '')) {
+      await fs.unlink(path.join(logoDirectory, school.logoPath)).catch(() => {});
+    }
+    platformAdmins.forEach(user => { sendSchoolRegistrationSubmittedEmail(user, { name }).catch(console.error); });
+    res.status(200).json({
+      school: {
+        id: school.id, name, schoolEmailDomain: school.schoolEmailDomain,
+        administratorSchoolEmail: administrator.schoolEmail, registrationStatus: 'pending',
+        notificationEmail
+      },
+      registrationStatusToken
+    });
+  } catch (error) {
+    if (connection && !committed) await connection.rollback();
+    if (logoName && !committed) await fs.unlink(path.join(logoDirectory, logoName)).catch(() => {});
+    if (error.code === 'ER_DUP_ENTRY') error = createError('A school registration field conflicts with an existing record.', 409);
+    next(error);
+  } finally {
+    connection?.release();
+  }
+}
+
 async function reviewSchool(req, res, next) {
   let connection;
   let committed = false;
@@ -414,11 +724,13 @@ async function reviewSchool(req, res, next) {
     const schoolId = parseId(req.params.schoolId);
     if (!schoolId) throw createError('Invalid school ID.');
     const approved = req.params.action === 'approve';
-    const reason = text(req.body?.reason, 1000);
-    if (!approved && !reason) throw createError('Provide a reason for rejecting the registration.');
+    const reason = text(req.body?.reason, 1000) || null;
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
-    const [[school]] = await connection.execute('SELECT id, name, registration_status AS registrationStatus FROM schools WHERE id = ? FOR UPDATE', [schoolId]);
+    const [[school]] = await connection.execute(
+      'SELECT schools.id, schools.name, schools.registration_status AS registrationStatus, school_settings.notification_email AS notificationEmail FROM schools LEFT JOIN school_settings ON school_settings.school_id = schools.id WHERE schools.id = ? FOR UPDATE',
+      [schoolId]
+    );
     if (!school) throw createError('School not found.', 404);
     if (school.registrationStatus !== 'pending') throw createError('Only pending school registrations can be reviewed.', 409);
     await connection.execute(
@@ -438,15 +750,51 @@ async function reviewSchool(req, res, next) {
           '/views/admin/edugnay-admin-dashboard.html']
       );
     }
+    const administrator = administrators[0];
+    await connection.execute(
+      'INSERT INTO school_registration_email_outbox (school_id, decision, recipient_email, school_name, administrator_name, administrator_login, rejection_reason, status) VALUES (?, ?, ?, ?, ?, ?, ?, \'pending\')',
+      [schoolId, approved ? 'approved' : 'rejected', school.notificationEmail || null, school.name,
+        administrator?.displayName || 'School administrator', administrator?.schoolEmail || null,
+        approved ? null : reason]
+    );
     await connection.commit();
     committed = true;
-    administrators.forEach(user => { sendSchoolRegistrationDecisionEmail(user, school, approved, reason).catch(console.error); });
+    wakeSchoolRegistrationEmailWorker();
     res.status(200).json({ school: { id: schoolId, name: school.name,
-      registrationStatus: approved ? 'active' : 'rejected', rejectionReason: approved ? null : reason } });
+      registrationStatus: approved ? 'active' : 'rejected', rejectionReason: approved ? null : reason },
+      emailDelivery: { status: 'pending', recipientEmail: school.notificationEmail || null, attempts: 0 } });
   } catch (error) {
     if (connection && !committed) await connection.rollback();
     next(error);
   } finally { connection?.release(); }
+}
+
+async function retrySchoolRegistrationEmail(req, res, next) {
+  let connection;
+  try {
+    const schoolId = parseId(req.params.schoolId);
+    if (!schoolId) throw createError('Invalid school ID.');
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const [[emailJob]] = await connection.execute(
+      'SELECT id, status FROM school_registration_email_outbox WHERE school_id = ? ORDER BY id DESC LIMIT 1 FOR UPDATE',
+      [schoolId]
+    );
+    if (!emailJob) throw createError('No school account email was found.', 404);
+    if (emailJob.status !== 'failed') throw createError('Only failed school account emails can be retried.', 409);
+    await connection.execute(
+      'UPDATE school_registration_email_outbox SET status = \'pending\', manual_retries = manual_retries + 1, next_attempt_at = NOW(), last_error = NULL, smtp_message_id = NULL, smtp_response = NULL, claim_token = NULL, claimed_at = NULL WHERE id = ?',
+      [emailJob.id]
+    );
+    await connection.commit();
+    wakeSchoolRegistrationEmailWorker();
+    res.json({ emailDelivery: { status: 'pending', attempts: 0 } });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    next(error);
+  } finally {
+    connection?.release();
+  }
 }
 
 async function getSchoolSettings(req, res, next) {
@@ -527,7 +875,13 @@ async function changeSchoolAccess(req, res, next) {
     const suspending = req.params.action === 'suspend';
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
-    const [[school]] = await connection.execute('SELECT id, name, registration_status AS status FROM schools WHERE id = ? FOR UPDATE', [schoolId]);
+    const [[school]] = await connection.execute(
+      `SELECT schools.id, schools.name, schools.registration_status AS status,
+        school_settings.notification_email AS notificationEmail
+      FROM schools LEFT JOIN school_settings ON school_settings.school_id = schools.id
+      WHERE schools.id = ? FOR UPDATE`,
+      [schoolId]
+    );
     if (!school) throw createError('School not found.', 404);
     if (school.status !== (suspending ? 'active' : 'suspended')) {
       throw createError(`Only ${suspending ? 'active' : 'suspended'} schools can be ${suspending ? 'suspended' : 'reactivated'}.`, 409);
@@ -541,12 +895,102 @@ async function changeSchoolAccess(req, res, next) {
       [suspending ? 'School account suspended' : 'School account reactivated',
         `${school.name} has been ${suspending ? 'suspended' : 'reactivated'} by the platform administrator.`, schoolId]
     );
+    const [[administrator]] = await connection.execute(
+      `SELECT display_name AS displayName, school_email AS schoolEmail
+      FROM users WHERE school_id = ? AND role = 'school_admin' ORDER BY id LIMIT 1`,
+      [schoolId]
+    );
+    const accessEvent = suspending ? 'suspended' : 'reactivated';
+    await connection.execute(
+      `INSERT INTO school_registration_email_outbox
+        (school_id, decision, recipient_email, school_name, administrator_name, administrator_login, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+      [schoolId, accessEvent, school.notificationEmail || null, school.name,
+        administrator?.displayName || 'School administrator', administrator?.schoolEmail || null]
+    );
     await connection.commit();
     committed = true;
+    wakeSchoolRegistrationEmailWorker();
     res.json({ school: { id: schoolId, name: school.name,
-      registrationStatus: suspending ? 'suspended' : 'active' } });
+      registrationStatus: suspending ? 'suspended' : 'active' },
+      emailDelivery: { status: 'pending', recipientEmail: school.notificationEmail || null, attempts: 0 } });
   } catch (error) {
     if (connection && !committed) await connection.rollback();
+    next(error);
+  } finally { connection?.release(); }
+}
+
+async function deletePlatformSchool(req, res, next) {
+  let connection;
+  let committed = false;
+  try {
+    const schoolId = /^[1-9]\d*$/.test(String(req.params.schoolId || '')) ? parseId(req.params.schoolId) : null;
+    if (!schoolId) throw createError('Invalid school ID.');
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    const [[school]] = await connection.execute(
+      'SELECT id, name, logo_path AS logoPath, registration_status AS status FROM schools WHERE id = ? FOR UPDATE',
+      [schoolId]
+    );
+    if (!school) throw createError('School not found.', 404);
+    if (!['rejected', 'suspended'].includes(school.status)) {
+      throw createError('Only rejected or suspended schools can be deleted.', 409);
+    }
+    const [users] = await connection.execute('SELECT id, role, avatar_filename AS avatarFilename FROM users WHERE school_id = ? FOR UPDATE', [schoolId]);
+    if (users.length !== 1 || users[0].role !== 'school_admin') {
+      throw createError('This school has additional accounts or no initial administrator and cannot be deleted.', 409);
+    }
+    const [[yearCount]] = await connection.execute('SELECT COUNT(*) AS total FROM academic_years WHERE school_id = ?', [schoolId]);
+    if (Number(yearCount.total) !== 1) throw createError('This school has additional academic years and cannot be deleted.', 409);
+    for (const table of SCHOOL_ACTIVITY_TABLES) {
+      const [[record]] = await connection.execute(`SELECT 1 AS found FROM ${table} WHERE school_id = ? LIMIT 1`, [schoolId]);
+      if (record) throw createError('This school has accounts or academic records and cannot be permanently deleted. Keep it rejected or suspended.', 409);
+    }
+    const [[task]] = await connection.execute('SELECT 1 AS found FROM user_tasks WHERE user_id = ? LIMIT 1', [users[0].id]);
+    if (task) throw createError('This school has account activity and cannot be permanently deleted.', 409);
+    const [[publishedTemplate]] = await connection.execute('SELECT 1 AS found FROM school_form_templates WHERE published_by_user_id = ? LIMIT 1', [users[0].id]);
+    if (publishedTemplate) throw createError('This school administrator has published forms and cannot be permanently deleted.', 409);
+    const [[queuedEmail]] = await connection.execute(
+      "SELECT id FROM school_registration_email_outbox WHERE school_id = ? AND status IN ('pending', 'sending') LIMIT 1 FOR UPDATE", [schoolId]
+    );
+    if (queuedEmail) throw createError('A school account email is still queued or sending. Try deleting the school after delivery finishes.', 409);
+
+    await connection.execute('DELETE FROM school_registration_email_outbox WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM audit_logs WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM academic_terms WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM academic_years WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM school_shs_tracks WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM school_grade_levels WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM school_levels WHERE school_id = ?', [schoolId]);
+    await connection.execute('DELETE FROM users WHERE id = ? AND school_id = ?', [users[0].id, schoolId]);
+    await connection.execute('DELETE FROM schools WHERE id = ?', [schoolId]);
+    await writeAuditLog(connection, req, 'school_deleted', 'school', schoolId,
+      { summary: school.name, formerSchoolId: schoolId }, null);
+    await connection.commit();
+    committed = true;
+    let fileCleanupFailed = false;
+    if (getSchoolLogoUrl({ id: schoolId, logoPath: school.logoPath })) {
+      try { await fs.unlink(path.join(logoDirectory, school.logoPath)); }
+      catch (error) {
+        if (error.code !== 'ENOENT') {
+          fileCleanupFailed = true;
+          console.error('Deleted school logo cleanup failed', { schoolId, code: error.code });
+        }
+      }
+    }
+    if (users[0].avatarFilename) {
+      try { await deleteAvatar(users[0].avatarFilename); }
+      catch (error) {
+        fileCleanupFailed = true;
+        console.error('Deleted school administrator avatar cleanup failed', { schoolId, code: error.code });
+      }
+    }
+    res.status(200).json({ deletedSchoolId: schoolId, fileCleanupFailed });
+  } catch (error) {
+    if (connection && !committed) await connection.rollback();
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      error = createError('This school has protected records and cannot be permanently deleted. Keep it rejected or suspended.', 409);
+    }
     next(error);
   } finally { connection?.release(); }
 }
@@ -702,4 +1146,4 @@ async function updateAcademicStructure(req, res, next) {
   } catch (error) { if (connection) await connection.rollback(); next(error); } finally { connection?.release(); }
 }
 
-module.exports = { changeSchoolAccess, getAcademicStructure, getPlatformSchool, getPortalFeatures, getRegistrationStatus, getSchoolLogo, getSchoolSettings, listPlatformSchools, registerSchool, reviewSchool, updateAcademicStructure, updatePortalFeatures, updateSchoolLogo, updateSchoolSettings };
+module.exports = { changeSchoolAccess, deletePlatformSchool, getAcademicStructure, getPlatformSchool, getPortalFeatures, getRegistrationDetails, getRegistrationStatus, getSchoolLogo, getSchoolSettings, listPlatformSchools, registerSchool, resubmitSchoolRegistration, retrySchoolRegistrationEmail, reviewSchool, updateAcademicStructure, updatePortalFeatures, updateSchoolLogo, updateSchoolSettings };

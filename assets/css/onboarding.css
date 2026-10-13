@@ -470,6 +470,10 @@ body:has(.onboarding-page) {
   line-height: 1.45;
 }
 
+.onboarding-settings-note[hidden] {
+  display: none;
+}
+
 .onboarding-settings-note-icon {
   display: grid;
   width: 32px;
@@ -491,6 +495,17 @@ body:has(.onboarding-page) {
   color: var(--red);
   font-size: 10px;
   line-height: 1.4;
+}
+
+.onboarding-load-state {
+  margin: 0 0 12px;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#registrationFormFields[hidden] {
+  display: none;
 }
 
 .onboarding-field input[type='file'] {
@@ -625,6 +640,10 @@ body:has(.onboarding-page) {
 
 .onboarding-submit:active {
   transform: translateY(0);
+}
+
+.onboarding-submit[hidden] {
+  display: none;
 }
 
 .pending-registration-content {
@@ -1532,6 +1551,9 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 }
 
 .pending-registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 16px;
 }
 

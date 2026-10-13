@@ -1089,6 +1089,34 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   CONSTRAINT fk_audit_logs_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS school_registration_email_outbox (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  decision ENUM('approved', 'rejected', 'suspended', 'reactivated') NOT NULL,
+  recipient_email VARCHAR(255) NULL,
+  school_name VARCHAR(255) NOT NULL,
+  administrator_name VARCHAR(220) NOT NULL,
+  administrator_login VARCHAR(255) NULL,
+  rejection_reason TEXT NULL,
+  status ENUM('pending', 'sending', 'sent', 'skipped', 'failed') NOT NULL DEFAULT 'pending',
+  attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  manual_retries SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  claim_token CHAR(36) NULL,
+  claimed_at DATETIME NULL,
+  sent_at DATETIME NULL,
+  smtp_message_id VARCHAR(255) NULL,
+  smtp_response VARCHAR(255) NULL,
+  last_error VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_school_registration_email_ready (status, next_attempt_at, id),
+  KEY idx_school_registration_email_claim (status, claimed_at),
+  KEY idx_school_registration_email_school (school_id, id),
+  CONSTRAINT fk_school_registration_email_school
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
 -- Apply migrations/021_add_feature_tenant_constraints.sql and
 -- migrations/022_add_child_tenant_constraints.sql and
 -- migrations/023_link_assignment_grading_items.sql and

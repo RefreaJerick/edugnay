@@ -26,7 +26,7 @@ const CATEGORIES = {
 
 const PLATFORM_CATEGORIES = {
   registrations: ['school_registration_submitted', 'school_registration_approved', 'school_registration_rejected'],
-  access: ['school_suspended', 'school_reactivated']
+  access: ['school_suspended', 'school_reactivated', 'school_deleted']
 };
 const PLATFORM_ACTIONS = Object.values(PLATFORM_CATEGORIES).flat();
 
@@ -84,6 +84,7 @@ const ACTION_LABELS = {
   school_registration_approved: ['approved a school registration', 'building-2', 'green', 'school_configuration'],
   school_registration_rejected: ['rejected a school registration', 'building-2', 'red', 'school_configuration'],
   school_suspended: ['suspended a school account', 'building-2', 'red', 'school_configuration'],
+  school_deleted: ['deleted a school account', 'trash-2', 'red', 'school_configuration'],
   school_reactivated: ['reactivated a school account', 'building-2', 'green', 'school_configuration'],
   school_logo_updated: ['updated the school logo', 'image', 'blue', 'school_configuration'],
   grading_period_reopen_requested: ['requested grade editing access', 'lock-keyhole-open', 'gold', 'reopen_requests'],
@@ -283,6 +284,7 @@ async function listPlatformActivity(req, res, next) {
     res.json({
       activities: pageRows.map(row => {
         const event = formatActivity(row);
+        if (row.actionType === 'school_deleted') event.schoolName = parseDetails(row.details).summary || '';
         const access = PLATFORM_CATEGORIES.access.includes(row.actionType);
         if (parseDetails(row.details).source === 'school_record') {
           event.actor = row.schoolName || 'School account';

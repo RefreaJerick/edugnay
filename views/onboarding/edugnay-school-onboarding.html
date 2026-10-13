@@ -98,7 +98,7 @@
       <div class="onboarding-registration-intro">
         <p class="onboarding-showcase-kicker">School onboarding</p>
         <h2 id="schoolRegistrationTitle">Register your school</h2>
-        <p>Submit your school information for Platform Admin review. We will send the decision to your notification email.</p>
+        <p id="schoolRegistrationDescription">Submit your school information for Platform Admin review. We will send the decision to your notification email.</p>
       </div>
       <div class="onboarding-form-area">
         <div class="onboarding-card">
@@ -123,6 +123,14 @@
         </div>
 
         <form id="schoolOnboardingForm" onsubmit="submitSchoolOnboarding(event)">
+          <p class="onboarding-load-state" id="registrationLoadState" role="status" aria-live="polite" hidden>Loading saved application details...</p>
+          <p class="onboarding-level-error" id="registrationLoadError" role="alert" hidden></p>
+          <button class="onboarding-submit" id="registrationLoadRetry" type="button" hidden>Retry loading saved application</button>
+          <div class="onboarding-settings-note" id="registrationResubmitNotice" role="note" hidden>
+            <span class="onboarding-settings-note-icon" aria-hidden="true"><i data-lucide="info"></i></span>
+            <span>Revise the saved application. Your school domain and administrator login <strong id="resubmitAdministratorLogin"></strong> will stay the same. A new temporary password is required.</span>
+          </div>
+          <div id="registrationFormFields">
           <section class="onboarding-section">
             <div class="onboarding-section-heading">
               <span class="onboarding-section-icon" aria-hidden="true"><i data-lucide="school"></i></span>
@@ -181,7 +189,7 @@
                   <img id="schoolLogoPreviewImage" src="" alt="School logo preview" hidden />
                   <div class="onboarding-logo-upload">
                     <input id="schoolLogo" name="schoolLogo" type="file" accept="image/png,image/jpeg,image/webp" />
-                    <small>Preview the logo here. You can update this branding later in School Management.</small>
+                    <small id="schoolLogoHelp">Preview the logo here. You can update this branding later in School Management.</small>
                   </div>
                 </div>
               </div>
@@ -208,7 +216,7 @@
               <div class="onboarding-field">
                 <label for="adminPassword">Temporary password</label>
                 <input id="adminPassword" name="adminPassword" type="password" minlength="12" placeholder="At least 12 characters" required />
-                <small>Use at least 12 characters. This can be changed after account activation.</small>
+                <small id="adminPasswordHelp">Use at least 12 characters. This can be changed after account activation.</small>
               </div>
             </div>
             <div class="onboarding-settings-note" role="note">
@@ -243,7 +251,8 @@
           </section>
 
           <div class="onboarding-actions">
-            <button class="onboarding-submit" type="submit"><i data-lucide="arrow-right" style="width:15px;height:15px;"></i> Create school profile</button>
+            <button class="onboarding-submit" id="schoolOnboardingSubmit" type="submit"><i data-lucide="arrow-right" style="width:15px;height:15px;"></i> Create school profile</button>
+          </div>
           </div>
         </form>
       </div>
@@ -450,6 +459,169 @@
       return SCHOOL_LEVELS.map(level => level.value).filter(level => selected.has(level));
     }
 
+    let registrationResubmitMode = false;
+    let registrationDetailsLoaded = false;
+
+    try {
+      registrationResubmitMode = sessionStorage.getItem('edugnay_registration_resubmit_mode') === 'true';
+    } catch {}
+
+    function validateSavedRegistrationDetails(application) {
+      const school = application?.school;
+      const administrator = application?.initialAdministrator;
+      const schoolLevels = application?.schoolLevels;
+      const termConfigs = application?.academicTermConfigs;
+      const periodCounts = { quarterly: 4, three_term: 3, semester: 2 };
+      const validLevels = new Set(SCHOOL_LEVELS.map(level => level.value));
+      const validDate = value => {
+        if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const parsed = new Date(`${value}T00:00:00Z`);
+        return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+      };
+      const incompleteError = () => {
+        const error = new Error('The saved application is incomplete. Contact Platform Admin for help; do not register again.');
+        error.retryable = false;
+        return error;
+      };
+
+      if (!school || !String(school.name || '').trim() || !String(school.email || '').trim()
+        || !String(school.schoolEmailDomain || '').trim()
+        || !String(application.notificationEmail || '').trim()
+        || !String(administrator?.firstName || '').trim()
+        || !String(administrator?.lastName || '').trim()
+        || !String(application.administratorSchoolEmail || '').trim()
+        || !String(application.currentSchoolYearLabel || '').trim()
+        || !validDate(application.schoolYearStartDate)
+        || !validDate(application.schoolYearEndDate)
+        || application.schoolYearStartDate >= application.schoolYearEndDate
+        || !Array.isArray(schoolLevels) || !schoolLevels.length
+        || schoolLevels.some(level => !validLevels.has(level))
+        || !Array.isArray(termConfigs) || termConfigs.length !== schoolLevels.length) {
+        throw incompleteError();
+      }
+
+      const seenLevels = new Set();
+      for (const config of termConfigs) {
+        const expectedPeriods = periodCounts[config?.gradingPeriodType];
+        if (!config || !schoolLevels.includes(config.schoolLevel) || seenLevels.has(config.schoolLevel)
+          || !expectedPeriods || !Array.isArray(config.academicPeriods)
+          || config.academicPeriods.length !== expectedPeriods
+          || config.academicPeriods.some(period => !String(period?.name || '').trim()
+            || !validDate(period.plannedStartDate) || !validDate(period.plannedEndDate))) {
+          throw incompleteError();
+        }
+        seenLevels.add(config.schoolLevel);
+      }
+
+      if (seenLevels.size !== schoolLevels.length) {
+        throw incompleteError();
+      }
+      return true;
+    }
+
+    async function loadRejectedRegistration() {
+      const form = document.getElementById('schoolOnboardingForm');
+      const fields = document.getElementById('registrationFormFields');
+      const loading = document.getElementById('registrationLoadState');
+      const error = document.getElementById('registrationLoadError');
+      const retry = document.getElementById('registrationLoadRetry');
+      const notice = document.getElementById('registrationResubmitNotice');
+      const submit = document.getElementById('schoolOnboardingSubmit');
+      registrationDetailsLoaded = false;
+      fields.hidden = true;
+      loading.hidden = false;
+      error.hidden = true;
+      retry.hidden = true;
+      notice.hidden = true;
+      submit.disabled = true;
+      form.setAttribute('aria-busy', 'true');
+      try {
+        let token = '';
+        try { token = sessionStorage.getItem('edugnay_registration_status_token') || ''; }
+        catch {
+          const tokenError = new Error('This tab cannot access the registration token. Contact Platform Admin for help; do not register again.');
+          tokenError.retryable = false;
+          throw tokenError;
+        }
+        if (!token) {
+          const tokenError = new Error('This tab does not have the registration token. Contact Platform Admin for help; do not register again.');
+          tokenError.retryable = false;
+          throw tokenError;
+        }
+        let application;
+        try {
+          application = await window.EDUGNAY_API.getRegistrationDetails(token);
+        } catch (requestError) {
+          if (requestError?.status === 404) {
+            const tokenError = new Error('This saved application could not be found or its access token has expired. It may have been deleted. Contact Platform Admin for help; do not register again.');
+            tokenError.retryable = false;
+            throw tokenError;
+          }
+          if (requestError?.status === 409) {
+            const statusError = new Error('This application is no longer eligible for revision. Contact Platform Admin for help.');
+            statusError.retryable = false;
+            throw statusError;
+          }
+          throw requestError;
+        }
+        validateSavedRegistrationDetails(application);
+
+        const school = application.school;
+        const values = {
+          schoolName: school.name,
+          schoolId: school.depedSchoolId ?? '',
+          schoolAddress: school.addressLine ?? '',
+          schoolEmail: school.email,
+          schoolPhone: school.phone ?? '',
+          schoolWebsite: school.website ?? '',
+          notificationEmail: application.notificationEmail,
+          adminName: [application.initialAdministrator?.firstName, application.initialAdministrator?.lastName].filter(Boolean).join(' '),
+          schoolYear: application.currentSchoolYearLabel,
+          schoolYearStartDate: application.schoolYearStartDate,
+          schoolYearEndDate: application.schoolYearEndDate
+        };
+        Object.entries(values).forEach(([id, value]) => { document.getElementById(id).value = value; });
+        document.getElementById('adminPassword').value = '';
+        document.getElementById('schoolLogo').value = '';
+        document.getElementById('schoolLogoHelp').textContent = 'The current logo will be kept unless you choose a replacement.';
+        document.querySelectorAll('#schoolLevelOptions input').forEach(input => {
+          input.checked = application.schoolLevels.includes(input.value);
+        });
+        Object.keys(termDrafts).forEach(level => delete termDrafts[level]);
+        (application.academicTermConfigs || []).forEach(config => {
+          termDrafts[config.schoolLevel] = {
+            gradingPeriodType: config.gradingPeriodType,
+            academicPeriods: config.academicPeriods || []
+          };
+        });
+        document.getElementById('schoolLevelsError').hidden = application.schoolLevels.length > 0;
+        renderAcademicTermConfigurations();
+        document.getElementById('schoolRegistrationTitle').textContent = 'Revise your school registration';
+        document.getElementById('schoolRegistrationDescription').textContent = 'Update the saved application and resubmit it to Platform Admin. Your existing school record will be retained.';
+        document.querySelector('.onboarding-form-title').textContent = 'Revise registration details';
+        document.getElementById('resubmitAdministratorLogin').textContent = application.administratorSchoolEmail || 'unchanged';
+        document.querySelector('label[for="adminPassword"]').textContent = 'New temporary password';
+        document.getElementById('adminPasswordHelp').textContent = 'A new password is required because the previous administrator account remains inactive.';
+        submit.textContent = 'Resubmit application';
+        document.getElementById('registrationResubmitNotice').hidden = false;
+        registrationDetailsLoaded = true;
+        fields.hidden = false;
+        loading.hidden = true;
+        form.removeAttribute('aria-busy');
+        submit.disabled = false;
+      } catch (loadError) {
+        loading.hidden = true;
+        form.removeAttribute('aria-busy');
+        const terminalError = loadError?.retryable === false;
+        error.textContent = terminalError
+          ? loadError.message
+          : loadError?.message || 'Saved application details could not be loaded. Check your connection and retry.';
+        error.hidden = false;
+        retry.hidden = terminalError;
+        submit.disabled = true;
+      }
+    }
+
     let schoolLogoData = '';
 
     function readSchoolLogo(file) {
@@ -609,6 +781,7 @@
 
     async function submitSchoolOnboarding(event) {
       event.preventDefault();
+      if (registrationResubmitMode && !registrationDetailsLoaded) return;
       const form = event.currentTarget;
       const values = Object.fromEntries(new FormData(form).entries());
       const temporaryPassword = values.adminPassword;
@@ -657,14 +830,20 @@
       const submitButton = form.querySelector('[type="submit"]');
       const submitLabel = submitButton.innerHTML;
       submitButton.disabled = true;
-      submitButton.textContent = 'Creating profile...';
+      submitButton.textContent = registrationResubmitMode ? 'Resubmitting application...' : 'Creating profile...';
 
       try {
-        const createdSchool = await window.EDUGNAY_API.registerSchool(registration, logoInput.files?.[0]);
-        if (!createdSchool) throw new Error('The school registration could not be created.');
+        const registrationToken = registrationResubmitMode
+          ? sessionStorage.getItem('edugnay_registration_status_token')
+          : '';
+        const createdSchool = registrationResubmitMode
+          ? await window.EDUGNAY_API.resubmitSchool(registrationToken, registration, logoInput.files?.[0])
+          : await window.EDUGNAY_API.registerSchool(registration, logoInput.files?.[0]);
+        if (!createdSchool) throw new Error('The school registration could not be saved.');
 
         try {
           sessionStorage.removeItem('edugnay_pending_registration');
+          sessionStorage.removeItem('edugnay_registration_resubmit_mode');
           if (createdSchool.registrationStatusToken) {
             sessionStorage.setItem('edugnay_registration_status_token', createdSchool.registrationStatusToken);
           }
@@ -676,11 +855,13 @@
         submitButton.disabled = false;
         submitButton.innerHTML = submitLabel;
         if (window.lucide) lucide.createIcons();
-        showAppToast(error?.message || 'The school registration could not be created.', 'error');
+        showAppToast(error?.message || (registrationResubmitMode
+          ? 'The school registration could not be resubmitted.'
+          : 'The school registration could not be created.'), 'error');
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       initOnboardingReveal();
       renderOnboardingFeaturePreviews();
       selectOnboardingFeature('school-management');
@@ -688,6 +869,8 @@
       populateSchoolLevels();
       renderAcademicTermConfigurations();
       document.getElementById('schoolLogo').addEventListener('change', previewSchoolLogo);
+      document.getElementById('registrationLoadRetry').addEventListener('click', loadRejectedRegistration);
+      if (registrationResubmitMode) await loadRejectedRegistration();
       if (window.lucide) lucide.createIcons();
     });
   </script>

@@ -12,13 +12,17 @@ const { schoolLogoUpload } = require('../config/schoolLogos');
 
 const router = express.Router();
 const registrationLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
-const registrationStatusLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+const registrationStatusLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 
 router.post('/schools/register', registrationLimiter, schoolLogoUpload.single('logo'), controller.registerSchool);
 router.post('/schools/registration-status', registrationStatusLimiter, controller.getRegistrationStatus);
+router.post('/schools/registration-details', registrationStatusLimiter, controller.getRegistrationDetails);
+router.post('/schools/registration-resubmit', registrationStatusLimiter, schoolLogoUpload.single('logo'), controller.resubmitSchoolRegistration);
 router.get('/schools/:schoolId/logo', requireAuth, controller.getSchoolLogo);
 router.get('/platform/schools', requireAuth, requirePlatformAdmin, controller.listPlatformSchools);
 router.get('/platform/schools/:schoolId', requireAuth, requirePlatformAdmin, controller.getPlatformSchool);
+router.delete('/platform/schools/:schoolId', requireAuth, requirePlatformAdmin, controller.deletePlatformSchool);
+router.post('/platform/schools/:schoolId/registration-email/retry', requireAuth, requirePlatformAdmin, controller.retrySchoolRegistrationEmail);
 router.get('/platform/activity', requireAuth, requirePlatformAdmin, activityController.listPlatformActivity);
 router.post('/platform/schools/:schoolId/approve', requireAuth, requirePlatformAdmin, (req, res, next) => {
   req.params.action = 'approve';

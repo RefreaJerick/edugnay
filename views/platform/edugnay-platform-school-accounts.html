@@ -72,8 +72,10 @@
         <div class="cat-tabs" id="schoolAccountTabs" role="tablist" aria-label="School account status"></div>
         <div class="school-account-toolbar">
           <div class="school-account-search search-wrap"><span class="search-icon" aria-hidden="true"><i data-lucide="search" style="width:14px;height:14px;"></i></span><input class="search-input" id="schoolAccountSearch" type="search" autocomplete="off" placeholder="Search school accounts" aria-label="Search school accounts" /></div>
+          <button class="school-account-refresh" id="schoolAccountRefresh" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i>Refresh</button>
           <div class="school-account-result-count" id="schoolAccountResultCount"></div>
         </div>
+        <p class="school-account-refresh-error" id="schoolAccountRefreshError" role="status" hidden>School accounts could not be updated. Use Refresh to try again.</p>
         <div class="school-account-table-wrap">
           <table class="school-account-table">
             <thead><tr><th>School</th><th>Administrator</th><th>School ID</th><th>Status</th><th>Action</th></tr></thead>
@@ -147,6 +149,20 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="schoolDeleteConfirmModal" aria-hidden="true">
+    <section class="modal platform-account-modal platform-status-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="schoolDeleteConfirmTitle">
+      <div class="modal-head">
+        <div class="modal-heading"><div class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="trash-2"></i></div><div class="modal-heading-copy"><div class="modal-title" id="schoolDeleteConfirmTitle">Delete school permanently?</div><div class="modal-sub">This action cannot be undone.</div></div></div>
+        <button class="modal-close" type="button" aria-label="Close delete confirmation" onclick="closeSchoolDeleteConfirmation()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-context school-delete-context"><div class="ctx-icon"><i data-lucide="building-2" style="width:18px;height:18px;"></i></div><div class="school-delete-context-copy"><div class="ctx-label">School account</div><div class="ctx-val" id="schoolDeleteConfirmName"></div></div></div>
+        <p class="confirm-remove-message">The school, its initial administrator, and its registration setup will be permanently removed. Schools with additional accounts or academic records cannot be deleted.</p>
+      </div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeSchoolDeleteConfirmation()">Cancel</button><button class="btn btn-danger" id="schoolDeleteConfirmButton" type="button">Delete school</button></div>
+    </section>
+  </div>
+
   <script>
     const PLATFORM = window.EDUGNAY_PLATFORM;
     const SCHOOL_STATUS_VALUES = window.EDUGNAY_CONFIG.values.statuses;
@@ -154,6 +170,12 @@
     let schoolAccountRecords = [];
     let pendingSchoolStatusChange = null;
     let schoolStatusChangeInProgress = false;
+    let schoolDeleteInProgress = false;
+    let schoolAccountRefreshPromise = null;
+    let schoolAccountQueuedRefresh = null;
+    let schoolAccountPollTimer = null;
+    let schoolAccountLastReturnAt = 0;
+    let schoolAccountPollingReady = false;
     const SCHOOL_ACCOUNT_FILTERS = [
       { id: 'all', label: 'All schools' },
       { id: 'active', label: 'Active' },
@@ -193,9 +215,53 @@
       });
     }
 
-    async function refreshSchoolAccounts() {
-      schoolAccountRecords = await PLATFORM.getSchoolRecords();
-      renderSchoolAccounts();
+    async function refreshSchoolAccounts(force = false) {
+      if (schoolAccountRefreshPromise) {
+        if (!force) return schoolAccountRefreshPromise;
+        if (!schoolAccountQueuedRefresh) {
+          schoolAccountQueuedRefresh = schoolAccountRefreshPromise.catch(() => {}).then(() => {
+            schoolAccountQueuedRefresh = null;
+            return refreshSchoolAccounts();
+          });
+        }
+        return schoolAccountQueuedRefresh;
+      }
+      document.getElementById('schoolAccountRefresh').disabled = true;
+      const request = (async () => {
+        try {
+          schoolAccountRecords = await PLATFORM.getSchoolRecords();
+          renderSchoolAccounts();
+          document.getElementById('schoolAccountRefreshError').hidden = true;
+        } catch (error) {
+          document.getElementById('schoolAccountRefreshError').hidden = false;
+          throw error;
+        }
+      })();
+      schoolAccountRefreshPromise = request.finally(() => {
+        schoolAccountRefreshPromise = null;
+        document.getElementById('schoolAccountRefresh').disabled = false;
+      });
+      return schoolAccountRefreshPromise;
+    }
+
+    function startSchoolAccountPolling() {
+      if (document.hidden || schoolAccountPollTimer) return;
+      schoolAccountPollTimer = window.setInterval(() => {
+        if (!document.hidden) refreshSchoolAccounts().catch(() => {});
+      }, 60000);
+    }
+
+    function stopSchoolAccountPolling() {
+      if (schoolAccountPollTimer) window.clearInterval(schoolAccountPollTimer);
+      schoolAccountPollTimer = null;
+    }
+
+    function checkSchoolAccountsOnReturn() {
+      if (document.hidden || !schoolAccountPollingReady) return;
+      startSchoolAccountPolling();
+      if (Date.now() - schoolAccountLastReturnAt < 1000) return;
+      schoolAccountLastReturnAt = Date.now();
+      refreshSchoolAccounts(Boolean(schoolAccountRefreshPromise)).catch(() => {});
     }
 
     function renderSchoolAccountTabs(schools) {
@@ -274,6 +340,12 @@
         ? (window.EDUGNAY_CONFIG.getSchoolTypeInfo?.(school.schoolLevels)?.label || school.schoolLevels.join(' + '))
         : 'Not set';
       const journalSubject = details.journalSubject;
+      const administratorLoginStatus = {
+        [SCHOOL_STATUS_VALUES.ACTIVE]: { label: 'Active', className: 'active' },
+        [SCHOOL_STATUS_VALUES.PENDING]: { label: 'Inactive until approval', className: 'pending' },
+        [SCHOOL_STATUS_VALUES.REJECTED]: { label: 'Inactive — registration rejected', className: 'rejected' },
+        [SCHOOL_STATUS_VALUES.SUSPENDED]: { label: 'Unavailable while school access is suspended', className: 'suspended' }
+      }[status] || { label: 'Unavailable', className: 'suspended' };
       const portalFeatures = [
         { label: 'Grades page', enabled: Boolean(school.gradesPageEnabled) },
         { label: 'AI Reports', enabled: Boolean(school.narrativeReportsEnabled) },
@@ -295,8 +367,8 @@
           <div><dt>School ID</dt><dd>${escapeHtml(school.schoolId || 'Not set')}</dd></div>
           <div><dt>Platform access</dt><dd>${schoolStatusLabel(status)}</dd></div>
           <div><dt>Initial administrator</dt><dd>${escapeHtml(school.administrator)}</dd></div>
-          <div><dt>Administrator email</dt><dd>${escapeHtml(school.administratorSchoolEmail || 'Not set')}</dd></div>
-          <div><dt>Notification email</dt><dd>${escapeHtml(school.notificationEmail || 'Not set')}</dd></div>
+          <div><dt>Administrator login</dt><dd><span class="account-review-login-email">${escapeHtml(school.administratorSchoolEmail || 'Not set')}</span><span class="account-login-status ${administratorLoginStatus.className}" role="status">${escapeHtml(administratorLoginStatus.label)}</span></dd></div>
+          <div><dt>Notification email (delivery address)</dt><dd>${escapeHtml(school.notificationEmail || 'Not set')}</dd></div>
           <div><dt>Submitted</dt><dd>${escapeHtml(school.submittedAt ? window.EDUGNAY_CONFIG.formatDateTime(school.submittedAt) : 'Not available')}</dd></div>
           <div><dt>School levels</dt><dd>${escapeHtml(levels)}</dd></div>
           <div><dt>School email</dt><dd>${escapeHtml(school.email || 'Not set')}</dd></div>
@@ -334,7 +406,72 @@
           : status === SCHOOL_STATUS_VALUES.SUSPENDED
             ? `<button class="btn btn-save" type="button" data-school-status="${SCHOOL_STATUS_VALUES.ACTIVE}">Reactivate school</button>`
             : '';
-      document.getElementById('schoolAccountModalActions').innerHTML = action;
+      const emailDelivery = details.emailDelivery;
+      const deliveryStatusLabel = {
+        pending: 'Queued',
+        sending: 'Sending',
+        sent: 'Accepted by Gmail SMTP — inbox delivery unconfirmed',
+        skipped: 'Skipped',
+        failed: 'Failed'
+      }[emailDelivery?.status] || 'No school account email queued';
+      const emailSection = document.createElement('section');
+      emailSection.className = 'account-review-section';
+      emailSection.innerHTML = '<div class="account-review-section-head"><div><div class="account-review-section-title">Latest school account email</div><div class="account-review-section-sub">SMTP acceptance does not confirm inbox delivery.</div></div></div><div class="account-review-feature-list"></div>';
+      if (emailDelivery?.decision) {
+        const emailTitles = {
+          approved: 'Approval email',
+          rejected: 'Rejection email',
+          suspended: 'Suspension email',
+          reactivated: 'Reactivation email'
+        };
+        emailSection.querySelector('.account-review-section-title').textContent = emailTitles[emailDelivery.decision] || 'Latest school account email';
+      }
+      const emailList = emailSection.querySelector('.account-review-feature-list');
+      const deliveryRow = document.createElement('div');
+      deliveryRow.className = 'account-review-feature-row';
+      deliveryRow.innerHTML = '<span class="account-review-feature-label">Delivery status</span><span class="account-review-feature-value"></span>';
+      deliveryRow.querySelector('.account-review-feature-value').textContent = deliveryStatusLabel;
+      emailList.appendChild(deliveryRow);
+      if (emailDelivery) {
+        const recipientRow = document.createElement('div');
+        recipientRow.className = 'account-review-feature-row';
+        recipientRow.innerHTML = '<span class="account-review-feature-label">Email recipient</span><span class="account-review-feature-value"></span>';
+        recipientRow.querySelector('.account-review-feature-value').textContent = emailDelivery.recipientEmail || 'Missing or invalid';
+        emailList.appendChild(recipientRow);
+        if (emailDelivery.smtpMessageId) {
+          const referenceRow = document.createElement('div');
+          referenceRow.className = 'account-review-feature-row';
+          referenceRow.innerHTML = '<span class="account-review-feature-label">SMTP message reference</span><span class="account-review-feature-value"></span>';
+          referenceRow.querySelector('.account-review-feature-value').textContent = emailDelivery.smtpMessageId;
+          emailList.appendChild(referenceRow);
+        }
+        const attemptRow = document.createElement('div');
+        attemptRow.className = 'account-review-feature-row';
+        attemptRow.innerHTML = '<span class="account-review-feature-label">Attempts</span><span class="account-review-feature-value"></span>';
+        attemptRow.querySelector('.account-review-feature-value').textContent = String(emailDelivery.attempts || 0);
+        emailList.appendChild(attemptRow);
+        if (emailDelivery.lastError) {
+          const errorRow = document.createElement('div');
+          errorRow.className = 'account-review-feature-row';
+          errorRow.innerHTML = '<span class="account-review-feature-label">Last error</span><span class="account-review-feature-value"></span>';
+          errorRow.querySelector('.account-review-feature-value').textContent = emailDelivery.lastError === 'smtp_outcome_unknown'
+            ? 'SMTP outcome unknown; check the sender’s Sent folder before retrying.'
+            : emailDelivery.lastError;
+          emailList.appendChild(errorRow);
+        }
+        if (emailDelivery.status === 'failed') {
+          const retryButton = document.createElement('button');
+          retryButton.className = 'btn btn-cancel';
+          retryButton.type = 'button';
+          retryButton.textContent = 'Retry email';
+          retryButton.addEventListener('click', () => retrySchoolRegistrationEmail(school.id, retryButton));
+          emailSection.appendChild(retryButton);
+        }
+      }
+      document.getElementById('schoolAccountModalBody').appendChild(emailSection);
+      const canDelete = status === SCHOOL_STATUS_VALUES.REJECTED || status === SCHOOL_STATUS_VALUES.SUSPENDED;
+      document.getElementById('schoolAccountModalActions').innerHTML = `${canDelete ? '<button class="btn btn-danger" id="schoolAccountDeleteButton" type="button">Delete school</button>' : ''}${action}`;
+      document.getElementById('schoolAccountDeleteButton')?.addEventListener('click', openSchoolDeleteConfirmation);
       const rejectButton = document.querySelector('[data-school-action="reject"]');
       if (rejectButton) rejectButton.addEventListener('click', openSchoolRejectionModal);
       const statusButton = document.querySelector('[data-school-status]');
@@ -430,7 +567,6 @@
 
     async function rejectSchoolRegistration() {
       const rejectionReason = document.getElementById('schoolAccountRejectionReason').value.trim();
-      if (!rejectionReason) { showAppToast('Provide a reason for rejecting this registration.', 'error'); return; }
       const button = document.getElementById('schoolAccountRejectConfirm');
       if (button.disabled) return;
       button.disabled = true;
@@ -445,7 +581,7 @@
         closeSchoolRejectionModal();
         closeSchoolAccountModal();
         try {
-          await refreshSchoolAccounts();
+          await refreshSchoolAccounts(true);
           showAppToast('School registration rejected.');
         } catch (refreshError) {
           showAppToast('School registration was rejected, but the list could not refresh. Reload the page to verify it.', 'info');
@@ -463,6 +599,67 @@
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
       schoolAccountState.selectedSchoolId = null;
+    }
+
+    function openSchoolDeleteConfirmation() {
+      const school = schoolAccountRecords.find(item => item.id === schoolAccountState.selectedSchoolId);
+      if (!school) return;
+      document.getElementById('schoolDeleteConfirmName').textContent = school.name;
+      const modal = document.getElementById('schoolDeleteConfirmModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('schoolDeleteConfirmButton').focus();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeSchoolDeleteConfirmation() {
+      if (schoolDeleteInProgress) return;
+      const modal = document.getElementById('schoolDeleteConfirmModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function confirmSchoolDeletion() {
+      const schoolId = schoolAccountState.selectedSchoolId;
+      const button = document.getElementById('schoolDeleteConfirmButton');
+      if (!schoolId || schoolDeleteInProgress) return;
+      schoolDeleteInProgress = true;
+      button.disabled = true;
+      button.textContent = 'Deleting...';
+      try {
+        const result = await window.EDUGNAY_API.deletePlatformSchool(schoolId);
+        schoolDeleteInProgress = false;
+        closeSchoolDeleteConfirmation();
+        closeSchoolAccountModal();
+        try {
+          await refreshSchoolAccounts(true);
+          showAppToast(result.fileCleanupFailed ? 'School deleted. An uploaded image needs cleanup.' : 'School deleted permanently.', result.fileCleanupFailed ? 'info' : undefined);
+        } catch (error) {
+          showAppToast('School deleted, but the list could not refresh. Reload the page to verify it.', 'info');
+        }
+      } catch (error) {
+        schoolDeleteInProgress = false;
+        closeSchoolDeleteConfirmation();
+        showAppToast(error.message || 'The school could not be deleted.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Delete school';
+      }
+    }
+
+    async function retrySchoolRegistrationEmail(schoolId, button) {
+      if (button.disabled) return;
+      button.disabled = true;
+      button.textContent = 'Queueing retry...';
+      try {
+        await window.EDUGNAY_API.retryPlatformSchoolRegistrationEmail(schoolId);
+        showAppToast('Email retry queued.');
+        await openSchoolAccountModal(schoolId);
+      } catch (error) {
+        showAppToast(error.message || 'The email could not be retried.', 'error');
+        button.disabled = false;
+        button.textContent = 'Retry email';
+      }
     }
 
     async function updateSchoolAccountStatus(status, schoolId = schoolAccountState.selectedSchoolId) {
@@ -485,7 +682,7 @@
         }
         closeSchoolAccountModal();
         try {
-          await refreshSchoolAccounts();
+          await refreshSchoolAccounts(true);
           showAppToast(status === SCHOOL_STATUS_VALUES.ACTIVE ? 'School account activated.' : 'School account updated.');
         } catch (refreshError) {
           showAppToast('School account was updated, but the list could not refresh. Reload the page to verify it.', 'info');
@@ -516,8 +713,21 @@
       if (event.target.id === 'schoolStatusConfirmModal') closeSchoolStatusConfirmation();
     });
 
+    document.getElementById('schoolDeleteConfirmModal').addEventListener('click', event => {
+      if (event.target.id === 'schoolDeleteConfirmModal') closeSchoolDeleteConfirmation();
+    });
+
     document.getElementById('schoolAccountRejectConfirm').addEventListener('click', rejectSchoolRegistration);
     document.getElementById('schoolStatusConfirmButton').addEventListener('click', confirmSchoolStatusChange);
+    document.getElementById('schoolDeleteConfirmButton').addEventListener('click', confirmSchoolDeletion);
+    document.getElementById('schoolAccountRefresh').addEventListener('click', () => refreshSchoolAccounts(true).catch(() => {}));
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { schoolAccountLastReturnAt = 0; stopSchoolAccountPolling(); }
+      else checkSchoolAccountsOnReturn();
+    });
+    window.addEventListener('focus', checkSchoolAccountsOnReturn);
+    window.addEventListener('pagehide', () => { schoolAccountLastReturnAt = 0; stopSchoolAccountPolling(); });
+    window.addEventListener('pageshow', checkSchoolAccountsOnReturn);
 
     document.addEventListener('DOMContentLoaded', async () => {
       await window.EDUGNAY_PLATFORM_COMMUNICATION_READY;
@@ -530,6 +740,9 @@
         showAppToast(error?.message || 'The school accounts could not be loaded.', 'error');
       }
       if (window.lucide) window.lucide.createIcons();
+      schoolAccountPollingReady = true;
+      schoolAccountLastReturnAt = Date.now();
+      startSchoolAccountPolling();
     });
   </script>
 </body>

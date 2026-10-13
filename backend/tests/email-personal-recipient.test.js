@@ -11,7 +11,10 @@ Object.assign(process.env, {
   MAIL_PASSWORD: 'test', MAIL_FROM: 'Academix <no-reply@example.test>'
 });
 nodemailer.createTransport = () => ({
-  sendMail: async message => { sent.push(message); },
+  sendMail: async message => {
+    sent.push(message);
+    return { messageId: `<test-${sent.length}@example.test>`, response: '250 2.0.0 accepted' };
+  },
   verify: async () => true
 });
 
@@ -45,7 +48,7 @@ test('account, status, announcement, and registration mail never uses a school l
   assert.equal(sent.length, 0);
 
   user.personalEmail = 'jane@example.com';
-  for (const send of senders) assert.deepEqual(await send(), { status: 'sent' });
+  for (const send of senders) assert.equal((await send()).status, 'sent');
   assert.equal(sent.length, senders.length);
   assert.ok(sent.every(message => message.to === 'jane@example.com'));
   assert.match(sent[0].text, /j\.reyes\.adm@mnhs\.academix\.test/);

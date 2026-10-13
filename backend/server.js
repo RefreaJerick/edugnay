@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const { checkDatabaseConnection, isDatabaseConfigured } = require('./config/database');
 const { apiRateLimit, networkRateLimit } = require('./config/apiRateLimit');
 const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
+const { startSchoolRegistrationEmailWorker } = require('./workers/schoolRegistrationEmailWorker');
 const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
 const { startScheduledAnnouncementWorker } = require('./workers/scheduledAnnouncementWorker');
 const { getFrontendOrigin, getTrustProxyHops } = require('./config/deployment');
@@ -98,5 +99,6 @@ server.on('error', error => {
 });
 
 startAnnouncementEmailWorker();
+startSchoolRegistrationEmailWorker();
 startParentNotificationWorker();
 startScheduledAnnouncementWorker();

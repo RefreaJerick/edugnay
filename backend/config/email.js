@@ -39,22 +39,42 @@ function normalizeRecipient(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
+function sanitizeSmtpValue(value, maxLength = 255) {
+  const sanitized = String(value || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+  return sanitized || null;
+}
+
+function smtpResponseCode(value) {
+  return String(value || '').match(/^\s*(\d{3})\b/)?.[1] || null;
+}
+
 async function sendEmail({ to, subject, text }) {
   const recipient = normalizeRecipient(to);
   if (!recipient) return { status: 'skipped' };
   if (!isEmailConfigured()) return { status: 'not_configured' };
 
   try {
-    await getTransporter().sendMail({
+    const result = await getTransporter().sendMail({
       from: process.env.MAIL_FROM,
       to: recipient,
       subject,
       text
     });
-    return { status: 'sent' };
+    return {
+      status: 'sent',
+      messageId: sanitizeSmtpValue(result?.messageId),
+      smtpResponse: sanitizeSmtpValue(result?.response),
+      smtpResponseCode: smtpResponseCode(result?.response)
+    };
   } catch (error) {
-    console.error(`Email delivery failed: ${error.message}`);
-    return { status: 'failed' };
+    const errorCode = String(error.code || 'smtp_failed').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 80);
+    console.error('Email delivery failed', JSON.stringify({ errorCode: errorCode || 'smtp_failed' }));
+    return { status: 'failed', errorCode: errorCode || 'smtp_failed' };
   }
 }
 
@@ -150,6 +170,27 @@ function sendSchoolRegistrationDecisionEmail(user, school, approved, reason = ''
   });
 }
 
+function sendSchoolAccessStatusEmail(user, school, status) {
+  if (status !== 'suspended' && status !== 'reactivated') {
+    throw new Error('School access email status is invalid.');
+  }
+
+  const suspended = status === 'suspended';
+  return sendEmail({
+    to: getRecipient(user),
+    subject: suspended
+      ? 'Your Academix school access has been suspended'
+      : 'Your Academix school access has been restored',
+    text: [
+      `Hello ${user.displayName || 'School administrator'},`,
+      '',
+      suspended
+        ? `School access for ${school.name} has been suspended by the Platform Admin. You cannot sign in while access remains suspended. Please contact the Platform Admin if you need further information.`
+        : `School access for ${school.name} has been reactivated. You may access Academix again.`
+    ].join('\n')
+  });
+}
+
 async function verifyEmailConnection() {
   if (!isEmailConfigured()) return { status: 'not_configured' };
 
@@ -171,6 +212,9 @@ module.exports = {
   sendEmail,
   sendPasswordResetEmail,
   sendSchoolRegistrationDecisionEmail,
+  sendSchoolAccessStatusEmail,
   sendSchoolRegistrationSubmittedEmail,
+  sanitizeSmtpValue,
+  smtpResponseCode,
   verifyEmailConnection
 };
