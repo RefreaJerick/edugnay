@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance History | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/parent/attendance.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/attendance-history.js"></script>
+  <script src="../../assets/js/student/shell.js"></script>
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+</head>
+
+<body data-page-title="Attendance History">
+
+  <!-- Attendance is loaded for the signed-in student. -->
+
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest">
+          <img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">Acade<span>Mix</span></div>
+          <div class="brand-sub">Loading school...</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-student-dashboard.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="edugnay-student-grades.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Grades</span>
+        </a>
+        <a href="edugnay-student-assignments.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Assignments</span>
+        </a>
+        <a href="edugnay-student-attendance.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Attendance History</span>
+        </a>
+        <a href="edugnay-student-materials.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Learning Materials</span>
+        </a>
+        <a href="edugnay-student-journal.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Journal Entries</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-student-announcements.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Announcements</span>
+
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-student-profile.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">My Profile</span>
+        </a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Attendance History page">
+          <div class="topbar-context-copy">
+            <strong data-page-title-target>Attendance History</strong>
+          </div>
+        </div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation">
+          <i data-lucide="menu" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="tb-notif-dot"></span>
+          </button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head">
+              <div class="tb-notif-heading">
+                <span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span>
+                <span class="tb-notif-heading-copy">
+                  <span class="tb-notif-panel-title">Notifications</span>
+                  <span class="tb-notif-unread-count" aria-live="polite"></span>
+                </span>
+              </div>
+              <button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">
+                <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+                <span>Mark all read</span>
+              </button>
+            </div>
+            <div class="tb-notif-list" id="tbNotifList">
+              <div class="tb-notif-empty" id="tbNotifEmpty">
+                <div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div>
+                <div class="tb-notif-empty-title">No notifications yet</div>
+                <div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div>
+              </div>
+            </div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-student-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
+            <div class="tb-avatar student"></div>
+            <div class="tb-profile-info">
+              <div class="tb-profile-name">Loading account...</div>
+              <div class="tb-profile-role">Student</div>
+            </div>
+            <i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i>
+          </button>
+          <div class="tb-dropdown" id="tbProfileDropdown">
+            <a class="tb-dropdown-item" href="edugnay-student-profile.html">
+              <i data-lucide="user" style="width:15px;height:15px;"></i> My Profile
+            </a>
+            <div class="tb-dropdown-divider"></div>
+            <a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">
+              <i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <section class="portal-overview" aria-labelledby="attendance-page-title">
+        <div class="portal-overview-copy">
+          <div class="portal-overview-kicker">Student workspace</div>
+          <h1 class="portal-overview-title" id="attendance-page-title">Attendance History</h1>
+          <p class="portal-overview-description">Review your attendance patterns and flagged days.</p>
+        </div>
+      </section>
+
+      <div class="attendance-load-state" id="attendance-load-state" role="status" aria-live="polite" hidden>
+        <span id="attendance-load-message"></span>
+        <button class="top-btn secondary" id="attendance-retry" type="button" onclick="loadAttendance()" hidden>Try again</button>
+      </div>
+
+      <!-- Summary is recomputed for each recorded month. -->
+      <div class="stat-grid attendance-stat-grid" id="summary-strip">
+        <!-- JS generated -->
+      </div>
+
+      <!-- Two col: Calendar + Side panel -->
+      <div class="att-layout">
+
+        <!-- LEFT: Calendar -->
+        <div class="panel attendance-calendar-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Monthly Calendar</div>
+              <div class="panel-sub" id="cal-panel-sub">Tap a day to see subject-level detail</div>
+            </div>
+            <div class="cal-nav">
+              <button class="cal-nav-btn" id="cal-prev" type="button">
+                <i data-lucide="chevron-left" style="width:15px;height:15px;"></i>
+              </button>
+              <div class="cal-month-label" id="cal-month-label">Attendance history</div>
+              <button class="cal-nav-btn" id="cal-next" type="button">
+                <i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="calendar-wrap">
+            <div class="cal-weekday-row">
+              <div class="cal-weekday">Mon</div>
+              <div class="cal-weekday">Tue</div>
+              <div class="cal-weekday">Wed</div>
+              <div class="cal-weekday">Thu</div>
+              <div class="cal-weekday">Fri</div>
+              <div class="cal-weekday">Sat</div>
+              <div class="cal-weekday">Sun</div>
+            </div>
+            <div class="cal-grid" id="cal-grid">
+              <!-- JS generated -->
+            </div>
+          </div>
+
+          <div class="cal-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--blue-mid);"></span> Subject records available</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--gray-300);"></span> No record</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Day detail + Flagged days -->
+        <div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Flagged Days</div>
+                <div class="panel-sub">Absences this month</div>
+              </div>
+            </div>
+            <div id="flagged-list">
+              <!-- JS generated -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="att-footnote">
+        <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;margin-top:1px;"></i>
+        <span>Attendance is recorded per subject. Missing subjects are not counted as present; excused records appear in the day details. If a record looks incorrect, contact the subject teacher.</span>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="attendance-detail-modal" id="dayDetailModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></div>
+          <div class="modal-heading-copy">
+          <div class="modal-title" id="dayDetailModalTitle">Attendance details</div>
+          <div class="modal-sub">Attendance details for this school day.</div>
+          </div>
+        </div>
+        <button class="modal-close" type="button">
+          <i data-lucide="x" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="day-detail-modal-content">
+          <!-- JS generated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    lucide.createIcons();
+    let attendanceHistory;
+
+    async function loadAttendance() {
+      attendanceHistory.setLoading();
+      try {
+        await window.EDUGNAY_SCHOOL_READY;
+        if (window.EDUGNAY_CONFIG?.isAttendanceEnabled?.() === false) {
+          window.location.replace('./edugnay-student-dashboard.html');
+          return;
+        }
+        if (!window.EDUGNAY_API?.isBackendAvailable) throw new Error('The attendance API is not configured.');
+        const data = await window.EDUGNAY_API.getStudentAttendance();
+        const date = data?.currentDate;
+        const parsed = new Date(date + 'T00:00:00Z');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime())
+          || parsed.toISOString().slice(0, 10) !== date || !Array.isArray(data.records)) {
+          throw new Error('The attendance response is incomplete. Please try again.');
+        }
+        attendanceHistory.setRecords(data.records, date);
+      } catch (error) {
+        attendanceHistory.setError(error.message || 'Attendance could not be loaded.');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      attendanceHistory = window.createAttendanceHistory();
+      loadAttendance();
+    });
+  </script>
+</body>
+
+</html>

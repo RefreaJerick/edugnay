@@ -18,5 +18,5 @@ test('every portal top bar loads the shared avatar styles and renderer', () => {
       assert.match(html, /assets\/js\/shell-common\.js/, `${portal}/${filename} is missing the avatar renderer`);
     }
   }
-  assert.equal(topbarPages, 39);
+  assert.equal(topbarPages, 40);
 });

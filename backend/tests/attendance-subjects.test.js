@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const databaseModule = require('../config/database');
 const calls = [];
+let attendanceEnabled = 1;
 const section = {
   id: 8, schoolId: 1, name: 'St. Matthew',
   academicYearStartDate: '2025-01-01', academicYearEndDate: '2027-12-31'
@@ -22,7 +23,7 @@ const database = {
     if (sql.includes('SELECT id FROM academic_years WHERE id = ? AND school_id = ?')) {
       return [values[0] === 5 && values[1] === 1 ? [{ id: 5 }] : []];
     }
-    if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled: 1 }]];
+    if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled }]];
     if (sql.includes('FROM school_attendance_settings')) return [[{ allowEditPastAttendance: 1 }]];
     if (sql.includes('FROM attendance_sessions') && sql.includes('INNER JOIN sections')) {
       return [[{ id: 21, schoolId: 1, sectionId: 8, subjectId: 1, sectionName: 'St. Matthew' }]];
@@ -192,6 +193,45 @@ test('parent attendance query is scoped to linked children and confirmed subject
   assert.match(query.sql, /student_parent_links\.parent_user_id = \?/);
   assert.equal(query.values[0], 1);
   assert.equal(query.values[2], 9);
+});
+
+test('student attendance returns only records scoped to the signed-in student and school', async () => {
+  calls.length = 0;
+  const result = await call(attendance.getStudentAttendance, { user: { id: 4, schoolId: 1, role: 'student' } });
+  assert.equal(result.error, null);
+  assert.equal(result.data.records[0].studentId, '4');
+  const query = calls.find(item => item.sql.includes('FROM attendance_records'));
+  assert.deepEqual(query.values.slice(0, 2), [1, 4]);
+  assert.match(query.sql, /attendance_records\.student_user_id = \?/);
+  assert.match(query.sql, /attendance_sessions\.status = 'confirmed'/);
+  assert.match(query.sql, /attendance_sessions\.attendance_date <= \?/);
+  assert.match(query.sql, /academic_years\.status = 'active'/);
+  assert.match(query.sql, /attendance_sessions\.attendance_date BETWEEN academic_years\.start_date AND academic_years\.end_date/);
+});
+
+test('student attendance is unavailable when the school disables attendance', async () => {
+  attendanceEnabled = 0;
+  calls.length = 0;
+  try {
+    const result = await call(attendance.getStudentAttendance, { user: { id: 4, schoolId: 1, role: 'student' } });
+    assert.equal(result.error.status, 403);
+    assert.ok(!calls.some(item => item.sql.includes('FROM attendance_records')));
+  } finally { attendanceEnabled = 1; }
+});
+
+test('student attendance route rejects other roles before reading records', () => {
+  const router = require('../routes/attendance');
+  const guard = router.stack.find(layer => layer.route?.path === '/me').route.stack[0].handle;
+  for (const role of ['parent', 'teacher', 'school_admin']) {
+    let status;
+    let advanced = false;
+    guard({ user: { role } }, { status(code) { status = code; return this; }, json() {} }, () => { advanced = true; });
+    assert.equal(status, 403);
+    assert.equal(advanced, false);
+  }
+  let advanced = false;
+  guard({ user: { role: 'student' } }, {}, () => { advanced = true; });
+  assert.equal(advanced, true);
 });
 
 test('school summary counts confirmed subject sessions instead of whole days', async () => {

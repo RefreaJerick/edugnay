@@ -122,6 +122,9 @@ function navigate(page) {
     window.location.href = './edugnay-student-grades.html';
   } else if (page === 'materials') {
     window.location.href = './edugnay-student-materials.html';
+  } else if (page === 'attendance') {
+    if (window.EDUGNAY_CONFIG?.isAttendanceEnabled?.() === false) return;
+    window.location.href = './edugnay-student-attendance.html';
   } else if (page === 'journal') {
     if (!studentCanAccess('journals')) return;
     window.location.href = './edugnay-student-journal.html';
@@ -150,8 +153,21 @@ function applyStudentJournalAccess() {
   }
 }
 
+function applyStudentAttendanceAccess() {
+  const enabled = window.EDUGNAY_CONFIG?.isAttendanceEnabled?.() !== false;
+  document.querySelectorAll('a[href*="edugnay-student-attendance.html"]').forEach(link => {
+    link.hidden = !enabled;
+    link.setAttribute('aria-hidden', String(!enabled));
+    if (!enabled) link.setAttribute('tabindex', '-1');
+    else link.removeAttribute('tabindex');
+  });
+  if (!enabled && window.location.pathname.endsWith('/edugnay-student-attendance.html')) {
+    window.location.replace('./edugnay-student-dashboard.html');
+  }
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { toggleDrawer(false); closeEntryModal(); }
+  if (e.key === 'Escape') { toggleDrawer(false); if (typeof closeEntryModal === 'function') closeEntryModal(); }
 });
 
 /* ── INIT ── */
@@ -172,5 +188,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch { window.EDUGNAY_API.setPortalFeatures(null); }
   }
   applyStudentJournalAccess();
+  applyStudentAttendanceAccess();
   renderTopbarNotifs();
 });

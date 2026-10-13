@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-attendance.html'), 'utf8');
 const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]).find(Boolean);
+const shared = fs.readFileSync(path.join(__dirname, '../../assets/js/attendance-history.js'), 'utf8');
 
 function createPage(api) {
   const elements = new Map();
@@ -14,7 +15,8 @@ function createPage(api) {
       if (!elements.has(id)) elements.set(id, {
         textContent: '', innerHTML: '', hidden: false, disabled: false,
         classList: { add() {}, remove() {}, toggle() {} },
-        addEventListener() {}, setAttribute() {}, replaceChildren() { this.innerHTML = ''; }
+        addEventListener() {}, setAttribute() {}, replaceChildren() { this.innerHTML = ''; },
+        querySelector() { return { addEventListener() {} }; }
       });
       return elements.get(id);
     },
@@ -25,6 +27,7 @@ function createPage(api) {
     document,
     window: {
       EDUGNAY_API: api,
+      lucide: { createIcons() {} },
       EDUGNAY_AVATAR: { html: person => `<span>${String(person.displayName || '')}</span>` },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
@@ -33,11 +36,13 @@ function createPage(api) {
     },
     lucide: { createIcons() {} }
   });
+  new vm.Script(shared).runInContext(context);
   new vm.Script(script).runInContext(context);
+  vm.runInContext('attendanceHistory = window.createAttendanceHistory({ hasSelection: false })', context);
   return {
     elements,
     load: () => vm.runInContext('loadAttendance()', context),
-    selectChild: id => vm.runInContext(`switchChild('${id}', { classList: { add() {} } })`, context)
+    selectChild: id => vm.runInContext(`switchChild('${id}')`, context)
   };
 }
 

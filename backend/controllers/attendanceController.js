@@ -449,6 +449,46 @@ async function getParentAttendance(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function getStudentAttendance(req, res, next) {
+  try {
+    const database = getDatabase();
+    await assertAttendanceFeatureEnabled(database, req.user.schoolId);
+    const currentDate = getCurrentDate();
+    const [records] = await database.execute(
+      `SELECT attendance_records.student_user_id AS studentId,
+        DATE_FORMAT(attendance_sessions.attendance_date, '%Y-%m-%d') AS date,
+        attendance_sessions.section_id AS sectionId,
+        attendance_sessions.subject_id AS subjectId,
+        subjects.name AS subjectName,
+        attendance_records.attendance_status AS status,
+        attendance_records.remarks AS remark
+      FROM attendance_records
+      INNER JOIN attendance_sessions ON attendance_sessions.id = attendance_records.attendance_session_id
+        AND attendance_sessions.school_id = attendance_records.school_id
+      INNER JOIN subjects ON subjects.id = attendance_sessions.subject_id
+        AND subjects.school_id = attendance_sessions.school_id
+      INNER JOIN sections ON sections.id = attendance_sessions.section_id
+        AND sections.school_id = attendance_sessions.school_id
+      INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+        AND academic_years.school_id = sections.school_id
+      WHERE attendance_sessions.school_id = ?
+        AND attendance_records.student_user_id = ?
+        AND attendance_sessions.status = 'confirmed'
+        AND attendance_sessions.attendance_date <= ?
+        AND attendance_sessions.attendance_date BETWEEN academic_years.start_date AND academic_years.end_date
+        AND academic_years.status = 'active'
+      ORDER BY attendance_sessions.attendance_date DESC, subjects.name`,
+      [req.user.schoolId, req.user.id, currentDate]
+    );
+    res.json({ currentDate, records: records.map(record => ({
+      ...record,
+      studentId: String(record.studentId),
+      sectionId: String(record.sectionId),
+      subjectId: String(record.subjectId)
+    })) });
+  } catch (error) { next(error); }
+}
+
 async function getSchoolAttendanceSummary(req, res, next) {
   try {
     const database = getDatabase();
@@ -524,4 +564,4 @@ async function getSchoolAttendanceSummary(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { getParentAttendance, getSchoolAttendanceSummary, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance };
+module.exports = { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance };

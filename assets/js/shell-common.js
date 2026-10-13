@@ -1262,6 +1262,10 @@ async function getApiParentAttendance() {
   return requestApi('/attendance/children');
 }
 
+async function getApiStudentAttendance() {
+  return requestApi('/attendance/me');
+}
+
 async function getApiSchoolAttendanceSummary(academicYearId = '') {
   const query = academicYearId ? `?academicYearId=${Number(academicYearId)}` : '';
   return requestApi(`/attendance/school-summary${query}`);
@@ -1747,6 +1751,7 @@ window.EDUGNAY_API = {
   scanQrAttendance: scanApiQrAttendance,
   confirmQrAttendance: confirmApiQrAttendance,
   getParentAttendance: getApiParentAttendance,
+  getStudentAttendance: getApiStudentAttendance,
   getParentChildren: getApiParentChildren,
   getStudentParents: getApiStudentParents,
   getArchive: getApiArchive,
@@ -2559,6 +2564,13 @@ function applyCurrentDateToGradingBanners() {
     return Boolean(school?.gradesPageEnabled);
   }
 
+  function isAttendanceEnabled(school = getActiveSchool()) {
+    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'attendanceEnabled')) {
+      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.attendanceEnabled);
+    }
+    return Boolean(school?.attendanceEnabled);
+  }
+
   function isNarrativeReportsEnabled(school = getActiveSchool()) {
     if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'narrativeReportsEnabled')) {
       return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.narrativeReportsEnabled);
@@ -3179,6 +3191,7 @@ function applyCurrentDateToGradingBanners() {
     buildFinalGradeYears: buildApiFinalGradeYears,
     gradeScoreClass,
     isGradesPageEnabled,
+    isAttendanceEnabled,
     isNarrativeReportsEnabled,
     isJournalsEnabled,
     getMyTeachingSections,
