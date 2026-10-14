@@ -480,6 +480,7 @@ async function getParentChildren(req, res, next) {
         student_profiles.lrn, links.relationship,
         sections.id AS sectionId, sections.name AS sectionName,
         grade_levels.display_name AS gradeLevel, school_levels.level_code AS schoolLevel,
+        school_levels.id AS schoolLevelId,
         advisers.display_name AS adviserName
       FROM student_parent_links AS links
       INNER JOIN users AS students ON students.id = links.student_user_id
@@ -507,7 +508,8 @@ async function getParentChildren(req, res, next) {
       ...child,
       ...avatarFields({ id: child.studentId, avatarFilename, avatarVersion }),
       studentId: String(child.studentId),
-      sectionId: child.sectionId == null ? null : String(child.sectionId)
+      sectionId: child.sectionId == null ? null : String(child.sectionId),
+      schoolLevelId: child.schoolLevelId == null ? null : String(child.schoolLevelId)
     })) });
   } catch (error) { next(error); }
 }

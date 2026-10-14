@@ -314,57 +314,6 @@ tbody td {
   margin-top: 1px;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-navy {
-  background: #e8edf5;
-  color: var(--navy);
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: var(--green);
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: var(--gold);
-}
-
-.badge-purple {
-  background: var(--purple-pale);
-  color: var(--purple);
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
 .date-cell {
   font-size: 12px;
   color: var(--gray-400);
@@ -1300,11 +1249,6 @@ button.role-opt {
   opacity: 1;
 }
 
-#userTable .badge {
-  min-height: 27px;
-  padding: 4px 10px;
-}
-
 /* Read-only account details opened from an interactive user row. */
 .user-details-modal {
   max-width: 680px;
@@ -1342,35 +1286,6 @@ button.role-opt {
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 10px;
-}
-
-.user-details-badges .badge,
-.user-details-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 25px;
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1.2;
-}
-
-.user-details-badges svg,
-.user-details-status svg {
-  width: 13px;
-  height: 13px;
-}
-
-.user-details-status.active {
-  background: var(--green-pale);
-  color: var(--green);
-}
-
-.user-details-status.inactive {
-  background: var(--red-pale);
-  color: var(--red);
 }
 
 .user-details-section {
@@ -1471,14 +1386,8 @@ button.role-opt {
   font-size: 10.5px;
 }
 
-.user-details-linked-row > span {
+.user-details-linked-tag {
   flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--purple-pale);
-  color: var(--purple);
-  font-size: 10px;
-  font-weight: 750;
 }
 
 .user-details-empty {

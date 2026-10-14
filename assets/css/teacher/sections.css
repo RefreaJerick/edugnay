@@ -448,47 +448,6 @@ tbody tr:hover td.sticky-col {
   color: var(--gray-400);
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
 /* ═══════════════════════════════
     TAB 1: STUDENTS
 ═══════════════════════════════ */
@@ -805,26 +764,7 @@ tbody tr:hover td.sticky-col {
 }
 
 .comp-head-type {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: var(--radius-pill);
   margin-top: 2px;
-}
-
-.type-ww {
-  background: #fdf4ff;
-  color: #7c3aed;
-}
-
-.type-pt {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.type-qa {
-  background: var(--green-pale);
-  color: #16a34a;
 }
 
 .comp-delete-btn {
@@ -1588,29 +1528,7 @@ thead tr:hover .comp-delete-btn {
 
 /* Category badge */
 .cat-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
   margin-top: 10px;
-}
-
-.cat-ww {
-  background: #fdf4ff;
-  color: #7c3aed;
-}
-
-.cat-pt {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.cat-qa {
-  background: var(--green-pale);
-  color: #16a34a;
 }
 
 .modal-foot {
@@ -3277,14 +3195,8 @@ tbody tr:hover td.sticky-col {
   font-weight: 700;
 }
 
-.teacher-student-guardian-head span {
+.teacher-student-guardian-tag {
   flex: 0 0 auto;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .teacher-student-contact-grid a {

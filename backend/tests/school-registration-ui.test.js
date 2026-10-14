@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const onboarding = fs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-school-onboarding.html'), 'utf8');
 const pending = fs.readFileSync(path.join(__dirname, '../../views/onboarding/edugnay-registration-pending.html'), 'utf8');
 const platformSchoolAccounts = fs.readFileSync(path.join(__dirname, '../../views/platform/edugnay-platform-school-accounts.html'), 'utf8');
-const platformSchoolAccountsCss = fs.readFileSync(path.join(__dirname, '../../assets/css/platform/school-accounts.css'), 'utf8');
+const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const onboardingCss = fs.readFileSync(path.join(__dirname, '../../assets/css/onboarding.css'), 'utf8');
 const apiShell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 
@@ -278,11 +278,11 @@ test('rejected status links to token-backed resubmission without putting the tok
   assert.match(platformSchoolAccounts, /Retry email/);
   assert.match(platformSchoolAccounts, /Inactive — registration rejected/);
   assert.match(platformSchoolAccounts, /account-login-status \$\{administratorLoginStatus\.className\}/);
-  assert.match(platformSchoolAccountsCss, /\.account-login-status \{/);
-  assert.match(platformSchoolAccountsCss, /\.account-login-status\.pending/);
-  assert.match(platformSchoolAccountsCss, /\.account-login-status\.rejected/);
-  assert.match(platformSchoolAccountsCss, /\.account-login-status\.suspended/);
-  assert.match(platformSchoolAccountsCss, /overflow-wrap: anywhere/);
+  assert.match(sharedStyles, /\.account-login-status,/);
+  assert.match(sharedStyles, /\.account-login-status\.pending/);
+  assert.match(sharedStyles, /\.account-login-status\.rejected/);
+  assert.match(sharedStyles, /\.account-login-status\.suspended/);
+  assert.match(sharedStyles, /overflow-wrap: anywhere/);
 });
 
 test('pending registration does not use stale browser details when the token is missing', async () => {

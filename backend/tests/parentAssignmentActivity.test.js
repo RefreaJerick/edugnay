@@ -8,8 +8,10 @@ let enrolledStudent = true;
 let assignmentOnline = false;
 let existingFilePath = null;
 let activityRows = [];
+let childAssignmentRows = [];
 let savedStatus = null;
 let activityQueryCount = 0;
+let childAssignmentQuery = null;
 
 function getSchoolDate(offset = 0) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -38,6 +40,10 @@ async function executeQuery(sql, values = []) {
   if (sql.includes('FROM assignments') && sql.includes('DATE(assignments.due_at) = ?')) {
     activityQueryCount += 1;
     return [activityRows];
+  }
+  if (sql.includes('assignment_submissions.file_path IS NOT NULL AS hasUploadedFile')) {
+    childAssignmentQuery = { sql, values };
+    return [childAssignmentRows];
   }
   if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) {
     return [[{ ...assignment, onlineSubmissionEnabled: assignmentOnline ? 1 : 0 }]];
@@ -71,7 +77,7 @@ databaseModule.getDatabase = () => ({
   }
 });
 
-const { getParentAssignmentActivity, updateStudentAssignmentStatus } = require('../controllers/assignmentsController');
+const { getParentAssignmentActivity, getParentChildAssignments, updateStudentAssignmentStatus } = require('../controllers/assignmentsController');
 
 async function callActivity(studentId = '42', date = getSchoolDate()) {
   const result = { body: null, error: null };
@@ -83,6 +89,64 @@ async function callActivity(studentId = '42', date = getSchoolDate()) {
   }, error => { result.error = error; });
   return result;
 }
+
+async function callChildAssignments(studentId = '42') {
+  const result = { body: null, error: null };
+  await getParentChildAssignments({
+    params: { studentId },
+    user: { id: 20, schoolId: 1, role: 'parent' }
+  }, {
+    json(body) { result.body = body; return this; }
+  }, error => { result.error = error; });
+  return result;
+}
+
+test('parent assignment list scopes records to one linked child and resolves submission statuses', async () => {
+  linkedChild = true;
+  const today = getSchoolDate();
+  const yesterday = getSchoolDate(-1);
+  const tomorrow = getSchoolDate(1);
+  childAssignmentRows = [
+    { id: 1, sectionId: 8, subjectId: 4, academicTermId: 2, title: 'Uploaded', dueDate: today, onlineSubmissionEnabled: 1, savedStatus: 'submitted', hasUploadedFile: 1, submittedAt: `${today}T08:00:00` },
+    { id: 2, sectionId: 8, subjectId: 4, academicTermId: 2, title: 'In class', dueDate: today, onlineSubmissionEnabled: 0, savedStatus: 'submitted', hasUploadedFile: 0 },
+    { id: 3, sectionId: 8, subjectId: 4, academicTermId: 2, title: 'Overdue', dueDate: yesterday, onlineSubmissionEnabled: 1, savedStatus: null, hasUploadedFile: 0 },
+    { id: 4, sectionId: 8, subjectId: 4, academicTermId: 2, title: 'Upcoming', dueDate: tomorrow, onlineSubmissionEnabled: 1, savedStatus: null, hasUploadedFile: 0 },
+    { id: 5, sectionId: 8, subjectId: 4, academicTermId: 2, title: 'No due date', dueDate: null, onlineSubmissionEnabled: 0, savedStatus: null, hasUploadedFile: 0 }
+  ];
+  childAssignmentQuery = null;
+  const result = await callChildAssignments();
+  assert.equal(result.error, null);
+  assert.equal(result.body.studentId, '42');
+  assert.equal(result.body.currentDate, today);
+  assert.deepEqual(result.body.assignments.map(item => item.submissionStatus), ['submitted', 'submitted', 'not_submitted', 'pending', 'pending']);
+  assert.equal(result.body.assignments[0].submittedAt, `${today}T08:00:00`);
+  assert.ok(result.body.assignments.every(item => !Object.hasOwn(item, 'filePath') && !Object.hasOwn(item, 'hasUploadedFile')));
+  assert.deepEqual(childAssignmentQuery.values, [42, 42, 1, 20]);
+  assert.match(childAssignmentQuery.sql, /section_students\.withdrawn_at IS NULL/);
+  assert.match(childAssignmentQuery.sql, /assignments\.status = 'published'/);
+  assert.match(childAssignmentQuery.sql, /student_parent_links\.school_id = assignments\.school_id/);
+});
+
+test('parent assignment list rejects an unlinked or other-school child before querying assignments', async () => {
+  linkedChild = false;
+  childAssignmentQuery = null;
+  try {
+    const result = await callChildAssignments();
+    assert.equal(result.error.status, 403);
+    assert.equal(childAssignmentQuery, null);
+  } finally { linkedChild = true; }
+});
+
+test('parent assignment list route is parent-only', () => {
+  const router = require('../routes/assignments');
+  const route = router.stack.find(layer => layer.route?.path === '/children/:studentId').route;
+  const guard = route.stack[0].handle;
+  for (const role of ['student', 'teacher', 'school_admin']) {
+    let status;
+    guard({ user: { role } }, { status(code) { status = code; return this; }, json() {} }, () => { throw new Error('Role should be rejected.'); });
+    assert.equal(status, 403);
+  }
+});
 
 async function callStatus(status = 'submitted', studentId = '42') {
   const result = { body: null, error: null };

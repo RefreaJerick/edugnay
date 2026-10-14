@@ -1213,7 +1213,7 @@
       return `<article class="teacher-student-guardian">
         <div class="teacher-student-guardian-head">
           <h4>${escapeHtml(parent.displayName || 'Parent or guardian')}</h4>
-          <span>${escapeHtml(relationship.charAt(0).toUpperCase() + relationship.slice(1))}</span>
+          <span class="teacher-student-guardian-tag">${escapeHtml(relationship.charAt(0).toUpperCase() + relationship.slice(1))}</span>
         </div>
         <dl class="teacher-student-contact-grid">
           <div><dt>Phone</dt><dd>${phoneMarkup}</dd></div>

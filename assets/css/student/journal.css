@@ -243,18 +243,6 @@
   color: var(--gray-800);
 }
 
-.score-pending-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--gray-100);
-  color: var(--gray-600);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
-}
-
 .score-given-chip {
   display: inline-flex;
   align-items: center;
@@ -419,22 +407,6 @@
 .history-score {
   flex-shrink: 0;
   text-align: right;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
 }
 
 /* ── Past Entry View Modal ── */

@@ -400,30 +400,6 @@ tbody td {
   gap: 6px;
 }
 
-.flag-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 5px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-
-.flag-absences {
-  background: var(--red-pale);
-  color: var(--red);
-  border-color: #fecaca;
-}
-
-.flag-grades {
-  background: var(--orange-pale);
-  color: #92400e;
-  border-color: #fde68a;
-}
-
 /* Flagged Students filter */
 .flag-filter {
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -453,19 +429,6 @@ tbody td {
   display: none;
 }
 
-.subject-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-  white-space: nowrap;
-}
-
 .progress-bar-wrap {
   display: flex;
   align-items: center;
@@ -490,47 +453,6 @@ tbody td {
   font-size: 11px;
   font-weight: 700;
   color: var(--gray-600);
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
 }
 
 /* Announcements list */
@@ -747,16 +669,6 @@ tbody td {
   font-size: 10.5px;
   line-height: 1.4;
   color: var(--gray-400);
-}
-
-.week-range-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--blue-mid);
-  background: var(--blue-xpale);
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-pill);
-  padding: 6px 10px;
 }
 
 .week-calendar-grid {

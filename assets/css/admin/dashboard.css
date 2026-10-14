@@ -66,16 +66,6 @@
   color: var(--gray-400);
 }
 
-.week-range-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--blue-mid);
-  background: var(--blue-xpale);
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-pill);
-  padding: 6px 10px;
-}
-
 .week-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -251,16 +241,9 @@
   margin-top: 3px;
 }
 .act-tag {
-  font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
   margin-top: 1px;
-  background: var(--gray-100);
-  color: var(--gray-500);
 }
 
 /* Animations */
@@ -841,10 +824,6 @@
   height: 32px;
   border-radius: var(--radius-sm);
 }
-.panel-activity .act-tag {
-  padding: 4px 10px;
-}
-
 .audience-opts {
   display: flex;
   flex-direction: column;

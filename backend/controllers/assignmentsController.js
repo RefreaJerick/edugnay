@@ -185,6 +185,65 @@ async function listAssignments(req, res, next) {
   } catch (error) { next(error); }
 }
 
+function parentSubmissionStatus(row, currentDate) {
+  const uploaded = Boolean(row.hasUploadedFile || row.filePath) && row.savedStatus === 'submitted';
+  const manual = !row.onlineSubmissionEnabled && SUBMISSION_STATUSES.has(row.savedStatus) ? row.savedStatus : null;
+  return uploaded ? 'submitted' : manual || (row.dueDate && row.dueDate < currentDate ? 'not_submitted' : 'pending');
+}
+
+async function getParentChildAssignments(req, res, next) {
+  try {
+    const studentId = parseId(req.params.studentId, 'student ID');
+    const database = getDatabase();
+    const [children] = await database.execute(
+      `SELECT users.id FROM users
+      INNER JOIN student_parent_links ON student_parent_links.student_user_id = users.id
+        AND student_parent_links.school_id = users.school_id
+      WHERE users.id = ? AND users.school_id = ? AND users.role = 'student'
+        AND users.account_status = 'active' AND student_parent_links.parent_user_id = ? LIMIT 1`,
+      [studentId, req.user.schoolId, req.user.id]
+    );
+    if (!children.length) throw createError('This student is not linked to your parent account.', 403);
+
+    const currentDate = getSchoolCurrentDate();
+    const [rows] = await database.execute(
+      `SELECT assignments.id, assignments.section_id AS sectionId, assignments.subject_id AS subjectId,
+        assignments.academic_term_id AS academicTermId, assignments.title, assignments.description,
+        DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
+        assignments.online_submission_enabled AS onlineSubmissionEnabled,
+        subjects.name AS subjectName, teachers.display_name AS teacherName,
+        assignment_submissions.submission_status AS savedStatus,
+        assignment_submissions.file_path IS NOT NULL AS hasUploadedFile,
+        DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+      FROM assignments
+      INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
+      INNER JOIN section_students ON section_students.section_id = assignments.section_id
+        AND section_students.school_id = assignments.school_id
+        AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL
+      INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+      INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id
+      LEFT JOIN assignment_submissions ON assignment_submissions.assignment_id = assignments.id
+        AND assignment_submissions.school_id = assignments.school_id
+        AND assignment_submissions.student_user_id = ?
+      WHERE assignments.school_id = ? AND assignments.status = 'published'
+        AND EXISTS (SELECT 1 FROM student_parent_links
+          WHERE student_parent_links.school_id = assignments.school_id
+            AND student_parent_links.student_user_id = section_students.student_user_id
+            AND student_parent_links.parent_user_id = ?)
+      ORDER BY assignments.due_at IS NULL, assignments.due_at, assignments.created_at DESC`,
+      [studentId, studentId, req.user.schoolId, req.user.id]
+    );
+    res.json({ studentId: String(studentId), currentDate, assignments: rows.map(row => ({
+      id: String(row.id), sectionId: String(row.sectionId), subjectId: String(row.subjectId),
+      academicTermId: String(row.academicTermId), title: row.title, description: row.description,
+      dueDate: row.dueDate, subjectName: row.subjectName, teacherName: row.teacherName,
+      onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
+      submissionStatus: parentSubmissionStatus(row, currentDate),
+      submittedAt: row.savedStatus === 'submitted' && row.hasUploadedFile ? row.submittedAt : null
+    })) });
+  } catch (error) { next(error); }
+}
+
 async function getParentAssignmentActivity(req, res, next) {
   try {
     const studentId = parseId(req.query.studentId, 'student ID');
@@ -236,10 +295,7 @@ async function getParentAssignmentActivity(req, res, next) {
       const onlineSubmissionEnabled = Boolean(row.onlineSubmissionEnabled);
       const savedStatus = row.savedStatus;
       const hasUploadedFile = Boolean(row.filePath) && savedStatus === 'submitted';
-      const manualStatus = !onlineSubmissionEnabled && SUBMISSION_STATUSES.has(savedStatus) ? savedStatus : null;
-      const submissionStatus = hasUploadedFile
-        ? 'submitted'
-        : manualStatus || (row.dueDate < currentDate ? 'not_submitted' : 'pending');
+      const submissionStatus = parentSubmissionStatus(row, currentDate);
 
       return {
         id: String(row.assignmentId),
@@ -713,4 +769,4 @@ async function previewSubmission(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { createAssignment, deleteAssignment, downloadSubmission, getParentAssignmentActivity, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };
+module.exports = { createAssignment, deleteAssignment, downloadSubmission, getParentAssignmentActivity, getParentChildAssignments, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };

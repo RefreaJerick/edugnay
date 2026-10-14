@@ -495,48 +495,6 @@ tbody tr:hover {
   background: var(--blue-xpale);
 }
 
-/* ── Badges ── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #16a34a;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
 .row-actions {
   display: flex;
   align-items: center;
@@ -621,33 +579,6 @@ tbody tr:hover {
   font-weight: 700;
   color: var(--gray-800);
   letter-spacing: -0.015em;
-}
-
-.section-grade-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-}
-
-.gb-7 {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.gb-8 {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.gb-9 {
-  background: var(--green-pale);
-  color: #16a34a;
-}
-
-.gb-10 {
-  background: #fff7ed;
-  color: #c2410c;
 }
 
 .card-stats {
@@ -893,33 +824,6 @@ tbody tr:hover {
   align-items: center;
   gap: 10px;
   min-width: 185px;
-}
-
-.section-grade-pill {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-}
-
-.gp-7 {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.gp-8 {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.gp-9 {
-  background: var(--green-pale);
-  color: #16a34a;
-}
-
-.gp-10 {
-  background: #fff7ed;
-  color: #c2410c;
 }
 
 .section-meta {
@@ -1869,9 +1773,6 @@ tbody tr:hover {
 
 .section-card .section-grade-badge {
   margin-top: 1px;
-  border: 1px solid currentColor;
-  background: var(--white);
-  opacity: 0.9;
 }
 
 .section-card .card-stats {

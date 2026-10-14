@@ -1,6 +1,114 @@
 /* Student assignment tracker
    Data is rendered by the page script so this layout can later receive API data. */
 
+.assignment-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.assignment-controls,
+.assignment-results,
+.assignment-period-control {
+  min-width: 0;
+}
+
+.assignment-controls {
+  display: grid;
+  gap: 14px;
+}
+
+.assignment-control-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assignment-control-label {
+  margin-bottom: 7px;
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assignment-control-field .filter-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 34px 9px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  appearance: none;
+  background-color: var(--white);
+  background-image: linear-gradient(45deg, transparent 50%, var(--gray-400) 50%), linear-gradient(135deg, var(--gray-400) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 17px, calc(100% - 11px) 17px;
+  background-repeat: no-repeat;
+  background-size: 4px 4px, 4px 4px;
+  color: var(--gray-700);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+}
+
+.assignment-control-field .filter-select:focus {
+  border-color: var(--blue-mid);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
+}
+
+.assignment-period-tabs-wrap,
+.assignment-period-tabs {
+  min-width: 0;
+}
+
+.assignment-period-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.assignment-period-tabs .grade-tab {
+  cursor: pointer;
+  user-select: none;
+}
+
+.assignment-period-tabs .grade-tab:disabled,
+.assignment-period-tabs .grade-tab:disabled:hover {
+  border-color: transparent !important;
+  background: var(--gray-50) !important;
+  color: var(--gray-400) !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+.assignment-period-tabs .grade-tab-status-icon {
+  display: inline-flex;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  color: var(--gray-400);
+  vertical-align: middle;
+}
+
+.assignment-period-mobile-control {
+  display: none;
+}
+
 .assignment-filter-tabs {
   margin-bottom: 16px;
 }
@@ -135,8 +243,70 @@
   min-width: 150px;
 }
 
+.assignment-controls .assignment-subject-filter {
+  min-width: 0;
+}
+
 .assignment-toolbar .assignment-period-filter {
   min-width: 220px;
+}
+
+@media (min-width: 1280px) {
+  .assignment-workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .assignment-controls {
+    align-content: start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  .assignment-period-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assignment-period-tabs .grade-tab {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 14px;
+    grid-template-rows: auto;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .assignment-period-tabs .grade-tab-status-icon {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1279px) {
+  .assignment-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    padding: 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  .assignment-period-control {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .assignment-period-tabs {
+    width: 100%;
+  }
 }
 
 .assignment-list {
@@ -196,27 +366,6 @@
   min-width: 0;
 }
 
-.assignment-online-status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 5px 9px;
-  border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.assignment-online-status.available {
-  background: var(--green-pale);
-  color: var(--green-dark);
-}
-
-.assignment-online-status.not-available {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
 .assignment-row-content {
   min-width: 0;
   margin-bottom: 10px;
@@ -235,33 +384,6 @@
   color: var(--gray-400);
   font-size: 11.5px;
   line-height: 1.45;
-}
-
-.assignment-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex: 0 0 auto;
-  padding: 5px 9px;
-  border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.assignment-status.pending {
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-}
-
-.assignment-status.submitted {
-  background: var(--green-pale);
-  color: var(--green-dark);
-}
-
-.assignment-status.not_submitted {
-  background: var(--red-pale);
-  color: var(--red-dark);
 }
 
 .assignment-status-cell {
@@ -438,6 +560,49 @@
 }
 
 @media (max-width: 760px) {
+  .assignment-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  .assignment-school-year-control {
+    grid-column: 1 / -1;
+  }
+
+  .assignment-period-control {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .assignment-period-tabs-wrap {
+    display: none;
+  }
+
+  .assignment-period-mobile-control {
+    display: grid;
+  }
+
+  .assignment-control-field .filter-select {
+    padding-right: 25px;
+    font-size: 11px;
+  }
+
+  .assignment-subject-control {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .assignment-controls .assignment-subject-filter,
+  .assignment-controls .assignment-period-filter {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
   .assignment-list-head {
     display: none;
   }
@@ -480,21 +645,6 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-  }
-
-  .assignment-online-status.available,
-  .assignment-online-status.not-available,
-  .assignment-status.pending,
-  .assignment-status.submitted,
-  .assignment-status.not_submitted {
-    min-height: 0;
-    padding: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .assignment-status svg {
-    display: none;
   }
 
   .assignment-online-cell::before,

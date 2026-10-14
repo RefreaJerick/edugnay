@@ -107,6 +107,239 @@
   --topbar-h:    76px;
 }
 
+/* Shared passive status and metadata pills. Page styles may control placement,
+   but pill geometry and semantic status colors come from this component. */
+.badge,
+.school-status,
+.school-account-status,
+.account-login-status,
+.account-review-feature-status,
+.user-details-status,
+.user-details-linked-tag,
+.guardian-relationship-tag,
+.term-status,
+.term-reminder,
+.week-range-label,
+.assignment-online-status,
+.assignment-status,
+.assignment-preview-status,
+.stat-card-trend,
+.sf-status,
+.aud-tag,
+.act-tag,
+.nt-tag,
+.child-relationship-tag,
+.journal-history-status,
+.score-pending-chip,
+.section-grade-badge,
+.section-grade-pill,
+.school-type-chip,
+.cat-badge,
+.settings-lock-badge,
+.lr-risk-pill,
+.flag-tag,
+.subject-tag,
+.subject-tag-adviser,
+.comp-head-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--pill-border, var(--gray-200));
+  border-radius: var(--radius-pill);
+  background: var(--pill-background, var(--gray-50));
+  color: var(--pill-color, var(--gray-600));
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.badge > svg,
+.school-status > svg,
+.school-account-status > svg,
+.account-login-status > svg,
+.account-review-feature-status > svg,
+.user-details-status > svg,
+.user-details-linked-tag > svg,
+.guardian-relationship-tag > svg,
+.term-status > svg,
+.term-reminder > svg,
+.week-range-label > svg,
+.assignment-online-status > svg,
+.assignment-status > svg,
+.assignment-preview-status > svg,
+.stat-card-trend > svg,
+.sf-status > svg,
+.aud-tag > svg,
+.act-tag > svg,
+.nt-tag > svg,
+.child-relationship-tag > svg,
+.journal-history-status > svg,
+.score-pending-chip > svg,
+.section-grade-badge > svg,
+.section-grade-pill > svg,
+.school-type-chip > svg,
+.cat-badge > svg,
+.settings-lock-badge > svg,
+.flag-tag > svg,
+.lr-risk-pill > svg,
+.subject-tag > svg,
+.subject-tag-adviser > svg,
+.comp-head-type > svg {
+  width: 13px !important;
+  height: 13px !important;
+  flex: 0 0 13px;
+}
+
+.badge-green,
+.badge-success,
+.school-status.active,
+.school-account-status.active,
+.account-login-status.active,
+.account-review-feature-status.enabled,
+.user-details-status.active,
+.term-status.closed,
+.assignment-online-status.available,
+.assignment-status.submitted,
+.assignment-preview-status.submitted,
+.cat-badge.cat-qa,
+.trend-up,
+.sf-status.active,
+.journal-history-status.is-open,
+.child-relationship-tag,
+.gb-9,
+.gp-9,
+.aud-student {
+  --pill-border: var(--green-border);
+  --pill-background: var(--green-pale);
+  --pill-color: var(--green-darker);
+}
+
+.badge-orange,
+.school-status.pending,
+.school-account-status.pending,
+.account-login-status.pending,
+.flag-tag.flag-grades,
+.term-reminder.warning,
+.term-status.upcoming,
+.assignment-status.pending,
+.assignment-preview-status.pending {
+  --pill-border: var(--orange-border);
+  --pill-background: var(--orange-pale);
+  --pill-color: var(--orange-dark);
+}
+
+.badge-red,
+.flag-tag.flag-absences,
+.term-reminder.danger,
+.trend-down,
+.school-status.suspended,
+.school-status.rejected,
+.school-account-status.suspended,
+.school-account-status.rejected,
+.account-login-status.suspended,
+.account-login-status.rejected,
+.user-details-status.inactive,
+.assignment-status.not_submitted,
+.assignment-preview-status.not_submitted,
+.lr-risk-pill {
+  --pill-border: var(--red-border-soft);
+  --pill-background: var(--red-pale);
+  --pill-color: var(--red-dark);
+}
+
+.badge-blue,
+.cat-badge.cat-pt,
+.term-status.active,
+.journal-history-status.is-previous,
+.guardian-relationship-tag,
+.week-range-label,
+.gb-7,
+.gp-7,
+.aud-all,
+.subject-tag {
+  --pill-border: var(--blue-pale);
+  --pill-background: var(--blue-xpale);
+  --pill-color: var(--blue-mid);
+}
+
+.badge-gold,
+.gb-8,
+.gp-8,
+.aud-teacher,
+.subject-tag-adviser {
+  --pill-border: var(--gold-border);
+  --pill-background: var(--gold-pale);
+  --pill-color: var(--gold-dark);
+}
+
+.badge-purple,
+.cat-badge.cat-ww,
+.aud-parent {
+  --pill-border: var(--purple-border);
+  --pill-background: var(--purple-pale);
+  --pill-color: var(--purple);
+}
+
+.badge-gray,
+.trend-neu,
+.account-review-feature-status.disabled,
+.assignment-online-status.not-available,
+.settings-lock-badge,
+.school-type-chip,
+.act-tag,
+.nt-tag,
+.score-pending-chip {
+  --pill-border: var(--gray-200);
+  --pill-background: var(--gray-50);
+  --pill-color: var(--gray-500);
+}
+
+.badge-navy {
+  --pill-border: var(--gray-200);
+  --pill-background: #e8edf5;
+  --pill-color: var(--navy);
+}
+
+.gb-10,
+.gp-10 {
+  --pill-border: var(--orange-border);
+  --pill-background: #fff7ed;
+  --pill-color: #c2410c;
+}
+
+.school-status,
+.school-account-status {
+  text-transform: capitalize;
+}
+
+.user-details-linked-tag {
+  --pill-border: var(--purple-border);
+  --pill-background: var(--purple-pale);
+  --pill-color: var(--purple);
+}
+
+.comp-head-type.type-ww {
+  --pill-border: var(--purple-border);
+  --pill-background: var(--purple-pale);
+  --pill-color: var(--purple);
+}
+
+.comp-head-type.type-pt {
+  --pill-border: var(--blue-pale);
+  --pill-background: var(--blue-xpale);
+  --pill-color: var(--blue-mid);
+}
+
+.comp-head-type.type-qa {
+  --pill-border: var(--green-border);
+  --pill-background: var(--green-pale);
+  --pill-color: var(--green-darker);
+}
+
 html, body {
   height: 100%;
   width: 100%;
@@ -241,25 +474,7 @@ button:focus-visible,
   color: var(--gray-500);
 }
 .stat-card-trend {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-}
-.trend-up {
-  background: var(--green-pale);
-  color: #16a34a;
-  border-color: #bbf7d0;
-}
-.trend-down {
-  background: var(--red-pale);
-  color: var(--red);
-}
-.trend-neu {
-  background: var(--gray-100);
-  color: var(--gray-500);
-  border-color: var(--gray-200);
+  flex: 0 0 auto;
 }
 .stat-card-num {
   font-family: 'Plus Jakarta Sans', sans-serif;

@@ -21,66 +21,8 @@
 }
 .attendance-load-state .top-btn { flex: 0 0 auto; }
 
-/* ── Child switcher — identical pattern across all parent pages ── */
-.child-switcher {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  margin-bottom: 20px;
-  padding-bottom: 2px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.child-switcher::-webkit-scrollbar {
-  display: none;
-}
-
-.child-card {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--white);
-  border: 1.5px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 10px 16px 10px 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-  min-width: 200px;
-  font: inherit;
-  text-align: left;
-}
-
-.child-card:hover {
-  border-color: var(--blue-pale);
-  background: var(--blue-xpale);
-}
-
-.child-card.active {
-  border-color: var(--blue-mid);
-  background: var(--blue-xpale);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
-}
-
-.child-info {
-  min-width: 0;
-}
-
-.child-name {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-800);
-  white-space: nowrap;
-}
-
-.child-section {
-  display: block;
-  font-size: 10.5px;
-  color: var(--gray-400);
-  margin-top: 1px;
-  white-space: nowrap;
-}
+/* Page-specific spacing below the shared child switcher. */
+.child-switcher { margin-bottom: 20px; }
 
 /* ── Stat strip ── */
 .summary-strip {
@@ -450,37 +392,6 @@
   flex-shrink: 0;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
 /* ── Flagged days list ── */
 .flag-row {
   display: flex;
@@ -590,10 +501,6 @@
 
   .summary-item {
     min-width: 45%;
-  }
-
-  .child-card {
-    min-width: 170px;
   }
 
   .cal-day-num {
@@ -1389,12 +1296,6 @@
 
 .attendance-stat-grid .stat-card {
   min-width: 0;
-}
-
-.attendance-stat-grid .stat-card.orange .stat-card-trend.trend-neu {
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-  border-color: var(--orange-border);
 }
 
 .attendance-stat-label-compact {

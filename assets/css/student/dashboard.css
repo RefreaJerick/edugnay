@@ -140,32 +140,6 @@
   -webkit-line-clamp: 2;
 }
 
-.assignment-preview-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border-radius: var(--radius-pill);
-  font-size: 9.5px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.assignment-preview-status.pending {
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-}
-
-.assignment-preview-status.submitted {
-  background: var(--green-pale);
-  color: var(--green-dark);
-}
-
-.assignment-preview-status.not_submitted {
-  background: var(--red-pale);
-  color: var(--red-dark);
-}
-
 .assignment-preview-arrow {
   color: var(--gray-300);
   transition: color .16s ease, transform .16s ease;
@@ -266,16 +240,6 @@
   font-size: 10.5px;
   line-height: 1.4;
   color: var(--gray-400);
-}
-
-.week-range-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--blue-mid);
-  background: var(--blue-xpale);
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-pill);
-  padding: 6px 10px;
 }
 
 .week-calendar-grid {
@@ -441,37 +405,6 @@
   gap: 10px;
   font-size: 11px;
   color: var(--gray-400);
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
 }
 
 /* ── Journal prompt card — Values subject only ── */

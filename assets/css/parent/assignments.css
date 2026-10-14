@@ -1,0 +1,40 @@
+.child-switcher {
+  margin-bottom: 16px;
+}
+
+.assignment-toolbar {
+  flex-wrap: wrap;
+}
+
+.assignment-row-content {
+  margin-bottom: 0;
+}
+
+.parent-assignment-view {
+  min-height: 32px;
+  padding: 7px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.parent-assignment-error {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+#assignmentDetailModal[hidden] {
+  display: none !important;
+}
+
+#assignmentDetailModal .modal-body {
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+@media (max-width: 760px) {
+  .assignment-year-filter,
+  .assignment-period-filter {
+    width: 100%;
+  }
+}

@@ -211,39 +211,6 @@
 }
 
 /* ══════════════════════════════
-    BADGES
-══════════════════════════════ */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-/* ══════════════════════════════
     Child card — mirrors student/profile.css .guardian-card pattern,
     renamed for parent context (linked children instead of guardians)
 ══════════════════════════════ */
@@ -293,15 +260,6 @@
 
 .child-relationship-tag {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--green-pale);
-  color: #15803d;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
 }
 
 .form-grid-2 {

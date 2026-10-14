@@ -521,6 +521,12 @@ async function getApiParentAssignmentActivity(studentId, date) {
   })) : [];
 }
 
+async function getApiParentChildAssignments(studentId) {
+  const id = Number(studentId);
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('The student ID is invalid.');
+  return requestApi(`/assignments/children/${id}`);
+}
+
 function normalizeApiJournalPrompt(prompt) {
   return prompt ? {
     ...prompt,
@@ -1709,6 +1715,7 @@ window.EDUGNAY_API = {
   extendAcademicTerm: extendApiAcademicTerm,
   getAssignments: getApiAssignments,
   getParentAssignmentActivity: getApiParentAssignmentActivity,
+  getParentChildAssignments: getApiParentChildAssignments,
   getJournalSubjects: getApiJournalSubjects,
   getJournalSections: getApiJournalSections,
   getJournalPrompts: getApiJournalPrompts,

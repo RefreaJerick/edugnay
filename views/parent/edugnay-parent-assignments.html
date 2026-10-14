@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assignments | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/student/assignments.css">
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
+  <link rel="stylesheet" href="../../assets/css/parent/assignments.css">
+  <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script>
+  <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/parent/shell.js"></script>
+  <script src="../../assets/js/parent/assignments.js" defer></script>
+</head>
+<body data-page-title="Assignments">
+  <div class="shell">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo" onerror="this.style.display='none'" /></div>
+        <div class="brand-text"><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">Loading school...</div></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="edugnay-parent-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
+        <a href="edugnay-parent-grades.html" class="nav-item"><div class="nav-icon"><i data-lucide="graduation-cap" style="width:16px;height:16px;"></i></div><span class="nav-label">Grades</span></a>
+        <a href="edugnay-parent-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="notebook-pen" style="width:16px;height:16px;"></i></div><span class="nav-label">Narrative Reports</span></a>
+        <a href="edugnay-parent-attendance.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div><span class="nav-label">Attendance History</span></a>
+        <a href="edugnay-parent-assignments.html" class="nav-item active"><div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div><span class="nav-label">Assignments</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Communication</div>
+        <a href="edugnay-parent-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone" style="width:16px;height:16px;"></i></div><span class="nav-label">Announcements</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <a href="edugnay-parent-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round" style="width:16px;height:16px;"></i></div><span class="nav-label">My Profile</span></a>
+      </div>
+    </aside>
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-context" aria-label="Assignments page"><div class="topbar-context-copy"><strong data-page-title-target>Assignments</strong></div></div>
+        <button class="hamburger" type="button" onclick="toggleDrawer(true)" aria-label="Open navigation"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-notif">
+          <button class="tb-notif-btn" id="tbNotifTrigger" title="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell" style="width:20px;height:20px;"></i><span class="tb-notif-dot"></span></button>
+          <div class="tb-notif-panel" id="tbNotifPanel">
+            <div class="tb-notif-panel-head"><div class="tb-notif-heading"><span class="tb-notif-heading-icon" aria-hidden="true"><i data-lucide="bell" style="width:16px;height:16px;"></i></span><span class="tb-notif-heading-copy"><span class="tb-notif-panel-title">Notifications</span><span class="tb-notif-unread-count" aria-live="polite"></span></span></div><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()"><i data-lucide="check-check" style="width:14px;height:14px;"></i><span>Mark all read</span></button></div>
+            <div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty"><div class="tb-notif-empty-icon"><i data-lucide="bell-off" style="width:20px;height:20px;"></i></div><div class="tb-notif-empty-title">No notifications yet</div><div class="tb-notif-empty-text">You're all caught up. New alerts will show up here.</div></div></div>
+            <div class="tb-notif-panel-foot"><a href="edugnay-parent-notifications.html">View all notifications</a></div>
+          </div>
+        </div>
+        <div class="tb-profile">
+          <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()"><div class="tb-avatar parent" data-parent-initials>--</div><div class="tb-profile-info"><div class="tb-profile-name" data-parent-name>Loading profile...</div><div class="tb-profile-role">Parent</div></div><i data-lucide="chevron-down" class="tb-chevron" style="width:15px;height:15px;"></i></button>
+          <div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-parent-profile.html"><i data-lucide="user" style="width:15px;height:15px;"></i> My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();"><i data-lucide="log-out" style="width:15px;height:15px;"></i> Sign Out</a></div>
+        </div>
+      </div>
+    </header>
+    <main class="main">
+      <section class="portal-overview" aria-labelledby="assignment-page-title">
+        <div class="portal-overview-copy"><div class="portal-overview-kicker">Parent workspace</div><h1 class="portal-overview-title" id="assignment-page-title">Assignments</h1><p class="portal-overview-description">Track assignments and submission status for the selected student.</p></div>
+      </section>
+      <div class="child-switcher" id="child-switcher" aria-label="Select a student"></div>
+      <div class="assignment-workspace">
+        <aside class="assignment-controls" aria-label="Assignment controls">
+          <label class="assignment-control-field assignment-school-year-control" for="assignmentYearFilter">
+            <span>School year</span>
+            <select class="filter-select assignment-year-filter" id="assignmentYearFilter" aria-label="School year"></select>
+          </label>
+          <div class="assignment-period-control">
+            <div class="assignment-period-tabs-wrap">
+              <div class="assignment-control-label" id="assignmentPeriodLabel">Grading period</div>
+              <div class="assignment-period-tabs" id="assignmentPeriodTabs" role="tablist" aria-labelledby="assignmentPeriodLabel"></div>
+            </div>
+            <label class="assignment-control-field assignment-period-mobile-control" for="assignmentPeriodFilter">
+              <span>Grading period</span>
+              <select class="filter-select assignment-period-filter" id="assignmentPeriodFilter" aria-label="Grading period"></select>
+            </label>
+          </div>
+          <label class="assignment-control-field assignment-subject-control" for="assignmentSubjectFilter">
+            <span>Subject</span>
+            <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" aria-label="Subject"></select>
+          </label>
+        </aside>
+        <div class="assignment-results">
+          <div class="filter-tabs assignment-filter-tabs" id="assignmentFilters" aria-label="Filter assignments by status"></div>
+          <section class="panel assignment-panel" aria-label="Child assignments">
+            <div class="panel-head"><div><div class="panel-title">Child's assignments</div><div class="assignment-panel-sub" id="assignmentPanelSub">Choose a linked student to view assignments.</div></div></div>
+            <div class="assignment-toolbar">
+              <div class="search-wrap assignment-search"><span class="search-icon"><i data-lucide="search" style="width:15px;height:15px;"></i></span><input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" aria-label="Search assignments" /></div>
+            </div>
+            <div class="assignment-list-head" aria-hidden="true"><span>Assignment</span><span>Online submission</span><span>Status</span><span>Action</span></div>
+            <div class="assignment-list" id="assignmentList" aria-live="polite"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="modal-backdrop dashboard-modal-backdrop" id="assignmentDetailModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="assignmentDetailModalTitle">
+      <div class="modal-head"><div class="modal-heading"><div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-check"></i></div><div class="modal-heading-copy"><div class="modal-title" id="assignmentDetailModalTitle">Assignment details</div><div class="modal-sub">Review the selected child's assignment.</div></div></div><button class="modal-close" id="assignmentDetailClose" type="button" aria-label="Close assignment details"><i data-lucide="x" style="width:18px;height:18px;"></i></button></div>
+      <div class="modal-body">
+        <div class="assignment-detail-grid">
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Assignment</div><div class="assignment-detail-value" id="assignmentDetailTitle"></div></div>
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Subject</div><div class="assignment-detail-value" id="assignmentDetailSubject"></div></div>
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Teacher</div><div class="assignment-detail-value" id="assignmentDetailTeacher"></div></div>
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Due date</div><div class="assignment-detail-value" id="assignmentDetailDueDate"></div></div>
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Submission status</div><div class="assignment-detail-value" id="assignmentDetailStatus"></div></div>
+          <div class="assignment-detail-item"><div class="assignment-detail-label">Submitted at</div><div class="assignment-detail-value" id="assignmentDetailSubmittedAt"></div></div>
+        </div>
+        <div class="assignment-detail-block"><div class="form-label">Instructions</div><div class="assignment-detail-instructions" id="assignmentDetailInstructions"></div></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" id="assignmentDetailDone">Close</button></div>
+    </div>
+  </div>
+</body>
+</html>

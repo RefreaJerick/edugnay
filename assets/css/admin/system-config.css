@@ -366,37 +366,6 @@
 .btn-danger:hover {
   background: #fecaca;
 }
-/* ── BADGE ── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-}
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
 /* ── GRADING PERIOD REOPEN REQUESTS ── */
 .reopen-filters {
   display: flex;
@@ -698,4 +667,16 @@
     justify-content: center;
     white-space: nowrap;
   }
+}
+.nav-count-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 0;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
 }

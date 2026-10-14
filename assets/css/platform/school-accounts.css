@@ -261,39 +261,6 @@
   font-weight: 600;
 }
 
-.platform-school-accounts .school-account-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  border: 1px solid var(--green-pale);
-  border-radius: var(--radius-pill);
-  background: var(--green-pale);
-  color: var(--green);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: capitalize;
-  white-space: nowrap;
-}
-
-.platform-school-accounts .school-account-status.pending {
-  border-color: var(--orange-pale);
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-}
-
-.platform-school-accounts .school-account-status.suspended {
-  border-color: var(--red-pale);
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.platform-school-accounts .school-account-status.rejected {
-  border-color: var(--red-pale);
-  background: var(--red-pale);
-  color: var(--red);
-}
-
 .platform-school-accounts .platform-account-modal {
   width: min(100%, 560px);
   background: var(--white);
@@ -570,31 +537,7 @@
 }
 
 .platform-school-accounts .account-login-status {
-  display: inline-flex;
-  max-width: 100%;
   margin-top: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--green-pale);
-  border-radius: var(--radius-pill);
-  background: var(--green-pale);
-  color: var(--green);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.platform-school-accounts .account-login-status.pending {
-  border-color: var(--orange-pale);
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-}
-
-.platform-school-accounts .account-login-status.rejected,
-.platform-school-accounts .account-login-status.suspended {
-  border-color: var(--red-pale);
-  background: var(--red-pale);
-  color: var(--red);
 }
 
 .platform-school-accounts .account-review-section {
@@ -665,35 +608,7 @@
 }
 
 .platform-school-accounts .account-review-feature-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
   flex: 0 0 auto;
-  padding: 4px 8px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-pill);
-  background: var(--gray-50);
-  color: var(--gray-500);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.platform-school-accounts .account-review-feature-status.enabled {
-  border-color: var(--green-pale);
-  background: var(--green-pale);
-  color: var(--green-dark);
-}
-
-.platform-school-accounts .account-review-feature-status.disabled {
-  border-color: var(--gray-200);
-  background: var(--gray-50);
-  color: var(--gray-500);
-}
-
-.platform-school-accounts .account-review-feature-status svg {
-  width: 12px;
-  height: 12px;
 }
 
 .platform-school-accounts .account-review-feature-value {

@@ -10,7 +10,7 @@ databaseModule.getDatabase = () => ({
     if (sql.includes('FROM student_parent_links AS links')) return [[{
       studentId: 6, displayName: 'Juan Dela Cruz', initials: 'JC',
       relationship: 'mother', sectionId: 8, sectionName: 'St. Matthew',
-      gradeLevel: 'Grade 7', lrn: '123', adviserName: 'Ms. Maria Reyes'
+      gradeLevel: 'Grade 7', schoolLevelId: 3, lrn: '123', adviserName: 'Ms. Maria Reyes'
     }]];
     throw new Error('Unexpected database query');
   }
@@ -31,6 +31,8 @@ test('a parent reads only their own database-linked children', async () => {
   assert.equal(result.error, null);
   assert.equal(result.data.children[0].studentId, '6');
   assert.equal(result.data.children[0].sectionName, 'St. Matthew');
+  assert.equal(result.data.children[0].schoolLevelId, '3');
+  assert.match(calls[1].sql, /school_levels\.id AS schoolLevelId/);
   assert.deepEqual(calls[0].values, [9, 1]);
   assert.deepEqual(calls[1].values, [1, 9]);
 });

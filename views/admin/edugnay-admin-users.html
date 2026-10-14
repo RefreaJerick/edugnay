@@ -961,7 +961,7 @@
         const safeSchoolEmail = window.EDUGNAY_CONFIG.escapeHtml(u.schoolEmail || 'No school email');
         const statusBadge = u.status === 'active'
           ? '<span class="badge badge-green">● Active</span>'
-          : '<span class="badge badge-red"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>Inactive</span>';
+          : '<span class="badge badge-red"><i data-lucide="x-circle"></i>Inactive</span>';
 
         let actionButtons = '';
         if (u.role !== 'school_admin') {
@@ -996,7 +996,7 @@
             </div>
           </div>
         </td>
-        <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>${meta.label}</span></td>
+        <td class="account-role-cell"><span class="badge ${meta.badgeClass}"><i data-lucide="${meta.icon}"></i>${meta.label}</span></td>
         ${showGradeLinkColumn ? `<td class="account-scope-cell"><span class="account-scope">${window.EDUGNAY_CONFIG.escapeHtml(getGradeLinkDisplay(u))}</span></td>` : ''}
         <td class="account-status-cell">${statusBadge}</td>
         <td class="date-cell account-date-cell">${formatAccountDate(u.createdAt)}</td>
@@ -1544,7 +1544,7 @@
             <div class="user-details-linked-name">${window.EDUGNAY_CONFIG.escapeHtml(student?.displayName || 'Unknown student')}</div>
             <div class="user-details-linked-meta">${window.EDUGNAY_CONFIG.escapeHtml(scope)}</div>
           </div>
-          <span>${window.EDUGNAY_CONFIG.escapeHtml(relationship)}</span>
+          <span class="user-details-linked-tag">${window.EDUGNAY_CONFIG.escapeHtml(relationship)}</span>
         </div>`;
       }).join('');
 

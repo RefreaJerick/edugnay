@@ -114,13 +114,6 @@
   height: 16px !important;
 }
 
-.school-type-chip {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .school-settings-head {
   align-items: flex-start;
 }
@@ -435,22 +428,7 @@
 }
 
 .term-reminder {
-  display: inline-flex;
   margin-top: 8px;
-  padding: 3px 7px;
-  border-radius: var(--radius-pill);
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.term-reminder.warning {
-  background: var(--orange-pale);
-  color: var(--orange-dark);
-}
-
-.term-reminder.danger {
-  background: var(--red-pale);
-  color: var(--red);
 }
 
 .term-schedule-list {
@@ -471,27 +449,7 @@
 }
 
 .term-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 26px;
   margin-bottom: 8px;
-  padding: 4px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--gray-100);
-  color: var(--gray-500);
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.term-status.active {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.term-status.closed {
-  background: var(--green-pale);
-  color: var(--green-darker);
 }
 
 .school-term-modal {
@@ -1055,14 +1013,7 @@
 }
 
 .school-type-chip {
-  display: inline-flex;
   margin-top: 5px;
-  padding: 3px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--gray-100);
-  color: var(--gray-500);
-  font-size: 9px;
-  font-weight: 800;
 }
 
 @media (max-width: 1060px) {

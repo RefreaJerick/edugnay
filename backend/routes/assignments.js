@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(requireAuth, requireSchoolUser);
 router.get('/', controller.listAssignments);
 router.get('/activity', requireRoles('parent'), controller.getParentAssignmentActivity);
+router.get('/children/:studentId', requireRoles('parent'), controller.getParentChildAssignments);
 router.post('/', requireTeacher, controller.createAssignment);
 router.patch('/:assignmentId', requireRoles('school_admin', 'teacher'), controller.updateAssignment);
 router.delete('/:assignmentId', requireRoles('school_admin', 'teacher'), controller.deleteAssignment);

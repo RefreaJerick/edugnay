@@ -213,34 +213,6 @@
 }
 
 /* ══════════════════════════════
-        BADGES — identical sizing to teacher/profile.css .badge
-    ══════════════════════════════ */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-/* ══════════════════════════════
         Student-specific content blocks (no teacher equivalent) —
         styled to sit inside the panel shell above, same paddings/tokens
     ══════════════════════════════ */
@@ -314,15 +286,6 @@
 
 .subject-tag-adviser {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--gold-pale);
-  color: #92400e;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
 }
 
 .form-grid-2 {

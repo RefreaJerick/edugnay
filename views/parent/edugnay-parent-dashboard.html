@@ -58,6 +58,10 @@
           <div class="nav-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></div>
           <span class="nav-label">Attendance History</span>
         </a>
+        <a href="edugnay-parent-assignments.html" class="nav-item">
+          <div class="nav-icon"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i></div>
+          <span class="nav-label">Assignments</span>
+        </a>
       </div>
 
       <div class="nav-section">
@@ -275,7 +279,7 @@
         ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Announcements unavailable', text: DASHBOARD_ANNOUNCEMENTS_ERROR })
         : visibleAnnouncements.length ? visibleAnnouncements.map(item => `
         <div class="ann-item" onclick="location.href='edugnay-parent-announcements.html'">
-          <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}" style="font-size:10px;padding:2px 7px;">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
+          <div class="ann-item-head"><span class="ann-item-title">${window.EDUGNAY_CONFIG.escapeHtml(item.title)}</span><span class="badge ${window.EDUGNAY_CONFIG.escapeHtml(item.tagClass)}">${window.EDUGNAY_CONFIG.escapeHtml(item.tag)}</span></div>
           ${item.imageUrl ? `<img class="ann-item-img" src="${window.EDUGNAY_CONFIG.escapeHtml(item.imageUrl)}" alt="${window.EDUGNAY_CONFIG.escapeHtml(item.title)}" loading="lazy" onerror="this.style.display='none'"/>` : ''}
           <div class="ann-item-body">${window.EDUGNAY_CONFIG.escapeHtml(item.body)}</div>
           <div class="ann-item-meta"><i data-lucide="clock" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.time)}<span>·</span><i data-lucide="user" style="width:11px;height:11px;"></i> ${window.EDUGNAY_CONFIG.escapeHtml(item.author)}</div>

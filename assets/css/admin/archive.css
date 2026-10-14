@@ -154,42 +154,6 @@
   gap: 10px;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
 .collapse-arrow {
   color: var(--gray-400);
   transition: transform 0.2s;

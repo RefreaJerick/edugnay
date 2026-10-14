@@ -1,4 +1,4 @@
-/* Shared parent child switcher used across dashboard, grades, attendance, and reports. */
+/* Shared parent child switcher used across dashboard, grades, attendance, and assignments. */
 .child-switcher {
   display: flex;
   gap: 12px;
@@ -36,8 +36,9 @@
   box-shadow: var(--card-hover-shadow);
 }
 .child-info { min-width: 0; }
-.child-name { font-size: 13px; font-weight: 800; color: var(--gray-800); white-space: nowrap; }
-.child-section { font-size: 10.5px; color: var(--gray-500); margin-top: 2px; white-space: nowrap; }
+button.child-card { font: inherit; text-align: left; }
+.child-name { display: block; font-size: 13px; font-weight: 800; color: var(--gray-800); white-space: nowrap; }
+.child-section { display: block; font-size: 10.5px; color: var(--gray-500); margin-top: 2px; white-space: nowrap; }
 
 @media (max-width: 760px) {
   .child-card { min-width: 190px; }

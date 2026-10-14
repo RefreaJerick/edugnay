@@ -67,8 +67,10 @@ test('student sees subject-session counts, calendar, flagged days, and day detai
     ] })
   });
   await page.load();
-  assert.match(page.elements.get('summary-strip').innerHTML, /Subject sessions present/);
-  assert.match(page.elements.get('summary-strip').innerHTML, /Subject sessions absent/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-full">Subject sessions present/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-full">Subject sessions absent/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-compact">Present/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-compact">Absent/);
   assert.match(page.elements.get('cal-grid').innerHTML, /cal-day recorded today/);
   assert.match(page.elements.get('flagged-list').innerHTML, /Absent in one or more recorded subjects/);
   vm.runInContext('attendanceHistory.selectDay(2)', page.context);
@@ -76,7 +78,8 @@ test('student sees subject-session counts, calendar, flagged days, and day detai
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /badge-red/);
   vm.runInContext('attendanceHistory.changeMonth(-1)', page.context);
   assert.match(page.elements.get('cal-month-label').textContent, /September/);
-  assert.match(page.elements.get('summary-strip').innerHTML, /Subject sessions late/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-full">Subject sessions late/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-compact">Late/);
   assert.equal(page.elements.get('attendance-load-state').hidden, true);
 });
 

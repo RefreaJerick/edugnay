@@ -36,13 +36,13 @@
       const entries = Object.values(month).flat();
       const count = status => entries.filter(record => record.status === status).length;
       strip.innerHTML = [
-        ['green', 'check', 'Recorded', count('present'), 'Subject sessions present', 'trend-up'],
-        ['orange', 'clock', 'Needs attention', count('late'), 'Subject sessions late', 'trend-neu'],
-        ['red', 'circle-x', 'Review days', count('absent'), 'Subject sessions absent', 'trend-down']
-      ].map(([tone, icon, trend, total, label, trendClass]) => `
+        ['green', 'check', 'Recorded', count('present'), 'Subject sessions present', 'Present', 'trend-up'],
+        ['orange', 'clock', 'Needs attention', count('late'), 'Subject sessions late', 'Late', 'trend-neu'],
+        ['red', 'circle-x', 'Review days', count('absent'), 'Subject sessions absent', 'Absent', 'trend-down']
+      ].map(([tone, icon, trend, total, label, compactLabel, trendClass]) => `
         <div class="stat-card ${tone}">
           <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${trendClass}">${trend}</span></div>
-          <div class="stat-card-num">${total}</div><div class="stat-card-label">${label}</div><div class="stat-card-sub">Confirmed subject records</div>
+          <div class="stat-card-num">${total}</div><div class="stat-card-label"><span class="attendance-stat-label-full">${label}</span><span class="attendance-stat-label-compact">${compactLabel}</span></div><div class="stat-card-sub">Confirmed subject records</div>
         </div>`).join('');
     }
 

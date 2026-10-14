@@ -156,30 +156,52 @@
         </div>
       </section>
 
-      <div class="filter-tabs assignment-filter-tabs" id="assignmentFilters" aria-label="Filter assignments"></div>
+      <div class="assignment-workspace">
+        <aside class="assignment-controls" aria-label="Assignment controls">
+          <label class="assignment-control-field assignment-school-year-control" for="assignmentYearFilter">
+            <span>School year</span>
+            <select class="filter-select assignment-year-filter" id="assignmentYearFilter" aria-label="School year"></select>
+          </label>
+          <div class="assignment-period-control">
+            <div class="assignment-period-tabs-wrap">
+              <div class="assignment-control-label" id="assignmentPeriodLabel">Grading period</div>
+              <div class="assignment-period-tabs" id="assignmentPeriodTabs" role="tablist" aria-labelledby="assignmentPeriodLabel"></div>
+            </div>
+            <label class="assignment-control-field assignment-period-mobile-control" for="assignmentPeriodFilter">
+              <span>Grading period</span>
+              <select class="filter-select assignment-period-filter" id="assignmentPeriodFilter" aria-label="Grading period"></select>
+            </label>
+          </div>
+          <label class="assignment-control-field assignment-subject-control" for="assignmentSubjectFilter">
+            <span>Subject</span>
+            <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" aria-label="Subject" onchange="renderAssignments()"></select>
+          </label>
+        </aside>
 
-      <section class="panel assignment-panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">Your assignments</div>
-          </div>
+        <div class="assignment-results">
+          <div class="filter-tabs assignment-filter-tabs" id="assignmentFilters" aria-label="Filter assignments"></div>
+          <section class="panel assignment-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Your assignments</div>
+              </div>
+            </div>
+            <div class="assignment-toolbar">
+              <div class="search-wrap assignment-search">
+                <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+                <input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" oninput="renderAssignments()" />
+              </div>
+            </div>
+            <div class="assignment-list-head" aria-hidden="true">
+              <span>Assignment</span>
+              <span>Online submission</span>
+              <span>Status</span>
+              <span>Action</span>
+            </div>
+            <div class="assignment-list" id="assignmentList"></div>
+          </section>
         </div>
-        <div class="assignment-toolbar">
-          <div class="search-wrap assignment-search">
-            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-            <input class="search-input" id="assignmentSearch" type="search" placeholder="Search assignments" oninput="renderAssignments()" />
-          </div>
-          <select class="filter-select assignment-period-filter" id="assignmentPeriodFilter" aria-label="Filter by school year and grading period"></select>
-          <select class="filter-select assignment-subject-filter" id="assignmentSubjectFilter" onchange="renderAssignments()" aria-label="Filter by subject"></select>
-        </div>
-        <div class="assignment-list-head" aria-hidden="true">
-          <span>Assignment</span>
-          <span>Online submission</span>
-          <span>Status</span>
-          <span>Action</span>
-        </div>
-        <div class="assignment-list" id="assignmentList"></div>
-      </section>
+      </div>
     </main>
   </div>
 
@@ -250,9 +272,19 @@
     let ASSIGNMENTS = [];
     let STUDENT_SUBMISSIONS = [];
     let ASSIGNMENT_PERIODS = [];
+    let selectedAssignmentYearId = '';
     let selectedAssignmentPeriodId = '';
     let backendAssignmentsLoading = BACKEND_ASSIGNMENTS_ENABLED;
     let backendAssignmentsError = '';
+
+    function latestSelectableAssignmentPeriod(periods) {
+      return periods.filter(function (term) { return term.status !== 'upcoming'; })
+        .slice()
+        .sort(function (first, second) {
+          return String(second.academicYearLabel).localeCompare(String(first.academicYearLabel)) ||
+            Number(second.sequenceNumber || 0) - Number(first.sequenceNumber || 0);
+        })[0] || null;
+    }
 
     function setAssignmentPeriods(terms) {
       const termById = new Map(terms.map(function (term) { return [String(term.id), term]; }));
@@ -266,31 +298,73 @@
           (years.has(String(term.academicYearId)) || term.status === 'active');
       }).sort(function (first, second) {
         return String(second.academicYearLabel).localeCompare(String(first.academicYearLabel)) ||
-          Number(second.sequenceNumber) - Number(first.sequenceNumber);
+          Number(first.sequenceNumber) - Number(second.sequenceNumber);
       });
-      if (!ASSIGNMENT_PERIODS.some(function (term) { return String(term.id) === selectedAssignmentPeriodId; })) {
+      if (!ASSIGNMENT_PERIODS.some(function (term) {
+        return String(term.id) === selectedAssignmentPeriodId && term.status !== 'upcoming';
+      })) {
         const current = ASSIGNMENT_PERIODS.find(function (term) { return term.status === 'active'; }) ||
-          ASSIGNMENT_PERIODS.find(function (term) { return term.status === 'closed'; });
+          latestSelectableAssignmentPeriod(ASSIGNMENT_PERIODS);
         selectedAssignmentPeriodId = current ? String(current.id) : '';
       }
+      const selected = ASSIGNMENT_PERIODS.find(function (term) { return String(term.id) === selectedAssignmentPeriodId; });
+      selectedAssignmentYearId = selected ? String(selected.academicYearId) : '';
     }
 
     function renderPeriodFilter() {
+      const yearSelect = document.getElementById('assignmentYearFilter');
+      const years = Array.from(new Map(ASSIGNMENT_PERIODS.map(function (term) {
+        return [String(term.academicYearId), term.academicYearLabel];
+      })).entries());
+      if (!years.some(function (year) { return year[0] === selectedAssignmentYearId; })) {
+        selectedAssignmentYearId = years[0]?.[0] || '';
+      }
+      yearSelect.innerHTML = years.length
+        ? years.map(function (year) { return '<option value="' + escapeHtml(year[0]) + '">' + escapeHtml(year[1] || 'School year') + '</option>'; }).join('')
+        : '<option value="">No school years</option>';
+      yearSelect.value = selectedAssignmentYearId;
+      yearSelect.disabled = !years.length || Boolean(backendAssignmentsError);
+      const periods = ASSIGNMENT_PERIODS.filter(function (term) { return String(term.academicYearId) === selectedAssignmentYearId; });
       const select = document.getElementById('assignmentPeriodFilter');
-      select.innerHTML = ASSIGNMENT_PERIODS.length
-        ? ASSIGNMENT_PERIODS.map(function (term) {
-            const label = term.academicYearLabel + ' · ' + term.name;
+      select.innerHTML = periods.length
+        ? periods.map(function (term) {
             return '<option value="' + escapeHtml(String(term.id)) + '"' +
-              (term.status === 'upcoming' ? ' disabled' : '') + '>' + escapeHtml(label) + '</option>';
+              (term.status === 'upcoming' ? ' disabled' : '') + '>' + escapeHtml(term.name) + '</option>';
           }).join('')
         : '<option value="">No grading periods</option>';
-      select.disabled = !ASSIGNMENT_PERIODS.length || Boolean(backendAssignmentsError);
+      select.disabled = !periods.length || Boolean(backendAssignmentsError);
       select.value = selectedAssignmentPeriodId;
+      document.getElementById('assignmentPeriodTabs').innerHTML = periods.map(function (term) {
+        const active = String(term.id) === selectedAssignmentPeriodId;
+        const upcoming = term.status === 'upcoming';
+        const unavailable = upcoming || Boolean(backendAssignmentsError);
+        const accessibleName = upcoming ? ' aria-label="' + escapeHtml(term.name + ', not started') + '"' : '';
+        const periodAction = unavailable ? ' aria-disabled="true" disabled' : ' data-academic-period-id="' + escapeHtml(String(term.id)) + '"';
+        return '<button class="grade-tab' + (active ? ' active' : '') + '" type="button" role="tab"' + periodAction +
+          ' aria-selected="' + active + '"' + accessibleName + '>' +
+          '<span>' + escapeHtml(term.name) + '</span>' + (upcoming ? '<i class="grade-tab-status-icon" data-lucide="lock" aria-hidden="true"></i>' : '') + '</button>';
+      }).join('');
+      window.lucide?.createIcons();
+    }
+
+    function selectAssignmentPeriod(id) {
+      const term = ASSIGNMENT_PERIODS.find(function (item) { return String(item.id) === String(id); });
+      if (term && term.status === 'upcoming') return;
+      selectedAssignmentPeriodId = term ? String(term.id) : '';
+      if (term) selectedAssignmentYearId = String(term.academicYearId);
+    }
+
+    function selectAssignmentYear(yearId) {
+      selectedAssignmentYearId = String(yearId || '');
+      const periods = ASSIGNMENT_PERIODS.filter(function (term) { return String(term.academicYearId) === selectedAssignmentYearId; });
+      const selected = periods.find(function (term) { return term.status === 'active'; }) ||
+        latestSelectableAssignmentPeriod(periods);
+      selectedAssignmentPeriodId = selected ? String(selected.id) : '';
     }
 
     function getAssignmentsInSelectedPeriod() {
       return ASSIGNMENTS.filter(function (assignment) {
-        return assignment.academicPeriodId === selectedAssignmentPeriodId;
+        return String(assignment.academicPeriodId) === selectedAssignmentPeriodId;
       });
     }
 
@@ -575,8 +649,27 @@
       renderFilterTabs();
       renderAssignments();
 
+      document.getElementById('assignmentYearFilter').addEventListener('change', function () {
+        selectAssignmentYear(this.value);
+        renderPeriodFilter();
+        populateSubjectFilter();
+        renderFilterTabs();
+        renderAssignments();
+      });
+
       document.getElementById('assignmentPeriodFilter').addEventListener('change', function () {
-        selectedAssignmentPeriodId = this.value;
+        selectAssignmentPeriod(this.value);
+        renderPeriodFilter();
+        populateSubjectFilter();
+        renderFilterTabs();
+        renderAssignments();
+      });
+
+      document.getElementById('assignmentPeriodTabs').addEventListener('click', function (event) {
+        const button = event.target.closest('[data-academic-period-id]');
+        if (!button) return;
+        selectAssignmentPeriod(button.dataset.academicPeriodId);
+        renderPeriodFilter();
         populateSubjectFilter();
         renderFilterTabs();
         renderAssignments();

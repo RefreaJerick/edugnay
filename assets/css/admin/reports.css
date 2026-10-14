@@ -407,17 +407,6 @@
   gap: 6px;
 }
 
-.flag-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
 .flag-absences {
   background: var(--red-pale);
   color: var(--red);
@@ -673,7 +662,6 @@
 .flag-card-top { margin-bottom: 10px; }
 .flag-name { font-size: 12.5px; }
 .flag-detail { font-size: 10.5px; }
-.flag-tag { padding: 4px 8px; font-size: 9.5px; }
 .flag-grid-scroll { margin-top: 12px; }
 @media (max-width: 760px) {
   .main > .section-title { margin-top: 22px; }

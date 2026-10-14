@@ -280,47 +280,6 @@
   flex-shrink: 0;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-.badge-red {
-  background: var(--red-pale);
-  color: var(--red);
-}
-
-.badge-blue {
-  background: var(--blue-xpale);
-  color: var(--blue);
-}
-
-.badge-green {
-  background: var(--green-pale);
-  color: #15803d;
-}
-
-.badge-orange {
-  background: var(--orange-pale);
-  color: #92400e;
-}
-
-.badge-gold {
-  background: var(--gold-pale);
-  color: #92400e;
-}
-
-.badge-gray {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
-
 .ann-content {
   font-size: 13px;
   color: var(--gray-600);
@@ -358,36 +317,6 @@
   color: var(--gray-400);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.aud-tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-}
-
-.aud-all {
-  background: var(--blue-xpale);
-  color: var(--blue-mid);
-}
-
-.aud-teacher {
-  background: var(--gold-pale);
-  color: var(--gold);
-}
-
-.aud-student {
-  background: var(--orange-pale);
-  color: #d97706;
-}
-
-.aud-parent {
-  background: #fdf4ff;
-  color: #7c3aed;
 }
 
 /* Card footer */

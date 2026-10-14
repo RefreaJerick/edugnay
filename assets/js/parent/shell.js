@@ -138,8 +138,10 @@ document.addEventListener('edugnay:calendar-notices-updated', async () => {
 
 /* ── NAVIGATION ── */
 function navigate(page) {
-  if (page === 'dashboard' || page === 'assignments' || page === 'journal') {
+  if (page === 'dashboard' || page === 'journal') {
     window.location.href = './edugnay-parent-dashboard.html';
+  } else if (page === 'assignments') {
+    window.location.href = './edugnay-parent-assignments.html';
   } else if (page === 'grades') {
     if (window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() === false) {
       window.location.href = './edugnay-parent-dashboard.html';

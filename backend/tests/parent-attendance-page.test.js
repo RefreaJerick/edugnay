@@ -62,7 +62,8 @@ test('parent attendance uses API children, records, and school date', async () =
   assert.match(page.elements.get('child-switcher').innerHTML, /Juan/);
   assert.match(page.elements.get('child-switcher').innerHTML, /Maya/);
   assert.match(page.elements.get('cal-grid').innerHTML, /cal-day recorded today/);
-  assert.match(page.elements.get('summary-strip').innerHTML, /Subject sessions present/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-full">Subject sessions present/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-compact">Present/);
   assert.equal(page.elements.get('attendance-load-state').hidden, true);
   page.selectChild('5');
   assert.match(page.elements.get('summary-strip').textContent, /No subject attendance/);

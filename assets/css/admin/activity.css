@@ -208,15 +208,9 @@
 .act-text strong { color: var(--gray-800); font-weight: 700; }
 .act-time { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
 .act-tag {
-  font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
   margin-top: 1px;
-  color: var(--gray-500);
 }
 
 /* ── LOAD MORE ── */
