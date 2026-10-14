@@ -95,23 +95,27 @@
         <input type="hidden" name="sectionId" id="editSectionId" value=""/>
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="editSchoolLevel">School Level</label>
-            <select class="form-select dropdown" name="level" id="editSchoolLevel" onchange="updateSectionFormFields('edit')" required></select>
+            <div class="form-label">School Year</div>
+            <div class="form-select section-placement-value" id="editAcademicYear"></div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="editGradeLevel">Grade Level</label>
-            <select class="form-select dropdown" name="grade" id="editGradeLevel" onchange="updateSectionFormFields('edit')" required></select>
+            <div class="form-label">School Level</div>
+            <div class="form-select section-placement-value" id="editSchoolLevel"></div>
           </div>
         </div>
         <div class="form-row-2">
-          <div class="form-group" id="editStrandGroup" style="display:none;">
-            <label class="form-label" for="editStrand">Track / Strand</label>
-            <select class="form-select dropdown" name="strand" id="editStrand" onchange="updateSectionFormFields('edit')"></select>
-          </div>
           <div class="form-group">
-            <label class="form-label" for="editSectionName">Section Name</label>
-            <input class="form-select" type="text" name="name" id="editSectionName" required/>
+            <div class="form-label">Grade Level</div>
+            <div class="form-select section-placement-value" id="editGradeLevel"></div>
           </div>
+          <div class="form-group" id="editStrandGroup" hidden>
+            <div class="form-label">Track / Strand</div>
+            <div class="form-select section-placement-value" id="editStrand"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editSectionName">Section Name</label>
+          <input class="form-select" type="text" name="name" id="editSectionName" required/>
         </div>
         <div class="form-row-2 modal-final-row">
           <div class="form-group">
@@ -358,6 +362,33 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="moveConfirmModalBackdrop">
+  <div class="modal" style="max-width:440px;" role="dialog" aria-modal="true" aria-labelledby="moveConfirmTitle">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="move-right"></i></div>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="moveConfirmTitle">Move student?</div>
+          <div class="modal-sub">Review the section change.</div>
+        </div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeMoveConfirmModal()" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context">
+        <div class="ctx-icon"><i data-lucide="school" aria-hidden="true"></i></div>
+        <div><div class="ctx-label">Student placement</div><div class="ctx-val" id="moveConfirmContext"></div></div>
+      </div>
+      <p class="confirm-remove-message" id="moveConfirmImpact"></p>
+      <p class="confirm-remove-message">Attendance, grades, and submitted work stay saved. Previous scores do not copy into the new section.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-cancel" onclick="closeMoveConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-save" id="moveConfirmSubmit">Move student</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="confirmRemoveModalBackdrop">
   <div class="modal" style="max-width:400px;">
     <div class="modal-head">
@@ -365,7 +396,7 @@
         <div class="modal-heading-icon danger" aria-hidden="true"><i id="confirmRemoveHeaderIcon" data-lucide="user-minus"></i></div>
         <div class="modal-heading-copy">
         <div class="modal-title" id="confirmRemoveTitle">Remove Student</div>
-        <div class="modal-sub" id="confirmRemoveSub">This action cannot be undone.</div>
+        <div class="modal-sub" id="confirmRemoveSub">Review this change before continuing.</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeConfirmRemoveModal()"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
@@ -912,25 +943,35 @@ if (tab) {
 /* ══════════════════════════════════════════════
    SECTIONS TAB
 ══════════════════════════════════════════════ */
-function updateSectionFormFields(mode) {
-  const prefix = mode === 'edit' ? 'edit' : 'create';
-  const levelSelect = document.getElementById(`${prefix}SchoolLevel`);
-  const gradeSelect = document.getElementById(`${prefix}GradeLevel`);
-  const strandSelect = document.getElementById(`${prefix}Strand`);
-  const strandGroup = document.getElementById(`${prefix}StrandGroup`);
-  const level = levelSelect?.value || managementDefaultLevel();
-  const currentGrade = gradeSelect?.value || '';
-  const grades = managementGradeOptions(level);
-  const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(currentGrade)) || grades[0] || '';
+function updateSectionFormFields() {
+  const levelSelect = document.getElementById('createSchoolLevel');
+  const gradeSelect = document.getElementById('createGradeLevel');
+  const strandSelect = document.getElementById('createStrand');
+  const strandGroup = document.getElementById('createStrandGroup');
+  const levels = managementSchoolLevels();
+  const requestedLevel = levelSelect?.value;
+  const level = levels.includes(requestedLevel)
+    ? requestedLevel
+    : managementDefaultLevel();
   managementSetOptions(levelSelect, managementSchoolLevels().map(option => ({ value: option, label: managementLevelLabel(option) })), 'Select a school level', level);
+  const grades = level ? managementGradeOptions(level) : [];
+  const requestedGrade = gradeSelect?.value;
+  const grade = grades.find(option => managementGradeKey(option) === managementGradeKey(requestedGrade))
+    || grades[0] || '';
   managementSetOptions(gradeSelect, grades.map(option => ({ value: option, label: option })), 'Select a grade level', grade);
-  const strands = managementStrandOptions(level);
-  const strand = strands.includes(strandSelect?.value) ? strandSelect.value : strands[0] || '';
+  const strands = level ? managementStrandOptions(level) : [];
+  const requestedStrand = strandSelect?.value;
+  const strand = strands.find(option => managementStrandKey(option) === managementStrandKey(requestedStrand))
+    || strands[0] || '';
   if (strandGroup) strandGroup.style.display = level === 'shs' ? '' : 'none';
   managementSetOptions(strandSelect, strands.map(option => ({ value: option, label: option })), 'Select a track or strand', strand);
   if (strandSelect) strandSelect.required = level === 'shs';
-  const sub = document.getElementById(`${prefix === 'create' ? 'sectionAddModalSub' : 'sectionEditModalSub'}`);
-  if (sub) sub.textContent = `${prefix === 'create' ? 'Set up' : 'Update'} a ${managementLevelLabel(level)} class section.`;
+  const sub = document.getElementById('sectionAddModalSub');
+  if (sub) {
+    sub.textContent = !level || !grade
+      ? 'Choose a valid school level and grade for this section.'
+      : `Set up a ${managementLevelLabel(level)} class section.`;
+  }
 }
 
 function openSectionAddModal() {
@@ -1110,12 +1151,17 @@ async function refreshManagementViews() {
 }
 
 function managementApiSectionPayload(sectionData, sectionId = '') {
+  if (sectionId) return {
+    name: sectionData.name,
+    capacity: sectionData.capacity,
+    adviserUserId: sectionData.adviserId ? Number(sectionData.adviserId) : null
+  };
   const level = MANAGEMENT_API_CONTEXT.structure.find(item => item.levelCode === sectionData.level);
   const grade = level?.gradeLevels?.find(item => managementGradeKey(item.displayName) === managementGradeKey(sectionData.grade));
   const strand = sectionData.level === 'shs'
     ? level?.tracks?.find(item => managementStrandKey(item.displayName) === managementStrandKey(sectionData.strand))
     : null;
-  const academicYearId = managementSectionById(sectionId)?.academicYearId || MANAGEMENT_API_CONTEXT.activeAcademicYear?.id;
+  const academicYearId = MANAGEMENT_API_CONTEXT.activeAcademicYear?.id;
   if (!academicYearId || !level?.id || !grade?.id || (sectionData.level === 'shs' && !strand?.id)) {
     throw new Error('The selected academic year, school level, grade level, or track is not configured.');
   }
@@ -1133,13 +1179,13 @@ function managementApiSectionPayload(sectionData, sectionId = '') {
 async function saveSectionForm(event, mode) {
   event.preventDefault();
   const form = event.currentTarget;
-  const level = form.elements.level?.value || '';
-  const grade = form.elements.grade?.value || '';
+  const level = mode === 'create' ? form.elements.level?.value || '' : '';
+  const grade = mode === 'create' ? form.elements.grade?.value || '' : '';
   const name = String(form.elements.name?.value || '').trim();
-  const strand = level === 'shs' ? String(form.elements.strand?.value || '').trim() : '';
+  const strand = mode === 'create' && level === 'shs' ? String(form.elements.strand?.value || '').trim() : '';
   const adviserId = form.elements.adviserId?.value || null;
   const capacity = Number(form.elements.capacity?.value);
-  if (!level || !grade || !name || !Number.isFinite(capacity) || capacity <= 0) {
+  if ((mode === 'create' && (!level || !grade || (level === 'shs' && !strand))) || !name || !Number.isFinite(capacity) || capacity <= 0) {
     form.reportValidity();
     return;
   }
@@ -1844,13 +1890,15 @@ function openSectionEditModal(card) {
   if (!section) return;
   renderTeacherOptions();
   document.getElementById('editSectionName').value = section.name;
-  document.getElementById('editSchoolLevel').value = section.level;
-  document.getElementById('editGradeLevel').value = section.grade;
-  document.getElementById('editStrand').value = section.strand || '';
   document.getElementById('editCapacity').value = section.capacity;
   document.getElementById('editAdviser').value = section.adviserId || '';
   document.getElementById('editSectionId').value = section.id;
-  updateSectionFormFields('edit');
+  document.getElementById('editAcademicYear').textContent = section.academicYear || 'Not set';
+  document.getElementById('editSchoolLevel').textContent = managementLevelLabel(section.level);
+  document.getElementById('editGradeLevel').textContent = section.grade || 'Not set';
+  document.getElementById('editStrand').textContent = section.strand || 'Not set';
+  document.getElementById('editStrandGroup').hidden = !section.strand;
+  document.getElementById('sectionEditModalSub').textContent = `Update a ${managementLevelLabel(section.level)} class section. Academic placement cannot be changed.`;
   document.getElementById('sectionEditModalBackdrop').classList.add('open');
 }
 
@@ -2784,7 +2832,7 @@ function removeStudentFromClass(studentName, section, studentId, sectionId, rowE
     name: studentName,
     context: section,
     title: `Remove: ${studentName}`,
-    sub: 'This action cannot be undone.',
+    sub: 'The student can be assigned to a section again.',
     label: 'Removing',
     icon: 'user-minus',
     action: '/assignments/students/remove',
@@ -2794,7 +2842,7 @@ function removeStudentFromClass(studentName, section, studentId, sectionId, rowE
       { text: studentName, strong: true },
       { text: ' from ' },
       { text: section || 'this section', strong: true },
-      { text: '. They will appear as unassigned and will need to be re-enrolled.' }
+      { text: '. They will appear as unassigned. Their attendance, grades, and submitted work stay saved.' }
     ]
   });
 }
@@ -2804,22 +2852,6 @@ function closeConfirmRemoveModal() {
   pendingRemoveRequest = null;
 }
 document.getElementById('confirmRemoveModalBackdrop').addEventListener('click', function(e) { if (e.target === this) closeConfirmRemoveModal(); });
-
-async function saveManagementStudentPlacement(studentId, section) {
-  if (!studentId || !section) return null;
-  {
-    const student = managementStudentMeta(studentId);
-    if (!student) return null;
-    if (student.sectionId && student.sectionId !== section.id) {
-      await window.EDUGNAY_API.moveStudent(student.sectionId, studentId, section.id);
-    } else if (!student.sectionId) {
-      await window.EDUGNAY_API.enrollStudent(section.id, studentId);
-    } else {
-      return null;
-    }
-    return true;
-  }
-}
 
 document.getElementById('assignStudentForm').addEventListener('submit', async function (event) {
   event.preventDefault();
@@ -2852,26 +2884,63 @@ document.getElementById('assignStudentForm').addEventListener('submit', async fu
   }
 });
 
+let pendingMovePreview = null;
+
+function closeMoveConfirmModal() {
+  document.getElementById('moveConfirmModalBackdrop').classList.remove('open');
+  pendingMovePreview = null;
+}
+document.getElementById('moveConfirmModalBackdrop').addEventListener('click', function (event) {
+  if (event.target === this) closeMoveConfirmModal();
+});
+
 document.getElementById('moveStudentForm').addEventListener('submit', async function (event) {
   event.preventDefault();
   const studentId = document.getElementById('moveStudentId').value;
   const section = managementSectionById(document.getElementById('moveSectionSelect').value);
   if (!studentId || !section) { alert('Choose a new section first.'); return; }
-
   const submitButton = event.submitter;
   if (submitButton) submitButton.disabled = true;
-  let saved = false;
   try {
-    if (!(await saveManagementStudentPlacement(studentId, section))) throw new Error('That student could not be updated.');
-    saved = true;
-    closeStudentAssignModal();
-    await refreshManagementViews();
-    showAppToast('Student moved to section.');
+    const student = managementStudentMeta(studentId);
+    if (!student?.sectionId) throw new Error('The current section is unavailable. Reload and try again.');
+    const preview = await window.EDUGNAY_API.previewStudentMove(student.sectionId, studentId, section.id);
+    pendingMovePreview = { studentId, sourceSectionId: student.sectionId, targetSectionId: section.id, preview };
+    document.getElementById('moveConfirmContext').textContent = `${preview.studentName} · ${preview.source.name} → ${preview.target.name}`;
+    document.getElementById('moveConfirmImpact').textContent = preview.priorScoreCount
+      ? `${preview.priorScoreCount} score${preview.priorScoreCount === 1 ? '' : 's'} from the current grading period need the receiving teacher’s review.${preview.publishedGradeCount ? ` ${preview.publishedGradeCount} published grade${preview.publishedGradeCount === 1 ? '' : 's'} will remain final.` : ''}`
+      : preview.publishedGradeCount
+        ? `${preview.publishedGradeCount} published grade${preview.publishedGradeCount === 1 ? '' : 's'} will remain final for this period.`
+        : 'No scores or published grades were found in the current grading period.';
+    document.getElementById('moveConfirmModalBackdrop').classList.add('open');
+    document.getElementById('moveConfirmSubmit').focus();
   } catch (error) {
-    showAppToast(saved ? 'Student placement saved, but the list could not refresh. Reload the page to verify it.' : error?.message || 'That student could not be updated.', saved ? 'info' : 'error');
+    showAppToast(error?.message || 'The move could not be reviewed.', 'error');
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
+});
+
+document.getElementById('moveConfirmSubmit').addEventListener('click', async function () {
+  const request = pendingMovePreview;
+  if (!request) return;
+  this.disabled = true;
+  let saved = false;
+  try {
+    await window.EDUGNAY_API.moveStudent(request.sourceSectionId, request.studentId, request.targetSectionId);
+    saved = true;
+    closeMoveConfirmModal();
+    closeStudentAssignModal();
+    await refreshManagementViews();
+    showAppToast('Student moved. Previous records remain saved.');
+  } catch (error) {
+    if (saved) {
+      closeMoveConfirmModal();
+      showAppToast('Student moved, but the list could not refresh. Reload to verify the placement.', 'info');
+    } else {
+      showAppToast(error?.message || 'The student could not be moved.', 'error');
+    }
+  } finally { this.disabled = false; }
 });
 
 document.getElementById('removeStudentForm').addEventListener('submit', async function (event) {
@@ -3235,7 +3304,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await window.EDUGNAY_SCHOOL_READY;
     updateSectionFormFields('create');
-    updateSectionFormFields('edit');
     updateImportGradeOptions();
     await refreshManagementViews();
   } catch (error) {

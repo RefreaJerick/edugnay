@@ -505,6 +505,17 @@ async function getApiAssignments(filters = {}) {
   return (response?.assignments || []).map(normalizeApiAssignment).filter(Boolean);
 }
 
+async function getApiAssignmentHistory() {
+  const response = await requestApi('/assignments/history');
+  return Array.isArray(response?.history) ? response.history : [];
+}
+
+function getApiHistoricalSubmissionUrl(assignmentId) {
+  const id = Number(assignmentId);
+  if (!EDUGNAY_API_BASE_URL || !Number.isSafeInteger(id) || id < 1) return null;
+  return `${EDUGNAY_API_BASE_URL}/assignments/history/${id}/file`;
+}
+
 async function getApiParentAssignmentActivity(studentId, date) {
   const numericStudentId = Number(studentId);
   if (!Number.isSafeInteger(numericStudentId) || numericStudentId < 1) throw new Error('The student ID is invalid.');
@@ -882,13 +893,20 @@ async function getApiFinalGradePreview(scope = {}) {
   return response.preview;
 }
 
+async function getApiTransferReview(scope = {}) {
+  const params = new URLSearchParams();
+  ['sectionId', 'subjectId', 'academicTermId'].forEach(name => params.set(name, String(scope[name] || '')));
+  return requestApi(`/final-grades/transfer-review?${params.toString()}`);
+}
+
 async function publishApiFinalGrades(scope = {}) {
   const response = await requestApi('/final-grades/publish', {
     method: 'POST',
     body: JSON.stringify({
       sectionId: String(scope.sectionId || ''),
       subjectId: String(scope.subjectId || ''),
-      academicTermId: String(scope.academicTermId || '')
+      academicTermId: String(scope.academicTermId || ''),
+      ...(scope.transferReviewAcknowledged === true ? { transferReviewAcknowledged: true } : {})
     })
   });
   if (!response?.published) throw new Error('The grades were not published.');
@@ -1315,7 +1333,8 @@ const API_NOTIFICATION_PAGE_BY_TYPE = {
   attendance: 'attendance',
   report: 'reports',
   journal: 'journal',
-  task: 'dashboard'
+  task: 'dashboard',
+  student_transfer: 'section'
 };
 
 function formatApiAnnouncementTime(value) {
@@ -1465,6 +1484,19 @@ function normalizeApiNotification(record) {
     } catch {
       link = { page: 'notifications' };
     }
+  } else if (type === 'student_transfer') {
+    link = { page: 'notifications' };
+    try {
+      const target = new URL(String(record.targetPath || ''), window.location.origin);
+      const sectionId = target.searchParams.get('sectionId') || '';
+      if (target.origin === window.location.origin
+        && target.pathname === '/views/teacher/edugnay-teacher-sections.html'
+        && /^\d+$/.test(sectionId)) {
+        link = { page: 'section', section: sectionId };
+      }
+    } catch {
+      link = { page: 'notifications' };
+    }
   }
   const visual = {
     school_account: { icon: 'building-2', tone: 'blue', label: 'School account' },
@@ -1475,7 +1507,8 @@ function normalizeApiNotification(record) {
     report: { icon: 'file-text', tone: 'orange', label: 'Report' },
     journal: { icon: 'notebook-pen', tone: 'purple', label: 'Journal' },
     task: { icon: 'list-checks', tone: 'blue', label: 'Task' },
-    grading_period_reopen: { icon: 'clipboard-check', tone: 'blue', label: 'Grade access' }
+    grading_period_reopen: { icon: 'clipboard-check', tone: 'blue', label: 'Grade access' },
+    student_transfer: { icon: 'users-round', tone: 'blue', label: 'Student transfer' }
   }[type] || { icon: 'bell', tone: 'gray', label: 'Notification' };
   return {
     id: String(record.id),
@@ -1714,6 +1747,8 @@ window.EDUGNAY_API = {
   completeAcademicTerm: completeApiAcademicTerm,
   extendAcademicTerm: extendApiAcademicTerm,
   getAssignments: getApiAssignments,
+  getAssignmentHistory: getApiAssignmentHistory,
+  getHistoricalSubmissionUrl: getApiHistoricalSubmissionUrl,
   getParentAssignmentActivity: getApiParentAssignmentActivity,
   getParentChildAssignments: getApiParentChildAssignments,
   getJournalSubjects: getApiJournalSubjects,
@@ -1741,6 +1776,7 @@ window.EDUGNAY_API = {
   createGradingPeriodReopenRequest: createApiGradingPeriodReopenRequest,
   decideGradingPeriodReopenRequest: decideApiGradingPeriodReopenRequest,
   getFinalGradePreview: getApiFinalGradePreview,
+  getTransferReview: getApiTransferReview,
   publishFinalGrades: publishApiFinalGrades,
   getFinalGrades: getApiFinalGrades,
   getFinalGradesOverview: getApiFinalGradesOverview,
@@ -2749,6 +2785,10 @@ function applyCurrentDateToGradingBanners() {
     });
   }
 
+  async function previewApiStudentMove(sectionId, studentId, targetSectionId) {
+    return requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}/move-preview?targetSectionId=${Number(targetSectionId)}`);
+  }
+
   async function withdrawApiStudent(sectionId, studentId) {
     await requestApi(`/sections/${Number(sectionId)}/students/${Number(studentId)}`, { method: 'DELETE' });
     return true;
@@ -3175,6 +3215,7 @@ function applyCurrentDateToGradingBanners() {
     enrollStudent: enrollApiStudent,
     enrollStudentsBulk: enrollApiStudentsBulk,
     moveStudent: moveApiStudent,
+    previewStudentMove: previewApiStudentMove,
     withdrawStudent: withdrawApiStudent,
     assignTeacher: assignApiTeacher,
     removeTeacherAssignment: removeApiTeacherAssignment,

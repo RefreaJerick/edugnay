@@ -486,6 +486,86 @@ function roundFinalGrade(value, rule) {
   return Math.round(value);
 }
 
+async function getTransferredWork(connection, schoolId, scope) {
+  const [scores] = await connection.execute(
+    `SELECT DISTINCT current_enrollment.student_user_id AS studentId,
+      previous_section.name AS sourceSectionName, grading_items.title AS itemTitle,
+      grading_items.max_score AS maxScore, grading_categories.name AS categoryName,
+      student_scores.score AS score
+    FROM section_students AS current_enrollment
+    INNER JOIN sections AS current_section ON current_section.id = current_enrollment.section_id
+    INNER JOIN section_students AS previous_enrollment ON previous_enrollment.student_user_id = current_enrollment.student_user_id
+      AND previous_enrollment.school_id = current_enrollment.school_id
+      AND previous_enrollment.withdrawn_at IS NOT NULL
+      AND previous_enrollment.withdrawn_at <= current_enrollment.enrolled_at
+    INNER JOIN sections AS previous_section ON previous_section.id = previous_enrollment.section_id
+      AND previous_section.school_id = current_section.school_id
+      AND previous_section.academic_year_id = current_section.academic_year_id
+      AND previous_section.school_level_id = current_section.school_level_id
+      AND previous_section.grade_level_id = current_section.grade_level_id
+      AND previous_section.strand_id <=> current_section.strand_id
+      AND previous_section.id <> current_section.id
+    INNER JOIN grading_items ON grading_items.section_id = previous_section.id
+      AND grading_items.school_id = previous_section.school_id
+      AND grading_items.subject_id = ? AND grading_items.academic_term_id = ?
+    INNER JOIN student_scores ON student_scores.grading_item_id = grading_items.id
+      AND student_scores.student_user_id = current_enrollment.student_user_id
+      AND student_scores.school_id = current_enrollment.school_id
+    LEFT JOIN grading_categories ON grading_categories.id = grading_items.grading_category_id
+    WHERE current_enrollment.school_id = ? AND current_enrollment.section_id = ?
+      AND current_enrollment.withdrawn_at IS NULL
+    ORDER BY studentId, sourceSectionName, itemTitle`,
+    [scope.subjectId, scope.academicTermId, schoolId, scope.sectionId]
+  );
+  const [published] = await connection.execute(
+    `SELECT DISTINCT published_final_grades.student_user_id AS studentId,
+      source_section.name AS sourceSectionName, published_final_grades.final_grade AS finalGrade
+    FROM published_final_grades
+    INNER JOIN sections AS source_section ON source_section.id = published_final_grades.section_id
+      AND source_section.school_id = published_final_grades.school_id
+    INNER JOIN sections AS current_section ON current_section.id = ?
+      AND current_section.school_id = published_final_grades.school_id
+      AND current_section.academic_year_id = source_section.academic_year_id
+      AND current_section.school_level_id = source_section.school_level_id
+      AND current_section.grade_level_id = source_section.grade_level_id
+      AND current_section.strand_id <=> source_section.strand_id
+    INNER JOIN section_students AS current_enrollment ON current_enrollment.section_id = current_section.id
+      AND current_enrollment.student_user_id = published_final_grades.student_user_id
+      AND current_enrollment.withdrawn_at IS NULL
+    INNER JOIN section_students AS previous_enrollment ON previous_enrollment.section_id = source_section.id
+      AND previous_enrollment.school_id = published_final_grades.school_id
+      AND previous_enrollment.student_user_id = published_final_grades.student_user_id
+      AND previous_enrollment.withdrawn_at IS NOT NULL
+      AND previous_enrollment.withdrawn_at <= current_enrollment.enrolled_at
+      AND published_final_grades.published_at <= previous_enrollment.withdrawn_at
+    WHERE published_final_grades.school_id = ? AND published_final_grades.subject_id = ?
+      AND published_final_grades.academic_term_id = ?
+    ORDER BY studentId, sourceSectionName`,
+    [scope.sectionId, schoolId, scope.subjectId, scope.academicTermId]
+  );
+  return { scores, published };
+}
+
+async function getTransferReview(req, res, next) {
+  try {
+    if (req.user.role !== 'teacher' || !req.user.schoolId) throw createError('Only an assigned teacher can review previous work.', 403);
+    const scope = {
+      sectionId: parseGradeScopeId(req.query.sectionId, 'section ID'),
+      subjectId: parseGradeScopeId(req.query.subjectId, 'subject ID'),
+      academicTermId: parseGradeScopeId(req.query.academicTermId, 'academic term ID')
+    };
+    const database = getDatabase();
+    const section = await getTeacherSectionSubject(database, req.user.id, scope.sectionId, scope.subjectId, req.user.schoolId);
+    if (!section) throw createError('The section and subject are not assigned to you.', 403);
+    const [terms] = await database.execute('SELECT id FROM academic_terms WHERE id = ? AND academic_year_id = ? AND school_level_id = ? LIMIT 1', [scope.academicTermId, section.academicYearId, section.schoolLevelId]);
+    if (!terms.length) throw createError('The grading period does not match this section.', 404);
+    const work = await getTransferredWork(database, req.user.schoolId, scope);
+    res.set('Cache-Control', 'no-store');
+    res.json({ scores: work.scores.map(row => ({ ...row, studentId: String(row.studentId), score: row.score == null ? null : Number(row.score), maxScore: Number(row.maxScore) })),
+      publishedGrades: work.published.map(row => ({ ...row, studentId: String(row.studentId), finalGrade: Number(row.finalGrade) })) });
+  } catch (error) { next(error); }
+}
+
 async function buildFinalGradePreview(connection, user, scope, lockRows = false) {
   const lock = lockRows ? ' FOR UPDATE' : '';
   const [contextRows] = await connection.execute(
@@ -544,6 +624,16 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     [context.sectionId]
   );
   if (!students.length) issues.push({ code: 'no_students', message: 'There are no actively enrolled students in this section.' });
+  const priorWork = students.length ? await getTransferredWork(connection, user.schoolId, scope) : { scores: [], published: [] };
+  const publishedByStudent = new Map();
+  priorWork.published.forEach(grade => {
+    const key = String(grade.studentId);
+    publishedByStudent.set(key, [...(publishedByStudent.get(key) || []), grade]);
+  });
+  if ([...publishedByStudent.values()].some(grades => grades.length > 1)) {
+    issues.push({ code: 'duplicate_published_grade', message: 'A transferred student has multiple published grades for this subject and period. Ask School Admin to review them.' });
+  }
+  const priorScoreStudents = new Set(priorWork.scores.map(score => String(score.studentId)));
 
   const [itemRows] = await connection.execute(
     `SELECT grading_items.id AS gradingItemId, grading_items.title AS title,
@@ -598,6 +688,13 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   const canCalculate = !issues.some(issue => issue.code !== 'no_students' && issue.code !== 'no_grading_items' && issue.code !== 'category_without_items');
 
   const studentGrades = students.map(student => {
+    const previousGrade = publishedByStudent.get(String(student.studentId))?.[0];
+    if (previousGrade) return {
+      studentId: Number(student.studentId), studentName: student.studentName,
+      finalGrade: Number(previousGrade.finalGrade), isPassing: Number(previousGrade.finalGrade) >= passingGradeThreshold,
+      retainedPublishedGrade: true, sourceSectionName: previousGrade.sourceSectionName,
+      missingItems: [], invalidScores: [], categoryAverages: []
+    };
     const missingItems = [];
     const invalidScores = [];
     const totals = new Map(categories.map(category => [category.id, { earned: 0, possible: 0 }]));
@@ -641,6 +738,9 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       categoryAverages
     };
   });
+  const gradesToPublish = studentGrades.filter(student => !student.retainedPublishedGrade);
+  const transferReviewStudentIds = gradesToPublish.filter(student => priorScoreStudents.has(String(student.studentId)))
+    .map(student => student.studentId);
 
   return {
     sectionId: Number(context.sectionId),
@@ -654,11 +754,14 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     categories,
     gradingItemIds: items.map(item => item.gradingItemId),
     studentCount: students.length,
-    readyToPublish: !issues.length && studentGrades.length > 0
-      && studentGrades.every(student => student.finalGrade !== null),
+    readyToPublish: !issues.length && gradesToPublish.length > 0
+      && gradesToPublish.every(student => student.finalGrade !== null),
     issues,
-    missingScoreCount: studentGrades.reduce((sum, student) => sum + student.missingItems.length, 0),
-    invalidScoreCount: studentGrades.reduce((sum, student) => sum + student.invalidScores.length, 0),
+    missingScoreCount: gradesToPublish.reduce((sum, student) => sum + student.missingItems.length, 0),
+    invalidScoreCount: gradesToPublish.reduce((sum, student) => sum + student.invalidScores.length, 0),
+    transferReviewStudentIds,
+    retainedPublishedCount: studentGrades.length - gradesToPublish.length,
+    publishableCount: gradesToPublish.length,
     students: studentGrades
   };
 }
@@ -681,8 +784,8 @@ async function publishFinalGrades(req, res, next) {
   try {
     if (req.user.role !== 'teacher' || !req.user.schoolId) throw createError('Only an authenticated teacher can publish grades.', 403);
     const body = req.body || {};
-    if (Object.keys(body).some(field => !['sectionId', 'subjectId', 'academicTermId'].includes(field))) {
-      throw createError('Provide only the section, subject, and academic term for publishing.');
+    if (Object.keys(body).some(field => !['sectionId', 'subjectId', 'academicTermId', 'transferReviewAcknowledged'].includes(field))) {
+      throw createError('Provide only the section, subject, academic term, and transfer review acknowledgment for publishing.');
     }
     const scope = {
       sectionId: parseGradeScopeId(body.sectionId, 'section ID'),
@@ -694,6 +797,10 @@ async function publishFinalGrades(req, res, next) {
     transactionStarted = true;
     const preview = await buildFinalGradePreview(connection, req.user, scope, true);
     if (!preview.readyToPublish) throw createError('Resolve every missing score and grading setup issue before publishing.', 409);
+    if (preview.transferReviewStudentIds.length && body.transferReviewAcknowledged !== true) {
+      throw createError('Review the transferred students’ previous work before publishing.', 409);
+    }
+    const gradesToPublish = preview.students.filter(student => !student.retainedPublishedGrade);
 
     const [[features]] = await connection.execute(
       'SELECT grades_enabled AS gradesEnabled FROM school_portal_features WHERE school_id = ? FOR UPDATE',
@@ -707,7 +814,7 @@ async function publishFinalGrades(req, res, next) {
       [preview.sectionId, req.user.schoolId]
     ) : [[]];
 
-    for (const student of preview.students) {
+    for (const student of gradesToPublish) {
       await connection.execute(
         `INSERT INTO published_final_grades (
           school_id, section_id, subject_id, academic_term_id, student_user_id,
@@ -750,7 +857,8 @@ async function publishFinalGrades(req, res, next) {
     );
 
     await writeAuditLog(connection, req, 'final_grades_published', 'published_final_grades', null, {
-      summary: `${preview.subjectName} · ${preview.sectionName} · ${preview.academicTermName} · ${preview.students.length} students`
+      summary: `${preview.subjectName} · ${preview.sectionName} · ${preview.academicTermName} · ${gradesToPublish.length} students`,
+      transferReviewStudentIds: preview.transferReviewStudentIds
     });
 
     await connection.commit();
@@ -760,9 +868,10 @@ async function publishFinalGrades(req, res, next) {
       sectionId: preview.sectionId,
       subjectId: preview.subjectId,
       academicTermId: preview.academicTermId,
-      publishedCount: preview.students.length,
+      publishedCount: gradesToPublish.length,
+      retainedPublishedCount: preview.retainedPublishedCount,
       gradingItemIds: preview.gradingItemIds,
-      grades: preview.students.map(({ studentId, studentName, finalGrade, isPassing }) => ({ studentId, studentName, finalGrade, isPassing }))
+      grades: gradesToPublish.map(({ studentId, studentName, finalGrade, isPassing }) => ({ studentId, studentName, finalGrade, isPassing }))
     });
   } catch (error) {
     if (transactionStarted) {
@@ -989,6 +1098,7 @@ module.exports = {
   createGradingItem,
   deleteGradingItem,
   getFinalGradesOverview,
+  getTransferReview,
   listGradingItems,
   listPublishedFinalGrades,
   listStudentScores,

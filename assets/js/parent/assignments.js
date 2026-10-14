@@ -8,6 +8,7 @@
   let children = [];
   let terms = [];
   let assignments = [];
+  let history = [];
   let selectedChild = '';
   let selectedYear = '';
   let selectedTerm = '';
@@ -161,6 +162,22 @@
       ? `Showing assignments for ${children.find(child => String(child.studentId) === selectedChild)?.displayName || 'the selected student'}.`
       : 'Choose a linked student to view assignments.';
     renderList();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const panel = element('assignmentHistory');
+    panel.hidden = loading || Boolean(error) || !history.length;
+    if (panel.hidden) { panel.open = false; return; }
+    element('assignmentHistoryCount').textContent = String(history.length);
+    element('assignmentHistoryList').innerHTML = history.map(item => {
+      const status = labels[item.submissionStatus] || labels.pending;
+      return `<article class="assignment-row">
+        <div class="assignment-row-content"><h2 class="assignment-row-title">${escape(item.title)}</h2><div class="assignment-row-meta">${escape(item.sectionName)} · ${escape(item.academicYearLabel)} · ${escape(item.academicTermName)} · ${escape(item.subjectName)}</div></div>
+        <div class="assignment-status-cell" data-label="Status"><span class="assignment-status ${escape(item.submissionStatus)}">${escape(status)}</span></div>
+        <div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary parent-assignment-view" type="button" data-history-id="${escape(item.id)}">View details</button></div>
+      </article>`;
+    }).join('');
   }
 
   function closeDetail() {
@@ -172,7 +189,9 @@
   }
 
   function openDetail(id, button) {
-    const item = assignments.find(assignment => String(assignment.id) === id);
+    const item = button?.dataset.historyId
+      ? history.find(assignment => String(assignment.id) === id)
+      : assignments.find(assignment => String(assignment.id) === id);
     if (!item) return;
     lastDetailButton = button;
     element('assignmentDetailTitle').textContent = item.title || '—';
@@ -200,6 +219,7 @@
     loading = true;
     error = '';
     assignments = [];
+    history = [];
     closeDetail();
     render();
     try {
@@ -207,6 +227,7 @@
       if (current !== requestId) return;
       if (String(response?.studentId) !== id || !Array.isArray(response.assignments)) throw new Error('The assignment response is incomplete.');
       assignments = response.assignments;
+      history = Array.isArray(response.history) ? response.history : [];
       selectDefaultPeriod();
     } catch (cause) {
       if (current !== requestId) return;
@@ -275,6 +296,10 @@
     element('assignmentList').addEventListener('click', event => {
       const button = event.target.closest('[data-assignment-id]');
       if (button) openDetail(button.dataset.assignmentId, button);
+    });
+    element('assignmentHistoryList').addEventListener('click', event => {
+      const button = event.target.closest('[data-history-id]');
+      if (button) openDetail(button.dataset.historyId, button);
     });
     element('assignmentDetailClose').addEventListener('click', closeDetail);
     element('assignmentDetailDone').addEventListener('click', closeDetail);

@@ -7,7 +7,43 @@ const vm = require('node:vm');
 const commonSource = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 const dashboardSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
 const sectionsSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
+const sectionsStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
 const sfSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
+
+function createTransferNoticeContext(state) {
+  const makeElement = tagName => ({
+    tagName,
+    children: [],
+    listeners: {},
+    className: '',
+    hidden: false,
+    setAttribute() {},
+    addEventListener(type, callback) { this.listeners[type] = callback; },
+    append(...children) { this.children.push(...children); },
+    appendChild(child) { this.children.push(child); return child; },
+    replaceChildren(...children) { this.children = children; },
+    classList: { toggle(name, enabled) { this[name] = enabled; } },
+    textContent: ''
+  });
+  const notice = makeElement('div');
+  const scope = { sectionId: '8', subjectId: '4', academicTermId: '2' };
+  const functionSource = sectionsSource.split('  function renderTransferReviewNotice(scope) {')[1]
+    .split('\n  async function ensureTransferReviewLoaded')[0];
+  let reviewCount = 0;
+  let retryCount = 0;
+  const transferReviewCache = new Map([['8:4:2', state]]);
+  const context = vm.createContext({
+    document: { getElementById: () => notice, createElement: makeElement },
+    window: { lucide: { createIcons() {} } },
+    TRANSFER_REVIEW_CACHE: transferReviewCache,
+    transferReviewKey: () => '8:4:2',
+    ensureTransferReviewLoaded: () => { retryCount += 1; },
+    openTransferReviewModal: () => { reviewCount += 1; }
+  });
+  vm.runInContext(`function renderTransferReviewNotice(scope) {${functionSource}`, context);
+  context.renderTransferReviewNotice(scope);
+  return { notice, transferReviewCache, reviewCount: () => reviewCount, retryCount: () => retryCount };
+}
 
 test('teacher section callers use the subject-assignment scope', () => {
   assert.match(commonSource, /getApiSections\(\{ scope: 'teaching' \}\)/);
@@ -20,6 +56,11 @@ test('direct section access stops before subject APIs when no assignment exists'
   const guard = sectionsSource.indexOf("if (!hasValidBackendSubjectAssignment())");
   const attendanceRequest = sectionsSource.indexOf('getSectionAttendanceHistory(section.id, CURRENT_SUBJECT_ID)');
   assert.ok(guard >= 0 && attendanceRequest > guard);
+});
+
+test('notification links can open an active advisory section without a subject assignment', () => {
+  assert.match(sectionsSource, /if \(!selectedSection\) \{[\s\S]*?getMyAdvisorySections\(\)/);
+  assert.match(sectionsSource, /selectedSection = advisorySection/);
 });
 
 test('student names open a section-scoped details modal with guardian contact details', () => {
@@ -35,6 +76,82 @@ test('student names open a section-scoped details modal with guardian contact de
 
 test('SF templates keep the separate adviser-only section source', () => {
   assert.match(sfSource, /getMyAdvisorySections\(\)/);
+});
+
+test('score rows have no individual transfer link and the review modal uses scoped responsive styling', () => {
+  assert.doesNotMatch(sectionsSource, /transfer-review-link|Prior grade final/);
+  assert.match(sectionsSource, /transferReviewNotice[\s\S]*?textContent = 'Review'[\s\S]*?openTransferReviewModal\(\)/);
+  assert.match(sectionsSource, /class="modal transfer-review-modal"/);
+  assert.match(sectionsSource, /class="modal-body transfer-review-content" id="transferReviewContent"/);
+  assert.doesNotMatch(sectionsSource, /id="transferReviewContent"[^>]*style=/);
+  assert.match(sectionsSource, /class="transfer-review-row-heading"/);
+  assert.match(sectionsSource, /class="transfer-review-detail"/);
+});
+
+test('transfer review notice has a gap above it and keeps responsive side margins', () => {
+  assert.match(sectionsStyles, /\.transfer-review-notice\s*\{[^}]*margin:\s*12px 20px 12px;/);
+  assert.match(sectionsStyles, /@media \(max-width: 760px\)\s*\{\s*\.transfer-review-notice\s*\{\s*margin-right:\s*15px;\s*margin-left:\s*15px;/);
+});
+
+test('transfer review notice handles loading, retry, empty, and full review states', () => {
+  const loading = createTransferNoticeContext({ loading: true });
+  assert.equal(loading.notice.hidden, false);
+  assert.match(loading.notice.children[1].textContent, /Checking previous section work/);
+
+  const failed = createTransferNoticeContext({ error: 'Network error' });
+  assert.equal(failed.notice.classList['is-error'], true);
+  const retry = failed.notice.children[2].children[0];
+  assert.equal(retry.textContent, 'Retry');
+  retry.listeners.click();
+  assert.equal(failed.retryCount(), 1);
+  assert.equal(failed.transferReviewCache.has('8:4:2'), false);
+
+  const empty = createTransferNoticeContext({ data: { scores: [], publishedGrades: [] } });
+  assert.equal(empty.notice.hidden, true);
+
+  const ready = createTransferNoticeContext({ data: {
+    scores: [{ studentId: 7 }], publishedGrades: [{ studentId: 7 }, { studentId: 9 }]
+  } });
+  assert.equal(ready.notice.hidden, false);
+  assert.match(ready.notice.children[1].textContent, /2 transferred students have previous work/);
+  ready.notice.children[2].children[0].listeners.click();
+  assert.equal(ready.reviewCount(), 1);
+});
+
+test('transfer review modal renders score and published-grade cards with a safe empty state', () => {
+  const functionSource = sectionsSource.split('  function openTransferReviewModal() {')[1]
+    .split('\n  function renderScoreTable(')[0];
+  const content = { innerHTML: '' };
+  let openedModal = '';
+  let reviewData = {
+    scores: [{ studentId: 7, sourceSectionName: 'St. Mark', itemTitle: 'Quiz & test', score: 25, maxScore: 25, categoryName: 'Written Work' }],
+    publishedGrades: [{ studentId: 7, sourceSectionName: 'St. John', finalGrade: 91 }]
+  };
+  const context = vm.createContext({
+    BACKEND_GRADE_CONTEXT: { sectionId: '8', subjectId: '4' },
+    document: {
+      getElementById(id) { return id === 'academicPeriodSelect' ? { value: 'period-2' } : content; }
+    },
+    window: { EDUGNAY_CONFIG: { escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') } },
+    TRANSFER_REVIEW_CACHE: new Map([['8:4:2', { data: reviewData }]]),
+    transferReviewScope: () => ({ sectionId: '8', subjectId: '4', academicTermId: '2' }),
+    transferReviewKey: () => '8:4:2',
+    getGradeStudents: () => [{ id: 7, displayName: 'Test & Demo' }],
+    openModal: id => { openedModal = id; }
+  });
+  vm.runInNewContext(`function openTransferReviewModal() {${functionSource}`, context);
+  context.openTransferReviewModal();
+  assert.equal(openedModal, 'transferReviewModal');
+  assert.match(content.innerHTML, /Test &amp; Demo/);
+  assert.match(content.innerHTML, /Quiz &amp; test: 25 \/ 25/);
+  assert.match(content.innerHTML, /Final grade: 91/);
+  assert.match(content.innerHTML, /St\. Mark/);
+  assert.match(content.innerHTML, /St\. John/);
+
+  reviewData = { scores: [], publishedGrades: [] };
+  context.TRANSFER_REVIEW_CACHE.set('8:4:2', { data: reviewData });
+  context.openTransferReviewModal();
+  assert.match(content.innerHTML, /No previous work was found for this subject and period/);
 });
 
 test('QR attendance quick action requires a teacher section and subject choice', () => {

@@ -191,6 +191,63 @@ function parentSubmissionStatus(row, currentDate) {
   return uploaded ? 'submitted' : manual || (row.dueDate && row.dueDate < currentDate ? 'not_submitted' : 'pending');
 }
 
+async function getPreviousSectionWork(database, schoolId, studentId, currentDate, includeFileName = false) {
+  const [rows] = await database.execute(
+    `SELECT assignments.id, assignments.section_id AS sectionId, sections.name AS sectionName,
+      assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
+      assignments.title, assignments.description, assignments.online_submission_enabled AS onlineSubmissionEnabled,
+      DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
+      subjects.name AS subjectName, teachers.display_name AS teacherName,
+      academic_years.label AS academicYearLabel, academic_terms.name AS academicTermName,
+      assignment_submissions.submission_status AS savedStatus,
+      assignment_submissions.file_path IS NOT NULL AS hasUploadedFile,
+      assignment_submissions.file_name AS fileName,
+      DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+    FROM assignment_submissions
+    INNER JOIN assignments ON assignments.id = assignment_submissions.assignment_id
+      AND assignments.school_id = assignment_submissions.school_id
+    INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+    INNER JOIN academic_terms ON academic_terms.id = assignments.academic_term_id
+    INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
+    INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id
+    WHERE assignment_submissions.school_id = ? AND assignment_submissions.student_user_id = ?
+        AND assignments.status = 'published'
+      AND EXISTS (SELECT 1 FROM section_students
+        WHERE section_students.school_id = assignments.school_id
+          AND section_students.section_id = assignments.section_id
+          AND section_students.student_user_id = assignment_submissions.student_user_id
+          AND section_students.withdrawn_at IS NOT NULL
+          AND assignments.created_at <= section_students.withdrawn_at)
+      AND NOT EXISTS (SELECT 1 FROM section_students AS active_enrollment
+        WHERE active_enrollment.school_id = assignments.school_id
+          AND active_enrollment.section_id = assignments.section_id
+          AND active_enrollment.student_user_id = assignment_submissions.student_user_id
+          AND active_enrollment.withdrawn_at IS NULL)
+    ORDER BY assignments.created_at DESC, assignments.id DESC`,
+    [schoolId, studentId]
+  );
+  return rows.map(row => ({
+    id: String(row.id), sectionId: String(row.sectionId), sectionName: row.sectionName,
+    subjectId: String(row.subjectId), academicTermId: String(row.academicTermId),
+    academicYearLabel: row.academicYearLabel, academicTermName: row.academicTermName,
+    title: row.title, description: row.description, dueDate: row.dueDate,
+    subjectName: row.subjectName, teacherName: row.teacherName,
+    submissionStatus: parentSubmissionStatus(row, currentDate),
+    submittedAt: row.submittedAt,
+    ...(includeFileName ? { fileName: row.fileName || null, fileAvailable: Boolean(row.hasUploadedFile) } : {})
+  }));
+}
+
+async function getStudentAssignmentHistory(req, res, next) {
+  try {
+    const currentDate = getSchoolCurrentDate();
+    const history = await getPreviousSectionWork(getDatabase(), req.user.schoolId, req.user.id, currentDate, true);
+    res.set('Cache-Control', 'no-store');
+    res.json({ history });
+  } catch (error) { next(error); }
+}
+
 async function getParentChildAssignments(req, res, next) {
   try {
     const studentId = parseId(req.params.studentId, 'student ID');
@@ -233,7 +290,8 @@ async function getParentChildAssignments(req, res, next) {
       ORDER BY assignments.due_at IS NULL, assignments.due_at, assignments.created_at DESC`,
       [studentId, studentId, req.user.schoolId, req.user.id]
     );
-    res.json({ studentId: String(studentId), currentDate, assignments: rows.map(row => ({
+    const history = await getPreviousSectionWork(database, req.user.schoolId, studentId, currentDate);
+    res.json({ studentId: String(studentId), currentDate, history, assignments: rows.map(row => ({
       id: String(row.id), sectionId: String(row.sectionId), subjectId: String(row.subjectId),
       academicTermId: String(row.academicTermId), title: row.title, description: row.description,
       dueDate: row.dueDate, subjectName: row.subjectName, teacherName: row.teacherName,
@@ -669,6 +727,18 @@ async function listSubmissions(req, res, next) {
   } catch (error) { next(error); }
 }
 
+function resolveStoredSubmission(fileNameValue, relativePath) {
+  const fileName = path.basename(String(relativePath || ''));
+  if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/.test(fileName)) {
+    throw createError('The submitted file is not available.', 404);
+  }
+  const legacy = String(relativePath).replace(/^\/+/, '').startsWith('uploads/assignment-submissions/');
+  const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'assignment-submissions') : uploadDirectory;
+  const filePath = path.resolve(directory, fileName);
+  if (!filePath.startsWith(`${directory}${path.sep}`)) throw createError('The submitted file path is invalid.', 400);
+  return { fileName: fileNameValue || 'assignment-submission', filePath };
+}
+
 async function getManagedSubmissionFile(database, user, assignmentId, submissionId) {
   const assignment = await getAssignmentForManagement(database, user, assignmentId);
   if (!assignment) throw createError('Assignment was not found.', 404);
@@ -677,17 +747,41 @@ async function getManagedSubmissionFile(database, user, assignmentId, submission
     [submissionId, assignment.schoolId, assignmentId]
   );
   const submission = submissions[0];
-  const fileName = path.basename(String(submission?.filePath || ''));
-  if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/.test(fileName)) {
-    throw createError('The submitted file is not available.', 404);
-  }
-  const legacy = String(submission.filePath).replace(/^\/+/, '').startsWith('uploads/assignment-submissions/');
-  const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'assignment-submissions') : uploadDirectory;
-  const filePath = path.resolve(directory, fileName);
-  if (!filePath.startsWith(`${directory}${path.sep}`)) {
-    throw createError('The submitted file path is invalid.', 400);
-  }
-  return { fileName: submission.fileName || 'assignment-submission', filePath };
+  return resolveStoredSubmission(submission?.fileName, submission?.filePath);
+}
+
+async function downloadOwnHistoricalSubmission(req, res, next) {
+  try {
+    const assignmentId = parseId(req.params.assignmentId, 'assignment ID');
+    const [rows] = await getDatabase().execute(
+      `SELECT assignment_submissions.file_name AS fileName, assignment_submissions.file_path AS filePath
+      FROM assignment_submissions
+      INNER JOIN assignments ON assignments.id = assignment_submissions.assignment_id
+        AND assignments.school_id = assignment_submissions.school_id
+      WHERE assignment_submissions.assignment_id = ? AND assignment_submissions.school_id = ?
+        AND assignment_submissions.student_user_id = ?
+        AND assignments.status = 'published'
+        AND EXISTS (SELECT 1 FROM section_students
+          WHERE section_students.school_id = assignments.school_id
+            AND section_students.section_id = assignments.section_id
+            AND section_students.student_user_id = assignment_submissions.student_user_id
+            AND section_students.withdrawn_at IS NOT NULL
+            AND assignments.created_at <= section_students.withdrawn_at)
+        AND NOT EXISTS (SELECT 1 FROM section_students AS active_enrollment
+          WHERE active_enrollment.school_id = assignments.school_id
+            AND active_enrollment.section_id = assignments.section_id
+            AND active_enrollment.student_user_id = assignment_submissions.student_user_id
+            AND active_enrollment.withdrawn_at IS NULL)
+      LIMIT 1`,
+      [assignmentId, req.user.schoolId, req.user.id]
+    );
+    if (!rows.length) throw createError('The previous submission was not found.', 404);
+    const submission = resolveStoredSubmission(rows[0].fileName, rows[0].filePath);
+    res.set('Cache-Control', 'no-store');
+    res.download(submission.filePath, submission.fileName, error => {
+      if (error && !res.headersSent) next(error);
+    });
+  } catch (error) { next(error); }
 }
 
 async function createSubmissionPdfPreview(filePath) {
@@ -769,4 +863,4 @@ async function previewSubmission(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { createAssignment, deleteAssignment, downloadSubmission, getParentAssignmentActivity, getParentChildAssignments, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };
+module.exports = { createAssignment, deleteAssignment, downloadOwnHistoricalSubmission, downloadSubmission, getParentAssignmentActivity, getParentChildAssignments, getStudentAssignmentHistory, listAssignments, listSubmissions, previewSubmission, submitAssignment, updateAssignment, updateStudentAssignmentStatus };

@@ -19,6 +19,8 @@ let categories = [];
 let students = [];
 let items = [];
 let scores = [];
+let previousScores = [];
+let previousPublished = [];
 let committed = false;
 let rolledBack = false;
 let parentTriggerEnabled = false;
@@ -29,6 +31,7 @@ const database = {
     queries.push({ sql, values });
     if (sql.includes('SELECT grades_enabled AS gradesEnabled FROM school_portal_features')) return [[{ gradesEnabled: gradesEnabled ? 1 : 0 }]];
     if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
+    if (sql.startsWith('SELECT id FROM academic_terms WHERE id = ?')) return [[{ id: context.academicTermId }]];
     if (sql.includes('SELECT passing_grade_threshold AS threshold FROM school_levels')) return [[{ threshold: 75 }]];
     if (sql.includes('INSERT INTO notifications')) {
       if (/ON DUPLICATE KEY UPDATE id = id/.test(sql)) throw new Error("Column 'id' in field list is ambiguous");
@@ -37,6 +40,8 @@ const database = {
       return [{ affectedRows: 1 }];
     }
     if (sql.includes('FROM section_teachers')) return [[assigned ? context : undefined].filter(Boolean)];
+    if (sql.includes('FROM section_students AS current_enrollment')) return [previousScores];
+    if (sql.includes('FROM published_final_grades') && sql.includes('source_section.name')) return [previousPublished];
     if (sql.includes('FROM grading_categories')) return [categories];
     if (sql.includes('FROM section_students')) return [students];
     if (sql.includes('FROM grading_items')) return [items];
@@ -96,6 +101,8 @@ function reset() {
   rolledBack = false;
   parentTriggerEnabled = false;
   gradesEnabled = true;
+  previousScores = [];
+  previousPublished = [];
   context = {
     sectionId: 8, schoolId: 1, schoolLevelId: 2, academicYearId: 4,
     sectionName: 'St. Matthew', subjectId: 2, subjectName: 'English',
@@ -130,6 +137,7 @@ async function call(handler, { role = 'teacher', query = {}, body = {} } = {}) {
   const result = { status: 200, data: null, error: null };
   await handler({ user: { id: 5, schoolId: 1, role }, query, body }, {
     status(code) { result.status = code; return this; },
+    set() { return this; },
     json(data) { result.data = data; return this; }
   }, error => { result.error = error; });
   return result;
@@ -148,6 +156,47 @@ test('preview calculates weighted category percentages and applies school roundi
   assert.equal(result.data.preview.students[0].isPassing, true);
   assert.equal(result.data.preview.students[1].finalGrade, 64);
   assert.equal(result.data.preview.students[1].isPassing, false);
+});
+
+test('transferred scores require review acknowledgment before publication', async () => {
+  reset();
+  previousScores = [{ studentId: 101, sourceSectionName: 'St. Anne', itemTitle: 'Quiz', score: '17.00', maxScore: '20.00' }];
+  const preview = await call(grades.previewFinalGrades, { query: scope });
+  assert.deepEqual(preview.data.preview.transferReviewStudentIds, [101]);
+  const rejected = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(rejected.error?.status, 409);
+  assert.equal(committed, false);
+  const accepted = await call(grades.publishFinalGrades, { body: { ...scope, transferReviewAcknowledged: true } });
+  assert.equal(accepted.error, null);
+  assert.equal(accepted.data.publishedCount, 2);
+});
+
+test('teacher-scoped previous work endpoint returns scores and prior published grades', async () => {
+  reset();
+  previousScores = [{ studentId: 101, sourceSectionName: 'St. Anne', itemTitle: 'Quiz', score: '17.00', maxScore: '20.00' }];
+  previousPublished = [{ studentId: 102, sourceSectionName: 'St. Mark', finalGrade: '84.00' }];
+  const result = await call(grades.getTransferReview, { query: scope });
+  assert.equal(result.error, null);
+  assert.equal(result.data.scores[0].score, 17);
+  assert.equal(result.data.publishedGrades[0].finalGrade, 84);
+  assigned = false;
+  const unauthorized = await call(grades.getTransferReview, { query: scope });
+  assert.equal(unauthorized.error?.status, 403);
+});
+
+test('previously published source grades remain official and are excluded from destination publication', async () => {
+  reset();
+  previousPublished = [{ studentId: 101, sourceSectionName: 'St. Anne', finalGrade: '87.00' }];
+  const preview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview.data.preview.retainedPublishedCount, 1);
+  assert.equal(preview.data.preview.students[0].finalGrade, 87);
+  assert.equal(preview.data.preview.students[0].retainedPublishedGrade, true);
+  const result = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(result.error, null);
+  assert.equal(result.data.publishedCount, 1);
+  assert.equal(result.data.retainedPublishedCount, 1);
+  assert.equal(savedGrades.length, 1);
+  assert.equal(savedGrades[0][4], 102);
 });
 
 test('preview follows round, roundup, and truncate settings', async () => {

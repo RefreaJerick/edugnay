@@ -12,6 +12,7 @@ router.get('/:sectionId/students', controller.listSectionStudents);
 router.get('/:sectionId/students/:studentId', requireTeacher, controller.getSectionStudentDetails);
 router.post('/:sectionId/students', requireSchoolAdmin, controller.enrollStudent);
 router.post('/:sectionId/students/bulk', requireSchoolAdmin, controller.enrollStudentsBulk);
+router.get('/:sectionId/students/:studentId/move-preview', requireSchoolAdmin, controller.previewStudentMove);
 router.post('/:sectionId/students/:studentId/move', requireSchoolAdmin, controller.moveStudent);
 router.delete('/:sectionId/students/:studentId', requireSchoolAdmin, controller.withdrawStudent);
 router.get('/:sectionId/teachers', controller.listSectionTeachers);

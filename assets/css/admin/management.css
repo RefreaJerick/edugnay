@@ -1471,6 +1471,19 @@ tbody tr:hover {
   border-color: var(--blue-mid);
 }
 
+.section-placement-value {
+  min-height: 42px;
+  padding-right: 14px;
+  background: var(--gray-100);
+  overflow-wrap: anywhere;
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+#editStrandGroup[hidden] {
+  display: none;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1232px) {
   .stat-grid {

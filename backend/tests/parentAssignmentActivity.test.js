@@ -9,9 +9,11 @@ let assignmentOnline = false;
 let existingFilePath = null;
 let activityRows = [];
 let childAssignmentRows = [];
+let historyRows = [];
 let savedStatus = null;
 let activityQueryCount = 0;
 let childAssignmentQuery = null;
+let historyQuery = null;
 
 function getSchoolDate(offset = 0) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -40,6 +42,10 @@ async function executeQuery(sql, values = []) {
   if (sql.includes('FROM assignments') && sql.includes('DATE(assignments.due_at) = ?')) {
     activityQueryCount += 1;
     return [activityRows];
+  }
+  if (sql.includes('FROM assignment_submissions') && sql.includes('section_students.withdrawn_at IS NOT NULL')) {
+    historyQuery = { sql, values };
+    return [historyRows];
   }
   if (sql.includes('assignment_submissions.file_path IS NOT NULL AS hasUploadedFile')) {
     childAssignmentQuery = { sql, values };
@@ -77,7 +83,7 @@ databaseModule.getDatabase = () => ({
   }
 });
 
-const { getParentAssignmentActivity, getParentChildAssignments, updateStudentAssignmentStatus } = require('../controllers/assignmentsController');
+const { getParentAssignmentActivity, getParentChildAssignments, getStudentAssignmentHistory, updateStudentAssignmentStatus } = require('../controllers/assignmentsController');
 
 async function callActivity(studentId = '42', date = getSchoolDate()) {
   const result = { body: null, error: null };
@@ -125,6 +131,53 @@ test('parent assignment list scopes records to one linked child and resolves sub
   assert.match(childAssignmentQuery.sql, /section_students\.withdrawn_at IS NULL/);
   assert.match(childAssignmentQuery.sql, /assignments\.status = 'published'/);
   assert.match(childAssignmentQuery.sql, /student_parent_links\.school_id = assignments\.school_id/);
+});
+
+test('parent previous-section history includes saved statuses but no file access', async () => {
+  historyRows = [{ id: 7, sectionId: 6, sectionName: 'St. Anne', subjectId: 4, academicTermId: 2,
+    academicYearLabel: '2026–2027', academicTermName: 'Quarter 2', title: 'Old essay',
+    description: 'Write an essay', dueDate: getSchoolDate(-1), onlineSubmissionEnabled: 0,
+    savedStatus: 'submitted', hasUploadedFile: 0, fileName: null }];
+  try {
+    const result = await callChildAssignments();
+    assert.equal(result.error, null);
+    assert.equal(result.body.history.length, 1);
+    assert.equal(result.body.history[0].submissionStatus, 'submitted');
+    assert.equal(result.body.history[0].sectionName, 'St. Anne');
+    assert.equal(Object.hasOwn(result.body.history[0], 'fileName'), false);
+    assert.equal(Object.hasOwn(result.body.history[0], 'fileAvailable'), false);
+    assert.deepEqual(historyQuery.values, [1, 42]);
+    assert.match(historyQuery.sql, /assignments\.created_at <= section_students\.withdrawn_at/);
+    assert.match(historyQuery.sql, /assignments\.status = 'published'/);
+  } finally { historyRows = []; }
+});
+
+test('student previous-section history includes only their own file reference', async () => {
+  historyRows = [{ id: 7, sectionId: 6, sectionName: 'St. Anne', subjectId: 4, academicTermId: 2,
+    title: 'Old essay', description: 'Write an essay', onlineSubmissionEnabled: 1,
+    savedStatus: 'submitted', hasUploadedFile: 1, fileName: 'essay.pdf' }];
+  let body;
+  try {
+    await getStudentAssignmentHistory({ user: { id: 42, schoolId: 1, role: 'student' } }, {
+      set(name, value) { assert.equal(name, 'Cache-Control'); assert.equal(value, 'no-store'); return this; },
+      json(value) { body = value; return this; }
+    }, error => { throw error; });
+    assert.equal(body.history[0].fileName, 'essay.pdf');
+    assert.equal(body.history[0].fileAvailable, true);
+  } finally { historyRows = []; }
+});
+
+test('only students can request previous-section history or download', () => {
+  const router = require('../routes/assignments');
+  for (const path of ['/history', '/history/:assignmentId/file']) {
+    const route = router.stack.find(layer => layer.route?.path === path).route;
+    const guard = route.stack[0].handle;
+    for (const role of ['parent', 'teacher', 'school_admin']) {
+      let status;
+      guard({ user: { role } }, { status(code) { status = code; return this; }, json() {} }, () => { throw new Error('Role should be rejected.'); });
+      assert.equal(status, 403);
+    }
+  }
 });
 
 test('parent assignment list rejects an unlinked or other-school child before querying assignments', async () => {

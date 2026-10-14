@@ -232,18 +232,44 @@ async function updateSection(req, res, next) {
   try {
     const schoolId = req.user.schoolId;
     const sectionId = parseId(req.params.sectionId, 'section ID');
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [lockedSections] = await connection.execute(
+      'SELECT id FROM sections WHERE id = ? AND school_id = ? FOR UPDATE',
+      [sectionId, schoolId]
+    );
+    if (!lockedSections.length) throw createError('Section not found.', 404);
     const current = await findOwnedSection(schoolId, sectionId, connection);
     if (!current) throw createError('Section not found.', 404);
     assertSectionYearWritable(current);
-    const values = await validateSectionData(connection, schoolId, { ...current, ...req.body });
+    for (const [field, label] of [
+      ['academicYearId', 'academic year ID'], ['schoolLevelId', 'school level ID'],
+      ['gradeLevelId', 'grade level ID'], ['strandId', 'strand ID']
+    ]) {
+      if (req.body[field] === undefined) continue;
+      const supplied = field === 'strandId'
+        ? optionalId(req.body[field], label)
+        : parseId(req.body[field], label);
+      if (supplied !== (current[field] == null ? null : Number(current[field]))) {
+        throw createError('A section’s academic year, school level, grade, and track or strand cannot be changed after creation.', 409);
+      }
+    }
+    const adviserUserId = req.body.adviserUserId === undefined
+      ? current.adviserUserId
+      : optionalId(req.body.adviserUserId, 'adviser user ID');
+    if (req.body.adviserUserId !== undefined && adviserUserId) {
+      const [advisers] = await connection.execute(
+        "SELECT id FROM users WHERE id = ? AND school_id = ? AND role = 'teacher' AND account_status = 'active' LIMIT 1",
+        [adviserUserId, schoolId]
+      );
+      if (!advisers.length) throw createError('The selected adviser must be an active teacher from this school.', 404);
+    }
     const name = req.body.name === undefined ? current.name : text(req.body.name, 120, 'Section name');
     const sectionCapacity = req.body.capacity === undefined ? current.capacity : capacity(req.body.capacity);
     const status = req.body.status === undefined ? current.status : String(req.body.status);
     if (!SECTION_STATUSES.has(status)) throw createError('Section status is invalid.');
     if (sectionCapacity < current.studentCount) throw createError('Capacity cannot be lower than the current student count.');
-    await connection.beginTransaction();
-    transactionStarted = true;
-    await connection.execute('UPDATE sections SET academic_year_id=?, school_level_id=?, grade_level_id=?, strand_id=?, name=?, capacity=?, adviser_user_id=?, status=? WHERE id=?', [values.academicYearId, values.schoolLevelId, values.gradeLevelId, values.strandId, name, sectionCapacity, values.adviserUserId, status, sectionId]);
+    await connection.execute('UPDATE sections SET name=?, capacity=?, adviser_user_id=?, status=? WHERE id=? AND school_id=?', [name, sectionCapacity, adviserUserId, status, sectionId, schoolId]);
     await writeAuditLog(connection, req, 'section_updated', 'section', sectionId, { summary: name });
     await connection.commit();
     transactionStarted = false;
@@ -449,6 +475,80 @@ async function enrollStudentsBulk(req, res, next) {
   } finally { connection.release(); }
 }
 
+function assertMoveSections(source, target) {
+  if (!source || !target || source.status !== 'active' || target.status !== 'active') {
+    throw createError('Both sections must be active sections from this school.', 404);
+  }
+  if (source.academicYearStatus !== 'active' || target.academicYearStatus !== 'active') {
+    throw createError('Students can only be moved between sections in the active academic year.', 409);
+  }
+  if (Number(source.academicYearId) !== Number(target.academicYearId)) {
+    throw createError('Students can only be moved within the same academic year.', 409);
+  }
+  if (Number(source.schoolLevelId) !== Number(target.schoolLevelId)
+    || Number(source.gradeLevelId) !== Number(target.gradeLevelId)
+    || String(source.strandId ?? '') !== String(target.strandId ?? '')) {
+    throw createError('Choose a section in the same school level, grade, and track or strand.', 409);
+  }
+  if (target.studentCount >= target.capacity) throw createError('The target section has reached its capacity.', 409);
+}
+
+async function getMoveImpact(database, schoolId, studentId, source) {
+  const [[scores]] = await database.execute(
+    `SELECT COUNT(DISTINCT student_scores.id) AS total FROM student_scores
+    INNER JOIN grading_items ON grading_items.id = student_scores.grading_item_id
+      AND grading_items.school_id = student_scores.school_id
+    INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id
+      AND academic_terms.academic_year_id = ? AND academic_terms.school_level_id = ?
+      AND academic_terms.status = 'active'
+    WHERE student_scores.school_id = ? AND student_scores.student_user_id = ?
+      AND grading_items.section_id = ?`,
+    [source.academicYearId, source.schoolLevelId, schoolId, studentId, source.id]
+  );
+  const [[grades]] = await database.execute(
+    `SELECT COUNT(*) AS total FROM published_final_grades
+    INNER JOIN academic_terms ON academic_terms.id = published_final_grades.academic_term_id
+      AND academic_terms.academic_year_id = ? AND academic_terms.school_level_id = ?
+      AND academic_terms.status = 'active'
+    WHERE published_final_grades.school_id = ? AND published_final_grades.student_user_id = ?
+      AND published_final_grades.section_id = ?`,
+    [source.academicYearId, source.schoolLevelId, schoolId, studentId, source.id]
+  );
+  return { priorScoreCount: Number(scores?.total || 0), publishedGradeCount: Number(grades?.total || 0) };
+}
+
+async function previewStudentMove(req, res, next) {
+  try {
+    const sourceSectionId = parseId(req.params.sectionId, 'source section ID');
+    const studentId = parseId(req.params.studentId, 'student ID');
+    const targetSectionId = parseId(req.query.targetSectionId, 'target section ID');
+    if (sourceSectionId === targetSectionId) throw createError('Choose a different target section.');
+    const database = getDatabase();
+    const [students] = await database.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='student' AND account_status='active' LIMIT 1", [studentId, req.user.schoolId]);
+    if (!students.length) throw createError('The student was not found in this school.', 404);
+    const [source, target] = await Promise.all([
+      findOwnedSection(req.user.schoolId, sourceSectionId, database),
+      findOwnedSection(req.user.schoolId, targetSectionId, database)
+    ]);
+    assertMoveSections(source, target);
+    const [enrollments] = await database.execute(
+      `SELECT section_students.section_id AS sectionId FROM section_students
+      INNER JOIN sections ON sections.id = section_students.section_id AND sections.school_id = section_students.school_id
+      WHERE section_students.school_id = ? AND section_students.student_user_id = ?
+        AND section_students.withdrawn_at IS NULL AND sections.academic_year_id = ?`,
+      [req.user.schoolId, studentId, source.academicYearId]
+    );
+    if (enrollments.length !== 1 || Number(enrollments[0].sectionId) !== sourceSectionId) {
+      throw createError('The student’s active enrollment has changed. Reload and review the move again.', 409);
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({ studentId, studentName: students[0].displayName,
+      source: { id: source.id, name: source.name, gradeLevelName: source.gradeLevelName, strandName: source.strandName },
+      target: { id: target.id, name: target.name, gradeLevelName: target.gradeLevelName, strandName: target.strandName },
+      ...(await getMoveImpact(database, req.user.schoolId, studentId, source)) });
+  } catch (error) { next(error); }
+}
+
 async function moveStudent(req, res, next) {
   const connection = await getDatabase().getConnection();
   let transactionStarted = false;
@@ -466,22 +566,46 @@ async function moveStudent(req, res, next) {
     if (lockedSections.length !== 2) throw createError('Both sections must be active sections from this school.', 404);
     const source = await findOwnedSection(req.user.schoolId, sourceSectionId, connection);
     const target = await findOwnedSection(req.user.schoolId, targetSectionId, connection);
-    if (!source || !target || source.status !== 'active' || target.status !== 'active') {
-      throw createError('Both sections must be active sections from this school.', 404);
-    }
-    if (source.academicYearStatus !== 'active' || target.academicYearStatus !== 'active') {
-      throw createError('Students can only be moved between sections in the active academic year.', 409);
-    }
-    if (source.academicYearId !== target.academicYearId) throw createError('Students can only be moved within the same academic year.');
-    if (target.studentCount >= target.capacity) throw createError('The target section has reached its capacity.', 409);
+    assertMoveSections(source, target);
 
     const [sourceEnrollment] = await connection.execute('SELECT id FROM section_students WHERE section_id=? AND student_user_id=? AND withdrawn_at IS NULL LIMIT 1', [sourceSectionId, studentId]);
     if (!sourceEnrollment.length) throw createError('The student is not enrolled in the source section.', 404);
     const [targetEnrollment] = await connection.execute('SELECT id FROM section_students WHERE section_id=? AND student_user_id=? AND withdrawn_at IS NULL LIMIT 1', [targetSectionId, studentId]);
     if (targetEnrollment.length) throw createError('The student is already enrolled in the target section.', 409);
+    const [activeYearEnrollments] = await connection.execute(
+      `SELECT section_students.section_id AS sectionId FROM section_students
+      INNER JOIN sections ON sections.id = section_students.section_id AND sections.school_id = section_students.school_id
+      WHERE section_students.school_id = ? AND section_students.student_user_id = ?
+        AND section_students.withdrawn_at IS NULL AND sections.academic_year_id = ? FOR UPDATE`,
+      [req.user.schoolId, studentId, source.academicYearId]
+    );
+    if (activeYearEnrollments.length !== 1 || Number(activeYearEnrollments[0].sectionId) !== sourceSectionId) {
+      throw createError('The student’s active enrollment has changed. Reload and review the move again.', 409);
+    }
 
     await connection.execute('UPDATE section_students SET withdrawn_at = NOW() WHERE id = ?', [sourceEnrollment[0].id]);
-    await connection.execute('INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)', [req.user.schoolId, targetSectionId, studentId]);
+    const [newEnrollment] = await connection.execute('INSERT INTO section_students (school_id, section_id, student_user_id) VALUES (?, ?, ?)', [req.user.schoolId, targetSectionId, studentId]);
+    const [receivingTeachers] = await connection.execute(
+      `SELECT DISTINCT teachers.id AS userId FROM users AS teachers
+      WHERE teachers.school_id = ? AND teachers.role = 'teacher' AND teachers.account_status = 'active'
+        AND (teachers.id = ? OR EXISTS (
+          SELECT 1 FROM section_teachers AS assignments
+          WHERE assignments.school_id = ? AND assignments.section_id = ?
+            AND assignments.teacher_user_id = teachers.id
+        ))`,
+      [req.user.schoolId, target.adviserUserId || 0, req.user.schoolId, targetSectionId]
+    );
+    const transferEventKey = `student_transfer:${newEnrollment.insertId}`;
+    const notificationMessage = `${students[0].displayName} was transferred from ${source.name} to ${target.name}.`;
+    const notificationTarget = `/views/teacher/edugnay-teacher-sections.html?sectionId=${encodeURIComponent(String(targetSectionId))}`;
+    for (const teacher of receivingTeachers) {
+      await connection.execute(
+        `INSERT INTO notifications (user_id, type, title, message, target_path, event_key)
+        VALUES (?, 'student_transfer', 'New student in your section', ?, ?, ?)
+        ON DUPLICATE KEY UPDATE event_key = event_key`,
+        [teacher.userId, notificationMessage, notificationTarget, transferEventKey]
+      );
+    }
     await writeAuditLog(connection, req, 'student_moved', 'section_student', studentId, { summary: `${students[0].displayName} · ${source.name} → ${target.name}` });
     await connection.commit();
     transactionStarted = false;
@@ -606,4 +730,4 @@ async function updateTeacherAssignment(req, res, next) {
   } finally { connection.release(); }
 }
 
-module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, enrollStudentsBulk, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };
+module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, enrollStudentsBulk, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, previewStudentMove, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };

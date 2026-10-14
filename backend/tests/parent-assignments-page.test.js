@@ -6,6 +6,8 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'views/parent/edugnay-parent-assignments.html'), 'utf8');
+const studentHtml = fs.readFileSync(path.join(root, 'views/student/edugnay-student-assignments.html'), 'utf8');
+const assignmentStyles = fs.readFileSync(path.join(root, 'assets/css/student/assignments.css'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'assets/js/parent/assignments.js'), 'utf8');
 
 function createPage(api) {
@@ -71,6 +73,20 @@ test('parent assignment page has read-only details and navigation on every paren
     const page = fs.readFileSync(path.join(root, 'views/parent', filename), 'utf8');
     assert.match(page, /href="edugnay-parent-assignments\.html"/, filename);
   }
+});
+
+test('student and parent previous-section work share an accessible accordion card style', () => {
+  for (const page of [html, studentHtml]) {
+    assert.match(page, /<details class="assignment-history" id="assignmentHistory" hidden>/);
+    assert.match(page, /class="assignment-history-title">Previous section work/);
+    assert.match(page, /class="assignment-history-count" id="assignmentHistoryCount"/);
+  }
+  assert.match(assignmentStyles, /\.assignment-history > summary::-webkit-details-marker/);
+  assert.match(assignmentStyles, /\.assignment-history\[open\] > summary::before/);
+  assert.match(assignmentStyles, /\.assignment-history > summary:focus-visible/);
+  assert.match(assignmentStyles, /\.assignment-history-count[\s\S]*?border-radius: var\(--radius-pill\)/);
+  assert.match(assignmentStyles, /\.assignment-history \.assignment-list[\s\S]*?border-top: 1px solid var\(--panel-divider\)/);
+  assert.match(assignmentStyles, /@media \(max-width: 760px\)[\s\S]*?\.assignment-history > summary/);
 });
 
 test('parent page displays selected child, periods, status filters, and read-only details', async () => {
@@ -222,4 +238,26 @@ test('parent child switcher supports Enter and Space keyboard selection', async 
   await page.flush();
   assert.equal(requested.at(-1), '5');
   assert.match(page.element('assignmentList').innerHTML, /5 task/);
+});
+
+test('previous-section submissions stay separate from current assignments and follow the selected child', async () => {
+  const page = createPage({ isBackendAvailable: true,
+    getParentChildren: async () => [
+      { studentId: '4', displayName: 'Juan', schoolLevelId: '7' },
+      { studentId: '5', displayName: 'Maya', schoolLevelId: '7' }
+    ],
+    getAcademicTerms: async () => terms,
+    getParentChildAssignments: async id => ({ studentId: id, assignments: [], history: id === '4'
+      ? [{ id: '77', title: 'Previous essay', sectionName: 'St. Anne', academicYearLabel: '2026-2027',
+        academicTermName: 'Quarter 2', subjectName: 'English', submissionStatus: 'submitted' }] : [] })
+  });
+  await page.flush();
+  assert.equal(page.element('assignmentHistory').hidden, false);
+  assert.equal(page.element('assignmentHistoryCount').textContent, '1');
+  assert.match(page.element('assignmentHistoryList').innerHTML, /Previous essay/);
+  assert.match(page.element('assignmentList').innerHTML, /No assignments/);
+  page.click('child-switcher', { studentId: '5' });
+  await page.flush();
+  assert.equal(page.element('assignmentHistory').hidden, true);
+  assert.doesNotMatch(page.element('assignmentHistoryList').innerHTML, /Maya task/);
 });

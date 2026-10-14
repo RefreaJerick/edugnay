@@ -200,6 +200,10 @@
             </div>
             <div class="assignment-list" id="assignmentList"></div>
           </section>
+          <details class="assignment-history" id="assignmentHistory" hidden>
+            <summary><span class="assignment-history-title">Previous section work</span><span class="assignment-history-count" id="assignmentHistoryCount"></span></summary>
+            <div class="assignment-list" id="assignmentHistoryList"></div>
+          </details>
         </div>
       </div>
     </main>
@@ -253,6 +257,7 @@
             <input class="form-input" type="file" id="assignmentSubmissionFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
             <span class="form-hint" id="assignmentSubmissionFileHint">PDF, Word, PowerPoint, or Excel.</span>
           </div>
+          <a class="top-btn secondary" id="assignmentHistoryDownload" hidden>Download your submitted file</a>
         </div>
       </div>
       <div class="modal-foot">
@@ -270,6 +275,7 @@
     const BACKEND_ASSIGNMENTS_ENABLED = Boolean(window.EDUGNAY_API?.isBackendAvailable);
     let STUDENT_ID = null;
     let ASSIGNMENTS = [];
+    let ASSIGNMENT_HISTORY = [];
     let STUDENT_SUBMISSIONS = [];
     let ASSIGNMENT_PERIODS = [];
     let selectedAssignmentYearId = '';
@@ -376,10 +382,12 @@
         if (session?.role !== 'student') throw new Error('Sign in with a student account to view assignments.');
         STUDENT_ID = String(session.apiUserId || session.userId);
         if (!STUDENT_ID || STUDENT_ID === 'undefined') throw new Error('Your student account could not be identified.');
-        const [assignments, terms] = await Promise.all([
+        const [assignments, terms, historyResponse] = await Promise.all([
           window.EDUGNAY_API.getAssignments(),
-          window.EDUGNAY_API.getAcademicTerms()
+          window.EDUGNAY_API.getAcademicTerms(),
+          window.EDUGNAY_API.getAssignmentHistory()
         ]);
+        ASSIGNMENT_HISTORY = Array.isArray(historyResponse) ? historyResponse : [];
         const submissions = (await Promise.all(assignments.map(function (assignment) {
           return window.EDUGNAY_API.getAssignmentSubmissions(assignment.id);
         }))).flat();
@@ -403,6 +411,7 @@
         console.warn('Unable to load student assignments.', error.message);
         backendAssignmentsError = 'Assignments could not be loaded. Please refresh and try again.';
         ASSIGNMENTS = [];
+        ASSIGNMENT_HISTORY = [];
         STUDENT_SUBMISSIONS = [];
         ASSIGNMENT_PERIODS = [];
         selectedAssignmentPeriodId = '';
@@ -465,6 +474,7 @@
     }
 
     function renderAssignments() {
+      renderAssignmentHistory();
       const list = document.getElementById('assignmentList');
       if (BACKEND_ASSIGNMENTS_ENABLED && backendAssignmentsLoading) {
         list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading assignments', text: 'Reading assignments from your classes.' });
@@ -518,6 +528,42 @@
       lucide.createIcons();
     }
 
+    function renderAssignmentHistory() {
+      const panel = document.getElementById('assignmentHistory');
+      panel.hidden = backendAssignmentsLoading || Boolean(backendAssignmentsError) || !ASSIGNMENT_HISTORY.length;
+      if (panel.hidden) { panel.open = false; return; }
+      document.getElementById('assignmentHistoryCount').textContent = String(ASSIGNMENT_HISTORY.length);
+      document.getElementById('assignmentHistoryList').innerHTML = ASSIGNMENT_HISTORY.map(function (item) {
+        const status = STATUS_META[item.submissionStatus] || STATUS_META.pending;
+        return '<article class="assignment-row"><div class="assignment-row-content"><h2 class="assignment-row-title">' + escapeHtml(item.title) + '</h2>' +
+          '<div class="assignment-row-meta">' + escapeHtml(item.sectionName) + ' · ' + escapeHtml(item.academicYearLabel) + ' · ' + escapeHtml(item.academicTermName) + ' · ' + escapeHtml(item.subjectName) + '</div></div>' +
+          '<div class="assignment-status-cell" data-label="Status"><span class="assignment-status ' + escapeHtml(item.submissionStatus) + '">' + escapeHtml(status.label) + '</span></div>' +
+          '<div class="assignment-row-actions" data-label="Action"><button class="top-btn secondary" type="button" data-history-id="' + escapeHtml(item.id) + '">View details</button></div></article>';
+      }).join('');
+    }
+
+    function openAssignmentHistoryDetail(id) {
+      const item = ASSIGNMENT_HISTORY.find(function (row) { return String(row.id) === String(id); });
+      if (!item) return;
+      activeSubmissionAssignmentId = null;
+      document.getElementById('submissionModalTitle').textContent = 'Previous section work';
+      document.getElementById('submissionModalSub').textContent = item.sectionName + ' · ' + item.academicTermName + ' · Read only';
+      document.getElementById('assignmentDetailTitle').textContent = item.title || '—';
+      document.getElementById('assignmentDetailSubject').textContent = item.subjectName || '—';
+      document.getElementById('assignmentDetailTeacher').textContent = item.teacherName || '—';
+      document.getElementById('assignmentDetailDueDate').textContent = item.dueDate ? formatDate(item.dueDate) : 'No due date';
+      document.getElementById('assignmentDetailInstructions').textContent = item.description || 'No additional instructions were provided.';
+      document.getElementById('assignmentOnlineNotice').textContent = (STATUS_META[item.submissionStatus] || STATUS_META.pending).label;
+      document.getElementById('assignmentSubmissionForm').hidden = true;
+      document.getElementById('assignmentSubmissionSubmit').hidden = true;
+      const link = document.getElementById('assignmentHistoryDownload');
+      link.hidden = !item.fileAvailable;
+      if (item.fileAvailable) link.href = window.EDUGNAY_API.getHistoricalSubmissionUrl(item.id);
+      const modal = document.getElementById('assignmentSubmissionModal');
+      modal.hidden = false;
+      modal.classList.add('open');
+    }
+
     function populateSubjectFilter() {
       const subjects = [];
       getAssignmentsInSelectedPeriod().forEach(function (item) {
@@ -539,6 +585,7 @@
       if (!assignment) return;
 
       activeSubmissionAssignmentId = assignment.id;
+      document.getElementById('assignmentHistoryDownload').hidden = true;
       const hasOnlineSubmission = STUDENT_SUBMISSIONS.some(function (record) {
         return record.assignmentId === assignment.id;
       });
@@ -643,6 +690,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('assignmentHistoryList').addEventListener('click', function (event) {
+        const button = event.target.closest('[data-history-id]');
+        if (button) openAssignmentHistoryDetail(button.dataset.historyId);
+      });
       await loadBackendAssignments();
       renderPeriodFilter();
       populateSubjectFilter();

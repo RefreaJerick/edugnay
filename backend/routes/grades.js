@@ -13,6 +13,7 @@ router.get('/student-scores', requireAuth, requireRoles('school_admin', 'teacher
 router.post('/student-scores', requireAuth, requireRoles('school_admin', 'teacher'), controller.saveStudentScore);
 router.patch('/student-scores/:scoreId', requireAuth, requireRoles('school_admin', 'teacher'), controller.updateStudentScore);
 router.get('/final-grades/overview', requireAuth, requireRoles('student', 'parent'), controller.getFinalGradesOverview);
+router.get('/final-grades/transfer-review', requireAuth, requireTeacher, controller.getTransferReview);
 router.get('/final-grades', requireAuth, requireRoles('student', 'parent', 'teacher', 'school_admin'), controller.listPublishedFinalGrades);
 router.get('/final-grades/preview', requireAuth, requireTeacher, controller.previewFinalGrades);
 router.post('/final-grades/publish', requireAuth, requireTeacher, controller.publishFinalGrades);

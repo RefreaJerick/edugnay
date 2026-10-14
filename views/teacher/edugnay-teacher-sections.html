@@ -369,6 +369,10 @@
       </div>
       <div id="publishGradeFeedback" class="publish-preview-feedback" role="status" aria-live="polite" hidden></div>
       <div id="publishPreviewStudentList" class="publish-preview-list" aria-label="Calculated final grades" hidden></div>
+      <label id="transferPublishReview" class="transfer-publish-review" hidden>
+        <input type="checkbox" id="transferPublishAcknowledged" onchange="updateTransferPublishButton()">
+        <span>I reviewed the previous section work for the transferred students listed above.</span>
+      </label>
     </div>
     <div class="modal-foot">
       <button class="btn btn-cancel" onclick="closeModal('publishModal')">Cancel</button>
@@ -376,6 +380,20 @@
         <i data-lucide="send" style="width:13px;height:13px;"></i> Publish Grades
       </button>
     </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="transferReviewModal">
+  <div class="modal transfer-review-modal" role="dialog" aria-modal="true" aria-labelledby="transferReviewTitle" aria-describedby="transferReviewSub">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <div class="modal-heading-icon" aria-hidden="true"><i data-lucide="clipboard-list"></i></div>
+        <div class="modal-heading-copy"><div class="modal-title" id="transferReviewTitle">Previous section work</div><div class="modal-sub" id="transferReviewSub">Read-only scores for this subject and period.</div></div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeModal('transferReviewModal')" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body transfer-review-content" id="transferReviewContent"></div>
+    <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeModal('transferReviewModal')">Done</button></div>
   </div>
 </div>
 
@@ -924,6 +942,7 @@
             </button>
           </div>
         </div>
+        <div id="transferReviewNotice" class="transfer-review-notice" role="status" hidden></div>
 
         <div class="table-wrap" style="max-height:520px;overflow-y:auto;">
           <table id="scoreTable">
@@ -1572,14 +1591,25 @@
       }
 
       CURRENT_TEACHER_ID = String(session.apiUserId);
-      const sections = (await window.EDUGNAY_CONFIG.getMyTeachingSections()).filter(section =>
+      let sections = (await window.EDUGNAY_CONFIG.getMyTeachingSections()).filter(section =>
         (!section.status || section.status === 'active')
         && (!section.academicYearStatus || section.academicYearStatus === 'active')
       );
       const requestedSectionId = new URLSearchParams(window.location.search).get('sectionId');
-      const selectedSection = requestedSectionId
+      let selectedSection = requestedSectionId
         ? sections.find(section => String(section.id) === requestedSectionId)
         : sections[0];
+
+      if (!selectedSection) {
+        const advisorySections = await window.EDUGNAY_CONFIG.getMyAdvisorySections();
+        const advisorySection = requestedSectionId
+          ? advisorySections.find(section => String(section.id) === requestedSectionId)
+          : advisorySections[0];
+        if (advisorySection) {
+          selectedSection = advisorySection;
+          sections = [...sections, advisorySection];
+        }
+      }
 
       if (!selectedSection) {
         throw new Error(requestedSectionId
@@ -1884,6 +1914,7 @@
   let BACKEND_CATEGORIES = [];
   let BACKEND_TERMS = [];
   let BACKEND_GRADE_ERROR = '';
+  const TRANSFER_REVIEW_CACHE = new Map();
   let publishPreview = null;
   let publishPreviewScope = null;
   let publishInProgress = false;
@@ -2637,6 +2668,96 @@
     if (attendanceSub) attendanceSub.textContent = `${CURRENT_SECTION} · ${CURRENT_SUBJECT}`;
   }
 
+  function transferReviewScope(academicPeriodId) {
+    const termId = getBackendTermId(academicPeriodId);
+    if (!BACKEND_GRADE_CONTEXT?.sectionId || !BACKEND_GRADE_CONTEXT?.subjectId || !termId) return null;
+    return { sectionId: BACKEND_GRADE_CONTEXT.sectionId, subjectId: BACKEND_GRADE_CONTEXT.subjectId, academicTermId: termId };
+  }
+
+  function transferReviewKey(scope) {
+    return `${scope.sectionId}:${scope.subjectId}:${scope.academicTermId}`;
+  }
+
+  function renderTransferReviewNotice(scope) {
+    const notice = document.getElementById('transferReviewNotice');
+    const state = scope && TRANSFER_REVIEW_CACHE.get(transferReviewKey(scope));
+    notice.replaceChildren();
+    notice.hidden = !state || (!state.error && !state.loading && !state.data?.scores?.length && !state.data?.publishedGrades?.length);
+    if (notice.hidden) return;
+    notice.classList.toggle('is-error', Boolean(state.error));
+    const icon = document.createElement('span');
+    icon.className = 'transfer-review-notice-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = `<i data-lucide="${state.error ? 'triangle-alert' : state.loading ? 'loader-circle' : 'info'}"></i>`;
+    const message = document.createElement('p');
+    message.className = 'transfer-review-notice-text';
+    const actions = document.createElement('div');
+    actions.className = 'transfer-review-notice-actions';
+    if (state.loading) {
+      message.textContent = 'Checking previous section work…';
+      notice.append(icon, message);
+      window.lucide?.createIcons();
+      return;
+    }
+    if (state.error) {
+      message.textContent = 'Previous section work could not be loaded.';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'top-btn secondary';
+      retry.textContent = 'Retry';
+      retry.addEventListener('click', () => { TRANSFER_REVIEW_CACHE.delete(transferReviewKey(scope)); ensureTransferReviewLoaded(scope); });
+      actions.appendChild(retry);
+      notice.append(icon, message, actions);
+      window.lucide?.createIcons();
+      return;
+    }
+    const count = new Set([...state.data.scores, ...state.data.publishedGrades].map(row => String(row.studentId))).size;
+    message.textContent = `${count} transferred student${count === 1 ? '' : 's'} ${count === 1 ? 'has' : 'have'} previous work or a published grade in this period.`;
+    const review = document.createElement('button');
+    review.type = 'button';
+    review.className = 'top-btn secondary';
+    review.textContent = 'Review';
+    review.addEventListener('click', () => openTransferReviewModal());
+    actions.appendChild(review);
+    notice.append(icon, message, actions);
+    window.lucide?.createIcons();
+  }
+
+  async function ensureTransferReviewLoaded(scope) {
+    const key = transferReviewKey(scope);
+    if (TRANSFER_REVIEW_CACHE.has(key)) return;
+    TRANSFER_REVIEW_CACHE.set(key, { loading: true });
+    renderTransferReviewNotice(scope);
+    try {
+      const data = await window.EDUGNAY_API.getTransferReview(scope);
+      TRANSFER_REVIEW_CACHE.set(key, { data });
+    } catch (error) {
+      TRANSFER_REVIEW_CACHE.set(key, { error: error.message || 'Unable to load previous work.' });
+    }
+    const selected = transferReviewScope(document.getElementById('academicPeriodSelect').value);
+    if (selected && transferReviewKey(selected) === key) renderScoreTable(document.getElementById('academicPeriodSelect').value);
+  }
+
+  function openTransferReviewModal() {
+    const scope = transferReviewScope(document.getElementById('academicPeriodSelect').value);
+    const data = scope && TRANSFER_REVIEW_CACHE.get(transferReviewKey(scope))?.data;
+    if (!data) return;
+    const names = new Map(getGradeStudents().map(student => [String(student.id), student.displayName]));
+    const rows = [...data.publishedGrades.map(row => ({ ...row, kind: 'published' })), ...data.scores.map(row => ({ ...row, kind: 'score' }))];
+    const content = document.getElementById('transferReviewContent');
+    content.innerHTML = rows.length ? rows.map(row => `<article class="transfer-review-row">
+      <div class="transfer-review-row-heading">
+        <strong>${window.EDUGNAY_CONFIG.escapeHtml(names.get(String(row.studentId)) || 'Student')}</strong>
+        <span class="transfer-review-source">${window.EDUGNAY_CONFIG.escapeHtml(row.sourceSectionName || 'Previous section')}</span>
+      </div>
+      <div class="transfer-review-detail">
+        <span class="transfer-review-kind">${row.kind === 'published' ? 'Published grade' : 'Grading item'}</span>
+        <span class="transfer-review-value">${row.kind === 'published' ? `Final grade: ${Number(row.finalGrade)}` : `${window.EDUGNAY_CONFIG.escapeHtml(row.itemTitle || 'Grading item')}: ${row.score == null ? 'No score' : Number(row.score)} / ${Number(row.maxScore)}${row.categoryName ? ` · ${window.EDUGNAY_CONFIG.escapeHtml(row.categoryName)}` : ''}`}</span>
+      </div>
+    </article>`).join('') : '<p class="transfer-review-empty">No previous work was found for this subject and period.</p>';
+    openModal('transferReviewModal');
+  }
+
   function renderScoreTable(academicPeriodId) {
     closeScoreComponentMenu();
     const theadRow = document.getElementById('scoreTheadRow');
@@ -2651,6 +2772,11 @@
 
     const gradeStudents = getGradeStudents();
     const backendTermId = getBackendTermId(academicPeriodId);
+    const reviewScope = transferReviewScope(academicPeriodId);
+    if (reviewScope) {
+      ensureTransferReviewLoaded(reviewScope);
+      renderTransferReviewNotice(reviewScope);
+    }
     const components = BACKEND_GRADING_ITEMS
       .filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId) && item.academicTermId === String(backendTermId))
       .map(item => {
@@ -3836,15 +3962,21 @@
     feedback.classList.toggle('error', Boolean(isError));
   }
 
+  function updateTransferPublishButton() {
+    const required = Boolean(publishPreview?.transferReviewStudentIds?.length);
+    document.getElementById('publishGradesConfirmButton').disabled = !publishPreview?.readyToPublish || publishInProgress
+      || (required && !document.getElementById('transferPublishAcknowledged').checked);
+  }
+
   function renderPublishGradePreview(preview, scope) {
     publishPreview = preview;
     publishPreviewScope = scope;
-    const confirmButton = document.getElementById('publishGradesConfirmButton');
     const studentCount = document.getElementById('publishStudentCount');
     const studentList = document.getElementById('publishPreviewStudentList');
     const students = Array.isArray(preview.students) ? preview.students : [];
 
-    studentCount.textContent = `${students.length} ${students.length === 1 ? 'student' : 'students'}`;
+    const publishableCount = preview.publishableCount ?? students.length;
+    studentCount.textContent = `${publishableCount} ${publishableCount === 1 ? 'student' : 'students'}`;
     studentList.replaceChildren();
     studentList.hidden = !students.length;
 
@@ -3854,9 +3986,11 @@
       const name = document.createElement('span');
       name.textContent = student.studentName || 'Student';
       const grade = document.createElement('strong');
-      grade.textContent = student.finalGrade === null || student.finalGrade === undefined
-        ? 'Incomplete'
-        : `${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`;
+      grade.textContent = student.retainedPublishedGrade
+        ? `${student.finalGrade} · Kept from ${student.sourceSectionName || 'previous section'}`
+        : student.finalGrade === null || student.finalGrade === undefined
+          ? 'Incomplete'
+          : `${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`;
       row.append(name, grade);
       studentList.appendChild(row);
     });
@@ -3868,11 +4002,14 @@
     if (preview.invalidScoreCount) {
       messages.push(`${preview.invalidScoreCount} invalid score${preview.invalidScoreCount === 1 ? '' : 's'} need to be corrected.`);
     }
+    if (preview.retainedPublishedCount && !publishableCount) messages.push('All students already have a published grade for this subject and period.');
     if (!preview.readyToPublish && !messages.length) messages.push('The grades are not ready to publish.');
+    document.getElementById('transferPublishReview').hidden = !preview.transferReviewStudentIds?.length;
+    document.getElementById('transferPublishAcknowledged').checked = false;
     setPublishGradeFeedback(preview.readyToPublish
-      ? `The server calculated grades for ${students.length} students. Review them before publishing.`
+      ? `The server calculated grades for ${publishableCount} students.${preview.retainedPublishedCount ? ` ${preview.retainedPublishedCount} earlier published grade${preview.retainedPublishedCount === 1 ? '' : 's'} will be kept.` : ''} Review them before publishing.`
       : messages.join(' '), !preview.readyToPublish);
-    confirmButton.disabled = !preview.readyToPublish || publishInProgress;
+    updateTransferPublishButton();
   }
 
   async function flushPendingBackendScoreSaves() {
@@ -3899,6 +4036,8 @@
     confirmButton.disabled = true;
     publishPreview = null;
     publishPreviewScope = null;
+    document.getElementById('transferPublishReview').hidden = true;
+    document.getElementById('transferPublishAcknowledged').checked = false;
     setPublishGradeFeedback('Saving pending score changes and checking the grades…');
     document.getElementById('publishPreviewStudentList').replaceChildren();
     document.getElementById('publishPreviewStudentList').hidden = true;
@@ -3964,7 +4103,7 @@
         throw new Error('Only the active grading period can be published.');
       }
 
-      const result = await window.EDUGNAY_API.publishFinalGrades(scope);
+      const result = await window.EDUGNAY_API.publishFinalGrades({ ...scope, transferReviewAcknowledged: document.getElementById('transferPublishAcknowledged').checked });
       const publishedItemIds = new Set((result.gradingItemIds || []).map(String));
       BACKEND_GRADING_ITEMS = BACKEND_GRADING_ITEMS.map(item => publishedItemIds.has(String(item.id))
         ? { ...item, usedInPublishedGrades: true } : item);
