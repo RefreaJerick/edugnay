@@ -1,8 +1,10 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const { getDatabase } = require('../config/database');
-const { createCombinedExportWorkbook, createExportWorkbook, getExportFilePath, saveExport } = require('../config/sfExports');
+const { createCombinedExportWorkbook, createExportWorkbook, getEditableCells, getExportFilePath, saveExport } = require('../config/sfExports');
 const { SF2, monthInYear, buildSf2Pages } = require('../config/sf2');
+const { SF3, buildSf3Pages } = require('../config/sf3');
+const { SF5, buildSf5Pages } = require('../config/sf5');
 
 const SF1_TEMPLATE = {
   formCode: 'SF1',
@@ -57,7 +59,7 @@ function parseId(value, label) {
 
 function parseTemplateIds(value) {
   const values = Array.isArray(value) ? value : String(value || '').split(',').filter(Boolean);
-  if (values.length !== 2) throw createError('Select exactly SF1 and SF2 to create a combined workbook.');
+  if (values.length < 2 || values.length > 4) throw createError('Select two to four forms to create a combined workbook.');
   const ids = values.map(value => parseId(value, 'template ID'));
   if (new Set(ids).size !== ids.length) throw createError('A template can only be selected once.');
   return ids;
@@ -80,7 +82,8 @@ function formatIssue(issue) {
     severity: issue.severity,
     fieldKey: issue.fieldKey || null,
     cellReference: issue.cellReference || null,
-    message: issue.message
+    message: issue.message,
+    canBeCorrectedInDownload: Boolean(issue.canBeCorrectedInDownload)
   };
 }
 
@@ -129,23 +132,25 @@ async function getTemplate(database, templateId) {
       mapping_status AS mappingStatus, file_path AS filePath,
       default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm
     FROM school_form_templates
-    WHERE id = ? AND form_code IN (?, ?) AND source_type = 'official'
+    WHERE id = ? AND form_code IN (?, ?, ?, ?) AND source_type = 'official'
       AND template_status = 'active' AND mapping_status = 'ready'
     LIMIT 1`,
-    [templateId, 'SF1', 'SF2']
+    [templateId, 'SF1', 'SF2', 'SF3', 'SF5']
   );
   if (!templates[0]) throw createError('This SF template is unavailable.', 404);
   return templates[0];
 }
 
-async function getAdvisorySections(database, teacherId, schoolId) {
+async function getAdvisorySections(database, teacherId, schoolId, includeClosed = false) {
   const [sections] = await database.execute(
     `SELECT sections.id, sections.name, academic_years.label AS academicYear,
       school_grade_levels.display_name AS gradeLevel
     FROM sections
-    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+      AND academic_years.status ${includeClosed ? "IN ('active', 'closed')" : "= 'active'"}
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
-    WHERE sections.school_id = ? AND sections.adviser_user_id = ? AND sections.status = 'active'
+    WHERE sections.school_id = ? AND sections.adviser_user_id = ?
+      AND ${includeClosed ? "(sections.status = 'active' OR (sections.status = 'archived' AND academic_years.status = 'closed'))" : "sections.status = 'active'"}
     ORDER BY school_grade_levels.sort_order, sections.name`,
     [schoolId, teacherId]
   );
@@ -158,18 +163,22 @@ async function getAdvisorySections(database, teacherId, schoolId) {
   }));
 }
 
-async function getAdvisorySection(database, teacherId, schoolId, sectionId) {
+async function getAdvisorySection(database, teacherId, schoolId, sectionId, includeClosed = false) {
   const [sections] = await database.execute(
     `SELECT sections.id, sections.school_id AS schoolId, sections.name,
       sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId,
-      academic_years.label AS academicYear, school_grade_levels.display_name AS gradeLevel,
+      sections.grade_level_id AS gradeLevelId, sections.strand_id AS strandId,
+      academic_years.label AS academicYear, academic_years.status AS academicYearStatus,
+      school_grade_levels.display_name AS gradeLevel,
+      school_grade_levels.grade_code AS gradeCode,
       DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS startDate,
       DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS endDate
     FROM sections
-    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+      AND academic_years.status ${includeClosed ? "IN ('active', 'closed')" : "= 'active'"}
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     WHERE sections.id = ? AND sections.school_id = ? AND sections.adviser_user_id = ?
-      AND sections.status = 'active'
+      AND ${includeClosed ? "(sections.status = 'active' OR (sections.status = 'archived' AND academic_years.status = 'closed'))" : "sections.status = 'active'"}
     LIMIT 1`,
     [sectionId, schoolId, teacherId]
   );
@@ -194,7 +203,7 @@ async function validateTerm(database, schoolId, section, academicTermId, require
   return terms[0];
 }
 
-async function getSectionLearners(database, schoolId, sectionId) {
+async function getSectionLearners(database, schoolId, sectionId, asOfDate = null) {
   const [learners] = await database.execute(
     `SELECT users.id AS userId, users.first_name AS firstName, users.last_name AS lastName,
       student_profiles.user_id AS profileUserId,
@@ -212,10 +221,13 @@ async function getSectionLearners(database, schoolId, sectionId) {
     INNER JOIN users ON users.id = section_students.student_user_id
       AND users.school_id = section_students.school_id AND users.role = 'student'
     LEFT JOIN student_profiles ON student_profiles.user_id = users.id
-    WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.withdrawn_at IS NULL
-      AND users.account_status = 'active'
+    WHERE section_students.school_id = ? AND section_students.section_id = ?
+      AND ${asOfDate
+    ? 'section_students.enrolled_at < DATE_ADD(?, INTERVAL 1 DAY) AND (section_students.withdrawn_at IS NULL OR section_students.withdrawn_at >= DATE_ADD(?, INTERVAL 1 DAY))'
+    : 'section_students.withdrawn_at IS NULL'}
+      ${asOfDate ? '' : "AND users.account_status = 'active'"}
     ORDER BY users.last_name, users.first_name, users.id`,
-    [schoolId, sectionId]
+    asOfDate ? [schoolId, sectionId, asOfDate, asOfDate] : [schoolId, sectionId]
   );
 
   if (!learners.length) return learners;
@@ -262,6 +274,43 @@ async function getSf2Learners(database, schoolId, sectionId, month) {
     isCurrent ? [schoolId, sectionId] : [schoolId, sectionId, monthStart, monthStart]
   );
   return { learners, historical: !isCurrent };
+}
+
+async function getSf5GradeData(database, schoolId, section, learners) {
+  const [subjects] = await database.execute(
+    `SELECT DISTINCT subjects.id, subjects.name FROM section_teachers
+    INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
+    WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
+    ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
+  );
+  const [terms] = await database.execute(
+    `SELECT id, name FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?
+    ORDER BY sequence_number`, [schoolId, section.academicYearId, section.schoolLevelId]
+  );
+  if (!learners.length || !subjects.length || !terms.length) return { subjects, terms, grades: [] };
+  const ids = learners.map(learner => learner.userId);
+  const [grades] = await database.execute(
+    `SELECT published_final_grades.student_user_id AS studentId,
+      published_final_grades.subject_id AS subjectId, published_final_grades.academic_term_id AS academicTermId,
+      published_final_grades.final_grade AS finalGrade, source_section.name AS sectionName
+    FROM published_final_grades
+    INNER JOIN sections AS source_section ON source_section.id = published_final_grades.section_id
+      AND source_section.school_id = published_final_grades.school_id
+      AND source_section.academic_year_id = ? AND source_section.grade_level_id = ?
+      AND source_section.strand_id <=> ?
+    WHERE published_final_grades.school_id = ?
+      AND published_final_grades.student_user_id IN (${ids.map(() => '?').join(', ')})
+      AND published_final_grades.subject_id IN (${subjects.map(() => '?').join(', ')})
+      AND published_final_grades.academic_term_id IN (${terms.map(() => '?').join(', ')})
+      AND EXISTS (SELECT 1 FROM section_students AS enrollment
+        WHERE enrollment.school_id = published_final_grades.school_id
+          AND enrollment.section_id = published_final_grades.section_id
+          AND enrollment.student_user_id = published_final_grades.student_user_id
+          AND (enrollment.withdrawn_at IS NULL OR published_final_grades.published_at <= enrollment.withdrawn_at))`,
+    [section.academicYearId, section.gradeLevelId, section.strandId, schoolId,
+      ...ids, ...subjects.map(subject => subject.id), ...terms.map(term => term.id)]
+  );
+  return { subjects, terms, grades };
 }
 
 function buildGenerationData(school, section, learners) {
@@ -375,30 +424,31 @@ function buildMappedCells(data) {
   return cells;
 }
 
-function editableCellTypes() {
-  const cells = new Map();
-  Object.values(SF1_TEMPLATE.headerFields).forEach(field => cells.set(field.cellAddress, field.type));
-  for (let row = SF1_TEMPLATE.learnerStartRow; row <= SF1_TEMPLATE.learnerEndRow; row += 1) {
-    Object.values(SF1_TEMPLATE.learnerFields).forEach(field => {
-      if (field.editable !== false) cells.set(`${field.column}${row}`, field.type);
-    });
-  }
-  return cells;
-}
-
-function normalizeEdits(value) {
+function normalizeEdits(value, editableCells, pageCount) {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.length > 1000) throw createError('Edits must contain no more than 1,000 cells.');
-  const allowed = editableCellTypes();
+  if (!Array.isArray(value) || value.length > 5000) throw createError('Edits must contain no more than 5,000 cells.');
+  const allowed = new Map(editableCells.map(cell => [String(cell.cellAddress).toUpperCase(), cell.type]));
   const edits = new Map();
   value.forEach(edit => {
     const cellAddress = String(edit?.cellAddress || '').toUpperCase();
-    if (!allowed.has(cellAddress)) throw createError('One or more edited cells are not allowed for this SF1 template.');
+    if (!allowed.has(cellAddress)) throw createError('One or more edited cells are not allowed for this school form.');
+    const pageIndex = edit?.pageIndex === undefined || edit.pageIndex === null || edit.pageIndex === '' ? 0 : Number(edit.pageIndex);
+    if (!Number.isSafeInteger(pageIndex) || pageIndex < 0 || pageIndex >= pageCount) {
+      throw createError('One or more edited cells refer to an unavailable form page.');
+    }
+    if (edit?.value !== null && edit?.value !== undefined
+      && !['string', 'number'].includes(typeof edit.value)) {
+      throw createError(`Enter a valid value for ${cellAddress}.`);
+    }
+    if (typeof edit?.value === 'number' && !Number.isFinite(edit.value)) {
+      throw createError(`Enter a valid value for ${cellAddress}.`);
+    }
     const cellValue = edit?.value === null || edit?.value === undefined ? '' : String(edit.value);
     if (cellValue.length > 500) throw createError('An edited cell value is too long.');
     const type = allowed.get(cellAddress);
-    let normalizedValue = cellValue;
-    if (type === 'date' && cellValue) {
+    const blank = cellValue.trim() === '';
+    let normalizedValue = type === 'text' ? cellValue : (blank ? '' : cellValue.trim());
+    if (['date', 'dateText'].includes(type) && !blank) {
       const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(cellValue.trim());
       if (match) normalizedValue = `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`;
       const date = new Date(`${normalizedValue}T00:00:00Z`);
@@ -407,15 +457,76 @@ function normalizeEdits(value) {
         throw createError(`Enter a valid date for ${cellAddress}.`);
       }
     }
-    if (type === 'number' && cellValue && !Number.isFinite(Number(cellValue))) {
+    if (type === 'number' && !blank && !Number.isFinite(Number(cellValue.trim()))) {
       throw createError(`Enter a valid number for ${cellAddress}.`);
     }
-    if (/^B(?:[1-9]|[1-5]\d)$/.test(cellAddress) && cellValue && !/^\d{12}$/.test(cellValue.trim())) {
-      throw createError(`Enter a 12-digit LRN for ${cellAddress}.`);
-    }
-    edits.set(cellAddress, { cellAddress, value: normalizedValue, type });
+    if (type === 'number' && !blank) normalizedValue = cellValue.trim();
+    const key = `${pageIndex}:${cellAddress}`;
+    if (edits.has(key)) throw createError('A cell can only be edited once per form page.');
+    edits.set(key, { pageIndex, cellAddress, value: normalizedValue, type });
   });
   return [...edits.values()];
+}
+
+function applyEditsToPages(pages, edits) {
+  const nextPages = pages.map(page => page.map(cell => ({ ...cell })));
+  edits.forEach(edit => {
+    const cells = nextPages[edit.pageIndex];
+    const existing = cells.find(cell => String(cell.cellAddress).toUpperCase() === edit.cellAddress);
+    if (existing) {
+      existing.value = edit.value;
+      existing.type = edit.type;
+    } else {
+      cells.push({ cellAddress: edit.cellAddress, value: edit.value, type: edit.type });
+    }
+  });
+  return nextPages;
+}
+
+function finalExportIssues(form, pages) {
+  const editableAddresses = new Set(form.editableCells.map(cell => cell.cellAddress));
+  const firstPage = new Map(pages[0].map(cell => [String(cell.cellAddress).toUpperCase(), cell.value]));
+  const valueAt = address => String(firstPage.get(address) ?? '').trim();
+  const resolvedLrnRows = new Set();
+  const issues = [];
+
+  if (form.template.formCode === 'SF1') {
+    const seenLrns = new Set();
+    for (let row = SF1_TEMPLATE.learnerStartRow; row <= SF1_TEMPLATE.learnerEndRow; row += 1) {
+      const hasLearnerData = Object.keys(SF1_TEMPLATE.learnerFields).some(fieldKey => {
+        const field = SF1_TEMPLATE.learnerFields[fieldKey];
+        return field.column !== 'A' && valueAt(`${field.column}${row}`) !== '';
+      });
+      if (!hasLearnerData) continue;
+      const address = `B${row}`;
+      const lrn = valueAt(address);
+      const valid = /^\d{12}$/.test(lrn) && !seenLrns.has(lrn);
+      if (valid) {
+        seenLrns.add(lrn);
+        resolvedLrnRows.add(row);
+      } else {
+        issues.push({ severity: 'error', fieldKey: 'lrn', cellReference: address,
+          message: lrn ? `Learner LRN in ${address} must be a unique 12-digit number.` : `Learner LRN in ${address} is required.` });
+      }
+    }
+  }
+
+  form.issues.forEach(issue => {
+    if (form.template.formCode === 'SF1' && issue.fieldKey === 'lrn') {
+      const row = Number(/\d+$/.exec(String(issue.cellReference || ''))?.[0]);
+      if (resolvedLrnRows.has(row)) issues.push({ ...issue, severity: 'warning',
+        message: `${issue.message} This workbook contains a manual correction; the saved student record is unchanged.` });
+      return;
+    }
+    if (issue.severity === 'error' && issue.canBeCorrectedInDownload && editableAddresses.has(issue.cellReference)
+      && valueAt(issue.cellReference)) {
+      issues.push({ ...issue, severity: 'warning',
+        message: `${issue.message} This workbook contains a manual correction; the saved school record is unchanged.` });
+      return;
+    }
+    issues.push(issue);
+  });
+  return issues;
 }
 
 async function saveIssues(database, exportId, issues) {
@@ -448,9 +559,9 @@ async function listTemplates(req, res, next) {
         default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm,
         mapping_status AS mappingStatus
       FROM school_form_templates
-      WHERE form_code IN (?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
+      WHERE form_code IN (?, ?, ?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
       ORDER BY form_code, version DESC`,
-      ['SF1', 'SF2']
+      ['SF1', 'SF2', 'SF3', 'SF5']
     );
     res.json({ templates: templates.map(formatTemplate) });
   } catch (error) {
@@ -463,7 +574,19 @@ async function getTemplateDetails(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    const mappings = template.formCode === 'SF2'
+    const mappings = template.formCode === 'SF5'
+      ? [...Object.entries(SF5.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF5.sheetName, cellReference })),
+        ...[['maleLrn', 'A13'], ['maleName', 'B13'], ['maleGeneralAverage', 'F13'],
+          ['femaleLrn', 'A34'], ['femaleName', 'B34'], ['femaleGeneralAverage', 'F34'],
+          ['pageNumber', 'M61']].map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF5.sheetName, cellReference }))]
+      : template.formCode === 'SF3'
+      ? [...Object.entries(SF3.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF3.sheetName, cellReference })),
+        { fieldKey: 'maleNumber', worksheetName: SF3.sheetName, cellReference: `A${SF3.maleStart}` },
+        { fieldKey: 'maleName', worksheetName: SF3.sheetName, cellReference: `B${SF3.maleStart}` },
+        { fieldKey: 'femaleNumber', worksheetName: SF3.sheetName, cellReference: `A${SF3.femaleStart}` },
+        { fieldKey: 'femaleName', worksheetName: SF3.sheetName, cellReference: `B${SF3.femaleStart}` },
+        { fieldKey: 'pageNumber', worksheetName: SF3.sheetName, cellReference: 'T68' }]
+      : template.formCode === 'SF2'
       ? [...Object.entries(SF2.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF2.sheetName, cellReference })),
         { fieldKey: 'maleName', worksheetName: SF2.sheetName, cellReference: 'B13' },
         { fieldKey: 'femaleName', worksheetName: SF2.sheetName, cellReference: 'B35' },
@@ -476,8 +599,8 @@ async function getTemplateDetails(req, res, next) {
         fieldKey, worksheetName: SF1_TEMPLATE.sheetName, cellReference: `${field.column}${SF1_TEMPLATE.learnerStartRow}`
       }))
     ];
-    const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId);
-    res.json({ template: formatTemplate(template), mappings, sections, maxLearners: template.formCode === 'SF2' ? null : 49 });
+    const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId, template.formCode === 'SF5');
+    res.json({ template: formatTemplate(template), mappings, sections, maxLearners: template.formCode === 'SF1' ? 49 : null });
   } catch (error) {
     next(error);
   }
@@ -490,7 +613,10 @@ async function preparePreview(req, database) {
   const termValue = req.method === 'GET' ? req.query.academicTermId : req.body.academicTermId;
   const requestedTermId = termValue === undefined || termValue === null || termValue === ''
     ? null : parseId(termValue, 'academic term ID');
-  const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId);
+  const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId, template.formCode === 'SF5');
+  if (template.formCode === 'SF5' && !/^grade-(?:[1-9]|10)$/.test(section.gradeCode)) {
+    throw createError('SF5 is available only for Grades 1–10.', 403);
+  }
   const term = await validateTerm(database, req.user.schoolId, section, requestedTermId, Boolean(template.requiresAcademicTerm));
   const [schools] = await database.execute(
     `SELECT name AS schoolName, deped_school_id AS depedSchoolId, region_name AS region,
@@ -502,7 +628,13 @@ async function preparePreview(req, database) {
   const month = req.method === 'GET' ? req.query.month : req.body.month;
   let data;
   let pages;
-  if (template.formCode === 'SF2') {
+  if (template.formCode === 'SF5') {
+    const learners = await getSectionLearners(database, req.user.schoolId, section.id,
+      section.academicYearStatus === 'closed' ? section.endDate : null);
+    const gradeData = await getSf5GradeData(database, req.user.schoolId, section, learners);
+    data = buildSf5Pages(schools[0], section, learners, gradeData.subjects, gradeData.terms, gradeData.grades);
+    pages = data.pages;
+  } else if (template.formCode === 'SF2') {
     if (!monthInYear(month, section)) throw createError('Select a valid month within this section\'s academic year.');
     const roster = await getSf2Learners(database, req.user.schoolId, section.id, month);
     data = buildSf2Pages(schools[0], section, month, roster.learners);
@@ -513,27 +645,46 @@ async function preparePreview(req, database) {
     if (!roster.learners.length && !roster.future) data.issues.push({ severity: 'warning', fieldKey: 'roster', cellReference: null,
       message: 'No section assignments were found for this month. Verify the roster before using the draft.' });
     pages = data.pages;
+  } else if (template.formCode === 'SF3') {
+    const learners = await getSectionLearners(database, req.user.schoolId, section.id);
+    data = buildSf3Pages(schools[0], section, learners);
+    pages = data.pages;
   } else {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id);
     data = buildGenerationData(schools[0], section, learners);
     pages = [buildMappedCells(data)];
   }
   const mappedCells = pages[0];
+  const editableCells = await getEditableCells(template, mappedCells);
+  const editableAddresses = new Set(editableCells.map(cell => cell.cellAddress));
+  const issues = data.issues.map(issue => {
+    const canBeCorrectedInDownload = issue.severity === 'error'
+      && !['studentProfile', 'learners'].includes(issue.fieldKey)
+      && editableAddresses.has(issue.cellReference);
+    return {
+      ...issue,
+      canBeCorrectedInDownload,
+      message: canBeCorrectedInDownload
+        ? `${issue.message} This entry can be corrected in the generated workbook only; the saved record remains unchanged.`
+        : issue.message
+    };
+  });
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
     templateId: template.id, version: template.version, schoolId: req.user.schoolId,
     sectionId: section.id, termId: term?.id || null, month: template.formCode === 'SF2' ? month : null,
-    pages, issues: data.issues
+    pages, issues, editableCells, breakdown: data.breakdown || null
   })).digest('hex');
-  return { template, section, term, month, pages, mappedCells, issues: data.issues, fingerprint };
+  return { template, section, term, month, pages, mappedCells, editableCells, issues,
+    breakdown: data.breakdown || [], fingerprint };
 }
 
 async function prepareCombinedPreview(req, database) {
   await ensureFeatureEnabled(database, req.user.schoolId);
   const templateIds = parseTemplateIds(req.body?.templateIds);
   const templates = await Promise.all(templateIds.map(templateId => getTemplate(database, templateId)));
-  const formCodes = templates.map(template => template.formCode).sort();
-  if (formCodes.join(',') !== 'SF1,SF2') {
-    throw createError('Combined workbook generation is currently available for SF1 and SF2 only.');
+  const formCodes = templates.map(template => template.formCode);
+  if (new Set(formCodes).size !== formCodes.length || formCodes.some(code => !['SF1', 'SF2', 'SF3', 'SF5'].includes(code))) {
+    throw createError('Select each available SF form only once.');
   }
 
   const previews = await Promise.all(templates.map(template => preparePreview({
@@ -541,7 +692,8 @@ async function prepareCombinedPreview(req, database) {
     method: 'POST',
     params: { ...req.params, templateId: String(template.id) }
   }, database)));
-  previews.sort((left, right) => left.template.formCode.localeCompare(right.template.formCode));
+  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4 };
+  previews.sort((left, right) => order[left.template.formCode] - order[right.template.formCode]);
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify(previews.map(preview => ({
     templateId: preview.template.id,
     formCode: preview.template.formCode,
@@ -556,6 +708,8 @@ async function previewTemplate(req, res, next) {
     res.json({
       mappedCells: preview.mappedCells,
       pages: preview.pages,
+      editableCells: preview.editableCells,
+      breakdown: preview.breakdown,
       issues: preview.issues.map(formatIssue),
       previewFingerprint: preview.fingerprint
     });
@@ -574,6 +728,8 @@ async function previewCombinedTemplates(req, res, next) {
         formCode: form.template.formCode,
         mappedCells: form.mappedCells,
         pages: form.pages,
+        editableCells: form.editableCells,
+        breakdown: form.breakdown,
         issues: form.issues.map(formatIssue)
       }))
     });
@@ -610,34 +766,32 @@ async function generateCombinedTemplates(req, res, next) {
       throw createError('The combined workbook edits do not match the selected templates.');
     }
 
-    const issues = preview.forms.flatMap(form => form.issues.map(issue => ({ formCode: form.template.formCode, ...formatIssue(issue) })));
+    const preparedForms = preview.forms.map(form => {
+      const requestedEdits = editsByTemplate.get(form.template.id);
+      const edits = normalizeEdits(requestedEdits, form.editableCells, form.pages.length);
+      const pages = applyEditsToPages(form.pages, edits);
+      return { ...form, edits, pages, exportIssues: finalExportIssues(form, pages) };
+    });
+    const issues = preparedForms.flatMap(form => form.exportIssues.map(issue => ({ formCode: form.template.formCode, ...formatIssue(issue) })));
     if (issues.some(issue => issue.severity === 'error')) {
-      return res.status(422).json({ message: 'Fix the listed data issues before downloading this combined workbook.', issues });
+      return res.status(422).json({ message: 'Fix the listed data issues or correct them in the workbook before downloading.', issues });
     }
 
-    const workbookForms = preview.forms.map(form => {
-      const requestedEdits = editsByTemplate.get(form.template.id);
-      if (form.template.formCode === 'SF2') {
-        if (requestedEdits !== undefined && (!Array.isArray(requestedEdits) || requestedEdits.length)) {
-          throw createError('SF2 fields cannot be edited in the preview. Complete the downloaded draft manually.');
-        }
-        return { formCode: 'SF2', pages: form.pages };
-      }
-      const edits = normalizeEdits(requestedEdits);
-      const cellMap = new Map(form.mappedCells.map(cell => [cell.cellAddress, cell]));
-      edits.forEach(edit => cellMap.set(edit.cellAddress, edit));
-      return { formCode: 'SF1', pages: [[...cellMap.values()]] };
-    });
+    const workbookForms = preparedForms.map(form => ({ formCode: form.template.formCode, pages: form.pages }));
+    const manualEditCount = preparedForms.reduce((count, form) => count + form.edits.length, 0);
     const workbook = await createCombinedExportWorkbook(workbookForms);
     const section = preview.forms[0].section;
     const month = preview.forms.find(form => form.template.formCode === 'SF2')?.month;
-    const fileName = `SF1_SF2_${safeFilePart(section.gradeLevel)}-${safeFilePart(section.name)}_${safeFilePart(month || section.academicYear)}.xlsx`;
+    const formCodes = preview.forms.map(form => form.template.formCode);
+    const formCodeList = formCodes.join('_');
+    const draft = formCodes.includes('SF5') ? '-draft' : '';
+    const fileName = `${formCodeList}_${safeFilePart(section.gradeLevel)}-${safeFilePart(section.name)}_${safeFilePart(month || section.academicYear)}${draft}.xlsx`;
 
     await database.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
       VALUES (?, ?, 'school_forms_combined_exported', 'school_form_export', NULL,
-        JSON_OBJECT('form_codes', 'SF1,SF2', 'section_id', ?, 'reporting_month', ?, 'file_name', ?))`,
-      [req.user.schoolId, req.user.id, section.id, month || null, fileName]
+        JSON_OBJECT('form_codes', ?, 'section_id', ?, 'reporting_month', ?, 'file_name', ?, 'manual_edit_count', ?))`,
+      [req.user.schoolId, req.user.id, formCodes.join(','), section.id, month || null, fileName, manualEditCount]
     );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -656,20 +810,18 @@ async function generateTemplate(req, res, next) {
   let transactionStarted = false;
   try {
     const database = getDatabase();
-    const { template, section, term, pages, mappedCells, issues, fingerprint } = await preparePreview(req, database);
+    const { template, section, term, pages, mappedCells, editableCells, issues, fingerprint } = await preparePreview(req, database);
     if (!/^[a-f0-9]{64}$/.test(String(req.body.previewFingerprint || '')) || req.body.previewFingerprint !== fingerprint) {
       throw createError('The school form data changed since the preview. Generate a new preview before downloading.', 409);
     }
-    if (template.formCode === 'SF2' && req.body.edits !== undefined
-      && (!Array.isArray(req.body.edits) || req.body.edits.length)) {
-      throw createError('SF2 fields cannot be edited in the preview. Complete the downloaded draft manually.');
-    }
-    const edits = template.formCode === 'SF2' ? [] : normalizeEdits(req.body.edits);
-    const blockingIssues = issues.filter(issue => issue.severity === 'error');
+    const edits = normalizeEdits(req.body.edits, editableCells, pages.length);
+    const exportPages = applyEditsToPages(pages, edits);
+    const exportIssues = finalExportIssues({ template, editableCells, issues }, exportPages);
+    const blockingIssues = exportIssues.filter(issue => issue.severity === 'error');
     if (blockingIssues.length) {
       return res.status(422).json({
-        message: 'Fix the listed data issues before generating this school form export.',
-        issues: issues.map(formatIssue)
+        message: 'Fix the listed data issues or correct them in the workbook before downloading.',
+        issues: exportIssues.map(formatIssue)
       });
     }
     exportId = await createExportRecord(
@@ -680,12 +832,10 @@ async function generateTemplate(req, res, next) {
       term?.id || null,
       req.user.id,
       'generating',
-      issues
+      exportIssues
     );
 
-    const cellMap = new Map(mappedCells.map(cell => [cell.cellAddress, cell]));
-    edits.forEach(edit => cellMap.set(edit.cellAddress, edit));
-    const workbook = await createExportWorkbook(template, template.formCode === 'SF2' ? pages : [...cellMap.values()]);
+    const workbook = await createExportWorkbook(template, exportPages);
     const saved = await saveExport(workbook, template.formCode);
     savedFilePath = saved.filePath;
     connection = await database.getConnection();
@@ -698,9 +848,9 @@ async function generateTemplate(req, res, next) {
     );
     await connection.execute(
       `INSERT INTO audit_logs (school_id, actor_user_id, action_type, entity_type, entity_id, details)
-      VALUES (?, ?, 'school_form_generated', 'school_form_export', ?, JSON_OBJECT('form_code', ?, 'section_id', ?, 'reporting_month', ?, 'summary', ?))`,
+      VALUES (?, ?, 'school_form_generated', 'school_form_export', ?, JSON_OBJECT('form_code', ?, 'section_id', ?, 'reporting_month', ?, 'summary', ?, 'manual_edit_count', ?))`,
       [req.user.schoolId, req.user.id, exportId, template.formCode, section.id,
-        template.formCode === 'SF2' ? req.body.month : null, `${template.formCode} · ${section.name}`]
+        template.formCode === 'SF2' ? req.body.month : null, `${template.formCode} · ${section.name}`, edits.length]
     );
     await connection.commit();
     transactionStarted = false;
@@ -715,7 +865,7 @@ async function generateTemplate(req, res, next) {
         fileName: saved.fileName,
         downloadUrl: `/api/sf-exports/${exportId}/download`
       },
-      issues: issues.map(formatIssue),
+      issues: exportIssues.map(formatIssue),
       mappedCells
     });
   } catch (error) {
@@ -751,7 +901,8 @@ async function downloadExport(req, res, next) {
     if (!exports[0]) throw createError('This SF export is unavailable.', 404);
     const filePath = getExportFilePath(exports[0].filePath);
     if (!fs.existsSync(filePath)) throw createError('This SF export file is unavailable.', 404);
-    res.download(filePath, `${exports[0].formCode.toLowerCase()}-export-${exportId}.xlsx`, { dotfiles: 'allow' });
+    const draft = exports[0].formCode === 'SF5' ? '-draft' : '';
+    res.download(filePath, `${exports[0].formCode.toLowerCase()}${draft}-export-${exportId}.xlsx`, { dotfiles: 'allow' });
   } catch (error) {
     next(error);
   }

@@ -2,10 +2,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
+const ExcelJS = require('exceljs');
+const { getFormEntryType, isFormEntryCell, isFormEntryPlaceholder } = require('./sfEntryCells');
 const { getPrivateStorageDirectory } = require('./privateStorage');
 
 const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
 const exportDirectory = getPrivateStorageDirectory('SF_EXPORT_DIRECTORY', 'sf-exports');
+const editableTemplateCache = new Map();
 
 fs.mkdirSync(exportDirectory, { recursive: true });
 
@@ -45,6 +48,13 @@ function excelDateSerial(value) {
 function cellContent(value, type) {
   if (value === null || value === undefined || value === '') return { attributes: '', content: '' };
 
+  if (type === 'dateText') {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+    if (!match) return { attributes: '', content: '' };
+    const text = `${match[2]}/${match[3]}/${match[1]}`;
+    return { attributes: ' t="inlineStr"', content: `<is><t>${text}</t></is>` };
+  }
+
   if (type === 'number' || type === 'date') {
     const number = type === 'date' ? excelDateSerial(value) : Number(value);
     if (Number.isFinite(number)) return { attributes: '', content: `<v>${number}</v>` };
@@ -64,13 +74,35 @@ function replaceCell(xml, address, value, type) {
   if (!/^[A-Z]+\d+$/.test(safeAddress)) throw createError('The SF template contains an invalid mapped cell.', 500);
 
   const cellPattern = new RegExp(`(<c\\b(?=[^>]*\\br="${safeAddress}")[^>]*?)\\s*(?:/>|>[\\s\\S]*?<\\/c>)`, 'i');
-  if (!cellPattern.test(xml)) throw createError(`Mapped cell ${safeAddress} is missing from the official SF template.`, 500);
-
   const nextValue = cellContent(value, type);
+  if (!cellPattern.test(xml)) {
+    const rowNumber = Number(/\d+$/.exec(safeAddress)[0]);
+    const targetColumn = columnIndex(safeAddress.replace(/\d+$/, ''));
+    const newCell = `<c r="${safeAddress}">${nextValue.attributes}${nextValue.content}</c>`;
+    const rowPattern = new RegExp(`(<row\\b(?=[^>]*\\br="${rowNumber}")[^>]*>)([\\s\\S]*?)(<\\/row>)`, 'i');
+    if (!rowPattern.test(xml)) throw createError(`Mapped cell ${safeAddress} is missing from the official SF template.`, 500);
+    return xml.replace(rowPattern, (rowMatch, opening, rowCells, closing) => {
+      let inserted = false;
+      const orderedCells = rowCells.replace(/<c\b[^>]*\br="([A-Z]+)\d+"[^>]*(?:\/>|>[\s\S]*?<\/c>)/gi, cellXml => {
+        const cellColumn = columnIndex(/\br="([A-Z]+)\d+"/i.exec(cellXml)?.[1] || 'A');
+        if (!inserted && cellColumn > targetColumn) {
+          inserted = true;
+          return newCell + cellXml;
+        }
+        return cellXml;
+      });
+      return `${opening}${inserted ? orderedCells : orderedCells + newCell}${closing}`;
+    });
+  }
+
   return xml.replace(cellPattern, (match, attributes) => {
     const cleanedAttributes = attributes.replace(/\s+t="[^"]*"/i, '');
     return `${cleanedAttributes}${nextValue.attributes}>${nextValue.content}</c>`;
   });
+}
+
+function columnIndex(label) {
+  return [...String(label || '').toUpperCase()].reduce((number, character) => number * 26 + character.charCodeAt(0) - 64, 0);
 }
 
 async function getWorksheetPath(zip, sheetName) {
@@ -96,7 +128,7 @@ async function getWorksheetPath(zip, sheetName) {
 
 function getOfficialTemplatePath(filePath, formCode) {
   const fileName = path.basename(String(filePath || ''));
-  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx' }[formCode]) {
+  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx', SF3: 'sf3.xlsx', SF5: 'sf5.xlsx' }[formCode]) {
     throw createError('The official SF template file is unavailable.', 500);
   }
   const resolvedPath = path.resolve(templateDirectory, fileName);
@@ -106,10 +138,51 @@ function getOfficialTemplatePath(filePath, formCode) {
   return resolvedPath;
 }
 
-function getCombinedTemplatePath() {
-  const resolvedPath = path.resolve(templateDirectory, 'sf1-sf2.xlsx');
+async function loadEditableTemplate(formCode, filePath, sheetName) {
+  const cacheKey = `${formCode}:${sheetName}`;
+  if (!editableTemplateCache.has(cacheKey)) {
+    const promise = fs.promises.readFile(getOfficialTemplatePath(filePath, formCode))
+      .then(buffer => {
+        const workbook = new ExcelJS.Workbook();
+        return workbook.xlsx.load(buffer).then(() => workbook);
+      });
+    editableTemplateCache.set(cacheKey, promise);
+  }
+  return editableTemplateCache.get(cacheKey);
+}
+
+async function getEditableCells(template, mappedCells = []) {
+  const workbook = await loadEditableTemplate(template.formCode, template.filePath, template.sheetName);
+  const worksheet = workbook.getWorksheet(template.sheetName);
+  if (!worksheet) throw createError('The official SF template worksheet is unavailable.', 500);
+  const mappedAddresses = new Set(mappedCells.map(cell => String(cell.cellAddress || '').toUpperCase()));
+  const editableCells = [];
+  for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    for (let columnNumber = 1; columnNumber <= worksheet.columnCount; columnNumber += 1) {
+      const cell = worksheet.getCell(rowNumber, columnNumber);
+      const address = cell.address.toUpperCase();
+      if (!isFormEntryCell(template.formCode, address)) continue;
+      if (cell.isMerged && cell.master.address.toUpperCase() !== address) continue;
+      if (cell.value && typeof cell.value === 'object' && (cell.value.formula || cell.value.sharedFormula)) continue;
+      const mapped = mappedAddresses.has(address);
+      const sourceText = cell.value === null || cell.value === undefined ? '' : String(cell.text || cell.value).trim();
+      if (!mapped && sourceText && !isFormEntryPlaceholder(template.formCode, address)) continue;
+      editableCells.push({ cellAddress: address, type: getFormEntryType(template.formCode, address, cell) });
+    }
+  }
+  return editableCells;
+}
+
+function getCombinedTemplatePath(formCodes) {
+  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4 };
+  const codes = Array.isArray(formCodes) ? [...formCodes].sort((left, right) => order[left] - order[right]) : [];
+  if (codes.length < 2 || codes.length > 4 || new Set(codes).size !== codes.length
+    || codes.some(code => !order[code])) {
+    throw createError('Select two to four different SF forms to create a combined workbook.');
+  }
+  const resolvedPath = path.resolve(templateDirectory, `${codes.map(code => code.toLowerCase()).join('-')}.xlsx`);
   if (!resolvedPath.startsWith(`${templateDirectory}${path.sep}`) || !fs.existsSync(resolvedPath)) {
-    throw createError('The combined SF1 and SF2 workbook template is unavailable.', 500);
+    throw createError('The selected combined SF workbook template is unavailable.', 500);
   }
   return resolvedPath;
 }
@@ -118,6 +191,180 @@ function applyCells(worksheetXml, cells) {
   if (!Array.isArray(cells) || cells.length > 10000) throw createError('Invalid school form cells.');
   cells.forEach(cell => { worksheetXml = replaceCell(worksheetXml, cell.cellAddress, cell.value, cell.type); });
   return worksheetXml;
+}
+
+async function addSf5AverageStyles(zip, worksheetXml) {
+  const xml = await zip.file('xl/styles.xml').async('string');
+  const cellXfs = /<cellXfs\b[^>]*count="(\d+)"[^>]*>([\s\S]*?)<\/cellXfs>/.exec(xml);
+  if (!cellXfs) throw createError('The SF5 template is missing cell styles.', 500);
+  const styles = [...cellXfs[2].matchAll(/<xf\b[^>]*?(?:\/>|>[\s\S]*?<\/xf>)/g)].map(match => match[0]);
+  if (styles.length !== Number(cellXfs[1])) throw createError('The SF5 template styles are invalid.', 500);
+  const styleByAddress = new Map();
+  const variantBySource = new Map();
+  const addedStyles = [];
+  for (const row of [...Array.from({ length: 20 }, (_, index) => index + 13),
+    ...Array.from({ length: 26 }, (_, index) => index + 34)]) {
+    const address = `F${row}`;
+    const tag = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*>`, 'i').exec(worksheetXml)?.[0];
+    if (!tag) throw createError(`SF5 average cell ${address} is missing.`, 500);
+    const sourceIndex = Number(/\bs="(\d+)"/.exec(tag)?.[1] || 0);
+    if (!styles[sourceIndex]) throw createError('The SF5 template styles are invalid.', 500);
+    if (!variantBySource.has(sourceIndex)) {
+      const variant = styles[sourceIndex].replace(/<xf\b[^>]*>/, opening => opening
+        .replace(/\snumFmtId="[^"]*"/, '')
+        .replace(/\sapplyNumberFormat="[^"]*"/, '')
+        .replace(/\/?>(?=$)/, ending => ` numFmtId="2" applyNumberFormat="1"${ending}`));
+      variantBySource.set(sourceIndex, styles.length + addedStyles.length);
+      addedStyles.push(variant);
+    }
+    styleByAddress.set(address, variantBySource.get(sourceIndex));
+  }
+  const nextBlock = cellXfs[0].replace(`count="${cellXfs[1]}"`, `count="${styles.length + addedStyles.length}"`)
+    .replace('</cellXfs>', `${addedStyles.join('')}</cellXfs>`);
+  zip.file('xl/styles.xml', xml.replace(cellXfs[0], nextBlock));
+  return styleByAddress;
+}
+
+function styleSf5Averages(xml, cells, styleByAddress) {
+  for (const cell of cells.filter(item => item.type === 'number' && /^F(?:1[3-9]|2\d|3[0-2]|3[4-9]|[4-5]\d)$/.test(item.cellAddress))) {
+    const pattern = new RegExp(`<c\\b(?=[^>]*\\br="${cell.cellAddress}")[^>]*>`, 'i');
+    if (!pattern.test(xml)) throw createError(`SF5 average cell ${cell.cellAddress} is missing.`, 500);
+    xml = xml.replace(pattern, tag => tag.replace(/\s+s="\d+"/, '')
+      .replace('>', ` s="${styleByAddress.get(cell.cellAddress)}">`));
+  }
+  return xml;
+}
+
+function xmlAttribute(tag, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}="([^"]*)"`).exec(tag)?.[1] || '';
+}
+
+function relationshipTags(xml) {
+  return [...xml.matchAll(/<Relationship\b[^>]*\/>/g)].map(match => match[0]);
+}
+
+function nextPartNumber(zip, expression) {
+  expression.lastIndex = 0;
+  return Math.max(0, ...Object.keys(zip.files).map(name => Number(expression.exec(name)?.[1] || 0))) + 1;
+}
+
+async function addWorkbookPages(zip, template, baseWorksheetPath, sourceWorksheetXml, pages, averageStyles = null) {
+  if (pages.length <= 1) return;
+
+  const workbookPath = 'xl/workbook.xml';
+  const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels';
+  let workbookXml = await zip.file(workbookPath).async('string');
+  let workbookRelationships = await zip.file(workbookRelationshipsPath).async('string');
+  const sheetTags = [...workbookXml.matchAll(/<sheet\b[^>]*\/>/g)].map(match => match[0]);
+  const baseIndex = sheetTags.findIndex(tag => xmlAttribute(tag, 'name') === template.sheetName);
+  if (baseIndex < 0) throw createError('The generated workbook is missing its source worksheet.', 500);
+
+  const worksheetRelationshipsPath = path.posix.join(
+    path.posix.dirname(baseWorksheetPath), '_rels', `${path.posix.basename(baseWorksheetPath)}.rels`
+  );
+  const sourceWorksheetRelationships = await zip.file(worksheetRelationshipsPath)?.async('string');
+  if (!sourceWorksheetRelationships) throw createError('The generated workbook is missing worksheet relationships.', 500);
+
+  let nextWorksheet = nextPartNumber(zip, /^xl\/worksheets\/sheet(\d+)\.xml$/);
+  let nextDrawing = nextPartNumber(zip, /^xl\/drawings\/drawing(\d+)\.xml$/);
+  let nextPrinterSettings = nextPartNumber(zip, /^xl\/printerSettings\/printerSettings(\d+)\.bin$/);
+  const sheetIds = sheetTags.map(tag => Number(xmlAttribute(tag, 'sheetId')) || 0);
+  const relationshipIds = relationshipTags(workbookRelationships)
+    .map(tag => Number(/^rId(\d+)$/.exec(xmlAttribute(tag, 'Id'))?.[1] || 0));
+  let nextSheetId = Math.max(0, ...sheetIds) + 1;
+  let nextRelationshipId = Math.max(0, ...relationshipIds) + 1;
+  const newSheets = [];
+  const newRelationships = [];
+  const newContentTypes = [];
+  const newDefinedNames = [];
+  const sourceSheetName = template.sheetName.replace(/'/g, "''");
+  const insertionIndex = baseIndex + 1;
+
+  for (let pageIndex = 1; pageIndex < pages.length; pageIndex += 1) {
+    const sheetNumber = nextWorksheet++;
+    const sheetPath = `xl/worksheets/sheet${sheetNumber}.xml`;
+    const newSheetName = `${template.formCode} Page ${pageIndex + 1}`;
+    const sheetRelationshipId = `rId${nextRelationshipId++}`;
+    let relationshipXml = sourceWorksheetRelationships;
+
+    for (const tag of relationshipTags(sourceWorksheetRelationships)) {
+      const type = xmlAttribute(tag, 'Type').split('/').pop();
+      if (type === 'drawing') {
+        const drawingNumber = nextDrawing++;
+        const target = `../drawings/drawing${drawingNumber}.xml`;
+        relationshipXml = relationshipXml.replace(tag, tag.replace(`Target="${xmlAttribute(tag, 'Target')}"`, `Target="${target}"`));
+        const sourceDrawingPath = resolvePartPath(baseWorksheetPath, xmlAttribute(tag, 'Target'));
+        const sourceDrawing = zip.file(sourceDrawingPath);
+        if (!sourceDrawing) throw createError('The generated workbook drawing is unavailable.', 500);
+        zip.file(`xl/drawings/drawing${drawingNumber}.xml`, await sourceDrawing.async('nodebuffer'));
+        const sourceDrawingRelPath = path.posix.join(
+          path.posix.dirname(sourceDrawingPath), '_rels', `${path.posix.basename(sourceDrawingPath)}.rels`
+        );
+        const sourceDrawingRelationships = zip.file(sourceDrawingRelPath);
+        if (sourceDrawingRelationships) {
+          const drawingRelationshipsXml = await sourceDrawingRelationships.async('string');
+          for (const imageTag of relationshipTags(drawingRelationshipsXml)) {
+            const imagePath = resolvePartPath(sourceDrawingPath, xmlAttribute(imageTag, 'Target'));
+            if (!zip.file(imagePath)) throw createError('The generated workbook image is unavailable.', 500);
+          }
+          zip.file(`xl/drawings/_rels/drawing${drawingNumber}.xml.rels`, drawingRelationshipsXml);
+        }
+        newContentTypes.push(`<Override PartName="/xl/drawings/drawing${drawingNumber}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`);
+      } else if (type === 'printerSettings') {
+        const printerNumber = nextPrinterSettings++;
+        const target = `../printerSettings/printerSettings${printerNumber}.bin`;
+        relationshipXml = relationshipXml.replace(tag, tag.replace(`Target="${xmlAttribute(tag, 'Target')}"`, `Target="${target}"`));
+        const sourcePrinterPath = resolvePartPath(baseWorksheetPath, xmlAttribute(tag, 'Target'));
+        const sourcePrinter = zip.file(sourcePrinterPath);
+        if (!sourcePrinter) throw createError('The generated workbook print settings are unavailable.', 500);
+        zip.file(`xl/printerSettings/printerSettings${printerNumber}.bin`, await sourcePrinter.async('nodebuffer'));
+      }
+    }
+
+    const pageXml = applyCells(sourceWorksheetXml, pages[pageIndex]);
+    zip.file(sheetPath, averageStyles === null ? pageXml : styleSf5Averages(pageXml, pages[pageIndex], averageStyles));
+    zip.file(`xl/worksheets/_rels/sheet${sheetNumber}.xml.rels`, relationshipXml);
+    newSheets.push(`<sheet name="${escapeXml(newSheetName)}" sheetId="${nextSheetId++}" r:id="${sheetRelationshipId}"/>`);
+    newRelationships.push(`<Relationship Id="${sheetRelationshipId}" Type="http://purl.oclc.org/ooxml/officeDocument/relationships/worksheet" Target="worksheets/sheet${sheetNumber}.xml"/>`);
+    newContentTypes.push(`<Override PartName="/${sheetPath}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
+
+    const definedNames = /<definedNames>([\s\S]*?)<\/definedNames>/.exec(workbookXml)?.[1] || '';
+    [...definedNames.matchAll(/<definedName\b([^>]*)>([\s\S]*?)<\/definedName>/g)]
+      .filter(match => Number(xmlAttribute(`<definedName${match[1]}>`, 'localSheetId')) === baseIndex)
+      .forEach(match => {
+        const attributes = match[1].replace(/localSheetId="\d+"/, `localSheetId="${baseIndex + pageIndex}"`);
+        const content = match[2].replaceAll(`'${sourceSheetName}'`, `'${escapeXml(newSheetName)}'`);
+        newDefinedNames.push(`<definedName${attributes}>${content}</definedName>`);
+      });
+  }
+
+  const orderedSheetTags = [...sheetTags];
+  orderedSheetTags.splice(insertionIndex, 0, ...newSheets);
+  workbookXml = workbookXml.replace(/<sheets>[\s\S]*?<\/sheets>/, `<sheets>${orderedSheetTags.join('')}</sheets>`);
+  const shiftedDefinedNames = block => block.replace(/<definedName\b([^>]*)>/g, tag => {
+    const localSheetValue = xmlAttribute(tag, 'localSheetId');
+    const localSheetId = Number(localSheetValue);
+    if (!localSheetValue || !Number.isInteger(localSheetId) || localSheetId < insertionIndex) return tag;
+    return tag.replace(/localSheetId="\d+"/, `localSheetId="${localSheetId + newSheets.length}"`);
+  });
+  if (newDefinedNames.length) {
+    if (workbookXml.includes('</definedNames>')) {
+      workbookXml = workbookXml.replace(/<definedNames>[\s\S]*?<\/definedNames>/, block => {
+        const shifted = shiftedDefinedNames(block);
+        return shifted.replace('</definedNames>', `${newDefinedNames.join('')}</definedNames>`);
+      });
+    } else {
+      workbookXml = workbookXml.replace('</sheets>', `</sheets><definedNames>${newDefinedNames.join('')}</definedNames>`);
+    }
+  } else if (workbookXml.includes('<definedNames>')) {
+    workbookXml = workbookXml.replace(/<definedNames>[\s\S]*?<\/definedNames>/, shiftedDefinedNames);
+  }
+  workbookRelationships = workbookRelationships.replace('</Relationships>', `${newRelationships.join('')}</Relationships>`);
+  const contentTypes = await zip.file('[Content_Types].xml').async('string');
+  zip.file(workbookPath, workbookXml);
+  zip.file(workbookRelationshipsPath, workbookRelationships);
+  zip.file('[Content_Types].xml', contentTypes.replace('</Types>', `${newContentTypes.join('')}</Types>`));
 }
 
 async function createExportWorkbook(template, cells) {
@@ -130,138 +377,63 @@ async function createExportWorkbook(template, cells) {
   const originalStyles = await stylesFile.async('nodebuffer');
   const worksheetPath = await getWorksheetPath(zip, template.sheetName);
   const sourceWorksheet = await zip.file(worksheetPath).async('string');
-  const pages = template.formCode === 'SF2' ? cells : [cells];
+  const pages = Array.isArray(cells?.[0]) ? cells : ['SF2', 'SF3', 'SF5'].includes(template.formCode) ? cells : [cells];
   if (!Array.isArray(pages) || !pages.length || pages.length > 100) throw createError('Invalid school form pages.', 500);
-  for (let index = 0; index < pages.length; index += 1) {
-    let worksheetXml = sourceWorksheet;
-    pages[index].forEach(cell => { worksheetXml = replaceCell(worksheetXml, cell.cellAddress, cell.value, cell.type); });
-    const pagePath = index === 0 ? worksheetPath : `xl/worksheets/sheet${index + 2}.xml`;
-    zip.file(pagePath, worksheetXml);
-    if (index === 0) continue;
-    const drawingNumber = index + 2;
-    const baseRels = await zip.file('xl/worksheets/_rels/sheet2.xml.rels').async('string');
-    zip.file(`xl/worksheets/_rels/sheet${drawingNumber}.xml.rels`, baseRels
-      .replace('drawing2.xml', `drawing${drawingNumber}.xml`)
-      .replace('printerSettings2.bin', `printerSettings${drawingNumber}.bin`));
-    zip.file(`xl/drawings/drawing${drawingNumber}.xml`, await zip.file('xl/drawings/drawing2.xml').async('nodebuffer'));
-    zip.file(`xl/drawings/_rels/drawing${drawingNumber}.xml.rels`, await zip.file('xl/drawings/_rels/drawing2.xml.rels').async('nodebuffer'));
-    zip.file(`xl/printerSettings/printerSettings${drawingNumber}.bin`, await zip.file('xl/printerSettings/printerSettings2.bin').async('nodebuffer'));
-  }
+  if (template.formCode === 'SF1' && pages.length !== 1) throw createError('SF1 supports one worksheet page per export.', 500);
+  const averageStyles = template.formCode === 'SF5' ? await addSf5AverageStyles(zip, sourceWorksheet) : null;
+  zip.file(worksheetPath, averageStyles === null ? applyCells(sourceWorksheet, pages[0])
+    : styleSf5Averages(applyCells(sourceWorksheet, pages[0]), pages[0], averageStyles));
   if (pages.length > 1) {
-    let workbook = await zip.file('xl/workbook.xml').async('string');
-    let relationships = await zip.file('xl/_rels/workbook.xml.rels').async('string');
-    let contentTypes = await zip.file('[Content_Types].xml').async('string');
-    for (let index = 1; index < pages.length; index += 1) {
-      const partNumber = index + 2;
-      const name = `SF2 Page ${index + 1}`;
-      workbook = workbook.replace('</sheets>', `<sheet name="${name}" sheetId="${partNumber}" r:id="rId${10 + index}"/></sheets>`);
-      workbook = workbook.replace('</definedNames>', `<definedName name="_xlnm.Print_Titles" localSheetId="${index}">'${name}'!$10:$12</definedName></definedNames>`);
-      relationships = relationships.replace('</Relationships>', `<Relationship Id="rId${10 + index}" Type="http://purl.oclc.org/ooxml/officeDocument/relationships/worksheet" Target="worksheets/sheet${partNumber}.xml"/></Relationships>`);
-      contentTypes = contentTypes.replace('</Types>', `<Override PartName="/xl/worksheets/sheet${partNumber}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing${partNumber}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`);
-    }
-    zip.file('xl/workbook.xml', workbook);
-    zip.file('xl/_rels/workbook.xml.rels', relationships);
-    zip.file('[Content_Types].xml', contentTypes);
+    await addWorkbookPages(zip, template, worksheetPath, sourceWorksheet, pages, averageStyles);
   }
   const afterStyles = await zip.file('xl/styles.xml').async('nodebuffer');
-  if (!originalStyles.equals(afterStyles)) throw createError('The SF workbook styles changed unexpectedly.', 500);
+  if (template.formCode !== 'SF5' && !originalStyles.equals(afterStyles)) throw createError('The SF workbook styles changed unexpectedly.', 500);
 
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
 async function createCombinedExportWorkbook(forms) {
-  if (!Array.isArray(forms) || forms.length !== 2
-    || new Set(forms.map(form => form?.formCode)).size !== 2
-    || !forms.some(form => form.formCode === 'SF1') || !forms.some(form => form.formCode === 'SF2')) {
-    throw createError('A combined workbook must contain one verified SF1 and one verified SF2.');
+  if (!Array.isArray(forms) || forms.length < 2 || forms.length > 4
+    || new Set(forms.map(form => form?.formCode)).size !== forms.length
+    || forms.some(form => !['SF1', 'SF2', 'SF3', 'SF5'].includes(form?.formCode))) {
+    throw createError('A combined workbook must contain two to four different SF forms.');
   }
 
-  const sf1 = forms.find(form => form.formCode === 'SF1');
-  const sf2 = forms.find(form => form.formCode === 'SF2');
-  if (!Array.isArray(sf1.pages) || sf1.pages.length !== 1
-    || !Array.isArray(sf2.pages) || !sf2.pages.length || sf2.pages.length > 100) {
+  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4 };
+  const orderedForms = [...forms].sort((left, right) => order[left.formCode] - order[right.formCode]);
+  if (orderedForms.some(form => !Array.isArray(form.pages) || !form.pages.length || form.pages.length > 100
+    || (form.formCode === 'SF1' && form.pages.length !== 1))) {
     throw createError('The combined workbook contains invalid form pages.');
   }
 
-  const source = await fs.promises.readFile(getCombinedTemplatePath());
+  const source = await fs.promises.readFile(getCombinedTemplatePath(orderedForms.map(form => form.formCode)));
   const zip = await JSZip.loadAsync(source);
   const stylesFile = zip.file('xl/styles.xml');
   if (!stylesFile) throw createError('The combined workbook is missing its styles.', 500);
   const originalStyles = await stylesFile.async('nodebuffer');
-  const sf1Path = await getWorksheetPath(zip, 'School Form 1 (SF1)');
-  const sf2Path = await getWorksheetPath(zip, 'School Form 2 (SF2)');
-  const sf1Xml = await zip.file(sf1Path).async('string');
-  const sf2Xml = await zip.file(sf2Path).async('string');
-  zip.file(sf1Path, applyCells(sf1Xml, sf1.pages[0]));
-
-  const baseRelationsPath = 'xl/worksheets/_rels/sheet2.xml.rels';
-  const baseDrawingPath = 'xl/drawings/drawing2.xml';
-  const baseDrawingRelationsPath = 'xl/drawings/_rels/drawing2.xml.rels';
-  const basePrinterSettingsPath = 'xl/printerSettings/printerSettings2.bin';
-  const baseRelations = zip.file(baseRelationsPath);
-  const baseDrawing = zip.file(baseDrawingPath);
-  const baseDrawingRelations = zip.file(baseDrawingRelationsPath);
-  const basePrinterSettings = zip.file(basePrinterSettingsPath);
-  if (!baseRelations || !baseDrawing || !baseDrawingRelations || !basePrinterSettings) {
-    throw createError('The combined workbook is missing SF2 print or image settings.', 500);
-  }
-
-  let workbook = await zip.file('xl/workbook.xml').async('string');
-  let workbookRelations = await zip.file('xl/_rels/workbook.xml.rels').async('string');
-  let contentTypes = await zip.file('[Content_Types].xml').async('string');
-  const sheetTags = [...workbook.matchAll(/<sheet\b[^>]*\/?\s*>/g)].map(match => match[0]);
-  const sheetIds = sheetTags.map(tag => Number(/\bsheetId="(\d+)"/.exec(tag)?.[1] || 0));
-  const relationIds = [...workbookRelations.matchAll(/\bId="rId(\d+)"/g)].map(match => Number(match[1]));
-  const nextSheetId = Math.max(0, ...sheetIds) + 1;
-  const nextRelationId = Math.max(0, ...relationIds) + 1;
-  const worksheetXml = sf2Xml;
-  const additionalSheets = [];
-  const additionalRelations = [];
-  const additionalDefinedNames = [];
-  const additionalContentTypes = [];
-
-  for (let pageIndex = 0; pageIndex < sf2.pages.length; pageIndex += 1) {
-    const partNumber = pageIndex + 2;
-    const sheetName = pageIndex === 0 ? 'School Form 2 (SF2)' : `SF2 Page ${pageIndex + 1}`;
-    const pageCells = sf2.pages[pageIndex];
-    const pageXml = applyCells(worksheetXml, pageCells);
-    const sheetPath = pageIndex === 0 ? sf2Path : `xl/worksheets/sheet${partNumber}.xml`;
-    zip.file(sheetPath, pageXml);
-    if (pageIndex === 0) continue;
-
-    const drawingNumber = partNumber + 1;
-    const sheetId = nextSheetId + pageIndex - 1;
-    const relationshipId = `rId${nextRelationId + pageIndex - 1}`;
-    const nextName = `SF2 Page ${pageIndex + 1}`;
-    const sheetRelations = (await baseRelations.async('string'))
-      .replaceAll('drawing2.xml', `drawing${drawingNumber}.xml`)
-      .replaceAll('printerSettings2.bin', `printerSettings${drawingNumber}.bin`);
-    zip.file(`xl/worksheets/_rels/sheet${partNumber}.xml.rels`, sheetRelations);
-    zip.file(`xl/drawings/drawing${drawingNumber}.xml`, await baseDrawing.async('nodebuffer'));
-    zip.file(`xl/drawings/_rels/drawing${drawingNumber}.xml.rels`, await baseDrawingRelations.async('nodebuffer'));
-    zip.file(`xl/printerSettings/printerSettings${drawingNumber}.bin`, await basePrinterSettings.async('nodebuffer'));
-    additionalSheets.push(`<sheet name="${escapeXml(nextName)}" sheetId="${sheetId}" r:id="${relationshipId}"/>`);
-    additionalRelations.push(`<Relationship Id="${relationshipId}" Type="http://purl.oclc.org/ooxml/officeDocument/relationships/worksheet" Target="worksheets/sheet${partNumber}.xml"/>`);
-    additionalDefinedNames.push(`<definedName name="_xlnm.Print_Titles" localSheetId="${pageIndex + 1}">'${escapeXml(nextName)}'!$10:$12</definedName>`);
-    additionalContentTypes.push(`<Override PartName="/xl/worksheets/sheet${partNumber}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing${drawingNumber}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`);
-  }
-
-  if (additionalSheets.length) {
-    workbook = workbook.replace('</sheets>', `${additionalSheets.join('')}</sheets>`);
-    if (workbook.includes('</definedNames>')) {
-      workbook = workbook.replace('</definedNames>', `${additionalDefinedNames.join('')}</definedNames>`);
-    } else {
-      workbook = workbook.replace('</sheets>', `</sheets><definedNames>${additionalDefinedNames.join('')}</definedNames>`);
+  for (const form of orderedForms) {
+    const template = {
+      formCode: form.formCode,
+      sheetName: {
+        SF1: 'School Form 1 (SF1)', SF2: 'School Form 2 (SF2)',
+        SF3: 'School Form 3 (SF3)', SF5: 'School Form 5 (SF5)'
+      }[form.formCode]
+    };
+    const worksheetPath = await getWorksheetPath(zip, template.sheetName);
+    const sourceWorksheet = await zip.file(worksheetPath).async('string');
+    const averageStyles = form.formCode === 'SF5' ? await addSf5AverageStyles(zip, sourceWorksheet) : null;
+    const populatedWorksheet = applyCells(sourceWorksheet, form.pages[0]);
+    zip.file(worksheetPath, averageStyles === null
+      ? populatedWorksheet : styleSf5Averages(populatedWorksheet, form.pages[0], averageStyles));
+    if (form.pages.length > 1) {
+      await addWorkbookPages(zip, template, worksheetPath, sourceWorksheet, form.pages, averageStyles);
     }
-    workbookRelations = workbookRelations.replace('</Relationships>', `${additionalRelations.join('')}</Relationships>`);
-    contentTypes = contentTypes.replace('</Types>', `${additionalContentTypes.join('')}</Types>`);
-    zip.file('xl/workbook.xml', workbook);
-    zip.file('xl/_rels/workbook.xml.rels', workbookRelations);
-    zip.file('[Content_Types].xml', contentTypes);
   }
 
   const afterStyles = await zip.file('xl/styles.xml').async('nodebuffer');
-  if (!originalStyles.equals(afterStyles)) throw createError('The combined workbook styles changed unexpectedly.', 500);
+  if (!orderedForms.some(form => form.formCode === 'SF5') && !originalStyles.equals(afterStyles)) {
+    throw createError('The combined workbook styles changed unexpectedly.', 500);
+  }
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
@@ -274,7 +446,7 @@ async function saveExport(buffer, formCode) {
 
 function getExportFilePath(publicPath) {
   const fileName = path.basename(String(publicPath || ''));
-  if (!/^sf[12]-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
+  if (!/^sf[1235]-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
   const legacy = String(publicPath).replace(/^\/+/, '').startsWith('uploads/sf-exports/');
   const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'sf-exports') : exportDirectory;
   const filePath = path.resolve(directory, fileName);
@@ -285,6 +457,7 @@ function getExportFilePath(publicPath) {
 module.exports = {
   createCombinedExportWorkbook,
   createExportWorkbook,
+  getEditableCells,
   getExportFilePath,
   saveExport
 };

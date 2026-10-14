@@ -39,6 +39,8 @@ const userImportRoutes = require('./routes/userImport');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+const jsonBodyParser = bodyParser.json();
+const schoolFormJsonBodyParser = bodyParser.json({ limit: '4mb' });
 const frontendOrigin = getFrontendOrigin();
 const trustProxyHops = getTrustProxyHops();
 if (trustProxyHops) app.set('trust proxy', trustProxyHops);
@@ -46,7 +48,14 @@ if (trustProxyHops) app.set('trust proxy', trustProxyHops);
 app.use(helmet());
 app.use(cors({ origin: frontendOrigin, credentials: true, exposedHeaders: ['Retry-After'] }));
 app.use(createRequestOriginGuard(frontendOrigin));
-app.use(bodyParser.json());
+app.use((req, res, next) => {
+  const isSchoolFormGeneration = req.method === 'POST' && (
+    req.path === '/api/sf-templates/combined/generate'
+    || /^\/api\/sf-templates\/\d+\/generate\/?$/.test(req.path)
+  );
+  const parser = isSchoolFormGeneration ? schoolFormJsonBodyParser : jsonBodyParser;
+  parser(req, res, next);
+});
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api', networkRateLimit, apiRateLimit);
 

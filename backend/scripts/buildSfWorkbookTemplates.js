@@ -5,7 +5,9 @@ const JSZip = require('jszip');
 const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
 const wantedSheets = new Map([
   ['SF1', 'School Form 1 (SF1)'],
-  ['SF2', 'School Form 2 (SF2)']
+  ['SF2', 'School Form 2 (SF2)'],
+  ['SF3', 'School Form 3 (SF3)'],
+  ['SF5', 'School Form 5 (SF5)']
 ]);
 
 function attributes(xml) {
@@ -76,13 +78,20 @@ async function createTemplate(sourcePath, formCodes) {
     throw new Error('The source workbook is missing required OOXML parts.');
   }
 
+  if (!Array.isArray(formCodes) || formCodes.length < 2 || formCodes.length > 4
+    || new Set(formCodes).size !== formCodes.length) {
+    throw new Error('Select two to four different SF forms to build a combined template.');
+  }
   const names = formCodes.map(code => wantedSheets.get(code));
-  if (names.some(name => !name)) throw new Error('Only SF1 and SF2 templates can be built.');
+  if (names.some(name => !name)) throw new Error('Only SF1, SF2, SF3, and SF5 templates can be combined.');
   let workbook = await workbookFile.async('string');
   let relationships = await relationsFile.async('string');
   const sourceSheetTags = [...workbook.matchAll(/<sheet\b[^>]*\/?\s*>/g)];
   const sourceSheets = sourceSheetTags.map(match => ({ tag: match[0], ...attributes(match[0]) }));
-  const selected = names.map(name => sourceSheets.find(sheet => sheet.name === name));
+  const selected = names.map(name => {
+    const sourceIndex = sourceSheets.findIndex(sheet => sheet.name === name);
+    return sourceIndex < 0 ? null : { ...sourceSheets[sourceIndex], sourceIndex };
+  });
   if (selected.some(sheet => !sheet)) throw new Error('The source workbook does not contain every requested SF form.');
 
   const selectedIds = new Set(selected.map(sheet => sheet['r:id']));
@@ -94,21 +103,20 @@ async function createTemplate(sourcePath, formCodes) {
   if (selectedWorksheetIds.size !== selected.length) throw new Error('A requested SF worksheet relationship is missing.');
 
   workbook = workbook.replace(/<sheets>[\s\S]*?<\/sheets>/, `<sheets>${selected.map(sheet => sheet.tag).join('')}</sheets>`);
-  const selectedLocalIds = new Set(selected.map((_, index) => index));
+  const selectedLocalIds = new Map(selected.map((sheet, index) => [sheet.sourceIndex, index]));
   let definedNames = [];
   workbook = workbook.replace(/<definedNames>[\s\S]*?<\/definedNames>/, (block) => {
     const keep = [...block.matchAll(/<definedName\b([^>]*)>([\s\S]*?)<\/definedName>/g)]
-      .filter(match => {
-        const localSheetId = attributes(match[1]).localSheetId;
-        return localSheetId !== undefined && selectedLocalIds.has(Number(localSheetId));
+      .flatMap(match => {
+        const sourceLocalId = Number(attributes(match[1]).localSheetId);
+        const targetLocalId = selectedLocalIds.get(sourceLocalId);
+        if (targetLocalId === undefined) return [];
+        const updatedAttributes = match[1].replace(/\blocalSheetId="\d+"/, `localSheetId="${targetLocalId}"`);
+        const name = attributes(match[1]).name || 'Named Range';
+        definedNames.push(`'${names[targetLocalId]}'!${name}`);
+        return [`<definedName${updatedAttributes}>${match[2]}</definedName>`];
       });
-    definedNames = keep.map(match => {
-      const localSheetId = Number(attributes(match[1]).localSheetId);
-      const sheetName = names[localSheetId];
-      const name = attributes(match[1]).name || 'Named Range';
-      return `'${sheetName}'!${name}`;
-    });
-    return keep.length ? `<definedNames>${keep.map(match => match[0]).join('')}</definedNames>` : '';
+    return keep.length ? `<definedNames>${keep.join('')}</definedNames>` : '';
   });
   workbook = workbook.replace(/activeTab="\d+"/, 'activeTab="0"');
   workbook = workbook.replace(/<mc:AlternateContent\b[\s\S]*?<\/mc:AlternateContent>/g, '');
@@ -150,7 +158,13 @@ async function main() {
   }
 
   const outputs = [
-    ['sf1-sf2', ['SF1', 'SF2']]
+    ['sf1-sf5', ['SF1', 'SF5']],
+    ['sf2-sf5', ['SF2', 'SF5']],
+    ['sf3-sf5', ['SF3', 'SF5']],
+    ['sf1-sf2-sf5', ['SF1', 'SF2', 'SF5']],
+    ['sf1-sf3-sf5', ['SF1', 'SF3', 'SF5']],
+    ['sf2-sf3-sf5', ['SF2', 'SF3', 'SF5']],
+    ['sf1-sf2-sf3-sf5', ['SF1', 'SF2', 'SF3', 'SF5']]
   ];
   for (const [fileName, codes] of outputs) {
     const buffer = await createTemplate(sourcePath, codes);

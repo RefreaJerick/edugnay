@@ -74,8 +74,8 @@ test('student names open a section-scoped details modal with guardian contact de
   assert.match(sectionsSource, /\['Enrollment status', student\.enrollmentStatus\]/);
 });
 
-test('SF templates keep the separate adviser-only section source', () => {
-  assert.match(sfSource, /getMyAdvisorySections\(\)/);
+test('SF templates keep the separate adviser-only section source, including closed-year SF5', () => {
+  assert.match(sfSource, /getMyAdvisorySections\(true\)/);
 });
 
 test('score rows have no individual transfer link and the review modal uses scoped responsive styling', () => {

@@ -3,6 +3,35 @@
   const SF1_TEMPLATE_ID = 'sf1-school-register-v1';
 
   const SF_TEMPLATE_DEFINITIONS = Object.freeze({
+    'sf5-promotion-proficiency-v1': {
+      templateId: 'sf5-promotion-proficiency-v1',
+      sheetName: 'School Form 5 (SF5)',
+      requiredSheets: ['School Form 5 (SF5)'],
+      previewRows: 61,
+      previewColumns: 25,
+      mergeCount: 210,
+      anchors: { A1: 'School Form 5', A9: 'LRN', G9: 'ACTION TAKEN', M49: 'GUIDELINES' },
+      fields: {},
+      rows: []
+    },
+    'sf3-books-issued-returned-v1': {
+      templateId: 'sf3-books-issued-returned-v1',
+      sheetName: 'School Form 3 (SF3)',
+      requiredSheets: ['School Form 3 (SF3)'],
+      previewRows: 68,
+      previewColumns: 20,
+      excludeTrailingColumns: true,
+      mergeCount: 74,
+      anchors: {
+        A2: 'School Form 3',
+        A9: 'NO.',
+        B9: "LEARNER'S NAME",
+        D9: 'Subject Area & Title',
+        T9: 'REMARKS/ACTION TAKEN'
+      },
+      fields: {},
+      rows: []
+    },
     'sf2-daily-attendance-v1': {
       templateId: 'sf2-daily-attendance-v1',
       sheetName: 'School Form 2 (SF2)',
@@ -260,14 +289,15 @@
     return [...new Set(addresses)];
   }
 
-  function worksheetPreview(worksheet, template) {
+  function worksheetPreview(worksheet, template, editableCells = null) {
     const definition = getTemplateDefinition(template) || {};
     const actualRows = worksheet.rowCount || worksheet.actualRowCount || 0;
     const actualColumns = worksheet.columnCount || worksheet.actualColumnCount || 0;
     const rowCount = Math.min(Math.max(actualRows, 1), definition.previewRows || actualRows || 1);
     const columnCount = Math.min(Math.max(actualColumns, 1), definition.previewColumns || actualColumns || 1);
     const merges = mergeMap(worksheet);
-    const editable = new Set(editableAddresses(template));
+    const editable = new Set((Array.isArray(editableCells) ? editableCells.map(item => typeof item === 'string' ? item : item.cellAddress)
+      : editableAddresses(template)).map(address => String(address || '').toUpperCase()));
     const rows = [];
 
     for (let rowNumber = 1; rowNumber <= rowCount; rowNumber += 1) {
@@ -288,6 +318,7 @@
           rowSpan: merge?.rowSpan || 1,
           columnSpan: merge?.columnSpan || 1,
           editable: editable.has(cell.address),
+          edited: false,
           style: cellStyle(cell)
         });
       }
@@ -302,7 +333,7 @@
       name: worksheet.name,
       rowCount: actualRows,
       columnCount: actualColumns,
-      truncated: actualRows > rowCount || actualColumns > columnCount,
+      truncated: actualRows > rowCount || (actualColumns > columnCount && !definition.excludeTrailingColumns),
       columnWidths: Array.from({ length: columnCount }, (_, index) => {
         const width = worksheet.getColumn(index + 1).width || 10;
         return Math.min(220, Math.max(48, Math.round(width * 7)));
@@ -363,9 +394,16 @@
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
     const text = String(value || '').trim();
     let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-    if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-    match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
-    return match ? new Date(Date.UTC(Number(match[3]), Number(match[1]) - 1, Number(match[2]))) : null;
+    if (match) {
+      const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+      return date.getUTCFullYear() === Number(match[1]) && date.getUTCMonth() === Number(match[2]) - 1
+        && date.getUTCDate() === Number(match[3]) ? date : null;
+    }
+    match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[3]), Number(match[1]) - 1, Number(match[2])));
+    return date.getUTCFullYear() === Number(match[3]) && date.getUTCMonth() === Number(match[1]) - 1
+      && date.getUTCDate() === Number(match[2]) ? date : null;
   }
 
   function mappedCellValues(template, context) {
@@ -398,8 +436,18 @@
     const worksheet = workbook.getWorksheet(definition.sheetName);
     mappedCellValues(template, context).forEach(record => {
       const cell = worksheet.getCell(record.cellAddress);
-      if (record.type === 'date') cell.value = dateValue(record.value);
-      else if (record.type === 'number') cell.value = record.value === null || record.value === '' ? null : Number(record.value);
+      if (record.type === 'date' || record.type === 'dateText') {
+        const date = dateValue(record.value);
+        cell.value = record.type === 'dateText'
+          ? date
+            ? `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`
+            : String(record.value ?? '')
+          : date;
+      }
+      else if (record.type === 'number') {
+        cell.value = record.value === null || record.value === '' ? null : Number(record.value);
+        if (template.formCode === 'SF5' && /^F\d+$/.test(cell.address)) cell.numFmt = '0.00';
+      }
       else cell.value = record.value === null ? '' : String(record.value);
     });
   }
@@ -538,7 +586,7 @@
     };
   }
 
-  async function generatePreviewFromMappedCells(template, mappedCells = [], edits = []) {
+  async function generatePreviewFromMappedCells(template, mappedCells = [], edits = [], editableCells = null) {
     const source = await fetchTemplate(template.templateFileUrl);
     await validateTemplatePackage(source, template);
     const workbook = await loadWorkbook(source);
@@ -547,24 +595,43 @@
 
     const worksheet = workbook.getWorksheet(template.sheetName);
     const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
-    const allowed = new Set(editableAddresses(template));
+    const entryCells = Array.isArray(editableCells) ? editableCells : editableAddresses(template).map(cellAddress => ({
+      cellAddress,
+      type: types.get(String(cellAddress).toUpperCase()) || 'text'
+    }));
+    const allowed = new Map(entryCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
     const applyCell = record => {
       const address = String(record.cellAddress || '').toUpperCase();
       if (!address) return;
       const cell = worksheet.getCell(address);
-      if (record.type === 'date') cell.value = dateValue(record.value);
-      else if (record.type === 'number') cell.value = record.value === null || record.value === '' ? null : Number(record.value);
+      if (record.type === 'date' || record.type === 'dateText') {
+        const date = dateValue(record.value);
+        cell.value = record.type === 'dateText'
+          ? date
+            ? `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`
+            : String(record.value ?? '')
+          : date;
+      }
+      else if (record.type === 'number') {
+        cell.value = record.value === null || record.value === '' ? null : Number(record.value);
+        if (template.formCode === 'SF5' && /^F\d+$/.test(cell.address)) cell.numFmt = '0.00';
+      }
       else cell.value = record.value === null || record.value === undefined ? '' : String(record.value);
     };
 
     mappedCells.forEach(applyCell);
-    edits.filter(record => allowed.has(String(record.cellAddress || '').toUpperCase())).forEach(record => applyCell({
-      ...record,
-      type: types.get(String(record.cellAddress || '').toUpperCase()) || 'text'
-    }));
+    const baseCellTexts = Object.fromEntries([...allowed.keys()].map(address => [address, worksheet.getCell(address).text || '']));
+    edits.filter(record => allowed.has(String(record.cellAddress || '').toUpperCase())).forEach(record => {
+      const address = String(record.cellAddress || '').toUpperCase();
+      applyCell({ ...record, cellAddress: address, type: allowed.get(address) });
+    });
+    const preview = worksheetPreview(worksheet, template, entryCells);
+    const editedAddresses = new Set(edits.map(record => String(record.cellAddress || '').toUpperCase()));
+    preview.rows.forEach(row => row.cells.forEach(cell => { cell.edited = editedAddresses.has(cell.address); }));
     return {
-      preview: worksheetPreview(worksheet, template),
-      editableCells: editableAddresses(template),
+      preview,
+      editableCells: entryCells,
+      baseCellTexts,
       mappedCells,
       edits
     };

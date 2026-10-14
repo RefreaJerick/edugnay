@@ -18,6 +18,7 @@ let previewResizeTimer;
 const sfElements = {
   list: document.getElementById('sfTemplateList'),
   count: document.getElementById('sfTemplateCount'),
+  librarySearch: document.getElementById('sfLibrarySearch'),
   codeFilter: document.getElementById('sfCodeFilter'),
   levelFilter: document.getElementById('sfLevelFilter'),
   generatorForm: document.getElementById('sfGeneratorForm'),
@@ -39,6 +40,7 @@ const sfElements = {
   previewTitle: document.getElementById('sfPreviewTitle'),
   previewSubtitle: document.getElementById('sfPreviewSubtitle'),
   previewContent: document.getElementById('sfPreviewContent'),
+  previewActions: document.getElementById('sfPreviewActions'),
   editButton: document.getElementById('sfEditGenerated'),
   downloadButton: document.getElementById('sfDownloadWorkbook')
 };
@@ -67,7 +69,14 @@ function escapeHtml(value) {
 }
 
 function filteredTemplates() {
+  const query = sfElements.librarySearch.value.trim().toLowerCase();
   return sfState.templates.filter(template => (
+    (!query || [
+      template.formCode,
+      template.formName,
+      template.fileName,
+      schoolLevelsLabel(template.schoolLevels)
+    ].join(' ').toLowerCase().includes(query)) &&
     (sfElements.codeFilter.value === 'all' || template.formCode === sfElements.codeFilter.value) &&
     (sfElements.levelFilter.value === 'all' || (template.schoolLevels || []).includes(sfElements.levelFilter.value))
   ));
@@ -79,11 +88,11 @@ function renderTemplateLibrary() {
   sfElements.count.textContent = `${total} template${total === 1 ? '' : 's'}`;
 
   if (!records.length) {
-    const hasFilters = total > 0;
+    const hasTemplates = total > 0;
     sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-      icon: hasFilters ? 'search-x' : 'file-spreadsheet',
-      title: hasFilters ? 'No templates match these filters' : 'No SF templates available',
-      text: hasFilters ? 'Change a filter to see other templates.' : 'Official templates will appear here when they are configured.'
+      icon: hasTemplates ? 'search-x' : 'file-spreadsheet',
+      title: hasTemplates ? 'No templates match your search or filters' : 'No SF templates available',
+      text: hasTemplates ? 'Try a different search or adjust the filters.' : 'Official templates will appear here when they are configured.'
     });
     return;
   }
@@ -127,16 +136,37 @@ function renderGenerationOptions() {
   sfElements.templateSearch.disabled = !activeTemplates.length;
   updateTemplatePicker();
 
-  sfElements.sectionSelect.innerHTML = sfState.sections.length
-    ? `<option value="">Select an advisory class</option>${sfState.sections.map(section => `<option value="${escapeHtml(section.id)}">${escapeHtml(`${section.grade} - ${section.name}`)}</option>`).join('')}`
-    : '<option value="">No advisory classes</option>';
-
-  sfElements.sectionSelect.disabled = !activeTemplates.length || !sfState.sections.length;
-  sfElements.schoolYear.value = sfState.sections[0]?.academicYear
+  renderSectionOptions();
+  sfElements.sectionSelect.disabled = !activeTemplates.length || !availableSections().length;
+  sfElements.schoolYear.value = availableSections()[0]?.academicYear
     || window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear
     || '';
   updateMonthField();
   updateGenerateButton();
+}
+
+function availableSections() {
+  const templates = selectedTemplates();
+  const includesSf5 = templates.some(template => template.formCode === 'SF5');
+  const sf5Only = templates.length === 1 && includesSf5;
+  return sfState.sections.filter(section => {
+    const yearIsAvailable = sf5Only
+      ? ['active', 'closed'].includes(section.academicYearStatus)
+      : section.academicYearStatus === 'active';
+    return yearIsAvailable && (!includesSf5 || /^grade-(?:[1-9]|10)$/.test(section.gradeCode));
+  });
+}
+
+function renderSectionOptions() {
+  const previous = sfElements.sectionSelect.value;
+  const sections = availableSections();
+  sfElements.sectionSelect.innerHTML = sections.length
+    ? `<option value="">Select an advisory class</option>${sections.map(section => `<option value="${escapeHtml(section.id)}">${escapeHtml(`${section.grade} - ${section.name} (${section.academicYear})`)}</option>`).join('')}`
+    : '<option value="">No advisory classes</option>';
+  sfElements.sectionSelect.value = sections.some(section => section.id === previous) ? previous : '';
+  sfElements.sectionSelect.disabled = !sections.length;
+  sfElements.schoolYear.value = sections.find(section => section.id === sfElements.sectionSelect.value)?.academicYear
+    || sections[0]?.academicYear || '';
 }
 
 function selectedTemplates() {
@@ -147,6 +177,14 @@ function selectedTemplates() {
 
 function hasBlankCombinedSelection() {
   return selectedTemplates().map(template => template.formCode).sort().join(',') === 'SF1,SF2';
+}
+
+function supportsGeneratedSelection(templates) {
+  if (templates.length === 1) return true;
+  const formCodes = templates.map(template => template.formCode);
+  return templates.length >= 2 && templates.length <= 4
+    && new Set(formCodes).size === formCodes.length
+    && formCodes.every(code => ['SF1', 'SF2', 'SF3', 'SF5'].includes(code));
 }
 
 function updateTemplatePicker() {
@@ -200,17 +238,14 @@ function setGenerationInputsBusy(isBusy) {
   sfElements.templateClear.disabled = isBusy || !selectedTemplates().length;
   sfElements.templateDone.disabled = isBusy;
   sfElements.blankCombinedDownloadButton.disabled = isBusy || sfState.blankDownloadInProgress;
-  sfElements.sectionSelect.disabled = isBusy || !templateInputs.length || !sfState.sections.length;
+  sfElements.sectionSelect.disabled = isBusy || !templateInputs.length || !availableSections().length;
   sfElements.month.disabled = isBusy || sfElements.monthField.hidden;
 }
 
 function updateGenerateButton() {
   const templates = selectedTemplates();
-  const validSelection = templates.length === 1 || (
-    templates.length === 2 && templates.map(template => template.formCode).sort().join(',') === 'SF1,SF2'
-  );
   sfElements.generateButton.disabled = !(
-    validSelection &&
+    supportsGeneratedSelection(templates) &&
     (window.EDUGNAY_API?.isBackendAvailable || (templates.length === 1 && templates[0].formCode === 'SF1')) &&
     sfElements.sectionSelect.value &&
     sfElements.schoolYear.value &&
@@ -269,7 +304,7 @@ function workbookTable(preview, editing, scale) {
     <tr style="height:${Math.max(15, Math.round(row.height * scale))}px">
       <th class="sf-row-number">${row.number}</th>
       ${row.cells.map(cell => `
-        <td class="sf-workbook-cell ${cell.editable ? 'editable' : ''}"
+        <td class="sf-workbook-cell ${cell.editable ? 'editable' : ''} ${cell.edited ? 'edited' : ''}"
           rowspan="${cell.rowSpan}" colspan="${cell.columnSpan}"
           style="${cellStyle(cell, scale)}" title="${escapeHtml(cell.formula ? `=${cell.formula}` : cell.address)}"
           ${editing && cell.editable ? `contenteditable="true" data-cell-address="${escapeHtml(cell.address)}"` : ''}>${escapeHtml(cell.text)}</td>
@@ -319,16 +354,25 @@ function preservePreviewEdits() {
   const workbook = document.getElementById('sfMainWorkbook');
   if (!workbook) return sfState.generated?.edits || [];
   const values = new Map(Array.from(workbook.querySelectorAll('[data-cell-address]')).map(cell => [cell.dataset.cellAddress, cell.textContent]));
+  const form = sfState.generated;
+  const pageIndex = form.renderedPageIndex ?? form.selectedPage ?? 0;
+  const baseCellTexts = form.pageBaseCellTexts?.[pageIndex] || form.baseCellTexts || {};
+  const previousEdits = JSON.stringify(form.edits || []);
+  const pageEdits = [];
   sfState.preview.rows.forEach(row => row.cells.forEach(cell => {
-    if (values.has(cell.address)) cell.text = values.get(cell.address);
+    if (values.has(cell.address)) {
+      cell.text = values.get(cell.address);
+      cell.edited = baseCellTexts[cell.address] !== cell.text;
+      if (cell.edited) pageEdits.push({ cellAddress: cell.address, value: cell.text });
+    }
   }));
-  const edits = Array.from(values, ([cellAddress, value]) => ({ cellAddress, value }))
-    .filter(edit => sfState.generated?.baseCellTexts?.[edit.cellAddress] !== edit.value);
-  if (sfState.generated) {
-    if (JSON.stringify(edits) !== JSON.stringify(sfState.generated.edits || [])) sfState.generated.exportId = null;
-    sfState.generated.edits = edits;
+  if (form) {
+    form.pageEdits ||= [];
+    form.pageEdits[pageIndex] = pageEdits;
+    form.edits = form.pageEdits.flatMap((page, index) => (page || []).map(edit => ({ ...edit, pageIndex: index })));
+    if (JSON.stringify(form.edits) !== previousEdits) form.exportId = null;
   }
-  return edits;
+  return form?.edits || [];
 }
 
 function changePreviewZoom(action) {
@@ -349,7 +393,7 @@ function changePreviewZoom(action) {
 
 function renderIssueSummary(issues = []) {
   if (!issues.length) return '';
-  const hasErrors = issues.some(record => record.severity === 'error');
+  const hasErrors = issues.some(record => record.severity === 'error' && !record.canBeCorrectedInDownload);
   const title = hasErrors ? 'Generation needs attention' : 'Review before downloading';
   return `
     <div class="sf-validation-summary ${hasErrors ? 'error' : 'warning'}" role="status">
@@ -358,9 +402,53 @@ function renderIssueSummary(issues = []) {
     </div>`;
 }
 
+function renderSf5Breakdown(form) {
+  if (form.formCode !== 'SF5' || !form.breakdown?.length) return '';
+  const learners = form.breakdown.filter(item => item.page === (form.selectedPage || 0) + 1);
+  return `<details class="sf-grade-breakdown">
+    <summary>General-average breakdown <span class="sf-grade-breakdown-count">${learners.length} learners</span></summary>
+    <div class="sf-grade-breakdown-list">
+      <p class="sf-grade-breakdown-source">Calculated from published grades in edUgnay records. Workbook edits do not change these records or this breakdown.</p>
+      ${learners.map(learner => `
+      <div class="sf-grade-breakdown-learner">
+        <div class="sf-grade-breakdown-learner-head">
+          <strong class="sf-grade-breakdown-learner-name">${escapeHtml(learner.name)}</strong>
+          ${learner.generalAverage == null
+            ? ''
+            : `<span class="sf-grade-breakdown-average">${Number(learner.generalAverage).toFixed(2)}</span>`}
+        </div>
+        <ul class="sf-grade-breakdown-subjects">${learner.subjects.map(subject => {
+          const termDetails = subject.termDetails || [
+            ...(subject.terms || []).map(term => ({ ...term, reason: null })),
+            ...(subject.missingTerms || []).map(term => ({ ...term, grade: null, section: null }))
+          ];
+          return `<li class="sf-grade-breakdown-subject">
+            <div class="sf-grade-breakdown-subject-head">
+              <strong class="sf-grade-breakdown-subject-name">${escapeHtml(subject.subject)}</strong>
+              ${subject.finalGrade == null
+                ? '<span class="sf-grade-breakdown-subject-status">Incomplete</span>'
+                : `<span class="sf-grade-breakdown-subject-final">${Number(subject.finalGrade).toFixed(2)}</span>`}
+            </div>
+            <ul class="sf-grade-breakdown-terms">${termDetails.map(term => {
+              const missing = term.grade == null;
+              return `<li class="sf-grade-breakdown-term${missing ? ' is-missing' : ''}">
+                <span class="sf-grade-breakdown-term-name">${escapeHtml(term.term)}</span>
+                <span class="sf-grade-breakdown-term-value">${missing
+                  ? escapeHtml(term.reason || 'No published grade')
+                  : `${Number(term.grade).toFixed(2)}${term.section ? `<small>${escapeHtml(term.section)}</small>` : ''}`}</span>
+              </li>`;
+            }).join('')}</ul>
+          </li>`;
+        }).join('')}</ul>
+      </div>`).join('')}
+    </div>
+  </details>`;
+}
+
 async function openTemplatePreview(templateId, sheetName = '') {
   const template = sfState.templates.find(record => record.id === String(templateId));
   if (!template) return;
+  sfElements.previewActions.hidden = true;
   sfState.selectedTemplate = template;
   sfState.generated = null;
   sfState.combined = null;
@@ -389,15 +477,19 @@ async function openTemplatePreview(templateId, sheetName = '') {
 
 function setGeneratedForm(form) {
   form.selectedPage = 0;
-  form.baseCellTexts = Object.fromEntries(
-    form.preview.rows.flatMap(row => row.cells
-      .filter(cell => cell.editable)
-      .map(cell => [cell.address, cell.text]))
+  form.renderedPageIndex = 0;
+  form.pageEdits = Array.from({ length: form.pages?.length || 1 }, () => []);
+  form.pageBaseCellTexts = Array.from({ length: form.pages?.length || 1 }, () => ({}));
+  form.pageBaseCellTexts[0] = form.baseCellTexts || Object.fromEntries(
+    form.preview.rows.flatMap(row => row.cells.filter(cell => cell.editable).map(cell => [cell.address, cell.text]))
   );
+  form.baseCellTexts = form.pageBaseCellTexts[0];
+  form.edits = [];
 }
 
 function invalidateGeneratedPreview() {
   const hadGeneratedPreview = Boolean(sfState.generated || sfState.combined);
+  sfElements.previewActions.hidden = true;
   sfState.generated = null;
   sfState.combined = null;
   sfState.editing = false;
@@ -427,23 +519,29 @@ function renderGeneratedPreview() {
       <button class="sf-sheet-tab ${item === form ? 'active' : ''}" type="button" role="tab"
         aria-selected="${item === form}" data-combined-form-index="${index}">${escapeHtml(item.formCode)}</button>
     `).join('')}</div>` : '';
-  const pageTabs = form.formCode === 'SF2' && form.pages.length > 1
-    ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="SF2 pages">${form.pages.map((_, index) => `
+  const pageTabs = ['SF2', 'SF3', 'SF5'].includes(form.formCode) && form.pages.length > 1
+    ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="${escapeHtml(form.formCode)} pages">${form.pages.map((_, index) => `
       <button class="sf-sheet-tab ${index === form.selectedPage ? 'active' : ''}" type="button" role="tab"
-        aria-selected="${index === form.selectedPage}" data-sf2-page="${index}">Page ${index + 1}</button>
+        aria-selected="${index === form.selectedPage}" data-form-page="${index}">Page ${index + 1}</button>
     `).join('')}</div>` : '';
   const issues = forms.length > 1
     ? forms.flatMap(item => item.issues.map(issue => ({ ...issue, message: `${item.formCode}: ${issue.message}` })))
     : form.issues;
   sfState.preview = form.preview;
-  sfElements.previewContent.innerHTML = `${renderIssueSummary(issues)}${formTabs}${pageTabs}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
-  renderWorkbook(document.getElementById('sfMainWorkbook'), form.preview);
-  sfElements.editButton.textContent = 'Edit generated form';
-  sfElements.editButton.disabled = form.formCode === 'SF2' || form.hasBlockingIssues || !form.editableCells?.length;
+  sfElements.previewContent.innerHTML = `${renderIssueSummary(issues)}${formTabs}${pageTabs}${renderSf5Breakdown(form)}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
+  renderWorkbook(document.getElementById('sfMainWorkbook'), form.preview, sfState.editing);
+  sfElements.previewSubtitle.textContent = form.formCode === 'SF5'
+    ? 'Review the year-end draft and grade breakdown. Complete decisions and signatures in the downloaded workbook.'
+    : form.formCode === 'SF3'
+    ? 'Review the roster draft. Complete book details in the downloaded workbook.'
+    : 'Review the selected form previews before downloading the XLSX file.';
+  sfElements.editButton.textContent = sfState.editing ? 'Done editing' : 'Edit generated form';
+  sfElements.editButton.disabled = !form.editableCells?.length;
   sfElements.downloadButton.innerHTML = `<i data-lucide="download"></i> ${forms.length > 1 ? 'Download combined XLSX' : 'Download XLSX'}`;
   sfElements.downloadButton.disabled = sfState.combined
     ? sfState.combined.hasBlockingIssues
     : Boolean(form.hasBlockingIssues);
+  sfElements.previewActions.hidden = false;
   if (window.lucide) lucide.createIcons();
 }
 
@@ -524,7 +622,7 @@ function toggleGeneratedEditing() {
   const workbook = document.getElementById('sfMainWorkbook');
   if (!sfState.editing) {
     sfState.editing = true;
-    sfElements.editButton.textContent = 'Save edits';
+    sfElements.editButton.textContent = 'Done editing';
     renderWorkbook(workbook, sfState.generated.preview, true);
     return;
   }
@@ -533,7 +631,7 @@ function toggleGeneratedEditing() {
   sfState.editing = false;
   sfElements.editButton.textContent = 'Edit generated form';
   renderWorkbook(workbook, sfState.generated.preview);
-  showAppToast('Generated form edits saved in this browser.', 'info');
+  showAppToast('Edits will be included in the downloaded workbook only.', 'info');
 }
 
 async function downloadGeneratedWorkbook() {
@@ -569,7 +667,15 @@ async function downloadGeneratedWorkbook() {
       });
     if (sfState.generated) sfState.generated.exportId = result.exportId || null;
     startXlsxDownload(result.buffer, result.fileName);
-    showAppToast(sfState.combined ? 'Combined SF1 and SF2 workbook download started.' : 'Workbook download started.');
+    const forms = sfState.combined?.forms || [sfState.generated];
+    const hasLrnCorrection = forms.some(form => form.formCode === 'SF1'
+      && form.issues?.some(issue => issue.fieldKey === 'lrn' && issue.canBeCorrectedInDownload
+        && form.edits?.some(edit => edit.cellAddress === issue.cellReference)));
+    const combinedCodeList = sfState.combined?.forms.map(form => form.formCode).join(', ');
+    const message = sfState.combined ? `Combined ${combinedCodeList} workbook download started.` : 'Workbook download started.';
+    showAppToast(hasLrnCorrection
+      ? `${message} The LRN correction applies only to this download; the saved student record is unchanged.`
+      : message);
   } catch (error) {
     if (sfState.generated && error.exportId) sfState.generated.exportId = error.exportId;
     if (error.status === 409) {
@@ -577,6 +683,7 @@ async function downloadGeneratedWorkbook() {
       sfState.combined = null;
       sfState.preview = null;
       sfState.editing = false;
+      sfElements.previewActions.hidden = true;
       sfElements.editButton.disabled = true;
       sfElements.previewSubtitle.textContent = 'The system records changed. Generate a new preview before downloading.';
       sfElements.previewContent.innerHTML = '<div class="sf-preview-error">The records changed since this preview. Generate a new preview to continue.</div>';
@@ -632,7 +739,7 @@ async function initializeSfTemplatesPage() {
     await window.EDUGNAY_SCHOOL_READY;
     [sfState.templates, sfState.sections] = await Promise.all([
       window.EDUGNAY_CONFIG.getSfTemplates(),
-      window.EDUGNAY_CONFIG.getMyAdvisorySections()
+      window.EDUGNAY_CONFIG.getMyAdvisorySections(true)
     ]);
     renderTemplateLibrary();
     renderGenerationOptions();
@@ -657,6 +764,7 @@ sfElements.templateList.addEventListener('change', event => {
   sfState.selectedTemplateIds = selectedTemplates().map(template => template.id);
   updateTemplatePicker();
   invalidateGeneratedPreview();
+  renderSectionOptions();
   updateMonthField();
   updateGenerateButton();
 });
@@ -680,6 +788,7 @@ sfElements.templateClear.addEventListener('click', () => {
   sfState.selectedTemplateIds = [];
   updateTemplatePicker();
   invalidateGeneratedPreview();
+  renderSectionOptions();
   updateMonthField();
   updateGenerateButton();
 });
@@ -705,19 +814,34 @@ document.addEventListener('keydown', event => {
   invalidateGeneratedPreview();
   updateGenerateButton();
 }));
+sfElements.librarySearch.addEventListener('input', renderTemplateLibrary);
 [sfElements.codeFilter, sfElements.levelFilter]
   .forEach(select => select.addEventListener('change', renderTemplateLibrary));
 sfElements.editButton.addEventListener('click', toggleGeneratedEditing);
 sfElements.downloadButton.addEventListener('click', downloadGeneratedWorkbook);
 sfElements.blankCombinedDownloadButton.addEventListener('click', downloadBlankCombinedWorkbook);
 
+sfElements.previewContent.addEventListener('input', event => {
+  const cellElement = event.target.closest('[data-cell-address]');
+  if (!cellElement || !sfState.editing || !sfState.preview) return;
+  const address = cellElement.dataset.cellAddress;
+  const form = sfState.generated;
+  const pageIndex = form?.renderedPageIndex ?? form?.selectedPage ?? 0;
+  const baseText = form?.pageBaseCellTexts?.[pageIndex]?.[address] ?? '';
+  const edited = cellElement.textContent !== baseText;
+  cellElement.classList.toggle('edited', edited);
+  sfState.preview.rows.forEach(row => row.cells.forEach(cell => {
+    if (cell.address === address) {
+      cell.text = cellElement.textContent;
+      cell.edited = edited;
+    }
+  }));
+});
+
 sfElements.previewContent.addEventListener('click', event => {
   const formTab = event.target.closest('[data-combined-form-index]');
   if (formTab && sfState.combined) {
-    if (sfState.editing) {
-      preservePreviewEdits();
-      sfState.editing = false;
-    }
+    if (sfState.editing) preservePreviewEdits();
     const formIndex = Number(formTab.dataset.combinedFormIndex);
     const form = sfState.combined.forms[formIndex];
     if (!form) return;
@@ -727,18 +851,31 @@ sfElements.previewContent.addEventListener('click', event => {
     renderGeneratedPreview();
     return;
   }
-  const pageButton = event.target.closest('[data-sf2-page]');
+  const pageButton = event.target.closest('[data-form-page]');
   if (pageButton && sfState.generated?.pages) {
+    if (sfState.editing) preservePreviewEdits();
     const generated = sfState.generated;
-    const pageIndex = Number(pageButton.dataset.sf2Page);
-    sfState.generated.selectedPage = pageIndex;
-    window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(sfState.selectedTemplate, sfState.generated.pages[pageIndex], [])
+    const pageIndex = Number(pageButton.dataset.formPage);
+    if (pageIndex === generated.renderedPageIndex) return;
+    const pageLoadToken = (generated.pageLoadToken || 0) + 1;
+    generated.pageLoadToken = pageLoadToken;
+    window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
+      sfState.selectedTemplate,
+      sfState.generated.pages[pageIndex],
+      generated.pageEdits?.[pageIndex] || [],
+      generated.editableCells || []
+    )
       .then(result => {
-        if (sfState.generated !== generated || generated.selectedPage !== pageIndex) return;
+        if (sfState.generated !== generated || generated.pageLoadToken !== pageLoadToken) return;
+        generated.selectedPage = pageIndex;
+        generated.renderedPageIndex = pageIndex;
         generated.preview = result.preview;
+        generated.pageBaseCellTexts[pageIndex] = result.baseCellTexts || {};
         sfState.preview = result.preview;
-        sfElements.previewContent.querySelectorAll('[data-sf2-page]').forEach(button => button.classList.toggle('active', Number(button.dataset.sf2Page) === pageIndex));
-        renderWorkbook(document.getElementById('sfMainWorkbook'), result.preview);
+        sfElements.previewContent.querySelectorAll('[data-form-page]').forEach(button => button.classList.toggle('active', Number(button.dataset.formPage) === pageIndex));
+        const breakdown = sfElements.previewContent.querySelector('.sf-grade-breakdown');
+        if (breakdown) breakdown.outerHTML = renderSf5Breakdown(generated);
+        renderWorkbook(document.getElementById('sfMainWorkbook'), result.preview, sfState.editing);
       }).catch(error => showAppToast(error.message, 'error'));
     return;
   }

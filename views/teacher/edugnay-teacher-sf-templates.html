@@ -138,7 +138,7 @@
         <div class="sf-info-banner-icon"><i data-lucide="info"></i></div>
         <div>
           <div class="sf-info-banner-title">Automatic form completion</div>
-          <div class="sf-info-banner-text">Forms use only supported school records. Unavailable fields stay blank; review the downloaded draft before using it as an official record.</div>
+          <div class="sf-info-banner-text">Forms use supported school records; unavailable fields stay blank. Edits apply only to the downloaded workbook and do not change AcadeMix records. Review the draft before using it as an official record.</div>
         </div>
       </div>
 
@@ -152,24 +152,28 @@
           </div>
 
           <div class="sf-filters">
-            <label class="sf-filter-field" for="sfCodeFilter">
-              <span>Form</span>
-              <select id="sfCodeFilter">
+            <div class="sf-filter-field sf-library-search">
+              <div class="sf-library-search-control">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input id="sfLibrarySearch" type="search" placeholder="Search templates..." aria-label="Search templates" autocomplete="off">
+              </div>
+            </div>
+            <div class="sf-filter-field">
+              <select id="sfCodeFilter" aria-label="Filter by form">
                 <option value="all">All forms</option>
                 <option value="SF1">SF1</option><option value="SF2">SF2</option><option value="SF3">SF3</option>
                 <option value="SF4">SF4</option><option value="SF5">SF5</option><option value="SF6">SF6</option>
                 <option value="SF7">SF7</option><option value="SF8">SF8</option><option value="SF9">SF9</option><option value="SF10">SF10</option>
               </select>
-            </label>
-            <label class="sf-filter-field" for="sfLevelFilter">
-              <span>School level</span>
-              <select id="sfLevelFilter">
+            </div>
+            <div class="sf-filter-field">
+              <select id="sfLevelFilter" aria-label="Filter by school level">
                 <option value="all">All levels</option>
                 <option value="elementary">Elementary</option>
                 <option value="jhs">Junior High School</option>
                 <option value="shs">Senior High School</option>
               </select>
-            </label>
+            </div>
           </div>
 
           <div class="sf-template-columns" role="row">
@@ -220,7 +224,7 @@
             <h2 class="sf-panel-title" id="sfPreviewTitle">Workbook preview</h2>
             <p class="sf-panel-sub" id="sfPreviewSubtitle">Preview an official template or generate a populated form.</p>
           </div>
-          <div class="sf-preview-actions">
+          <div class="sf-preview-actions" id="sfPreviewActions" hidden>
             <button class="top-btn secondary" id="sfEditGenerated" type="button" disabled>Edit generated form</button>
             <button class="top-btn primary" id="sfDownloadWorkbook" type="button" disabled><i data-lucide="download"></i> Download XLSX</button>
           </div>

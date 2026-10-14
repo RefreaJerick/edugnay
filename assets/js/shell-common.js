@@ -2818,11 +2818,13 @@ function applyCurrentDateToGradingBanners() {
     return getApiSections({ scope: 'teaching' });
   }
 
-  async function getMyAdvisorySections() {
+  async function getMyAdvisorySections(includeClosed = false) {
     const session = await getCurrentUser();
     const teacherId = String(session?.apiUserId || '');
     return (await getApiSections()).filter(section =>
-      section.adviserId === teacherId && section.status === 'active' && section.academicYearStatus === 'active'
+      section.adviserId === teacherId
+        && (section.status === 'active' || (includeClosed && section.status === 'archived' && section.academicYearStatus === 'closed'))
+        && (section.academicYearStatus === 'active' || (includeClosed && section.academicYearStatus === 'closed'))
     );
   }
 
@@ -2867,12 +2869,14 @@ function applyCurrentDateToGradingBanners() {
     const response = await requestApi('/sf-templates');
     return (response.templates || []).map(record => ({
       id: record.formCode === 'SF1' ? 'sf1-school-register-v1'
-        : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1' : `sf-${record.id}`,
+        : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
+          : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
+            : record.formCode === 'SF5' ? 'sf5-promotion-proficiency-v1' : `sf-${record.id}`,
       apiId: String(record.id),
       formCode: record.formCode,
       formName: record.formName,
       version: record.version,
-      schoolLevels: ['elementary', 'jhs', 'shs'],
+      schoolLevels: record.formCode === 'SF5' ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
       source: 'official',
       status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
       mappingStatus: record.mappingStatus,
@@ -2930,7 +2934,7 @@ function applyCurrentDateToGradingBanners() {
       throw new Error('Select an active template with a verified mapping.');
     }
 
-    const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections(template.formCode === 'SF5')).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
 
     const schoolYear = String(values.schoolYear || '').trim();
@@ -2942,20 +2946,24 @@ function applyCurrentDateToGradingBanners() {
       const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
         template,
         response.mappedCells || [],
-        []
+        [],
+        response.editableCells || []
       );
+      const issues = response.issues || [];
       return {
         templateId: template.id,
         apiTemplateId: template.apiId,
         sectionId: section.id,
         month: template.formCode === 'SF2' ? values.month : null,
         pages: response.pages || [response.mappedCells || []],
+        editableCells: response.editableCells || [],
+        breakdown: response.breakdown || [],
         schoolYear,
         fileName: `${template.formCode}_${section.grade}-${section.name}_${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}.xlsx`
           .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
-        issues: response.issues || [],
+        issues,
         previewFingerprint: response.previewFingerprint,
-        hasBlockingIssues: (response.issues || []).some(issue => issue.severity === 'error'),
+        hasBlockingIssues: issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload),
         exportId: null,
         ...generated
       };
@@ -2965,12 +2973,16 @@ function applyCurrentDateToGradingBanners() {
   }
 
   async function generateCombinedSfForms(values = {}) {
-    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined SF1 and SF2 generation requires the live school database.');
-    const templateIds = [...new Set((Array.isArray(values.templateIds) ? values.templateIds : []).map(String))];
+    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined school-form generation requires the live school database.');
+    const requestedIds = (Array.isArray(values.templateIds) ? values.templateIds : []).map(String);
+    const templateIds = [...new Set(requestedIds)];
+    if (templateIds.length !== requestedIds.length) throw new Error('A school form can only be selected once.');
     const templates = (await getSfTemplates()).filter(template => templateIds.includes(template.id));
-    if (templates.length !== 2 || templates.some(template => template.status !== RECORD_VALUES.statuses.ACTIVE
-      || template.mappingStatus !== 'ready') || templates.map(template => template.formCode).sort().join(',') !== 'SF1,SF2') {
-      throw new Error('Select the active, verified SF1 and SF2 templates to create one combined workbook.');
+    const formCodes = templates.map(template => template.formCode);
+    if (templates.length < 2 || templates.length > 4 || templates.length !== templateIds.length
+      || new Set(formCodes).size !== formCodes.length || templates.some(template => template.status !== RECORD_VALUES.statuses.ACTIVE
+        || template.mappingStatus !== 'ready') || formCodes.some(code => !['SF1', 'SF2', 'SF3', 'SF5'].includes(code))) {
+      throw new Error('Select two to four different active, verified SF templates to create one combined workbook.');
     }
 
     const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
@@ -2988,15 +3000,13 @@ function applyCurrentDateToGradingBanners() {
     const forms = await Promise.all((preview.forms || []).map(async form => {
       const template = templates.find(record => record.apiId === String(form.templateId));
       if (!template) throw new Error('The generated preview did not match the selected SF templates.');
-      const previewTemplate = {
-        ...template,
-        templateFileUrl: '../../assets/templates/school-forms/sf1-sf2.xlsx'
-      };
       const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
-        previewTemplate,
+        template,
         form.mappedCells || [],
-        []
+        [],
+        form.editableCells || []
       );
+      const issues = form.issues || [];
       return {
         templateId: template.id,
         apiTemplateId: template.apiId,
@@ -3005,8 +3015,10 @@ function applyCurrentDateToGradingBanners() {
         month: template.formCode === 'SF2' ? values.month : null,
         schoolYear,
         pages: form.pages?.length ? form.pages : [form.mappedCells || []],
-        issues: form.issues || [],
-        hasBlockingIssues: (form.issues || []).some(issue => issue.severity === 'error'),
+        editableCells: form.editableCells || [],
+        breakdown: form.breakdown || [],
+        issues,
+        hasBlockingIssues: issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload),
         selectedPage: 0,
         exportId: null,
         ...generated
@@ -3019,7 +3031,7 @@ function applyCurrentDateToGradingBanners() {
       month: values.month || null,
       schoolYear,
       previewFingerprint: preview.previewFingerprint,
-      fileName: `SF1_SF2_${section.grade}-${section.name}_${values.month || schoolYear}.xlsx`
+      fileName: `${formCodes.sort().join('_')}_${section.grade}-${section.name}_${values.month || schoolYear}${formCodes.includes('SF5') ? '-draft' : ''}.xlsx`
         .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
       hasBlockingIssues: forms.some(form => form.hasBlockingIssues),
       forms
@@ -3027,7 +3039,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   async function exportCombinedSfForms(values = {}) {
-    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined SF1 and SF2 downloads require the live school database.');
+    if (!EDUGNAY_API_BASE_URL) throw new Error('Combined school-form downloads require the live school database.');
     const templates = await getSfTemplates();
     const apiTemplateIds = (values.templateIds || []).map(id => {
       const template = templates.find(record => record.id === String(id));
