@@ -18,6 +18,13 @@ function sha256(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
+function xmlCollectionItems(xml, collectionName, itemName) {
+  const collection = new RegExp(`<${collectionName}\\b[^>]*?>([\\s\\S]*?)<\\/${collectionName}>`).exec(xml);
+  if (!collection) return [];
+  return [...collection[1].matchAll(new RegExp(`<${itemName}\\b[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${itemName}>)`, 'g'))]
+    .map(match => match[0]);
+}
+
 function resolveOoxmlTarget(sourcePart, target) {
   return target.startsWith('/') ? target.slice(1) : path.posix.normalize(path.posix.join(path.posix.dirname(sourcePart), target));
 }
@@ -82,12 +89,18 @@ let allowSection = true;
 let learnerRows = null;
 let sectionQuery = null;
 let sectionGradeCode = 'grade-7';
+let sectionGradeLevel = 'Grade 7';
+let sectionStrandName = null;
 let publishedFinalGrade = 90;
 let includePublishedGrade = true;
 const database = {
   async execute(sql, values = []) {
     if (/SELECT sf_templates_enabled/.test(sql)) return [[{ sfTemplatesEnabled: 1 }]];
-    if (/FROM school_form_templates/.test(sql)) return [[Number(values[0]) === 5 ? {
+    if (/FROM school_form_templates/.test(sql)) return [[Number(values[0]) === 8 ? {
+      id: 8, formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', version: '1.0',
+      mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf8.xlsx',
+      sheetName: 'School Form 8 (SF8)', requiresAcademicTerm: 0
+    } : Number(values[0]) === 5 ? {
       id: 5, formCode: 'SF5', formName: 'Report on Promotion & Level of Proficiency', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf5.xlsx',
       sheetName: 'School Form 5 (SF5)', requiresAcademicTerm: 0
@@ -109,7 +122,7 @@ const database = {
       const current = { id: 8, schoolId: 1, name: 'St. Matthew', academicYearId: 2,
         schoolLevelId: 2, gradeLevelId: 7, gradeCode: sectionGradeCode, strandId: null,
         academicYear: '2026-2027', academicYearStatus: 'active', startDate: '2026-06-01',
-        endDate: '2027-03-31', gradeLevel: 'Grade 7' };
+        endDate: '2027-03-31', gradeLevel: sectionGradeLevel, strandName: sectionStrandName };
       const historical = { ...current, id: 1, academicYearId: 1, academicYear: '2025-2026',
         academicYearStatus: 'closed', endDate: '2026-03-31' };
       if (/sections.id = \?/.test(sql)) {
@@ -239,10 +252,13 @@ test('template library search covers template fields and works with both filters
   const searchStart = script.indexOf('function filteredTemplates() {');
   const searchEnd = script.indexOf('\nfunction renderTemplateLibrary()', searchStart);
   const searchSource = script.slice(searchStart, searchEnd);
+  const sharedApi = await fs.promises.readFile(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const workbookAdapter = await fs.promises.readFile(path.join(root, 'assets/js/sf-workbook.js'), 'utf8');
   const templates = [
     { formCode: 'SF1', formName: 'School Register', fileName: 'SF1.xlsx', schoolLevels: ['elementary', 'jhs'] },
     { formCode: 'SF2', formName: 'Daily Attendance Report of Learners', fileName: 'SF2.xlsx', schoolLevels: ['elementary'] },
-    { formCode: 'SF5', formName: 'General Average', fileName: 'SF5.xlsx', schoolLevels: ['jhs'] }
+    { formCode: 'SF5', formName: 'General Average', fileName: 'SF5.xlsx', schoolLevels: ['jhs'] },
+    { formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', fileName: 'SF8.xlsx', schoolLevels: ['elementary', 'jhs', 'shs'] }
   ];
   const state = { templates };
   const elements = {
@@ -266,6 +282,10 @@ test('template library search covers template fields and works with both filters
   assert.match(html, /<select id="sfLevelFilter" aria-label="Filter by school level">/);
   assert.doesNotMatch(html, /<span>(?:Search|Form|School level)<\/span>/);
   assert.match(script, /sfElements\.librarySearch\.addEventListener\('input', renderTemplateLibrary\)/);
+  assert.match(script, /'SF1', 'SF2', 'SF3', 'SF5', 'SF8'/);
+  assert.match(script, /\['SF2', 'SF3', 'SF5', 'SF8'\]/);
+  assert.match(sharedApi, /record\.formCode === 'SF8' \? 'sf8-health-nutrition-v1'/);
+  assert.match(workbookAdapter, /'sf8-health-nutrition-v1': \{[\s\S]*?previewRows: 121,[\s\S]*?mergeCount: 132/);
   assert.match(styles, /grid-template-columns: minmax\(0, 2fr\) repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.sf-filters \{[\s\S]*?background: transparent;/);
   assert.match(styles, /\.sf-library-search-control input:focus \{[\s\S]*?border-color: var\(--blue-mid\);[\s\S]*?box-shadow:/);
@@ -273,7 +293,9 @@ test('template library search covers template fields and works with both filters
   assert.deepEqual(codesFor('sf2'), ['SF2']);
   assert.deepEqual(codesFor('attendance report'), ['SF2']);
   assert.deepEqual(codesFor('SF5.xlsx'), ['SF5']);
-  assert.deepEqual(codesFor('junior high school'), ['SF1', 'SF5']);
+  assert.deepEqual(codesFor('nutrition report'), ['SF8']);
+  assert.deepEqual(codesFor('junior high school'), ['SF1', 'SF5', 'SF8']);
+  assert.deepEqual(codesFor('senior high school'), ['SF8']);
 
   elements.librarySearch.value = 'register';
   elements.codeFilter.value = 'SF1';
@@ -283,7 +305,7 @@ test('template library search covers template fields and works with both filters
   elements.librarySearch.value = '';
   elements.codeFilter.value = 'all';
   elements.levelFilter.value = 'all';
-  assert.deepEqual(filterTemplates().map(template => template.formCode), ['SF1', 'SF2', 'SF5']);
+  assert.deepEqual(filterTemplates().map(template => template.formCode), ['SF1', 'SF2', 'SF5', 'SF8']);
 });
 
 test('school-form routes accept larger JSON edit batches without changing other route limits', async () => {
@@ -347,12 +369,94 @@ test('SF3 preview exposes only entry cells, including book details, as a draft',
   assert.equal(writes, 0);
 });
 
-test('SF1, SF2, SF3, and SF5 entry-cell schemas exclude labels and type fields correctly', async () => {
+test('SF8 preview prepopulates school and roster details and exposes only editable workbook entry cells', async () => {
+  writes = 0;
+  const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, '8');
+  assert.equal(result.error, null);
+  assert.equal(result.body.pages.length, 1);
+  const cells = new Map(result.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('E5'), 'St. Columban\u2019s College');
+  assert.equal(cells.get('C7'), '305614');
+  assert.equal(cells.get('F7'), 'Grade 7');
+  assert.equal(cells.get('H7'), 'St. Matthew');
+  assert.equal(cells.get('O7'), '2026-2027');
+  assert.equal(cells.get('B12'), '100201000015');
+  assert.equal(cells.get('C12'), 'Dela Cruz, Juan');
+  assert.equal(cells.get('G12'), '2013-01-10');
+  assert.equal(cells.has('I12'), false);
+
+  const editable = new Map(result.body.editableCells.map(cell => [cell.cellAddress, cell.type]));
+  assert.equal(editable.get('C7'), 'text');
+  assert.equal(editable.get('B12'), 'text');
+  assert.equal(editable.get('C12'), 'text');
+  assert.equal(editable.get('G12'), 'date');
+  assert.equal(editable.get('H12'), 'number');
+  assert.equal(editable.get('I12'), 'number');
+  assert.equal(editable.get('M12'), 'text');
+  assert.equal(editable.get('C114'), 'number');
+  assert.equal(editable.get('B119'), 'text');
+  for (const address of ['A9', 'A12', 'A114', 'A118', 'D12', 'M118']) assert.equal(editable.has(address), false, address);
+  assert.ok(result.body.issues.some(issue => issue.fieldKey === 'draft'));
+  assert.equal(result.body.previewFingerprint.length, 64);
+  assert.equal(writes, 0);
+});
+
+test('SF8 supports senior-high strands and remains limited to the adviser active-year roster', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sectionStrandName };
+  sectionGradeCode = 'grade-11';
+  sectionGradeLevel = 'Grade 11';
+  sectionStrandName = 'STEM';
+  const seniorHigh = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, '8');
+  assert.equal(seniorHigh.error, null);
+  const cells = new Map(seniorHigh.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('F7'), 'Grade 11');
+  assert.equal(cells.get('L7'), 'STEM');
+
+  const historical = await call(controller.previewTemplate, 'GET', {}, { sectionId: '1' }, '8');
+  assert.equal(historical.error?.status, 403);
+  allowSection = false;
+  const unauthorized = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' }, '8');
+  allowSection = true;
+  assert.equal(unauthorized.error?.status, 403);
+  assert.equal(writes, 0);
+  ({ sectionGradeCode, sectionGradeLevel, sectionStrandName } = previous);
+});
+
+test('combined preview supports all 15 selections containing SF8', async () => {
+  const formIds = { SF1: 1, SF2: 2, SF3: 3, SF5: 5, SF8: 8 };
+  const previousForms = ['SF1', 'SF2', 'SF3', 'SF5'];
+  for (let mask = 1; mask < 16; mask += 1) {
+    const codes = [...previousForms.filter((_, index) => mask & (1 << index)), 'SF8'];
+    const result = await call(controller.previewCombinedTemplates, 'POST', {
+      templateIds: codes.map(code => formIds[code]), sectionId: 8,
+      month: codes.includes('SF2') ? '2026-10' : ''
+    });
+    assert.equal(result.error, null, codes.join(','));
+    assert.deepEqual(result.body.forms.map(form => form.formCode), codes);
+    assert.equal(result.body.forms.length, codes.length);
+    assert.equal(result.body.previewFingerprint.length, 64);
+    const sf8 = result.body.forms.find(form => form.formCode === 'SF8');
+    assert.equal(sf8.pages[0].find(cell => cell.cellAddress === 'C12').value, 'Dela Cruz, Juan');
+    assert.equal(sf8.editableCells.find(cell => cell.cellAddress === 'I12').type, 'number');
+  }
+
+  const withoutMonth = await call(controller.previewCombinedTemplates, 'POST', {
+    templateIds: [1, 8], sectionId: 8
+  });
+  assert.equal(withoutMonth.error, null);
+  const invalid = await call(controller.previewCombinedTemplates, 'POST', {
+    templateIds: [1, 1], sectionId: 8
+  });
+  assert.match(invalid.error.message, /selected once/);
+});
+
+test('SF1, SF2, SF3, SF5, and SF8 entry-cell schemas exclude labels and type fields correctly', async () => {
   const templates = [
     ['SF1', 'sf1.xlsx', 'School Form 1 (SF1)'],
     ['SF2', 'sf2.xlsx', 'School Form 2 (SF2)'],
     ['SF3', 'sf3.xlsx', 'School Form 3 (SF3)'],
-    ['SF5', 'sf5.xlsx', 'School Form 5 (SF5)']
+    ['SF5', 'sf5.xlsx', 'School Form 5 (SF5)'],
+    ['SF8', 'sf8.xlsx', 'School Form 8 (SF8)']
   ];
   const schemas = new Map();
   for (const [formCode, fileName, sheetName] of templates) {
@@ -374,10 +478,18 @@ test('SF1, SF2, SF3, and SF5 entry-cell schemas exclude labels and type fields c
   assert.equal(schemas.get('SF5').get('B13'), 'text');
   assert.equal(schemas.get('SF5').get('F13'), 'number');
   assert.equal(schemas.get('SF5').get('F33'), 'number');
+  assert.equal(schemas.get('SF8').get('G12'), 'date');
+  assert.equal(schemas.get('SF8').get('H12'), 'number');
+  assert.equal(schemas.get('SF8').get('I12'), 'number');
+  assert.equal(schemas.get('SF8').get('M12'), 'text');
+  assert.equal(schemas.get('SF8').get('C114'), 'number');
   assert.equal(schemas.get('SF1').has('A1'), false);
   assert.equal(schemas.get('SF2').has('A9'), false);
   assert.equal(schemas.get('SF3').has('T68'), false);
   assert.equal(schemas.get('SF5').has('M49'), false);
+  assert.equal(schemas.get('SF8').has('A12'), false);
+  assert.equal(schemas.get('SF8').has('A9'), false);
+  assert.equal(schemas.get('SF8').has('D12'), false);
 });
 
 test('combined preview returns mapped data and editable-cell metadata for SF1 and SF2', async () => {
@@ -598,6 +710,60 @@ test('combined exports include SF5 in all seven combinations and preserve editab
   }
 });
 
+test('combined SF8 edits affect only the generated workbook and protected cells are rejected', async () => {
+  const selection = { templateIds: [1, 8], sectionId: 8 };
+  const preview = await call(controller.previewCombinedTemplates, 'POST', selection);
+  const originalLearner = { ...learner };
+  auditValues = [];
+  writes = 0;
+  const result = await call(controller.generateCombinedTemplates, 'POST', {
+    ...selection,
+    previewFingerprint: preview.body.previewFingerprint,
+    forms: [
+      { templateId: 1, edits: [] },
+      { templateId: 8, edits: [
+        { cellAddress: 'I12', value: '21.5' },
+        { cellAddress: 'M12', value: 'Normal' },
+        { cellAddress: 'N12', value: 'Age appropriate' }
+      ] }
+    ]
+  });
+  assert.equal(result.error, null);
+  assert.equal(result.status, 200);
+  assert.match(result.headers['Content-Disposition'], /SF1_SF8_Grade-7-St\.-Matthew_2026-2027-draft\.xlsx/);
+  assert.equal(writes, 1);
+  assert.equal(auditValues[0]?.values.at(-1), 3);
+  assert.equal(auditValues.flatMap(record => record.values).some(value => ['21.5', 'Normal', 'Age appropriate'].includes(value)), false);
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(result.body);
+  const sheet = workbook.getWorksheet('School Form 8 (SF8)');
+  assert.equal(sheet.getCell('I12').value, 21.5);
+  assert.equal(sheet.getCell('M12').value, 'Normal');
+  assert.equal(sheet.getCell('N12').value, 'Age appropriate');
+  assert.equal(sheet.getCell('B12').value, originalLearner.lrn);
+  assert.equal(learner.lrn, originalLearner.lrn);
+  assert.equal(learner.firstName, originalLearner.firstName);
+
+  for (const edit of [
+    { cellAddress: 'A12', value: 'Replace the numbering formula' },
+    { cellAddress: 'I12', value: 'not-a-number' },
+    { pageIndex: 1, cellAddress: 'I12', value: 22 }
+  ]) {
+    writes = 0;
+    const invalid = await call(controller.generateCombinedTemplates, 'POST', {
+      ...selection,
+      previewFingerprint: preview.body.previewFingerprint,
+      forms: [
+        { templateId: 1, edits: [] },
+        { templateId: 8, edits: [edit] }
+      ]
+    });
+    assert.equal(invalid.error?.status, 400, JSON.stringify(edit));
+    assert.equal(writes, 0);
+  }
+});
+
 test('combined generation rejects labels, invalid page indexes, and values of the wrong type', async () => {
   const cases = [
     { ids: [1, 2], month: '2026-10', formCode: 'SF2', edit: { cellAddress: 'A9', value: 'Not an entry cell' } },
@@ -679,6 +845,127 @@ test('SF5 combined workbook templates preserve official sheets, images, styles, 
       } else {
         formBaselines.set(code, currentForm);
       }
+    }
+  }
+});
+
+test('all 15 SF8 combined templates preserve the supplied worksheet layout, styles, images, and print settings', async () => {
+  const formSheets = {
+    SF1: 'School Form 1 (SF1)', SF2: 'School Form 2 (SF2)',
+    SF3: 'School Form 3 (SF3)', SF5: 'School Form 5 (SF5)', SF8: 'School Form 8 (SF8)'
+  };
+  const templateDirectoryPath = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
+  const sourcePath = path.join(templateDirectoryPath, 'sf8.xlsx');
+  const sourceZip = await JSZip.loadAsync(await fs.promises.readFile(sourcePath));
+  const sourceWorksheetPath = await worksheetPackagePath(sourceZip, formSheets.SF8);
+  const sourceWorksheetXml = await sourceZip.file(sourceWorksheetPath).async('string');
+  const sourceImages = await worksheetImages(sourceZip, sourceWorksheetPath);
+  const sourcePrinterSettings = await worksheetPrinterSettings(sourceZip, sourceWorksheetPath);
+  const sourceWorkbook = new ExcelJS.Workbook();
+  await sourceWorkbook.xlsx.load(await fs.promises.readFile(sourcePath));
+  const sourceSheet = sourceWorkbook.getWorksheet(formSheets.SF8);
+  const sourceStylesXml = await sourceZip.file('xl/styles.xml').async('string');
+  const sourceCellXfs = xmlCollectionItems(sourceStylesXml, 'cellXfs', 'xf');
+  const basePackage = await JSZip.loadAsync(await fs.promises.readFile(path.join(templateDirectoryPath, 'sf1-sf2-sf3-sf5.xlsx')));
+  const baseStylesXml = await basePackage.file('xl/styles.xml').async('string');
+  const styleCollectionDefinitions = [
+    ['fonts', 'font'], ['fills', 'fill'], ['borders', 'border'],
+    ['cellStyleXfs', 'xf'], ['cellXfs', 'xf'], ['dxfs', 'dxf']
+  ];
+  const styleOffsets = Object.fromEntries(styleCollectionDefinitions.map(([collection, item]) => [
+    collection, xmlCollectionItems(baseStylesXml, collection, item).length
+  ]));
+  const sourceNumFmts = xmlCollectionItems(sourceStylesXml, 'numFmts', 'numFmt');
+  const baseNumFmts = xmlCollectionItems(baseStylesXml, 'numFmts', 'numFmt');
+  const nextNumFmtId = Math.max(163, ...baseNumFmts.map(item => Number(xmlAttribute(item, 'numFmtId')) || 0)) + 1;
+  const numFmtOffsets = new Map(sourceNumFmts.map((item, index) => [
+    Number(xmlAttribute(item, 'numFmtId')), nextNumFmtId + index
+  ]));
+  const styleAddresses = ['E5', 'I5', 'C7', 'F7', 'H7', 'L7', 'O7', 'A12', 'B12', 'C12', 'G12', 'G63', 'G65', 'G108', 'H12', 'I12', 'M12', 'C114', 'B118'];
+  const sourceFormula = sourceSheet.getCell('A12').value;
+  const sourceMerges = [...sourceSheet.model.merges];
+  let sharedStylesHash = null;
+
+  for (let mask = 1; mask < 16; mask += 1) {
+    const codes = [...['SF1', 'SF2', 'SF3', 'SF5'].filter((_, index) => mask & (1 << index)), 'SF8'];
+    const filePath = path.join(templateDirectoryPath, `${codes.map(code => code.toLowerCase()).join('-')}.xlsx`);
+    const bytes = await fs.promises.readFile(filePath);
+    const combinedZip = await JSZip.loadAsync(bytes);
+    const workbookXml = await combinedZip.file('xl/workbook.xml').async('string');
+    assert.deepEqual([...workbookXml.matchAll(/<sheet\b[^>]*\/?\s*>/g)].map(match => xmlAttribute(match[0], 'name')),
+      codes.map(code => formSheets[code]));
+
+    const stylesXml = await combinedZip.file('xl/styles.xml').async('string');
+    const cellXfs = /<cellXfs\b[^>]*count="(\d+)"[^>]*>([\s\S]*?)<\/cellXfs>/.exec(stylesXml);
+    assert.ok(cellXfs, `${codes.join(',')} has cell styles`);
+    assert.equal([...cellXfs[2].matchAll(/<xf\b[^>]*?(?:\/>|>[\s\S]*?<\/xf>)/g)].length,
+      Number(cellXfs[1]), `${codes.join(',')} style indexes match the style table`);
+    const stylesHash = sha256(await combinedZip.file('xl/styles.xml').async('nodebuffer'));
+    if (sharedStylesHash === null) sharedStylesHash = stylesHash;
+    else assert.equal(stylesHash, sharedStylesHash, 'SF8 combined packages should use the same merged style table');
+
+    const worksheetPath = await worksheetPackagePath(combinedZip, formSheets.SF8);
+    assert.deepEqual(await worksheetImages(combinedZip, worksheetPath), sourceImages);
+    assert.equal(await worksheetPrinterSettings(combinedZip, worksheetPath), sourcePrinterSettings);
+    const combinedWorksheetXml = await combinedZip.file(worksheetPath).async('string');
+    assert.match(combinedWorksheetXml, /<f>IF\(C12="","",ROWS\(\$C\$11:C12\)\)<\/f>/);
+    const combinedCellXfs = xmlCollectionItems(stylesXml, 'cellXfs', 'xf');
+    const sourceCollectionItems = {
+      fonts: xmlCollectionItems(sourceStylesXml, 'fonts', 'font'),
+      fills: xmlCollectionItems(sourceStylesXml, 'fills', 'fill'),
+      borders: xmlCollectionItems(sourceStylesXml, 'borders', 'border'),
+      cellStyleXfs: xmlCollectionItems(sourceStylesXml, 'cellStyleXfs', 'xf')
+    };
+    const combinedCollectionItems = {
+      fonts: xmlCollectionItems(stylesXml, 'fonts', 'font'),
+      fills: xmlCollectionItems(stylesXml, 'fills', 'fill'),
+      borders: xmlCollectionItems(stylesXml, 'borders', 'border'),
+      cellStyleXfs: xmlCollectionItems(stylesXml, 'cellStyleXfs', 'xf')
+    };
+    for (const address of styleAddresses) {
+      const sourceCell = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*>`).exec(sourceWorksheetXml)?.[0];
+      const combinedCell = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*>`).exec(combinedWorksheetXml)?.[0];
+      const sourceStyleIndex = Number(xmlAttribute(sourceCell, 's') || 0);
+      const combinedStyleIndex = Number(xmlAttribute(combinedCell, 's') || 0);
+      assert.equal(combinedStyleIndex, styleOffsets.cellXfs + sourceStyleIndex, `${codes.join(',')} ${address} style index`);
+
+      const sourceStyle = sourceCellXfs[sourceStyleIndex];
+      const combinedStyle = combinedCellXfs[combinedStyleIndex];
+      for (const [attribute, collection] of [['fontId', 'fonts'], ['fillId', 'fills'], ['borderId', 'borders'], ['xfId', 'cellStyleXfs']]) {
+        const sourceIndex = Number(xmlAttribute(sourceStyle, attribute) || 0);
+        const combinedIndex = Number(xmlAttribute(combinedStyle, attribute) || 0);
+        assert.equal(combinedIndex, styleOffsets[collection] + sourceIndex, `${codes.join(',')} ${address} ${attribute}`);
+        if (sourceCollectionItems[collection][sourceIndex]) {
+          if (collection === 'cellStyleXfs') {
+            const sourceBaseStyle = sourceCollectionItems[collection][sourceIndex];
+            const combinedBaseStyle = combinedCollectionItems[collection][combinedIndex];
+            for (const [reference, referencedCollection] of [['fontId', 'fonts'], ['fillId', 'fills'], ['borderId', 'borders']]) {
+              assert.equal(Number(xmlAttribute(combinedBaseStyle, reference) || 0),
+                styleOffsets[referencedCollection] + Number(xmlAttribute(sourceBaseStyle, reference) || 0),
+                `${codes.join(',')} ${address} base style ${reference}`);
+            }
+          } else {
+            assert.equal(combinedCollectionItems[collection][combinedIndex], sourceCollectionItems[collection][sourceIndex],
+              `${codes.join(',')} ${address} ${collection}`);
+          }
+        }
+      }
+      const sourceNumFmtId = Number(xmlAttribute(sourceStyle, 'numFmtId') || 0);
+      const combinedNumFmtId = Number(xmlAttribute(combinedStyle, 'numFmtId') || 0);
+      assert.equal(combinedNumFmtId, numFmtOffsets.get(sourceNumFmtId) || sourceNumFmtId,
+        `${codes.join(',')} ${address} number format`);
+    }
+
+    const combinedWorkbook = new ExcelJS.Workbook();
+    await combinedWorkbook.xlsx.load(bytes);
+    const combinedSheet = combinedWorkbook.getWorksheet(formSheets.SF8);
+    assert.deepEqual([...combinedSheet.model.merges], sourceMerges);
+    assert.equal(combinedSheet.pageSetup.scale, sourceSheet.pageSetup.scale);
+    assert.equal(combinedSheet.pageSetup.printTitlesRow, sourceSheet.pageSetup.printTitlesRow);
+    assert.equal(combinedSheet.getImages().length, 2);
+    assert.deepEqual(combinedSheet.getCell('A12').value, sourceFormula);
+    for (const address of ['G12', 'G63', 'G65', 'G108']) {
+      assert.equal(combinedSheet.getCell(address).numFmt, 'mm/dd/yyyy', `${codes.join(',')} ${address}`);
     }
   }
 });
@@ -1038,6 +1325,30 @@ test('SF1 preview shows birth dates as mm/dd/yyyy', async () => {
   const preview = window.EDUGNAY_SF_WORKBOOK.worksheetPreview(sheet, { id: 'sf1-school-register-v1' });
   assert.equal(preview.rows[9].cells.find(cell => cell.address === 'H10').text, '04/07/2005');
   assert.equal(preview.rows[10].cells.find(cell => cell.address === 'H11').text, '');
+});
+
+test('SF8 preview displays birthdates in the printed format and uses the same text as its edit baseline', async () => {
+  const source = await fs.promises.readFile(path.resolve(__dirname, '..', '..', 'assets', 'js', 'sf-workbook.js'), 'utf8');
+  const exposed = source.replace('  window.EDUGNAY_SF_WORKBOOK = {', '  window.EDUGNAY_SF_WORKBOOK = { worksheetPreview, displayedCellText,');
+  assert.notEqual(exposed, source);
+  const window = {};
+  vm.runInNewContext(exposed, { window, Date });
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms', 'sf8.xlsx'));
+  const sheet = workbook.getWorksheet('School Form 8 (SF8)');
+  for (const row of [...Array.from({ length: 52 }, (_, index) => index + 12),
+    ...Array.from({ length: 44 }, (_, index) => index + 65)]) {
+    assert.equal(sheet.getCell(`G${row}`).numFmt, 'mm/dd/yyyy', `G${row}`);
+  }
+  sheet.getCell('G12').value = new Date(Date.UTC(2013, 0, 10));
+  sheet.getCell('G13').value = null;
+  const preview = window.EDUGNAY_SF_WORKBOOK.worksheetPreview(sheet, { id: 'sf8-health-nutrition-v1' });
+  const birthdate = preview.rows[11].cells.find(cell => cell.address === 'G12');
+  const blankBirthdate = preview.rows[12].cells.find(cell => cell.address === 'G13');
+  assert.equal(birthdate.text, '01/10/2013');
+  assert.equal(window.EDUGNAY_SF_WORKBOOK.displayedCellText(sheet.getCell('G12')), birthdate.text);
+  assert.equal(blankBirthdate.text, '');
 });
 
 test('XLSX export changes mapped cells without changing other workbook parts', async () => {

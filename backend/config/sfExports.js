@@ -128,7 +128,7 @@ async function getWorksheetPath(zip, sheetName) {
 
 function getOfficialTemplatePath(filePath, formCode) {
   const fileName = path.basename(String(filePath || ''));
-  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx', SF3: 'sf3.xlsx', SF5: 'sf5.xlsx' }[formCode]) {
+  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx', SF3: 'sf3.xlsx', SF5: 'sf5.xlsx', SF8: 'sf8.xlsx' }[formCode]) {
     throw createError('The official SF template file is unavailable.', 500);
   }
   const resolvedPath = path.resolve(templateDirectory, fileName);
@@ -174,11 +174,11 @@ async function getEditableCells(template, mappedCells = []) {
 }
 
 function getCombinedTemplatePath(formCodes) {
-  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4 };
+  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4, SF8: 5 };
   const codes = Array.isArray(formCodes) ? [...formCodes].sort((left, right) => order[left] - order[right]) : [];
-  if (codes.length < 2 || codes.length > 4 || new Set(codes).size !== codes.length
+  if (codes.length < 2 || codes.length > 5 || new Set(codes).size !== codes.length
     || codes.some(code => !order[code])) {
-    throw createError('Select two to four different SF forms to create a combined workbook.');
+    throw createError('Select two to five different SF forms to create a combined workbook.');
   }
   const resolvedPath = path.resolve(templateDirectory, `${codes.map(code => code.toLowerCase()).join('-')}.xlsx`);
   if (!resolvedPath.startsWith(`${templateDirectory}${path.sep}`) || !fs.existsSync(resolvedPath)) {
@@ -377,7 +377,7 @@ async function createExportWorkbook(template, cells) {
   const originalStyles = await stylesFile.async('nodebuffer');
   const worksheetPath = await getWorksheetPath(zip, template.sheetName);
   const sourceWorksheet = await zip.file(worksheetPath).async('string');
-  const pages = Array.isArray(cells?.[0]) ? cells : ['SF2', 'SF3', 'SF5'].includes(template.formCode) ? cells : [cells];
+  const pages = Array.isArray(cells?.[0]) ? cells : ['SF2', 'SF3', 'SF5', 'SF8'].includes(template.formCode) ? cells : [cells];
   if (!Array.isArray(pages) || !pages.length || pages.length > 100) throw createError('Invalid school form pages.', 500);
   if (template.formCode === 'SF1' && pages.length !== 1) throw createError('SF1 supports one worksheet page per export.', 500);
   const averageStyles = template.formCode === 'SF5' ? await addSf5AverageStyles(zip, sourceWorksheet) : null;
@@ -393,13 +393,13 @@ async function createExportWorkbook(template, cells) {
 }
 
 async function createCombinedExportWorkbook(forms) {
-  if (!Array.isArray(forms) || forms.length < 2 || forms.length > 4
+  if (!Array.isArray(forms) || forms.length < 2 || forms.length > 5
     || new Set(forms.map(form => form?.formCode)).size !== forms.length
-    || forms.some(form => !['SF1', 'SF2', 'SF3', 'SF5'].includes(form?.formCode))) {
-    throw createError('A combined workbook must contain two to four different SF forms.');
+    || forms.some(form => !['SF1', 'SF2', 'SF3', 'SF5', 'SF8'].includes(form?.formCode))) {
+    throw createError('A combined workbook must contain two to five different SF forms.');
   }
 
-  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4 };
+  const order = { SF1: 1, SF2: 2, SF3: 3, SF5: 4, SF8: 5 };
   const orderedForms = [...forms].sort((left, right) => order[left.formCode] - order[right.formCode]);
   if (orderedForms.some(form => !Array.isArray(form.pages) || !form.pages.length || form.pages.length > 100
     || (form.formCode === 'SF1' && form.pages.length !== 1))) {
@@ -416,7 +416,7 @@ async function createCombinedExportWorkbook(forms) {
       formCode: form.formCode,
       sheetName: {
         SF1: 'School Form 1 (SF1)', SF2: 'School Form 2 (SF2)',
-        SF3: 'School Form 3 (SF3)', SF5: 'School Form 5 (SF5)'
+        SF3: 'School Form 3 (SF3)', SF5: 'School Form 5 (SF5)', SF8: 'School Form 8 (SF8)'
       }[form.formCode]
     };
     const worksheetPath = await getWorksheetPath(zip, template.sheetName);
@@ -446,7 +446,7 @@ async function saveExport(buffer, formCode) {
 
 function getExportFilePath(publicPath) {
   const fileName = path.basename(String(publicPath || ''));
-  if (!/^sf[1235]-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
+  if (!/^sf(?:1|2|3|5|8)-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
   const legacy = String(publicPath).replace(/^\/+/, '').startsWith('uploads/sf-exports/');
   const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'sf-exports') : exportDirectory;
   const filePath = path.resolve(directory, fileName);

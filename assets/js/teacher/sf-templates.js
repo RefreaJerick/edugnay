@@ -192,9 +192,9 @@ function hasBlankCombinedSelection() {
 function supportsGeneratedSelection(templates) {
   if (templates.length === 1) return true;
   const formCodes = templates.map(template => template.formCode);
-  return templates.length >= 2 && templates.length <= 4
+  return templates.length >= 2 && templates.length <= 5
     && new Set(formCodes).size === formCodes.length
-    && formCodes.every(code => ['SF1', 'SF2', 'SF3', 'SF5'].includes(code));
+    && formCodes.every(code => ['SF1', 'SF2', 'SF3', 'SF5', 'SF8'].includes(code));
 }
 
 function updateTemplatePicker() {
@@ -593,7 +593,7 @@ function renderGeneratedPreview() {
       <button class="sf-sheet-tab ${item === form ? 'active' : ''}" type="button" role="tab"
         aria-selected="${item === form}" data-combined-form-index="${index}">${escapeHtml(item.formCode)}</button>
     `).join('') : '';
-  const pageTabs = ['SF2', 'SF3', 'SF5'].includes(form.formCode) && form.pages.length > 1
+  const pageTabs = ['SF2', 'SF3', 'SF5', 'SF8'].includes(form.formCode) && form.pages.length > 1
     ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="${escapeHtml(form.formCode)} pages">${form.pages.map((_, index) => `
       <button class="sf-sheet-tab ${index === form.selectedPage ? 'active' : ''}" type="button" role="tab"
         aria-selected="${index === form.selectedPage}" data-form-page="${index}">Page ${index + 1}</button>
@@ -616,6 +616,8 @@ function renderGeneratedPreview() {
     ? 'Review the year-end draft and grade breakdown. Complete decisions and signatures in the downloaded workbook.'
     : form.formCode === 'SF3'
     ? 'Review the roster draft. Complete book details in the downloaded workbook.'
+    : form.formCode === 'SF8'
+    ? 'Review the learner roster and complete health measurements and assessment details in the downloaded draft.'
     : 'Review the selected form previews before downloading the XLSX file.';
   sfElements.editButton.textContent = sfState.editing ? 'Done editing' : 'Edit generated form';
   sfElements.editButton.disabled = !form.editableCells?.length;

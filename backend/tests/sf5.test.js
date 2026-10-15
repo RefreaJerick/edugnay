@@ -147,11 +147,11 @@ test('SF5 supports mixed active-year selections and retains individual closed-ye
   const root = path.resolve(__dirname, '..', '..');
   const page = await fs.readFile(path.join(root, 'assets', 'js', 'teacher', 'sf-templates.js'), 'utf8');
   const api = await fs.readFile(path.join(root, 'assets', 'js', 'shell-common.js'), 'utf8');
-  assert.match(page, /templates\.length <= 4[\s\S]*formCodes\.every\(code => \['SF1', 'SF2', 'SF3', 'SF5'\]\.includes\(code\)\)/);
+  assert.match(page, /templates\.length <= 5[\s\S]*formCodes\.every\(code => \['SF1', 'SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(code\)\)/);
   assert.match(page, /includesSf5[\s\S]*sf5Only[\s\S]*academicYearStatus[\s\S]*gradeCode/);
-  assert.match(page, /\['SF2', 'SF3', 'SF5'\]\.includes\(form\.formCode\) && form\.pages\.length > 1/);
+  assert.match(page, /\['SF2', 'SF3', 'SF5', 'SF8'\]\.includes\(form\.formCode\) && form\.pages\.length > 1/);
   assert.match(page, /renderSf5Breakdown\(form\)/);
-  assert.match(api, /templates\.length > 4[\s\S]*'SF1', 'SF2', 'SF3', 'SF5'/);
+  assert.match(api, /templates\.length > 5[\s\S]*'SF1', 'SF2', 'SF3', 'SF5', 'SF8'/);
   assert.match(api, /breakdown: form\.breakdown \|\| \[\]/);
   assert.match(api, /getMyAdvisorySections\(template\.formCode === 'SF5'\)/);
 });

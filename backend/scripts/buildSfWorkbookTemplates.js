@@ -7,7 +7,8 @@ const wantedSheets = new Map([
   ['SF1', 'School Form 1 (SF1)'],
   ['SF2', 'School Form 2 (SF2)'],
   ['SF3', 'School Form 3 (SF3)'],
-  ['SF5', 'School Form 5 (SF5)']
+  ['SF5', 'School Form 5 (SF5)'],
+  ['SF8', 'School Form 8 (SF8)']
 ]);
 
 function attributes(xml) {
@@ -78,12 +79,12 @@ async function createTemplate(sourcePath, formCodes) {
     throw new Error('The source workbook is missing required OOXML parts.');
   }
 
-  if (!Array.isArray(formCodes) || formCodes.length < 2 || formCodes.length > 4
+  if (!Array.isArray(formCodes) || formCodes.length < 2 || formCodes.length > 5
     || new Set(formCodes).size !== formCodes.length) {
-    throw new Error('Select two to four different SF forms to build a combined template.');
+    throw new Error('Select two to five different SF forms to build a combined template.');
   }
   const names = formCodes.map(code => wantedSheets.get(code));
-  if (names.some(name => !name)) throw new Error('Only SF1, SF2, SF3, and SF5 templates can be combined.');
+  if (names.some(name => !name)) throw new Error('Only registered school form templates can be combined.');
   let workbook = await workbookFile.async('string');
   let relationships = await relationsFile.async('string');
   const sourceSheetTags = [...workbook.matchAll(/<sheet\b[^>]*\/?\s*>/g)];

@@ -2871,7 +2871,8 @@ function applyCurrentDateToGradingBanners() {
       id: record.formCode === 'SF1' ? 'sf1-school-register-v1'
         : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
           : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
-            : record.formCode === 'SF5' ? 'sf5-promotion-proficiency-v1' : `sf-${record.id}`,
+            : record.formCode === 'SF5' ? 'sf5-promotion-proficiency-v1'
+              : record.formCode === 'SF8' ? 'sf8-health-nutrition-v1' : `sf-${record.id}`,
       apiId: String(record.id),
       formCode: record.formCode,
       formName: record.formName,
@@ -2979,10 +2980,10 @@ function applyCurrentDateToGradingBanners() {
     if (templateIds.length !== requestedIds.length) throw new Error('A school form can only be selected once.');
     const templates = (await getSfTemplates()).filter(template => templateIds.includes(template.id));
     const formCodes = templates.map(template => template.formCode);
-    if (templates.length < 2 || templates.length > 4 || templates.length !== templateIds.length
+    if (templates.length < 2 || templates.length > 5 || templates.length !== templateIds.length
       || new Set(formCodes).size !== formCodes.length || templates.some(template => template.status !== RECORD_VALUES.statuses.ACTIVE
-        || template.mappingStatus !== 'ready') || formCodes.some(code => !['SF1', 'SF2', 'SF3', 'SF5'].includes(code))) {
-      throw new Error('Select two to four different active, verified SF templates to create one combined workbook.');
+        || template.mappingStatus !== 'ready') || formCodes.some(code => !['SF1', 'SF2', 'SF3', 'SF5', 'SF8'].includes(code))) {
+      throw new Error('Select two to five different active, verified SF templates to create one combined workbook.');
     }
 
     const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
@@ -3031,7 +3032,7 @@ function applyCurrentDateToGradingBanners() {
       month: values.month || null,
       schoolYear,
       previewFingerprint: preview.previewFingerprint,
-      fileName: `${formCodes.sort().join('_')}_${section.grade}-${section.name}_${values.month || schoolYear}${formCodes.includes('SF5') ? '-draft' : ''}.xlsx`
+      fileName: `${formCodes.sort().join('_')}_${section.grade}-${section.name}_${values.month || schoolYear}${formCodes.some(code => ['SF5', 'SF8'].includes(code)) ? '-draft' : ''}.xlsx`
         .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
       hasBlockingIssues: forms.some(form => form.hasBlockingIssues),
       forms

@@ -1,6 +1,7 @@
 const { SF2 } = require('./sf2');
 const { SF3 } = require('./sf3');
 const { SF5 } = require('./sf5');
+const { SF8 } = require('./sf8');
 
 function range(startRow, endRow, startColumn, endColumn) {
   return { startRow, endRow, startColumn, endColumn };
@@ -53,6 +54,13 @@ const entries = {
       range(15, 20, columnNumber('N'), columnNumber('P')),
       range(24, 33, columnNumber('N'), columnNumber('P')),
       range(35, 48, columnNumber('M'), columnNumber('P'))]
+  },
+  SF8: {
+    addresses: Object.values(SF8.headers),
+    ranges: [range(12, 63, columnNumber('B'), columnNumber('O')),
+      range(65, 108, columnNumber('B'), columnNumber('O')),
+      range(114, 116, columnNumber('B'), columnNumber('O')),
+      range(118, 120, columnNumber('B'), columnNumber('O'))]
   }
 };
 
@@ -93,6 +101,11 @@ function getFormEntryType(formCode, address, cell) {
   }
   if (formCode === 'SF5' && parts && parts.column >= columnNumber('N') && parts.column <= columnNumber('P')
     && ((parts.row >= 15 && parts.row <= 20) || (parts.row >= 24 && parts.row <= 33))) return 'number';
+  if (formCode === 'SF8' && parts && parts.row >= 12 && parts.row <= 108
+    && parts.row !== 64 && parts.column === columnNumber('G')) return 'date';
+  if (formCode === 'SF8' && parts && parts.row >= 12 && parts.row <= 108
+    && parts.row !== 64 && parts.column >= columnNumber('H') && parts.column <= columnNumber('L')) return 'number';
+  if (formCode === 'SF8' && parts && parts.row >= 114 && parts.row <= 116) return 'number';
   if (formCode === 'SF3' && parts && parts.row === 9
     && parts.column >= columnNumber('D') && parts.column <= columnNumber('S')) return 'text';
   if (formCode === 'SF3' && parts && parts.row >= 12 && parts.row <= 59 && parts.row !== 36

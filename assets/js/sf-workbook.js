@@ -3,6 +3,37 @@
   const SF1_TEMPLATE_ID = 'sf1-school-register-v1';
 
   const SF_TEMPLATE_DEFINITIONS = Object.freeze({
+    'sf8-health-nutrition-v1': {
+      templateId: 'sf8-health-nutrition-v1',
+      sheetName: 'School Form 8 (SF8)',
+      requiredSheets: ['School Form 8 (SF8)'],
+      previewRows: 121,
+      previewColumns: 15,
+      mergeCount: 132,
+      anchors: {
+        A3: 'School Form 8',
+        A9: 'No.',
+        B9: 'LRN',
+        C9: "Learner's Name",
+        G9: 'Birthdate',
+        I9: 'Weight',
+        J9: 'Height',
+        L9: 'Nutritional Status',
+        N9: 'Height for Age (HFA)'
+      },
+      fields: {
+        schoolName: { cellAddress: 'E5', source: 'header.schoolName', type: 'text' },
+        district: { cellAddress: 'I5', source: 'header.district', type: 'text' },
+        division: { cellAddress: 'L5', source: 'header.division', type: 'text' },
+        region: { cellAddress: 'O5', source: 'header.region', type: 'text' },
+        schoolId: { cellAddress: 'C7', source: 'header.schoolId', type: 'text' },
+        gradeLevel: { cellAddress: 'F7', source: 'header.gradeLevel', type: 'text' },
+        section: { cellAddress: 'H7', source: 'header.section', type: 'text' },
+        strand: { cellAddress: 'L7', source: 'header.strand', type: 'text' },
+        schoolYear: { cellAddress: 'O7', source: 'header.schoolYear', type: 'text' }
+      },
+      rows: []
+    },
     'sf5-promotion-proficiency-v1': {
       templateId: 'sf5-promotion-proficiency-v1',
       sheetName: 'School Form 5 (SF5)',
@@ -275,6 +306,14 @@
     return map;
   }
 
+  function displayedCellText(cell) {
+    const date = cell.value instanceof Date && String(cell.numFmt || '').toLowerCase() === 'mm/dd/yyyy'
+      ? cell.value : null;
+    return date && !Number.isNaN(date.getTime())
+      ? `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`
+      : cell.text || '';
+  }
+
   function editableAddresses(template) {
     const definition = getTemplateDefinition(template);
     if (!definition) return [];
@@ -307,10 +346,7 @@
         if (merge?.hidden) continue;
         const cell = worksheet.getCell(rowNumber, columnIndex);
         const formula = cell.value && typeof cell.value === 'object' ? cell.value.formula || null : null;
-        const date = cell.value instanceof Date && cell.numFmt === 'mm/dd/yyyy' ? cell.value : null;
-        const text = date && !Number.isNaN(date.getTime())
-          ? `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`
-          : cell.text || '';
+        const text = displayedCellText(cell);
         cells.push({
           address: cell.address,
           text,
@@ -620,7 +656,7 @@
     };
 
     mappedCells.forEach(applyCell);
-    const baseCellTexts = Object.fromEntries([...allowed.keys()].map(address => [address, worksheet.getCell(address).text || '']));
+    const baseCellTexts = Object.fromEntries([...allowed.keys()].map(address => [address, displayedCellText(worksheet.getCell(address))]));
     edits.filter(record => allowed.has(String(record.cellAddress || '').toUpperCase())).forEach(record => {
       const address = String(record.cellAddress || '').toUpperCase();
       applyCell({ ...record, cellAddress: address, type: allowed.get(address) });
