@@ -14,6 +14,7 @@ const sfState = {
 };
 
 let previewResizeTimer;
+let sfValidationReturnFocus = null;
 
 const sfElements = {
   list: document.getElementById('sfTemplateList'),
@@ -41,8 +42,17 @@ const sfElements = {
   previewSubtitle: document.getElementById('sfPreviewSubtitle'),
   previewContent: document.getElementById('sfPreviewContent'),
   previewActions: document.getElementById('sfPreviewActions'),
+  appShell: document.querySelector('.shell'),
   editButton: document.getElementById('sfEditGenerated'),
-  downloadButton: document.getElementById('sfDownloadWorkbook')
+  downloadButton: document.getElementById('sfDownloadWorkbook'),
+  validationBackdrop: document.getElementById('sfValidationModalBackdrop'),
+  validationModal: document.querySelector('#sfValidationModalBackdrop .sf-validation-modal'),
+  validationModalIcon: document.getElementById('sfValidationModalIcon'),
+  validationModalTitle: document.getElementById('sfValidationModalTitle'),
+  validationModalDescription: document.getElementById('sfValidationModalDescription'),
+  validationModalBody: document.getElementById('sfValidationModalBody'),
+  validationModalClose: document.getElementById('sfValidationModalClose'),
+  validationModalDone: document.getElementById('sfValidationModalDone')
 };
 
 function schoolLevelLabel(level) {
@@ -391,15 +401,77 @@ function changePreviewZoom(action) {
   if (workbook) renderWorkbook(workbook, sfState.preview, sfState.editing);
 }
 
-function renderIssueSummary(issues = []) {
-  if (!issues.length) return '';
-  const hasErrors = issues.some(record => record.severity === 'error' && !record.canBeCorrectedInDownload);
-  const title = hasErrors ? 'Generation needs attention' : 'Review before downloading';
-  return `
-    <div class="sf-validation-summary ${hasErrors ? 'error' : 'warning'}" role="status">
-      <strong>${title}</strong>
-      <ul>${issues.map(record => `<li>${escapeHtml(record.message)}</li>`).join('')}</ul>
-    </div>`;
+function generatedValidationIssues() {
+  const forms = sfState.combined?.forms || (sfState.generated ? [sfState.generated] : []);
+  return forms.flatMap(form => (Array.isArray(form.issues) ? form.issues : []).map(issue => ({
+    ...issue,
+    formCode: form.formCode,
+    message: issue.message
+  })));
+}
+
+function renderValidationModal(issues) {
+  const hasBlockingErrors = issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload);
+  const issueCount = issues.length;
+  const groups = new Map();
+  issues.forEach(issue => {
+    const formCode = issue.formCode || 'Form';
+    if (!groups.has(formCode)) groups.set(formCode, []);
+    groups.get(formCode).push(issue);
+  });
+  sfElements.validationModalTitle.textContent = hasBlockingErrors
+    ? 'Generation needs attention'
+    : 'Review before downloading';
+  sfElements.validationModalDescription.textContent = hasBlockingErrors
+    ? `${issueCount} issue${issueCount === 1 ? '' : 's'} found. Resolve blocking issues before downloading.`
+    : `${issueCount} issue${issueCount === 1 ? '' : 's'} found. Review them before downloading.`;
+  sfElements.validationModalIcon.classList.toggle('is-error', hasBlockingErrors);
+  sfElements.validationModalIcon.innerHTML = `<i data-lucide="${hasBlockingErrors ? 'triangle-alert' : 'info'}"></i>`;
+  sfElements.validationModalBody.innerHTML = `<div class="sf-validation-groups">${Array.from(groups, ([formCode, formIssues]) => `
+    <section class="sf-validation-group" role="group" aria-label="${escapeHtml(formCode)}, ${formIssues.length} issue${formIssues.length === 1 ? '' : 's'}">
+      <div class="sf-validation-group-head">
+        <span class="sf-validation-form-code">${escapeHtml(formCode)}</span>
+        <span class="sf-validation-group-count">${formIssues.length} issue${formIssues.length === 1 ? '' : 's'}</span>
+      </div>
+      <ul class="sf-validation-issue-list">${formIssues.map(issue => {
+        const isBlocking = issue.severity === 'error' && !issue.canBeCorrectedInDownload;
+        return `<li class="sf-validation-issue${isBlocking ? ' is-error' : ' is-warning'}">
+          <span class="sf-validation-issue-icon" aria-hidden="true"><i data-lucide="${isBlocking ? 'circle-alert' : 'info'}"></i></span>
+          <span>${escapeHtml(issue.message)}</span>
+        </li>`;
+      }).join('')}</ul>
+    </section>`).join('')}</div>`;
+  if (window.lucide) lucide.createIcons();
+  return hasBlockingErrors;
+}
+
+function openValidationModal(returnFocus = sfElements.generateButton) {
+  const issues = generatedValidationIssues();
+  if (!issues.length) return;
+  renderValidationModal(issues);
+  sfValidationReturnFocus = returnFocus;
+  sfElements.validationBackdrop.setAttribute('aria-hidden', 'false');
+  sfElements.validationBackdrop.classList.add('open');
+  document.body.classList.add('sf-validation-modal-open');
+  sfElements.appShell.inert = true;
+  sfElements.validationModalClose.focus();
+}
+
+function closeValidationModal(restoreFocus = true) {
+  if (!sfElements.validationBackdrop.classList.contains('open')) return;
+  sfElements.validationBackdrop.classList.remove('open');
+  sfElements.validationBackdrop.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('sf-validation-modal-open');
+  sfElements.appShell.inert = false;
+  const returnFocus = sfValidationReturnFocus;
+  sfValidationReturnFocus = null;
+  if (restoreFocus && returnFocus?.isConnected && !returnFocus.disabled && !returnFocus.hidden) returnFocus.focus();
+}
+
+function clearValidationModal() {
+  closeValidationModal(false);
+  sfValidationReturnFocus = null;
+  sfElements.validationModalBody.innerHTML = '';
 }
 
 function renderSf5Breakdown(form) {
@@ -448,6 +520,7 @@ function renderSf5Breakdown(form) {
 async function openTemplatePreview(templateId, sheetName = '') {
   const template = sfState.templates.find(record => record.id === String(templateId));
   if (!template) return;
+  clearValidationModal();
   sfElements.previewActions.hidden = true;
   sfState.selectedTemplate = template;
   sfState.generated = null;
@@ -489,6 +562,7 @@ function setGeneratedForm(form) {
 
 function invalidateGeneratedPreview() {
   const hadGeneratedPreview = Boolean(sfState.generated || sfState.combined);
+  clearValidationModal();
   sfElements.previewActions.hidden = true;
   sfState.generated = null;
   sfState.combined = null;
@@ -514,22 +588,30 @@ function renderGeneratedPreview() {
   const form = sfState.generated;
   if (!form) return;
   const forms = sfState.combined?.forms || [];
-  const formTabs = forms.length > 1
-    ? `<div class="sf-generated-form-tabs" role="tablist" aria-label="Generated forms">${forms.map((item, index) => `
+  const formTabButtons = forms.length > 1
+    ? forms.map((item, index) => `
       <button class="sf-sheet-tab ${item === form ? 'active' : ''}" type="button" role="tab"
         aria-selected="${item === form}" data-combined-form-index="${index}">${escapeHtml(item.formCode)}</button>
-    `).join('')}</div>` : '';
+    `).join('') : '';
   const pageTabs = ['SF2', 'SF3', 'SF5'].includes(form.formCode) && form.pages.length > 1
     ? `<div class="sf-main-sheet-tabs" role="tablist" aria-label="${escapeHtml(form.formCode)} pages">${form.pages.map((_, index) => `
       <button class="sf-sheet-tab ${index === form.selectedPage ? 'active' : ''}" type="button" role="tab"
         aria-selected="${index === form.selectedPage}" data-form-page="${index}">Page ${index + 1}</button>
     `).join('')}</div>` : '';
-  const issues = forms.length > 1
-    ? forms.flatMap(item => item.issues.map(issue => ({ ...issue, message: `${item.formCode}: ${issue.message}` })))
-    : form.issues;
+  const issues = generatedValidationIssues();
+  const issuesAreBlocking = issues.some(issue => issue.severity === 'error' && !issue.canBeCorrectedInDownload);
+  const generatedToolbar = forms.length > 1 || issues.length
+    ? `<div class="sf-generated-toolbar">
+        <div class="sf-generated-form-tabs"${forms.length > 1 ? ' role="tablist" aria-label="Generated forms"' : ' aria-hidden="true"'}>${formTabButtons}</div>
+        ${issues.length ? `<button class="top-btn secondary sf-review-issues${issuesAreBlocking ? ' is-blocking' : ''}" type="button" aria-haspopup="dialog" aria-controls="sfValidationModalBackdrop" aria-label="Review ${issues.length} issue${issues.length === 1 ? '' : 's'}${issuesAreBlocking ? '; download is blocked' : ''}" data-review-issues>
+          <i data-lucide="${issuesAreBlocking ? 'triangle-alert' : 'info'}" aria-hidden="true"></i><span>Issues (${issues.length})</span>
+        </button>` : ''}
+      </div>` : '';
   sfState.preview = form.preview;
-  sfElements.previewContent.innerHTML = `${renderIssueSummary(issues)}${formTabs}${pageTabs}${renderSf5Breakdown(form)}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
+  sfElements.previewContent.innerHTML = `${generatedToolbar}${pageTabs}${renderSf5Breakdown(form)}<div class="sf-workbook-frame" id="sfMainWorkbook"></div>`;
   renderWorkbook(document.getElementById('sfMainWorkbook'), form.preview, sfState.editing);
+  if (issues.length) renderValidationModal(issues);
+  else clearValidationModal();
   sfElements.previewSubtitle.textContent = form.formCode === 'SF5'
     ? 'Review the year-end draft and grade breakdown. Complete decisions and signatures in the downloaded workbook.'
     : form.formCode === 'SF3'
@@ -549,6 +631,7 @@ async function generateForm(event) {
   event.preventDefault();
   const templates = selectedTemplates();
   invalidateGeneratedPreview();
+  let openIssuesAfterGeneration = false;
   sfState.generationInProgress = true;
   sfElements.generateButton.disabled = true;
   sfElements.generateButton.textContent = 'Preparing preview...';
@@ -582,6 +665,7 @@ async function generateForm(event) {
     sfElements.previewTitle.textContent = 'Generated form preview';
     sfElements.previewSubtitle.textContent = 'Review the selected form previews before downloading the XLSX file.';
     renderGeneratedPreview();
+    openIssuesAfterGeneration = generatedValidationIssues().length > 0;
   } catch (error) {
     sfState.generated = null;
     sfState.combined = null;
@@ -590,6 +674,7 @@ async function generateForm(event) {
     sfElements.generateButton.textContent = 'Preview with school data';
     setGenerationInputsBusy(false);
     updateGenerateButton();
+    if (openIssuesAfterGeneration) openValidationModal(sfElements.generateButton);
   }
 }
 
@@ -679,6 +764,7 @@ async function downloadGeneratedWorkbook() {
   } catch (error) {
     if (sfState.generated && error.exportId) sfState.generated.exportId = error.exportId;
     if (error.status === 409) {
+      clearValidationModal();
       sfState.generated = null;
       sfState.combined = null;
       sfState.preview = null;
@@ -800,11 +886,17 @@ document.addEventListener('click', event => {
   if (!sfElements.templatePicker.contains(event.target)) closeTemplatePicker();
 });
 document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && sfElements.validationBackdrop.classList.contains('open')) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeValidationModal();
+    return;
+  }
   if (event.key === 'Escape' && !sfElements.templateDropdown.hidden) {
     closeTemplatePicker();
     sfElements.templateTrigger.focus();
   }
-});
+}, true);
 [sfElements.sectionSelect, sfElements.schoolYear, sfElements.month].forEach(select => select.addEventListener('change', () => {
   if (select === sfElements.sectionSelect) {
     const section = sfState.sections.find(record => record.id === sfElements.sectionSelect.value);
@@ -820,6 +912,34 @@ sfElements.librarySearch.addEventListener('input', renderTemplateLibrary);
 sfElements.editButton.addEventListener('click', toggleGeneratedEditing);
 sfElements.downloadButton.addEventListener('click', downloadGeneratedWorkbook);
 sfElements.blankCombinedDownloadButton.addEventListener('click', downloadBlankCombinedWorkbook);
+sfElements.validationModalClose.addEventListener('click', () => closeValidationModal());
+sfElements.validationModalDone.addEventListener('click', () => closeValidationModal());
+sfElements.validationBackdrop.addEventListener('click', event => {
+  if (event.target === sfElements.validationBackdrop) closeValidationModal();
+});
+sfElements.validationModal.addEventListener('keydown', event => {
+  if (event.key !== 'Tab') return;
+  const focusable = Array.from(sfElements.validationModal.querySelectorAll(
+    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+  )).filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+  if (!focusable.length) {
+    event.preventDefault();
+    sfElements.validationModalClose.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!sfElements.validationModal.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 
 sfElements.previewContent.addEventListener('input', event => {
   const cellElement = event.target.closest('[data-cell-address]');
@@ -839,6 +959,11 @@ sfElements.previewContent.addEventListener('input', event => {
 });
 
 sfElements.previewContent.addEventListener('click', event => {
+  const issuesButton = event.target.closest('[data-review-issues]');
+  if (issuesButton) {
+    openValidationModal(issuesButton);
+    return;
+  }
   const formTab = event.target.closest('[data-combined-form-index]');
   if (formTab && sfState.combined) {
     if (sfState.editing) preservePreviewEdits();
