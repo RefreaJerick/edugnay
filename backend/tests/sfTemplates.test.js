@@ -93,10 +93,22 @@ let sectionGradeLevel = 'Grade 7';
 let sectionStrandName = null;
 let publishedFinalGrade = 90;
 let includePublishedGrade = true;
+let sf9ConfiguredTerms = null;
+let sf9PublishedGrades = null;
+let sf9AdviserName = 'Ms. Maria Reyes';
 const database = {
   async execute(sql, values = []) {
     if (/SELECT sf_templates_enabled/.test(sql)) return [[{ sfTemplatesEnabled: 1 }]];
-    if (/FROM school_form_templates/.test(sql)) return [[Number(values[0]) === 8 ? {
+    if (/FROM school_form_templates/.test(sql) && /WHERE form_code IN/.test(sql)) return [[{
+      id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
+      mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
+      sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
+    }]];
+    if (/FROM school_form_templates/.test(sql)) return [[Number(values[0]) === 9 ? {
+      id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
+      mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
+      sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
+    } : Number(values[0]) === 8 ? {
       id: 8, formCode: 'SF8', formName: 'Learner\'s Basic Health and Nutrition Report', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf8.xlsx',
       sheetName: 'School Form 8 (SF8)', requiresAcademicTerm: 0
@@ -119,30 +131,33 @@ const database = {
     }]];
     if (/FROM sections/.test(sql)) {
       sectionQuery = { sql, values };
-      const current = { id: 8, schoolId: 1, name: 'St. Matthew', academicYearId: 2,
+      const current = { id: 8, schoolId: 1, name: 'St. Matthew', sectionStatus: 'active', academicYearId: 2,
         schoolLevelId: 2, gradeLevelId: 7, gradeCode: sectionGradeCode, strandId: null,
         academicYear: '2026-2027', academicYearStatus: 'active', startDate: '2026-06-01',
         endDate: '2027-03-31', gradeLevel: sectionGradeLevel, strandName: sectionStrandName };
-      const historical = { ...current, id: 1, academicYearId: 1, academicYear: '2025-2026',
+      const historical = { ...current, id: 1, sectionStatus: 'archived', academicYearId: 1, academicYear: '2025-2026',
         academicYearStatus: 'closed', endDate: '2026-03-31' };
       if (/sections.id = \?/.test(sql)) {
         if (!allowSection) return [[]];
-        return [values[0] === 1 && !/academic_years.status = 'active'/.test(sql) ? [historical]
+        if (values[1] !== 1 || values[2] !== 3) return [[]];
+        return [values[0] === 1 && /academic_years\.status IN/.test(sql) ? [historical]
           : values[0] === 8 ? [current] : []];
       }
-      return [[...(/academic_years.status = 'active'/.test(sql) ? [] : [historical]), current]];
+      if (values[0] !== 1 || values[1] !== 3) return [[]];
+      return [[...(/academic_years\.status IN/.test(sql) ? [historical] : []), current]];
     }
     if (/FROM schools/.test(sql)) return [[{
       schoolName: 'St. Columban’s College', depedSchoolId: '305614',
       region: 'VIII', division: 'Leyte', district: 'Tacloban'
     }]];
-    if (/FROM published_final_grades/.test(sql)) return [includePublishedGrade ? [{
+    if (/FROM published_final_grades/.test(sql)) return [sf9PublishedGrades || (includePublishedGrade ? [{
       studentId: 10, subjectId: 11, academicTermId: 21, finalGrade: publishedFinalGrade, sectionName: 'St. Matthew'
-    }] : []];
+    }] : [])];
     if (/FROM section_students/.test(sql)) return [learnerRows || [learner]];
     if (/FROM student_parent_links/.test(sql)) return [[]];
     if (/FROM section_teachers/.test(sql)) return [[{ id: 11, name: 'English' }]];
-    if (/FROM academic_terms/.test(sql)) return [[{ id: 21, name: 'Quarter 1' }]];
+    if (/FROM academic_terms/.test(sql)) return [sf9ConfiguredTerms || [{ id: 21, name: 'Quarter 1' }]];
+    if (/FROM users/.test(sql)) return values[0] === 3 && values[1] === 1 ? [[{ displayName: sf9AdviserName }]] : [[]];
     if (/INSERT INTO audit_logs/.test(sql)) {
       writes += 1;
       auditValues.push({ sql, values });
@@ -318,7 +333,7 @@ test('school-form routes accept larger JSON edit batches without changing other 
   assert.match(parserSelection, /schoolFormJsonBodyParser[\s\S]*?jsonBodyParser/);
 });
 
-async function call(handler, method, body = {}, query = {}, templateId = '1') {
+async function call(handler, method, body = {}, query = {}, templateId = '1', user = { id: 3, schoolId: 1 }) {
   const result = { status: 200, body: null, error: null };
   const response = {
     status(code) { result.status = code; return this; },
@@ -328,7 +343,7 @@ async function call(handler, method, body = {}, query = {}, templateId = '1') {
   };
   await handler({
     method, body, query, params: { templateId },
-    user: { id: 3, schoolId: 1 }
+    user
   }, response, error => { result.error = error; });
   return result;
 }
@@ -420,6 +435,119 @@ test('SF8 supports senior-high strands and remains limited to the adviser active
   assert.equal(unauthorized.error?.status, 403);
   assert.equal(writes, 0);
   ({ sectionGradeCode, sectionGradeLevel, sectionStrandName } = previous);
+});
+
+test('SF9 selects a learner from the adviser roster and maps published grades for two to four terms', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades };
+  sectionGradeCode = 'grade-4';
+  sectionGradeLevel = 'Grade 4';
+
+  const learners = await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '9');
+  assert.equal(learners.error, null);
+  assert.deepEqual(learners.body.learners, [{ id: '10', displayName: 'Dela Cruz, Juan', lrn: '100201000015' }]);
+  const templates = await call(controller.listTemplates, 'GET');
+  assert.equal(templates.error, null);
+  assert.equal(templates.body.templates.some(template => template.formCode === 'SF9'), true);
+
+  for (const termCount of [2, 3, 4]) {
+    sf9ConfiguredTerms = Array.from({ length: termCount }, (_, index) => ({ id: 21 + index, name: `Term ${index + 1}` }));
+    sf9PublishedGrades = sf9ConfiguredTerms.map((term, index) => ({
+      studentId: 10, subjectId: 11, academicTermId: term.id, finalGrade: 80 + index * 2,
+      sectionName: index === 0 ? 'Previous Section' : 'St. Matthew'
+    }));
+    const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+    assert.equal(preview.error, null);
+    const cells = new Map(preview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+    assert.equal(cells.get('C17'), 'Dela Cruz, Juan');
+    assert.equal(cells.get('I18'), 4);
+    assert.equal(cells.get('H27'), 'Ms. Maria Reyes');
+    assert.deepEqual(['F31', 'G31', 'H31', 'I31'].map(address => cells.get(address)),
+      termCount === 4 ? ['Q1', 'Q2', 'Q3', 'Q4']
+        : Array.from({ length: 4 }, (_, index) => sf9ConfiguredTerms[index]?.name || ''));
+    assert.equal(cells.get('F32'), 80);
+    assert.equal(cells.get('J32'), 80 + (termCount - 1));
+    assert.equal(cells.get('J42'), 80 + (termCount - 1));
+    assert.equal(preview.body.previewFingerprint.length, 64);
+    assert.ok(preview.body.issues.some(issue => issue.fieldKey === 'draft'));
+    const editable = new Map(preview.body.editableCells.map(cell => [cell.cellAddress, cell.type]));
+    assert.equal(editable.get('C17'), 'text');
+    assert.equal(editable.get('I18'), 'number');
+    assert.equal(editable.get('F32'), 'number');
+    assert.equal(editable.get('J42'), 'number');
+    assert.equal(editable.has('F30'), false);
+    assert.equal(editable.has('A32'), false);
+  }
+
+  ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades } = previous);
+});
+
+test('SF9 flags missing and conflicting period grades and permits only adviser-owned Grades 4-10 learners', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades, allowSection };
+  sectionGradeCode = 'grade-4';
+  sectionGradeLevel = 'Grade 4';
+  sf9ConfiguredTerms = [{ id: 21, name: 'Quarter 1' }, { id: 22, name: 'Quarter 2' }];
+  sf9PublishedGrades = [{ studentId: 10, subjectId: 11, academicTermId: 21, finalGrade: 88, sectionName: 'Former Section' }];
+  const missing = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+  const missingCells = new Map(missing.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(missingCells.get('G32'), '');
+  assert.equal(missingCells.get('J32'), '');
+  assert.equal(missingCells.get('J42'), '');
+  assert.ok(missing.body.issues.some(issue => /no published grade/.test(issue.message)));
+
+  sf9PublishedGrades = [...sf9PublishedGrades, { ...sf9PublishedGrades[0], sectionName: 'Another Former Section' }];
+  const conflict = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+  assert.ok(conflict.body.issues.some(issue => /conflicting published grades/.test(issue.message)));
+
+  const rejectedStudent = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '999' }, '9');
+  assert.equal(rejectedStudent.error?.status, 403);
+  sectionGradeCode = 'grade-11';
+  const rejectedGrade = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+  assert.equal(rejectedGrade.error?.status, 403);
+  sectionGradeCode = 'grade-4';
+  allowSection = false;
+  const nonAdviser = await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '9');
+  assert.equal(nonAdviser.error?.status, 403);
+  allowSection = true;
+  const foreignSchool = await call(controller.listSf9Learners, 'GET', {}, { sectionId: '8' }, '9', { id: 3, schoolId: 2 });
+  assert.equal(foreignSchool.error?.status, 403);
+
+  ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades, allowSection } = previous);
+});
+
+test('SF9 exposes archived closed-year sections and rejects stale preview exports', async () => {
+  const previous = { sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades };
+  sectionGradeCode = 'grade-4';
+  sectionGradeLevel = 'Grade 4';
+  sf9ConfiguredTerms = [{ id: 21, name: 'Semester 1' }, { id: 22, name: 'Semester 2' }];
+  sf9PublishedGrades = sf9ConfiguredTerms.map(term => ({
+    studentId: 10, subjectId: 11, academicTermId: term.id, finalGrade: 90, sectionName: 'Previous Section'
+  }));
+  const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '9');
+  assert.equal(details.error, null);
+  assert.ok(details.body.sections.some(section => section.id === 1 && section.academicYearStatus === 'closed'));
+  assert.match(sectionQuery.sql, /academic_years\.status IN \('active', 'closed'\)/);
+  assert.match(sectionQuery.sql, /sections\.status = 'archived' AND academic_years\.status = 'closed'/);
+
+  const closedLearners = await call(controller.listSf9Learners, 'GET', {}, { sectionId: '1' }, '9');
+  assert.equal(closedLearners.error, null);
+  assert.deepEqual(closedLearners.body.learners.map(record => record.id), ['10']);
+  const closedPreview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '1', studentId: '10' }, '9');
+  assert.equal(closedPreview.error, null);
+  const closedCells = new Map(closedPreview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(closedCells.get('I18'), 4);
+  assert.deepEqual(['F31', 'G31', 'H31', 'I31'].map(address => closedCells.get(address)),
+    ['Semester 1', 'Semester 2', '', '']);
+
+  const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
+  sf9PublishedGrades = sf9PublishedGrades.map(grade => ({ ...grade, finalGrade: grade.finalGrade - 1 }));
+  writes = 0;
+  const stale = await call(controller.generateTemplate, 'POST', {
+    sectionId: 8, studentId: 10, previewFingerprint: preview.body.previewFingerprint
+  }, {}, '9');
+  assert.equal(stale.error?.status, 409);
+  assert.equal(writes, 0);
+
+  ({ sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades } = previous);
 });
 
 test('combined preview supports all 15 selections containing SF8', async () => {

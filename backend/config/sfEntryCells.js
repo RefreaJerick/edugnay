@@ -2,6 +2,7 @@ const { SF2 } = require('./sf2');
 const { SF3 } = require('./sf3');
 const { SF5 } = require('./sf5');
 const { SF8 } = require('./sf8');
+const { SF9 } = require('./sf9');
 
 function range(startRow, endRow, startColumn, endColumn) {
   return { startRow, endRow, startColumn, endColumn };
@@ -61,6 +62,16 @@ const entries = {
       range(65, 108, columnNumber('B'), columnNumber('O')),
       range(114, 116, columnNumber('B'), columnNumber('O')),
       range(118, 120, columnNumber('B'), columnNumber('O'))]
+  },
+  SF9: {
+    addresses: [...Object.values(SF9.headers), 'J42'],
+    ranges: [range(32, 41, columnNumber('B'), columnNumber('L')),
+      range(5, 10, columnNumber('R'), columnNumber('AC')),
+      range(15, 26, columnNumber('Q'), columnNumber('AC')),
+      range(27, 27, columnNumber('B'), columnNumber('K')),
+      range(29, 32, columnNumber('Q'), columnNumber('AC')),
+      range(34, 42, columnNumber('Q'), columnNumber('AC')),
+      range(46, 51, columnNumber('Q'), columnNumber('AC'))]
   }
 };
 
@@ -84,7 +95,7 @@ function isFormEntryPlaceholder(formCode, address) {
 function getFormEntryType(formCode, address, cell) {
   const normalized = String(address || '').toUpperCase();
   const parts = addressParts(normalized);
-  const dateFormat = String(cell.numFmt || '').toLowerCase();
+  const dateFormat = String(cell?.numFmt || '').toLowerCase();
   if (formCode === 'SF1') {
     if (/^B(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
     if (/^H(?:1\d|[2-5]\d)$/.test(normalized)) return 'date';
@@ -106,6 +117,13 @@ function getFormEntryType(formCode, address, cell) {
   if (formCode === 'SF8' && parts && parts.row >= 12 && parts.row <= 108
     && parts.row !== 64 && parts.column >= columnNumber('H') && parts.column <= columnNumber('L')) return 'number';
   if (formCode === 'SF8' && parts && parts.row >= 114 && parts.row <= 116) return 'number';
+  if (formCode === 'SF9' && parts?.row === 17 && parts.column === columnNumber('I')) return 'number';
+  if (formCode === 'SF9' && parts?.row === 18 && parts.column === columnNumber('I')) return 'number';
+  if (formCode === 'SF9' && parts && parts.row >= 5 && parts.row <= 10
+    && parts.column >= columnNumber('R') && parts.column <= columnNumber('AC')) return 'number';
+  if (formCode === 'SF9' && parts && parts.row >= 32 && parts.column >= columnNumber('F')
+    && parts.column <= columnNumber('J')) return 'number';
+  if (formCode === 'SF9' && normalized === 'J42') return 'number';
   if (formCode === 'SF3' && parts && parts.row === 9
     && parts.column >= columnNumber('D') && parts.column <= columnNumber('S')) return 'text';
   if (formCode === 'SF3' && parts && parts.row >= 12 && parts.row <= 59 && parts.row !== 36

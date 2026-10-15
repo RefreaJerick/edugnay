@@ -5,6 +5,7 @@ const JSZip = require('jszip');
 const ExcelJS = require('exceljs');
 const { getFormEntryType, isFormEntryCell, isFormEntryPlaceholder } = require('./sfEntryCells');
 const { getPrivateStorageDirectory } = require('./privateStorage');
+const { SF9 } = require('./sf9');
 
 const templateDirectory = path.resolve(__dirname, '..', '..', 'assets', 'templates', 'school-forms');
 const exportDirectory = getPrivateStorageDirectory('SF_EXPORT_DIRECTORY', 'sf-exports');
@@ -105,6 +106,101 @@ function columnIndex(label) {
   return [...String(label || '').toUpperCase()].reduce((number, character) => number * 26 + character.charCodeAt(0) - 64, 0);
 }
 
+function shiftRowReference(reference, offset) {
+  const value = String(reference || '');
+  const separator = value.lastIndexOf('!');
+  const prefix = separator >= 0 ? value.slice(0, separator + 1) : '';
+  const range = separator >= 0 ? value.slice(separator + 1) : value;
+  return prefix + range.replace(/(\$?[A-Z]{1,3}\$?)(\d+)/gi, (match, column, rowValue) => {
+    const row = Number(rowValue);
+    return `${column}${row >= 42 ? row + offset : row}`;
+  });
+}
+
+function cloneSf9SubjectRow(rowXml, rowNumber) {
+  const opening = /^<row\b[^>]*>/.exec(rowXml)?.[0];
+  const cells = [...rowXml.matchAll(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/g)]
+    .map(match => match[0])
+    .filter(cell => {
+      const column = /\br="([A-Z]+)\d+"/i.exec(cell)?.[1]?.toUpperCase();
+      return column && columnIndex(column) >= columnIndex('B') && columnIndex(column) <= columnIndex('L');
+    })
+    .map(cell => {
+      const attributes = /^<c\b([^>]*)/.exec(cell)?.[1] || '';
+      const column = /\br="([A-Z]+)\d+"/i.exec(cell)?.[1]?.toUpperCase();
+      const cleanAttributes = attributes.replace(/\br="[^"]*"/i, `r="${column}${rowNumber}"`)
+        .replace(/\s+t="[^"]*"/i, '')
+        .replace(/\s*\/$/, '');
+      return `<c${cleanAttributes}/>`;
+    });
+  if (!opening || !cells.length) throw createError('The SF9 subject-row formatting is unavailable.', 500);
+  const rowAttributes = opening.slice(4, -1).replace(/\br="\d+"/, `r="${rowNumber}"`);
+  return `<row${rowAttributes}>${cells.join('')}</row>`;
+}
+
+async function extendSf9SubjectRows(zip, worksheetPath, subjectCount) {
+  const extraRows = Math.max(0, subjectCount - SF9.baseSubjectRows);
+  if (!extraRows) return;
+  if (extraRows > 190) throw createError('SF9 supports up to 200 assigned subjects per learner report.', 422);
+
+  const worksheetXml = await zip.file(worksheetPath).async('string');
+  const sheetData = /<sheetData\b([^>]*)>([\s\S]*?)<\/sheetData>/.exec(worksheetXml);
+  if (!sheetData) throw createError('The SF9 worksheet data is unavailable.', 500);
+  const sourceRow = [...sheetData[2].matchAll(/<row\b[^>]*>[^]*?<\/row>/g)]
+    .map(match => match[0]).find(row => Number(/\br="(\d+)"/.exec(row)?.[1]) === 39);
+  if (!sourceRow) throw createError('The SF9 worksheet is missing a subject row to extend.', 500);
+
+  const insertedRows = Array.from({ length: extraRows }, (_, index) => cloneSf9SubjectRow(sourceRow, 42 + index));
+  const rows = [];
+  let insertionComplete = false;
+  const rowTags = [...sheetData[2].matchAll(/<row\b[^>]*\/>|<row\b[^>]*>[\s\S]*?<\/row>/g)].map(match => match[0]);
+  rowTags.forEach(row => {
+    const rowNumber = Number(/\br="(\d+)"/.exec(row)?.[1] || 0);
+    if (!insertionComplete && rowNumber >= 42) {
+      rows.push(...insertedRows);
+      insertionComplete = true;
+    }
+    if (rowNumber >= 42) {
+      const shiftedCells = row.replace(/(<c\b[^>]*\br=")([A-Z]+)(\d+)(")/gi,
+        (tag, before, column, cellRow, after) => Number(cellRow) >= 42
+          ? `${before}${column}${Number(cellRow) + extraRows}${after}` : tag);
+      rows.push(shiftedCells.replace(/(<row\b[^>]*\br=")(\d+)(")/,
+        (tag, before, rowValue, after) => `${before}${Number(rowValue) + extraRows}${after}`));
+    } else {
+      rows.push(row);
+    }
+  });
+  if (!insertionComplete) rows.push(...insertedRows);
+
+  let extended = worksheetXml.replace(sheetData[0], `<sheetData${sheetData[1]}>${rows.join('')}</sheetData>`);
+  extended = extended.replace(/<dimension\b([^>]*\bref=")([^"]+)("[^>]*\/?)/, (tag, before, reference, after) =>
+    `<dimension${before}${shiftRowReference(reference, extraRows)}${after}`);
+  extended = extended.replace(/<mergeCells\b([^>]*)>([\s\S]*?)<\/mergeCells>/, (block, attributes, content) => {
+    const mergeTags = [...content.matchAll(/<mergeCell\b[^>]*\bref="([^"]+)"[^>]*\/>/g)].map(match => match[0]);
+    const row39Merges = mergeTags.map(tag => /\bref="([^"]+)"/.exec(tag)?.[1])
+      .filter(reference => reference && /^([A-Z]+)39:([A-Z]+)39$/i.test(reference));
+    const shifted = mergeTags.map(tag => tag.replace(/\bref="([^"]+)"/, (match, reference) =>
+      `ref="${shiftRowReference(reference, extraRows)}"`));
+    const additions = [];
+    row39Merges.forEach(reference => {
+      for (let row = 42; row < 42 + extraRows; row += 1) {
+        additions.push(`<mergeCell ref="${reference.replace(/39/g, String(row))}"/>`);
+      }
+    });
+    return `<mergeCells${attributes.replace(/\bcount="\d+"/, `count="${mergeTags.length + additions.length}"`)}>${[...shifted, ...additions].join('')}</mergeCells>`;
+  });
+  extended = extended.replace(/<rowBreaks\b[^>]*>[\s\S]*?<\/rowBreaks>/, block =>
+    block.replace(/(<brk\b[^>]*\bid=")(\d+)(")/g, (match, before, row, after) =>
+      `${before}${Number(row) >= 42 ? Number(row) + extraRows : row}${after}`));
+  zip.file(worksheetPath, extended);
+
+  const workbookPath = 'xl/workbook.xml';
+  const workbookXml = await zip.file(workbookPath).async('string');
+  const updatedWorkbook = workbookXml.replace(/(<definedName\b(?=[^>]*\bname="_xlnm\.Print_Area")[^>]*>)([\s\S]*?)(<\/definedName>)/g,
+    (tag, opening, reference, closing) => `${opening}${shiftRowReference(reference, extraRows)}${closing}`);
+  zip.file(workbookPath, updatedWorkbook);
+}
+
 async function getWorksheetPath(zip, sheetName) {
   const workbookPath = 'xl/workbook.xml';
   const relationshipsPath = 'xl/_rels/workbook.xml.rels';
@@ -128,7 +224,7 @@ async function getWorksheetPath(zip, sheetName) {
 
 function getOfficialTemplatePath(filePath, formCode) {
   const fileName = path.basename(String(filePath || ''));
-  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx', SF3: 'sf3.xlsx', SF5: 'sf5.xlsx', SF8: 'sf8.xlsx' }[formCode]) {
+  if (fileName !== { SF1: 'sf1.xlsx', SF2: 'sf2.xlsx', SF3: 'sf3.xlsx', SF5: 'sf5.xlsx', SF8: 'sf8.xlsx', SF9: 'sf9.xlsx' }[formCode]) {
     throw createError('The official SF template file is unavailable.', 500);
   }
   const resolvedPath = path.resolve(templateDirectory, fileName);
@@ -157,8 +253,10 @@ async function getEditableCells(template, mappedCells = []) {
   if (!worksheet) throw createError('The official SF template worksheet is unavailable.', 500);
   const mappedAddresses = new Set(mappedCells.map(cell => String(cell.cellAddress || '').toUpperCase()));
   const editableCells = [];
-  for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
-    for (let columnNumber = 1; columnNumber <= worksheet.columnCount; columnNumber += 1) {
+  const lastRelevantRow = template.formCode === 'SF9' ? 51 : worksheet.rowCount;
+  const lastRelevantColumn = template.formCode === 'SF9' ? 29 : worksheet.columnCount;
+  for (let rowNumber = 1; rowNumber <= lastRelevantRow; rowNumber += 1) {
+    for (let columnNumber = 1; columnNumber <= lastRelevantColumn; columnNumber += 1) {
       const cell = worksheet.getCell(rowNumber, columnNumber);
       const address = cell.address.toUpperCase();
       if (!isFormEntryCell(template.formCode, address)) continue;
@@ -170,7 +268,33 @@ async function getEditableCells(template, mappedCells = []) {
       editableCells.push({ cellAddress: address, type: getFormEntryType(template.formCode, address, cell) });
     }
   }
+  if (template.formCode === 'SF9') {
+    const subjectRows = new Set(mappedCells.map(cell => /^B(\d+)$/.exec(String(cell.cellAddress || '').toUpperCase()))
+      .filter(match => match && Number(match[1]) >= 32)
+      .map(match => Number(match[1])));
+    const subjectCount = subjectRows.size;
+    if (subjectCount > 200) throw createError('SF9 supports up to 200 assigned subjects per learner report.', 422);
+    const existing = new Set(editableCells.map(cell => cell.cellAddress));
+    const dynamicAddresses = [];
+    for (let row = 42; row < 42 + Math.max(0, subjectCount - 10); row += 1) {
+      dynamicAddresses.push(`B${row}`, `F${row}`, `G${row}`, `H${row}`, `I${row}`, `J${row}`, `K${row}`);
+    }
+    dynamicAddresses.push(`J${42 + Math.max(0, subjectCount - 10)}`);
+    dynamicAddresses.forEach(cellAddress => {
+      if (!existing.has(cellAddress)) editableCells.push({
+        cellAddress,
+        type: getFormEntryType('SF9', cellAddress, null)
+      });
+    });
+  }
   return editableCells;
+}
+
+function subjectCountFromCells(cells) {
+  return new Set((Array.isArray(cells) ? cells : [])
+    .map(cell => /^B(\d+)$/.exec(String(cell.cellAddress || '').toUpperCase()))
+    .filter(match => match && Number(match[1]) >= 32)
+    .map(match => Number(match[1]))).size;
 }
 
 function getCombinedTemplatePath(formCodes) {
@@ -376,10 +500,15 @@ async function createExportWorkbook(template, cells) {
 
   const originalStyles = await stylesFile.async('nodebuffer');
   const worksheetPath = await getWorksheetPath(zip, template.sheetName);
-  const sourceWorksheet = await zip.file(worksheetPath).async('string');
+  let sourceWorksheet = await zip.file(worksheetPath).async('string');
   const pages = Array.isArray(cells?.[0]) ? cells : ['SF2', 'SF3', 'SF5', 'SF8'].includes(template.formCode) ? cells : [cells];
   if (!Array.isArray(pages) || !pages.length || pages.length > 100) throw createError('Invalid school form pages.', 500);
   if (template.formCode === 'SF1' && pages.length !== 1) throw createError('SF1 supports one worksheet page per export.', 500);
+  if (template.formCode === 'SF9' && pages.length !== 1) throw createError('SF9 supports one learner per workbook.', 500);
+  if (template.formCode === 'SF9') {
+    await extendSf9SubjectRows(zip, worksheetPath, subjectCountFromCells(pages[0]));
+    sourceWorksheet = await zip.file(worksheetPath).async('string');
+  }
   const averageStyles = template.formCode === 'SF5' ? await addSf5AverageStyles(zip, sourceWorksheet) : null;
   zip.file(worksheetPath, averageStyles === null ? applyCells(sourceWorksheet, pages[0])
     : styleSf5Averages(applyCells(sourceWorksheet, pages[0]), pages[0], averageStyles));
@@ -446,7 +575,7 @@ async function saveExport(buffer, formCode) {
 
 function getExportFilePath(publicPath) {
   const fileName = path.basename(String(publicPath || ''));
-  if (!/^sf(?:1|2|3|5|8)-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
+  if (!/^sf(?:1|2|3|5|8|9)-[a-f0-9-]{36}\.xlsx$/.test(fileName)) throw createError('The requested export file is invalid.', 400);
   const legacy = String(publicPath).replace(/^\/+/, '').startsWith('uploads/sf-exports/');
   const directory = legacy ? path.resolve(__dirname, '..', 'uploads', 'sf-exports') : exportDirectory;
   const filePath = path.resolve(directory, fileName);

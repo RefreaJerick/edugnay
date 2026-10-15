@@ -2821,11 +2821,9 @@ function applyCurrentDateToGradingBanners() {
   async function getMyAdvisorySections(includeClosed = false) {
     const session = await getCurrentUser();
     const teacherId = String(session?.apiUserId || '');
-    return (await getApiSections()).filter(section =>
-      section.adviserId === teacherId
-        && (section.status === 'active' || (includeClosed && section.status === 'archived' && section.academicYearStatus === 'closed'))
-        && (section.academicYearStatus === 'active' || (includeClosed && section.academicYearStatus === 'closed'))
-    );
+    return (await getApiSections()).filter(section => section.adviserId === teacherId
+      && (section.status === 'active' && section.academicYearStatus === 'active'
+        || includeClosed && section.status === 'archived' && section.academicYearStatus === 'closed'));
   }
 
   async function getApiMaterials(filters = {}) {
@@ -2872,12 +2870,13 @@ function applyCurrentDateToGradingBanners() {
         : record.formCode === 'SF2' ? 'sf2-daily-attendance-v1'
           : record.formCode === 'SF3' ? 'sf3-books-issued-returned-v1'
             : record.formCode === 'SF5' ? 'sf5-promotion-proficiency-v1'
-              : record.formCode === 'SF8' ? 'sf8-health-nutrition-v1' : `sf-${record.id}`,
+              : record.formCode === 'SF8' ? 'sf8-health-nutrition-v1'
+                : record.formCode === 'SF9' ? 'sf9-learner-performance-v1' : `sf-${record.id}`,
       apiId: String(record.id),
       formCode: record.formCode,
       formName: record.formName,
       version: record.version,
-      schoolLevels: record.formCode === 'SF5' ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
+      schoolLevels: ['SF5', 'SF9'].includes(record.formCode) ? ['elementary', 'jhs'] : ['elementary', 'jhs', 'shs'],
       source: 'official',
       status: record.mappingStatus === 'ready' ? RECORD_VALUES.statuses.ACTIVE : 'draft',
       mappingStatus: record.mappingStatus,
@@ -2888,6 +2887,17 @@ function applyCurrentDateToGradingBanners() {
       sheets: [{ name: record.sheetName, hidden: false }],
       updatedAt: null,
       updatedBy: null
+    }));
+  }
+
+  async function getSfTemplateLearners(templateId, sectionId) {
+    const template = (await getSfTemplates()).find(record => record.id === String(templateId));
+    if (!template || template.formCode !== 'SF9') throw new Error('Learner selection is available only for SF9.');
+    const response = await requestApi(`/sf-templates/${template.apiId}/learners?sectionId=${encodeURIComponent(sectionId)}`);
+    return (response.learners || []).map(learner => ({
+      id: String(learner.id),
+      displayName: learner.displayName || '',
+      lrn: learner.lrn || ''
     }));
   }
 
@@ -2935,7 +2945,7 @@ function applyCurrentDateToGradingBanners() {
       throw new Error('Select an active template with a verified mapping.');
     }
 
-    const section = (await getMyAdvisorySections(template.formCode === 'SF5')).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections(['SF5', 'SF9'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
 
     const schoolYear = String(values.schoolYear || '').trim();
@@ -2943,7 +2953,9 @@ function applyCurrentDateToGradingBanners() {
 
     if (EDUGNAY_API_BASE_URL) {
       const monthQuery = template.formCode === 'SF2' ? `&month=${encodeURIComponent(values.month || '')}` : '';
-      const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}${monthQuery}`);
+      const studentQuery = template.formCode === 'SF9' ? `&studentId=${encodeURIComponent(values.studentId || '')}` : '';
+      if (template.formCode === 'SF9' && !values.studentId) throw new Error('Select a learner for SF9.');
+      const response = await requestApi(`/sf-templates/${template.apiId}/preview?sectionId=${encodeURIComponent(section.id)}${monthQuery}${studentQuery}`);
       const generated = await window.EDUGNAY_SF_WORKBOOK.generatePreviewFromMappedCells(
         template,
         response.mappedCells || [],
@@ -2955,12 +2967,13 @@ function applyCurrentDateToGradingBanners() {
         templateId: template.id,
         apiTemplateId: template.apiId,
         sectionId: section.id,
+        studentId: template.formCode === 'SF9' ? String(values.studentId) : null,
         month: template.formCode === 'SF2' ? values.month : null,
         pages: response.pages || [response.mappedCells || []],
         editableCells: response.editableCells || [],
         breakdown: response.breakdown || [],
         schoolYear,
-        fileName: `${template.formCode}_${section.grade}-${section.name}_${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}.xlsx`
+        fileName: `${template.formCode}_${section.grade}-${section.name}_${template.formCode === 'SF9' ? `${values.studentName || 'learner'}_` : ''}${template.formCode === 'SF2' ? `${values.month}_` : ''}${schoolYear}${template.formCode === 'SF9' ? '-draft' : ''}.xlsx`
           .replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-'),
         issues,
         previewFingerprint: response.previewFingerprint,
@@ -3069,7 +3082,7 @@ function applyCurrentDateToGradingBanners() {
     if (!template || template.status !== RECORD_VALUES.statuses.ACTIVE || template.mappingStatus !== 'ready') {
       throw new Error('The selected SF template is not available for download.');
     }
-    const section = (await getMyAdvisorySections()).find(record => record.id === String(values.sectionId));
+    const section = (await getMyAdvisorySections(['SF5', 'SF9'].includes(template.formCode))).find(record => record.id === String(values.sectionId));
     if (!section) throw new Error('You do not have access to the selected class.');
     if (EDUGNAY_API_BASE_URL) {
       let exportId = values.exportId;
@@ -3078,6 +3091,7 @@ function applyCurrentDateToGradingBanners() {
           method: 'POST',
           body: JSON.stringify({
             sectionId: Number(section.id),
+            studentId: template.formCode === 'SF9' ? Number(values.studentId) : undefined,
             month: template.formCode === 'SF2' ? values.month : undefined,
             previewFingerprint: values.previewFingerprint,
             edits: Array.isArray(values.edits) ? values.edits : []
@@ -3258,6 +3272,7 @@ function applyCurrentDateToGradingBanners() {
     getMyTeachingSections,
     getMyAdvisorySections,
     getSfTemplates,
+    getSfTemplateLearners,
     getSfTemplatePreview,
     downloadSfTemplate,
     downloadBlankCombinedSfTemplates,

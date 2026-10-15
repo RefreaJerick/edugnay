@@ -34,6 +34,41 @@
       },
       rows: []
     },
+    'sf9-learner-performance-v1': {
+      templateId: 'sf9-learner-performance-v1',
+      sheetName: 'SF9 - GRADE 4-10',
+      requiredSheets: ['SF9 - GRADE 4-10'],
+      previewRows: 52,
+      previewColumns: 30,
+      mergeCount: 125,
+      anchors: {
+        B14: "LEARNER'S PERFORMANCE REPORT",
+        B29: 'LEARNING PROGRESS AND ACHIEVEMENT',
+        B30: 'Learning Areas',
+        F30: 'TERM',
+        J30: 'Final Grade',
+        K30: 'Remarks',
+        Q14: "TEACHER'S COMMENTS / REMARKS"
+      },
+      fields: {
+        region: { cellAddress: 'B7', source: 'header.region', type: 'text' },
+        division: { cellAddress: 'B8', source: 'header.division', type: 'text' },
+        district: { cellAddress: 'B9', source: 'header.district', type: 'text' },
+        address: { cellAddress: 'B10', source: 'header.address', type: 'text' },
+        schoolName: { cellAddress: 'B12', source: 'header.schoolName', type: 'text' },
+        schoolYear: { cellAddress: 'B15', source: 'header.schoolYear', type: 'text' },
+        learnerName: { cellAddress: 'C17', source: 'header.learnerName', type: 'text' },
+        age: { cellAddress: 'I17', source: 'header.age', type: 'number' },
+        sex: { cellAddress: 'K17', source: 'header.sex', type: 'text' },
+        lrn: { cellAddress: 'C18', source: 'header.lrn', type: 'text' },
+        gradeLevel: { cellAddress: 'I18', source: 'header.gradeLevel', type: 'text' },
+        section: { cellAddress: 'K18', source: 'header.section', type: 'text' },
+        strand: { cellAddress: 'C19', source: 'header.strand', type: 'text' },
+        adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
+        generalAverage: { cellAddress: 'J42', source: 'calculation.generalAverage', type: 'number' }
+      },
+      rows: []
+    },
     'sf5-promotion-proficiency-v1': {
       templateId: 'sf5-promotion-proficiency-v1',
       sheetName: 'School Form 5 (SF5)',
@@ -314,6 +349,36 @@
       : cell.text || '';
   }
 
+  function extendSf9PreviewRows(worksheet, subjectCount) {
+    const extraRows = Math.max(0, subjectCount - 10);
+    if (!extraRows) return extraRows;
+    if (extraRows > 190) throw new Error('SF9 supports up to 200 assigned subjects per learner report.');
+
+    const styleSource = worksheet.getRow(39);
+    const mergesBelowTable = worksheet.model.merges.filter(reference => {
+      const rows = [...reference.matchAll(/\d+/g)].map(match => Number(match[0]));
+      return Math.max(...rows) >= 42;
+    });
+    mergesBelowTable.forEach(reference => worksheet.unMergeCells(reference));
+    worksheet.spliceRows(42, 0, ...Array.from({ length: extraRows }, () => []));
+    mergesBelowTable.forEach(reference => worksheet.mergeCells(reference.replace(/([A-Z]+)(\d+)/g,
+      (match, column, rowValue) => Number(rowValue) >= 42 ? `${column}${Number(rowValue) + extraRows}` : match)));
+    for (let rowNumber = 42; rowNumber < 42 + extraRows; rowNumber += 1) {
+      const targetRow = worksheet.getRow(rowNumber);
+      targetRow.height = styleSource.height;
+      for (let columnNumber = 2; columnNumber <= 12; columnNumber += 1) {
+        const sourceCell = styleSource.getCell(columnNumber);
+        const targetCell = targetRow.getCell(columnNumber);
+        targetCell.style = JSON.parse(JSON.stringify(sourceCell.style || {}));
+        if (sourceCell.numFmt) targetCell.numFmt = sourceCell.numFmt;
+      }
+      worksheet.mergeCells(`B${rowNumber}:E${rowNumber}`);
+      worksheet.mergeCells(`K${rowNumber}:L${rowNumber}`);
+    }
+    worksheet.pageSetup.printArea = `A2:AD${52 + extraRows}`;
+    return extraRows;
+  }
+
   function editableAddresses(template) {
     const definition = getTemplateDefinition(template);
     if (!definition) return [];
@@ -332,7 +397,8 @@
     const definition = getTemplateDefinition(template) || {};
     const actualRows = worksheet.rowCount || worksheet.actualRowCount || 0;
     const actualColumns = worksheet.columnCount || worksheet.actualColumnCount || 0;
-    const rowCount = Math.min(Math.max(actualRows, 1), definition.previewRows || actualRows || 1);
+    const previewRows = Number(template.previewRows) || definition.previewRows || actualRows || 1;
+    const rowCount = Math.min(Math.max(actualRows, 1), previewRows);
     const columnCount = Math.min(Math.max(actualColumns, 1), definition.previewColumns || actualColumns || 1);
     const merges = mergeMap(worksheet);
     const editable = new Set((Array.isArray(editableCells) ? editableCells.map(item => typeof item === 'string' ? item : item.cellAddress)
@@ -630,6 +696,12 @@
     if (mapping.mappingStatus !== 'ready') throw new Error(mapping.issues[0]?.message || 'The SF template mapping is invalid.');
 
     const worksheet = workbook.getWorksheet(template.sheetName);
+    const sf9SubjectCount = template.formCode === 'SF9'
+      ? new Set(mappedCells.map(record => /^B(\d+)$/.exec(String(record.cellAddress || '').toUpperCase()))
+        .filter(match => match && Number(match[1]) >= 32).map(match => Number(match[1]))).size
+      : 0;
+    const sf9ExtraRows = template.formCode === 'SF9' ? extendSf9PreviewRows(worksheet, sf9SubjectCount) : 0;
+    const previewTemplate = sf9ExtraRows ? { ...template, previewRows: 52 + sf9ExtraRows } : template;
     const types = new Map(mappedCells.map(record => [String(record.cellAddress || '').toUpperCase(), record.type || 'text']));
     const entryCells = Array.isArray(editableCells) ? editableCells : editableAddresses(template).map(cellAddress => ({
       cellAddress,
@@ -661,7 +733,7 @@
       const address = String(record.cellAddress || '').toUpperCase();
       applyCell({ ...record, cellAddress: address, type: allowed.get(address) });
     });
-    const preview = worksheetPreview(worksheet, template, entryCells);
+    const preview = worksheetPreview(worksheet, previewTemplate, entryCells);
     const editedAddresses = new Set(edits.map(record => String(record.cellAddress || '').toUpperCase()));
     preview.rows.forEach(row => row.cells.forEach(cell => { cell.edited = editedAddresses.has(cell.address); }));
     return {

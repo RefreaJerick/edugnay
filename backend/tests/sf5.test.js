@@ -153,7 +153,7 @@ test('SF5 supports mixed active-year selections and retains individual closed-ye
   assert.match(page, /renderSf5Breakdown\(form\)/);
   assert.match(api, /templates\.length > 5[\s\S]*'SF1', 'SF2', 'SF3', 'SF5', 'SF8'/);
   assert.match(api, /breakdown: form\.breakdown \|\| \[\]/);
-  assert.match(api, /getMyAdvisorySections\(template\.formCode === 'SF5'\)/);
+  assert.match(api, /getMyAdvisorySections\(\['SF5', 'SF9'\]\.includes\(template\.formCode\)\)/);
 });
 
 test('SF5 breakdown omits the learner incomplete pill, keeps plain subject status, and preserves term order', async () => {

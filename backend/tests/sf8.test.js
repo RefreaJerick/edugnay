@@ -4,6 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
+const { assertXlsxPackageIntegrity } = require('./helpers/assertXlsxPackageIntegrity');
 const { SF8, buildSf8Pages } = require('../config/sf8');
 const { createCombinedExportWorkbook, createExportWorkbook, getEditableCells, getExportFilePath } = require('../config/sfExports');
 
@@ -115,6 +116,8 @@ test('SF8 private exports are accepted only by the protected school-form export 
 test('SF8 export retains the supplied layout and images while applying only workbook edits', async () => {
   const sourcePath = path.join(templateDirectory, 'sf8.xlsx');
   const sourceZip = await JSZip.loadAsync(await fs.readFile(sourcePath));
+  await assertXlsxPackageIntegrity(sourceZip);
+  assert.match(await sourceZip.file('xl/workbook.xml').async('string'), /firstSheet="0"/);
   const sourceStyles = await sourceZip.file('xl/styles.xml').async('nodebuffer');
   const pages = buildSf8Pages(school, section, [student(1)]).pages;
   pages[0].push(
@@ -125,6 +128,8 @@ test('SF8 export retains the supplied layout and images while applying only work
   );
   const output = await createExportWorkbook(sf8Template(), pages);
   const outputZip = await JSZip.loadAsync(output);
+  await assertXlsxPackageIntegrity(outputZip);
+  assert.match(await outputZip.file('xl/workbook.xml').async('string'), /firstSheet="0"/);
   assert.ok(sourceStyles.equals(await outputZip.file('xl/styles.xml').async('nodebuffer')));
 
   const workbook = new ExcelJS.Workbook();

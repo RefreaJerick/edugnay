@@ -131,67 +131,52 @@ async function main() {
   const sourceSheetRelationships = await source.file(sourceSheetRelationshipsPath)?.async('string');
   if (!sourceSheetRelationships) throw new Error('The SF8 worksheet is missing its package relationships.');
 
-  const outputSheetPath = 'xl/worksheets/sheet1.xml';
-  const outputSheetRelationshipsPath = 'xl/worksheets/_rels/sheet1.xml.rels';
-  let outputDrawingNumber = 0;
-  let outputPrinterNumber = 0;
+  const outputSheetPath = sourceSheetPath;
+  const outputSheetRelationshipsPath = sourceSheetRelationshipsPath;
+  let drawingCount = 0;
+  let printerSettingsCount = 0;
   const drawingPaths = [];
-  const outputSheetRelationships = [];
+  const imageExtensions = new Set();
   for (const tag of relationshipTags(sourceSheetRelationships)) {
     const type = relationshipType(tag);
     const target = resolvePart(sourceSheetPath, attribute(tag, 'Target'));
     if (type === 'drawing') {
-      outputDrawingNumber += 1;
+      drawingCount += 1;
       drawingPaths.push(target);
-      outputSheetRelationships.push(tag.replace(attribute(tag, 'Target'), `../drawings/drawing${outputDrawingNumber}.xml`));
     } else if (type === 'printerSettings') {
-      outputPrinterNumber += 1;
-      await copyPart(source, output, target, `xl/printerSettings/printerSettings${outputPrinterNumber}.bin`);
-      outputSheetRelationships.push(tag.replace(attribute(tag, 'Target'), `../printerSettings/printerSettings${outputPrinterNumber}.bin`));
+      printerSettingsCount += 1;
+      await copyPart(source, output, target);
     } else {
       throw new Error(`Unsupported SF8 worksheet relationship: ${type}.`);
     }
   }
-  if (outputDrawingNumber !== 1 || outputPrinterNumber !== 1) {
+  if (drawingCount !== 1 || printerSettingsCount !== 1) {
     throw new Error('The supplied SF8 worksheet must contain its official drawing and print settings.');
   }
 
   output.file(outputSheetPath, formattedTemplate.worksheetXml);
-  output.file(outputSheetRelationshipsPath,
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${outputSheetRelationships.join('')}</Relationships>`);
+  output.file(outputSheetRelationshipsPath, sourceSheetRelationships);
 
-  let drawingNumber = 0;
-  let mediaNumber = 0;
   for (const drawingPath of drawingPaths) {
-    drawingNumber += 1;
     const sourceDrawingRelationshipsPath = path.posix.join(path.posix.dirname(drawingPath), '_rels', `${path.posix.basename(drawingPath)}.rels`);
-    let drawingRelationships = await source.file(sourceDrawingRelationshipsPath)?.async('string');
+    const drawingRelationships = await source.file(sourceDrawingRelationshipsPath)?.async('string');
     if (!drawingRelationships) throw new Error('The SF8 image drawing is missing its relationships.');
-    const rewritten = [];
     for (const tag of relationshipTags(drawingRelationships)) {
       if (relationshipType(tag) !== 'image') throw new Error('The SF8 drawing contains an unsupported relationship.');
       const sourceImagePath = resolvePart(drawingPath, attribute(tag, 'Target'));
-      const extension = path.posix.extname(sourceImagePath).toLowerCase();
-      mediaNumber += 1;
-      const outputImagePath = `xl/media/image${mediaNumber}${extension}`;
-      await copyPart(source, output, sourceImagePath, outputImagePath);
-      rewritten.push(tag.replace(attribute(tag, 'Target'), `../media/${path.posix.basename(outputImagePath)}`));
+      imageExtensions.add(path.posix.extname(sourceImagePath).slice(1).toLowerCase());
+      await copyPart(source, output, sourceImagePath);
     }
-    const outputDrawingPath = `xl/drawings/drawing${drawingNumber}.xml`;
-    await copyPart(source, output, drawingPath, outputDrawingPath);
-    output.file(`xl/drawings/_rels/drawing${drawingNumber}.xml.rels`,
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rewritten.join('')}</Relationships>`);
+    await copyPart(source, output, drawingPath);
+    await copyPart(source, output, sourceDrawingRelationshipsPath);
   }
 
   const workbookRelationshipsTags = relationshipTags(workbookRelationships);
-  const nextId = Math.max(0, ...workbookRelationshipsTags.map(tag => Number(/^rId(\d+)$/.exec(attribute(tag, 'Id'))?.[1] || 0))) + 1;
-  const outputSheetRelationshipId = `rId${nextId}`;
   const commonRelationships = [];
   for (const tag of workbookRelationshipsTags) {
     const type = relationshipType(tag);
     if (attribute(tag, 'Id') === sourceSheetRelationshipId) {
-      commonRelationships.push(tag.replace(`Id="${sourceSheetRelationshipId}"`, `Id="${outputSheetRelationshipId}"`)
-        .replace(attribute(tag, 'Target'), 'worksheets/sheet1.xml'));
+      commonRelationships.push(tag);
     } else if (type === 'styles') {
       output.file(resolvePart(workbookPath, attribute(tag, 'Target')), formattedTemplate.stylesXml);
       commonRelationships.push(tag);
@@ -205,9 +190,10 @@ async function main() {
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${commonRelationships.join('')}</Relationships>`);
 
   let selectedWorkbook = workbookXml.replace(/<mc:AlternateContent\b[\s\S]*?<\/mc:AlternateContent>/, '')
+    .replace(/firstSheet="\d+"/, 'firstSheet="0"')
     .replace(/activeTab="\d+"/, 'activeTab="0"')
     .replace(/<sheets>[\s\S]*?<\/sheets>/,
-      `<sheets><sheet name="School Form 8 (SF8)" sheetId="1" r:id="${outputSheetRelationshipId}"/></sheets>`);
+      `<sheets>${selectedSheet.replace(attribute(selectedSheet, 'name'), 'School Form 8 (SF8)')}</sheets>`);
   const selectedIndex = sheets.indexOf(selectedSheet);
   selectedWorkbook = selectedWorkbook.replace(/<definedNames>[\s\S]*?<\/definedNames>/, block => {
     const names = [...block.matchAll(/<definedName\b([^>]*)>([\s\S]*?)<\/definedName>/g)]
@@ -227,23 +213,33 @@ async function main() {
   const contentTypes = await source.file('[Content_Types].xml')?.async('string');
   if (!contentTypes) throw new Error('The supplied SF8 workbook is missing content types.');
   const retainedOverrides = new Set([
-    '/xl/workbook.xml', '/xl/worksheets/sheet1.xml', '/xl/theme/theme1.xml', '/xl/styles.xml',
-    '/xl/sharedStrings.xml', '/xl/drawings/drawing1.xml', '/docProps/core.xml'
+    '/xl/workbook.xml', `/${sourceSheetPath}`, '/xl/theme/theme1.xml', '/xl/styles.xml',
+    '/xl/sharedStrings.xml', ...drawingPaths.map(drawingPath => `/${drawingPath}`), '/docProps/core.xml'
   ]);
-  const filteredContentTypes = contentTypes.replace(/<Override\b[^>]*\/>/g, tag => (
-    retainedOverrides.has(attribute(tag, 'PartName')) ? tag : ''
-  ));
+  const retainedParts = new Set();
+  const filteredContentTypes = contentTypes.replace(/<Override\b[^>]*\/>/g, tag => {
+    const partName = attribute(tag, 'PartName');
+    if (!retainedOverrides.has(partName) || retainedParts.has(partName)) return '';
+    retainedParts.add(partName);
+    return tag;
+  });
   const withPrinterTypes = filteredContentTypes.includes('printerSettings') ? filteredContentTypes
     : filteredContentTypes.replace('</Types>', '<Default Extension="bin" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings"/></Types>');
-  const withImageTypes = ['jpeg', 'png'].reduce((xml, extension) => {
-    if (mediaNumber && !new RegExp(`<Default\\b[^>]*Extension="${extension}"`, 'i').test(xml)) {
-      const contentType = extension === 'png' ? 'image/png' : 'image/jpeg';
+  const withImageTypes = [...imageExtensions].reduce((xml, extension) => {
+    if (extension && !new RegExp(`<Default\\b[^>]*Extension="${extension}"`, 'i').test(xml)) {
+      const contentType = extension === 'png' ? 'image/png' : extension === 'jpeg' ? 'image/jpeg' : '';
+      if (!contentType) throw new Error(`Unsupported SF8 image extension: ${extension}.`);
       return xml.replace('</Types>', `<Default Extension="${extension}" ContentType="${contentType}"/></Types>`);
     }
     return xml;
   }, withPrinterTypes);
-  const drawingOverride = '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>';
-  output.file('[Content_Types].xml', withImageTypes.replace('</Types>', `${drawingOverride}</Types>`));
+  const drawingOverrides = drawingPaths
+    .filter(drawingPath => !retainedParts.has(`/${drawingPath}`))
+    .map(drawingPath => `<Override PartName="/${drawingPath}" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`)
+    .join('');
+  output.file('[Content_Types].xml', drawingOverrides
+    ? withImageTypes.replace('</Types>', `${drawingOverrides}</Types>`)
+    : withImageTypes);
 
   await fs.writeFile(outputPath, await output.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
   process.stdout.write(`Extracted ${outputPath}\n`);

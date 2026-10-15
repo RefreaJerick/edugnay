@@ -2,6 +2,11 @@ const sfState = {
   templates: [],
   sections: [],
   selectedTemplateIds: [],
+  sf9Learners: [],
+  sf9LearnerSectionId: '',
+  sf9LearnerRequestKey: '',
+  sf9LearnersLoading: false,
+  sf9LearnersFailed: false,
   selectedTemplate: null,
   generated: null,
   combined: null,
@@ -15,6 +20,7 @@ const sfState = {
 
 let previewResizeTimer;
 let sfValidationReturnFocus = null;
+let sf9LearnerRequestSequence = 0;
 
 const sfElements = {
   list: document.getElementById('sfTemplateList'),
@@ -33,6 +39,8 @@ const sfElements = {
   templateDone: document.getElementById('sfTemplateDone'),
   templateList: document.getElementById('sfGenerateTemplates'),
   sectionSelect: document.getElementById('sfGenerateSection'),
+  learnerField: document.getElementById('sfGenerateLearnerField'),
+  learnerSelect: document.getElementById('sfGenerateLearner'),
   schoolYear: document.getElementById('sfGenerateSchoolYear'),
   monthField: document.getElementById('sfGenerateMonthField'),
   month: document.getElementById('sfGenerateMonth'),
@@ -152,6 +160,7 @@ function renderGenerationOptions() {
     || window.EDUGNAY_CONFIG.getActiveSchool()?.schoolYear
     || '';
   updateMonthField();
+  updateSf9LearnerOptions();
   updateGenerateButton();
 }
 
@@ -159,11 +168,15 @@ function availableSections() {
   const templates = selectedTemplates();
   const includesSf5 = templates.some(template => template.formCode === 'SF5');
   const sf5Only = templates.length === 1 && includesSf5;
+  const includesSf9 = templates.some(template => template.formCode === 'SF9');
+  const sf9Only = templates.length === 1 && includesSf9;
   return sfState.sections.filter(section => {
-    const yearIsAvailable = sf5Only
-      ? ['active', 'closed'].includes(section.academicYearStatus)
-      : section.academicYearStatus === 'active';
-    return yearIsAvailable && (!includesSf5 || /^grade-(?:[1-9]|10)$/.test(section.gradeCode));
+    const currentSection = section.status === 'active' && section.academicYearStatus === 'active';
+    const closedSection = (sf5Only || sf9Only)
+      && section.status === 'archived' && section.academicYearStatus === 'closed';
+    return (currentSection || closedSection)
+      && (!includesSf5 || /^grade-(?:[1-9]|10)$/.test(section.gradeCode))
+      && (!includesSf9 || /^grade-(?:[4-9]|10)$/.test(section.gradeCode));
   });
 }
 
@@ -177,6 +190,69 @@ function renderSectionOptions() {
   sfElements.sectionSelect.disabled = !sections.length;
   sfElements.schoolYear.value = sections.find(section => section.id === sfElements.sectionSelect.value)?.academicYear
     || sections[0]?.academicYear || '';
+  updateSf9LearnerOptions();
+}
+
+async function updateSf9LearnerOptions(force = false) {
+  const templates = selectedTemplates();
+  const sf9Template = templates.length === 1 && templates[0].formCode === 'SF9' ? templates[0] : null;
+  sfElements.learnerField.hidden = !sf9Template;
+  if (!sf9Template) {
+    sfState.sf9Learners = [];
+    sfState.sf9LearnerSectionId = '';
+    sfState.sf9LearnerRequestKey = '';
+    sfState.sf9LearnersLoading = false;
+    sfState.sf9LearnersFailed = false;
+    sfElements.learnerSelect.innerHTML = '<option value="">Select an advisory class first</option>';
+    sfElements.learnerSelect.disabled = true;
+    return;
+  }
+
+  const sectionId = sfElements.sectionSelect.value;
+  if (!sectionId) {
+    sfState.sf9Learners = [];
+    sfState.sf9LearnerSectionId = '';
+    sfState.sf9LearnerRequestKey = '';
+    sfElements.learnerSelect.innerHTML = '<option value="">Select an advisory class first</option>';
+    sfElements.learnerSelect.disabled = true;
+    return;
+  }
+
+  const requestKey = `${sf9Template.id}:${sectionId}`;
+  if (!force && sfState.sf9LearnerRequestKey === requestKey) return;
+  sfState.sf9LearnerRequestKey = requestKey;
+  sfState.sf9LearnerSectionId = sectionId;
+  sfState.sf9Learners = [];
+  sfState.sf9LearnersLoading = true;
+  sfState.sf9LearnersFailed = false;
+  sfElements.learnerSelect.disabled = true;
+  sfElements.learnerSelect.innerHTML = '<option value="">Loading learners...</option>';
+  const requestSequence = ++sf9LearnerRequestSequence;
+  updateGenerateButton();
+
+  try {
+    const learners = await window.EDUGNAY_CONFIG.getSfTemplateLearners(sf9Template.id, sectionId);
+    if (requestSequence !== sf9LearnerRequestSequence || sfState.sf9LearnerRequestKey !== requestKey) return;
+    sfState.sf9Learners = learners;
+    sfElements.learnerSelect.innerHTML = learners.length
+      ? `<option value="">Select a learner</option>${learners.map(learner => `
+        <option value="${escapeHtml(learner.id)}">${escapeHtml(learner.displayName)}${learner.lrn ? ` · ${escapeHtml(learner.lrn)}` : ''}</option>
+      `).join('')}`
+      : '<option value="">No learners are assigned to this class</option>';
+    sfElements.learnerSelect.disabled = !learners.length;
+  } catch (error) {
+    if (requestSequence !== sf9LearnerRequestSequence || sfState.sf9LearnerRequestKey !== requestKey) return;
+    sfState.sf9LearnersFailed = true;
+    sfState.sf9LearnerRequestKey = '';
+    sfElements.learnerSelect.innerHTML = '<option value="">Could not load learners. Focus to retry.</option>';
+    sfElements.learnerSelect.disabled = false;
+    showAppToast(error.message || 'The class learners could not be loaded.', 'error');
+  } finally {
+    if (requestSequence === sf9LearnerRequestSequence) {
+      sfState.sf9LearnersLoading = false;
+      updateGenerateButton();
+    }
+  }
 }
 
 function selectedTemplates() {
@@ -194,6 +270,7 @@ function supportsGeneratedSelection(templates) {
   const formCodes = templates.map(template => template.formCode);
   return templates.length >= 2 && templates.length <= 5
     && new Set(formCodes).size === formCodes.length
+    && !formCodes.includes('SF9')
     && formCodes.every(code => ['SF1', 'SF2', 'SF3', 'SF5', 'SF8'].includes(code));
 }
 
@@ -249,6 +326,9 @@ function setGenerationInputsBusy(isBusy) {
   sfElements.templateDone.disabled = isBusy;
   sfElements.blankCombinedDownloadButton.disabled = isBusy || sfState.blankDownloadInProgress;
   sfElements.sectionSelect.disabled = isBusy || !templateInputs.length || !availableSections().length;
+  const needsSf9Learner = selectedTemplates().length === 1 && selectedTemplates()[0]?.formCode === 'SF9';
+  sfElements.learnerSelect.disabled = isBusy || !needsSf9Learner || sfState.sf9LearnersLoading
+    || (!sfState.sf9Learners.length && !sfState.sf9LearnersFailed);
   sfElements.month.disabled = isBusy || sfElements.monthField.hidden;
 }
 
@@ -258,6 +338,8 @@ function updateGenerateButton() {
     supportsGeneratedSelection(templates) &&
     (window.EDUGNAY_API?.isBackendAvailable || (templates.length === 1 && templates[0].formCode === 'SF1')) &&
     sfElements.sectionSelect.value &&
+    (!templates.some(template => template.formCode === 'SF9')
+      || (sfElements.learnerSelect.value && !sfState.sf9LearnersLoading)) &&
     sfElements.schoolYear.value &&
     (sfElements.monthField.hidden || sfElements.month.value)
   );
@@ -618,6 +700,8 @@ function renderGeneratedPreview() {
     ? 'Review the roster draft. Complete book details in the downloaded workbook.'
     : form.formCode === 'SF8'
     ? 'Review the learner roster and complete health measurements and assessment details in the downloaded draft.'
+    : form.formCode === 'SF9'
+    ? 'Review this learner’s performance report. Class-day attendance, comments, signatures, and transfer details remain for adviser completion.'
     : 'Review the selected form previews before downloading the XLSX file.';
   sfElements.editButton.textContent = sfState.editing ? 'Done editing' : 'Edit generated form';
   sfElements.editButton.disabled = !form.editableCells?.length;
@@ -642,7 +726,9 @@ async function generateForm(event) {
     const values = {
       sectionId: sfElements.sectionSelect.value,
       schoolYear: sfElements.schoolYear.value,
-      month: sfElements.month.value
+      month: sfElements.month.value,
+      studentId: sfElements.learnerSelect.value,
+      studentName: sfState.sf9Learners.find(learner => learner.id === sfElements.learnerSelect.value)?.displayName || ''
     };
     if (templates.length > 1) {
       sfState.combined = await window.EDUGNAY_CONFIG.generateCombinedSfForms({
@@ -745,6 +831,7 @@ async function downloadGeneratedWorkbook() {
       : await window.EDUGNAY_CONFIG.exportSfForm({
         templateId: sfState.generated.templateId,
         sectionId: sfState.generated.sectionId,
+        studentId: sfState.generated.studentId,
         month: sfState.generated.month,
         fileName: sfState.generated.fileName,
         mappedCells: sfState.generated.mappedCells,
@@ -849,11 +936,24 @@ async function initializeSfTemplatesPage() {
 sfElements.generatorForm.addEventListener('submit', generateForm);
 sfElements.templateList.addEventListener('change', event => {
   if (!event.target.matches('input[type="checkbox"]')) return;
+  const checkedTemplates = selectedTemplates();
+  if (checkedTemplates.some(template => template.formCode === 'SF9') && checkedTemplates.length > 1) {
+    const selectedSf9 = checkedTemplates.find(template => template.formCode === 'SF9');
+    showAppToast('The selected form cannot be combined with other forms.', 'error');
+    if (event.target.checked && selectedSf9.id === event.target.value) {
+      sfElements.templateList.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        if (input.value !== selectedSf9.id) input.checked = false;
+      });
+    } else {
+      event.target.checked = false;
+    }
+  }
   sfState.selectedTemplateIds = selectedTemplates().map(template => template.id);
   updateTemplatePicker();
   invalidateGeneratedPreview();
   renderSectionOptions();
   updateMonthField();
+  updateSf9LearnerOptions();
   updateGenerateButton();
 });
 sfElements.templateTrigger.addEventListener('click', () => {
@@ -878,6 +978,7 @@ sfElements.templateClear.addEventListener('click', () => {
   invalidateGeneratedPreview();
   renderSectionOptions();
   updateMonthField();
+  updateSf9LearnerOptions();
   updateGenerateButton();
 });
 sfElements.templateDone.addEventListener('click', () => {
@@ -903,11 +1004,19 @@ document.addEventListener('keydown', event => {
   if (select === sfElements.sectionSelect) {
     const section = sfState.sections.find(record => record.id === sfElements.sectionSelect.value);
     sfElements.schoolYear.value = section?.academicYear || '';
+    updateSf9LearnerOptions();
   }
   updateMonthField();
   invalidateGeneratedPreview();
   updateGenerateButton();
 }));
+sfElements.learnerSelect.addEventListener('change', () => {
+  invalidateGeneratedPreview();
+  updateGenerateButton();
+});
+sfElements.learnerSelect.addEventListener('focus', () => {
+  if (sfState.sf9LearnersFailed) updateSf9LearnerOptions(true);
+});
 sfElements.librarySearch.addEventListener('input', renderTemplateLibrary);
 [sfElements.codeFilter, sfElements.levelFilter]
   .forEach(select => select.addEventListener('change', renderTemplateLibrary));

@@ -6,6 +6,7 @@ const { SF2, monthInYear, buildSf2Pages } = require('../config/sf2');
 const { SF3, buildSf3Pages } = require('../config/sf3');
 const { SF5, buildSf5Pages } = require('../config/sf5');
 const { SF8, buildSf8Pages } = require('../config/sf8');
+const { SF9, buildSf9Pages, displayName: sf9DisplayName } = require('../config/sf9');
 
 const SF1_TEMPLATE = {
   formCode: 'SF1',
@@ -133,10 +134,10 @@ async function getTemplate(database, templateId) {
       mapping_status AS mappingStatus, file_path AS filePath,
       default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm
     FROM school_form_templates
-    WHERE id = ? AND form_code IN (?, ?, ?, ?, ?) AND source_type = 'official'
+    WHERE id = ? AND form_code IN (?, ?, ?, ?, ?, ?) AND source_type = 'official'
       AND template_status = 'active' AND mapping_status = 'ready'
     LIMIT 1`,
-    [templateId, 'SF1', 'SF2', 'SF3', 'SF5', 'SF8']
+    [templateId, 'SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9']
   );
   if (!templates[0]) throw createError('This SF template is unavailable.', 404);
   return templates[0];
@@ -144,22 +145,28 @@ async function getTemplate(database, templateId) {
 
 async function getAdvisorySections(database, teacherId, schoolId, includeClosed = false) {
   const [sections] = await database.execute(
-    `SELECT sections.id, sections.name, academic_years.label AS academicYear,
+    `SELECT sections.id, sections.name, sections.status AS sectionStatus, academic_years.label AS academicYear,
+      academic_years.status AS academicYearStatus, school_grade_levels.grade_code AS gradeCode,
       school_grade_levels.display_name AS gradeLevel
     FROM sections
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       AND academic_years.status ${includeClosed ? "IN ('active', 'closed')" : "= 'active'"}
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     WHERE sections.school_id = ? AND sections.adviser_user_id = ?
-      AND ${includeClosed ? "(sections.status = 'active' OR (sections.status = 'archived' AND academic_years.status = 'closed'))" : "sections.status = 'active'"}
+      AND ${includeClosed
+    ? "((sections.status = 'active' AND academic_years.status = 'active') OR (sections.status = 'archived' AND academic_years.status = 'closed'))"
+    : "sections.status = 'active'"}
     ORDER BY school_grade_levels.sort_order, sections.name`,
     [schoolId, teacherId]
   );
   return sections.map(section => ({
     id: section.id,
     name: section.name,
+    sectionStatus: section.sectionStatus,
     gradeLevel: section.gradeLevel,
+    gradeCode: section.gradeCode,
     academicYear: section.academicYear,
+    academicYearStatus: section.academicYearStatus,
     displayName: `${section.gradeLevel} - ${section.name}`
   }));
 }
@@ -181,7 +188,9 @@ async function getAdvisorySection(database, teacherId, schoolId, sectionId, incl
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     LEFT JOIN school_shs_tracks AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
     WHERE sections.id = ? AND sections.school_id = ? AND sections.adviser_user_id = ?
-      AND ${includeClosed ? "(sections.status = 'active' OR (sections.status = 'archived' AND academic_years.status = 'closed'))" : "sections.status = 'active'"}
+      AND ${includeClosed
+    ? "((sections.status = 'active' AND academic_years.status = 'active') OR (sections.status = 'archived' AND academic_years.status = 'closed'))"
+    : "sections.status = 'active'"}
     LIMIT 1`,
     [sectionId, schoolId, teacherId]
   );
@@ -562,9 +571,9 @@ async function listTemplates(req, res, next) {
         default_sheet_name AS sheetName, requires_academic_term AS requiresAcademicTerm,
         mapping_status AS mappingStatus
       FROM school_form_templates
-      WHERE form_code IN (?, ?, ?, ?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
+      WHERE form_code IN (?, ?, ?, ?, ?, ?) AND source_type = 'official' AND template_status = 'active' AND mapping_status = 'ready'
       ORDER BY form_code, version DESC`,
-      ['SF1', 'SF2', 'SF3', 'SF5', 'SF8']
+      ['SF1', 'SF2', 'SF3', 'SF5', 'SF8', 'SF9']
     );
     res.json({ templates: templates.map(formatTemplate) });
   } catch (error) {
@@ -577,7 +586,13 @@ async function getTemplateDetails(req, res, next) {
     const database = getDatabase();
     await ensureFeatureEnabled(database, req.user.schoolId);
     const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
-    const mappings = template.formCode === 'SF8'
+    const mappings = template.formCode === 'SF9'
+      ? [...Object.entries(SF9.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9.sheetName, cellReference })),
+        { fieldKey: 'subjectName', worksheetName: SF9.sheetName, cellReference: `B${SF9.firstSubjectRow}` },
+        { fieldKey: 'firstPeriodGrade', worksheetName: SF9.sheetName, cellReference: `F${SF9.firstSubjectRow}` },
+        { fieldKey: 'finalGrade', worksheetName: SF9.sheetName, cellReference: `J${SF9.firstSubjectRow}` },
+        { fieldKey: 'generalAverage', worksheetName: SF9.sheetName, cellReference: 'J42' }]
+      : template.formCode === 'SF8'
       ? [...Object.entries(SF8.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF8.sheetName, cellReference })),
         ...[['maleLrn', 'B12'], ['maleName', 'C12'], ['maleBirthDate', 'G12'],
           ['femaleLrn', 'B65'], ['femaleName', 'C65'], ['femaleBirthDate', 'G65']]
@@ -607,8 +622,33 @@ async function getTemplateDetails(req, res, next) {
         fieldKey, worksheetName: SF1_TEMPLATE.sheetName, cellReference: `${field.column}${SF1_TEMPLATE.learnerStartRow}`
       }))
     ];
-    const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId, template.formCode === 'SF5');
-    res.json({ template: formatTemplate(template), mappings, sections, maxLearners: template.formCode === 'SF1' ? 49 : null });
+    const sections = await getAdvisorySections(database, req.user.id, req.user.schoolId,
+      ['SF5', 'SF9'].includes(template.formCode));
+    res.json({ template: formatTemplate(template), mappings, sections,
+      maxLearners: template.formCode === 'SF1' ? 49 : template.formCode === 'SF9' ? 1 : null });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listSf9Learners(req, res, next) {
+  try {
+    const database = getDatabase();
+    await ensureFeatureEnabled(database, req.user.schoolId);
+    const template = await getTemplate(database, parseId(req.params.templateId, 'template ID'));
+    if (template.formCode !== 'SF9') throw createError('Learner selection is available only for SF9.', 404);
+    const sectionId = parseId(req.query.sectionId, 'section ID');
+    const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId, true);
+    if (!/^grade-(?:[4-9]|10)$/.test(section.gradeCode)) {
+      throw createError('SF9 is available only for Grades 4–10.', 403);
+    }
+    const learners = await getSectionLearners(database, req.user.schoolId, section.id,
+      section.academicYearStatus === 'closed' ? section.endDate : null);
+    res.json({ learners: learners.map(learner => ({
+      id: String(learner.userId),
+      displayName: sf9DisplayName(learner),
+      lrn: learner.lrn || ''
+    })) });
   } catch (error) {
     next(error);
   }
@@ -621,14 +661,18 @@ async function preparePreview(req, database) {
   const termValue = req.method === 'GET' ? req.query.academicTermId : req.body.academicTermId;
   const requestedTermId = termValue === undefined || termValue === null || termValue === ''
     ? null : parseId(termValue, 'academic term ID');
-  const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId, template.formCode === 'SF5');
+  const section = await getAdvisorySection(database, req.user.id, req.user.schoolId, sectionId,
+    ['SF5', 'SF9'].includes(template.formCode));
   if (template.formCode === 'SF5' && !/^grade-(?:[1-9]|10)$/.test(section.gradeCode)) {
     throw createError('SF5 is available only for Grades 1–10.', 403);
+  }
+  if (template.formCode === 'SF9' && !/^grade-(?:[4-9]|10)$/.test(section.gradeCode)) {
+    throw createError('SF9 is available only for Grades 4–10.', 403);
   }
   const term = await validateTerm(database, req.user.schoolId, section, requestedTermId, Boolean(template.requiresAcademicTerm));
   const [schools] = await database.execute(
     `SELECT name AS schoolName, deped_school_id AS depedSchoolId, region_name AS region,
-      division_name AS division, district_name AS district
+      division_name AS division, district_name AS district, address_line AS addressLine
     FROM schools WHERE id = ? LIMIT 1`,
     [req.user.schoolId]
   );
@@ -661,6 +705,21 @@ async function preparePreview(req, database) {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id);
     data = buildSf8Pages(schools[0], section, learners);
     pages = data.pages;
+  } else if (template.formCode === 'SF9') {
+    const studentId = parseId(req.method === 'GET' ? req.query.studentId : req.body.studentId, 'learner ID');
+    const learners = await getSectionLearners(database, req.user.schoolId, section.id,
+      section.academicYearStatus === 'closed' ? section.endDate : null);
+    const learner = learners.find(record => Number(record.userId) === studentId);
+    if (!learner) throw createError('Select a learner currently or historically enrolled in this advisory class.', 403);
+    const gradeData = await getSf5GradeData(database, req.user.schoolId, section, [learner]);
+    const [advisers] = await database.execute(
+      `SELECT display_name AS displayName FROM users
+      WHERE id = ? AND school_id = ? AND role = 'teacher' LIMIT 1`,
+      [req.user.id, req.user.schoolId]
+    );
+    data = buildSf9Pages(schools[0], section, advisers[0]?.displayName || '', learner,
+      gradeData.subjects, gradeData.terms, gradeData.grades);
+    pages = data.pages;
   } else {
     const learners = await getSectionLearners(database, req.user.schoolId, section.id);
     data = buildGenerationData(schools[0], section, learners);
@@ -684,6 +743,7 @@ async function preparePreview(req, database) {
   const fingerprint = crypto.createHash('sha256').update(JSON.stringify({
     templateId: template.id, version: template.version, schoolId: req.user.schoolId,
     sectionId: section.id, termId: term?.id || null, month: template.formCode === 'SF2' ? month : null,
+    studentId: template.formCode === 'SF9' ? Number(req.method === 'GET' ? req.query.studentId : req.body.studentId) : null,
     pages, issues, editableCells, breakdown: data.breakdown || null
   })).digest('hex');
   return { template, section, term, month, pages, mappedCells, editableCells, issues,
@@ -913,7 +973,7 @@ async function downloadExport(req, res, next) {
     if (!exports[0]) throw createError('This SF export is unavailable.', 404);
     const filePath = getExportFilePath(exports[0].filePath);
     if (!fs.existsSync(filePath)) throw createError('This SF export file is unavailable.', 404);
-    const draft = ['SF5', 'SF8'].includes(exports[0].formCode) ? '-draft' : '';
+    const draft = ['SF5', 'SF8', 'SF9'].includes(exports[0].formCode) ? '-draft' : '';
     res.download(filePath, `${exports[0].formCode.toLowerCase()}${draft}-export-${exportId}.xlsx`, { dotfiles: 'allow' });
   } catch (error) {
     next(error);
@@ -925,6 +985,7 @@ module.exports = {
   generateCombinedTemplates,
   generateTemplate,
   getTemplateDetails,
+  listSf9Learners,
   listTemplates,
   previewCombinedTemplates,
   previewTemplate
