@@ -8,6 +8,7 @@ const commonSource = fs.readFileSync(path.join(__dirname, '../../assets/js/shell
 const dashboardSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
 const sectionsSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
 const sectionsStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
+const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const sfSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
 
 function createTransferNoticeContext(state) {
@@ -49,6 +50,56 @@ test('teacher section callers use the subject-assignment scope', () => {
   assert.match(commonSource, /getApiSections\(\{ scope: 'teaching' \}\)/);
   assert.match(dashboardSource, /EDUGNAY_CONFIG\.getMyTeachingSections\(\)/);
   assert.doesNotMatch(dashboardSource, /EDUGNAY_API\.getSectionTeachers\(section\.id\)/);
+});
+
+test('score component cards keep icons neutral until selected and space exam-part controls', () => {
+  assert.doesNotMatch(sectionsSource, /selectedCatBadge|cat-badge/);
+  for (const tone of ['ww', 'pt', 'qa']) {
+    assert.match(sectionsSource, new RegExp(`class="comp-type-opt cat-${tone}[^\"]*"[\\s\\S]*?class="comp-type-icon"`));
+  }
+  assert.match(sectionsSource, /data-lucide="\$\{presentation\.icon\}"/);
+  assert.match(sectionsSource, /aria-pressed="\$\{index === 0\}"/);
+  assert.match(sectionsStyles, /\.comp-type-opt\s*\{[^}]*background:\s*var\(--white\)/);
+  assert.match(sectionsStyles, /\.comp-type-opt:hover\s*\{[^}]*background:\s*var\(--gray-50\)/);
+  assert.match(sectionsStyles, /\.comp-type-opt\.selected\s*\{[^}]*background:\s*var\(--pill-background/);
+  assert.match(sectionsStyles, /\.comp-type-icon\s*\{[^}]*color:\s*inherit/);
+  assert.match(sectionsStyles, /\.comp-type-opts \+ #scoreExamPartGroup\s*\{[^}]*margin-top:\s*16px/);
+});
+
+test('grading average headers abbreviate standard categories but retain accessible full names', () => {
+  const functionSource = sectionsSource.match(/function gradingAverageHeaderLabel\(label\) \{[\s\S]*?\n  \}/)[0];
+  const context = vm.createContext({});
+  vm.runInContext(functionSource, context);
+  assert.equal(context.gradingAverageHeaderLabel('Written/Oral Works'), 'WW');
+  assert.equal(context.gradingAverageHeaderLabel('Performance Tasks'), 'PT');
+  assert.equal(context.gradingAverageHeaderLabel('Examinations'), 'Exams');
+  assert.equal(context.gradingAverageHeaderLabel('Custom Lab Activities'), 'Custom Lab Activities');
+
+  assert.match(sectionsSource, /th\.textContent = `\$\{gradingAverageHeaderLabel\(categoryName\)\} Avg`/);
+  assert.match(sectionsSource, /th\.setAttribute\('aria-label', `\$\{categoryName\} average`\)/);
+  assert.match(sectionsSource, /th\.title = `\$\{categoryName\}: \$\{Number\(rule\.weight\) \|\| 0\}% of the final grade`/);
+});
+
+test('score component headers abbreviate standard categories while retaining full export labels', () => {
+  assert.match(sectionsSource, /const categoryName = String\(c\.categoryName \|\| c\.cat \|\| ''\)\.trim\(\)/);
+  assert.match(sectionsSource, /escapeHtml\(gradingAverageHeaderLabel\(categoryName\)\)/);
+  assert.match(sectionsSource, /escapeHtml\(categoryName\) \+ '" data-category-name="' \+ window\.EDUGNAY_CONFIG\.escapeHtml\(categoryName\)/);
+  assert.match(sectionsSource, /categoryLabel\.dataset\.categoryName \|\| categoryLabel\.textContent\.trim\(\)/);
+});
+
+test('score component category labels keep their colors without pill styling', () => {
+  assert.match(sectionsSource, /comp-head-type ' \+ \(typeClass\[c\.cat\] \|\| 'type-ww'\)/);
+  assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*display:\s*block;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
+  assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*overflow-wrap:\s*anywhere;/);
+  for (const [tone, color] of [['type-ww', '--purple'], ['type-pt', '--blue-mid'], ['type-qa', '--green-darker']]) {
+    assert.match(sharedStyles, new RegExp(`\\.comp-head-type\\.${tone}\\s*\\{[^}]*--pill-color:\\s*var\\(${color}\\)`));
+  }
+});
+
+test('Publish Grades modal uses the wider shared desktop modal width', () => {
+  assert.match(sectionsStyles, /\.modal\s*\{[^}]*max-width:\s*480px/);
+  assert.match(sectionsStyles, /#publishModal \.modal\s*\{[^}]*max-width:\s*600px/);
+  assert.match(sectionsStyles, /\.modal-backdrop\s*\{[^}]*padding:\s*20px/);
 });
 
 test('direct section access stops before subject APIs when no assignment exists', () => {
@@ -222,6 +273,7 @@ test('assignment creation uses the selected subject ID even if a label is stale'
     CURRENT_TEACHER_ID: 'teacher-1',
     TEACHER_SECTION_SCHOOL_ID: 'school-1',
     BACKEND_GRADE_CONTEXT: { sectionId: 'grade-7', subjectId: 'english' },
+    BACKEND_SUBJECT_GRADING_CONFIG: null,
     BACKEND_ASSIGNMENTS: [],
     getBackendTermId: () => 'q1',
     isBackendGradeMode: () => true,

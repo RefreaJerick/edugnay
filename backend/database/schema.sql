@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS school_portal_features (
   grades_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   narrative_reports_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   journals_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  attendance_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  attendance_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   sf_templates_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -152,6 +152,26 @@ CREATE TABLE IF NOT EXISTS school_shs_tracks (
     FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE CASCADE,
   CONSTRAINT fk_school_shs_tracks_tenant_level
     FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS school_shs_strands (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  school_level_id BIGINT UNSIGNED NOT NULL,
+  track_id BIGINT UNSIGNED NOT NULL,
+  strand_code VARCHAR(40) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_school_shs_strands_track_code (track_id, strand_code),
+  UNIQUE KEY uq_school_shs_strands_school_id (school_id, id),
+  CONSTRAINT fk_school_shs_strands_track
+    FOREIGN KEY (track_id) REFERENCES school_shs_tracks(id) ON DELETE CASCADE,
+  CONSTRAINT fk_school_shs_strands_tenant_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_school_shs_strands_tenant_track
+    FOREIGN KEY (school_id, track_id) REFERENCES school_shs_tracks(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- =========================================================
@@ -361,6 +381,7 @@ CREATE TABLE IF NOT EXISTS subjects (
   name VARCHAR(120) NOT NULL,
   school_level_id BIGINT UNSIGNED NULL,
   grade_level_id BIGINT UNSIGNED NULL,
+  shs_grading_group VARCHAR(40) NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -376,6 +397,28 @@ CREATE TABLE IF NOT EXISTS subjects (
     FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_subjects_tenant_grade
     FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS subject_grade_scopes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  grade_level_id BIGINT UNSIGNED NOT NULL,
+  track_id BIGINT UNSIGNED NULL,
+  strand_id BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_subject_grade_scope (school_id, subject_id, grade_level_id, track_id, strand_id),
+  KEY idx_subject_grade_scopes_grade (school_id, grade_level_id, track_id, strand_id),
+  CONSTRAINT fk_subject_grade_scopes_school
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
+  CONSTRAINT fk_subject_grade_scopes_subject
+    FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_subject_grade_scopes_grade
+    FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_subject_grade_scopes_track
+    FOREIGN KEY (school_id, track_id) REFERENCES school_shs_tracks(school_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_subject_grade_scopes_strand
+    FOREIGN KEY (school_id, strand_id) REFERENCES school_shs_strands(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS school_settings (
@@ -399,6 +442,7 @@ CREATE TABLE IF NOT EXISTS sections (
   academic_year_id BIGINT UNSIGNED NOT NULL,
   school_level_id BIGINT UNSIGNED NOT NULL,
   grade_level_id BIGINT UNSIGNED NOT NULL,
+  track_id BIGINT UNSIGNED NULL,
   strand_id BIGINT UNSIGNED NULL,
   name VARCHAR(120) NOT NULL,
   capacity SMALLINT UNSIGNED NOT NULL DEFAULT 40,
@@ -416,8 +460,10 @@ CREATE TABLE IF NOT EXISTS sections (
     FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE RESTRICT,
   CONSTRAINT fk_sections_grade_level
     FOREIGN KEY (grade_level_id) REFERENCES school_grade_levels(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_track
+    FOREIGN KEY (track_id) REFERENCES school_shs_tracks(id) ON DELETE SET NULL,
   CONSTRAINT fk_sections_strand
-    FOREIGN KEY (strand_id) REFERENCES school_shs_tracks(id) ON DELETE SET NULL,
+    FOREIGN KEY (strand_id) REFERENCES school_shs_strands(id) ON DELETE SET NULL,
   CONSTRAINT fk_sections_adviser
     FOREIGN KEY (adviser_user_id) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT fk_sections_tenant_year
@@ -427,7 +473,9 @@ CREATE TABLE IF NOT EXISTS sections (
   CONSTRAINT fk_sections_tenant_grade
     FOREIGN KEY (school_id, grade_level_id) REFERENCES school_grade_levels(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_sections_tenant_track
-    FOREIGN KEY (school_id, strand_id) REFERENCES school_shs_tracks(school_id, id) ON DELETE RESTRICT,
+    FOREIGN KEY (school_id, track_id) REFERENCES school_shs_tracks(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sections_tenant_strand
+    FOREIGN KEY (school_id, strand_id) REFERENCES school_shs_strands(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_sections_tenant_adviser
     FOREIGN KEY (school_id, adviser_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
@@ -496,6 +544,83 @@ CREATE TABLE IF NOT EXISTS grading_categories (
     FOREIGN KEY (school_level_id) REFERENCES school_levels(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS subject_grading_profiles (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  school_level_id BIGINT UNSIGNED NOT NULL,
+  subject_id BIGINT UNSIGNED NOT NULL,
+  configuration_source ENUM('deped_default', 'custom', 'copied_custom') NOT NULL DEFAULT 'custom',
+  copied_from_profile_id BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_subject_grading_profiles_school_id (school_id, id),
+  UNIQUE KEY uq_subject_grading_profiles_year_subject (school_id, academic_year_id, school_level_id, subject_id),
+  CONSTRAINT fk_subject_grading_profiles_school
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_subject_grading_profiles_year
+    FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_subject_grading_profiles_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_subject_grading_profiles_subject
+    FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_subject_grading_profiles_copy
+    FOREIGN KEY (school_id, copied_from_profile_id) REFERENCES subject_grading_profiles(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS school_year_final_grade_rules (
+  school_id BIGINT UNSIGNED NOT NULL,
+  academic_year_id BIGINT UNSIGNED NOT NULL,
+  school_level_id BIGINT UNSIGNED NOT NULL,
+  grading_mode ENUM('deped_policy', 'school_specific') NOT NULL DEFAULT 'deped_policy',
+  passing_grade_threshold DECIMAL(5,2) NOT NULL DEFAULT 75.00,
+  grade_rounding ENUM('round', 'roundup', 'truncate') NOT NULL DEFAULT 'round',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (school_id, academic_year_id, school_level_id),
+  CONSTRAINT fk_school_year_final_grade_rules_school
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_school_year_final_grade_rules_year
+    FOREIGN KEY (school_id, academic_year_id) REFERENCES academic_years(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_school_year_final_grade_rules_level
+    FOREIGN KEY (school_id, school_level_id) REFERENCES school_levels(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS subject_grading_components (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  profile_id BIGINT UNSIGNED NOT NULL,
+  code VARCHAR(50) NOT NULL,
+  name VARCHAR(120) NOT NULL,
+  component_type ENUM('written', 'performance', 'examination', 'other') NOT NULL DEFAULT 'other',
+  weight DECIMAL(5,2) NOT NULL,
+  sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_subject_grading_components_school_id (school_id, id),
+  UNIQUE KEY uq_subject_grading_components_profile_code (profile_id, code),
+  KEY idx_subject_grading_components_profile_sort (profile_id, sort_order, id),
+  CONSTRAINT fk_subject_grading_components_profile
+    FOREIGN KEY (school_id, profile_id) REFERENCES subject_grading_profiles(school_id, id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS subject_grading_exam_parts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  component_id BIGINT UNSIGNED NOT NULL,
+  code VARCHAR(50) NOT NULL,
+  name VARCHAR(120) NOT NULL,
+  weight DECIMAL(5,2) NOT NULL,
+  sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_subject_grading_exam_parts_school_id (school_id, id),
+  UNIQUE KEY uq_subject_grading_exam_parts_component_code (component_id, code),
+  KEY idx_subject_grading_exam_parts_component_sort (component_id, sort_order, id),
+  CONSTRAINT fk_subject_grading_exam_parts_component
+    FOREIGN KEY (school_id, component_id) REFERENCES subject_grading_components(school_id, id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS assignments (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_id BIGINT UNSIGNED NOT NULL,
@@ -503,6 +628,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   subject_id BIGINT UNSIGNED NOT NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
   grading_category_id BIGINT UNSIGNED NULL,
+  subject_grading_component_id BIGINT UNSIGNED NULL,
+  subject_grading_exam_part_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
@@ -523,6 +650,10 @@ CREATE TABLE IF NOT EXISTS assignments (
     FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_category
     FOREIGN KEY (grading_category_id) REFERENCES grading_categories(id) ON DELETE SET NULL,
+  CONSTRAINT fk_assignments_subject_grading_component
+    FOREIGN KEY (school_id, subject_grading_component_id) REFERENCES subject_grading_components(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_assignments_subject_grading_exam_part
+    FOREIGN KEY (school_id, subject_grading_exam_part_id) REFERENCES subject_grading_exam_parts(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignments_teacher
     FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
@@ -546,20 +677,29 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
 
 CREATE TABLE IF NOT EXISTS grading_items (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
   section_id BIGINT UNSIGNED NOT NULL,
   subject_id BIGINT UNSIGNED NOT NULL,
   academic_term_id BIGINT UNSIGNED NOT NULL,
-  grading_category_id BIGINT UNSIGNED NOT NULL,
+  grading_category_id BIGINT UNSIGNED NULL,
+  subject_grading_component_id BIGINT UNSIGNED NULL,
+  subject_grading_exam_part_id BIGINT UNSIGNED NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
   max_score DECIMAL(8,2) NOT NULL,
+  used_in_published_grades TINYINT(1) NOT NULL DEFAULT 0,
   recorded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_grading_items_school_id (school_id, id),
   CONSTRAINT fk_grading_items_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_category FOREIGN KEY (grading_category_id) REFERENCES grading_categories(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_grading_items_subject_grading_component
+    FOREIGN KEY (school_id, subject_grading_component_id) REFERENCES subject_grading_components(school_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_grading_items_subject_grading_exam_part
+    FOREIGN KEY (school_id, subject_grading_exam_part_id) REFERENCES subject_grading_exam_parts(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_grading_items_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 

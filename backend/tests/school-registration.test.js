@@ -10,6 +10,7 @@ let occupiedDomain = '';
 let occupiedUserEmail = '';
 let statusLookupRecord = null;
 let lastRegistrationTokenHash = null;
+let failAttendanceCodeSeed = false;
 const connection = {
   async beginTransaction() { queries.push('begin'); },
   async commit() { queries.push('commit'); },
@@ -25,6 +26,10 @@ const connection = {
       }
       lastRegistrationTokenHash = values.find(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)) || null;
       return [{ insertId: 20 }];
+    }
+    if (sql.startsWith('INSERT INTO attendance_status_codes')) {
+      if (failAttendanceCodeSeed) throw new Error('Attendance code seed failed');
+      return [{ affectedRows: 4 }];
     }
     if (sql.startsWith('SELECT schools.name AS schoolName')) {
       return [[statusLookupRecord && values[0] === lastRegistrationTokenHash ? statusLookupRecord : undefined].filter(Boolean)];
@@ -84,10 +89,33 @@ test('registration saves the school, academic periods, and pending administrator
   assert.match(schoolInsert.sql, /registration_status_token_expires_at/);
   assert.match(schoolInsert.sql, /INTERVAL 90 DAY/);
   assert.ok(queries.some(item => item.sql?.startsWith('INSERT INTO schools') && item.values.includes('ss.academix.test')));
+  const attendanceCodeInsert = queries.find(item => item.sql?.startsWith('INSERT INTO attendance_status_codes'));
+  assert.ok(attendanceCodeInsert);
+  assert.match(attendanceCodeInsert.sql, /VALUES \(\?, \?, \?, \?, \?, \?, TRUE\), \(\?, \?, \?, \?, \?, \?, TRUE\), \(\?, \?, \?, \?, \?, \?, TRUE\), \(\?, \?, \?, \?, \?, \?, TRUE\)/);
+  assert.deepEqual(attendanceCodeInsert.values, [
+    20, 'present', 'Present', 'Student attended class.', 'P', 'present',
+    20, 'absent', 'Absent', 'Student did not attend class.', 'A', 'absent',
+    20, 'late', 'Late', 'Student arrived after attendance was taken.', 'L', 'late',
+    20, 'excused', 'Excused', 'Student absence has a recorded excuse.', 'E', 'excused'
+  ]);
   assert.equal(queries.filter(item => item.sql?.startsWith('INSERT INTO academic_terms')).length, 3);
   assert.ok(queries.some(item => item.sql?.startsWith('INSERT INTO academic_years')));
   assert.ok(queries.some(item => item.sql?.startsWith('INSERT INTO users') && item.values.includes('s.admin.adm@ss.academix.test') && item.values.includes('notify@example.com')));
   assert.equal(queries.at(-1), 'commit');
+});
+
+test('registration rolls back when seeding fixed attendance codes fails', async () => {
+  queries.length = 0;
+  failAttendanceCodeSeed = true;
+  try {
+    const result = await call(registration());
+    assert.ok(result.error);
+    assert.ok(queries.some(item => item.sql?.startsWith('INSERT INTO attendance_status_codes')));
+    assert.equal(queries.at(-1), 'rollback');
+    assert.ok(!queries.includes('commit'));
+  } finally {
+    failAttendanceCodeSeed = false;
+  }
 });
 
 test('registration domain comes from the school name, not its contact address', async () => {

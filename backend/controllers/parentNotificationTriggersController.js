@@ -21,12 +21,12 @@ async function getSettings(req, res, next) {
       [req.user.schoolId]
     );
     const [[features]] = await getDatabase().execute(
-      'SELECT grades_enabled AS gradesEnabled, attendance_enabled AS attendanceEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
+      'SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
       [req.user.schoolId]
     );
     const availability = {
       grade_below_threshold: Boolean(features?.gradesEnabled),
-      consecutive_absences: Boolean(features?.attendanceEnabled),
+      consecutive_absences: true,
       assignment_not_completed: true,
       narrative_report_released: false,
       journal_not_submitted: Boolean(features?.journalsEnabled)
@@ -56,12 +56,11 @@ async function updateSettings(req, res, next) {
       throw error;
     }
     const [[features]] = await getDatabase().execute(
-      'SELECT grades_enabled AS gradesEnabled, attendance_enabled AS attendanceEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
+      'SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
       [req.user.schoolId]
     );
     if (triggers.some(item => item.enabled && (
       (item.code === 'grade_below_threshold' && !features?.gradesEnabled) ||
-      (item.code === 'consecutive_absences' && !features?.attendanceEnabled) ||
       (item.code === 'journal_not_submitted' && !features?.journalsEnabled)
     ))) {
       const error = new Error('Enable the related portal feature before its parent notification.');
@@ -92,7 +91,7 @@ async function updateSettings(req, res, next) {
       ...item,
       available: item.code === 'assignment_not_completed' ||
         (item.code === 'grade_below_threshold' && Boolean(features?.gradesEnabled)) ||
-        (item.code === 'consecutive_absences' && Boolean(features?.attendanceEnabled)) ||
+        item.code === 'consecutive_absences' ||
         (item.code === 'journal_not_submitted' && Boolean(features?.journalsEnabled))
     })) });
   } catch (error) {

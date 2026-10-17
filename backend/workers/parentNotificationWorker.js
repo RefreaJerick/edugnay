@@ -61,6 +61,10 @@ async function checkJournals(database) {
     FROM journal_prompts AS prompts
     INNER JOIN journal_subjects ON journal_subjects.id = prompts.journal_subject_id
       AND journal_subjects.school_id = prompts.school_id AND journal_subjects.is_active = TRUE
+    INNER JOIN subjects ON subjects.id = journal_subjects.subject_id
+      AND subjects.school_id = journal_subjects.school_id AND subjects.is_active = TRUE
+    INNER JOIN school_levels AS journal_jhs_level ON journal_jhs_level.school_id = journal_subjects.school_id
+      AND journal_jhs_level.level_code = 'jhs' AND journal_jhs_level.is_enabled = TRUE
     INNER JOIN schools ON schools.id = journal_subjects.school_id AND schools.registration_status = 'active'
     INNER JOIN school_portal_features AS features ON features.school_id = journal_subjects.school_id AND features.journals_enabled = TRUE
     INNER JOIN school_settings AS settings ON settings.school_id = journal_subjects.school_id
@@ -69,6 +73,39 @@ async function checkJournals(database) {
       AND triggers.trigger_code = 'journal_not_submitted' AND triggers.is_enabled = TRUE
     INNER JOIN sections ON sections.id = prompts.section_id AND sections.school_id = journal_subjects.school_id
       AND sections.status = 'active'
+    INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+      AND school_levels.school_id = sections.school_id AND school_levels.level_code = 'jhs'
+      AND school_levels.is_enabled = TRUE
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+      AND school_grade_levels.school_id = sections.school_id AND school_grade_levels.is_enabled = TRUE
+    AND EXISTS (
+      SELECT 1 FROM school_grade_levels AS journal_subject_jhs_grade
+      WHERE journal_subject_jhs_grade.school_id = journal_subjects.school_id
+        AND journal_subject_jhs_grade.school_level_id = journal_jhs_level.id
+        AND journal_subject_jhs_grade.is_enabled = TRUE
+        AND (
+          EXISTS (SELECT 1 FROM subject_grade_scopes AS journal_subject_jhs_scope
+            WHERE journal_subject_jhs_scope.school_id = journal_subjects.school_id
+              AND journal_subject_jhs_scope.subject_id = subjects.id
+              AND journal_subject_jhs_scope.grade_level_id = journal_subject_jhs_grade.id)
+          OR (NOT EXISTS (SELECT 1 FROM subject_grade_scopes AS journal_subject_any_scope
+            WHERE journal_subject_any_scope.school_id = journal_subjects.school_id
+              AND journal_subject_any_scope.subject_id = subjects.id)
+            AND subjects.school_level_id = journal_jhs_level.id
+            AND (subjects.grade_level_id IS NULL OR subjects.grade_level_id = journal_subject_jhs_grade.id))
+        )
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM subject_grade_scopes AS journal_subject_other_scope
+      INNER JOIN school_grade_levels AS journal_subject_other_grade ON journal_subject_other_grade.id = journal_subject_other_scope.grade_level_id
+        AND journal_subject_other_grade.school_id = journal_subject_other_scope.school_id
+      INNER JOIN school_levels AS journal_subject_other_level ON journal_subject_other_level.id = journal_subject_other_grade.school_level_id
+        AND journal_subject_other_level.school_id = journal_subject_other_scope.school_id
+      WHERE journal_subject_other_scope.school_id = journal_subjects.school_id
+        AND journal_subject_other_scope.subject_id = subjects.id
+        AND journal_subject_other_level.level_code <> 'jhs'
+        AND journal_subject_other_level.is_enabled = TRUE AND journal_subject_other_grade.is_enabled = TRUE
+    )
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.status = 'active'
     INNER JOIN section_students ON section_students.section_id = sections.id
       AND section_students.school_id = journal_subjects.school_id

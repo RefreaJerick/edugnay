@@ -3,7 +3,7 @@ const test = require('node:test');
 
 const databaseModule = require('../config/database');
 const calls = [];
-let attendanceEnabled = 1;
+let attendanceEnabled = 0;
 const section = {
   id: 8, schoolId: 1, name: 'St. Matthew',
   academicYearStartDate: '2025-01-01', academicYearEndDate: '2027-12-31'
@@ -23,7 +23,7 @@ const database = {
     if (sql.includes('SELECT id FROM academic_years WHERE id = ? AND school_id = ?')) {
       return [values[0] === 5 && values[1] === 1 ? [{ id: 5 }] : []];
     }
-    if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled }]];
+    if (sql.includes('FROM school_portal_features')) return [attendanceEnabled == null ? [] : [{ attendanceEnabled }]];
     if (sql.includes('FROM school_attendance_settings')) return [[{ allowEditPastAttendance: 1 }]];
     if (sql.includes('FROM attendance_sessions') && sql.includes('INNER JOIN sections')) {
       return [[{ id: 21, schoolId: 1, sectionId: 8, subjectId: 1, sectionName: 'St. Matthew' }]];
@@ -153,6 +153,7 @@ test('QR sessions save the chosen subject and do not touch other subjects', asyn
   const insert = calls.find(call => call.sql.includes('INSERT INTO attendance_sessions'));
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 1]);
   assert.ok(calls.some(call => call.sql.includes('FOR UPDATE') && call.values[2] === 1));
+  assert.ok(!calls.some(call => call.sql.includes('FROM school_portal_features')));
 });
 
 test('manual save writes a subject-specific session and student status', async () => {
@@ -166,6 +167,7 @@ test('manual save writes a subject-specific session and student status', async (
   assert.deepEqual(insert.values.slice(0, 3), [1, 8, 2]);
   const savedRecord = calls.find(call => call.sql.includes('INSERT INTO attendance_records'));
   assert.deepEqual(savedRecord.values.slice(0, 5), [1, 21, 4, 'present', 'Here']);
+  assert.ok(!calls.some(call => call.sql.includes('FROM school_portal_features')));
 });
 
 test('QR confirmation keeps the session subject and records the reviewed roster', async () => {
@@ -209,14 +211,17 @@ test('student attendance returns only records scoped to the signed-in student an
   assert.match(query.sql, /attendance_sessions\.attendance_date BETWEEN academic_years\.start_date AND academic_years\.end_date/);
 });
 
-test('student attendance is unavailable when the school disables attendance', async () => {
-  attendanceEnabled = 0;
-  calls.length = 0;
-  try {
+test('student attendance works when the legacy feature flag is false or missing', async () => {
+  for (const legacyValue of [0, null]) {
+    attendanceEnabled = legacyValue;
+    calls.length = 0;
     const result = await call(attendance.getStudentAttendance, { user: { id: 4, schoolId: 1, role: 'student' } });
-    assert.equal(result.error.status, 403);
-    assert.ok(!calls.some(item => item.sql.includes('FROM attendance_records')));
-  } finally { attendanceEnabled = 1; }
+    assert.equal(result.error, null);
+    assert.equal(result.data.records[0].studentId, '4');
+    assert.ok(calls.some(item => item.sql.includes('FROM attendance_records')));
+    assert.ok(!calls.some(item => item.sql.includes('FROM school_portal_features')));
+  }
+  attendanceEnabled = 0;
 });
 
 test('student attendance route rejects other roles before reading records', () => {

@@ -28,7 +28,7 @@ const database = {
     if (sql.includes('FROM attendance_sessions') && sql.includes('INNER JOIN sections')) {
       return [[{ id: 21, schoolId: 1, sectionId: 8, subjectId: 1, sectionName: 'St. Matthew' }]];
     }
-    if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled: true }]];
+    if (sql.includes('FROM school_portal_features')) return [[{ attendanceEnabled: false }]];
     if (sql.includes('FROM student_qr_credentials') && sql.includes('INNER JOIN users')) {
       return [values[0] === credential.tokenHash ? [{
         id: credential.id, studentId: 4, credentialStatus: 'active', schoolId: 1,

@@ -6,6 +6,7 @@ const { getDatabase } = require('../config/database');
 const { getSchoolLogoUrl, logoDirectory, saveSchoolLogo } = require('../config/schoolLogos');
 const { deleteAvatar } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
+const { SHS_STRANDS, SHS_TRACKS } = require('../config/shsCurriculum');
 const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
 const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
 const { wakeSchoolRegistrationEmailWorker } = require('../workers/schoolRegistrationEmailWorker');
@@ -18,7 +19,13 @@ const LEVEL_DEFAULTS = {
   jhs: { displayName: 'Junior High School', gradingPeriodType: 'quarterly', grades: ['grade-7', 'grade-8', 'grade-9', 'grade-10'] },
   shs: { displayName: 'Senior High School', gradingPeriodType: 'semestral', grades: ['grade-11', 'grade-12'] }
 };
-const TRACK_DEFAULTS = ['academic', 'tvl', 'arts-design', 'sports'];
+const TRACK_DEFAULTS = SHS_TRACKS.map(track => track.code);
+const ATTENDANCE_STATUS_DEFAULTS = [
+  { code: 'present', displayName: 'Present', description: 'Student attended class.', displayKey: 'P', displayTone: 'present' },
+  { code: 'absent', displayName: 'Absent', description: 'Student did not attend class.', displayKey: 'A', displayTone: 'absent' },
+  { code: 'late', displayName: 'Late', description: 'Student arrived after attendance was taken.', displayKey: 'L', displayTone: 'late' },
+  { code: 'excused', displayName: 'Excused', description: 'Student absence has a recorded excuse.', displayKey: 'E', displayTone: 'excused' }
+];
 const FEATURE_FIELDS = ['gradesEnabled', 'narrativeReportsEnabled', 'journalsEnabled', 'attendanceEnabled', 'sfTemplatesEnabled'];
 const SCHOOL_ACTIVITY_TABLES = [
   'attendance_status_codes', 'parent_notification_triggers', 'subjects', 'sections',
@@ -62,7 +69,7 @@ function gradeLabel(code) {
 }
 
 function trackLabel(code) {
-  return { academic: 'Academic', tvl: 'Technical-Vocational-Livelihood', 'arts-design': 'Arts and Design', sports: 'Sports' }[code];
+  return SHS_TRACKS.find(track => track.code === code)?.label;
 }
 
 function normalizeLevels(values) {
@@ -148,22 +155,94 @@ async function getStructure(database, schoolId) {
     FROM school_shs_tracks INNER JOIN school_levels ON school_levels.id = school_shs_tracks.school_level_id
     WHERE school_levels.school_id = ? ORDER BY school_shs_tracks.id`, [schoolId]
   );
+  const [strands] = await database.execute(
+    `SELECT school_shs_strands.id, school_shs_strands.school_level_id AS schoolLevelId,
+      school_shs_strands.track_id AS trackId, school_shs_strands.strand_code AS strandCode,
+      school_shs_strands.display_name AS displayName, school_shs_strands.is_enabled AS isEnabled
+    FROM school_shs_strands INNER JOIN school_levels ON school_levels.id = school_shs_strands.school_level_id
+    WHERE school_levels.school_id = ? ORDER BY school_shs_strands.id`, [schoolId]
+  );
   return levels.map(level => ({
     ...level,
     isEnabled: Boolean(level.isEnabled),
     passingGradeThreshold: Number(level.passingGradeThreshold),
     gradeLevels: grades.filter(grade => grade.schoolLevelId === level.id).map(grade => ({ ...grade, isEnabled: Boolean(grade.isEnabled) })),
-    tracks: tracks.filter(track => track.schoolLevelId === level.id).map(track => ({ ...track, isEnabled: Boolean(track.isEnabled) }))
+    tracks: tracks.filter(track => track.schoolLevelId === level.id).map(track => ({
+      ...track,
+      isEnabled: Boolean(track.isEnabled),
+      strands: strands.filter(strand => strand.trackId === track.id).map(strand => ({ ...strand, isEnabled: Boolean(strand.isEnabled) }))
+    }))
   }));
 }
 
 async function getFeatures(database, schoolId) {
   const [[features]] = await database.execute(
     `SELECT grades_enabled AS gradesEnabled, narrative_reports_enabled AS narrativeReportsEnabled,
-      journals_enabled AS journalsEnabled, attendance_enabled AS attendanceEnabled,
+      journals_enabled AS journalsEnabled,
       sf_templates_enabled AS sfTemplatesEnabled FROM school_portal_features WHERE school_id = ?`, [schoolId]
   );
-  return Object.fromEntries(FEATURE_FIELDS.map(field => [field, Boolean(features?.[field])]));
+  return {
+    ...Object.fromEntries(FEATURE_FIELDS.map(field => [field, Boolean(features?.[field])])),
+    attendanceEnabled: true
+  };
+}
+
+async function getJournalSubjectEligibility(database, schoolId, subjectId) {
+  if (!subjectId) return { subject: null, eligible: false };
+  const [[subject]] = await database.execute(
+    `SELECT subjects.id, subjects.name, subjects.subject_code AS subjectCode,
+      subjects.school_level_id AS schoolLevelId, subjects.grade_level_id AS gradeLevelId,
+      COALESCE(subject_levels.level_code, grade_levels.level_code) AS schoolLevelCode
+    FROM subjects
+    LEFT JOIN school_levels AS subject_levels ON subject_levels.id = subjects.school_level_id
+      AND subject_levels.school_id = subjects.school_id
+    LEFT JOIN school_grade_levels AS direct_grades ON direct_grades.id = subjects.grade_level_id
+      AND direct_grades.school_id = subjects.school_id
+    LEFT JOIN school_levels AS grade_levels ON grade_levels.id = direct_grades.school_level_id
+      AND grade_levels.school_id = subjects.school_id
+    WHERE subjects.id = ? AND subjects.school_id = ? AND subjects.is_active = TRUE LIMIT 1`,
+    [subjectId, schoolId]
+  );
+  if (!subject) return { subject: null, eligible: false };
+
+  const [[jhsLevel]] = await database.execute(
+    `SELECT id FROM school_levels WHERE school_id = ? AND level_code = 'jhs' AND is_enabled = TRUE LIMIT 1`,
+    [schoolId]
+  );
+  if (!jhsLevel) return { subject, eligible: false };
+  const [jhsGrades] = await database.execute(
+    `SELECT id FROM school_grade_levels
+    WHERE school_id = ? AND school_level_id = ? AND is_enabled = TRUE`,
+    [schoolId, jhsLevel.id]
+  );
+  const enabledJhsGradeIds = new Set(jhsGrades.map(grade => Number(grade.id)));
+  if (!enabledJhsGradeIds.size) return { subject, eligible: false };
+
+  const [scopes] = await database.execute(
+    `SELECT scopes.grade_level_id AS gradeLevelId, levels.level_code AS levelCode,
+      levels.is_enabled AS levelEnabled, grades.is_enabled AS gradeEnabled
+    FROM subject_grade_scopes AS scopes
+    INNER JOIN school_grade_levels AS grades ON grades.id = scopes.grade_level_id
+      AND grades.school_id = scopes.school_id
+    INNER JOIN school_levels AS levels ON levels.id = grades.school_level_id
+      AND levels.school_id = scopes.school_id
+    WHERE scopes.school_id = ? AND scopes.subject_id = ?`,
+    [schoolId, subjectId]
+  );
+
+  let eligible = false;
+  if (scopes.length) {
+    const hasEnabledJhsScope = scopes.some(scope => scope.levelCode === 'jhs'
+      && Boolean(scope.levelEnabled) && Boolean(scope.gradeEnabled)
+      && enabledJhsGradeIds.has(Number(scope.gradeLevelId)));
+    const hasOtherEnabledLevelScope = scopes.some(scope => scope.levelCode !== 'jhs'
+      && Boolean(scope.levelEnabled) && Boolean(scope.gradeEnabled));
+    eligible = hasEnabledJhsScope && !hasOtherEnabledLevelScope;
+  } else {
+    eligible = subject.schoolLevelCode === 'jhs'
+      && (!subject.gradeLevelId || enabledJhsGradeIds.has(Number(subject.gradeLevelId)));
+  }
+  return { subject, eligible };
 }
 
 function requireSchoolAdminSchool(req) {
@@ -286,6 +365,16 @@ async function registerSchool(req, res, next) {
     await connection.execute('INSERT INTO school_settings (school_id, notification_email, current_school_year_label) VALUES (?, ?, ?)', [schoolId, notificationEmail, schoolYear]);
     await connection.execute('INSERT INTO school_portal_features (school_id) VALUES (?)', [schoolId]);
     await connection.execute('INSERT INTO school_attendance_settings (school_id) VALUES (?)', [schoolId]);
+    const attendanceCodePlaceholders = ATTENDANCE_STATUS_DEFAULTS.map(() => '(?, ?, ?, ?, ?, ?, TRUE)').join(', ');
+    const attendanceCodeValues = ATTENDANCE_STATUS_DEFAULTS.flatMap(code => [
+      schoolId, code.code, code.displayName, code.description, code.displayKey, code.displayTone
+    ]);
+    await connection.execute(
+      `INSERT INTO attendance_status_codes
+        (school_id, code, display_name, description, display_key, display_tone, is_active)
+      VALUES ${attendanceCodePlaceholders}`,
+      attendanceCodeValues
+    );
     const levelIds = {};
     for (const code of levels) {
       const definition = LEVEL_DEFAULTS[code];
@@ -302,7 +391,10 @@ async function registerSchool(req, res, next) {
       }
       if (code === 'shs') {
         for (const trackCode of TRACK_DEFAULTS) {
-          await connection.execute('INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackCode, trackLabel(trackCode)]);
+          const [trackResult] = await connection.execute('INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackCode, trackLabel(trackCode)]);
+          for (const [strandCode, strandName] of (SHS_STRANDS[trackCode] || [])) {
+            await connection.execute('INSERT INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled) VALUES (?, ?, ?, ?, ?, TRUE)', [schoolId, levelResult.insertId, trackResult.insertId, strandCode, strandName]);
+          }
         }
       }
     }
@@ -618,6 +710,17 @@ async function resubmitSchoolRegistration(req, res, next) {
             ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), is_enabled = TRUE`,
             [school.id, level.id, trackCode, trackLabel(trackCode)]
           );
+          const [[storedTrack]] = await connection.execute(
+            'SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? LIMIT 1',
+            [school.id, level.id, trackCode]
+          );
+          for (const [strandCode, strandName] of SHS_STRANDS[trackCode] || []) {
+            await connection.execute(
+              `INSERT IGNORE INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
+              VALUES (?, ?, ?, ?, ?, TRUE)`,
+              [school.id, level.id, storedTrack.id, strandCode, strandName]
+            );
+          }
         }
       }
       const [storedTerms] = await connection.execute(
@@ -1045,13 +1148,16 @@ async function getPortalFeatures(req, res, next) {
   try {
     const schoolId = requireAuthenticatedSchool(req);
     const database = getDatabase();
-    const [[settings]] = await database.execute(`SELECT school_settings.journal_subject_id AS journalSubjectId, journal_subjects.name AS journalSubjectName
-      FROM school_settings LEFT JOIN subjects ON subjects.id = school_settings.journal_subject_id
-        AND subjects.school_id = school_settings.school_id AND subjects.is_active = TRUE
-      LEFT JOIN journal_subjects ON journal_subjects.subject_id = subjects.id
-        AND journal_subjects.school_id = school_settings.school_id AND journal_subjects.is_active = TRUE
-      WHERE school_settings.school_id = ?`, [schoolId]);
-    res.status(200).json({ features: await getFeatures(database, schoolId), journalSubjectId: settings?.journalSubjectId || null, journalSubjectName: settings?.journalSubjectName || null });
+    const [[settings]] = await database.execute(
+      'SELECT journal_subject_id AS journalSubjectId FROM school_settings WHERE school_id = ?', [schoolId]
+    );
+    const journalSubject = await getJournalSubjectEligibility(database, schoolId, settings?.journalSubjectId);
+    res.status(200).json({
+      features: await getFeatures(database, schoolId),
+      journalSubjectId: settings?.journalSubjectId || null,
+      journalSubjectName: journalSubject.subject?.name || null,
+      journalSubjectEligible: journalSubject.eligible
+    });
   } catch (error) { next(error); }
 }
 
@@ -1066,27 +1172,34 @@ async function updatePortalFeatures(req, res, next) {
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
     transactionStarted = true;
+    await connection.execute(
+      'INSERT INTO school_portal_features (school_id) VALUES (?) ON DUPLICATE KEY UPDATE school_id = school_portal_features.school_id',
+      [schoolId]
+    );
     const current = await getFeatures(connection, schoolId);
     const [[settings]] = await connection.execute('SELECT journal_subject_id AS journalSubjectId FROM school_settings WHERE school_id = ? FOR UPDATE', [schoolId]);
     if (!settings) throw createError('School settings were not found.', 404);
     FEATURE_FIELDS.forEach(field => { if (Object.hasOwn(body, field)) current[field] = boolean(body[field]); });
+    current.attendanceEnabled = true;
     const journalSubjectId = Object.hasOwn(body, 'journalSubjectId')
       ? body.journalSubjectId === null ? null : /^\d+$/.test(String(body.journalSubjectId)) ? parseId(body.journalSubjectId) : null
       : settings.journalSubjectId;
+    const selectionChanged = Number(journalSubjectId || 0) !== Number(settings.journalSubjectId || 0);
     if (Object.hasOwn(body, 'journalSubjectId') && body.journalSubjectId !== null && !journalSubjectId) throw createError('Select a valid journal subject.');
     if (current.journalsEnabled && !journalSubjectId) throw createError('Select a journal subject before enabling Journals.');
-    if (journalSubjectId && (current.journalsEnabled || Number(journalSubjectId) !== Number(settings.journalSubjectId))) {
-      const [[subject]] = await connection.execute('SELECT id, name FROM subjects WHERE id = ? AND school_id = ? AND is_active = TRUE', [journalSubjectId, schoolId]);
-      if (!subject) throw createError('Select an active subject from this school.');
+    const journalSubjectStatus = await getJournalSubjectEligibility(connection, schoolId, journalSubjectId);
+    if (journalSubjectId && (current.journalsEnabled || selectionChanged)) {
+      if (!journalSubjectStatus.subject) throw createError('Select an active subject from this school.');
+      if (!journalSubjectStatus.eligible) throw createError('Choose an active subject scoped only to this school’s enabled JHS grades.');
       await connection.execute(`INSERT INTO journal_subjects (school_id, subject_id, name, is_active)
-        VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = TRUE`, [schoolId, journalSubjectId, subject.name]);
+        VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = TRUE`, [schoolId, journalSubjectId, journalSubjectStatus.subject.name]);
     }
     await connection.execute(`UPDATE school_portal_features SET grades_enabled=?, narrative_reports_enabled=?, journals_enabled=?, attendance_enabled=?, sf_templates_enabled=? WHERE school_id=?`, [current.gradesEnabled, current.narrativeReportsEnabled, current.journalsEnabled, current.attendanceEnabled, current.sfTemplatesEnabled, schoolId]);
     await connection.execute('UPDATE school_settings SET journal_subject_id = ? WHERE school_id = ?', [journalSubjectId, schoolId]);
     await writeAuditLog(connection, req, 'portal_features_updated', 'school_portal_features', schoolId, { summary: 'School portal features' });
     await connection.commit();
     transactionStarted = false;
-    res.status(200).json({ features: current, journalSubjectId });
+    res.status(200).json({ features: current, journalSubjectId, journalSubjectEligible: journalSubjectStatus.eligible });
   } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 
@@ -1130,11 +1243,43 @@ async function updateAcademicStructure(req, res, next) {
         }
         for (const track of level.tracks) {
           await connection.execute(`INSERT INTO school_shs_tracks (school_id, school_level_id, track_code, display_name, is_enabled) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`, [schoolId, storedLevel.id, track.trackCode, text(track.displayName, 120) || trackLabel(track.trackCode), boolean(track.isEnabled)]);
+          const [[storedTrack]] = await connection.execute(
+            'SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? LIMIT 1',
+            [schoolId, storedLevel.id, track.trackCode]
+          );
+          for (const [strandCode, strandName] of SHS_STRANDS[track.trackCode] || []) {
+            await connection.execute(
+              `INSERT IGNORE INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
+              VALUES (?, ?, ?, ?, ?, TRUE)`,
+              [schoolId, storedLevel.id, storedTrack.id, strandCode, strandName]
+            );
+          }
         }
         if (trackCodes.length) {
           await connection.execute(`UPDATE school_shs_tracks SET is_enabled = FALSE WHERE school_level_id = ? AND track_code NOT IN (${trackCodes.map(() => '?').join(', ')})`, [storedLevel.id, ...trackCodes]);
         } else {
           await connection.execute('UPDATE school_shs_tracks SET is_enabled = FALSE WHERE school_level_id = ?', [storedLevel.id]);
+        }
+        for (const track of level.tracks) {
+          if (!Array.isArray(track.strands)) continue;
+          const [[storedTrack]] = await connection.execute('SELECT id FROM school_shs_tracks WHERE school_id = ? AND school_level_id = ? AND track_code = ? FOR UPDATE', [schoolId, storedLevel.id, track.trackCode]);
+          if (!storedTrack) throw createError('A configured SHS track was not found.');
+          const strandCodes = track.strands.map(strand => strand?.strandCode);
+          const allowedStrands = new Set((SHS_STRANDS[track.trackCode] || []).map(([strandCode]) => strandCode));
+          if (new Set(strandCodes).size !== strandCodes.length || strandCodes.some(code => !allowedStrands.has(code))) {
+            throw createError('The SHS strand configuration is invalid.');
+          }
+          for (const strand of track.strands) {
+            await connection.execute(`INSERT INTO school_shs_strands (school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
+              VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_enabled=VALUES(is_enabled)`,
+            [schoolId, storedLevel.id, storedTrack.id, strand.strandCode,
+              text(strand.displayName, 120) || SHS_STRANDS[track.trackCode].find(([code]) => code === strand.strandCode)?.[1], boolean(strand.isEnabled)]);
+          }
+          if (strandCodes.length) {
+            await connection.execute(`UPDATE school_shs_strands SET is_enabled = FALSE WHERE track_id = ? AND strand_code NOT IN (${strandCodes.map(() => '?').join(', ')})`, [storedTrack.id, ...strandCodes]);
+          } else {
+            await connection.execute('UPDATE school_shs_strands SET is_enabled = FALSE WHERE track_id = ?', [storedTrack.id]);
+          }
         }
       }
     }

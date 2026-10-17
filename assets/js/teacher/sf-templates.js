@@ -921,11 +921,15 @@ async function initializeSfTemplatesPage() {
   } catch (error) {
     sfState.templates = [];
     sfState.sections = [];
+    const schoolFeatureDisabled = error.status === 403
+      && error.message === 'SF Templates are not enabled for this school.';
     sfElements.count.textContent = 'Templates unavailable';
     sfElements.list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
       icon: error.status === 403 ? 'shield-off' : 'cloud-off',
       title: error.status === 403 ? 'SF Templates unavailable' : 'Templates could not be loaded',
-      text: error.message || 'Sign in again or try again later.'
+      text: schoolFeatureDisabled
+        ? 'Ask your school admin to enable SF Templates in School Settings > Portal Features.'
+        : error.message || 'Sign in again or try again later.'
     });
     renderGenerationOptions();
   } finally {

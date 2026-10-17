@@ -16,6 +16,9 @@ let failOnNotificationWrite = false;
 let failOnMarkerWrite = false;
 let context = {};
 let categories = [];
+let subjectProfile = null;
+let subjectComponents = [];
+let subjectExamParts = [];
 let students = [];
 let items = [];
 let scores = [];
@@ -25,6 +28,8 @@ let committed = false;
 let rolledBack = false;
 let parentTriggerEnabled = false;
 let gradesEnabled = true;
+let finalGradeRule = null;
+let publishedK10Grades = 0;
 
 const database = {
   async execute(sql, values = []) {
@@ -32,6 +37,13 @@ const database = {
     if (sql.includes('SELECT grades_enabled AS gradesEnabled FROM school_portal_features')) return [[{ gradesEnabled: gradesEnabled ? 1 : 0 }]];
     if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
     if (sql.startsWith('SELECT id FROM academic_terms WHERE id = ?')) return [[{ id: context.academicTermId }]];
+    if (sql.startsWith('SELECT COUNT(*) AS total FROM academic_terms')) return [[{ total: 3 }]];
+    if (sql.includes('SELECT COUNT(*) AS termCount FROM academic_terms')) return [[{ termCount: 3 }]];
+    if (sql.includes('FROM school_year_final_grade_rules')) return [finalGradeRule ? [{ ...finalGradeRule }] : []];
+    if (sql.includes('FROM published_final_grades AS grades') && sql.includes('AS gradeCount')) return [[{ gradeCount: publishedK10Grades }]];
+    if (sql.includes('SELECT id FROM subject_grading_profiles')) return [subjectProfile ? [{ id: subjectProfile.id }] : []];
+    if (sql.includes('SELECT id, code, name, component_type AS componentType, weight')) return [subjectComponents];
+    if (sql.includes('SELECT id, component_id AS componentId, code, name, weight')) return [subjectExamParts];
     if (sql.includes('SELECT passing_grade_threshold AS threshold FROM school_levels')) return [[{ threshold: 75 }]];
     if (sql.includes('INSERT INTO notifications')) {
       if (/ON DUPLICATE KEY UPDATE id = id/.test(sql)) throw new Error("Column 'id' in field list is ambiguous");
@@ -101,14 +113,21 @@ function reset() {
   rolledBack = false;
   parentTriggerEnabled = false;
   gradesEnabled = true;
+  finalGradeRule = null;
+  publishedK10Grades = 0;
   previousScores = [];
   previousPublished = [];
   context = {
     sectionId: 8, schoolId: 1, schoolLevelId: 2, academicYearId: 4,
     sectionName: 'St. Matthew', subjectId: 2, subjectName: 'English',
     academicTermId: 14, academicTermName: 'Quarter 2', termStatus: 'active',
+    schoolLevelCode: 'jhs', shsGradingGroup: null,
+    academicYearLabel: '2025-2026', gradingPeriodType: 'quarterly', gradeCode: 'grade-8',
     gradeRounding: 'round', passingGradeThreshold: '75.00'
   };
+  subjectProfile = null;
+  subjectComponents = [];
+  subjectExamParts = [];
   categories = [
     { id: 1, code: 'ww', name: 'Written Work', weight: '30.00' },
     { id: 2, code: 'pt', name: 'Performance Task', weight: '50.00' },
@@ -156,6 +175,192 @@ test('preview calculates weighted category percentages and applies school roundi
   assert.equal(result.data.preview.students[0].isPassing, true);
   assert.equal(result.data.preview.students[1].finalGrade, 64);
   assert.equal(result.data.preview.students[1].isPassing, false);
+});
+
+test('Grades 4-10 preview weights exam parts, applies the 2026 transmutation, then uses direct grades from 2027-28', async () => {
+  reset();
+  context.schoolLevelCode = 'elementary';
+  context.gradeCode = 'grade-4';
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  subjectProfile = { id: 40 };
+  subjectComponents = [
+    { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
+    { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
+    { id: 103, code: 'examinations', name: 'Examinations', componentType: 'examination', weight: '30.00' }
+  ];
+  subjectExamParts = [
+    { id: 201, componentId: 103, code: 'summative-test-1', name: 'Summative Test 1', weight: '30.00' },
+    { id: 202, componentId: 103, code: 'summative-test-2', name: 'Summative Test 2', weight: '30.00' },
+    { id: 203, componentId: 103, code: 'term-exam', name: 'Term Exam', weight: '40.00' }
+  ];
+  items = [
+    { gradingItemId: 11, title: 'Written work', subjectGradingComponentId: 101, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 12, title: 'Performance task', subjectGradingComponentId: 102, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 13, title: 'Summative Test 1', subjectGradingComponentId: 103, subjectGradingExamPartId: 201, maxScore: '10.00', componentSchoolId: 1 },
+    { gradingItemId: 14, title: 'Summative Test 2', subjectGradingComponentId: 103, subjectGradingExamPartId: 202, maxScore: '10.00', componentSchoolId: 1 },
+    { gradingItemId: 15, title: 'Term Exam', subjectGradingComponentId: 103, subjectGradingExamPartId: 203, maxScore: '10.00', componentSchoolId: 1 }
+  ];
+  scores = [
+    { studentId: 101, gradingItemId: 11, score: '18.00' },
+    { studentId: 101, gradingItemId: 12, score: '16.00' },
+    { studentId: 101, gradingItemId: 13, score: '7.00' },
+    { studentId: 101, gradingItemId: 14, score: '8.00' },
+    { studentId: 101, gradingItemId: 15, score: '9.00' },
+    { studentId: 102, gradingItemId: 11, score: '15.00' },
+    { studentId: 102, gradingItemId: 12, score: '10.00' },
+    { studentId: 102, gradingItemId: 13, score: '6.00' },
+    { studentId: 102, gradingItemId: 14, score: '7.00' },
+    { studentId: 102, gradingItemId: 15, score: '8.00' }
+  ];
+
+  const preview2026 = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview2026.error, null);
+  assert.equal(preview2026.data.preview.students[0].initialGrade, 82.3);
+  assert.equal(preview2026.data.preview.students[0].finalGrade, 85);
+  assert.equal(preview2026.data.preview.gradingMethod, 'deped_2026_transmutation');
+  assert.equal(preview2026.data.preview.readyToPublish, true);
+
+  context.academicYearLabel = '2027-2028';
+  const preview2027 = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview2027.error, null);
+  assert.equal(preview2027.data.preview.students[0].finalGrade, 82);
+  assert.equal(preview2027.data.preview.gradingMethod, 'deped_zero_based');
+
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'quarterly';
+  const incompatibleDepedPreview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(incompatibleDepedPreview.data.preview.readyToPublish, false);
+  assert.equal(incompatibleDepedPreview.data.preview.students[0].finalGrade, null);
+  assert.equal(incompatibleDepedPreview.data.preview.issues.some(issue => issue.code === 'incompatible_period_structure'), true);
+  assert.match(incompatibleDepedPreview.data.preview.periodStructureWarning, /three-term school year/);
+  const blockedPublication = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(blockedPublication.error?.status, 409);
+  assert.equal(savedGrades.length, 0);
+
+  finalGradeRule = { gradingMode: 'school_specific', passingGradeThreshold: '83.00', gradeRounding: 'roundup' };
+  const schoolSpecificPreview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(schoolSpecificPreview.error, null);
+  assert.equal(schoolSpecificPreview.data.preview.gradingMethod, 'school_direct');
+  assert.equal(schoolSpecificPreview.data.preview.periodStructureCompatible, true);
+  assert.equal(schoolSpecificPreview.data.preview.students[0].initialGrade, 82.3);
+  assert.equal(schoolSpecificPreview.data.preview.students[0].finalGrade, 83);
+  assert.equal(schoolSpecificPreview.data.preview.students[0].isPassing, true);
+  assert.equal(schoolSpecificPreview.data.preview.readyToPublish, true);
+  const schoolSpecificPublication = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(schoolSpecificPublication.error, null);
+  assert.deepEqual(
+    schoolSpecificPublication.data.grades.map(student => student.finalGrade),
+    schoolSpecificPreview.data.preview.students.map(student => student.finalGrade)
+  );
+  assert.deepEqual(savedGrades.map(values => values[5]), [83, 62]);
+
+  for (const rule of ['round', 'truncate']) {
+    finalGradeRule.gradeRounding = rule;
+    const rounded = await call(grades.previewFinalGrades, { query: scope });
+    assert.equal(rounded.data.preview.students[0].finalGrade, 82);
+    assert.equal(rounded.data.preview.students[0].isPassing, false);
+  }
+});
+
+test('Grades 4-10 publication requires an item for each configured exam part', async () => {
+  reset();
+  context.schoolLevelCode = 'jhs';
+  context.gradeCode = 'grade-8';
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  subjectProfile = { id: 40 };
+  subjectComponents = [
+    { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
+    { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
+    { id: 103, code: 'examinations', name: 'Examinations', componentType: 'examination', weight: '30.00' }
+  ];
+  subjectExamParts = [
+    { id: 201, componentId: 103, code: 'summative-test-1', name: 'Summative Test 1', weight: '30.00' },
+    { id: 202, componentId: 103, code: 'summative-test-2', name: 'Summative Test 2', weight: '30.00' },
+    { id: 203, componentId: 103, code: 'term-exam', name: 'Term Exam', weight: '40.00' }
+  ];
+  items = [
+    { gradingItemId: 11, title: 'Written work', subjectGradingComponentId: 101, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 12, title: 'Performance task', subjectGradingComponentId: 102, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 13, title: 'Summative Test 1', subjectGradingComponentId: 103, subjectGradingExamPartId: 201, maxScore: '10.00', componentSchoolId: 1 },
+    { gradingItemId: 14, title: 'Summative Test 2', subjectGradingComponentId: 103, subjectGradingExamPartId: 202, maxScore: '10.00', componentSchoolId: 1 }
+  ];
+  const result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.error, null);
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.ok(result.data.preview.issues.some(issue => issue.code === 'exam_part_without_items' && issue.categoryCode === 'term-exam'));
+});
+
+test('Grades 1-3 keep the existing grading calculation in a 2026-27 school year', async () => {
+  reset();
+  context.schoolLevelCode = 'elementary';
+  context.gradeCode = 'grade-3';
+  context.academicYearLabel = '2026-2027';
+  const result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.error, null);
+  assert.equal(result.data.preview.gradingMethod, null);
+  assert.equal(result.data.preview.readyToPublish, true);
+  assert.equal(result.data.preview.students[0].finalGrade, 81);
+});
+
+test('legacy SHS subject groups apply their curriculum weights during grade calculation', async () => {
+  const expected = {
+    core: [25, 50, 25],
+    academic_other: [25, 45, 30],
+    academic_immersion: [35, 40, 25],
+    other_other: [20, 60, 20],
+    other_immersion: [20, 60, 20]
+  };
+  for (const [group, weights] of Object.entries(expected)) {
+    reset();
+    context.schoolLevelCode = 'shs';
+    context.shsGradingGroup = group;
+    const result = await call(grades.previewFinalGrades, { query: scope });
+    assert.equal(result.error, null);
+    assert.deepEqual(result.data.preview.categories.map(category => category.weight), weights);
+    assert.deepEqual(result.data.preview.students[0].categoryAverages.map(category => category.weight), weights);
+  }
+});
+
+test('legacy SHS previews show the weighted initial score and publish its transmuted quarterly grade', async () => {
+  reset();
+  context.schoolLevelCode = 'shs';
+  context.shsGradingGroup = 'core';
+  context.gradeRounding = 'truncate';
+  const result = await call(grades.previewFinalGrades, { query: scope });
+  const preview = result.data.preview;
+  assert.equal(preview.gradingScale, 'legacy_shs_transmutation');
+  assert.equal(preview.students[0].initialGrade, 80);
+  assert.equal(preview.students[0].finalGrade, 87);
+  assert.equal(preview.students[0].isPassing, true);
+});
+
+test('unclassified legacy SHS subjects cannot calculate or publish grades', async () => {
+  reset();
+  context.schoolLevelCode = 'shs';
+  context.shsGradingGroup = null;
+  const preview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview.error, null);
+  assert.equal(preview.data.preview.readyToPublish, false);
+  assert.ok(preview.data.preview.issues.some(issue => issue.code === 'unclassified_shs_subject'));
+  assert.equal(preview.data.preview.students[0].finalGrade, null);
+
+  const publish = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(publish.error?.status, 409);
+  assert.equal(savedGrades.length, 0);
+});
+
+test('unclassified Academic and TVL sections cannot publish SHS grades', async () => {
+  reset();
+  context.schoolLevelCode = 'shs';
+  context.shsGradingGroup = 'core';
+  context.trackCode = 'academic';
+  context.strandId = null;
+  const preview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(preview.data.preview.readyToPublish, false);
+  assert.ok(preview.data.preview.issues.some(issue => issue.code === 'unclassified_shs_section'));
+  assert.equal(preview.data.preview.students[0].finalGrade, null);
 });
 
 test('transferred scores require review acknowledgment before publication', async () => {

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-management.html'), 'utf8').replace(/\r\n/g, '\n');
 const openEdit = html.split('function openSectionEditModal(card) {')[1]
-  .split('\n}\n\nfunction openSectionDeleteConfirmation')[0];
+  .split('\n}\n\nfunction openClassifyStrandModal')[0];
 const payloadSource = html.split("function managementApiSectionPayload(sectionData, sectionId = '') {")[1]
   .split('async function saveSectionForm(')[0];
 
@@ -28,17 +28,19 @@ function createContext(sections) {
 
 test('edit modal shows saved placement for each level without editable placement controls', () => {
   const sections = {
-    elementary: { id: '1', name: 'St. John', academicYear: '2026–2027', level: 'elementary', grade: 'Grade 4', strand: '', capacity: 40 },
-    jhs: { id: '2', name: 'St. Mark', academicYear: '2026–2027', level: 'jhs', grade: 'Grade 7', strand: '', capacity: 40 },
-    shs: { id: '3', name: 'St. Luke', academicYear: '2026–2027', level: 'shs', grade: 'Grade 11', strand: 'STEM', capacity: 40 }
+    elementary: { id: '1', name: 'St. John', academicYear: '2026–2027', level: 'elementary', grade: 'Grade 4', capacity: 40 },
+    jhs: { id: '2', name: 'St. Mark', academicYear: '2026–2027', level: 'jhs', grade: 'Grade 7', capacity: 40 },
+    shs: { id: '3', name: 'St. Luke', academicYear: '2026–2027', level: 'shs', grade: 'Grade 11', trackName: 'Academic', strandName: 'STEM', capacity: 40 }
   };
   const page = createContext(sections);
   for (const section of Object.values(sections)) {
     page.context.openSectionEditModal({ dataset: { id: section.id } });
     assert.equal(page.elements.get('editAcademicYear').textContent, section.academicYear);
     assert.equal(page.elements.get('editGradeLevel').textContent, section.grade);
-    assert.equal(page.elements.get('editStrand').textContent, section.strand || 'Not set');
-    assert.equal(page.elements.get('editStrandGroup').hidden, !section.strand);
+    assert.equal(page.elements.get('editStrand').textContent, section.trackName
+      ? `${section.trackName}${section.strandName ? ` / ${section.strandName}` : ''}`
+      : 'Not applicable');
+    assert.equal(page.elements.get('editStrandGroup').hidden, !section.trackName);
     assert.match(page.elements.get('sectionEditModalSub').textContent, /Academic placement cannot be changed/);
   }
   assert.match(html, /id="editSchoolLevel"\s*><\/div>/);

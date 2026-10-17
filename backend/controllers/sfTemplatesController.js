@@ -175,8 +175,8 @@ async function getAdvisorySection(database, teacherId, schoolId, sectionId, incl
   const [sections] = await database.execute(
     `SELECT sections.id, sections.school_id AS schoolId, sections.name,
       sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId,
-      sections.grade_level_id AS gradeLevelId, sections.strand_id AS strandId,
-      strands.display_name AS strandName,
+      sections.grade_level_id AS gradeLevelId, sections.track_id AS trackId, sections.strand_id AS strandId,
+      tracks.display_name AS trackName, strands.display_name AS strandName,
       academic_years.label AS academicYear, academic_years.status AS academicYearStatus,
       school_grade_levels.display_name AS gradeLevel,
       school_grade_levels.grade_code AS gradeCode,
@@ -186,7 +186,8 @@ async function getAdvisorySection(database, teacherId, schoolId, sectionId, incl
     INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
       AND academic_years.status ${includeClosed ? "IN ('active', 'closed')" : "= 'active'"}
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
-    LEFT JOIN school_shs_tracks AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
+    LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.track_id AND tracks.school_id = sections.school_id
+    LEFT JOIN school_shs_strands AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
     WHERE sections.id = ? AND sections.school_id = ? AND sections.adviser_user_id = ?
       AND ${includeClosed
     ? "((sections.status = 'active' AND academic_years.status = 'active') OR (sections.status = 'archived' AND academic_years.status = 'closed'))"
@@ -309,7 +310,7 @@ async function getSf5GradeData(database, schoolId, section, learners) {
     INNER JOIN sections AS source_section ON source_section.id = published_final_grades.section_id
       AND source_section.school_id = published_final_grades.school_id
       AND source_section.academic_year_id = ? AND source_section.grade_level_id = ?
-      AND source_section.strand_id <=> ?
+      AND source_section.track_id <=> ? AND source_section.strand_id <=> ?
     WHERE published_final_grades.school_id = ?
       AND published_final_grades.student_user_id IN (${ids.map(() => '?').join(', ')})
       AND published_final_grades.subject_id IN (${subjects.map(() => '?').join(', ')})
@@ -319,7 +320,7 @@ async function getSf5GradeData(database, schoolId, section, learners) {
           AND enrollment.section_id = published_final_grades.section_id
           AND enrollment.student_user_id = published_final_grades.student_user_id
           AND (enrollment.withdrawn_at IS NULL OR published_final_grades.published_at <= enrollment.withdrawn_at))`,
-    [section.academicYearId, section.gradeLevelId, section.strandId, schoolId,
+    [section.academicYearId, section.gradeLevelId, section.trackId, section.strandId, schoolId,
       ...ids, ...subjects.map(subject => subject.id), ...terms.map(term => term.id)]
   );
   return { subjects, terms, grades };

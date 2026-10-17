@@ -459,18 +459,22 @@
         ]);
         if (user?.role !== 'student') throw new Error('Only student accounts can view journal entries.');
         const history = await window.EDUGNAY_API.getJournalHistory();
-        const showHistoricalOnly = message => {
+        const showHistoricalOnly = (message, includeDraft = true) => {
           currentPrompt = null;
           currentEntry = null;
           panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'notebook-pen', title: 'Journals are unavailable', text: message });
-          panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
+          if (includeDraft) panel.insertAdjacentHTML('beforeend', renderUnsentDraft());
           pastEntries = history.entries.map(entry => {
             const prompt = history.prompts.find(item => item.id === entry.promptId);
             return { ...entry, week: `${entry.journalSubjectName} · Week of ${formatJournalDate(prompt?.weekStartDate || entry.submittedAt)}`, dateRange: formatJournalDate(entry.submittedAt), prompt: prompt?.promptText || entry.promptText || '', excerpt: entry.entryText.slice(0, 96) };
           });
           renderHistory();
         };
-        if (!portal.features.journalsEnabled) {
+        if (user.schoolLevel !== 'jhs') {
+          showHistoricalOnly('Current Journals are for Junior High School students. You can still read your submitted entries below.', false);
+          return;
+        }
+        if (!portal.features.journalsEnabled || !portal.journalSubjectEligible) {
           showHistoricalOnly('You can still read your submitted entries below.');
           return;
         }

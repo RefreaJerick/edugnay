@@ -17,6 +17,7 @@ test('teacher grading periods belong only to the selected section year and level
     { id: 31, academicYearId: 10, schoolLevelId: 8, name: 'Semester 1', sequenceNumber: 1, status: 'active' }
   ];
   const requests = [];
+  const warnings = [];
   const context = vm.createContext({
     window: { EDUGNAY_API: {
       isBackendAvailable: true,
@@ -25,12 +26,16 @@ test('teacher grading periods belong only to the selected section year and level
         requests.push(filters);
         return terms.filter(term => term.academicYearId === filters.academicYearId && term.schoolLevelId === filters.schoolLevelId);
       },
-      getGradingCategories: async () => [], getAssignments: async () => [],
+      getSubjectGradingConfig: async () => ({ applicable: false, configured: false, components: [] }),
+      getGradingSettings: async () => ({ gradingCategories: [], gradingScale: 'standard' }),
+      getAssignments: async () => [],
       getGradingItems: async () => [], getStudentScores: async () => [],
       getFinalGrades: async () => [], getAssignmentSubmissions: async () => []
     } },
-    console: { warn() {} }, hasValidBackendSubjectAssignment: () => true,
-    refreshAssignmentCategoryOptions() {}, STUDENTS: []
+    document: { getElementById: () => ({ disabled: false, title: '' }) },
+    console: { warn(...args) { warnings.push(args); } }, hasValidBackendSubjectAssignment: () => true,
+    refreshAssignmentCategoryOptions() {}, renderScoreCategoryTabs() {},
+    renderScoreComponentChoices() {}, renderGradingRules() {}, STUDENTS: []
   });
   vm.runInContext(`
     let CURRENT_BACKEND_SECTION = { id: 8, academicYearId: 10, schoolLevelId: 7 };
@@ -39,6 +44,9 @@ test('teacher grading periods belong only to the selected section year and level
     let BACKEND_GRADE_CONTEXT = null, BACKEND_GRADE_ERROR = '';
     let BACKEND_ASSIGNMENTS = [], BACKEND_GRADING_ITEMS = [], BACKEND_STUDENT_SCORES = [];
     let BACKEND_PUBLISHED_GRADES = [], BACKEND_CATEGORIES = [], BACKEND_TERMS = [];
+    let BACKEND_SUBJECT_GRADING_CONFIG = null, CURRENT_GRADE_SCALE = 'standard', CURRENT_GRADE_METHOD_LABEL = '';
+    let CURRENT_GRADING_RULES = [], GRADING_RULES_BY_ID = {}, WEIGHTS = {};
+    let GRADE_ROUNDING = 'round', PASSING_GRADE_THRESHOLD = 75, WARNING_GRADE_THRESHOLD = 70;
     let ACADEMIC_PERIODS = [], ACTIVE_ACADEMIC_PERIOD_ID = '';
     const BACKEND_SUBMISSIONS = new Map();
     function isBackendGradeMode() { return Boolean(BACKEND_GRADE_CONTEXT); }
@@ -46,7 +54,7 @@ test('teacher grading periods belong only to the selected section year and level
     async function loadBackendGradeData() {${loadGradeData}
   `, context);
 
-  assert.equal(await vm.runInContext('loadBackendGradeData()', context), true);
+  assert.equal(await vm.runInContext('loadBackendGradeData()', context), true, JSON.stringify(warnings));
   assert.deepEqual(JSON.parse(JSON.stringify(requests[0])), { academicYearId: 10, schoolLevelId: 7 });
   assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(ACADEMIC_PERIODS.map(term => term.name))', context)),
     ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4']);

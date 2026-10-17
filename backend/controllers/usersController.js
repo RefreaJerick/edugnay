@@ -188,9 +188,11 @@ async function addCurrentStudentPlacement(users) {
   const [enrollments] = await getDatabase().execute(
     `SELECT section_students.student_user_id AS studentId,
       sections.id AS sectionId, sections.name AS sectionName,
+      sections.track_id AS trackId, sections.strand_id AS strandId,
       school_grade_levels.display_name AS gradeLevel,
       school_levels.level_code AS schoolLevel,
-      school_shs_tracks.display_name AS strand,
+      school_shs_tracks.display_name AS track,
+      school_shs_strands.display_name AS strand,
       academic_years.label AS academicYearLabel
     FROM section_students
     INNER JOIN sections ON sections.id = section_students.section_id AND sections.status = 'active'
@@ -199,7 +201,10 @@ async function addCurrentStudentPlacement(users) {
       AND students.role = 'student' AND students.school_id = sections.school_id
     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
     INNER JOIN school_levels ON school_levels.id = sections.school_level_id
-    LEFT JOIN school_shs_tracks ON school_shs_tracks.id = sections.strand_id
+    LEFT JOIN school_shs_tracks ON school_shs_tracks.id = sections.track_id
+      AND school_shs_tracks.school_id = sections.school_id
+    LEFT JOIN school_shs_strands ON school_shs_strands.id = sections.strand_id
+      AND school_shs_strands.school_id = sections.school_id
     WHERE section_students.withdrawn_at IS NULL
       AND section_students.student_user_id IN (${placeholders})
     ORDER BY academic_years.start_date DESC, section_students.enrolled_at DESC, section_students.id DESC`,
@@ -222,6 +227,9 @@ async function addCurrentStudentPlacement(users) {
       sectionName: placement?.sectionName || null,
       gradeLevel: placement?.gradeLevel || null,
       schoolLevel: placement?.schoolLevel || null,
+      trackId: placement?.trackId == null ? null : String(placement.trackId),
+      strandId: placement?.strandId == null ? null : String(placement.strandId),
+      track: placement?.track || null,
       strand: placement?.strand || null,
       academicYearLabel: placement?.academicYearLabel || null
     };

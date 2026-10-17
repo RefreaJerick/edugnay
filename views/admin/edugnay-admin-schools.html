@@ -68,14 +68,14 @@
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Settings</div>
+        <a href="edugnay-admin-schools.html" class="nav-item active">
+          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span>
+        </a>
         <a href="edugnay-admin-system-config.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span>
         </a>
         <a href="edugnay-admin-archive.html" class="nav-item">
           <div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span>
-        </a>
-        <a href="edugnay-admin-schools.html" class="nav-item active">
-          <div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span>
         </a>
       </div>
       <div class="nav-section">
@@ -215,6 +215,50 @@
     </div>
   </div>
 
+  <div class="modal-backdrop school-term-modal deped-subject-modal" id="depedSubjectReviewModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="depedSubjectReviewTitle" aria-describedby="depedSubjectReviewDescription">
+      <div class="modal-head">
+        <div class="modal-heading">
+          <span class="modal-heading-icon"><i data-lucide="book-open-check"></i></span>
+          <div class="modal-heading-copy">
+            <div class="modal-title" id="depedSubjectReviewTitle">Review DepEd subjects</div>
+            <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 4–10.</div>
+          </div>
+        </div>
+        <button class="modal-close" id="closeDepedSubjectReview" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body deped-subject-review-body" id="depedSubjectReviewContent" aria-live="polite"></div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="cancelDepedSubjectReview" type="button">Cancel</button>
+        <button class="btn btn-save" id="applyDepedSubjectReview" type="button" disabled>Apply DepEd subjects</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop school-term-modal deped-grading-modal deped-grading-review-modal" id="depedGradingReviewModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="depedGradingReviewTitle">
+      <div class="modal-head">
+        <div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="scale"></i></span><div class="modal-heading-copy"><div class="modal-title" id="depedGradingReviewTitle">Review DepEd grading defaults</div><div class="modal-sub">Preview the subject weights before applying them.</div></div></div>
+        <button class="modal-close" id="closeDepedGradingReview" type="button" aria-label="Close" onclick="closeK10GradingModal('depedGradingReviewModal')"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body deped-grading-review-body" id="depedGradingReviewBody"></div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('depedGradingReviewModal')">Cancel</button><button class="btn btn-save" type="button" id="applyDepedGradingDefaults">Apply DepEd defaults</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop school-term-modal deped-grading-modal subject-grading-editor-modal" id="subjectGradingEditorModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="subjectGradingEditorTitle">
+      <div class="modal-head">
+        <div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="sliders-horizontal"></i></span><div class="modal-heading-copy"><div class="modal-title" id="subjectGradingEditorTitle">Edit subject grading</div><div class="modal-sub" id="subjectGradingEditorSubtitle"></div></div></div>
+        <button class="modal-close" type="button" aria-label="Close" onclick="closeK10GradingModal('subjectGradingEditorModal')"><i data-lucide="x"></i></button>
+      </div>
+      <form id="subjectGradingEditorForm" class="subject-grading-editor-form">
+        <div class="modal-body subject-grading-editor-body" id="subjectGradingEditorBody"></div>
+        <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('subjectGradingEditorModal')">Cancel</button><button class="btn btn-save" type="submit" id="saveSubjectGradingConfig">Save subject rules</button></div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-backdrop school-term-modal" id="journalSubjectModal" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalSubjectModalTitle" aria-describedby="journalSubjectModalMessage">
       <div class="modal-head">
@@ -266,13 +310,21 @@
       apiSchoolId: null,
       apiFeatures: null,
       apiJournalSubjectId: null,
+      apiJournalSubjectEligible: false,
       apiSubjects: [],
       apiStructure: [],
       apiGradingCategories: [],
+      apiShsGradingTypes: [],
+      publishedShsGradeCount: 0,
       apiAttendanceRules: null,
       apiAcademicYears: [],
       apiAcademicYear: null,
       apiTerms: [],
+      k10GradingPreview: null,
+      k10GradingLoading: false,
+      k10GradingRequestId: 0,
+      k10EditorSubject: null,
+      k10EditorComponents: [],
       calendarNotices: [],
       calendarError: '',
       calendarLoading: true
@@ -482,7 +534,12 @@
 
     function applyApiContext() {
       const subject = state.apiSubjects.find(item => String(item.id) === String(state.apiJournalSubjectId));
-      window.EDUGNAY_API.setSchoolContext(state.school, { ...state.apiFeatures, journalSubjectId: state.apiJournalSubjectId, journalSubjectName: subject?.name || null });
+      window.EDUGNAY_API.setSchoolContext(state.school, {
+        ...state.apiFeatures,
+        journalSubjectId: state.apiJournalSubjectId,
+        journalSubjectName: subject?.name || null,
+        journalSubjectEligible: state.apiJournalSubjectEligible
+      });
       window.refreshEdUgnayShellContext?.();
     }
 
@@ -572,23 +629,126 @@
 
     function renderAcademicPane() {
       const school = activeSchool();
-      setSettingsHeading('Academic structure', 'Manage grade levels, tracks, and strands.');
+      setSettingsHeading('Academic structure', 'Manage grade levels, tracks, strands, and subject offerings.');
       const { level, data } = activeDivision(school);
       const catalog = window.EDUGNAY_CONFIG.grades.find(item => item.key === level) || window.EDUGNAY_CONFIG.grades[0] || { label: levelLabel(level), grades: [] };
       const gradeOptions = Array.isArray(catalog.grades) ? catalog.grades : [];
       const trackOptions = Array.isArray(catalog.tracks) ? catalog.tracks : [];
+      const trackRecords = getApiLevel(level)?.tracks || [];
       const enabledGrades = Array.isArray(data.enabledGrades) ? data.enabledGrades : gradeOptions;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-academic-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS track options</div><div class="track-options">${trackOptions.map(track => `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}</span></label>`).join('')}</div>` : ''}</div>
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS tracks and strands</div><div class="track-options">${trackOptions.map(track => { const record = trackRecords.find(item => item.displayName === track); const strands = (record?.strands || []).filter(item => item.isEnabled !== false).map(item => item.displayName); return `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}${strands.length ? `<small class="form-help">Strands: ${strands.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</small>` : '<small class="form-help">No separate strand</small>'}</span></label>`; }).join('')}</div>` : ''}</div>
+            ${['elementary', 'jhs'].includes(level) ? `<section class="school-section-block school-deped-subject-card" aria-labelledby="depedSubjectDefaultsHeading"><div><div class="school-section-block-title" id="depedSubjectDefaultsHeading">DepEd subject defaults</div><div class="school-section-block-sub">Review the subjects for enabled Grades 4–10. You can edit them later in Class Management.</div><small class="school-deped-subject-hint" id="depedSubjectReviewHint" hidden>Save grade changes before reviewing the subject defaults.</small></div><button class="top-btn secondary" id="reviewDepedSubjects" type="button"><i data-lucide="list-checks"></i> Review DepEd subjects</button></section>` : ''}
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
-      document.getElementById('schoolAcademicForm').addEventListener('submit', saveAcademic);
+      const form = document.getElementById('schoolAcademicForm');
+      form.addEventListener('submit', saveAcademic);
+      const reviewButton = document.getElementById('reviewDepedSubjects');
+      if (reviewButton) {
+        const eligibleGrades = new Set(gradeOptions.filter(grade => /^Grade\s+(?:[4-9]|10)$/i.test(grade)));
+        const savedGrades = new Set((data.enabledGrades || gradeOptions).filter(grade => eligibleGrades.has(grade)));
+        const updateReviewAvailability = () => {
+          const currentGrades = new Set([...form.querySelectorAll('input[name="grades"]:checked')]
+            .map(input => input.value).filter(grade => eligibleGrades.has(grade)));
+          const unchanged = currentGrades.size === savedGrades.size
+            && [...currentGrades].every(grade => savedGrades.has(grade));
+          reviewButton.disabled = !state.apiActive || !unchanged;
+          document.getElementById('depedSubjectReviewHint').hidden = unchanged && state.apiActive;
+        };
+        form.querySelectorAll('input[name="grades"]').forEach(input => input.addEventListener('change', updateReviewAvailability));
+        reviewButton.addEventListener('click', openDepedSubjectReview);
+        updateReviewAvailability();
+      }
       bindDivisionSwitcher();
       if (window.lucide) lucide.createIcons();
+    }
+
+    const depedSubjectStatusText = {
+      'will-add': 'Will be added',
+      'already-present': 'Already in subject list',
+      inactive: 'Inactive entry left unchanged',
+      'review-existing': 'Existing entry needs review'
+    };
+
+    function renderDepedSubjectPreview(preview) {
+      const content = document.getElementById('depedSubjectReviewContent');
+      if (!preview.grades.length) {
+        content.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable at least one Grade 4–10 level in Academic Structure, save it, and review the subject defaults again.' });
+        document.getElementById('applyDepedSubjectReview').disabled = true;
+        return;
+      }
+      content.innerHTML = `<p class="term-modal-message">These are the current defaults for the grades your school has enabled. Existing entries will be left as they are.</p><div class="deped-subject-grade-list">${preview.grades.map(grade => `<section class="deped-subject-grade"><div class="deped-subject-grade-head"><strong>${window.EDUGNAY_CONFIG.escapeHtml(grade.displayName)}</strong><span>${grade.subjects.length} subjects</span></div><ul>${grade.subjects.map(subject => `<li><span>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}${subject.existingName && subject.existingName !== subject.name ? `<small>Existing: ${window.EDUGNAY_CONFIG.escapeHtml(subject.existingName)}</small>` : ''}</span><span class="deped-subject-status ${window.EDUGNAY_CONFIG.escapeHtml(subject.status)}">${window.EDUGNAY_CONFIG.escapeHtml(depedSubjectStatusText[subject.status] || 'Review')}</span></li>`).join('')}</ul></section>`).join('')}</div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
+      updateDepedSubjectApplyButton();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function updateDepedSubjectApplyButton() {
+      const content = document.getElementById('depedSubjectReviewContent');
+      document.getElementById('applyDepedSubjectReview').disabled = !content.querySelector('.deped-subject-status.will-add');
+    }
+
+    async function openDepedSubjectReview() {
+      const modal = document.getElementById('depedSubjectReviewModal');
+      const content = document.getElementById('depedSubjectReviewContent');
+      content.innerHTML = '<p class="term-modal-message">Loading subject defaults…</p>';
+      document.getElementById('applyDepedSubjectReview').disabled = true;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      try {
+        const preview = await window.EDUGNAY_API.getDepedSubjectPreview();
+        renderDepedSubjectPreview(preview);
+      } catch (error) {
+        content.innerHTML = `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be loaded.')}</p>`;
+      }
+      document.getElementById('closeDepedSubjectReview').focus();
+    }
+
+    function closeDepedSubjectReview() {
+      const modal = document.getElementById('depedSubjectReviewModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function applyDepedSubjects() {
+      const button = document.getElementById('applyDepedSubjectReview');
+      const content = document.getElementById('depedSubjectReviewContent');
+      button.disabled = true;
+      button.textContent = 'Applying...';
+      let result;
+      try {
+        result = await window.EDUGNAY_API.applyDepedSubjectDefaults();
+      } catch (error) {
+        const status = document.getElementById('depedSubjectApplyResult');
+        if (status) {
+          status.hidden = false;
+          status.classList.add('error');
+          status.textContent = error.message || 'The subject defaults could not be applied.';
+        } else {
+          content.insertAdjacentHTML('afterbegin', `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be applied.')}</p>`);
+        }
+        button.textContent = 'Apply DepEd subjects';
+        updateDepedSubjectApplyButton();
+        return;
+      }
+      const successMessage = result.addedSubjects.length
+        ? `${result.addedSubjects.length} subjects added across ${result.addedGradeScopes} grade assignments. Existing subjects were left unchanged.`
+        : 'No new subjects were added. Matching existing entries were left unchanged for review.';
+      try {
+        renderDepedSubjectPreview(await window.EDUGNAY_API.getDepedSubjectPreview());
+      } catch {
+        // The subject changes are already saved; leave the current review visible if refresh fails.
+      }
+      const status = document.getElementById('depedSubjectApplyResult');
+      if (status) {
+        status.hidden = false;
+        status.textContent = successMessage;
+      }
+      button.textContent = 'Apply DepEd subjects';
+      updateDepedSubjectApplyButton();
     }
 
     function formatTermDate(value) {
@@ -688,12 +848,455 @@
       if (window.lucide) lucide.createIcons();
     }
 
+    function activeK10GradingYear() {
+      return state.apiAcademicYears.find(year =>
+        year.status === 'active'
+        && Number(String(year.label || '').match(/20\d{2}/)?.[0]) >= 2026
+      ) || null;
+    }
+
+    function loadK10GradingPreview(levelId, yearId) {
+      if (!levelId || !yearId || state.k10GradingLoading) return;
+      const requestId = ++state.k10GradingRequestId;
+      state.k10GradingLoading = true;
+      window.EDUGNAY_API.getDepedK10GradingPreview({ schoolLevelId: levelId, academicYearId: yearId })
+        .then(preview => {
+          if (requestId !== state.k10GradingRequestId) return;
+          state.k10GradingPreview = preview;
+        })
+        .catch(error => {
+          if (requestId === state.k10GradingRequestId) notify(error.message || 'Subject grading settings could not be loaded.');
+        })
+        .finally(() => {
+          if (requestId !== state.k10GradingRequestId) return;
+          state.k10GradingLoading = false;
+          if (state.tab === 'grading') renderGradingPane();
+        });
+    }
+
+    function formatK10GradeNames(gradeCodes, fallback) {
+      const names = (Array.isArray(gradeCodes) ? gradeCodes : [])
+        .map(code => String(code).replace(/^grade-(\d+)$/i, (_, number) => `G${Number(number)}`))
+        .sort((first, second) => first.localeCompare(second, undefined, { numeric: true }));
+      return names.length ? names.join(', ') : fallback;
+    }
+
+    function isDefaultK10ExamSplit(parts) {
+      const defaults = [
+        { name: 'Summative Test 1', weight: 30 },
+        { name: 'Summative Test 2', weight: 30 },
+        { name: 'Term Exam', weight: 40 }
+      ];
+      const normalize = values => values.map(part => ({
+        name: String(part.name || '').trim().toLowerCase(),
+        weight: Number(part.weight)
+      })).sort((first, second) => first.name.localeCompare(second.name));
+      const actual = normalize(parts);
+      const expected = normalize(defaults);
+      return actual.length === expected.length && expected.every((part, index) =>
+        actual[index].name === part.name && actual[index].weight === part.weight
+      );
+    }
+
+    function renderK10ComponentSummary(components, { showCustomExamDetails = false } = {}) {
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const list = Array.isArray(components) ? components : [];
+      const componentLabels = list.map(component => `<span class="school-k10-grading-weight"><span>${escapeHtml(component.name || 'Component')}</span> <strong>${Number(component.weight) || 0}%</strong></span>`).join('');
+      const examGroups = list.filter(component => Array.isArray(component.examParts) && component.examParts.length);
+      const commonExamSplit = examGroups.length === 1 && isDefaultK10ExamSplit(examGroups[0].examParts);
+      const customExamDetails = showCustomExamDetails && examGroups.length && !commonExamSplit
+        ? `<details class="school-k10-grading-exam-details"><summary>View custom exam split</summary>${examGroups.map(component => `<div class="school-k10-grading-exam-group"><strong>${escapeHtml(component.name || 'Examinations')}</strong><span>${component.examParts.map(part => `${escapeHtml(part.name || 'Exam part')} ${Number(part.weight) || 0}%`).join(' · ')}</span></div>`).join('')}</details>`
+        : '';
+      return `<div class="school-k10-grading-weights">${componentLabels || '<span class="school-k10-grading-no-weights">No components configured</span>'}</div>${customExamDetails}`;
+    }
+
+    function getDepedGradingReviewStatus(subject) {
+      if (subject.status === 'published') return { label: 'Locked', badgeClass: 'badge-gray' };
+      if (subject.status === 'configured') {
+        if (subject.configurationSource === 'deped_default') return { label: 'Applied', badgeClass: 'badge-green' };
+        if (subject.configurationSource === 'custom') return { label: 'Custom', badgeClass: 'badge-purple' };
+        if (subject.configurationSource === 'copied_custom') return { label: 'Review copy', badgeClass: 'badge-orange' };
+        return { label: 'Configured', badgeClass: 'badge-gray' };
+      }
+      return subject.learningArea
+        ? { label: 'Not applied', badgeClass: 'badge-blue' }
+        : { label: 'Manual setup', badgeClass: 'badge-orange' };
+    }
+
+    function renderDepedGradingReviewBody(preview, escapeHtml) {
+      const rows = preview.subjects.map(subject => {
+        const status = getDepedGradingReviewStatus(subject);
+        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No enabled grade scope');
+        const weights = subject.learningArea
+          ? renderK10ComponentSummary(createPreviewDefaults(subject))
+          : '<span class="school-k10-grading-no-match">Needs manual setup</span>';
+        return '<tr><td><span class="deped-grading-review-subject">' + escapeHtml(subject.name) + '</span>'
+          + '<span class="school-k10-grading-grade-list">' + escapeHtml(gradeNames) + '</span></td><td>' + weights + '</td>'
+          + '<td><span class="school-k10-grading-source badge ' + status.badgeClass + '">' + escapeHtml(status.label) + '</span></td></tr>';
+      }).join('');
+      const warning = preview.periodStructureWarning
+        ? '<div class="school-k10-grading-warning" role="status">' + escapeHtml(preview.periodStructureWarning) + '</div>'
+        : '';
+      return '<p class="term-modal-message deped-grading-review-intro">Applying adds only missing subject configurations. Existing custom and published configurations are preserved. Subjects without a confident learning-area match must be configured manually.</p>'
+        + '<p class="school-k10-grading-exam-note"><strong>DepEd exam split:</strong> Summative Test 1 30% · Summative Test 2 30% · Term Exam 40%.</p>'
+        + warning + '<div class="deped-grading-review-table-wrap"><table class="deped-grading-review-table">'
+        + '<thead><tr><th>Subject and grade levels</th><th>Default components and weights</th><th>Current status</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody></table></div>';
+    }
+
+    function renderOtherGradeRules(apiLevel, defaults) {
+      const lowerGradeCodes = new Set(['kindergarten', 'grade-1', 'grade-2', 'grade-3']);
+      const enabledLowerGrades = (apiLevel.gradeLevels || []).filter(grade =>
+        grade.isEnabled !== false && lowerGradeCodes.has(String(grade.gradeCode || '').toLowerCase())
+      );
+      if (!enabledLowerGrades.length) return '';
+
+      const categories = state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel.id));
+      const rules = categories.map(category => ({ id: category.code, label: category.name, weight: Number(category.weight) }));
+      const gradeRounding = apiLevel.gradeRounding || defaults.gradeRounding || 'round';
+      const passingGradeThreshold = Number(apiLevel.passingGradeThreshold ?? defaults.passingGradeThreshold);
+      return `<section class="school-section-block school-k10-other-grade-rules">
+        <div class="school-section-block-title">Current rules for enabled Kindergarten–Grade 3 levels</div>
+        <div class="school-section-block-sub">These grades remain on the existing school-level grading setup; Grades 4–10 use the subject rules above.</div>
+        <form id="schoolK3GradingForm">
+          <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)}</label><input id="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
+          <div class="weight-total" id="k3WeightTotal"></div>
+          <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="k3PassingGradeThreshold">Passing grade threshold</label><input id="k3PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${Number.isFinite(passingGradeThreshold) ? passingGradeThreshold : 75}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="k3GradeRounding">Grade rounding</label><select id="k3GradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
+          <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save Kindergarten–Grade 3 rules</button></div>
+        </form>
+      </section>`;
+    }
+
+    function renderK10GradingPane(school, level, apiLevel, preview) {
+      setSettingsHeading('Grading rules', 'Configure subject assessment weights for Grades 4–10.');
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const gradingMode = preview.gradingMode || 'deped_policy';
+      const customRules = gradingMode === 'school_specific';
+      const rulesLocked = preview.locked === true;
+      const rows = preview.subjects.map(subject => {
+        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No enabled Grade 4–10 scope');
+        const hasSaved = ['configured', 'published'].includes(subject.status);
+        const statusLabel = subject.status === 'published' ? 'Published'
+          : subject.configurationSource === 'custom' ? 'Custom'
+            : subject.configurationSource === 'copied_custom' ? 'Review copy'
+              : subject.configurationSource === 'deped_default' ? 'DepEd default'
+                : subject.status === 'unmatched' ? 'Setup needed' : 'Default available';
+        const statusBadgeClass = subject.status === 'published' ? 'badge-gray'
+          : subject.configurationSource === 'custom' ? 'badge-purple'
+            : subject.status === 'unmatched' || subject.configurationSource === 'copied_custom' ? 'badge-orange' : 'badge-blue';
+        const summary = hasSaved || subject.learningArea
+          ? renderK10ComponentSummary(subject.components, { showCustomExamDetails: true })
+          : '<span class="school-k10-grading-no-match">No confident DepEd learning-area match</span>';
+        return `<tr><td><span class="school-k10-grading-subject-name">${escapeHtml(subject.name)}</span><span class="school-k10-grading-grade-list">${escapeHtml(gradeNames)}</span></td><td>${summary}</td><td><span class="school-k10-grading-source badge ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></td><td><button class="top-btn secondary" type="button" data-k10-edit-subject="${Number(subject.id)}" ${subject.status === 'published' ? 'disabled title="Published grades lock this school-year configuration."' : ''}>${subject.status === 'unmatched' ? 'Set up' : 'Edit'}</button></td></tr>`;
+      }).join('');
+      document.getElementById('schoolSettingsBody').innerHTML = `
+        <div class="school-pane school-grading-pane active">
+          ${renderDivisionSwitcher(school)}
+          <div class="school-k10-grading-panel">
+            <section class="school-section-block">
+              <div class="school-k10-grading-toolbar"><button class="top-btn primary" type="button" id="openDepedGradingReview"><i data-lucide="list-checks"></i> Review DepEd defaults</button></div>
+              ${preview.periodStructureWarning ? `<div class="school-k10-grading-warning" role="status">${escapeHtml(preview.periodStructureWarning)}</div>` : ''}
+              <div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject and grades</th><th>Components and weights</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No active Grade 4–10 subjects are configured.</td></tr>'}</tbody></table></div>
+            </section>
+            <section class="school-section-block school-k10-final-rules">
+              <div class="school-section-block-title">Final grade rules</div>
+              <form id="k10FinalGradeRulesForm" class="school-k10-final-rules-form">
+                <div id="k10FinalGradeRulesError" class="school-k10-grading-warning" role="alert" hidden></div>
+                <div class="school-form-grid">
+                  <div class="school-field"><label for="k10GradingMode">Final grade method</label><select id="k10GradingMode" name="gradingMode" ${rulesLocked ? 'disabled' : ''}><option value="deped_policy" ${gradingMode === 'deped_policy' ? 'selected' : ''}>DepEd method (default)</option><option value="school_specific" ${customRules ? 'selected' : ''}>School-specific method</option></select><small id="k10GradingModeHelp">${escapeHtml(customRules ? "Reports the weighted initial grade directly and uses your school's configured academic periods." : 'DepEd default for SY 2026–27: adjusted transmutation.')}</small></div>
+                  <div class="school-field"><label for="k10PassingGradeThreshold">Passing grade</label><input id="k10PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="0.01" value="${Number(preview.passingGradeThreshold) || 75}" ${!customRules || rulesLocked ? 'disabled' : ''}><small id="k10PassingGradeHelp">${customRules ? 'Set the passing grade for your school.' : 'DepEd default: 75.'}</small></div>
+                  <div class="school-field"><label for="k10GradeRounding">Final-grade rounding</label><select id="k10GradeRounding" name="gradeRounding" ${!customRules || rulesLocked ? 'disabled' : ''}><option value="round" ${preview.gradeRounding === 'round' ? 'selected' : ''}>Nearest whole number</option><option value="roundup" ${preview.gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${preview.gradeRounding === 'truncate' ? 'selected' : ''}>Truncate</option></select><small id="k10GradeRoundingHelp">${customRules ? 'Applied to the weighted initial grade.' : 'DepEd default: nearest whole number.'}</small></div>
+                </div>
+                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules are locked because Grades 4–10 grades have been published for this school year.</div>' : ''}
+                <div class="school-form-footer"><button class="top-btn primary" type="submit" ${rulesLocked ? 'disabled' : ''}><i data-lucide="save"></i> Save final grade rules</button></div>
+              </form>
+            </section>
+          </div>
+          ${renderOtherGradeRules(apiLevel, window.EDUGNAY_CONFIG.createDivision(level))}
+        </div>`;
+      document.getElementById('openDepedGradingReview').addEventListener('click', openDepedGradingReview);
+      const k10FinalRulesForm = document.getElementById('k10FinalGradeRulesForm');
+      if (k10FinalRulesForm) {
+        const modeInput = k10FinalRulesForm.elements.gradingMode;
+        const thresholdInput = k10FinalRulesForm.elements.passingGradeThreshold;
+        const roundingInput = k10FinalRulesForm.elements.gradeRounding;
+        const updateFinalGradeHelperText = (schoolSpecific) => {
+          document.getElementById('k10GradingModeHelp').textContent = schoolSpecific
+            ? "Reports the weighted initial grade directly and uses your school's configured academic periods."
+            : 'DepEd default for SY 2026–27: adjusted transmutation.';
+          document.getElementById('k10PassingGradeHelp').textContent = schoolSpecific
+            ? 'Set the passing grade for your school.'
+            : 'DepEd default: 75.';
+          document.getElementById('k10GradeRoundingHelp').textContent = schoolSpecific
+            ? 'Applied to the weighted initial grade.'
+            : 'DepEd default: nearest whole number.';
+        };
+        modeInput.addEventListener('change', () => {
+          const schoolSpecific = modeInput.value === 'school_specific';
+          thresholdInput.disabled = !schoolSpecific || rulesLocked;
+          roundingInput.disabled = !schoolSpecific || rulesLocked;
+          updateFinalGradeHelperText(schoolSpecific);
+          if (!schoolSpecific) {
+            thresholdInput.value = '75';
+            roundingInput.value = 'round';
+          }
+        });
+        k10FinalRulesForm.addEventListener('submit', saveK10FinalGradeSettings);
+      }
+      const k3GradingForm = document.getElementById('schoolK3GradingForm');
+      if (k3GradingForm) {
+        const categories = state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel.id));
+        const updateK3WeightTotal = () => {
+          const total = categories.reduce((sum, category) => sum + Number(k3GradingForm.elements[category.code]?.value || 0), 0);
+          const totalElement = document.getElementById('k3WeightTotal');
+          if (totalElement) totalElement.textContent = `Total weight: ${total}%${total === 100 ? ' | Ready to use' : ' | Adjust to reach 100%'}`;
+        };
+        k3GradingForm.addEventListener('input', updateK3WeightTotal);
+        k3GradingForm.addEventListener('submit', saveGrading);
+        updateK3WeightTotal();
+      }
+      document.querySelectorAll('[data-k10-edit-subject]').forEach(button => button.addEventListener('click', () => {
+        const subject = preview.subjects.find(item => Number(item.id) === Number(button.dataset.k10EditSubject));
+        if (subject) openSubjectGradingEditor(subject, preview);
+      }));
+      bindDivisionSwitcher();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function openK10GradingModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeK10GradingModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function saveK10FinalGradeSettings(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const year = activeK10GradingYear();
+      const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+      const button = form.querySelector('button[type="submit"]');
+      const errorNode = document.getElementById('k10FinalGradeRulesError');
+      if (!year || !apiLevel?.id) return;
+      errorNode.hidden = true;
+      button.disabled = true;
+      try {
+        await window.EDUGNAY_API.saveK10FinalGradeRules({
+          academicYearId: Number(year.id),
+          schoolLevelId: Number(apiLevel.id),
+          gradingMode: form.elements.gradingMode.value,
+          passingGradeThreshold: Number(form.elements.passingGradeThreshold.value),
+          gradeRounding: form.elements.gradeRounding.value
+        });
+        state.k10GradingPreview = await window.EDUGNAY_API.getDepedK10GradingPreview({
+          academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id)
+        });
+        renderGradingPane();
+        showAppToast('Final grade rules saved.');
+      } catch (error) {
+        errorNode.hidden = false;
+        errorNode.textContent = error.message || 'Final grade rules could not be saved.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function openDepedGradingReview() {
+      const year = activeK10GradingYear();
+      const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+      const body = document.getElementById('depedGradingReviewBody');
+      const applyButton = document.getElementById('applyDepedGradingDefaults');
+      if (!year || !apiLevel?.id) return;
+      body.innerHTML = '<p class="term-modal-message" role="status">Loading subject weights…</p>';
+      applyButton.disabled = true;
+      openK10GradingModal('depedGradingReviewModal');
+      try {
+        let preview = state.k10GradingPreview;
+        if (!preview || String(preview.academicYearId) !== String(year.id)) {
+          preview = await window.EDUGNAY_API.getDepedK10GradingPreview({ academicYearId: year.id, schoolLevelId: apiLevel.id });
+          state.k10GradingPreview = preview;
+        }
+        const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+        body.innerHTML = renderDepedGradingReviewBody(preview, escapeHtml);
+        applyButton.disabled = !preview.subjects.some(subject => subject.status === 'ready');
+        document.getElementById('closeDepedGradingReview').focus();
+      } catch (error) {
+        body.innerHTML = `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject weights could not be loaded.')}</p>`;
+      }
+    }
+
+    function createPreviewDefaults(subject) {
+      return subject.defaultComponents || subject.components || [];
+    }
+
+    async function applyDepedGradingDefaults() {
+      const year = activeK10GradingYear();
+      const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+      const button = document.getElementById('applyDepedGradingDefaults');
+      if (!year || !apiLevel?.id) return;
+      button.disabled = true;
+      button.textContent = 'Applying…';
+      try {
+        const result = await window.EDUGNAY_API.applyDepedK10GradingDefaults({ academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id) });
+        state.k10GradingPreview = result.preview;
+        closeK10GradingModal('depedGradingReviewModal');
+        renderGradingPane();
+        const count = result.added.length;
+        showAppToast(count ? `DepEd defaults applied to ${count} subject${count === 1 ? '' : 's'}. Existing and published configurations were preserved.` : 'No new DepEd defaults were needed. Existing configurations were preserved.');
+      } catch (error) {
+        const body = document.getElementById('depedGradingReviewBody');
+        body.insertAdjacentHTML('afterbegin', `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'DepEd defaults could not be applied.')}</p>`);
+      } finally {
+        button.textContent = 'Apply DepEd defaults';
+        button.disabled = false;
+      }
+    }
+
+    function openSubjectGradingEditor(subject, preview) {
+      if (subject.status === 'published') return;
+      state.k10EditorSubject = subject;
+      state.k10EditorComponents = JSON.parse(JSON.stringify(subject.components || []));
+      document.getElementById('subjectGradingEditorTitle').textContent = subject.status === 'unmatched' ? 'Set up subject grading' : 'Edit subject grading';
+      document.getElementById('subjectGradingEditorSubtitle').textContent = `${subject.name} · ${preview.academicYearLabel}`;
+      renderSubjectGradingEditor();
+      openK10GradingModal('subjectGradingEditorModal');
+      document.getElementById('saveSubjectGradingConfig').focus();
+    }
+
+    function collectSubjectGradingEditor() {
+      return [...document.querySelectorAll('#subjectGradingEditorBody .subject-grading-component-card')].map((card, index) => ({
+        ...(card.dataset.componentId ? { id: Number(card.dataset.componentId) } : {}),
+        code: card.querySelector('[data-component-field="code"]').value.trim(),
+        name: card.querySelector('[data-component-field="name"]').value.trim(),
+        componentType: card.querySelector('[data-component-field="type"]').value,
+        weight: Number(card.querySelector('[data-component-field="weight"]').value),
+        sortOrder: index + 1,
+        examParts: [...card.querySelectorAll('.subject-grading-exam-part')].map((part, partIndex) => ({
+          ...(part.dataset.partId ? { id: Number(part.dataset.partId) } : {}),
+          code: part.querySelector('[data-part-field="code"]').value.trim(),
+          name: part.querySelector('[data-part-field="name"]').value.trim(),
+          weight: Number(part.querySelector('[data-part-field="weight"]').value),
+          sortOrder: partIndex + 1
+        }))
+      }));
+    }
+
+    function renderSubjectGradingEditor() {
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const body = document.getElementById('subjectGradingEditorBody');
+      const components = state.k10EditorComponents;
+      const cards = components.map((component, index) => `<section class="subject-grading-component-card" data-component-index="${index}" ${component.id ? `data-component-id="${Number(component.id)}"` : ''}>
+        <div class="subject-grading-component-grid">
+          <label>Component code<input class="form-input" data-component-field="code" maxlength="50" value="${escapeHtml(component.code || '')}"></label>
+          <label>Component name<input class="form-input" data-component-field="name" maxlength="120" value="${escapeHtml(component.name || '')}"></label>
+          <label>Type<select class="form-select" data-component-field="type"><option value="written" ${component.componentType === 'written' ? 'selected' : ''}>Written/Oral Works</option><option value="performance" ${component.componentType === 'performance' ? 'selected' : ''}>Performance Tasks</option><option value="examination" ${component.componentType === 'examination' ? 'selected' : ''}>Examinations</option><option value="other" ${component.componentType === 'other' ? 'selected' : ''}>Other</option></select></label>
+          <label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-component-field="weight" value="${Number(component.weight) || 0}"></label>
+          <button class="top-btn secondary" type="button" data-remove-component="${index}">Remove</button>
+        </div>
+        ${component.componentType === 'examination' ? `<div class="subject-grading-exam-parts"><div class="subject-grading-editor-toolbar"><strong>Exam parts</strong><button class="top-btn secondary" type="button" data-add-exam-part="${index}">Add exam part</button></div>${(component.examParts || []).map((part, partIndex) => `<div class="subject-grading-exam-part" data-part-index="${partIndex}" ${part.id ? `data-part-id="${Number(part.id)}"` : ''}>
+          <label>Part code<input class="form-input" data-part-field="code" maxlength="50" value="${escapeHtml(part.code || '')}"></label><label>Part name<input class="form-input" data-part-field="name" maxlength="120" value="${escapeHtml(part.name || '')}"></label><label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-part-field="weight" value="${Number(part.weight) || 0}"></label><button class="top-btn secondary" type="button" data-remove-exam-part="${index}:${partIndex}">Remove</button>
+        </div>`).join('')}<div class="subject-grading-editor-total">Exam-part weights must total 100%.</div></div>` : ''}
+      </section>`).join('');
+      const total = components.reduce((sum, component) => sum + (Number(component.weight) || 0), 0);
+      body.innerHTML = `<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">The component weights must total 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total">Total weight: ${total.toFixed(2)}%</div>`;
+      document.getElementById('addSubjectGradingComponent').addEventListener('click', () => {
+        state.k10EditorComponents = collectSubjectGradingEditor();
+        const index = state.k10EditorComponents.length + 1;
+        state.k10EditorComponents.push({ code: `school-component-${index}`, name: '', componentType: 'other', weight: 0, examParts: [] });
+        renderSubjectGradingEditor();
+      });
+      body.querySelectorAll('[data-remove-component]').forEach(button => button.addEventListener('click', () => {
+        state.k10EditorComponents = collectSubjectGradingEditor();
+        state.k10EditorComponents.splice(Number(button.dataset.removeComponent), 1);
+        renderSubjectGradingEditor();
+      }));
+      body.querySelectorAll('[data-add-exam-part]').forEach(button => button.addEventListener('click', () => {
+        state.k10EditorComponents = collectSubjectGradingEditor();
+        const index = Number(button.dataset.addExamPart);
+        const parts = state.k10EditorComponents[index].examParts;
+        parts.push({ code: `exam-part-${parts.length + 1}`, name: '', weight: 0 });
+        renderSubjectGradingEditor();
+      }));
+      body.querySelectorAll('[data-remove-exam-part]').forEach(button => button.addEventListener('click', () => {
+        state.k10EditorComponents = collectSubjectGradingEditor();
+        const [componentIndex, partIndex] = button.dataset.removeExamPart.split(':').map(Number);
+        state.k10EditorComponents[componentIndex].examParts.splice(partIndex, 1);
+        renderSubjectGradingEditor();
+      }));
+      body.querySelectorAll('[data-component-field="type"]').forEach(select => select.addEventListener('change', () => {
+        state.k10EditorComponents = collectSubjectGradingEditor();
+        if (select.value !== 'examination') state.k10EditorComponents[Number(select.closest('.subject-grading-component-card').dataset.componentIndex)].examParts = [];
+        renderSubjectGradingEditor();
+      }));
+      body.oninput = event => {
+        if (event.target.matches('[data-component-field="weight"]')) {
+          const sum = collectSubjectGradingEditor().reduce((total, component) => total + (Number(component.weight) || 0), 0);
+          const totalNode = body.querySelector('.subject-grading-editor-total:last-child');
+          if (totalNode) totalNode.textContent = `Total weight: ${sum.toFixed(2)}%`;
+        }
+      };
+    }
+
+    async function saveSubjectGradingEditor(event) {
+      event.preventDefault();
+      const subject = state.k10EditorSubject;
+      const year = activeK10GradingYear();
+      const button = document.getElementById('saveSubjectGradingConfig');
+      if (!subject || !year) return;
+      state.k10EditorComponents = collectSubjectGradingEditor();
+      button.disabled = true;
+      try {
+        await window.EDUGNAY_API.saveSubjectGradingConfig({ academicYearId: Number(year.id), schoolLevelId: Number(state.k10GradingPreview?.schoolLevelId), subjectId: Number(subject.id), components: state.k10EditorComponents });
+        const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+        state.k10GradingPreview = await window.EDUGNAY_API.getDepedK10GradingPreview({ academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id) });
+        closeK10GradingModal('subjectGradingEditorModal');
+        renderGradingPane();
+        showAppToast(`${subject.name} grading rules saved.`);
+      } catch (error) {
+        const message = document.getElementById('subjectGradingEditorError');
+        if (message) { message.hidden = false; message.textContent = error.message || 'Subject grading rules could not be saved.'; }
+      } finally { button.disabled = false; }
+    }
+
     function renderGradingPane() {
       const school = activeSchool();
       setSettingsHeading('Grading rules', 'Configure grading weights and final-grade rules.');
       const { level, data } = activeDivision(school);
+      const isShs = level === 'shs';
       const defaults = window.EDUGNAY_CONFIG.createDivision(level);
       const apiLevel = getApiLevel(level);
+      if (['elementary', 'jhs'].includes(level)) {
+        const year = activeK10GradingYear();
+        if (!year) {
+          const message = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+            icon: 'calendar-off',
+            title: 'Active school year required',
+            text: 'Activate a supported school year under Academic Terms to configure Grade 4–10 subject grading.'
+          });
+          document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${message}</div></div>`;
+          bindDivisionSwitcher();
+          if (window.lucide) lucide.createIcons();
+          return;
+        }
+        if (apiLevel?.id) {
+          if (state.k10GradingPreview
+            && String(state.k10GradingPreview.academicYearId) === String(year.id)
+            && Number(state.k10GradingPreview.schoolLevelId) === Number(apiLevel.id)) {
+            renderK10GradingPane(school, level, apiLevel, state.k10GradingPreview);
+            return;
+          }
+          if (!state.k10GradingLoading) loadK10GradingPreview(apiLevel.id, year.id);
+          setSettingsHeading('Grading rules', 'Loading subject assessment rules.');
+          document.getElementById('schoolSettingsBody').innerHTML = '<div class="school-pane school-grading-pane active"><div class="term-modal-message" role="status">Loading subject grading settings…</div></div>';
+          bindDivisionSwitcher();
+          return;
+        }
+      }
       const savedCategories = state.apiActive
         ? state.apiGradingCategories.filter(category => Number(category.schoolLevelId) === Number(apiLevel?.id))
         : [];
@@ -713,31 +1316,97 @@
       const gradeRounding = state.apiActive
         ? (apiLevel?.gradeRounding || 'round')
         : (data.gradeRounding || defaults.gradeRounding);
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const finalGradeRules = `<div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding" ${isShs ? 'disabled' : ''}><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>${isShs ? 'SHS term grades use the curriculum transmutation table, so this rounding rule does not change them.' : 'Applied when final grades are calculated.'}</small></div></div></div>`;
+      const saveButton = '<div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save grading rules</button></div>';
+      const subjectWeightTable = `<div class="school-shs-weight-section"><div class="school-section-block-title">Subject weights</div><div class="school-shs-weight-table-wrap"><table class="school-shs-weight-table"><thead><tr><th scope="col">Grading type</th><th scope="col">Written Work</th><th scope="col">Performance Tasks</th><th scope="col">Quarterly Assessment</th></tr></thead><tbody>${state.apiShsGradingTypes.map(type => `<tr><th scope="row">${escapeHtml(type.label)}</th><td>${Number(type.weights.ww)}%</td><td>${Number(type.weights.pt)}%</td><td>${Number(type.weights.qa)}%</td></tr>`).join('')}</tbody></table></div>
+        ${state.publishedShsGradeCount > 0 ? `<div class="school-shs-review-notice" role="status"><strong>${Number(state.publishedShsGradeCount).toLocaleString()} SHS grade${state.publishedShsGradeCount === 1 ? '' : 's'} already published.</strong> This correction does not change published results. Review historical grades against the grading rules used when they were published.</div>` : ''}`;
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolGradingForm">
-            <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)}</label><input id="weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
-            <div class="weight-total" id="weightTotal"></div>
-            <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="passingGradeThreshold">Passing grade threshold</label><input id="passingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${passingGradeThreshold}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="gradeRounding">Grade rounding</label><select id="gradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
-            <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save grading rules</button></div>
+            ${isShs ? `${subjectWeightTable}${finalGradeRules}${saveButton}`
+              : `<div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="weight-${escapeHtml(rule.id)}">${escapeHtml(rule.label)}</label><input id="weight-${escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
+              <div class="weight-total" id="weightTotal"></div>${finalGradeRules}${saveButton}`}
           </form>
         </div>`;
       const form = document.getElementById('schoolGradingForm');
-      const updateTotal = () => { const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0); document.getElementById('weightTotal').textContent = `Total weight: ${total}%${total === 100 ? ' | Ready to use' : ' | Adjust to reach 100%'}`; };
-      form.addEventListener('input', updateTotal); form.addEventListener('submit', saveGrading); updateTotal(); bindDivisionSwitcher(); if (window.lucide) lucide.createIcons();
+      const updateTotal = () => {
+        const totalElement = document.getElementById('weightTotal');
+        if (!totalElement) return;
+        const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
+        totalElement.textContent = `Total weight: ${total}%${total === 100 ? ' | Ready to use' : ' | Adjust to reach 100%'}`;
+      };
+      form.addEventListener('input', updateTotal);
+      form.addEventListener('submit', saveGrading);
+      updateTotal();
+      bindDivisionSwitcher();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function getEligibleJournalSubjects() {
+      const jhs = state.apiStructure.find(level => level.levelCode === 'jhs' && level.isEnabled);
+      const enabledJhsGrades = (jhs?.gradeLevels || []).filter(grade => grade.isEnabled);
+      if (!jhs || !enabledJhsGrades.length) return [];
+      const enabledGradeIds = new Set(enabledJhsGrades.map(grade => String(grade.id)));
+      const gradeNumber = grade => Number(String(grade.gradeCode || '').match(/\d+/)?.[0]);
+      const valuesEducation = subject => subject.subjectCode === 'values-education-jhs';
+      const eligible = state.apiSubjects.flatMap(subject => {
+        const scopes = Array.isArray(subject.gradeScopes) ? subject.gradeScopes : [];
+        let grades = [];
+        if (scopes.length) {
+          const activeScopes = scopes.filter(scope => {
+            if (scope.schoolLevelCode === 'jhs') return enabledGradeIds.has(String(scope.gradeLevelId));
+            const level = state.apiStructure.find(item => item.levelCode === scope.schoolLevelCode);
+            const grade = level?.gradeLevels?.find(item => String(item.id) === String(scope.gradeLevelId));
+            return Boolean(level?.isEnabled && grade?.isEnabled);
+          });
+          if (!activeScopes.some(scope => scope.schoolLevelCode === 'jhs')
+            || activeScopes.some(scope => scope.schoolLevelCode !== 'jhs')) return [];
+          grades = [...new Set(activeScopes.filter(scope => scope.schoolLevelCode === 'jhs')
+            .map(scope => String(scope.gradeLevelId)))].map(id => enabledJhsGrades.find(grade => String(grade.id) === id)).filter(Boolean);
+        } else {
+          if (subject.schoolLevelCode !== 'jhs') return [];
+          const directGradeId = subject.gradeLevelId == null ? null : String(subject.gradeLevelId);
+          if (directGradeId && !enabledGradeIds.has(directGradeId)) return [];
+          grades = directGradeId
+            ? enabledJhsGrades.filter(grade => String(grade.id) === directGradeId)
+            : enabledJhsGrades;
+        }
+        if (!grades.length) return [];
+        grades.sort((a, b) => gradeNumber(a) - gradeNumber(b) || Number(a.sortOrder) - Number(b.sortOrder));
+        const numbers = grades.map(gradeNumber).filter(Number.isFinite);
+        const gradeLabel = numbers.length > 1 && numbers.every((number, index) => index === 0 || number === numbers[index - 1] + 1)
+          ? `G${numbers[0]}–G${numbers[numbers.length - 1]}`
+          : numbers.length ? numbers.map(number => `G${number}`).join(', ')
+            : grades.map(grade => grade.displayName).join(', ');
+        return [{ ...subject, journalGradeLabel: gradeLabel, journalDefault: valuesEducation(subject), journalGradeOrder: Math.min(...numbers) }];
+      });
+      return eligible.sort((a, b) => Number(b.journalDefault) - Number(a.journalDefault)
+        || a.name.localeCompare(b.name) || a.journalGradeOrder - b.journalGradeOrder);
     }
 
     function renderPortalFeaturesPane() {
       const school = activeSchool();
       setSettingsHeading('Portal features', 'Control optional features across each portal.');
       const subjects = state.apiSubjects;
-      const journalSubjectId = String(state.apiJournalSubjectId || '');
-      const hasJournalSubject = subjects.some(subject => String(subject.id) === journalSubjectId);
+      const eligibleJournalSubjects = getEligibleJournalSubjects();
+      const savedJournalSubjectId = String(state.apiJournalSubjectId || '');
+      const savedJournalSubject = subjects.find(subject => String(subject.id) === savedJournalSubjectId);
+      const defaultJournalSubject = eligibleJournalSubjects.find(subject => subject.journalDefault);
+      const journalSubjectId = savedJournalSubjectId || String(defaultJournalSubject?.id || '');
+      const hasJournalSubject = eligibleJournalSubjects.some(subject => String(subject.id) === journalSubjectId);
       const features = state.apiFeatures || {};
       const gradesPageEnabled = Boolean(features.gradesEnabled);
       const narrativeReportsEnabled = Boolean(features.narrativeReportsEnabled);
       const journalsEnabled = Boolean(features.journalsEnabled);
+      const sfTemplatesEnabled = Boolean(features.sfTemplatesEnabled);
+      const noEligibleJournalSubjects = !eligibleJournalSubjects.length;
+      const journalSubjectHelp = noEligibleJournalSubjects
+        ? 'Enable JHS and at least one JHS grade, then add an active subject scoped to those grades. Values Education will be preselected when available.'
+        : savedJournalSubjectId && !hasJournalSubject
+          ? 'The saved subject is unavailable for enabled JHS grades. Choose an eligible JHS subject or clear the selection.'
+          : 'Journals are for JHS students and teachers assigned to this subject in a JHS section. Values Education is preselected when available.';
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
@@ -760,8 +1429,13 @@
                   <span class="school-toggle-control" aria-hidden="true"></span>
                 </label>
                 <label class="school-toggle-row">
-                  <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow students to submit reflections and teachers to review them for the configured journal subject.</small></span>
-                  <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${subjects.length ? '' : 'disabled'}>
+                  <span class="school-toggle-copy"><strong>Enable SF Templates</strong><small>Allow teachers to access the official School Form templates and generate forms with school data.</small></span>
+                  <input class="school-toggle-input" type="checkbox" name="sfTemplatesEnabled" ${sfTemplatesEnabled ? 'checked' : ''}>
+                  <span class="school-toggle-control" aria-hidden="true"></span>
+                </label>
+                <label class="school-toggle-row">
+                  <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow JHS students to submit reflections and teachers assigned to the selected subject to review them.</small></span>
+                  <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${noEligibleJournalSubjects && !journalsEnabled ? 'disabled' : ''}>
                   <span class="school-toggle-control" aria-hidden="true"></span>
                 </label>
               </div>
@@ -770,36 +1444,39 @@
               <div class="school-section-block-head">
                 <div>
                   <div class="school-section-block-title">Journal subject</div>
-                  <div class="school-section-block-sub">Choose one subject already configured for this school.</div>
+                  <div class="school-section-block-sub">Choose one active subject scoped to this school’s enabled JHS grades.</div>
                 </div>
               </div>
               <div class="school-form-grid">
                 <div class="school-field">
                   <label for="journalSubjectId">Subject used for Journals</label>
-                  <select id="journalSubjectId" name="journalSubjectId" ${subjects.length && journalsEnabled ? '' : 'disabled'}>
-                    <option value="">Select a configured subject</option>
-                    ${subjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${String(subject.id) === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}</option>`).join('')}
+                  <select id="journalSubjectId" name="journalSubjectId" ${eligibleJournalSubjects.length || savedJournalSubjectId ? '' : 'disabled'}>
+                    <option value="" ${journalSubjectId ? '' : 'selected'}>Select a JHS subject</option>
+                    ${eligibleJournalSubjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${String(subject.id) === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)} · ${window.EDUGNAY_CONFIG.escapeHtml(subject.journalGradeLabel)}${subject.journalDefault ? ' (default)' : ''}</option>`).join('')}
+                    ${savedJournalSubjectId && !hasJournalSubject ? `<option value="${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubjectId)}" selected disabled>${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubject?.name || 'Previously selected subject')} · unavailable for JHS</option>` : ''}
                   </select>
-                  <small>${subjects.length ? hasJournalSubject || !journalSubjectId ? 'Only teachers assigned to this subject in a section can manage Journals.' : 'The saved subject is unavailable. Choose an active subject.' : 'Add a subject in Class Management before enabling Journals.'}</small>
+                  <small>${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectHelp)}</small>
                 </div>
               </div>
             </div>
-            <div class="school-section-block"><button class="top-btn" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>
+            <div class="school-section-block school-journal-history-block" id="journalHistoryBlock" ${journalsEnabled ? '' : 'hidden'}><button class="top-btn secondary" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save portal features</button></div>
           </form>
         </div>`;
       document.getElementById('schoolPortalForm').addEventListener('submit', savePortalFeatures);
       document.getElementById('viewSchoolJournalHistory')?.addEventListener('click', openSchoolJournalHistory);
       const journalToggle = document.querySelector('#schoolPortalForm [name="journalsEnabled"]');
-      const journalSubjectBlock = document.getElementById('journalSubjectBlock');
       const journalSubjectSelect = document.getElementById('journalSubjectId');
-      const syncJournalSubject = () => {
-        const enabled = journalToggle?.checked === true;
-        if (journalSubjectBlock) journalSubjectBlock.hidden = !enabled;
-        if (journalSubjectSelect) journalSubjectSelect.disabled = !enabled || !subjects.length;
+      const journalSubjectBlock = document.getElementById('journalSubjectBlock');
+      const journalHistoryBlock = document.getElementById('journalHistoryBlock');
+      const syncJournalSections = () => {
+        const isJournalEnabled = Boolean(journalToggle?.checked);
+        if (journalSubjectBlock) journalSubjectBlock.hidden = !isJournalEnabled;
+        if (journalHistoryBlock) journalHistoryBlock.hidden = !isJournalEnabled;
+        if (journalSubjectSelect) journalSubjectSelect.disabled = !eligibleJournalSubjects.length && !savedJournalSubjectId;
       };
-      journalToggle?.addEventListener('change', syncJournalSubject);
-      syncJournalSubject();
+      journalToggle?.addEventListener('change', syncJournalSections);
+      syncJournalSections();
       if (window.lucide) lucide.createIcons();
     }
 
@@ -813,7 +1490,7 @@
           <form id="schoolAttendanceForm">
             <div class="school-section-block school-attendance-codes-block">
               <div class="school-section-block-title">Attendance status codes</div>
-              <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${window.EDUGNAY_CONFIG.escapeHtml(code.tone || code.id)}"><span class="school-attendance-code-mark">${window.EDUGNAY_CONFIG.escapeHtml(code.key)}</span><span><strong>${window.EDUGNAY_CONFIG.escapeHtml(code.name)}</strong><small>${window.EDUGNAY_CONFIG.escapeHtml(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'No attendance codes configured', text: 'Attendance statuses will appear here when the school sets them.' })}</div>
+              <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${window.EDUGNAY_CONFIG.escapeHtml(code.tone || code.id)}"><span class="school-attendance-code-mark">${window.EDUGNAY_CONFIG.escapeHtml(code.key)}</span><span><strong>${window.EDUGNAY_CONFIG.escapeHtml(code.name)}</strong><small>${window.EDUGNAY_CONFIG.escapeHtml(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'Attendance codes unavailable', text: 'The built-in attendance codes are missing for this school.' })}</div>
             </div>
             <div class="school-section-block">
               <div class="school-section-block-title">Absence thresholds</div>
@@ -877,19 +1554,21 @@
       renderSettingsApiState();
       try {
         await window.EDUGNAY_SCHOOL_READY;
-        const [apiSchool, portal, structure, years, gradingCategories, subjects, attendance] = await Promise.all([
+        const [apiSchool, portal, structure, years, gradingSettings, subjects, attendance] = await Promise.all([
           window.EDUGNAY_API.getSchoolSettings(),
           window.EDUGNAY_API.getPortalFeatures(),
           window.EDUGNAY_API.getAcademicStructure(),
           window.EDUGNAY_API.getAcademicYears(),
-          window.EDUGNAY_API.getGradingCategories(),
+          window.EDUGNAY_API.getGradingSettings(),
           window.EDUGNAY_API.getSubjects(),
           window.EDUGNAY_API.request('/school/attendance-settings')
         ]);
         if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
         applyApiSchoolSettings(apiSchool);
         applyApiAcademicStructure(structure);
-        state.apiGradingCategories = gradingCategories;
+        state.apiGradingCategories = gradingSettings.gradingCategories;
+        state.apiShsGradingTypes = gradingSettings.shsGradingTypes;
+        state.publishedShsGradeCount = gradingSettings.publishedShsGradeCount;
         state.apiAttendanceRules = attendance.settings;
         const activeYear = years.find(year => year.status === 'active') || years[0] || null;
         const terms = activeYear
@@ -898,6 +1577,7 @@
         applyApiAcademicTerms(years, terms);
         state.apiFeatures = portal.features;
         state.apiJournalSubjectId = portal.journalSubjectId;
+        state.apiJournalSubjectEligible = portal.journalSubjectEligible;
         state.apiSubjects = subjects.filter(subject => subject.isActive);
         state.apiActive = true;
         state.apiLoading = false;
@@ -1282,11 +1962,14 @@
             code: category.code,
             apiId: Number(category.id),
             label: category.name,
-            name: category.name
+            name: category.name,
+            weight: Number(category.weight)
           }))
         : (Array.isArray(target.gradingRules) ? target.gradingRules : window.EDUGNAY_CONFIG.createDivision(level).gradingRules);
-      const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
-      if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
+      if (level !== 'shs') {
+        const total = rules.reduce((sum, rule) => sum + Number(form.elements[rule.id]?.value || 0), 0);
+        if (total !== 100) { notify('Grading weights must total 100 percent before saving.'); return; }
+      }
 
       const gradeRounding = form.elements.gradeRounding?.value || 'round';
       const passingGradeThreshold = Number(form.elements.passingGradeThreshold?.value);
@@ -1314,7 +1997,7 @@
               ...(rule.apiId ? { id: Number(rule.apiId) } : {}),
               code: String(rule.code || rule.id).toLowerCase(),
               name: rule.name || rule.label,
-              weight: Number(form.elements[rule.id]?.value || 0)
+              weight: level === 'shs' ? Number(rule.weight) : Number(form.elements[rule.id]?.value || 0)
             })),
             gradeRounding,
             passingGradeThreshold
@@ -1497,10 +2180,10 @@
       const journalSubjectId = String(form.elements.journalSubjectId?.disabled
         ? state.apiJournalSubjectId || ''
         : form.elements.journalSubjectId?.value || '');
-      const subjects = state.apiSubjects;
-      const journalSubjectIsConfigured = subjects.some(subject => String(subject.id) === journalSubjectId);
-      if (form.elements.journalsEnabled?.checked && !journalSubjectIsConfigured) {
-        notify('Select a configured subject before enabling Journals.');
+      const eligibleSubjects = getEligibleJournalSubjects();
+      const journalSubjectIsEligible = eligibleSubjects.some(subject => String(subject.id) === journalSubjectId);
+      if (form.elements.journalsEnabled?.checked && !journalSubjectIsEligible) {
+        notify('Select an active subject scoped to the school’s enabled JHS grades before enabling Journals.');
         form.elements.journalSubjectId?.focus();
         return;
       }
@@ -1511,7 +2194,7 @@
           return;
         }
         if (state.apiJournalSubjectId && journalSubjectId !== String(state.apiJournalSubjectId)) {
-          const subjectName = subjects.find(subject => String(subject.id) === journalSubjectId)?.name || 'the selected subject';
+          const subjectName = eligibleSubjects.find(subject => String(subject.id) === journalSubjectId)?.name || 'no subject';
           if (!(await confirmJournalSubjectChange(subjectName))) return;
         }
         try {
@@ -1522,11 +2205,11 @@
             narrativeReportsEnabled: Boolean(form.elements.narrativeReportsEnabled?.checked),
             journalsEnabled: Boolean(form.elements.journalsEnabled?.checked),
             journalSubjectId: journalSubjectId ? Number(journalSubjectId) : null,
-            attendanceEnabled: Boolean(state.apiFeatures?.attendanceEnabled),
-            sfTemplatesEnabled: Boolean(state.apiFeatures?.sfTemplatesEnabled)
+            sfTemplatesEnabled: Boolean(form.elements.sfTemplatesEnabled?.checked)
           });
           state.apiFeatures = result.features;
           state.apiJournalSubjectId = result.journalSubjectId;
+          state.apiJournalSubjectEligible = result.journalSubjectEligible;
           school.gradesPageEnabled = Boolean(result.features.gradesEnabled);
           school.narrativeReportsEnabled = Boolean(result.features.narrativeReportsEnabled);
           school.journalsEnabled = Boolean(result.features.journalsEnabled);
@@ -1588,6 +2271,23 @@
     document.getElementById('cancelTermAction').addEventListener('click', closeTermActionModal);
     document.getElementById('termActionModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeTermActionModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.termAction) closeTermActionModal(); });
+    document.getElementById('closeDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
+    document.getElementById('cancelDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
+    document.getElementById('applyDepedSubjectReview').addEventListener('click', applyDepedSubjects);
+    document.getElementById('depedSubjectReviewModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeDepedSubjectReview(); });
+    document.getElementById('applyDepedGradingDefaults').addEventListener('click', applyDepedGradingDefaults);
+    document.getElementById('subjectGradingEditorForm').addEventListener('submit', saveSubjectGradingEditor);
+    document.getElementById('depedGradingReviewModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeK10GradingModal('depedGradingReviewModal'); });
+    document.getElementById('subjectGradingEditorModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeK10GradingModal('subjectGradingEditorModal'); });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      for (const id of ['depedGradingReviewModal', 'subjectGradingEditorModal']) {
+        if (document.getElementById(id).classList.contains('open')) closeK10GradingModal(id);
+      }
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.getElementById('depedSubjectReviewModal').classList.contains('open')) closeDepedSubjectReview();
+    });
     document.querySelectorAll('[data-school-tab]').forEach(tab => tab.addEventListener('click', () => { state.tab = tab.dataset.schoolTab; document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item === tab)); renderPane(); }));
     document.addEventListener('DOMContentLoaded', async () => {
       if (window.location.hash === '#academic-terms') {

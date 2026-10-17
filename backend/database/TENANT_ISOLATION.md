@@ -28,11 +28,11 @@ New assignment submissions, learning materials, school logos, announcement image
 |---|---|---|---|
 | Platform | `schools` | Record itself | Intentional global table |
 | Platform | `school_form_templates`, `school_form_template_mappings` | None | Shared official templates |
-| Direct school | `school_portal_features`, `school_attendance_settings`, `attendance_status_codes`, `academic_years`, `school_levels`, `parent_notification_triggers`, `subjects`, `school_settings`, `sections`, `grading_categories`, `assignments`, `published_final_grades`, `attendance_sessions`, `grading_period_reopen_requests`, `announcements`, `learning_materials`, `journal_subjects`, `narrative_reports`, `intervention_plans`, `school_form_exports`, `holidays`, `audit_logs` | Their `school_id` | Session-scoped checks and same-school foreign keys where records are related |
+| Direct school | `school_portal_features`, `school_attendance_settings`, `attendance_status_codes`, `academic_years`, `school_levels`, `parent_notification_triggers`, `subjects`, `school_settings`, `sections`, `grading_categories`, `assignments`, `published_final_grades`, `attendance_sessions`, `grading_period_reopen_requests`, `announcements`, `learning_materials`, `journal_subjects`, `narrative_reports`, `intervention_plans`, `school_form_exports`, `holidays`, `audit_logs`, `subject_grading_profiles` | Their `school_id` | Session-scoped checks and same-school foreign keys where records are related |
 | User-owned | `user_sessions`, `password_reset_tokens`, role profile tables, `student_qr_credentials`, `user_tasks` | Referenced `users.school_id` | Inherits the user's tenant |
 | Relationship | `student_parent_links`, `section_students`, `section_teachers` | Required `school_id` | Composite same-school foreign keys |
 | Academic child | `school_grade_levels`, `school_shs_tracks`, `academic_terms`, `academic_term_actions` | Required `school_id` | Composite same-school foreign keys |
-| Assignment/grade child | `assignment_submissions`, `grading_items`, `student_scores` | Required `school_id` | Composite same-school foreign keys |
+| Assignment/grade child | `assignment_submissions`, `grading_items`, `student_scores`, `subject_grading_components`, `subject_grading_exam_parts` | Required `school_id` | Composite same-school foreign keys |
 | Attendance child | `attendance_records`, `student_qr_credentials`, `qr_scan_events` | Required `school_id` | Composite same-school foreign keys |
 | Communication child | `announcement_audiences`, `announcement_reads`, `announcement_email_outbox` | Required `school_id` | Composite same-school foreign keys |
 | Journal child | `journal_prompts`, `student_journal_entries`, `journal_feedback` | Required `school_id` | Composite same-school foreign keys |
@@ -60,6 +60,9 @@ The tenant constraint migrations are:
 - `022_add_child_tenant_constraints.sql`
 - `023_link_assignment_grading_items.sql`
 - `024_track_published_grading_items.sql`
+- `040_subject_year_grading_rules.sql`
+
+The legacy SHS curriculum also requires `038_legacy_shs_tracks_strands_and_subject_scopes.sql` on databases where `sections.strand_id` still stores the old SHS track. It preserves those IDs as `track_id`, adds a separate strand catalog, and backfills subject grade scopes. The tenant audit detects the pre-migration structure, so the migration runner can check the existing relationships before applying it. Do not run this migration against a database that already has the new `track_id` and strand catalog.
 
 The configured database already has these migrations installed. Do not run them again there. For a different database, run the read-only audit first, create and verify a private database backup, apply each pending migration in order during a maintenance window, then run the audit and schema verifier again. MySQL DDL is not generally rolled back by a transaction, so restore from a verified backup if a migration fails. The snapshot command creates an ignored local JSON file containing schema and private school data; keep it secure and test restoration separately before relying on it for deployment recovery.
 

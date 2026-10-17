@@ -38,14 +38,17 @@ function sectionSelect() {
   return `SELECT
     sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId,
     sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId,
-    sections.strand_id AS strandId, sections.name, sections.capacity, sections.adviser_user_id AS adviserUserId,
+    sections.track_id AS trackId, sections.strand_id AS strandId, sections.name, sections.capacity, sections.adviser_user_id AS adviserUserId,
     sections.status, academic_years.label AS academicYearLabel, academic_years.status AS academicYearStatus,
     DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
     DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate,
     school_levels.level_code AS schoolLevelCode,
     school_levels.display_name AS schoolLevelName, school_grade_levels.grade_code AS gradeCode,
-    school_grade_levels.display_name AS gradeLevelName, strands.track_code AS strandCode,
-    strands.display_name AS strandName, adviser.display_name AS adviserName,
+    school_grade_levels.display_name AS gradeLevelName,
+    tracks.track_code AS trackCode, tracks.display_name AS trackName,
+    strands.strand_code AS strandCode, strands.display_name AS strandName,
+    (school_levels.level_code = 'shs' AND tracks.track_code IN ('academic', 'tvl') AND sections.strand_id IS NULL) AS needsStrandReview,
+    adviser.display_name AS adviserName,
     adviser.avatar_filename AS adviserAvatarFilename, adviser.avatar_version AS adviserAvatarVersion,
     (SELECT COUNT(*) FROM section_students WHERE section_students.school_id = sections.school_id
       AND section_students.section_id = sections.id AND section_students.withdrawn_at IS NULL) AS studentCount
@@ -53,7 +56,8 @@ function sectionSelect() {
   INNER JOIN academic_years ON academic_years.id = sections.academic_year_id AND academic_years.school_id = sections.school_id
   INNER JOIN school_levels ON school_levels.id = sections.school_level_id AND school_levels.school_id = sections.school_id
   INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id AND school_grade_levels.school_id = sections.school_id
-  LEFT JOIN school_shs_tracks AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
+  LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.track_id AND tracks.school_id = sections.school_id
+  LEFT JOIN school_shs_strands AS strands ON strands.id = sections.strand_id AND strands.school_id = sections.school_id
   LEFT JOIN users AS adviser ON adviser.id = sections.adviser_user_id AND adviser.school_id = sections.school_id`;
 }
 
@@ -86,7 +90,9 @@ function formatSection(row) {
     academicYearEndDate: row.academicYearEndDate,
     schoolLevelId: row.schoolLevelId, schoolLevelCode: row.schoolLevelCode, schoolLevelName: row.schoolLevelName,
     gradeLevelId: row.gradeLevelId, gradeCode: row.gradeCode, gradeLevelName: row.gradeLevelName,
+    trackId: row.trackId, trackCode: row.trackCode, trackName: row.trackName,
     strandId: row.strandId, strandCode: row.strandCode, strandName: row.strandName,
+    needsStrandReview: Boolean(row.needsStrandReview),
     name: row.name, capacity: row.capacity, studentCount: Number(row.studentCount),
     adviserUserId: row.adviserUserId, adviserName: row.adviserName,
     adviserAvatar: avatarFields({ id: row.adviserUserId, avatarFilename: row.adviserAvatarFilename,
@@ -111,6 +117,12 @@ async function findOwnedSection(schoolId, sectionId, connection = getDatabase())
 function assertSectionYearWritable(section) {
   if (section.academicYearStatus === 'archived') {
     throw createError('Records from an archived school year are read-only.', 409);
+  }
+}
+
+function assertShsPlacementReviewed(section) {
+  if (section?.needsStrandReview) {
+    throw createError('Review and assign this section’s SHS strand before enrolling students or assigning subjects.', 409);
   }
 }
 
@@ -140,21 +152,33 @@ async function validateSectionData(connection, schoolId, values) {
   const academicYearId = parseId(values.academicYearId, 'academic year ID');
   const schoolLevelId = parseId(values.schoolLevelId, 'school level ID');
   const gradeLevelId = parseId(values.gradeLevelId, 'grade level ID');
-  const strandId = optionalId(values.strandId, 'strand ID');
+  const legacyTrackId = Object.hasOwn(values, 'trackId') ? null : optionalId(values.strandId, 'track ID');
+  const trackId = Object.hasOwn(values, 'trackId') ? optionalId(values.trackId, 'track ID') : legacyTrackId;
+  const strandId = Object.hasOwn(values, 'trackId') ? optionalId(values.strandId, 'strand ID') : null;
   const adviserUserId = optionalId(values.adviserUserId, 'adviser user ID');
   const [years] = await connection.execute('SELECT id, status FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1', [academicYearId, schoolId]);
-  const [levels] = await connection.execute('SELECT id, is_enabled AS isEnabled FROM school_levels WHERE id = ? AND school_id = ? LIMIT 1', [schoolLevelId, schoolId]);
+  const [levels] = await connection.execute('SELECT id, level_code AS levelCode, is_enabled AS isEnabled FROM school_levels WHERE id = ? AND school_id = ? LIMIT 1', [schoolLevelId, schoolId]);
   const [grades] = await connection.execute('SELECT id FROM school_grade_levels WHERE id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1', [gradeLevelId, schoolLevelId]);
   if (!years.length || ['closed', 'archived'].includes(years[0].status) || !levels.length || !levels[0].isEnabled || !grades.length) throw createError('The academic year, school level, or grade level is invalid.', 404);
-  if (strandId) {
-    const [strands] = await connection.execute('SELECT id FROM school_shs_tracks WHERE id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1', [strandId, schoolLevelId]);
-    if (!strands.length) throw createError('The selected SHS track is invalid.', 404);
+  if (levels[0].levelCode === 'shs') {
+    if (!trackId) throw createError('Select an SHS track.');
+    const [tracks] = await connection.execute('SELECT id, track_code AS trackCode FROM school_shs_tracks WHERE id = ? AND school_id = ? AND school_level_id = ? AND is_enabled = TRUE LIMIT 1', [trackId, schoolId, schoolLevelId]);
+    if (!tracks.length) throw createError('The selected SHS track is invalid.', 404);
+    const requiresStrand = ['academic', 'tvl'].includes(tracks[0].trackCode);
+    if (requiresStrand && !strandId) throw createError('Select a strand for the Academic or TVL track.');
+    if (!requiresStrand && strandId) throw createError('Sports and Arts and Design sections do not use a strand.');
+    if (strandId) {
+      const [strands] = await connection.execute('SELECT id FROM school_shs_strands WHERE id = ? AND school_id = ? AND school_level_id = ? AND track_id = ? AND is_enabled = TRUE LIMIT 1', [strandId, schoolId, schoolLevelId, trackId]);
+      if (!strands.length) throw createError('The selected strand does not belong to this SHS track.', 404);
+    }
+  } else if (trackId || strandId) {
+    throw createError('Tracks and strands can only be selected for Senior High School sections.');
   }
   if (adviserUserId) {
     const [advisers] = await connection.execute("SELECT id FROM users WHERE id = ? AND school_id = ? AND role = 'teacher' AND account_status = 'active' LIMIT 1", [adviserUserId, schoolId]);
     if (!advisers.length) throw createError('The selected adviser must be an active teacher from this school.', 404);
   }
-  return { academicYearId, schoolLevelId, gradeLevelId, strandId, adviserUserId };
+  return { academicYearId, schoolLevelId, gradeLevelId, trackId, strandId, adviserUserId };
 }
 
 async function listSections(req, res, next) {
@@ -214,7 +238,7 @@ async function createSection(req, res, next) {
     const sectionCapacity = capacity(req.body.capacity);
     await connection.beginTransaction();
     transactionStarted = true;
-    const [result] = await connection.execute('INSERT INTO sections (school_id, academic_year_id, school_level_id, grade_level_id, strand_id, name, capacity, adviser_user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [schoolId, values.academicYearId, values.schoolLevelId, values.gradeLevelId, values.strandId, name, sectionCapacity, values.adviserUserId, 'active']);
+    const [result] = await connection.execute('INSERT INTO sections (school_id, academic_year_id, school_level_id, grade_level_id, track_id, strand_id, name, capacity, adviser_user_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [schoolId, values.academicYearId, values.schoolLevelId, values.gradeLevelId, values.trackId, values.strandId, name, sectionCapacity, values.adviserUserId, 'active']);
     await writeAuditLog(connection, req, 'section_created', 'section', result.insertId, { summary: name });
     await connection.commit();
     transactionStarted = false;
@@ -244,10 +268,10 @@ async function updateSection(req, res, next) {
     assertSectionYearWritable(current);
     for (const [field, label] of [
       ['academicYearId', 'academic year ID'], ['schoolLevelId', 'school level ID'],
-      ['gradeLevelId', 'grade level ID'], ['strandId', 'strand ID']
+      ['gradeLevelId', 'grade level ID'], ['trackId', 'track ID'], ['strandId', 'strand ID']
     ]) {
       if (req.body[field] === undefined) continue;
-      const supplied = field === 'strandId'
+      const supplied = ['trackId', 'strandId'].includes(field)
         ? optionalId(req.body[field], label)
         : parseId(req.body[field], label);
       if (supplied !== (current[field] == null ? null : Number(current[field]))) {
@@ -277,6 +301,42 @@ async function updateSection(req, res, next) {
   } catch (error) {
     if (transactionStarted) { try { await connection.rollback(); } catch {} }
     if (error.code === 'ER_DUP_ENTRY') error = createError('A section with this grade level and name already exists for this academic year.', 409);
+    next(error);
+  } finally { connection.release(); }
+}
+
+async function classifySectionStrand(req, res, next) {
+  const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
+  try {
+    const schoolId = req.user.schoolId;
+    const sectionId = parseId(req.params.sectionId, 'section ID');
+    const strandId = parseId(req.body?.strandId, 'strand ID');
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [locked] = await connection.execute(
+      'SELECT id FROM sections WHERE id = ? AND school_id = ? FOR UPDATE', [sectionId, schoolId]
+    );
+    if (!locked.length) throw createError('Section not found.', 404);
+    const section = await findOwnedSection(schoolId, sectionId, connection);
+    if (!section || section.schoolLevelCode !== 'shs' || !['academic', 'tvl'].includes(section.trackCode)) {
+      throw createError('Only Academic or TVL sections need a strand classification.', 409);
+    }
+    if (section.strandId) throw createError('This section already has a strand classification.', 409);
+    const [strands] = await connection.execute(
+      'SELECT id, display_name AS displayName FROM school_shs_strands WHERE id = ? AND school_id = ? AND school_level_id = ? AND track_id = ? AND is_enabled = TRUE LIMIT 1',
+      [strandId, schoolId, section.schoolLevelId, section.trackId]
+    );
+    if (!strands.length) throw createError('Choose an enabled strand for this section\'s track.', 404);
+    await connection.execute('UPDATE sections SET strand_id = ? WHERE id = ? AND school_id = ? AND strand_id IS NULL', [strandId, sectionId, schoolId]);
+    await writeAuditLog(connection, req, 'section_strand_classified', 'section', sectionId, {
+      summary: `${section.name} · ${section.trackName} · ${strands[0].displayName}`
+    });
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ section: formatSection(await findOwnedSection(schoolId, sectionId)) });
+  } catch (error) {
+    if (transactionStarted) { try { await connection.rollback(); } catch {} }
     next(error);
   } finally { connection.release(); }
 }
@@ -409,6 +469,7 @@ async function enrollStudent(req, res, next) {
     if (!lockedSections.length) throw createError('An active section was not found.', 404);
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    assertShsPlacementReviewed(section);
     if (section.academicYearStatus !== 'active') throw createError('Students can only be assigned to sections in the active academic year.', 409);
     if (section.studentCount >= section.capacity) throw createError('This section has reached its capacity.', 409);
     const [enrollments] = await connection.execute('SELECT section_students.id FROM section_students INNER JOIN sections ON sections.id = section_students.section_id WHERE section_students.student_user_id=? AND sections.academic_year_id=? AND section_students.withdrawn_at IS NULL LIMIT 1', [studentId, section.academicYearId]);
@@ -452,6 +513,7 @@ async function enrollStudentsBulk(req, res, next) {
     if (!lockedSections.length) throw createError('An active section was not found.', 404);
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    assertShsPlacementReviewed(section);
     if (section.academicYearStatus !== 'active') throw createError('Students can only be assigned to sections in the active academic year.', 409);
     if (section.studentCount + studentIds.length > section.capacity) throw createError('The section does not have enough remaining seats for all selected students.', 409);
 
@@ -482,13 +544,16 @@ function assertMoveSections(source, target) {
   if (source.academicYearStatus !== 'active' || target.academicYearStatus !== 'active') {
     throw createError('Students can only be moved between sections in the active academic year.', 409);
   }
+  assertShsPlacementReviewed(source);
+  assertShsPlacementReviewed(target);
   if (Number(source.academicYearId) !== Number(target.academicYearId)) {
     throw createError('Students can only be moved within the same academic year.', 409);
   }
   if (Number(source.schoolLevelId) !== Number(target.schoolLevelId)
     || Number(source.gradeLevelId) !== Number(target.gradeLevelId)
+    || String(source.trackId ?? '') !== String(target.trackId ?? '')
     || String(source.strandId ?? '') !== String(target.strandId ?? '')) {
-    throw createError('Choose a section in the same school level, grade, and track or strand.', 409);
+    throw createError('Choose a section in the same school level, grade, track, and strand.', 409);
   }
   if (target.studentCount >= target.capacity) throw createError('The target section has reached its capacity.', 409);
 }
@@ -663,9 +728,25 @@ async function assignTeacher(req, res, next) {
     const subjectId = parseId(req.body.subjectId, 'subject ID');
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    assertShsPlacementReviewed(section);
     const [teachers] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='teacher' AND account_status='active' LIMIT 1", [teacherId, req.user.schoolId]);
-    const [subjects] = await connection.execute('SELECT id, name FROM subjects WHERE id=? AND school_id=? AND is_active=TRUE AND (school_level_id IS NULL OR school_level_id=?) AND (grade_level_id IS NULL OR grade_level_id=?) LIMIT 1', [subjectId, req.user.schoolId, section.schoolLevelId, section.gradeLevelId]);
+    const [subjects] = await connection.execute(
+      `SELECT subjects.id, subjects.name, subjects.shs_grading_group AS shsGradingGroup
+      FROM subjects WHERE subjects.id = ? AND subjects.school_id = ? AND subjects.is_active = TRUE
+        AND (subjects.school_level_id IS NULL OR subjects.school_level_id = ?)
+        AND EXISTS (
+          SELECT 1 FROM subject_grade_scopes AS scopes
+          WHERE scopes.school_id = subjects.school_id AND scopes.subject_id = subjects.id
+            AND scopes.grade_level_id = ?
+            AND (scopes.track_id IS NULL OR scopes.track_id = ?)
+            AND (scopes.strand_id IS NULL OR scopes.strand_id = ?)
+        ) LIMIT 1`,
+      [subjectId, req.user.schoolId, section.schoolLevelId, section.gradeLevelId, section.trackId, section.strandId]
+    );
     if (!teachers.length || !subjects.length) throw createError('The teacher or subject is not valid for this section.', 404);
+    if (section.schoolLevelCode === 'shs' && !subjects[0].shsGradingGroup) {
+      throw createError('Choose a grading type for this SHS subject before assigning it to a section.', 409);
+    }
     await connection.beginTransaction();
     transactionStarted = true;
     const [result] = await connection.execute('INSERT INTO section_teachers (school_id, section_id, teacher_user_id, subject_id) VALUES (?, ?, ?, ?)', [req.user.schoolId, sectionId, teacherId, subjectId]);
@@ -711,6 +792,7 @@ async function updateTeacherAssignment(req, res, next) {
     const teacherId = parseId(req.body.teacherId, 'teacher ID');
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    assertShsPlacementReviewed(section);
     const [teachers] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='teacher' AND account_status='active' LIMIT 1", [teacherId, req.user.schoolId]);
     if (!teachers.length) throw createError('The teacher was not found in this school.', 404);
     const [currentRows] = await connection.execute('SELECT subjects.name AS subjectName, users.display_name AS previousTeacher FROM section_teachers INNER JOIN users ON users.id = section_teachers.teacher_user_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id WHERE section_teachers.id = ? AND section_teachers.section_id = ? LIMIT 1', [assignmentId, sectionId]);
@@ -730,4 +812,4 @@ async function updateTeacherAssignment(req, res, next) {
   } finally { connection.release(); }
 }
 
-module.exports = { assignTeacher, createSection, deleteSection, enrollStudent, enrollStudentsBulk, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, previewStudentMove, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };
+module.exports = { assignTeacher, classifySectionStrand, createSection, deleteSection, enrollStudent, enrollStudentsBulk, getSection, getSectionStudentDetails, listSectionStudents, listSectionTeachers, listSections, moveStudent, previewStudentMove, removeTeacherAssignment, updateSection, updateTeacherAssignment, withdrawStudent };

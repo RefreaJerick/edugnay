@@ -120,16 +120,6 @@ async function assertAttendanceCanBeEdited(database, section, attendanceDate) {
   }
 }
 
-async function assertAttendanceFeatureEnabled(database, schoolId) {
-  const [features] = await database.execute(
-    'SELECT attendance_enabled AS attendanceEnabled FROM school_portal_features WHERE school_id = ? LIMIT 1',
-    [schoolId]
-  );
-  if (!features[0]?.attendanceEnabled) {
-    throw createError('Attendance is not enabled for this school.', 403);
-  }
-}
-
 async function getActiveStudentIds(database, schoolId, sectionId) {
   const [students] = await database.execute(
     `SELECT student_user_id AS studentId
@@ -215,7 +205,6 @@ async function getSectionAttendance(req, res, next) {
     const database = getDatabase();
     const section = await getTeachingSection(database, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
-    await assertAttendanceFeatureEnabled(database, section.schoolId);
 
     res.status(200).json(await getAttendanceData(database, section, subjectId, attendanceDate));
   } catch (error) {
@@ -230,7 +219,6 @@ async function getSectionAttendanceHistory(req, res, next) {
     const database = getDatabase();
     const section = await getTeachingSection(database, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
-    await assertAttendanceFeatureEnabled(database, section.schoolId);
 
     const [rows] = await database.execute(
       `SELECT
@@ -308,7 +296,6 @@ async function saveSectionAttendance(req, res, next) {
 
     const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
-    await assertAttendanceFeatureEnabled(connection, section.schoolId);
     await assertAttendanceCanBeEdited(connection, section, attendanceDate);
 
     const studentIds = await getActiveStudentIds(connection, section.schoolId, sectionId);
@@ -387,7 +374,6 @@ async function saveSectionAttendance(req, res, next) {
 async function getParentAttendance(req, res, next) {
   try {
     const database = getDatabase();
-    await assertAttendanceFeatureEnabled(database, req.user.schoolId);
     const [children] = await database.execute(
       `SELECT students.id AS studentId, students.display_name AS displayName, students.initials,
         students.avatar_filename AS avatarFilename, students.avatar_version AS avatarVersion,
@@ -452,7 +438,6 @@ async function getParentAttendance(req, res, next) {
 async function getStudentAttendance(req, res, next) {
   try {
     const database = getDatabase();
-    await assertAttendanceFeatureEnabled(database, req.user.schoolId);
     const currentDate = getCurrentDate();
     const [records] = await database.execute(
       `SELECT attendance_records.student_user_id AS studentId,
@@ -492,7 +477,6 @@ async function getStudentAttendance(req, res, next) {
 async function getSchoolAttendanceSummary(req, res, next) {
   try {
     const database = getDatabase();
-    await assertAttendanceFeatureEnabled(database, req.user.schoolId);
     const yearId = req.query?.academicYearId === undefined ? null : parseId(req.query.academicYearId, 'academic year ID');
     if (yearId) {
       const [years] = await database.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? LIMIT 1', [yearId, req.user.schoolId]);

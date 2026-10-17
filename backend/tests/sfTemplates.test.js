@@ -96,15 +96,26 @@ let includePublishedGrade = true;
 let sf9ConfiguredTerms = null;
 let sf9PublishedGrades = null;
 let sf9AdviserName = 'Ms. Maria Reyes';
+let sfTemplatesEnabled = 1;
+let templateCatalogReads = 0;
+let featureGateSchoolId = null;
 const database = {
   async execute(sql, values = []) {
-    if (/SELECT sf_templates_enabled/.test(sql)) return [[{ sfTemplatesEnabled: 1 }]];
-    if (/FROM school_form_templates/.test(sql) && /WHERE form_code IN/.test(sql)) return [[{
+    if (/SELECT sf_templates_enabled/.test(sql)) {
+      featureGateSchoolId = values[0];
+      return [[{ sfTemplatesEnabled }]];
+    }
+    if (/FROM school_form_templates/.test(sql) && /WHERE form_code IN/.test(sql)) {
+      templateCatalogReads += 1;
+      return [[{
       id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
       sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
-    }]];
-    if (/FROM school_form_templates/.test(sql)) return [[Number(values[0]) === 9 ? {
+      }]];
+    }
+    if (/FROM school_form_templates/.test(sql)) {
+      templateCatalogReads += 1;
+      return [[Number(values[0]) === 9 ? {
       id: 9, formCode: 'SF9', formName: 'Learner\'s Performance Report (Grades 4-10)', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf9.xlsx',
       sheetName: 'SF9 - GRADE 4-10', requiresAcademicTerm: 0
@@ -128,7 +139,8 @@ const database = {
       id: 1, formCode: 'SF1', formName: 'School Register', version: '1.0',
       mappingStatus: 'ready', filePath: '/assets/templates/school-forms/sf1.xlsx',
       sheetName: 'School Form 1 (SF1)', requiresAcademicTerm: 0
-    }]];
+      }]];
+    }
     if (/FROM sections/.test(sql)) {
       sectionQuery = { sql, values };
       const current = { id: 8, schoolId: 1, name: 'St. Matthew', sectionStatus: 'active', academicYearId: 2,
@@ -347,6 +359,38 @@ async function call(handler, method, body = {}, query = {}, templateId = '1', us
   }, response, error => { result.error = error; });
   return result;
 }
+
+test('SF Templates remain blocked for disabled schools without reading the shared catalog', async () => {
+  const previousEnabled = sfTemplatesEnabled;
+  try {
+    sfTemplatesEnabled = 0;
+    templateCatalogReads = 0;
+    featureGateSchoolId = null;
+    const result = await call(controller.listTemplates, 'GET', {}, {}, '1', { id: 3, schoolId: 42 });
+    assert.equal(result.error?.status, 403);
+    assert.equal(result.error?.message, 'SF Templates are not enabled for this school.');
+    assert.equal(featureGateSchoolId, 42);
+    assert.equal(templateCatalogReads, 0);
+  } finally {
+    sfTemplatesEnabled = previousEnabled;
+  }
+});
+
+test('enabled schools can load the shared SF template catalog', async () => {
+  const previousEnabled = sfTemplatesEnabled;
+  try {
+    sfTemplatesEnabled = 1;
+    templateCatalogReads = 0;
+    featureGateSchoolId = null;
+    const result = await call(controller.listTemplates, 'GET', {}, {}, '1', { id: 3, schoolId: 42 });
+    assert.equal(result.error, null);
+    assert.ok(result.body.templates.length > 0);
+    assert.equal(featureGateSchoolId, 42);
+    assert.ok(templateCatalogReads > 0);
+  } finally {
+    sfTemplatesEnabled = previousEnabled;
+  }
+});
 
 test('preview is read-only and returns server-mapped SF1 values', async () => {
   writes = 0;

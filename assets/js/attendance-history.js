@@ -29,19 +29,22 @@
     function renderSummary(month) {
       const strip = element('summary-strip');
       if (!month) {
-        strip.textContent = loading ? 'Loading attendance...' : error ? 'Attendance is unavailable.'
-          : !selected ? 'Select a linked child to view attendance.' : 'No subject attendance has been recorded for this month.';
+        const message = loading ? 'Loading attendance...' : error ? 'Attendance is unavailable.'
+          : !selected ? 'Select a linked child to view attendance.' : '';
+        strip.hidden = !message;
+        strip.textContent = message;
         return;
       }
+      strip.hidden = false;
       const entries = Object.values(month).flat();
       const count = status => entries.filter(record => record.status === status).length;
       strip.innerHTML = [
-        ['green', 'check', 'Recorded', count('present'), 'Subject sessions present', 'Present', 'trend-up'],
-        ['orange', 'clock', 'Needs attention', count('late'), 'Subject sessions late', 'Late', 'trend-neu'],
-        ['red', 'circle-x', 'Review days', count('absent'), 'Subject sessions absent', 'Absent', 'trend-down']
-      ].map(([tone, icon, trend, total, label, compactLabel, trendClass]) => `
+        ['green', 'check', count('present'), 'Subject sessions present', 'Present'],
+        ['orange', 'clock', count('late'), 'Subject sessions late', 'Late'],
+        ['red', 'circle-x', count('absent'), 'Subject sessions absent', 'Absent']
+      ].map(([tone, icon, total, label, compactLabel]) => `
         <div class="stat-card ${tone}">
-          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${icon}" style="width:18px;height:18px;"></i></div><span class="stat-card-trend ${trendClass}">${trend}</span></div>
+          <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${icon}" style="width:18px;height:18px;"></i></div></div>
           <div class="stat-card-num">${total}</div><div class="stat-card-label"><span class="attendance-stat-label-full">${label}</span><span class="attendance-stat-label-compact">${compactLabel}</span></div><div class="stat-card-sub">Confirmed subject records</div>
         </div>`).join('');
     }
@@ -72,8 +75,9 @@
         const weekend = weekday === 0 || weekday === 6;
         const future = date > today;
         const entry = month[day];
-        const status = weekend ? 'weekend' : future ? 'future' : entry ? 'recorded' : '';
-        cells += `<button class="cal-day ${status} ${date === today ? 'today' : ''}" ${weekend || future ? 'disabled' : ''} data-attendance-day="${day}" type="button"><div class="cal-day-num">${day}</div>${entry && !future && !weekend ? '<div class="cal-day-dot"></div>' : ''}</button>`;
+        const status = future ? 'future' : entry ? 'recorded' : weekend ? 'weekend' : '';
+        const disabled = future || (weekend && !entry);
+        cells += `<button class="cal-day ${status} ${date === today ? 'today' : ''}" ${disabled ? 'disabled' : ''} data-attendance-day="${day}" type="button"><div class="cal-day-num">${day}</div>${entry && !future ? '<div class="cal-day-dot"></div>' : ''}</button>`;
       }
       grid.innerHTML = cells;
     }
@@ -107,12 +111,9 @@
         present: ['green', 'check', 'Present'], late: ['orange', 'clock', 'Late'],
         pending: ['gray', 'minus', 'Pending'], excused: ['blue', '', 'Excused'], absent: ['red', 'x', 'Absent']
       };
-      element('day-detail-modal-content').innerHTML = `<div class="day-detail-banner present">
-        <div class="ddb-icon"><i data-lucide="book-open" style="width:18px;height:18px;"></i></div>
-        <div><div class="ddb-title">${subjects.length} subject record${subjects.length === 1 ? '' : 's'}</div><div class="ddb-sub">Only subjects with saved attendance are shown.</div></div>
-      </div><div>${subjects.map(record => {
+      element('day-detail-modal-content').innerHTML = `<div>${subjects.map(record => {
         const [tone, icon, label] = badges[record.status] || badges.absent;
-        return `<div class="subject-att-row"><div class="subject-att-name"><span class="subject-dot" style="background:var(--blue-mid);"></span> ${escape(record.subjectName || 'Subject')}</div><span class="badge badge-${tone}">${icon ? `<i data-lucide="${icon}" style="width:8px;height:8px;"></i> ` : ''}${label}</span></div>`;
+        return `<div class="subject-att-row"><div class="subject-att-name">${escape(record.subjectName || 'Subject')}</div><span class="badge badge-${tone}">${icon ? `<i data-lucide="${icon}" style="width:8px;height:8px;"></i> ` : ''}${label}</span></div>`;
       }).join('')}</div>`;
       icons();
     }

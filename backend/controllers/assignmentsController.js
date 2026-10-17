@@ -99,8 +99,12 @@ function formatAssignment(row) {
     id: row.id, schoolId: row.schoolId, sectionId: row.sectionId, sectionName: row.sectionName,
     subjectId: row.subjectId, subjectName: row.subjectName, academicTermId: row.academicTermId,
     academicTermName: row.academicTermName, gradingCategoryId: row.gradingCategoryId,
+    subjectGradingComponentId: row.subjectGradingComponentId == null ? null : Number(row.subjectGradingComponentId),
+    subjectGradingExamPartId: row.subjectGradingExamPartId == null ? null : Number(row.subjectGradingExamPartId),
     gradingItemId: row.gradingItemId,
     gradingCategoryCode: row.gradingCategoryCode, gradingCategoryName: row.gradingCategoryName, teacherUserId: row.teacherUserId,
+    subjectGradingComponentCode: row.subjectGradingComponentCode, subjectGradingComponentName: row.subjectGradingComponentName,
+    subjectGradingExamPartCode: row.subjectGradingExamPartCode, subjectGradingExamPartName: row.subjectGradingExamPartName,
     teacherName: row.teacherName, title: row.title, description: row.description,
     dueAt: row.dueAt, maxScore: row.maxScore === null ? null : Number(row.maxScore),
     onlineSubmissionEnabled: Boolean(row.onlineSubmissionEnabled),
@@ -111,19 +115,27 @@ function formatAssignment(row) {
 function assignmentSelect() {
   return `SELECT assignments.id, assignments.school_id AS schoolId, assignments.section_id AS sectionId,
     assignments.subject_id AS subjectId, assignments.academic_term_id AS academicTermId,
-    assignments.grading_category_id AS gradingCategoryId, assignments.grading_item_id AS gradingItemId,
+    assignments.grading_category_id AS gradingCategoryId,
+    assignments.subject_grading_component_id AS subjectGradingComponentId,
+    assignments.subject_grading_exam_part_id AS subjectGradingExamPartId,
+    assignments.grading_item_id AS gradingItemId,
     assignments.teacher_user_id AS teacherUserId,
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
     sections.name AS sectionName, academic_years.status AS academicYearStatus,
     subjects.name AS subjectName, academic_terms.name AS academicTermName,
-    grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, teachers.display_name AS teacherName
+    grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName,
+    subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName,
+    subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName,
+    teachers.display_name AS teacherName
   FROM assignments INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
   INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
   INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
   LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id AND academic_terms.school_id = assignments.school_id
   LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id AND grading_categories.school_id = assignments.school_id
+  LEFT JOIN subject_grading_components ON subject_grading_components.id = assignments.subject_grading_component_id AND subject_grading_components.school_id = assignments.school_id
+  LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id = assignments.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id = assignments.school_id
   INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id`;
 }
 
@@ -154,10 +166,28 @@ function assertAssignmentYearWritable(assignment) {
   }
 }
 
-async function validateTermAndCategory(connection, section, academicTermId, gradingCategoryId) {
+async function validateTermAndCategory(connection, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId = null, subjectGradingExamPartId = null) {
   const [terms] = await connection.execute("SELECT id FROM academic_terms WHERE id = ? AND academic_year_id = ? AND school_level_id = ? AND status = 'active' LIMIT 1", [academicTermId, section.academicYearId, section.schoolLevelId]);
   if (!terms.length) throw createError('The grading period must be active and match the section.', 404);
-  if (gradingCategoryId) {
+  if (subjectGradingComponentId) {
+    const [components] = await connection.execute(
+      `SELECT components.id FROM subject_grading_components AS components
+      INNER JOIN subject_grading_profiles AS profiles ON profiles.id = components.profile_id
+        AND profiles.school_id = components.school_id
+      WHERE components.id = ? AND components.school_id = ? AND profiles.academic_year_id = ?
+        AND profiles.school_level_id = ? AND profiles.subject_id = ? LIMIT 1`,
+      [subjectGradingComponentId, section.schoolId, section.academicYearId, section.schoolLevelId, subjectId]
+    );
+    if (!components.length) throw createError('The subject grading component does not match the section, subject, or school year.', 404);
+    if (subjectGradingExamPartId) {
+      const [parts] = await connection.execute(
+        'SELECT id FROM subject_grading_exam_parts WHERE id = ? AND school_id = ? AND component_id = ? LIMIT 1',
+        [subjectGradingExamPartId, section.schoolId, subjectGradingComponentId]
+      );
+      if (!parts.length) throw createError('The exam part does not belong to this subject component.', 404);
+    }
+  } else if (subjectGradingExamPartId) throw createError('An exam part requires a subject grading component.');
+  else if (gradingCategoryId) {
     const [categories] = await connection.execute('SELECT id FROM grading_categories WHERE id = ? AND school_id = ? AND school_level_id = ? LIMIT 1', [gradingCategoryId, section.schoolId, section.schoolLevelId]);
     if (!categories.length) throw createError('The grading category does not match the section.', 404);
   }
@@ -437,27 +467,31 @@ async function createAssignment(req, res, next) {
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId);
     const gradingCategoryId = optionalId(req.body.gradingCategoryId, 'grading category ID');
-    await validateTermAndCategory(connection, section, academicTermId, gradingCategoryId);
+    const subjectGradingComponentId = optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
+    const subjectGradingExamPartId = optionalId(req.body.subjectGradingExamPartId, 'exam-part ID');
+    await validateTermAndCategory(connection, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     const title = requiredText(req.body.title, 255, 'Assignment title');
     const description = optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = dateTime(req.body.dueAt, 'Due date');
     const maxScore = scoreValue(req.body.maxScore, 'Maximum score', false);
-    if ((gradingCategoryId === null) !== (maxScore === null)) {
+    const isGraded = Boolean(gradingCategoryId || subjectGradingComponentId);
+    if (Boolean(gradingCategoryId && subjectGradingComponentId) || (isGraded !== (maxScore !== null))) {
       throw createError('Choose both a grading category and maximum score for a graded assignment.');
     }
-    if (gradingCategoryId && maxScore <= 0) {
+    if (isGraded && maxScore <= 0) {
       throw createError('A graded assignment needs an active grading period and a maximum score greater than zero.');
     }
-    if (gradingCategoryId) await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId);
+    if (isGraded) await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === true ? 1 : 0;
     const status = req.body.status === undefined ? 'published' : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
-    const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, academic_term_id, grading_category_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
-    if (gradingCategoryId) {
+    const [result] = await connection.execute('INSERT INTO assignments (school_id, section_id, subject_id, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, description, due_at, max_score, online_submission_enabled, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, description, dueAt, maxScore, onlineSubmissionEnabled, status]);
+    if (isGraded) {
       const [item] = await connection.execute(
         `INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id,
-          grading_category_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, maxScore]
+          grading_category_id, subject_grading_component_id, subject_grading_exam_part_id,
+          teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [section.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]
       );
       await connection.execute(
         'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
@@ -485,17 +519,21 @@ async function updateAssignment(req, res, next) {
     if (!section) throw createError('The assignment section-subject relationship is no longer active.', 409);
     const academicTermId = requiredAcademicTermId(req.body.academicTermId === undefined ? current.academicTermId : req.body.academicTermId);
     const gradingCategoryId = req.body.gradingCategoryId === undefined ? current.gradingCategoryId : optionalId(req.body.gradingCategoryId, 'grading category ID');
-    await validateTermAndCategory(connection, section, academicTermId, gradingCategoryId);
+    const subjectGradingComponentId = req.body.subjectGradingComponentId === undefined ? current.subjectGradingComponentId : optionalId(req.body.subjectGradingComponentId, 'subject grading component ID');
+    const subjectGradingExamPartId = req.body.subjectGradingExamPartId === undefined ? current.subjectGradingExamPartId : optionalId(req.body.subjectGradingExamPartId, 'exam-part ID');
+    await validateTermAndCategory(connection, section, current.subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     const title = req.body.title === undefined ? current.title : requiredText(req.body.title, 255, 'Assignment title');
     const description = req.body.description === undefined ? current.description : optionalText(req.body.description, 10000, 'Assignment description');
     const dueAt = req.body.dueAt === undefined ? current.dueAt : dateTime(req.body.dueAt, 'Due date');
     const maxScore = req.body.maxScore === undefined ? current.maxScore : scoreValue(req.body.maxScore, 'Maximum score', false);
     if (current.gradingItemId && (Number(academicTermId) !== Number(current.academicTermId)
-      || Number(gradingCategoryId) !== Number(current.gradingCategoryId) || maxScore === null)) {
+      || String(gradingCategoryId || '') !== String(current.gradingCategoryId || '')
+      || String(subjectGradingComponentId || '') !== String(current.subjectGradingComponentId || '')
+      || String(subjectGradingExamPartId || '') !== String(current.subjectGradingExamPartId || '') || maxScore === null)) {
       throw createError('An assignment with a score component cannot change its grading period or category, or remove its maximum score.', 409);
     }
     if (current.gradingItemId && (title !== current.title || Number(maxScore) !== Number(current.maxScore))) {
-      await validateGradeItemScope(connection, req.user, section, current.subjectId, academicTermId, gradingCategoryId);
+      await validateGradeItemScope(connection, req.user, section, current.subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     }
     const onlineSubmissionEnabled = req.body.onlineSubmissionEnabled === undefined
       ? Number(current.onlineSubmissionEnabled) === 1
@@ -519,7 +557,7 @@ async function updateAssignment(req, res, next) {
         if (published.length) throw createError('Published grades prevent changing this assignment’s maximum score.', 409);
       }
     }
-    await connection.execute('UPDATE assignments SET academic_term_id=?, grading_category_id=?, title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=? WHERE id=? AND school_id=?', [academicTermId, gradingCategoryId, title, description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
+    await connection.execute('UPDATE assignments SET academic_term_id=?, grading_category_id=?, subject_grading_component_id=?, subject_grading_exam_part_id=?, title=?, description=?, due_at=?, max_score=?, online_submission_enabled=?, status=? WHERE id=? AND school_id=?', [academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, title, description, dueAt, maxScore, onlineSubmissionEnabled ? 1 : 0, status, assignmentId, req.user.schoolId]);
     if (current.gradingItemId) await connection.execute(
       'UPDATE grading_items SET title = ?, max_score = ? WHERE id = ? AND school_id = ?',
       [title, maxScore, current.gradingItemId, req.user.schoolId]

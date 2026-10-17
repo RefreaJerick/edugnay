@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const controller = require('../controllers/schoolsController');
+const depedK10SubjectsController = require('../controllers/depedK10SubjectsController');
 const activityController = require('../controllers/activityController');
 const parentNotificationTriggersController = require('../controllers/parentNotificationTriggersController');
 const { getSchoolContext } = require('../controllers/schoolContextController');
@@ -57,5 +58,7 @@ router.get('/school/portal-features', requireAuth, requireSchoolUser, controller
 router.patch('/school/portal-features', requireAuth, requireSchoolAdmin, controller.updatePortalFeatures);
 router.get('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.getAcademicStructure);
 router.patch('/school/academic-structure', requireAuth, requireSchoolAdmin, controller.updateAcademicStructure);
+router.get('/school/academic-structure/deped-subjects', requireAuth, requireSchoolAdmin, depedK10SubjectsController.getDepedSubjectPreview);
+router.post('/school/academic-structure/deped-subjects', requireAuth, requireSchoolAdmin, depedK10SubjectsController.applyDepedSubjectDefaults);
 
 module.exports = router;

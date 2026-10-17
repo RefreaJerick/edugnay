@@ -1,8 +1,21 @@
 /* Shared shell behavior for every portal role. */
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
+const EDUGNAY_TEACHER_NAV_CACHE_PREFIX = 'edugnay_teacher_sidebar_v1:';
+window.EDUGNAY_TEACHER_NAV_CACHE_PREFIX = EDUGNAY_TEACHER_NAV_CACHE_PREFIX;
 const EDUGNAY_API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 const TOAST_SOUND_STORAGE_KEY = 'edugnay_toast_sounds_enabled';
+
+function clearTeacherSidebarCache() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(EDUGNAY_TEACHER_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Continue authentication flows if session storage is unavailable.
+  }
+}
 
 let appToastTimer;
 let toastSoundsEnabled = true;
@@ -346,7 +359,8 @@ async function getApiPortalFeatures() {
   return {
     features: response?.features || {},
     journalSubjectId: response?.journalSubjectId || null,
-    journalSubjectName: response?.journalSubjectName || null
+    journalSubjectName: response?.journalSubjectName || null,
+    journalSubjectEligible: Boolean(response?.journalSubjectEligible)
   };
 }
 
@@ -357,7 +371,8 @@ async function updateApiPortalFeatures(values = {}) {
   });
   return {
     features: response?.features || {},
-    journalSubjectId: response?.journalSubjectId || null
+    journalSubjectId: response?.journalSubjectId || null,
+    journalSubjectEligible: Boolean(response?.journalSubjectEligible)
   };
 }
 
@@ -372,6 +387,18 @@ async function updateApiAcademicStructure(levels = []) {
     body: JSON.stringify({ levels })
   });
   return Array.isArray(response?.levels) ? response.levels : [];
+}
+
+async function getApiDepedSubjectPreview() {
+  const response = await requestApi('/school/academic-structure/deped-subjects');
+  return { curriculum: response?.curriculum || '', grades: Array.isArray(response?.grades) ? response.grades : [] };
+}
+
+async function applyApiDepedSubjectDefaults() {
+  return requestApi('/school/academic-structure/deped-subjects', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
 }
 
 async function getApiAcademicYears() {
@@ -482,7 +509,9 @@ function normalizeApiAssignment(record) {
     subjectName: record.subjectName || '',
     academicPeriodId: record.academicTermId ? String(record.academicTermId) : null,
     gradingItemId: record.gradingItemId ? String(record.gradingItemId) : null,
-    categoryId: record.gradingCategoryCode || (record.gradingCategoryId ? String(record.gradingCategoryId) : null),
+    categoryId: record.subjectGradingComponentCode || record.gradingCategoryCode || (record.gradingCategoryId ? String(record.gradingCategoryId) : null),
+    subjectGradingComponentId: record.subjectGradingComponentId == null ? null : Number(record.subjectGradingComponentId),
+    subjectGradingExamPartId: record.subjectGradingExamPartId == null ? null : Number(record.subjectGradingExamPartId),
     instructions: record.description || null,
     assignedDate: dueDate,
     dueDate,
@@ -677,6 +706,8 @@ async function createApiAssignment(values = {}) {
       subjectId: Number(values.subjectId),
       academicTermId: values.academicTermId ? Number(values.academicTermId) : null,
       gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
+      subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
+      subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
       title: values.title,
       description: values.description ?? values.instructions ?? null,
       dueAt: dueAt ? `${String(dueAt).slice(0, 10)}T23:59:00` : null,
@@ -694,6 +725,8 @@ async function updateApiAssignment(assignmentId, values = {}) {
     body: JSON.stringify({
       academicTermId: values.academicTermId === undefined ? undefined : (values.academicTermId ? Number(values.academicTermId) : null),
       gradingCategoryId: values.gradingCategoryId === undefined ? undefined : (values.gradingCategoryId ? Number(values.gradingCategoryId) : null),
+      subjectGradingComponentId: values.subjectGradingComponentId === undefined ? undefined : (values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null),
+      subjectGradingExamPartId: values.subjectGradingExamPartId === undefined ? undefined : (values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null),
       title: values.title,
       description: values.description ?? values.instructions,
       dueAt: values.dueAt || values.dueDate ? `${String(values.dueAt || values.dueDate).slice(0, 10)}T23:59:00` : null,
@@ -740,9 +773,15 @@ function normalizeApiGradingItem(record) {
     subjectId: String(record.subjectId),
     academicTermId: String(record.academicTermId),
     academicPeriodId: String(record.academicTermId),
-    gradingCategoryId: String(record.gradingCategoryId),
-    categoryId: record.gradingCategoryCode || String(record.gradingCategoryId),
-    cat: String(record.gradingCategoryCode || record.gradingCategoryName || '').slice(0, 3).toUpperCase(),
+    gradingCategoryId: record.gradingCategoryId == null ? null : String(record.gradingCategoryId),
+    categoryId: record.subjectGradingComponentCode || record.gradingCategoryCode || (record.gradingCategoryId == null ? null : String(record.gradingCategoryId)),
+    subjectGradingComponentId: record.subjectGradingComponentId == null ? null : Number(record.subjectGradingComponentId),
+    subjectGradingExamPartId: record.subjectGradingExamPartId == null ? null : Number(record.subjectGradingExamPartId),
+    subjectGradingComponentCode: record.subjectGradingComponentCode || null,
+    subjectGradingComponentName: record.subjectGradingComponentName || null,
+    subjectGradingExamPartCode: record.subjectGradingExamPartCode || null,
+    subjectGradingExamPartName: record.subjectGradingExamPartName || null,
+    cat: String(record.subjectGradingComponentCode || record.gradingCategoryCode || record.gradingCategoryName || '').slice(0, 3).toUpperCase(),
     name: record.title || '',
     max: Number(record.maxScore),
     maxScore: Number(record.maxScore),
@@ -771,7 +810,11 @@ async function createApiGradingItem(values = {}) {
       sectionId: Number(values.sectionId),
       subjectId: Number(values.subjectId),
       academicTermId: Number(values.academicTermId),
-      gradingCategoryId: Number(values.gradingCategoryId),
+      gradingCategoryId: values.gradingCategoryId ? Number(values.gradingCategoryId) : null,
+      subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
+      subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
+      subjectGradingComponentId: values.subjectGradingComponentId ? Number(values.subjectGradingComponentId) : null,
+      subjectGradingExamPartId: values.subjectGradingExamPartId ? Number(values.subjectGradingExamPartId) : null,
       assignmentId: values.assignmentId ? Number(values.assignmentId) : undefined,
       title: values.title,
       maxScore: values.maxScore
@@ -1114,7 +1157,7 @@ async function getApiFinalGradesOverview(studentId) {
       academicYearId: String(grade.academicYearId),
       academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
       finalGrade: Number(grade.finalGrade)
-    }))
+    })),
   };
 }
 
@@ -1163,14 +1206,29 @@ async function submitApiAssignment(assignmentId, file) {
   } : null;
 }
 
-async function getApiGradingCategories(filters = {}) {
+async function getApiGradingSettings(filters = {}) {
   const params = new URLSearchParams();
   if (filters.schoolLevelId) params.set('schoolLevelId', String(filters.schoolLevelId));
+  if (filters.sectionId) params.set('sectionId', String(filters.sectionId));
+  if (filters.subjectId) params.set('subjectId', String(filters.subjectId));
   const query = params.toString();
   const response = await requestApi(`/grading-categories${query ? `?${query}` : ''}`);
-  return Array.isArray(response?.gradingCategories)
-    ? response.gradingCategories.map(category => ({ ...category, weight: Number(category.weight) }))
-    : [];
+  return {
+    gradingCategories: Array.isArray(response?.gradingCategories)
+      ? response.gradingCategories.map(category => ({ ...category, weight: Number(category.weight) }))
+      : [],
+    gradingScale: response?.gradingScale || 'standard',
+    shsGradingTypes: Array.isArray(response?.shsGradingTypes) ? response.shsGradingTypes : [],
+    publishedShsGradeCount: Number(response?.publishedShsGradeCount || 0)
+  };
+}
+
+async function getApiGradingCategories(filters = {}) {
+  return (await getApiGradingSettings(filters)).gradingCategories;
+}
+
+async function getApiShsGradingTypes() {
+  return (await getApiGradingSettings()).shsGradingTypes;
 }
 
 async function updateApiGradingCategories(values = {}) {
@@ -1185,6 +1243,44 @@ async function updateApiGradingCategories(values = {}) {
       ? response.gradingCategories.map(category => ({ ...category, weight: Number(category.weight) }))
       : []
   };
+}
+
+async function getApiDepedK10GradingPreview(filters = {}) {
+  const params = new URLSearchParams({
+    academicYearId: String(filters.academicYearId || ''),
+    schoolLevelId: String(filters.schoolLevelId || '')
+  });
+  return requestApi(`/deped-k10/grading-preview?${params.toString()}`);
+}
+
+async function applyApiDepedK10GradingDefaults(values = {}) {
+  return requestApi('/deped-k10/grading-defaults', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+}
+
+async function saveApiK10FinalGradeRules(values = {}) {
+  return requestApi('/deped-k10/final-grade-rules', {
+    method: 'PUT',
+    body: JSON.stringify(values)
+  });
+}
+
+async function getApiSubjectGradingConfig(filters = {}) {
+  const params = new URLSearchParams();
+  for (const key of ['sectionId', 'subjectId', 'academicYearId', 'schoolLevelId']) {
+    if (filters[key]) params.set(key, String(filters[key]));
+  }
+  const query = params.toString();
+  return requestApi(`/subject-grading-config${query ? `?${query}` : ''}`);
+}
+
+async function saveApiSubjectGradingConfig(values = {}) {
+  return requestApi('/subject-grading-config', {
+    method: 'PUT',
+    body: JSON.stringify(values)
+  });
 }
 
 function normalizeApiAttendanceData(data) {
@@ -1737,6 +1833,8 @@ window.EDUGNAY_API = {
   updatePortalFeatures: updateApiPortalFeatures,
   getAcademicStructure: getApiAcademicStructure,
   updateAcademicStructure: updateApiAcademicStructure,
+  getDepedSubjectPreview: getApiDepedSubjectPreview,
+  applyDepedSubjectDefaults: applyApiDepedSubjectDefaults,
   getAcademicYears: getApiAcademicYears,
   getAcademicTerms: getApiAcademicTerms,
   createAcademicYear: createApiAcademicYear,
@@ -1785,7 +1883,14 @@ window.EDUGNAY_API = {
   getAssignmentSubmissionPreview: getApiAssignmentSubmissionPreview,
   submitAssignment: submitApiAssignment,
   getGradingCategories: getApiGradingCategories,
+  getGradingSettings: getApiGradingSettings,
+  getShsGradingTypes: getApiShsGradingTypes,
   updateGradingCategories: updateApiGradingCategories,
+  getDepedK10GradingPreview: getApiDepedK10GradingPreview,
+  applyDepedK10GradingDefaults: applyApiDepedK10GradingDefaults,
+  saveK10FinalGradeRules: saveApiK10FinalGradeRules,
+  getSubjectGradingConfig: getApiSubjectGradingConfig,
+  saveSubjectGradingConfig: saveApiSubjectGradingConfig,
   getSectionAttendance: getApiSectionAttendance,
   getSectionAttendanceHistory: getApiSectionAttendanceHistory,
   saveSectionAttendance: saveApiSectionAttendance,
@@ -1862,6 +1967,7 @@ function readFrontendSession() {
 }
 
 window.EDUGNAY_SESSION = null;
+let currentUserRequest = null;
 
 function saveFrontendSession(session) {
   window.EDUGNAY_SESSION = session;
@@ -1959,30 +2065,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function getCurrentUser() {
   if (!EDUGNAY_API_BASE_URL) return window.EDUGNAY_SESSION;
+  if (currentUserRequest) return currentUserRequest;
 
-  const response = await requestApi('/auth/me');
-  const user = response?.user;
-  if (!user?.id || !user.role) throw new Error('The session response is invalid.');
-  const session = {
-    apiUserId: user.id,
-    apiSchoolId: user.schoolId,
-    userId: String(user.id),
-    schoolId: user.schoolId == null ? '' : String(user.schoolId),
-    role: user.role,
-    schoolEmail: user.schoolEmail,
-    personalEmail: user.personalEmail,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    displayName: user.displayName,
-    initials: user.initials,
-    hasAvatar: user.hasAvatar,
-    avatarUrl: user.avatarUrl,
-    avatarVersion: user.avatarVersion,
-    accountStatus: user.accountStatus,
-    setupCompletedAt: user.setupCompletedAt
-  };
-  saveFrontendSession(session);
-  return session;
+  currentUserRequest = (async () => {
+    const response = await requestApi('/auth/me');
+    const user = response?.user;
+    if (!user?.id || !user.role) throw new Error('The session response is invalid.');
+    const session = {
+      apiUserId: user.id,
+      apiSchoolId: user.schoolId,
+      userId: String(user.id),
+      schoolId: user.schoolId == null ? '' : String(user.schoolId),
+      role: user.role,
+      schoolEmail: user.schoolEmail,
+      personalEmail: user.personalEmail,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: user.displayName,
+      initials: user.initials,
+      hasAvatar: user.hasAvatar,
+      avatarUrl: user.avatarUrl,
+      avatarVersion: user.avatarVersion,
+      accountStatus: user.accountStatus,
+      setupCompletedAt: user.setupCompletedAt
+    };
+    saveFrontendSession(session);
+    return session;
+  })();
+
+  try {
+    return await currentUserRequest;
+  } finally {
+    currentUserRequest = null;
+  }
 }
 
 function applyCurrentUserToShell(session) {
@@ -2607,11 +2722,8 @@ function applyCurrentDateToGradingBanners() {
     return Boolean(school?.gradesPageEnabled);
   }
 
-  function isAttendanceEnabled(school = getActiveSchool()) {
-    if (window.EDUGNAY_API_PORTAL_FEATURES && Object.hasOwn(window.EDUGNAY_API_PORTAL_FEATURES, 'attendanceEnabled')) {
-      return Boolean(window.EDUGNAY_API_PORTAL_FEATURES.attendanceEnabled);
-    }
-    return Boolean(school?.attendanceEnabled);
+  function isAttendanceEnabled() {
+    return true;
   }
 
   function isNarrativeReportsEnabled(school = getActiveSchool()) {
@@ -2628,7 +2740,8 @@ function applyCurrentDateToGradingBanners() {
   }
 
   function isJournalsEnabled() {
-    return Boolean(window.EDUGNAY_API_PORTAL_FEATURES?.journalsEnabled && getJournalSubject());
+    const features = window.EDUGNAY_API_PORTAL_FEATURES;
+    return Boolean(features?.journalsEnabled && features.journalSubjectEligible !== false && getJournalSubject());
   }
 
   function normalizeApiSection(record) {
@@ -2642,6 +2755,14 @@ function applyCurrentDateToGradingBanners() {
       academicYearStatus: record.academicYearStatus || '',
       adviserId: record.adviserUserId ? String(record.adviserUserId) : null,
       adviserName: record.adviserName || '',
+      trackId: record.trackId == null ? null : String(record.trackId),
+      trackCode: record.trackCode || '',
+      trackName: record.trackName || '',
+      strandId: record.strandId == null ? null : String(record.strandId),
+      strandCode: record.strandCode || '',
+      strandName: record.strandName || '',
+      needsStrandReview: Boolean(record.needsStrandReview),
+      track: record.trackName || '',
       strand: record.strandName || '',
       teacherAssignments: Array.isArray(record.teacherAssignments) ? record.teacherAssignments : [],
       subjectAssignments: Array.isArray(record.subjectAssignments)
@@ -2694,7 +2815,12 @@ function applyCurrentDateToGradingBanners() {
       name: record.name || '',
       schoolLevelCode: record.schoolLevelCode || '',
       gradeCode: record.gradeCode || '',
-      isActive: record.isActive !== false
+      isActive: record.isActive !== false,
+      gradeLevelIds: Array.isArray(record.gradeLevelIds) ? record.gradeLevelIds.map(Number) : [],
+      gradeScopes: Array.isArray(record.gradeScopes) ? record.gradeScopes : [],
+      trackId: record.trackId == null ? null : Number(record.trackId),
+      strandId: record.strandId == null ? null : Number(record.strandId),
+      shsGradingGroup: record.shsGradingGroup || null
     } : null;
   }
 
@@ -2737,6 +2863,13 @@ function applyCurrentDateToGradingBanners() {
 
   async function updateApiSection(sectionId, values = {}) {
     const response = await requestApi(`/sections/${Number(sectionId)}`, { method: 'PATCH', body: JSON.stringify(values) });
+    return normalizeApiSection(response?.section);
+  }
+
+  async function classifyApiSectionStrand(sectionId, strandId) {
+    const response = await requestApi(`/sections/${Number(sectionId)}/classify-strand`, {
+      method: 'PATCH', body: JSON.stringify({ strandId: Number(strandId) })
+    });
     return normalizeApiSection(response?.section);
   }
 
@@ -2819,7 +2952,7 @@ function applyCurrentDateToGradingBanners() {
   }
 
   async function getMyAdvisorySections(includeClosed = false) {
-    const session = await getCurrentUser();
+    const session = readFrontendSession() || await getCurrentUser();
     const teacherId = String(session?.apiUserId || '');
     return (await getApiSections()).filter(section => section.adviserId === teacherId
       && (section.status === 'active' && section.academicYearStatus === 'active'
@@ -3235,6 +3368,7 @@ function applyCurrentDateToGradingBanners() {
     getSubjects: getApiSubjects,
     createSection: createApiSection,
     updateSection: updateApiSection,
+    classifySectionStrand: classifyApiSectionStrand,
     deleteSection: deleteApiSection,
     createSubject: createApiSubject,
     updateSubject: updateApiSubject,
@@ -3652,6 +3786,7 @@ async function confirmLogout() {
 
   try {
     sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY);
+    clearTeacherSidebarCache();
   } catch {
     // Continue to the sign-in page when session storage is unavailable.
   }
@@ -3759,6 +3894,8 @@ function applyPageTitleToTopbar() {
 }
 
 /* Initialize the shared right-edge fade for every horizontally scrollable tab bar. */
+const scrollFadeRefreshers = new WeakMap();
+
 function initScrollFades() {
   const selector = [
     '.child-switcher',
@@ -3774,11 +3911,15 @@ function initScrollFades() {
     '.att-history-tabs',
     '.grade-tabs',
     '.mini-tab-bar',
-    '.section-tab-bar'
+    '.section-tab-bar',
+    '.subject-scroll-fade-tab-row'
   ].join(', ');
 
   document.querySelectorAll(selector).forEach(element => {
-    if (element.dataset.scrollFadeReady === 'true') return;
+    if (element.dataset.scrollFadeReady === 'true') {
+      scrollFadeRefreshers.get(element)?.();
+      return;
+    }
     element.dataset.scrollFadeReady = 'true';
 
     const wrapper = document.createElement('div');
@@ -3791,9 +3932,14 @@ function initScrollFades() {
     wrapper.appendChild(element);
 
     const isActivityFilters = element.classList.contains('activity-type-filters');
-    const hasScrollButton = isActivityFilters || element.classList.contains('school-tabs');
-    const scrollTarget = isActivityFilters ? 'activity categories' : 'school settings tabs';
-    const scrollButtonSpace = isActivityFilters ? 40 : 0;
+    const isSubjectTabs = element.classList.contains('subject-scroll-fade-tab-row');
+    const hasScrollButton = isActivityFilters || isSubjectTabs || element.classList.contains('school-tabs');
+    const scrollTarget = isActivityFilters
+      ? 'activity categories'
+      : isSubjectTabs
+        ? element.dataset.scrollTarget || 'subject tabs'
+        : 'school settings tabs';
+    const scrollButtonSpace = isActivityFilters ? 40 : isSubjectTabs ? 44 : 0;
     let scrollButton = null;
 
     if (hasScrollButton) {
@@ -3815,22 +3961,24 @@ function initScrollFades() {
           element.scrollTo({ left: 0, behavior });
           return;
         }
-        element.scrollBy({ left: Math.max(120, (element.clientWidth - scrollButtonSpace) * 0.8), behavior });
+        const visibleWidth = element.clientWidth - (isActivityFilters ? scrollButtonSpace : 0);
+        element.scrollBy({ left: Math.max(120, visibleWidth * 0.8), behavior });
       });
     }
 
     const updateFade = () => {
       const isDesktop = hasScrollButton && window.matchMedia('(min-width: 761px)').matches;
-      const hasReservedButtonSpace = isDesktop && wrapper.classList.contains('has-scroll-control');
+      const canShowButton = isSubjectTabs || isDesktop;
+      const hasReservedButtonSpace = canShowButton && wrapper.classList.contains('has-scroll-control');
       const reservedSpace = hasReservedButtonSpace ? scrollButtonSpace : 0;
       const contentOverflows = element.scrollWidth - element.clientWidth - reservedSpace > 4;
 
       if (hasScrollButton) {
-        const showButton = isDesktop && contentOverflows;
+        const showButton = canShowButton && contentOverflows;
         wrapper.classList.toggle('has-scroll-control', showButton);
         scrollButton.hidden = !showButton;
 
-        const buttonSpace = showButton ? scrollButtonSpace : 0;
+        const buttonSpace = showButton && isActivityFilters ? scrollButtonSpace : 0;
         const contentEnd = element.scrollWidth - element.clientWidth - buttonSpace;
         const atEnd = contentEnd - element.scrollLeft <= 4;
         scrollButton.dataset.direction = atEnd ? 'left' : 'right';
@@ -3846,6 +3994,7 @@ function initScrollFades() {
       wrapper.classList.toggle('has-more-right', hasMore);
     };
 
+    scrollFadeRefreshers.set(element, updateFade);
     updateFade();
     element.addEventListener('scroll', updateFade, { passive: true });
     if (hasScrollButton) window.addEventListener('resize', updateFade, { passive: true });
@@ -4010,6 +4159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       if (error.status === 401) {
         try { sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY); } catch {}
+        clearTeacherSidebarCache();
       }
       setCurrentUserShellStatus('Account unavailable', 'Connection issue');
       showAppToast('Your account could not be loaded from the school database. Refresh when the connection is restored.', 'error');

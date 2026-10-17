@@ -130,6 +130,25 @@
   display: none;
 }
 
+#subjectGradeTabs > .scroll-fade-wrap.has-scroll-control {
+  box-sizing: border-box;
+  padding-right: 44px;
+}
+
+#subjectGradeTabs > .scroll-fade-wrap.has-scroll-control::after {
+  right: 44px;
+}
+
+#subjectGradeTabs .scroll-fade-wrap > .scroll-fade-button {
+  top: calc(50% + 8px);
+}
+
+@media (max-width: 760px) {
+  #subjectGradeTabs .scroll-fade-wrap > .scroll-fade-button:not([hidden]) {
+    display: flex;
+  }
+}
+
 .division-filter-tab {
   display: inline-flex;
   flex: 0 0 auto;
@@ -737,6 +756,75 @@ tbody tr:hover {
   }
 }
 
+#subjectModalBackdrop .modal {
+  max-width: 640px;
+}
+
+#subjectModalBackdrop .modal-head {
+  align-items: center;
+  padding: 18px 24px !important;
+}
+
+#subjectModalBackdrop .modal-body {
+  padding: 20px 24px !important;
+}
+
+#subjectModalBackdrop #createSubjectForm {
+  gap: 18px;
+}
+
+#subjectModalBackdrop #createSubjectForm > .form-row-2,
+#subjectModalBackdrop #subjectShsFields > .form-row-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+#subjectModalBackdrop #createSubjectForm .form-group {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+#subjectModalBackdrop #subjectShsFields:not([hidden]) {
+  display: grid;
+  gap: 16px;
+}
+
+.subject-shs-weight-summary {
+  margin-top: 7px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+#subjectModalBackdrop #subjectGradeChecks {
+  gap: 8px;
+}
+
+#subjectModalBackdrop .grade-check-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  #subjectModalBackdrop .modal {
+    max-width: 100%;
+  }
+
+  #subjectModalBackdrop .modal-head {
+    padding: 17px 16px !important;
+  }
+
+  #subjectModalBackdrop .modal-body {
+    padding: 17px 16px !important;
+  }
+
+  #subjectModalBackdrop .form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
 .info-banner {
   display: flex;
   gap: 12px;
@@ -1071,7 +1159,7 @@ tbody tr:hover {
 /* ══════ ASSIGN STUDENTS TAB ══════ */
 .two-panel {
   display: grid;
-  grid-template-columns: 1fr 440px;
+  grid-template-columns: 1fr 340px;
   gap: 18px;
   align-items: start;
 }
@@ -1093,6 +1181,10 @@ tbody tr:hover {
   margin-bottom: 20px;
   flex-wrap: wrap;
   box-shadow: 0 3px 12px rgba(180, 83, 9, 0.06);
+}
+
+.unassigned-banner[hidden] {
+  display: none;
 }
 
 .ub-icon {
@@ -1772,20 +1864,47 @@ tbody tr:hover {
 }
 
 .section-card .card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: flex-start;
-  gap: 12px;
+  gap: 5px;
   margin: 0;
   padding: 17px 18px 15px;
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-100);
 }
 
+.section-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
 .section-card .section-name {
+  min-width: 0;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .section-card .section-grade-badge {
+  flex: 0 0 auto;
   margin-top: 1px;
+  white-space: nowrap;
+}
+
+.section-card-path {
+  min-width: 0;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.section-card-path.is-review {
+  color: var(--gold-dark);
 }
 
 .section-card .card-stats {

@@ -19,7 +19,6 @@ async function getSchoolContext(req, res, next) {
         features.grades_enabled AS gradesEnabled,
         features.narrative_reports_enabled AS narrativeReportsEnabled,
         features.journals_enabled AS journalsEnabled,
-        features.attendance_enabled AS attendanceEnabled,
         features.sf_templates_enabled AS sfTemplatesEnabled
       FROM schools
       LEFT JOIN school_settings ON school_settings.school_id = schools.id
@@ -77,7 +76,7 @@ async function getSchoolContext(req, res, next) {
       gradesPageEnabled: Boolean(school.gradesEnabled),
       narrativeReportsEnabled: Boolean(school.narrativeReportsEnabled),
       journalsEnabled: Boolean(school.journalsEnabled),
-      attendanceEnabled: Boolean(school.attendanceEnabled),
+      attendanceEnabled: true,
       sfTemplatesEnabled: Boolean(school.sfTemplatesEnabled),
       schoolLevels: Object.keys(divisions),
       activeDivision: Object.keys(divisions)[0] || null,

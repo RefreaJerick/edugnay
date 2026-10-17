@@ -348,6 +348,13 @@
       <div class="nav-section">
         <div class="nav-section-label">Settings</div>
 
+        <a href="edugnay-admin-schools.html" class="nav-item">
+          <div class="nav-icon">
+            <i data-lucide="building-2" style="width:16px;height:16px;"></i>
+          </div>
+          <span class="nav-label">School Settings</span>
+        </a>
+
         <a href="edugnay-admin-system-config.html" class="nav-item">
           <div class="nav-icon">
             <i data-lucide="settings" style="width:16px;height:16px;"></i>
@@ -617,8 +624,6 @@
         id: 'students',
         tone: 'green',
         icon: 'graduation-cap',
-        trendClass: 'trend-up',
-        trend: '— 0%',
         label: 'Students',
         sub: 'Across all configured grade levels',
         records: ADMIN_STUDENTS,
@@ -627,8 +632,6 @@
         id: 'faculty',
         tone: 'gold',
         icon: 'book-open',
-        trendClass: 'trend-neu',
-        trend: '— 0%',
         label: 'Faculty',
         sub: 'Active teachers this grading period',
         records: ADMIN_TEACHERS,
@@ -637,8 +640,6 @@
         id: 'parents',
         tone: 'purple',
         icon: 'heart-handshake',
-        trendClass: 'trend-up',
-        trend: '— 0%',
         label: 'Parents',
         sub: 'Linked to student accounts',
         records: ADMIN_PARENTS,
@@ -834,12 +835,11 @@
       ADMIN_SUMMARY_CARDS[1].sub = ADMIN_USER_ERRORS.teachers || 'Active teachers this grading period';
       ADMIN_SUMMARY_CARDS[2].value = ADMIN_USER_ERRORS.parents ? '—' : ADMIN_PARENTS.length;
       ADMIN_SUMMARY_CARDS[2].sub = ADMIN_USER_ERRORS.parents || 'Linked to student accounts';
-      ADMIN_SUMMARY_CARDS.forEach(card => { card.trend = '—'; });
       const cards = document.getElementById('admin-summary-cards');
       if (cards) {
         cards.innerHTML = ADMIN_SUMMARY_CARDS.map(card => {
           const value = card.value === undefined ? card.records.length : card.value;
-          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div><span class="stat-card-trend ${card.trendClass}">${card.trend}</span></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`;
+          return `<div class="stat-card ${card.tone}"><div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div></div><div class="stat-card-num">${window.EDUGNAY_CONFIG.escapeHtml(value)}</div><div class="stat-card-label">${window.EDUGNAY_CONFIG.escapeHtml(card.label)}</div><div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div></div>`;
         }).join('');
       }
       const actions = document.getElementById('admin-quick-actions');

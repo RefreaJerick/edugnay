@@ -4,9 +4,8 @@ async function getTrigger(connection, schoolId, code) {
     FROM parent_notification_triggers AS triggers
     LEFT JOIN school_portal_features AS features ON features.school_id = triggers.school_id
     WHERE triggers.school_id = ? AND triggers.trigger_code = ?
-      AND (triggers.trigger_code NOT IN ('grade_below_threshold', 'consecutive_absences', 'journal_not_submitted', 'narrative_report_released')
+      AND (triggers.trigger_code NOT IN ('grade_below_threshold', 'journal_not_submitted', 'narrative_report_released')
         OR (triggers.trigger_code = 'grade_below_threshold' AND features.grades_enabled = TRUE)
-        OR (triggers.trigger_code = 'consecutive_absences' AND features.attendance_enabled = TRUE)
         OR (triggers.trigger_code = 'journal_not_submitted' AND features.journals_enabled = TRUE)
         OR (triggers.trigger_code = 'narrative_report_released' AND features.narrative_reports_enabled = TRUE))`,
     [schoolId, code]

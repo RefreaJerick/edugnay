@@ -37,7 +37,7 @@ INSERT INTO school_portal_features (
   attendance_enabled, sf_templates_enabled
 ) VALUES
   (1, TRUE, TRUE, TRUE, TRUE, TRUE),
-  (2, FALSE, FALSE, FALSE, FALSE, FALSE);
+  (2, FALSE, FALSE, FALSE, TRUE, FALSE);
 
 INSERT INTO school_attendance_settings (
   school_id, max_unexcused_absences, consecutive_absences_alert,
@@ -78,12 +78,35 @@ VALUES
   (7, 3, 'grade-11', 'Grade 11', 11, TRUE),
   (8, 3, 'grade-12', 'Grade 12', 12, TRUE);
 
-INSERT INTO school_shs_tracks (id, school_level_id, track_code, display_name, is_enabled)
+INSERT INTO school_shs_tracks (id, school_id, school_level_id, track_code, display_name, is_enabled)
 VALUES
-  (1, 3, 'academic', 'Academic', TRUE),
-  (2, 3, 'tvl', 'Technical-Vocational-Livelihood', TRUE),
-  (3, 3, 'arts-design', 'Arts and Design', TRUE),
-  (4, 3, 'sports', 'Sports', TRUE);
+  (1, 1, 3, 'academic', 'Academic', TRUE),
+  (2, 1, 3, 'tvl', 'Technical-Vocational-Livelihood', TRUE),
+  (3, 1, 3, 'arts-design', 'Arts and Design', TRUE),
+  (4, 1, 3, 'sports', 'Sports', TRUE),
+  (5, 2, 5, 'academic', 'Academic', TRUE),
+  (6, 2, 5, 'tvl', 'Technical-Vocational-Livelihood', TRUE),
+  (7, 2, 5, 'arts-design', 'Arts and Design', TRUE),
+  (8, 2, 5, 'sports', 'Sports', TRUE);
+
+INSERT INTO school_shs_strands (id, school_id, school_level_id, track_id, strand_code, display_name, is_enabled)
+VALUES
+  (1, 1, 3, 1, 'stem', 'Science, Technology, Engineering, and Mathematics', TRUE),
+  (2, 1, 3, 1, 'abm', 'Accountancy, Business, and Management', TRUE),
+  (3, 1, 3, 1, 'humss', 'Humanities and Social Sciences', TRUE),
+  (4, 1, 3, 1, 'gas', 'General Academic Strand', TRUE),
+  (5, 1, 3, 2, 'agri-fishery-arts', 'Agri-Fishery Arts', TRUE),
+  (6, 1, 3, 2, 'home-economics', 'Home Economics', TRUE),
+  (7, 1, 3, 2, 'ict', 'Information and Communications Technology', TRUE),
+  (8, 1, 3, 2, 'industrial-arts', 'Industrial Arts', TRUE),
+  (9, 2, 5, 5, 'stem', 'Science, Technology, Engineering, and Mathematics', TRUE),
+  (10, 2, 5, 5, 'abm', 'Accountancy, Business, and Management', TRUE),
+  (11, 2, 5, 5, 'humss', 'Humanities and Social Sciences', TRUE),
+  (12, 2, 5, 5, 'gas', 'General Academic Strand', TRUE),
+  (13, 2, 5, 6, 'agri-fishery-arts', 'Agri-Fishery Arts', TRUE),
+  (14, 2, 5, 6, 'home-economics', 'Home Economics', TRUE),
+  (15, 2, 5, 6, 'ict', 'Information and Communications Technology', TRUE),
+  (16, 2, 5, 6, 'industrial-arts', 'Industrial Arts', TRUE);
 
 -- =========================================================
 -- 2. Demo accounts and profiles
@@ -184,6 +207,9 @@ VALUES
   (2, 1, 'mathematics', 'Mathematics', 2, 3),
   (3, 1, 'english', 'English', 2, 3),
   (4, 1, 'science', 'Science', 2, 3);
+
+INSERT INTO subject_grade_scopes (school_id, subject_id, grade_level_id)
+VALUES (1, 1, 3), (1, 2, 3), (1, 3, 3), (1, 4, 3);
 
 UPDATE school_settings SET journal_subject_id = 1 WHERE school_id = 1;
 
@@ -463,10 +489,12 @@ ALTER TABLE schools AUTO_INCREMENT = 3;
 ALTER TABLE academic_years AUTO_INCREMENT = 3;
 ALTER TABLE school_levels AUTO_INCREMENT = 6;
 ALTER TABLE school_grade_levels AUTO_INCREMENT = 9;
-ALTER TABLE school_shs_tracks AUTO_INCREMENT = 5;
+ALTER TABLE school_shs_tracks AUTO_INCREMENT = 9;
+ALTER TABLE school_shs_strands AUTO_INCREMENT = 17;
 ALTER TABLE users AUTO_INCREMENT = 10;
 ALTER TABLE academic_terms AUTO_INCREMENT = 14;
 ALTER TABLE subjects AUTO_INCREMENT = 5;
+ALTER TABLE subject_grade_scopes AUTO_INCREMENT = 5;
 ALTER TABLE sections AUTO_INCREMENT = 4;
 ALTER TABLE grading_categories AUTO_INCREMENT = 4;
 ALTER TABLE assignments AUTO_INCREMENT = 3;

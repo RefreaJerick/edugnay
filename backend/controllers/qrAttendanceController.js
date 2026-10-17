@@ -92,16 +92,6 @@ function assertQrAttendanceDate(section, attendanceDate) {
   }
 }
 
-async function assertAttendanceFeatureEnabled(database, schoolId) {
-  const [features] = await database.execute(
-    'SELECT attendance_enabled AS attendanceEnabled FROM school_portal_features WHERE school_id = ? LIMIT 1',
-    [schoolId]
-  );
-  if (!features[0]?.attendanceEnabled) {
-    throw createError('Attendance is not enabled for this school.', 403);
-  }
-}
-
 async function getActiveStudentIds(database, schoolId, sectionId) {
   const [students] = await database.execute(
     `SELECT student_user_id AS studentId
@@ -191,7 +181,6 @@ async function getCurrentQrAttendance(req, res, next) {
     const database = getDatabase();
     const section = await getTeachingSection(database, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
-    await assertAttendanceFeatureEnabled(database, section.schoolId);
     const attendanceDate = getCurrentDate();
     assertQrAttendanceDate(section, attendanceDate);
     res.status(200).json(await getQrAttendanceData(database, section, subjectId, attendanceDate));
@@ -212,7 +201,6 @@ async function startQrAttendance(req, res, next) {
 
     const section = await getTeachingSection(connection, req.user, sectionId, subjectId);
     if (!section) throw createError('Section not found.', 404);
-    await assertAttendanceFeatureEnabled(connection, section.schoolId);
     assertQrAttendanceDate(section, attendanceDate);
 
     const [sessions] = await connection.execute(
@@ -293,7 +281,6 @@ async function scanQrAttendance(req, res, next) {
     await connection.beginTransaction();
     const session = await getActiveQrSession(connection, req.user, sessionId, true);
     if (!session) throw createError('QR attendance session not found.', 404);
-    await assertAttendanceFeatureEnabled(connection, session.schoolId);
 
     const [credentials] = await connection.execute(
       `SELECT
@@ -377,7 +364,6 @@ async function confirmQrAttendance(req, res, next) {
 
     const session = await getActiveQrSession(connection, req.user, sessionId, true);
     if (!session) throw createError('QR attendance session not found.', 404);
-    await assertAttendanceFeatureEnabled(connection, session.schoolId);
 
     const studentIds = await getActiveStudentIds(connection, session.schoolId, session.sectionId);
     const submittedIds = records.map(record => record.studentId).sort((a, b) => a - b);

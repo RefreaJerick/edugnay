@@ -108,17 +108,74 @@ function entryFields(row) {
   };
 }
 
+function activeJhsSectionSql(sectionAlias) {
+  return `EXISTS (SELECT 1 FROM school_levels AS journal_levels
+    INNER JOIN school_grade_levels AS journal_grades ON journal_grades.school_level_id = journal_levels.id
+      AND journal_grades.school_id = journal_levels.school_id
+    WHERE journal_levels.id = ${sectionAlias}.school_level_id
+      AND journal_levels.school_id = ${sectionAlias}.school_id
+      AND journal_levels.level_code = 'jhs' AND journal_levels.is_enabled = TRUE
+      AND journal_grades.id = ${sectionAlias}.grade_level_id AND journal_grades.is_enabled = TRUE)`;
+}
+
+async function assertStudentHasJhsPlacement(database, schoolId, studentId) {
+  const [placements] = await database.execute(
+    `SELECT sections.id FROM section_students
+    INNER JOIN sections ON sections.id = section_students.section_id
+      AND sections.school_id = section_students.school_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+      AND academic_years.school_id = sections.school_id AND academic_years.status = 'active'
+    WHERE section_students.school_id = ? AND section_students.student_user_id = ?
+      AND section_students.withdrawn_at IS NULL AND sections.status = 'active'
+      AND ${activeJhsSectionSql('sections')} LIMIT 1`,
+    [schoolId, studentId]
+  );
+  if (!placements.length) throw createError('Current Journals are available only to students enrolled in Junior High School.', 403);
+}
+
 async function getConfiguredJournalSubject(database, schoolId) {
   const [subjects] = await database.execute(
     `SELECT journal_subjects.id, journal_subjects.school_id AS schoolId,
-      journal_subjects.subject_id AS subjectId, journal_subjects.name, journal_subjects.is_active AS isActive
+      journal_subjects.subject_id AS subjectId, subjects.name, journal_subjects.is_active AS isActive
     FROM school_portal_features
     INNER JOIN school_settings ON school_settings.school_id = school_portal_features.school_id
     INNER JOIN journal_subjects ON journal_subjects.school_id = school_settings.school_id
       AND journal_subjects.subject_id = school_settings.journal_subject_id
+    INNER JOIN subjects ON subjects.id = journal_subjects.subject_id
+      AND subjects.school_id = journal_subjects.school_id AND subjects.is_active = TRUE
+    INNER JOIN school_levels AS journal_jhs_level ON journal_jhs_level.school_id = journal_subjects.school_id
+      AND journal_jhs_level.level_code = 'jhs' AND journal_jhs_level.is_enabled = TRUE
     WHERE school_portal_features.school_id = ?
       AND school_portal_features.journals_enabled = TRUE
       AND journal_subjects.is_active = TRUE
+      AND EXISTS (
+        SELECT 1 FROM school_grade_levels AS journal_jhs_grade
+        WHERE journal_jhs_grade.school_id = journal_subjects.school_id
+          AND journal_jhs_grade.school_level_id = journal_jhs_level.id
+          AND journal_jhs_grade.is_enabled = TRUE
+          AND (
+            EXISTS (SELECT 1 FROM subject_grade_scopes AS journal_jhs_scope
+              WHERE journal_jhs_scope.school_id = journal_subjects.school_id
+                AND journal_jhs_scope.subject_id = subjects.id
+                AND journal_jhs_scope.grade_level_id = journal_jhs_grade.id)
+            OR (NOT EXISTS (SELECT 1 FROM subject_grade_scopes AS journal_any_scope
+              WHERE journal_any_scope.school_id = journal_subjects.school_id
+                AND journal_any_scope.subject_id = subjects.id)
+              AND subjects.school_level_id = journal_jhs_level.id
+              AND (subjects.grade_level_id IS NULL OR subjects.grade_level_id = journal_jhs_grade.id))
+          )
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM subject_grade_scopes AS journal_other_scope
+        INNER JOIN school_grade_levels AS journal_other_grade ON journal_other_grade.id = journal_other_scope.grade_level_id
+          AND journal_other_grade.school_id = journal_other_scope.school_id
+        INNER JOIN school_levels AS journal_other_level ON journal_other_level.id = journal_other_grade.school_level_id
+          AND journal_other_level.school_id = journal_other_scope.school_id
+        WHERE journal_other_scope.school_id = journal_subjects.school_id
+          AND journal_other_scope.subject_id = subjects.id
+          AND journal_other_level.level_code <> 'jhs'
+          AND journal_other_level.is_enabled = TRUE AND journal_other_grade.is_enabled = TRUE
+      )
     LIMIT 1`,
     [schoolId]
   );
@@ -133,7 +190,7 @@ async function teacherCanManageSection(database, teacherId, schoolId, sectionId,
       AND sections.school_id = section_teachers.school_id
     WHERE section_teachers.school_id = ? AND section_teachers.teacher_user_id = ?
       AND section_teachers.section_id = ? AND section_teachers.subject_id = ?
-      AND sections.status = 'active' LIMIT 1`,
+      AND sections.status = 'active' AND ${activeJhsSectionSql('sections')} LIMIT 1`,
     [schoolId, teacherId, sectionId, subjectId]
   );
   return Boolean(assignments[0]);
@@ -216,6 +273,7 @@ function entriesSelect() {
 async function listJournalSubjects(req, res, next) {
   try {
     if (!['teacher', 'student'].includes(req.user.role) || !req.user.schoolId) throw createError('You do not have access to journals.', 403);
+    if (req.user.role === 'student') await assertStudentHasJhsPlacement(getDatabase(), req.user.schoolId, req.user.id);
     const subject = await getConfiguredJournalSubject(getDatabase(), req.user.schoolId);
     res.json({ journalSubjects: [{ id: subject.id, subjectId: subject.subjectId, name: subject.name, isActive: Boolean(subject.isActive) }] });
   } catch (error) { next(error); }
@@ -239,6 +297,8 @@ async function listJournalSections(req, res, next) {
       INNER JOIN section_teachers ON section_teachers.school_id = sections.school_id
         AND section_teachers.section_id = sections.id
       WHERE sections.school_id = ? AND sections.status = 'active'
+        AND school_levels.level_code = 'jhs' AND school_levels.is_enabled = TRUE
+        AND school_grade_levels.is_enabled = TRUE
         AND section_teachers.teacher_user_id = ? AND section_teachers.subject_id = ?
       ORDER BY school_grade_levels.sort_order, sections.name`,
       [req.user.schoolId, req.user.id, subject.subjectId]
@@ -263,7 +323,8 @@ async function listJournalPrompts(req, res, next) {
       'journal_prompts.school_id = ?',
       'journal_prompts.journal_subject_id = ?',
       'sections.school_id = ?',
-      "sections.status = 'active'"
+      "sections.status = 'active'",
+      activeJhsSectionSql('sections')
     ];
     const values = [req.user.schoolId, subject.id, req.user.schoolId];
 
@@ -276,6 +337,7 @@ async function listJournalPrompts(req, res, next) {
           AND section_teachers.teacher_user_id = ? AND section_teachers.subject_id = ?)`);
       values.push(req.user.id, subject.subjectId);
     } else {
+      await assertStudentHasJhsPlacement(database, req.user.schoolId, req.user.id);
       where.push("journal_prompts.prompt_status IN ('open', 'closed')");
       where.push(`journal_prompts.opens_at <= ${journalNowSql}`);
       where.push(`EXISTS (SELECT 1 FROM section_students
@@ -409,10 +471,12 @@ async function listJournalEntries(req, res, next) {
     const where = [
       'student_journal_entries.school_id = ?',
       'student_journal_entries.journal_subject_id = ?',
-      'sections.school_id = ?'
+      'sections.school_id = ?',
+      activeJhsSectionSql('sections')
     ];
     const values = [req.user.schoolId, subject.id, req.user.schoolId];
     if (req.user.role === 'student') {
+      await assertStudentHasJhsPlacement(database, req.user.schoolId, req.user.id);
       where.push('student_journal_entries.student_user_id = ?');
       values.push(req.user.id);
     } else {
@@ -458,6 +522,7 @@ async function submitJournalEntry(req, res, next) {
     const promptId = parseId(req.body.promptId, 'journal prompt ID');
     const entryText = text(req.body.entryText, 20000, 'Journal entry', true);
     await connection.beginTransaction();
+    await assertStudentHasJhsPlacement(connection, req.user.schoolId, req.user.id);
     const subject = await getConfiguredJournalSubject(connection, req.user.schoolId);
     const [prompts] = await connection.execute(
       `SELECT journal_prompts.id, journal_prompts.section_id AS sectionId,
@@ -469,7 +534,8 @@ async function submitJournalEntry(req, res, next) {
         AND sections.school_id = journal_prompts.school_id
       WHERE journal_prompts.id = ? AND journal_prompts.school_id = ?
         AND journal_prompts.journal_subject_id = ?
-        AND sections.school_id = ? AND sections.status = 'active' LIMIT 1 FOR UPDATE`,
+        AND sections.school_id = ? AND sections.status = 'active'
+        AND ${activeJhsSectionSql('sections')} LIMIT 1 FOR UPDATE`,
       [promptId, req.user.schoolId, subject.id, req.user.schoolId]
     );
     const prompt = prompts[0];
@@ -483,6 +549,7 @@ async function submitJournalEntry(req, res, next) {
         AND sections.school_id = section_students.school_id
       WHERE section_students.school_id = ? AND section_students.section_id = ? AND section_students.student_user_id = ?
         AND section_students.withdrawn_at IS NULL AND sections.school_id = ? AND sections.status = 'active'
+        AND ${activeJhsSectionSql('sections')}
       LIMIT 1`,
       [req.user.schoolId, prompt.sectionId, req.user.id, req.user.schoolId]
     );

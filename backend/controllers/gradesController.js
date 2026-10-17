@@ -1,5 +1,8 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
+const { LEGACY_SHS_GRADING_GROUPS, transmuteLegacyShsInitialGrade } = require('../config/shsCurriculum');
+const { applyDepedK10GradeMethod, getDepedK10GradeMethod, isDepedK10GradeCode } = require('../config/depedK10Grading');
+const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 
 function createError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
@@ -9,12 +12,12 @@ function optionalText(value, maximum, label) { if (value === undefined || value 
 function scoreValue(value, label, required = true) { if (value === undefined || value === null || value === '') { if (required) throw createError(`${label} is required.`); return null; } const score = Number(value); if (!Number.isFinite(score) || score < 0 || score > 1000000) throw createError(`${label} is invalid.`); return Math.round(score * 100) / 100; }
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, schoolId) {
-  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
+  const [rows] = await connection.execute(`SELECT sections.id, sections.school_id AS schoolId, sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId, sections.grade_level_id AS gradeLevelId FROM section_teachers INNER JOIN sections ON sections.id = section_teachers.section_id INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = sections.school_id INNER JOIN users AS teachers ON teachers.id = section_teachers.teacher_user_id AND teachers.school_id = sections.school_id AND teachers.role = 'teacher' AND teachers.account_status = 'active' WHERE section_teachers.teacher_user_id = ? AND section_teachers.section_id = ? AND section_teachers.subject_id = ? AND sections.school_id = ? AND sections.status = 'active' LIMIT 1`, [teacherId, sectionId, subjectId, schoolId]);
   return rows[0] || null;
 }
 
 async function getManagedGradingItem(connection, user, gradingItemId) {
-  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
+  const [rows] = await connection.execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, academic_terms.status AS academicTermStatus, academic_years.status AS academicYearStatus FROM grading_items INNER JOIN sections ON sections.id = grading_items.section_id INNER JOIN academic_terms ON academic_terms.id = grading_items.academic_term_id AND academic_terms.academic_year_id = sections.academic_year_id AND academic_terms.school_level_id = sections.school_level_id INNER JOIN academic_years ON academic_years.id = sections.academic_year_id WHERE grading_items.id = ? AND sections.school_id = ? LIMIT 1`, [gradingItemId, user.schoolId]);
   const item = rows[0];
   if (!item || (user.role === 'teacher' && Number(item.teacherUserId) !== Number(user.id))) return null;
   if (item.academicYearStatus === 'archived') throw createError('Records from an archived school year are read-only.', 409);
@@ -73,7 +76,7 @@ async function assertGradeWriteAccess(connection, user, scope) {
   if (!approvals.length) throw createError('This grading period is locked. An approved, unexpired teacher request is required.', 409);
 }
 
-async function validateGradeItemScope(connection, user, section, subjectId, academicTermId, gradingCategoryId) {
+async function validateGradeItemScope(connection, user, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId = null, subjectGradingExamPartId = null) {
   const [terms] = await connection.execute(`SELECT academic_terms.id,
       academic_terms.status AS academicTermStatus,
       academic_years.status AS academicYearStatus
@@ -82,8 +85,53 @@ async function validateGradeItemScope(connection, user, section, subjectId, acad
     WHERE academic_terms.id = ? AND academic_terms.academic_year_id = ?
       AND academic_terms.school_level_id = ? AND academic_years.school_id = ? LIMIT 1`,
   [academicTermId, section.academicYearId, section.schoolLevelId, section.schoolId]);
-  const [categories] = await connection.execute('SELECT id FROM grading_categories WHERE id=? AND school_id=? AND school_level_id=? LIMIT 1', [gradingCategoryId, section.schoolId, section.schoolLevelId]);
-  if (!terms.length || !categories.length) throw createError('The term or grading category does not match the section.', 404);
+  if (!terms.length) throw createError('The grading period does not match the section.', 404);
+  const [[gradingYear]] = await connection.execute(
+    `SELECT academic_years.label AS academicYearLabel, school_levels.level_code AS levelCode,
+      school_grade_levels.grade_code AS gradeCode
+    FROM academic_years INNER JOIN school_levels ON school_levels.school_id = academic_years.school_id
+    INNER JOIN school_grade_levels ON school_grade_levels.id = ? AND school_grade_levels.school_id = academic_years.school_id
+    WHERE academic_years.id = ? AND academic_years.school_id = ? AND school_levels.id = ? LIMIT 1`,
+    [section.gradeLevelId, section.academicYearId, section.schoolId, section.schoolLevelId]
+  );
+  const usesDepedK10Rules = ['elementary', 'jhs'].includes(gradingYear?.levelCode)
+    && isDepedK10GradeCode(gradingYear?.gradeCode)
+    && getDepedK10GradeMethod(gradingYear.academicYearLabel) !== 'standard';
+  if (usesDepedK10Rules && (!subjectGradingComponentId || gradingCategoryId)) {
+    throw createError('Use this subject’s saved school-year grading configuration for score recording.', 409);
+  }
+  if (!usesDepedK10Rules && subjectGradingComponentId) {
+    throw createError('Subject-specific grading components are not available for this grading period.', 409);
+  }
+  if (subjectGradingComponentId) {
+    const [components] = await connection.execute(
+      `SELECT components.id, components.component_type AS componentType,
+        (SELECT COUNT(*) FROM subject_grading_exam_parts AS parts
+          WHERE parts.school_id = components.school_id AND parts.component_id = components.id) AS examPartCount
+      FROM subject_grading_components AS components
+      INNER JOIN subject_grading_profiles AS profiles ON profiles.id = components.profile_id
+        AND profiles.school_id = components.school_id
+      WHERE components.id = ? AND components.school_id = ? AND profiles.academic_year_id = ?
+        AND profiles.school_level_id = ? AND profiles.subject_id = ? LIMIT 1`,
+      [subjectGradingComponentId, section.schoolId, section.academicYearId, section.schoolLevelId, subjectId]
+    );
+    if (!components.length) throw createError('The subject grading component does not match the section, subject, or school year.', 404);
+    if (Number(components[0].examPartCount) > 0 && !subjectGradingExamPartId) {
+      throw createError('Select an exam part for this grading component.');
+    }
+    if (subjectGradingExamPartId) {
+      const [parts] = await connection.execute(
+        `SELECT id FROM subject_grading_exam_parts
+        WHERE id = ? AND school_id = ? AND component_id = ? LIMIT 1`,
+        [subjectGradingExamPartId, section.schoolId, subjectGradingComponentId]
+      );
+      if (!parts.length) throw createError('The exam part does not belong to this subject component.', 404);
+    }
+  } else {
+    if (subjectGradingExamPartId) throw createError('An exam part requires a subject grading component.');
+    const [categories] = await connection.execute('SELECT id FROM grading_categories WHERE id=? AND school_id=? AND school_level_id=? LIMIT 1', [gradingCategoryId, section.schoolId, section.schoolLevelId]);
+    if (!categories.length) throw createError('The grading category does not match the section.', 404);
+  }
   await assertGradeWriteAccess(connection, user, {
     schoolId: section.schoolId,
     sectionId: section.id,
@@ -106,8 +154,8 @@ async function listGradingItems(req, res, next) {
       values.push(req.user.id);
     } else if (req.user.role !== 'school_admin') throw createError('You do not have access to grading items.', 403);
     if (req.query.sectionId) { where.push('grading_items.section_id = ?'); values.push(parseId(req.query.sectionId, 'section ID')); }
-    const [items] = await getDatabase().execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, grading_items.recorded_at AS recordedAt, subjects.name AS subjectName, academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, journal_prompts.id AS journalPromptId, school_settings.journal_subject_id AS currentJournalSubjectId FROM grading_items INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id INNER JOIN academic_terms ON academic_terms.id=grading_items.academic_term_id INNER JOIN grading_categories ON grading_categories.id=grading_items.grading_category_id LEFT JOIN journal_prompts ON journal_prompts.grading_item_id=grading_items.id AND journal_prompts.school_id=grading_items.school_id LEFT JOIN school_settings ON school_settings.school_id=grading_items.school_id WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
-    res.json({ gradingItems: items.map(item => ({ ...item, maxScore: Number(item.maxScore), usedInPublishedGrades: Boolean(item.usedInPublishedGrades) })) });
+    const [items] = await getDatabase().execute(`SELECT grading_items.id, grading_items.section_id AS sectionId, grading_items.subject_id AS subjectId, grading_items.academic_term_id AS academicTermId, grading_items.grading_category_id AS gradingCategoryId, grading_items.subject_grading_component_id AS subjectGradingComponentId, grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId, grading_items.teacher_user_id AS teacherUserId, grading_items.title, grading_items.max_score AS maxScore, grading_items.used_in_published_grades AS usedInPublishedGrades, grading_items.recorded_at AS recordedAt, subjects.name AS subjectName, academic_terms.name AS academicTermName, grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName, subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName, subject_grading_exam_parts.code AS subjectGradingExamPartCode, subject_grading_exam_parts.name AS subjectGradingExamPartName, journal_prompts.id AS journalPromptId, school_settings.journal_subject_id AS currentJournalSubjectId FROM grading_items INNER JOIN sections ON sections.id=grading_items.section_id INNER JOIN subjects ON subjects.id=grading_items.subject_id INNER JOIN academic_terms ON academic_terms.id=grading_items.academic_term_id LEFT JOIN grading_categories ON grading_categories.id=grading_items.grading_category_id LEFT JOIN subject_grading_components ON subject_grading_components.id=grading_items.subject_grading_component_id AND subject_grading_components.school_id=grading_items.school_id LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id=grading_items.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id=grading_items.school_id LEFT JOIN journal_prompts ON journal_prompts.grading_item_id=grading_items.id AND journal_prompts.school_id=grading_items.school_id LEFT JOIN school_settings ON school_settings.school_id=grading_items.school_id WHERE ${where.join(' AND ')} ORDER BY grading_items.recorded_at DESC`, values);
+    res.json({ gradingItems: items.map(item => ({ ...item, maxScore: Number(item.maxScore), usedInPublishedGrades: Boolean(item.usedInPublishedGrades), subjectGradingComponentId: item.subjectGradingComponentId == null ? null : Number(item.subjectGradingComponentId), subjectGradingExamPartId: item.subjectGradingExamPartId == null ? null : Number(item.subjectGradingExamPartId) })) });
   } catch (error) { next(error); }
 }
 
@@ -118,16 +166,21 @@ async function createGradingItem(req, res, next) {
     await connection.beginTransaction();
     transactionStarted = true;
     const sectionId = parseId(req.body.sectionId, 'section ID'); const subjectId = parseId(req.body.subjectId, 'subject ID');
-    const academicTermId = parseId(req.body.academicTermId, 'academic term ID'); const gradingCategoryId = parseId(req.body.gradingCategoryId, 'grading category ID');
+    const academicTermId = parseId(req.body.academicTermId, 'academic term ID');
+    const gradingCategoryId = req.body.gradingCategoryId == null || req.body.gradingCategoryId === '' ? null : parseId(req.body.gradingCategoryId, 'grading category ID');
+    const subjectGradingComponentId = req.body.subjectGradingComponentId == null || req.body.subjectGradingComponentId === '' ? null : parseId(req.body.subjectGradingComponentId, 'subject grading component ID');
+    const subjectGradingExamPartId = req.body.subjectGradingExamPartId == null || req.body.subjectGradingExamPartId === '' ? null : parseId(req.body.subjectGradingExamPartId, 'exam-part ID');
+    if (!gradingCategoryId && !subjectGradingComponentId) throw createError('Select a grading category or subject component.');
     const section = await getTeacherSectionSubject(connection, req.user.id, sectionId, subjectId, req.user.schoolId);
     if (!section) throw createError('You are not assigned to this section and subject.', 403);
-    await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId);
+    await validateGradeItemScope(connection, req.user, section, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId);
     const title = text(req.body.title, 255, 'Grading item title'); const maxScore = scoreValue(req.body.maxScore, 'Maximum score');
     const assignmentId = req.body.assignmentId === undefined ? null : parseId(req.body.assignmentId, 'assignment ID');
     if (assignmentId) {
       const [assignments] = await connection.execute(
         `SELECT grading_item_id AS gradingItemId, section_id AS sectionId, subject_id AS subjectId,
           academic_term_id AS academicTermId, grading_category_id AS gradingCategoryId,
+          subject_grading_component_id AS subjectGradingComponentId, subject_grading_exam_part_id AS subjectGradingExamPartId,
           title, max_score AS maxScore
         FROM assignments WHERE id = ? AND school_id = ? AND teacher_user_id = ? FOR UPDATE`,
         [assignmentId, req.user.schoolId, req.user.id]
@@ -136,19 +189,21 @@ async function createGradingItem(req, res, next) {
       if (!assignment) throw createError('The assignment was not found.', 404);
       if (assignment.gradingItemId || Number(assignment.sectionId) !== sectionId
         || Number(assignment.subjectId) !== subjectId || Number(assignment.academicTermId) !== academicTermId
-        || Number(assignment.gradingCategoryId) !== gradingCategoryId
+        || String(assignment.gradingCategoryId || '') !== String(gradingCategoryId || '')
+        || String(assignment.subjectGradingComponentId || '') !== String(subjectGradingComponentId || '')
+        || String(assignment.subjectGradingExamPartId || '') !== String(subjectGradingExamPartId || '')
         || assignment.title !== title || Number(assignment.maxScore) !== maxScore) {
         throw createError('The score component must match the unlinked assignment.', 409);
       }
     }
-    const [result] = await connection.execute('INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id, grading_category_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [req.user.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, req.user.id, title, maxScore]);
+    const [result] = await connection.execute('INSERT INTO grading_items (school_id, section_id, subject_id, academic_term_id, grading_category_id, subject_grading_component_id, subject_grading_exam_part_id, teacher_user_id, title, max_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.user.schoolId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, req.user.id, title, maxScore]);
     if (assignmentId) await connection.execute(
       'UPDATE assignments SET grading_item_id = ? WHERE id = ? AND school_id = ?',
       [result.insertId, assignmentId, req.user.schoolId]
     );
     await connection.commit();
     transactionStarted = false;
-    res.status(201).json({ gradingItem: { id: result.insertId, sectionId, subjectId, academicTermId, gradingCategoryId, teacherUserId: req.user.id, title, maxScore, usedInPublishedGrades: false } });
+    res.status(201).json({ gradingItem: { id: result.insertId, sectionId, subjectId, academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId, teacherUserId: req.user.id, title, maxScore, usedInPublishedGrades: false } });
   } catch (error) { if (transactionStarted) await connection.rollback(); next(error); } finally { connection.release(); }
 }
 
@@ -503,6 +558,7 @@ async function getTransferredWork(connection, schoolId, scope) {
       AND previous_section.academic_year_id = current_section.academic_year_id
       AND previous_section.school_level_id = current_section.school_level_id
       AND previous_section.grade_level_id = current_section.grade_level_id
+      AND previous_section.track_id <=> current_section.track_id
       AND previous_section.strand_id <=> current_section.strand_id
       AND previous_section.id <> current_section.id
     INNER JOIN grading_items ON grading_items.section_id = previous_section.id
@@ -528,6 +584,7 @@ async function getTransferredWork(connection, schoolId, scope) {
       AND current_section.academic_year_id = source_section.academic_year_id
       AND current_section.school_level_id = source_section.school_level_id
       AND current_section.grade_level_id = source_section.grade_level_id
+      AND current_section.track_id <=> source_section.track_id
       AND current_section.strand_id <=> source_section.strand_id
     INNER JOIN section_students AS current_enrollment ON current_enrollment.section_id = current_section.id
       AND current_enrollment.student_user_id = published_final_grades.student_user_id
@@ -571,19 +628,39 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   const [contextRows] = await connection.execute(
     `SELECT sections.id AS sectionId, sections.school_id AS schoolId,
       sections.school_level_id AS schoolLevelId, sections.academic_year_id AS academicYearId,
+      school_grade_levels.grade_code AS gradeCode,
+      sections.track_id AS trackId, sections.strand_id AS strandId,
+      tracks.track_code AS trackCode,
       sections.name AS sectionName, subjects.id AS subjectId, subjects.name AS subjectName,
+      subjects.shs_grading_group AS shsGradingGroup,
       academic_terms.id AS academicTermId, academic_terms.name AS academicTermName,
       academic_terms.status AS termStatus, school_levels.grade_rounding AS gradeRounding,
-      school_levels.passing_grade_threshold AS passingGradeThreshold
+      school_levels.passing_grade_threshold AS passingGradeThreshold,
+      school_levels.level_code AS schoolLevelCode,
+      academic_years.label AS academicYearLabel,
+      school_levels.grading_period_type AS gradingPeriodType
     FROM section_teachers
     INNER JOIN sections ON sections.id = section_teachers.section_id
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id
       AND subjects.school_id = sections.school_id
       AND (subjects.school_level_id IS NULL OR subjects.school_level_id = sections.school_level_id)
+      AND EXISTS (
+        SELECT 1 FROM subject_grade_scopes AS subject_scopes
+        WHERE subject_scopes.school_id = sections.school_id AND subject_scopes.subject_id = subjects.id
+          AND subject_scopes.grade_level_id = sections.grade_level_id
+          AND (subject_scopes.track_id IS NULL OR subject_scopes.track_id = sections.track_id)
+          AND (subject_scopes.strand_id IS NULL OR subject_scopes.strand_id = sections.strand_id)
+      )
     INNER JOIN academic_terms ON academic_terms.id = ?
       AND academic_terms.academic_year_id = sections.academic_year_id
       AND academic_terms.school_level_id = sections.school_level_id
     INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+    INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+      AND school_grade_levels.school_id = sections.school_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+      AND academic_years.school_id = sections.school_id
+    LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.track_id
+      AND tracks.school_id = sections.school_id
     WHERE sections.id = ? AND subjects.id = ? AND section_teachers.teacher_user_id = ?
       AND sections.school_id = ? AND sections.status = 'active'
     LIMIT 1${lock}`,
@@ -593,25 +670,98 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   if (!context) throw createError('The section, subject, or term is not available to your account.', 404);
   if (context.termStatus !== 'active') throw createError('Grades can only be published for the active term.', 409);
 
-  const [categoryRows] = await connection.execute(
-    `SELECT id, code, name, weight FROM grading_categories
-    WHERE school_id = ? AND school_level_id = ? ORDER BY id${lock}`,
-    [context.schoolId, context.schoolLevelId]
-  );
-  const categories = categoryRows.map(category => ({ ...category, id: Number(category.id), weight: Number(category.weight) }));
+  const schoolYearMethod = ['elementary', 'jhs'].includes(context.schoolLevelCode)
+    ? getDepedK10GradeMethod(context.academicYearLabel)
+    : 'standard';
+  const isDepedK10 = ['elementary', 'jhs'].includes(context.schoolLevelCode)
+    && isDepedK10GradeCode(context.gradeCode) && schoolYearMethod !== 'standard';
+  const finalGradeRules = isDepedK10 ? await loadK10FinalGradeRules(connection, {
+    schoolId: context.schoolId,
+    academicYearId: context.academicYearId,
+    schoolLevelId: context.schoolLevelId,
+    academicYearLabel: context.academicYearLabel,
+    gradingPeriodType: context.gradingPeriodType
+  }) : null;
+  const gradingMethod = finalGradeRules?.gradingMethod || schoolYearMethod;
+  let categories;
+  let periodStructureCompatible = null;
+  if (isDepedK10) {
+    const [profiles] = await connection.execute(
+      `SELECT id FROM subject_grading_profiles
+      WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ? AND subject_id = ? LIMIT 1${lock}`,
+      [context.schoolId, context.academicYearId, context.schoolLevelId, context.subjectId]
+    );
+    if (!profiles.length) categories = [];
+    else {
+      const [componentRows] = await connection.execute(
+        `SELECT id, code, name, component_type AS componentType, weight
+        FROM subject_grading_components WHERE school_id = ? AND profile_id = ? ORDER BY sort_order, id${lock}`,
+        [context.schoolId, profiles[0].id]
+      );
+      categories = componentRows.map(component => ({
+        id: Number(component.id), code: component.code, name: component.name,
+        componentType: component.componentType, weight: Number(component.weight), examParts: []
+      }));
+      if (categories.length) {
+        const ids = categories.map(category => category.id);
+        const [partRows] = await connection.execute(
+          `SELECT id, component_id AS componentId, code, name, weight
+          FROM subject_grading_exam_parts WHERE school_id = ? AND component_id IN (${ids.map(() => '?').join(',')}) ORDER BY sort_order, id${lock}`,
+          [context.schoolId, ...ids]
+        );
+        const byId = new Map(categories.map(category => [category.id, category]));
+        partRows.forEach(part => byId.get(Number(part.componentId))?.examParts.push({
+          id: Number(part.id), code: part.code, name: part.name, weight: Number(part.weight)
+        }));
+      }
+    }
+    periodStructureCompatible = finalGradeRules.periodStructureCompatible;
+  } else {
+    const [categoryRows] = await connection.execute(
+      `SELECT id, code, name, weight FROM grading_categories
+      WHERE school_id = ? AND school_level_id = ? ORDER BY id${lock}`,
+      [context.schoolId, context.schoolLevelId]
+    );
+    categories = categoryRows.map(category => ({ ...category, id: Number(category.id), weight: Number(category.weight), examParts: [] }));
+  }
   const categoryById = new Map(categories.map(category => [category.id, category]));
   const issues = [];
+  if (isDepedK10 && finalGradeRules.periodStructureWarning) {
+    issues.push({ code: 'incompatible_period_structure', message: finalGradeRules.periodStructureWarning });
+  }
+  if (isDepedK10 && !categories.length) {
+    issues.push({ code: 'unconfigured_subject_grading', message: 'Ask School Admin to apply or configure this subject’s grading components for the school year.' });
+  }
+  if (context.schoolLevelCode === 'shs') {
+    if (['academic', 'tvl'].includes(context.trackCode) && !context.strandId) {
+      issues.push({ code: 'unclassified_shs_section', message: 'Ask School Admin to confirm this section’s SHS strand before publishing grades.' });
+    }
+    const configuredWeights = LEGACY_SHS_GRADING_GROUPS[context.shsGradingGroup]?.weights;
+    if (!configuredWeights) {
+      issues.push({ code: 'unclassified_shs_subject', message: 'Ask School Admin to choose a grading type for this SHS subject before grades can be published.' });
+    } else {
+      const requiredCodes = Object.keys(configuredWeights);
+      if (categories.length !== requiredCodes.length || requiredCodes.some(code => !categories.some(category => String(category.code).toLowerCase() === code))) {
+        issues.push({ code: 'invalid_shs_grading_categories', message: 'SHS grading requires Written Work, Performance Task, and Quarterly Assessment categories.' });
+      } else {
+        categories.forEach(category => {
+          category.weight = configuredWeights[String(category.code).toLowerCase()];
+        });
+      }
+    }
+  }
   const weightTotal = categories.reduce((sum, category) => sum + category.weight, 0);
 
   if (!categories.length) issues.push({ code: 'no_grading_categories', message: 'Configure grading categories before publishing.' });
-  else if (categories.some(category => !Number.isFinite(category.weight) || category.weight <= 0 || category.weight > 100)
+  else if (categories.some(category => !Number.isFinite(category.weight) || category.weight < 0 || category.weight > 100)
     || Math.round(weightTotal * 100) !== 10000) {
     issues.push({ code: 'invalid_category_weights', message: 'Grading category weights must be valid and total 100%.' });
   }
-  if (!['round', 'roundup', 'truncate'].includes(context.gradeRounding)) {
+  const effectiveRounding = isDepedK10 ? finalGradeRules.gradeRounding : context.gradeRounding;
+  if (!['round', 'roundup', 'truncate'].includes(effectiveRounding)) {
     issues.push({ code: 'invalid_rounding_rule', message: 'The school rounding rule is invalid.' });
   }
-  const passingGradeThreshold = Number(context.passingGradeThreshold);
+  const passingGradeThreshold = isDepedK10 ? finalGradeRules.passingGradeThreshold : Number(context.passingGradeThreshold);
   if (!Number.isFinite(passingGradeThreshold) || passingGradeThreshold < 0 || passingGradeThreshold > 100) {
     issues.push({ code: 'invalid_passing_threshold', message: 'The school passing-grade threshold must be between 0 and 100.' });
   }
@@ -638,36 +788,64 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   const [itemRows] = await connection.execute(
     `SELECT grading_items.id AS gradingItemId, grading_items.title AS title,
       grading_items.grading_category_id AS gradingCategoryId, grading_items.max_score AS maxScore,
+      grading_items.subject_grading_component_id AS subjectGradingComponentId,
+      grading_items.subject_grading_exam_part_id AS subjectGradingExamPartId,
       grading_categories.school_id AS categorySchoolId,
-      grading_categories.school_level_id AS categorySchoolLevelId
+      grading_categories.school_level_id AS categorySchoolLevelId,
+      subject_grading_components.school_id AS componentSchoolId
     FROM grading_items
     LEFT JOIN grading_categories ON grading_categories.id = grading_items.grading_category_id
+    LEFT JOIN subject_grading_components ON subject_grading_components.id = grading_items.subject_grading_component_id
+      AND subject_grading_components.school_id = grading_items.school_id
     WHERE grading_items.section_id = ? AND grading_items.subject_id = ?
       AND grading_items.academic_term_id = ? AND grading_items.teacher_user_id = ?
     ORDER BY grading_items.id${lock}`,
     [context.sectionId, context.subjectId, context.academicTermId, user.id]
   );
-  const items = itemRows.map(item => ({ ...item, gradingItemId: Number(item.gradingItemId), gradingCategoryId: Number(item.gradingCategoryId), maxScore: Number(item.maxScore) }));
+  const items = itemRows.map(item => ({
+    ...item,
+    gradingItemId: Number(item.gradingItemId),
+    gradingCategoryId: item.gradingCategoryId == null ? null : Number(item.gradingCategoryId),
+    subjectGradingComponentId: item.subjectGradingComponentId == null ? null : Number(item.subjectGradingComponentId),
+    subjectGradingExamPartId: item.subjectGradingExamPartId == null ? null : Number(item.subjectGradingExamPartId),
+    maxScore: Number(item.maxScore)
+  }));
 
   if (!items.length) issues.push({ code: 'no_grading_items', message: 'Add grading items for this subject and term before publishing.' });
   for (const item of items) {
     if (!Number.isFinite(item.maxScore) || item.maxScore <= 0) {
       issues.push({ code: 'invalid_max_score', message: `“${item.title}” must have a maximum score greater than zero.` });
     }
-    if (!categoryById.has(item.gradingCategoryId)
+    if (!isDepedK10 && (!categoryById.has(item.gradingCategoryId)
       || Number(item.categorySchoolId) !== Number(context.schoolId)
-      || Number(item.categorySchoolLevelId) !== Number(context.schoolLevelId)) {
+      || Number(item.categorySchoolLevelId) !== Number(context.schoolLevelId))) {
       issues.push({ code: 'invalid_item_category', message: `“${item.title}” is not linked to a grading category for this school level.` });
+    }
+    if (isDepedK10) {
+      const component = categoryById.get(item.subjectGradingComponentId);
+      const part = component?.examParts.find(examPart => examPart.id === item.subjectGradingExamPartId);
+      if (!component || Number(item.componentSchoolId) !== Number(context.schoolId)) {
+        issues.push({ code: 'invalid_item_component', message: `“${item.title}” is not linked to this subject’s school-year configuration.` });
+      } else if ((component.examParts.length && !part) || (!component.examParts.length && item.subjectGradingExamPartId)) {
+        issues.push({ code: 'invalid_item_exam_part', message: `“${item.title}” must use an exam part from its configured component.` });
+      }
     }
   }
   if (items.length) {
     for (const category of categories) {
-      if (!items.some(item => item.gradingCategoryId === category.id)) {
-        issues.push({ code: 'category_without_items', categoryCode: category.code, message: `Add at least one grading item for ${category.name}.` });
+      const categoryItems = items.filter(item => (isDepedK10 ? item.subjectGradingComponentId : item.gradingCategoryId) === category.id);
+      if (!categoryItems.length) {
+        issues.push({ code: isDepedK10 ? 'component_without_items' : 'category_without_items', categoryCode: category.code, message: `Add at least one grading item for ${category.name}.` });
+      }
+      if (isDepedK10) {
+        for (const part of category.examParts) {
+          if (!categoryItems.some(item => item.subjectGradingExamPartId === part.id)) {
+            issues.push({ code: 'exam_part_without_items', categoryCode: part.code, message: `Add at least one score component for ${part.name}.` });
+          }
+        }
       }
     }
   }
-
   let scoreRows = [];
   if (students.length && items.length) {
     [scoreRows] = await connection.execute(
@@ -685,7 +863,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     );
   }
   const scoreByKey = new Map(scoreRows.map(record => [`${record.studentId}:${record.gradingItemId}`, record]));
-  const canCalculate = !issues.some(issue => issue.code !== 'no_students' && issue.code !== 'no_grading_items' && issue.code !== 'category_without_items');
+  const canCalculate = !issues.some(issue => !['no_students', 'no_grading_items', 'category_without_items', 'component_without_items', 'exam_part_without_items'].includes(issue.code));
 
   const studentGrades = students.map(student => {
     const previousGrade = publishedByStudent.get(String(student.studentId))?.[0];
@@ -698,6 +876,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     const missingItems = [];
     const invalidScores = [];
     const totals = new Map(categories.map(category => [category.id, { earned: 0, possible: 0 }]));
+    const partTotals = new Map(categories.flatMap(category => category.examParts.map(part => [part.id, { earned: 0, possible: 0 }])));
 
     for (const item of items) {
       const record = scoreByKey.get(`${student.studentId}:${item.gradingItemId}`);
@@ -710,27 +889,59 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
         invalidScores.push({ gradingItemId: item.gradingItemId, title: item.title });
         continue;
       }
-      const categoryTotal = totals.get(item.gradingCategoryId);
-      if (categoryTotal) {
-        categoryTotal.earned += score;
-        categoryTotal.possible += item.maxScore;
+      if (isDepedK10) {
+        const componentTotal = totals.get(item.subjectGradingComponentId);
+        const partTotal = item.subjectGradingExamPartId ? partTotals.get(item.subjectGradingExamPartId) : null;
+        if (partTotal) {
+          partTotal.earned += score;
+          partTotal.possible += item.maxScore;
+        } else if (componentTotal) {
+          componentTotal.earned += score;
+          componentTotal.possible += item.maxScore;
+        }
+      } else {
+        const categoryTotal = totals.get(item.gradingCategoryId);
+        if (categoryTotal) {
+          categoryTotal.earned += score;
+          categoryTotal.possible += item.maxScore;
+        }
       }
     }
 
     const complete = canCalculate && !missingItems.length && !invalidScores.length
-      && categories.every(category => (totals.get(category.id)?.possible || 0) > 0);
+      && categories.every(category => category.examParts.length
+        ? category.examParts.every(part => (partTotals.get(part.id)?.possible || 0) > 0)
+        : (totals.get(category.id)?.possible || 0) > 0);
     const categoryAverages = complete ? categories.map(category => ({
       code: category.code,
       name: category.name,
       weight: category.weight,
-      percentage: (totals.get(category.id).earned / totals.get(category.id).possible) * 100
+      percentage: category.examParts.length
+        ? category.examParts.reduce((sum, part) => sum + ((partTotals.get(part.id).earned / partTotals.get(part.id).possible) * 100 * (part.weight / 100)), 0)
+        : (totals.get(category.id).earned / totals.get(category.id).possible) * 100,
+      examPartAverages: category.examParts.map(part => ({
+        code: part.code, name: part.name, weight: part.weight,
+        percentage: partTotals.get(part.id)?.possible
+          ? (partTotals.get(part.id).earned / partTotals.get(part.id).possible) * 100
+          : null
+      }))
     })) : [];
     const weightedGrade = categoryAverages.reduce((sum, category) => sum + category.percentage * (category.weight / 100), 0);
-    const finalGrade = complete ? roundFinalGrade(weightedGrade, context.gradeRounding) : null;
+    const initialGrade = complete && (context.schoolLevelCode === 'shs' || isDepedK10)
+      ? Math.round((weightedGrade + Number.EPSILON) * 100) / 100
+      : null;
+    const finalGrade = !complete ? null : isDepedK10
+      ? gradingMethod === 'school_direct'
+        ? roundFinalGrade(initialGrade, finalGradeRules.gradeRounding)
+        : applyDepedK10GradeMethod(initialGrade, gradingMethod, 'round')
+      : context.schoolLevelCode === 'shs'
+        ? transmuteLegacyShsInitialGrade(initialGrade)
+        : roundFinalGrade(weightedGrade, context.gradeRounding);
 
     return {
       studentId: Number(student.studentId),
       studentName: student.studentName,
+      initialGrade,
       finalGrade,
       isPassing: finalGrade === null ? null : finalGrade >= passingGradeThreshold,
       missingItems,
@@ -749,7 +960,12 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     subjectName: context.subjectName,
     academicTermId: Number(context.academicTermId),
     academicTermName: context.academicTermName,
-    gradeRounding: context.gradeRounding,
+    gradingScale: isDepedK10 ? gradingMethod : context.schoolLevelCode === 'shs' ? 'legacy_shs_transmutation' : null,
+    gradingMethod: isDepedK10 ? gradingMethod : null,
+    gradingMethodLabel: isDepedK10 ? finalGradeRules.gradingMethodLabel : null,
+    periodStructureCompatible,
+    periodStructureWarning: isDepedK10 ? finalGradeRules.periodStructureWarning : null,
+    gradeRounding: isDepedK10 ? finalGradeRules.gradeRounding : context.gradeRounding,
     passingGradeThreshold,
     categories,
     gradingItemIds: items.map(item => item.gradingItemId),
@@ -809,11 +1025,6 @@ async function publishFinalGrades(req, res, next) {
     const notificationsEnabled = Boolean(features?.gradesEnabled);
     const gradeTrigger = notificationsEnabled
       ? await getTrigger(connection, req.user.schoolId, 'grade_below_threshold') : null;
-    const [[level]] = gradeTrigger ? await connection.execute(
-      'SELECT passing_grade_threshold AS threshold FROM school_levels WHERE id = (SELECT school_level_id FROM sections WHERE id = ? AND school_id = ?)',
-      [preview.sectionId, req.user.schoolId]
-    ) : [[]];
-
     for (const student of gradesToPublish) {
       await connection.execute(
         `INSERT INTO published_final_grades (
@@ -837,7 +1048,7 @@ async function publishFinalGrades(req, res, next) {
             req.user.schoolId, student.studentId]
         );
       }
-      if (gradeTrigger && Number(student.finalGrade) < Number(level.threshold)) {
+      if (gradeTrigger && Number(student.finalGrade) < Number(preview.passingGradeThreshold)) {
         await notifyParents(connection, {
           schoolId: req.user.schoolId, studentId: student.studentId, code: 'grade_below_threshold',
           eventKey: `grade:${preview.sectionId}:${preview.subjectId}:${preview.academicTermId}:${student.studentId}`,

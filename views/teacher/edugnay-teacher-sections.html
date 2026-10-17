@@ -42,40 +42,40 @@
       <div class="form-group">
         <label class="form-label">Component Type</label>
         <div class="comp-type-opts" id="compTypeOpts">
-          <div class="comp-type-opt selected" onclick="selectCompType(this,'Quiz','WW')" data-cat="WW">
-            <div class="comp-type-icon"><i data-lucide="pencil" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Quiz</div>
-            <div class="comp-type-cat">Written Work</div>
-          </div>
-          <div class="comp-type-opt" onclick="selectCompType(this,'Activity','WW')" data-cat="WW">
-            <div class="comp-type-icon"><i data-lucide="pen-line" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Activity</div>
-            <div class="comp-type-cat">Written Work</div>
-          </div>
-          <div class="comp-type-opt" onclick="selectCompType(this,'Seatwork','WW')" data-cat="WW">
-            <div class="comp-type-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Seatwork</div>
-            <div class="comp-type-cat">Written Work</div>
-          </div>
-          <div class="comp-type-opt" onclick="selectCompType(this,'Performance Task','PT')" data-cat="PT">
-            <div class="comp-type-icon"><i data-lucide="target" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Performance Task</div>
-            <div class="comp-type-cat">Perf. Task</div>
-          </div>
-          <div class="comp-type-opt" onclick="selectCompType(this,'Project','PT')" data-cat="PT">
-            <div class="comp-type-icon"><i data-lucide="box" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Project</div>
-            <div class="comp-type-cat">Perf. Task</div>
-          </div>
-          <div class="comp-type-opt" onclick="selectCompType(this,'Quarterly Exam','QA')" data-cat="QA">
-            <div class="comp-type-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;"></i></div>
-            <div class="comp-type-name">Quarterly Exam</div>
-            <div class="comp-type-cat">Quarterly Assessment</div>
-          </div>
+          <button class="comp-type-opt cat-ww selected" type="button" data-cat="WW" aria-pressed="true">
+            <span class="comp-type-icon"><i data-lucide="pencil" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Quiz</span>
+            <span class="comp-type-cat">Written Work</span>
+          </button>
+          <button class="comp-type-opt cat-ww" type="button" data-cat="WW" aria-pressed="false">
+            <span class="comp-type-icon"><i data-lucide="pen-line" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Activity</span>
+            <span class="comp-type-cat">Written Work</span>
+          </button>
+          <button class="comp-type-opt cat-ww" type="button" data-cat="WW" aria-pressed="false">
+            <span class="comp-type-icon"><i data-lucide="file-text" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Seatwork</span>
+            <span class="comp-type-cat">Written Work</span>
+          </button>
+          <button class="comp-type-opt cat-pt" type="button" data-cat="PT" aria-pressed="false">
+            <span class="comp-type-icon"><i data-lucide="target" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Performance Task</span>
+            <span class="comp-type-cat">Perf. Task</span>
+          </button>
+          <button class="comp-type-opt cat-pt" type="button" data-cat="PT" aria-pressed="false">
+            <span class="comp-type-icon"><i data-lucide="box" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Project</span>
+            <span class="comp-type-cat">Perf. Task</span>
+          </button>
+          <button class="comp-type-opt cat-qa" type="button" data-cat="QA" aria-pressed="false">
+            <span class="comp-type-icon"><i data-lucide="clipboard-list" style="width:18px;height:18px;"></i></span>
+            <span class="comp-type-name">Quarterly Exam</span>
+            <span class="comp-type-cat">Quarterly Assessment</span>
+          </button>
         </div>
-        <div id="selectedCatBadge" class="cat-badge cat-ww">
-          <i data-lucide="pencil" style="width:10px;height:10px;"></i>
-          Written Work (—)
+        <div class="form-group" id="scoreExamPartGroup" hidden>
+          <label class="form-label" for="scoreExamPartInput">Exam part</label>
+          <select class="form-select" id="scoreExamPartInput"></select>
         </div>
       </div>
 
@@ -162,6 +162,10 @@
           <label class="form-label" for="assignCategoryInput">Grading Category</label>
           <select class="form-select" id="assignCategoryInput"></select>
         </div>
+        <div class="form-group" id="assignExamPartGroup" hidden>
+          <label class="form-label" for="assignExamPartInput">Exam part</label>
+          <select class="form-select" id="assignExamPartInput"></select>
+        </div>
         <div class="form-group">
           <label class="form-label" for="assignMaxScoreInput">Highest Possible Score</label>
           <input class="form-input" type="number" id="assignMaxScoreInput" min="1" step="1" placeholder="e.g. 50">
@@ -232,6 +236,10 @@
         <div class="form-group">
           <label class="form-label" for="editAssignmentCategoryInput">Grading Category</label>
           <select class="form-select" id="editAssignmentCategoryInput"></select>
+        </div>
+        <div class="form-group" id="editAssignmentExamPartGroup" hidden>
+          <label class="form-label" for="editAssignmentExamPartInput">Exam part</label>
+          <select class="form-select" id="editAssignmentExamPartInput"></select>
         </div>
         <div class="form-group">
           <label class="form-label" for="editAssignmentMaxScoreInput">Highest Possible Score</label>
@@ -367,6 +375,7 @@
         <strong style="color:var(--gray-800);" id="publishStudentCount">0 students</strong> will have their <span id="publishPeriodName">current grading period</span> final grades published.<br/>
         Review the server-calculated results below. You can publish again after correcting scores.
       </div>
+      <div id="publishGradeMethodNote" class="publish-preview-feedback" hidden>The weighted initial grade is converted to the reported term grade using the DepEd transmutation table.</div>
       <div id="publishGradeFeedback" class="publish-preview-feedback" role="status" aria-live="polite" hidden></div>
       <div id="publishPreviewStudentList" class="publish-preview-list" aria-label="Calculated final grades" hidden></div>
       <label id="transferPublishReview" class="transfer-publish-review" hidden>
@@ -877,7 +886,7 @@
             <div class="panel-sub"><span id="scoreSectionName">Loading section...</span> · <span id="scorePanelPeriodName">Current period</span> · Weights: <span id="scorePanelWeights">WW — · PT — · QA —</span></div>
           </div>
           <div class="panel-head-actions">
-            <button class="top-btn secondary" data-requires-subject onclick="openModal('addCompModal')">
+            <button class="top-btn secondary" data-requires-subject id="addScoreComponentButton" onclick="openScoreComponentModal()">
               <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Component
             </button>
             <button class="top-btn success" id="publishGradesButton" onclick="openPublishGradesModal()">
@@ -1507,6 +1516,27 @@
     });
   }
 
+  const LEGACY_SCORE_CATEGORY_TABS = document.querySelector('.cat-tabs').innerHTML;
+
+  function renderScoreCategoryTabs() {
+    const tabs = document.querySelector('.cat-tabs');
+    if (!BACKEND_SUBJECT_GRADING_CONFIG?.applicable) {
+      tabs.innerHTML = LEGACY_SCORE_CATEGORY_TABS;
+      return;
+    }
+    const componentTabs = BACKEND_CATEGORIES.map(category => `
+      <button class="cat-tab" type="button" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(String(category.code).toUpperCase())}">
+        ${window.EDUGNAY_CONFIG.escapeHtml(category.name)}
+        <span class="cat-weight">${Number(category.weight) || 0}%</span>
+      </button>`).join('');
+    tabs.innerHTML = `<button class="cat-tab active" type="button" data-cat="all">All Components</button>${componentTabs}`;
+  }
+
+  document.querySelector('.cat-tabs').addEventListener('click', event => {
+    const tab = event.target.closest('.cat-tab[data-cat]');
+    if (tab && !tab.hasAttribute('onclick')) switchCatTab(tab, tab.dataset.cat);
+  });
+
   /* ── SECTION AND TEACHER CONTEXT ── */
   // Resolve the selected section from the signed-in teacher's assignments.
   let CURRENT_TEACHER_ID = window.EDUGNAY_TEACHER_ACCESS?.teacherId || null;
@@ -1535,6 +1565,7 @@
   let ACADEMIC_PERIODS = [];
   let ACTIVE_ACADEMIC_PERIOD_ID = CURRENT_DIVISION.activeAcademicPeriodId || ACADEMIC_PERIODS.find(period => period.status === 'active')?.id || ACADEMIC_PERIODS[0]?.id || '';
   let CURRENT_GRADING_RULES = CURRENT_DIVISION.gradingRules || [];
+  let CURRENT_GRADE_SCALE = 'standard';
   let GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
     ? CURRENT_DIVISION.gradeRounding
     : 'round';
@@ -1550,6 +1581,7 @@
     CURRENT_DIVISION = window.EDUGNAY_CONFIG.getActiveSchool()?.divisions?.[CURRENT_LEVEL] || {};
     ACADEMIC_PERIODS = [];
     CURRENT_GRADING_RULES = [];
+    CURRENT_GRADE_SCALE = 'standard';
     ACTIVE_ACADEMIC_PERIOD_ID = '';
     GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(CURRENT_DIVISION.gradeRounding)
       ? CURRENT_DIVISION.gradeRounding
@@ -1912,6 +1944,8 @@
   let BACKEND_STUDENT_SCORES = [];
   let BACKEND_PUBLISHED_GRADES = [];
   let BACKEND_CATEGORIES = [];
+  let BACKEND_SUBJECT_GRADING_CONFIG = null;
+  let CURRENT_GRADE_METHOD_LABEL = '';
   let BACKEND_TERMS = [];
   let BACKEND_GRADE_ERROR = '';
   const TRANSFER_REVIEW_CACHE = new Map();
@@ -2028,10 +2062,28 @@
         throw new Error('The section academic year or school level is unavailable.');
       }
 
-      const [terms, categories] = await Promise.all([
+      const [terms, gradingSettings, subjectGradingConfig] = await Promise.all([
         window.EDUGNAY_API.getAcademicTerms({ academicYearId: section.academicYearId, schoolLevelId: section.schoolLevelId }),
-        window.EDUGNAY_API.getGradingCategories({ schoolLevelId: section.schoolLevelId })
+        window.EDUGNAY_API.getGradingSettings({
+          schoolLevelId: section.schoolLevelId,
+          sectionId: section.id,
+          subjectId: subjectAssignment.subjectId
+        }),
+        window.EDUGNAY_API.getSubjectGradingConfig({ sectionId: section.id, subjectId: subjectAssignment.subjectId })
       ]);
+      const categories = subjectGradingConfig.applicable
+        ? subjectGradingConfig.configured
+          ? subjectGradingConfig.components.map(component => ({
+            id: null,
+            code: component.code,
+            name: component.name,
+            weight: Number(component.weight),
+            subjectGradingComponentId: Number(component.id),
+            componentType: component.componentType,
+            examParts: component.examParts || []
+          }))
+          : []
+        : gradingSettings.gradingCategories;
       if (!terms.length) throw new Error('No grading periods are configured for this section’s academic year. Ask your administrator to set them up.');
 
       const [assignments, gradingItems, scores, publishedGrades] = await Promise.all([
@@ -2056,6 +2108,24 @@
       BACKEND_STUDENT_SCORES = scores;
       BACKEND_PUBLISHED_GRADES = publishedGrades;
       BACKEND_CATEGORIES = categories;
+      BACKEND_SUBJECT_GRADING_CONFIG = subjectGradingConfig;
+      CURRENT_GRADE_SCALE = subjectGradingConfig.applicable
+        ? subjectGradingConfig.gradingMethod
+        : gradingSettings.gradingScale || 'standard';
+      CURRENT_GRADE_METHOD_LABEL = subjectGradingConfig.gradingMethodLabel || '';
+      if (subjectGradingConfig.applicable) {
+        GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(subjectGradingConfig.gradeRounding)
+          ? subjectGradingConfig.gradeRounding : 'round';
+        PASSING_GRADE_THRESHOLD = Number.isFinite(Number(subjectGradingConfig.passingGradeThreshold))
+          ? Number(subjectGradingConfig.passingGradeThreshold) : 75;
+        WARNING_GRADE_THRESHOLD = Math.max(0, PASSING_GRADE_THRESHOLD - 5);
+      } else {
+        GRADE_ROUNDING = ['round', 'roundup', 'truncate'].includes(gradingSettings.gradeRounding)
+          ? gradingSettings.gradeRounding : GRADE_ROUNDING;
+        PASSING_GRADE_THRESHOLD = Number.isFinite(Number(gradingSettings.passingGradeThreshold))
+          ? Number(gradingSettings.passingGradeThreshold) : PASSING_GRADE_THRESHOLD;
+        WARNING_GRADE_THRESHOLD = Math.max(0, PASSING_GRADE_THRESHOLD - 5);
+      }
       BACKEND_TERMS = terms;
       BACKEND_GRADE_ERROR = '';
       submissions.forEach(([assignmentId, records]) => BACKEND_SUBMISSIONS.set(String(assignmentId), records));
@@ -2068,28 +2138,45 @@
         }));
         ACTIVE_ACADEMIC_PERIOD_ID = String(terms.find(term => term.status === 'active')?.id || ACADEMIC_PERIODS[0].id);
       }
-      if (categories.length) {
-        CURRENT_GRADING_RULES = categories.map(category => ({
-          id: category.code,
-          label: category.name,
-          weight: Number(category.weight) || 0
-        }));
-        GRADING_RULES_BY_ID = Object.fromEntries(
-          CURRENT_GRADING_RULES.map(rule => [String(rule.id || '').toLowerCase(), rule])
-        );
-        WEIGHTS = Object.fromEntries(
-          CURRENT_GRADING_RULES.map(rule => [String(rule.id).toUpperCase(), Number(rule.weight) / 100 || 0])
-        );
-      }
+      CURRENT_GRADING_RULES = categories.map(category => ({
+        id: category.code,
+        label: category.name,
+        weight: Number(category.weight) || 0
+      }));
+      GRADING_RULES_BY_ID = Object.fromEntries(
+        CURRENT_GRADING_RULES.map(rule => [String(rule.id || '').toLowerCase(), rule])
+      );
+      WEIGHTS = Object.fromEntries(
+        CURRENT_GRADING_RULES.map(rule => [String(rule.id).toUpperCase(), Number(rule.weight) / 100 || 0])
+      );
+      renderScoreCategoryTabs();
+      renderScoreComponentChoices();
+      renderGradingRules();
       refreshAssignmentCategoryOptions();
+      const addScoreButton = document.getElementById('addScoreComponentButton');
+      addScoreButton.disabled = Boolean(subjectGradingConfig.applicable && !subjectGradingConfig.configured);
+      addScoreButton.title = addScoreButton.disabled ? 'Ask School Admin to configure this subject first.' : '';
       return true;
     } catch (error) {
       console.warn('Assignments and scores API could not be loaded.', error.message);
       BACKEND_GRADE_ERROR = error?.message || 'Grade data could not be loaded from the backend.';
       BACKEND_GRADE_CONTEXT = null;
+      BACKEND_CATEGORIES = [];
+      BACKEND_SUBJECT_GRADING_CONFIG = null;
+      CURRENT_GRADING_RULES = [];
+      GRADING_RULES_BY_ID = {};
+      WEIGHTS = {};
+      CURRENT_GRADE_SCALE = 'standard';
+      CURRENT_GRADE_METHOD_LABEL = '';
+      BACKEND_SUBJECT_GRADING_CONFIG = null;
       BACKEND_TERMS = [];
       ACADEMIC_PERIODS = [];
       ACTIVE_ACADEMIC_PERIOD_ID = '';
+      renderScoreCategoryTabs();
+      renderScoreComponentChoices();
+      renderGradingRules();
+      refreshAssignmentCategoryOptions();
+      document.getElementById('addScoreComponentButton').disabled = false;
       return false;
     }
   }
@@ -2508,17 +2595,13 @@
   }
 
   /* ── COMPONENT TYPE MODAL ── */
-  const catMap = {
-    WW: { label: `${GRADING_RULES_BY_ID.ww?.label || 'Written Work'} (${gradingWeight('WW')}%)`, cls: 'cat-ww', icon: 'pencil' },
-    PT: { label: `${GRADING_RULES_BY_ID.pt?.label || 'Performance Task'} (${gradingWeight('PT')}%)`, cls: 'cat-pt', icon: 'target' },
-    QA: { label: `${GRADING_RULES_BY_ID.qa?.label || 'Quarterly Assessment'} (${gradingWeight('QA')}%)`, cls: 'cat-qa', icon: 'clipboard-list' },
-  };
-
+  const LEGACY_SCORE_COMPONENT_CHOICES = document.getElementById('compTypeOpts').innerHTML;
   let selectedCompType = 'Quiz';
   let selectedCompCat  = 'WW';
-
   function renderGradingRules() {
-    const weights = ['WW', 'PT', 'QA'].map(category => `${category} ${gradingWeight(category)}%`).join(' · ');
+    const weights = BACKEND_SUBJECT_GRADING_CONFIG?.applicable
+      ? BACKEND_CATEGORIES.map(category => `${category.name} ${Number(category.weight) || 0}%`).join(' · ')
+      : ['WW', 'PT', 'QA'].map(category => `${category} ${gradingWeight(category)}%`).join(' · ');
     const summary = document.getElementById('scorePanelWeights');
     if (summary) summary.textContent = weights;
 
@@ -2530,12 +2613,6 @@
       if (rule?.label) element.textContent = rule.label;
     });
 
-    const badge = document.getElementById('selectedCatBadge');
-    const info = catMap[selectedCompCat];
-    if (badge && info) {
-      badge.className = 'cat-badge ' + info.cls;
-      badge.innerHTML = `<i data-lucide="${info.icon}" style="width:10px;height:10px;"></i> ${info.label}`;
-    }
     if (window.lucide) lucide.createIcons();
   }
 
@@ -2552,18 +2629,91 @@
     ).join('');
     document.getElementById('assignCategoryInput').innerHTML = ASSIGNMENT_CATEGORY_OPTIONS;
     document.getElementById('editAssignmentCategoryInput').innerHTML = ASSIGNMENT_CATEGORY_OPTIONS;
+    updateAssignmentExamParts('assignCategoryInput', 'assignExamPartGroup', 'assignExamPartInput');
+    updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput');
   }
 
+  function getComponentPresentation(code) {
+    const category = getBackendCategory(code);
+    if (!category) return null;
+    const componentType = String(category.componentType || '').toLowerCase();
+    return {
+      cls: componentType === 'examination' ? 'cat-qa' : componentType === 'performance' ? 'cat-pt' : 'cat-ww',
+      icon: componentType === 'examination' ? 'clipboard-list' : componentType === 'performance' ? 'target' : 'pencil',
+      label: `${category.name} (${Number(category.weight) || 0}%)`
+    };
+  }
+
+  function updateExamPartSelect(componentCode, groupId, selectId, selectedPartId = '') {
+    const category = getBackendCategory(componentCode);
+    const group = document.getElementById(groupId);
+    const select = document.getElementById(selectId);
+    const parts = category?.examParts || [];
+    group.hidden = !parts.length;
+    select.innerHTML = parts.map(part => `<option value="${Number(part.id)}">${window.EDUGNAY_CONFIG.escapeHtml(part.name)} (${Number(part.weight) || 0}%)</option>`).join('');
+    if (selectedPartId && parts.some(part => String(part.id) === String(selectedPartId))) select.value = String(selectedPartId);
+    else if (parts.length) select.selectedIndex = 0;
+  }
+
+  function updateAssignmentExamParts(categorySelectId, groupId, partSelectId, selectedPartId = '') {
+    updateExamPartSelect(document.getElementById(categorySelectId).value, groupId, partSelectId, selectedPartId);
+  }
+
+  function renderScoreComponentChoices() {
+    const choices = document.getElementById('compTypeOpts');
+    if (!BACKEND_SUBJECT_GRADING_CONFIG?.applicable) {
+      choices.innerHTML = LEGACY_SCORE_COMPONENT_CHOICES;
+      selectedCompCat = 'WW';
+      selectedCompType = 'Quiz';
+      updateExamPartSelect('', 'scoreExamPartGroup', 'scoreExamPartInput');
+      renderGradingRules();
+      return;
+    }
+    choices.innerHTML = BACKEND_CATEGORIES.map((category, index) => {
+      const presentation = getComponentPresentation(category.code);
+      return `<button class="comp-type-opt ${presentation.cls}${index === 0 ? ' selected' : ''}" type="button" aria-pressed="${index === 0}" data-cat="${window.EDUGNAY_CONFIG.escapeHtml(String(category.code).toUpperCase())}">
+        <span class="comp-type-icon"><i data-lucide="${presentation.icon}" style="width:18px;height:18px;"></i></span>
+        <span class="comp-type-name">${window.EDUGNAY_CONFIG.escapeHtml(category.name)}</span>
+        <span class="comp-type-cat">${Number(category.weight) || 0}% of final grade</span>
+      </button>`;
+    }).join('');
+    selectedCompCat = BACKEND_CATEGORIES[0]?.code || '';
+    selectedCompType = BACKEND_CATEGORIES[0]?.name || '';
+    updateExamPartSelect(selectedCompCat, 'scoreExamPartGroup', 'scoreExamPartInput');
+    window.lucide?.createIcons?.();
+    renderGradingRules();
+  }
+
+  function openScoreComponentModal() {
+    if (BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured) {
+      showAppToast('Ask School Admin to apply or configure this subject’s grading rules first.', 'error');
+      return;
+    }
+    renderScoreComponentChoices();
+    openModal('addCompModal');
+  }
+
+  document.getElementById('compTypeOpts').addEventListener('click', event => {
+    const choice = event.target.closest('.comp-type-opt[data-cat]');
+    if (choice) selectCompType(choice, choice.querySelector('.comp-type-name')?.textContent || '', choice.dataset.cat);
+  });
+
+  document.getElementById('assignCategoryInput').addEventListener('change', () =>
+    updateAssignmentExamParts('assignCategoryInput', 'assignExamPartGroup', 'assignExamPartInput'));
+  document.getElementById('editAssignmentCategoryInput').addEventListener('change', () =>
+    updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput'));
+
   function selectCompType(el, type, cat) {
-    document.querySelectorAll('.comp-type-opt').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('.comp-type-opt').forEach(o => {
+      o.classList.remove('selected');
+      o.setAttribute('aria-pressed', 'false');
+    });
     el.classList.add('selected');
+    el.setAttribute('aria-pressed', 'true');
     selectedCompType = type;
     selectedCompCat  = cat;
     document.getElementById('compNameInput').placeholder = 'e.g. ' + type + ' 1';
-    const badge = document.getElementById('selectedCatBadge');
-    const info  = catMap[cat];
-    badge.className = 'cat-badge ' + info.cls;
-    badge.innerHTML = `<i data-lucide="${info.icon}" style="width:10px;height:10px;"></i> ${info.label}`;
+    updateExamPartSelect(cat, 'scoreExamPartGroup', 'scoreExamPartInput');
     lucide.createIcons();
   }
 
@@ -2573,18 +2723,29 @@
     const name = document.getElementById('compNameInput').value.trim();
     const max  = document.getElementById('compMaxInput').value.trim();
     if (!name || !max) { alert('Please fill in component name and highest score.'); return; }
+    if (BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured) {
+      showAppToast('Ask School Admin to apply or configure this subject’s grading rules first.', 'error');
+      return;
+    }
     if (isBackendGradeMode()) {
       const academicTermId = getBackendTermId(periodId);
       const category = getBackendCategory(selectedCompCat);
+      const examPartId = category?.examParts?.length ? Number(document.getElementById('scoreExamPartInput').value) : null;
       if (!academicTermId || !category) {
         alert('The selected grading period or category is not available in the backend yet.');
+        return;
+      }
+      if (category.examParts?.length && !examPartId) {
+        alert('Select an examination part before adding this score component.');
         return;
       }
       window.EDUGNAY_API.createGradingItem({
         sectionId: BACKEND_GRADE_CONTEXT.sectionId,
         subjectId: BACKEND_GRADE_CONTEXT.subjectId,
         academicTermId,
-        gradingCategoryId: category.id,
+        gradingCategoryId: BACKEND_SUBJECT_GRADING_CONFIG?.applicable ? null : category.id,
+        subjectGradingComponentId: category.subjectGradingComponentId || null,
+        subjectGradingExamPartId: examPartId,
         title: name,
         maxScore: Number(max)
       }).then(item => {
@@ -2758,6 +2919,16 @@
     openModal('transferReviewModal');
   }
 
+  function gradingAverageHeaderLabel(label) {
+    const abbreviations = {
+      'written/oral works': 'WW',
+      'performance tasks': 'PT',
+      examinations: 'Exams'
+    };
+    const fullName = String(label || '').trim();
+    return abbreviations[fullName.toLowerCase()] || fullName;
+  }
+
   function renderScoreTable(academicPeriodId) {
     closeScoreComponentMenu();
     const theadRow = document.getElementById('scoreTheadRow');
@@ -2780,9 +2951,10 @@
     const components = BACKEND_GRADING_ITEMS
       .filter(item => item.subjectId === String(BACKEND_GRADE_CONTEXT.subjectId) && item.academicTermId === String(backendTermId))
       .map(item => {
-        const category = BACKEND_CATEGORIES.find(record =>
-          String(record.id) === String(item.gradingCategoryId)
-        );
+        const category = BACKEND_SUBJECT_GRADING_CONFIG?.applicable
+          ? BACKEND_CATEGORIES.find(record => String(record.subjectGradingComponentId) === String(item.subjectGradingComponentId))
+          : BACKEND_CATEGORIES.find(record => String(record.id) === String(item.gradingCategoryId));
+        const examPart = category?.examParts?.find(record => String(record.id) === String(item.subjectGradingExamPartId));
         return {
           id: item.id,
           name: item.name,
@@ -2791,6 +2963,9 @@
           currentJournalSubjectId: item.currentJournalSubjectId,
           max: item.max,
           cat: String(category?.code || item.cat || '').trim().toUpperCase(),
+          categoryName: category?.name || '',
+          examPartId: item.subjectGradingExamPartId || null,
+          examPartName: examPart?.name || '',
           gradingItemId: item.id
         };
       });
@@ -2798,7 +2973,12 @@
     theadRow.innerHTML = '<th class="sticky-col" style="min-width:180px;">#  Student</th>';
 
     if (!components.length) {
-      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this grading period to begin recording grades.' })}</td></tr>`;
+      const title = BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured
+        ? 'Grading rules need configuration' : 'No score components yet';
+      const emptyText = BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured
+        ? 'Ask School Admin to apply DepEd defaults or configure this subject before recording scores.'
+        : 'Add score components for this grading period to begin recording grades.';
+      tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="1">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'clipboard-list', title, text: emptyText })}</td></tr>`;
       updateSectionHeader(academicPeriodId);
       updateScoreFooter();
       return;
@@ -2807,6 +2987,7 @@
     const typeClass = { WW: 'type-ww', PT: 'type-pt', QA: 'type-qa' };
 
     components.forEach(c => {
+      const categoryName = String(c.categoryName || c.cat || '').trim();
       const th = document.createElement('th');
       th.className = 'comp-head-cell center';
       th.dataset.cat = c.cat;
@@ -2817,7 +2998,8 @@
             '<button class="score-comp-menu-trigger" type="button" data-component-id="' + window.EDUGNAY_CONFIG.escapeHtml(c.id) + '" aria-label="Actions for ' + window.EDUGNAY_CONFIG.escapeHtml(c.name) + '" aria-haspopup="menu" aria-expanded="false"><i data-lucide="more-vertical" aria-hidden="true"></i></button>' +
           '</div>' +
           '<div class="comp-head-max">/ ' + c.max + '</div>' +
-          '<div class="comp-head-type ' + (typeClass[c.cat] || 'type-ww') + '">' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '</div>' +
+          '<div class="comp-head-type ' + (typeClass[c.cat] || 'type-ww') + '" title="' + window.EDUGNAY_CONFIG.escapeHtml(categoryName) + '" data-category-name="' + window.EDUGNAY_CONFIG.escapeHtml(categoryName) + '">' + window.EDUGNAY_CONFIG.escapeHtml(gradingAverageHeaderLabel(categoryName)) + '</div>' +
+          (c.examPartName ? '<div class="comp-head-journal">' + window.EDUGNAY_CONFIG.escapeHtml(c.examPartName) + '</div>' : '') +
           (c.journalPromptId ? '<div class="comp-head-journal">' + (c.subjectId === c.currentJournalSubjectId ? 'Journal' : 'Past journal') + '</div>' : '') +
         '</div>';
       theadRow.appendChild(th);
@@ -2828,7 +3010,10 @@
       const th = document.createElement('th');
       th.className = 'center';
       th.style.cssText = 'min-width:80px;background:#f0f4ff;';
-      th.textContent = `${String(rule.id).toUpperCase()} Avg`;
+      const categoryName = rule.label || String(rule.id).toUpperCase();
+      th.textContent = `${gradingAverageHeaderLabel(categoryName)} Avg`;
+      th.setAttribute('aria-label', `${categoryName} average`);
+      th.title = `${categoryName}: ${Number(rule.weight) || 0}% of the final grade`;
       theadRow.appendChild(th);
     });
 
@@ -2860,7 +3045,7 @@
         const pendingScore = pendingBackendScoreValues.get(scoreId);
         const val = pendingScore ? pendingScore.value : (backendScore?.score ?? null);
         const displayVal = val !== null ? val : '';
-        cellsHtml += '<td class="center" data-cat="' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '"><input class="score-input" type="number" value="' + window.EDUGNAY_CONFIG.escapeHtml(displayVal) + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-grading-item-id="' + c.gradingItemId + '" data-academic-period-id="' + academicPeriodId + '" oninput="computeRow(this, true)"/></td>';
+        cellsHtml += '<td class="center" data-cat="' + window.EDUGNAY_CONFIG.escapeHtml(c.cat) + '" data-exam-part-id="' + window.EDUGNAY_CONFIG.escapeHtml(c.examPartId || '') + '"><input class="score-input" type="number" value="' + window.EDUGNAY_CONFIG.escapeHtml(displayVal) + '" min="0" max="' + c.max + '" data-score-id="' + scoreId + '" data-grading-item-id="' + c.gradingItemId + '" data-academic-period-id="' + academicPeriodId + '" oninput="computeRow(this, true)"/></td>';
       });
 
       cellsHtml += CURRENT_GRADING_RULES
@@ -2976,9 +3161,10 @@
     const period = ACADEMIC_PERIODS.find(item => item.id === periodId);
     const rows = [...document.querySelectorAll('#scoreTbody tr[data-student-id]')]
       .filter(row => row.style.display !== 'none');
-    const itemHeaders = [...document.querySelectorAll('#scoreTheadRow .comp-head-cell')].map(cell =>
-      `${cell.querySelector('.comp-head-type').textContent}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`
-    );
+    const itemHeaders = [...document.querySelectorAll('#scoreTheadRow .comp-head-cell')].map(cell => {
+      const categoryLabel = cell.querySelector('.comp-head-type');
+      return `${categoryLabel.dataset.categoryName || categoryLabel.textContent.trim()}: ${cell.querySelector('.comp-head-name').textContent} / ${cell.querySelector('.comp-head-max').textContent.replace('/', '').trim()}`;
+    });
     const csvRows = [
       ['Student', ...itemHeaders, ...CURRENT_GRADING_RULES.map(rule => `${String(rule.id).toUpperCase()} Avg`), 'Estimate'],
       ...rows.map(row => [
@@ -3074,6 +3260,19 @@
     }
   }
 
+  function transmuteDepedK10InitialGrade(initialGrade) {
+    const value = Math.min(100, Math.max(0, Math.round(Number(initialGrade) * 100) / 100));
+    if (!Number.isFinite(value)) return null;
+    if (value >= 99.5) return 100;
+    if (value >= 70) return Math.min(99, 75 + Math.floor((value - 70 + 1e-9) / 1.18));
+    const lowerBounds = [0, 4.68, 9.34, 14.01, 18.68, 23.35, 28.01, 32.68, 37.34, 42.01, 46.67, 51.34, 56.01, 60.67, 65.34];
+    let result = 60;
+    lowerBounds.forEach((lowerBound, index) => {
+      if (value >= lowerBound) result = 60 + index;
+    });
+    return result;
+  }
+
   function computeRow(input, shouldSave = false) {
     const row = input.closest('tr');
     if (!row) return;
@@ -3091,9 +3290,10 @@
       }
     }
 
+    const usesSubjectGradingConfig = Boolean(BACKEND_SUBJECT_GRADING_CONFIG?.applicable);
     const groups = Object.fromEntries(CURRENT_GRADING_RULES.map(rule => [
       String(rule.id).trim().toUpperCase(),
-      { sum: 0, maxSum: 0 }
+      { sum: 0, maxSum: 0, parts: {} }
     ]));
     const scoreInputs = [...row.querySelectorAll('td[data-cat] .score-input')];
     let allScoresComplete = scoreInputs.length > 0;
@@ -3101,6 +3301,7 @@
     scoreInputs.forEach(inp => {
       const category = String(inp.closest('td')?.dataset.cat || '').trim().toUpperCase();
       const group = groups[category];
+      const partId = inp.closest('td')?.dataset.examPartId || '';
       const rawScore = inp.value.trim();
       const score = rawScore === '' ? NaN : Number(rawScore);
       const maxScore = Number(inp.max);
@@ -3111,15 +3312,31 @@
         return;
       }
 
-      group.sum += score;
-      group.maxSum += maxScore;
+      if (usesSubjectGradingConfig && partId) {
+        const part = group.parts[partId] || (group.parts[partId] = { sum: 0, maxSum: 0 });
+        part.sum += score;
+        part.maxSum += maxScore;
+      } else {
+        group.sum += score;
+        group.maxSum += maxScore;
+      }
     });
 
     const averages = Object.fromEntries(
-      Object.entries(groups).map(([category, values]) => [
-        category,
-        values.maxSum > 0 ? (values.sum / values.maxSum) * 100 : null
-      ])
+      Object.entries(groups).map(([code, values]) => {
+        const category = BACKEND_CATEGORIES.find(record => String(record.code).toUpperCase() === code);
+        if (usesSubjectGradingConfig && category?.examParts?.length) {
+          const partAverages = category.examParts.map(part => {
+            const totals = values.parts[String(part.id)];
+            return totals?.maxSum > 0 ? (totals.sum / totals.maxSum) * 100 : null;
+          });
+          const complete = partAverages.every(average => average !== null);
+          return [code, complete
+            ? category.examParts.reduce((sum, part, index) => sum + partAverages[index] * Number(part.weight) / 100, 0)
+            : null];
+        }
+        return [code, values.maxSum > 0 ? (values.sum / values.maxSum) * 100 : null];
+      })
     );
     const computed = row.querySelectorAll('.computed-cell');
     if (computed.length >= CURRENT_GRADING_RULES.length + 1) {
@@ -3143,21 +3360,38 @@
           (total, [category, average]) => total + (average * (WEIGHTS[category] || 0)),
           0
         );
-        const rounded = GRADE_ROUNDING === 'roundup'
-          ? Math.ceil(final)
-          : GRADE_ROUNDING === 'truncate'
-            ? Math.trunc(final)
-            : Math.round(final);
+        if (CURRENT_GRADE_SCALE === 'legacy_shs_transmutation') {
+          const initial = Math.round((final + Number.EPSILON) * 100) / 100;
+          finalCell.textContent = `Initial ${initial.toFixed(2)}`;
+          finalCell.title = 'Weighted initial grade estimate. Open Publish Preview to see its transmuted term grade.';
+        } else if (CURRENT_GRADE_SCALE === 'deped_2026_transmutation') {
+          const initial = Math.round((final + Number.EPSILON) * 100) / 100;
+          const termGrade = transmuteDepedK10InitialGrade(initial);
+          finalCell.textContent = `Initial ${initial.toFixed(2)} → ${termGrade}`;
+          finalCell.title = `${CURRENT_GRADE_METHOD_LABEL}: weighted initial grade converted to the reported term grade.`;
+          finalCell.classList.add(termGrade >= PASSING_GRADE_THRESHOLD ? 'grade-pass' : termGrade >= WARNING_GRADE_THRESHOLD ? 'grade-warn' : 'grade-fail');
+        } else {
+          const gradeToRound = usesSubjectGradingConfig
+            ? Math.round((final + Number.EPSILON) * 100) / 100
+            : final;
+          const rounded = GRADE_ROUNDING === 'roundup'
+            ? Math.ceil(gradeToRound)
+            : GRADE_ROUNDING === 'truncate'
+              ? Math.trunc(gradeToRound)
+              : Math.round(gradeToRound);
 
-        finalCell.textContent = rounded;
-        finalCell.title = 'Live estimate using the school grading weights and rounding rule.';
-        finalCell.classList.add(
-          rounded >= PASSING_GRADE_THRESHOLD
-            ? 'grade-pass'
-            : rounded >= WARNING_GRADE_THRESHOLD
-              ? 'grade-warn'
-              : 'grade-fail'
-        );
+          finalCell.textContent = rounded;
+          finalCell.title = usesSubjectGradingConfig
+            ? `${CURRENT_GRADE_METHOD_LABEL}: weighted initial grade rounded to a whole number.`
+            : 'Live estimate using the school grading weights and rounding rule.';
+          finalCell.classList.add(
+            rounded >= PASSING_GRADE_THRESHOLD
+              ? 'grade-pass'
+              : rounded >= WARNING_GRADE_THRESHOLD
+                ? 'grade-warn'
+                : 'grade-fail'
+          );
+        }
       }
     }
 
@@ -3973,7 +4207,17 @@
     publishPreviewScope = scope;
     const studentCount = document.getElementById('publishStudentCount');
     const studentList = document.getElementById('publishPreviewStudentList');
+    const methodNote = document.getElementById('publishGradeMethodNote');
     const students = Array.isArray(preview.students) ? preview.students : [];
+    const isK10Method = ['deped_2026_transmutation', 'deped_zero_based', 'school_direct'].includes(preview.gradingMethod);
+    const isSchoolSpecificK10 = preview.gradingMethod === 'school_direct';
+    const showInitialGrade = preview.gradingScale === 'legacy_shs_transmutation' || isK10Method;
+    methodNote.hidden = preview.gradingScale !== 'legacy_shs_transmutation' && !isK10Method && !preview.periodStructureWarning;
+    methodNote.textContent = isK10Method
+      ? `Grade method: ${preview.gradingMethodLabel || CURRENT_GRADE_METHOD_LABEL || 'Grades 4-10 rules'}. ${isSchoolSpecificK10 ? `The weighted initial grade is reported using ${preview.gradeRounding || GRADE_ROUNDING} rounding.` : ''} ${preview.periodStructureWarning || ''}`.trim()
+      : preview.gradingScale === 'legacy_shs_transmutation'
+        ? 'The weighted initial grade is converted to the reported term grade using the DepEd transmutation table.'
+        : preview.periodStructureWarning || '';
 
     const publishableCount = preview.publishableCount ?? students.length;
     studentCount.textContent = `${publishableCount} ${publishableCount === 1 ? 'student' : 'students'}`;
@@ -3990,7 +4234,9 @@
         ? `${student.finalGrade} · Kept from ${student.sourceSectionName || 'previous section'}`
         : student.finalGrade === null || student.finalGrade === undefined
           ? 'Incomplete'
-          : `${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`;
+          : showInitialGrade
+            ? `Initial ${Number(student.initialGrade).toFixed(2)} → Term ${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`
+            : `${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`;
       row.append(name, grade);
       studentList.appendChild(row);
     });
@@ -4041,6 +4287,7 @@
     setPublishGradeFeedback('Saving pending score changes and checking the grades…');
     document.getElementById('publishPreviewStudentList').replaceChildren();
     document.getElementById('publishPreviewStudentList').hidden = true;
+    document.getElementById('publishGradeMethodNote').hidden = true;
 
     if (BACKEND_GRADE_ERROR) throw new Error(BACKEND_GRADE_ERROR);
     const academicPeriodId = document.getElementById('academicPeriodSelect').value;
@@ -4062,6 +4309,7 @@
     confirmButton.disabled = false;
     document.getElementById('publishPreviewStudentList').replaceChildren();
     document.getElementById('publishPreviewStudentList').hidden = true;
+    document.getElementById('publishGradeMethodNote').hidden = true;
 
     if (!isBackendGradeMode()) {
       confirmButton.disabled = true;
@@ -4389,6 +4637,11 @@
     const includeInScoreRecording = document.getElementById('assignGradingInput').checked;
     const academicPeriodId = document.getElementById('academicPeriodSelect').value;
     const categoryId = includeInScoreRecording ? document.getElementById('assignCategoryInput').value : null;
+    const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
+    const isSubjectConfig = Boolean(BACKEND_SUBJECT_GRADING_CONFIG?.applicable);
+    const subjectGradingComponentId = isSubjectConfig ? category?.subjectGradingComponentId || null : null;
+    const subjectGradingExamPartId = isSubjectConfig && category?.examParts?.length
+      ? Number(document.getElementById('assignExamPartInput').value) || null : null;
     const maxScore = includeInScoreRecording ? Number(document.getElementById('assignMaxScoreInput').value) : null;
     if (!CURRENT_SUBJECT_ASSIGNMENT || !CURRENT_SUBJECT_ID) {
       showAppToast('Select an assigned subject before adding an assignment.', 'error');
@@ -4399,7 +4652,8 @@
       return;
     }
     if (!title || !due) { alert('Please fill in task title and due date.'); return; }
-    if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
+    if (includeInScoreRecording && (!categoryId || (isSubjectConfig && !subjectGradingComponentId)
+      || (isSubjectConfig && category?.examParts?.length && !subjectGradingExamPartId) || !(maxScore > 0))) {
       alert('Please select a grading category and enter the highest possible score.');
       return;
     }
@@ -4407,7 +4661,6 @@
 
     if (isBackendGradeMode()) {
       const academicTermId = getBackendTermId(academicPeriodId);
-      const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
       if (!academicTermId || (includeInScoreRecording && !category)) {
         alert('The selected grading period or category is not available in the backend yet.');
         return;
@@ -4417,7 +4670,9 @@
           sectionId: BACKEND_GRADE_CONTEXT.sectionId,
           subjectId: BACKEND_GRADE_CONTEXT.subjectId,
           academicTermId,
-          gradingCategoryId: category?.id || null,
+          gradingCategoryId: isSubjectConfig ? null : category?.id || null,
+          subjectGradingComponentId,
+          subjectGradingExamPartId,
           title,
           description: instructions || null,
           dueDate: due,
@@ -4471,10 +4726,14 @@
     document.getElementById('editAssignmentSubjectInput').value = assignment.subjectName || CURRENT_SUBJECT;
     document.getElementById('editAssignmentDueInput').value = assignment.dueDate || '';
     document.getElementById('editAssignmentOnlineInput').checked = assignment.onlineSubmissionEnabled === true;
-    const includeInScoreRecording = Boolean(assignment.categoryId && Number(assignment.maxScore) > 0);
+    const includeInScoreRecording = Boolean((assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0);
     document.getElementById('editAssignmentGradingInput').checked = includeInScoreRecording;
     document.getElementById('editAssignmentGradingFields').hidden = !includeInScoreRecording;
-    document.getElementById('editAssignmentCategoryInput').value = assignment.categoryId || '';
+    const selectedCategory = assignment.subjectGradingComponentId
+      ? BACKEND_CATEGORIES.find(category => String(category.subjectGradingComponentId) === String(assignment.subjectGradingComponentId))
+      : null;
+    document.getElementById('editAssignmentCategoryInput').value = selectedCategory?.code || assignment.categoryId || '';
+    updateAssignmentExamParts('editAssignmentCategoryInput', 'editAssignmentExamPartGroup', 'editAssignmentExamPartInput', assignment.subjectGradingExamPartId);
     document.getElementById('editAssignmentMaxScoreInput').value = assignment.maxScore || '';
     openModal('editAssignmentModal');
     lucide.createIcons();
@@ -4489,12 +4748,18 @@
     const onlineSubmissionEnabled = document.getElementById('editAssignmentOnlineInput').checked;
     const includeInScoreRecording = document.getElementById('editAssignmentGradingInput').checked;
     const categoryId = includeInScoreRecording ? document.getElementById('editAssignmentCategoryInput').value : null;
+    const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
+    const isSubjectConfig = Boolean(BACKEND_SUBJECT_GRADING_CONFIG?.applicable);
+    const subjectGradingComponentId = isSubjectConfig ? category?.subjectGradingComponentId || null : null;
+    const subjectGradingExamPartId = isSubjectConfig && category?.examParts?.length
+      ? Number(document.getElementById('editAssignmentExamPartInput').value) || null : null;
     const maxScore = includeInScoreRecording ? Number(document.getElementById('editAssignmentMaxScoreInput').value) : null;
     if (!title || !dueDate) {
       alert('Please fill in task title and due date.');
       return;
     }
-    if (includeInScoreRecording && (!categoryId || !(maxScore > 0))) {
+    if (includeInScoreRecording && (!categoryId || (isSubjectConfig && !subjectGradingComponentId)
+      || (isSubjectConfig && category?.examParts?.length && !subjectGradingExamPartId) || !(maxScore > 0))) {
       alert('Please select a grading category and enter the highest possible score.');
       return;
     }
@@ -4511,20 +4776,24 @@
     if (isBackendGradeMode()) {
       const assignment = getTeacherAssignments().find(item => item.id === String(activeAssignmentId));
       const academicTermId = getBackendTermId(assignment?.academicPeriodId || document.getElementById('academicPeriodSelect').value);
-      const category = includeInScoreRecording ? getBackendCategory(categoryId) : null;
       if (!assignment || !academicTermId || (includeInScoreRecording && !category)) {
         alert('The selected grading period or category is not available in the backend yet.');
         return;
       }
       try {
         const currentGradingItem = getBackendGradingItemForAssignment(assignment);
-        if (currentGradingItem && (!includeInScoreRecording || Number(currentGradingItem.gradingCategoryId) !== Number(category.id))) {
+        if (currentGradingItem && (!includeInScoreRecording || (isSubjectConfig
+          ? String(currentGradingItem.subjectGradingComponentId || '') !== String(subjectGradingComponentId || '')
+            || String(currentGradingItem.subjectGradingExamPartId || '') !== String(subjectGradingExamPartId || '')
+          : Number(currentGradingItem.gradingCategoryId) !== Number(category.id)))) {
           alert('An assignment already linked to a score component cannot change or remove its grading category.');
           return;
         }
         const updated = await window.EDUGNAY_API.updateAssignment(activeAssignmentId, {
           academicTermId,
-          gradingCategoryId: category?.id || null,
+          gradingCategoryId: isSubjectConfig ? null : category?.id || null,
+          subjectGradingComponentId,
+          subjectGradingExamPartId,
           title,
           description: instructions || null,
           dueDate,
@@ -4545,7 +4814,9 @@
             sectionId: BACKEND_GRADE_CONTEXT.sectionId,
             subjectId: BACKEND_GRADE_CONTEXT.subjectId,
             academicTermId,
-            gradingCategoryId: category.id,
+            gradingCategoryId: isSubjectConfig ? null : category.id,
+            subjectGradingComponentId,
+            subjectGradingExamPartId,
             assignmentId: activeAssignmentId,
             title,
             maxScore
@@ -4582,7 +4853,7 @@
       const student = getGradeStudents().find(item => String(item.id) === String(submission.studentId));
       const studentName = student?.displayName || 'Unknown student';
       const score = scores.find(record => record.studentId === submission.studentId)?.score ?? '';
-      const scoreInput = assignment.categoryId && Number(assignment.maxScore) > 0
+      const scoreInput = (assignment.categoryId || assignment.subjectGradingComponentId) && Number(assignment.maxScore) > 0
         ? `<div class="assignment-submission-score"><input class="score-input" type="number" min="0" max="${assignment.maxScore}" value="${score}" ${hasScoreEditingAccess(assignment.academicPeriodId) ? '' : 'disabled'} onchange="saveAssignmentSubmissionScore('${assignment.id}', '${submission.studentId}', this)"><span>/ ${assignment.maxScore}</span></div>`
         : '<span class="assignment-file-unavailable">Not graded</span>';
       const fileUrl = submission.fileUrl && window.EDUGNAY_API.getAssignmentSubmissionDownloadUrl(assignment.id, submission.id);

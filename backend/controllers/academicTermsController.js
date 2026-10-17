@@ -1,5 +1,7 @@
 const { getDatabase } = require('../config/database');
+const { LEGACY_SHS_GRADING_GROUPS, LEGACY_SHS_GRADING_TYPES } = require('../config/shsCurriculum');
 const { writeAuditLog } = require('../utils/auditLog');
+const { copyCustomProfilesForward } = require('./subjectGradingController');
 
 const PERIOD_COUNTS = { quarterly: 4, semestral: 2, trimestral: 3 };
 const YEAR_STATUSES = new Set(['upcoming', 'active', 'closed']);
@@ -117,6 +119,7 @@ async function createAcademicYear(req, res, next) {
       'INSERT INTO academic_years (school_id, label, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
       [req.user.schoolId, label, startDate, endDate, status]
     );
+    await copyCustomProfilesForward(connection, req.user.schoolId, Number(result.insertId), startDate);
     await writeAuditLog(connection, req, 'academic_year_created', 'academic_year', result.insertId, { summary: label });
     await connection.commit();
     transactionStarted = false;
@@ -321,8 +324,48 @@ function validateCategories(categories) {
 async function listGradingCategories(req, res, next) {
   try {
     const database = getDatabase();
-    const levelId = req.query.schoolLevelId && parseId(req.query.schoolLevelId);
+    let levelId = req.query.schoolLevelId && parseId(req.query.schoolLevelId);
     if (req.query.schoolLevelId && !levelId) throw createError('School level is invalid.');
+    const hasSection = req.query.sectionId !== undefined;
+    const hasSubject = req.query.subjectId !== undefined;
+    if (hasSection !== hasSubject) throw createError('A section and subject must be selected together.');
+    let shsGradingGroup = null;
+    let schoolLevelCode = null;
+    if (hasSection) {
+      if (req.user.role !== 'teacher') throw createError('Only an assigned teacher can load section grading weights.', 403);
+      const sectionId = parseId(req.query.sectionId, 'section ID');
+      const subjectId = parseId(req.query.subjectId, 'subject ID');
+      if (!sectionId || !subjectId) throw createError('Section and subject are invalid.');
+      const [scopeRows] = await database.execute(
+        `SELECT sections.school_level_id AS schoolLevelId, school_levels.level_code AS schoolLevelCode,
+          subjects.shs_grading_group AS shsGradingGroup
+        FROM section_teachers
+        INNER JOIN sections ON sections.id = section_teachers.section_id
+          AND sections.school_id = section_teachers.school_id AND sections.status = 'active'
+        INNER JOIN subjects ON subjects.id = section_teachers.subject_id
+          AND subjects.school_id = sections.school_id AND subjects.is_active = TRUE
+        INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+          AND school_levels.school_id = sections.school_id
+        WHERE section_teachers.school_id = ? AND section_teachers.teacher_user_id = ?
+          AND section_teachers.section_id = ? AND section_teachers.subject_id = ?
+          AND EXISTS (
+            SELECT 1 FROM subject_grade_scopes AS scopes
+            WHERE scopes.school_id = sections.school_id AND scopes.subject_id = subjects.id
+              AND scopes.grade_level_id = sections.grade_level_id
+              AND (scopes.track_id IS NULL OR scopes.track_id = sections.track_id)
+              AND (scopes.strand_id IS NULL OR scopes.strand_id = sections.strand_id)
+          )
+        LIMIT 1`,
+        [req.user.schoolId, req.user.id, sectionId, subjectId]
+      );
+      if (!scopeRows.length) throw createError('The section and subject are not assigned to your account.', 404);
+      levelId = Number(scopeRows[0].schoolLevelId);
+      schoolLevelCode = scopeRows[0].schoolLevelCode;
+      shsGradingGroup = scopeRows[0].shsGradingGroup;
+      if (req.query.schoolLevelId && Number(req.query.schoolLevelId) !== levelId) {
+        throw createError('The selected school level does not match this section.', 409);
+      }
+    }
     const values = [req.user.schoolId];
     let filter = 'grading_categories.school_id = ?';
     if (levelId) { filter += ' AND grading_categories.school_level_id = ?'; values.push(levelId); }
@@ -332,7 +375,29 @@ async function listGradingCategories(req, res, next) {
       FROM grading_categories INNER JOIN school_levels ON school_levels.id = grading_categories.school_level_id
       WHERE ${filter} ORDER BY school_levels.id, grading_categories.code`, values
     );
-    res.json({ gradingCategories: categories });
+    const weights = schoolLevelCode === 'shs' ? LEGACY_SHS_GRADING_GROUPS[shsGradingGroup]?.weights : null;
+    let publishedShsGradeCount = null;
+    if (req.user.role === 'school_admin' && !hasSection) {
+      const [[published]] = await database.execute(
+        `SELECT COUNT(*) AS gradeCount
+        FROM published_final_grades AS grades
+        INNER JOIN sections ON sections.id = grades.section_id AND sections.school_id = grades.school_id
+        INNER JOIN school_levels ON school_levels.id = sections.school_level_id AND school_levels.school_id = sections.school_id
+        WHERE grades.school_id = ? AND school_levels.level_code = 'shs'`,
+        [req.user.schoolId]
+      );
+      publishedShsGradeCount = Number(published?.gradeCount || 0);
+    }
+    res.json({
+      gradingCategories: categories.map(category => ({
+        ...category,
+        name: weights && category.code === 'qa' ? 'Examinations' : category.name,
+        weight: weights?.[String(category.code).toLowerCase()] ?? Number(category.weight)
+      })),
+      ...(schoolLevelCode === 'shs' ? { gradingScale: 'legacy_shs_transmutation' } : {}),
+      shsGradingTypes: LEGACY_SHS_GRADING_TYPES.map(type => ({ ...type, weights: { ...type.weights } })),
+      ...(publishedShsGradeCount === null ? {} : { publishedShsGradeCount })
+    });
   } catch (error) { next(error); }
 }
 
@@ -355,13 +420,27 @@ async function updateGradingCategories(req, res, next) {
     }
     await connection.beginTransaction();
     const [[level]] = await connection.execute(
-      'SELECT id, display_name AS displayName, grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold FROM school_levels WHERE id = ? AND school_id = ? FOR UPDATE',
+      'SELECT id, level_code AS levelCode, display_name AS displayName, grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold FROM school_levels WHERE id = ? AND school_id = ? FOR UPDATE',
       [schoolLevelId, req.user.schoolId]
     );
     if (!level) throw createError('School level was not found.', 404);
-    const [existing] = await connection.execute('SELECT id FROM grading_categories WHERE school_id = ? AND school_level_id = ? FOR UPDATE', [req.user.schoolId, schoolLevelId]);
-    const existingIds = new Set(existing.map(category => category.id));
+    const [existing] = await connection.execute('SELECT id, code, weight FROM grading_categories WHERE school_id = ? AND school_level_id = ? FOR UPDATE', [req.user.schoolId, schoolLevelId]);
+    const existingIds = new Set(existing.map(category => Number(category.id)));
     if (categories.some(category => category.id && !existingIds.has(category.id))) throw createError('A grading category was not found.', 404);
+    if (level.levelCode === 'shs') {
+      const requiredCodes = ['ww', 'pt', 'qa'];
+      if (categories.length !== requiredCodes.length || requiredCodes.some(code => !categories.some(category => category.code === code))) {
+        throw createError('SHS grading must keep Written Work, Performance Task, and Quarterly Assessment categories.');
+      }
+      const existingCodesAreStandard = existing.length === requiredCodes.length
+        && requiredCodes.every(code => existing.some(category => String(category.code).toLowerCase() === code));
+      if (existingCodesAreStandard && categories.some(category => {
+        const stored = existing.find(item => String(item.code).toLowerCase() === category.code);
+        return !stored || Number(stored.weight) !== category.weight;
+      })) {
+        throw createError('SHS final-grade weights are determined by each subject’s grading type, not school-level settings.', 409);
+      }
+    }
     const requestedIds = new Set(categories.filter(category => category.id).map(category => category.id));
     for (const existingId of existingIds) {
       if (requestedIds.has(existingId)) continue;

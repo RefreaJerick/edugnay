@@ -22,6 +22,9 @@ const connection = {
     if (sql.includes('FROM section_teachers INNER JOIN sections')) {
       return [assigned ? [{ id: 8, schoolId: 1, academicYearId: 2, schoolLevelId: 3 }] : []];
     }
+    if (sql.includes('SELECT academic_years.label AS academicYearLabel, school_levels.level_code AS levelCode')) {
+      return [[{ academicYearLabel: '2025-2026', levelCode: 'jhs' }]];
+    }
     if (sql.includes('FROM academic_terms WHERE')) return [[{ id: 6 }]];
     if (sql.includes('FROM grading_categories WHERE')) return [[{ id: 3 }]];
     if (sql.includes('FROM academic_terms') && sql.includes('INNER JOIN academic_years')) {

@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('../controllers/academicTermsController');
+const subjectGradingController = require('../controllers/subjectGradingController');
 const { requireAuth } = require('../middleware/auth');
 const { requireSchoolAdmin, requireSchoolUser } = require('../middleware/authorize');
 
@@ -19,5 +20,14 @@ router.post('/academic-terms/:termId/complete', ...schoolAdminOnly, (req, res, n
 router.post('/academic-terms/:termId/extend', ...schoolAdminOnly, (req, res, next) => { req.params.action = 'extend'; controller.termAction(req, res, next); });
 router.get('/grading-categories', requireAuth, requireSchoolUser, controller.listGradingCategories);
 router.patch('/grading-categories', ...schoolAdminOnly, controller.updateGradingCategories);
+router.get('/deped-k10/grading-preview', ...schoolAdminOnly, subjectGradingController.previewDepedDefaults);
+router.post('/deped-k10/grading-defaults', ...schoolAdminOnly, subjectGradingController.applyDepedDefaults);
+router.put('/deped-k10/final-grade-rules', ...schoolAdminOnly, subjectGradingController.saveK10FinalGradeRules);
+router.get('/subject-grading-config', requireAuth, requireSchoolUser, (req, res, next) => (
+  req.user.role === 'teacher'
+    ? subjectGradingController.getTeacherSubjectGradingConfig(req, res, next)
+    : subjectGradingController.getAdminSubjectGradingConfig(req, res, next)
+));
+router.put('/subject-grading-config', ...schoolAdminOnly, subjectGradingController.saveSubjectGradingConfig);
 
 module.exports = router;

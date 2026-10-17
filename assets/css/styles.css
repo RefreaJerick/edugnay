@@ -206,6 +206,7 @@
 .assignment-status.submitted,
 .assignment-preview-status.submitted,
 .cat-badge.cat-qa,
+.comp-type-opt.cat-qa,
 .trend-up,
 .sf-status.active,
 .journal-history-status.is-open,
@@ -253,6 +254,7 @@
 
 .badge-blue,
 .cat-badge.cat-pt,
+.comp-type-opt.cat-pt,
 .term-status.active,
 .journal-history-status.is-previous,
 .guardian-relationship-tag,
@@ -278,6 +280,7 @@
 
 .badge-purple,
 .cat-badge.cat-ww,
+.comp-type-opt.cat-ww,
 .aud-parent {
   --pill-border: var(--purple-border);
   --pill-background: var(--purple-pale);
@@ -670,9 +673,11 @@ body.drawer-open .sidebar {
   display: none !important;
 }
 
-/* Teacher-only sidebar items respect role and subject access rules. */
-.sidebar [data-teacher-access][hidden],
-.sidebar #reports-nav[hidden] {
+/* One root-level access snapshot controls teacher navigation before and after refresh. */
+html.teacher-nav-hide-reports .sidebar #reports-nav [data-teacher-access="reports"],
+html.teacher-nav-hide-journals .sidebar #reports-nav [data-teacher-access="journals"],
+html.teacher-nav-hide-sf-templates .sidebar #reports-nav [data-teacher-access="sfTemplates"],
+html.teacher-nav-hide-reports-group .sidebar #reports-nav {
   display: none !important;
 }
 

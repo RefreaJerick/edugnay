@@ -104,23 +104,40 @@ const TENANT_ISOLATION_CHECKS = [
     name: 'sections',
     area: 'classes',
     description: 'Every section relation must belong to the section school.',
+    requiresTables: ['school_shs_strands'],
+    requiresColumns: ['sections.track_id'],
     sql: `SELECT sections.id AS recordId, sections.school_id AS schoolId,
         years.school_id AS yearSchoolId, levels.school_id AS levelSchoolId,
         grade_schools.school_id AS gradeSchoolId, track_schools.school_id AS trackSchoolId,
+        strand_schools.school_id AS strandSchoolId,
         advisers.school_id AS adviserSchoolId, advisers.role AS adviserRole
       FROM sections
       INNER JOIN academic_years AS years ON years.id = sections.academic_year_id
       INNER JOIN school_levels AS levels ON levels.id = sections.school_level_id
       INNER JOIN school_grade_levels AS grades ON grades.id = sections.grade_level_id
       INNER JOIN school_levels AS grade_schools ON grade_schools.id = grades.school_level_id
-      LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.strand_id
+      LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.track_id
       LEFT JOIN school_levels AS track_schools ON track_schools.id = tracks.school_level_id
+      LEFT JOIN school_shs_strands AS strands ON strands.id = sections.strand_id
+      LEFT JOIN school_levels AS strand_schools ON strand_schools.id = strands.school_level_id
       LEFT JOIN users AS advisers ON advisers.id = sections.adviser_user_id
       WHERE years.school_id <> sections.school_id OR levels.school_id <> sections.school_id
         OR grade_schools.school_id <> sections.school_id
-        OR (sections.strand_id IS NOT NULL AND track_schools.school_id <> sections.school_id)
+        OR (sections.track_id IS NOT NULL AND track_schools.school_id <> sections.school_id)
+        OR (sections.strand_id IS NOT NULL AND strand_schools.school_id <> sections.school_id)
         OR (sections.adviser_user_id IS NOT NULL
           AND (advisers.school_id <> sections.school_id OR advisers.role <> 'teacher'))`
+  },
+  {
+    name: 'sections_legacy_track_placement',
+    area: 'classes',
+    description: 'Before the track and strand split, the legacy section placement must belong to its school track.',
+    unlessColumns: ['sections.track_id'],
+    sql: `SELECT sections.id AS recordId, sections.school_id AS schoolId,
+        tracks.school_id AS trackSchoolId
+      FROM sections
+      LEFT JOIN school_shs_tracks AS tracks ON tracks.id = sections.strand_id
+      WHERE sections.strand_id IS NOT NULL AND tracks.school_id <> sections.school_id`
   },
   {
     name: 'section_students',
@@ -207,11 +224,131 @@ const TENANT_ISOLATION_CHECKS = [
       INNER JOIN subjects ON subjects.id = items.subject_id
       INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
       INNER JOIN academic_years AS years ON years.id = terms.academic_year_id
-      INNER JOIN grading_categories AS categories ON categories.id = items.grading_category_id
+      LEFT JOIN grading_categories AS categories ON categories.id = items.grading_category_id
       INNER JOIN users AS teachers ON teachers.id = items.teacher_user_id
       WHERE subjects.school_id <> sections.school_id OR years.school_id <> sections.school_id
-        OR categories.school_id <> sections.school_id OR teachers.school_id <> sections.school_id
+        OR (items.grading_category_id IS NOT NULL AND categories.school_id <> sections.school_id)
+        OR teachers.school_id <> sections.school_id
         OR teachers.role <> 'teacher'`
+  },
+  {
+    name: 'subject_grading_profiles',
+    area: 'grades',
+    description: 'Subject grading profiles, academic years, school levels, subjects, and copied profiles must share one school.',
+    requiresTables: ['subject_grading_profiles'],
+    sql: `SELECT profiles.id AS recordId, profiles.school_id AS schoolId,
+        years.school_id AS yearSchoolId, levels.school_id AS levelSchoolId,
+        subjects.school_id AS subjectSchoolId, source.school_id AS sourceSchoolId,
+        profiles.school_level_id AS schoolLevelId, levels.level_code AS levelCode
+      FROM subject_grading_profiles AS profiles
+      INNER JOIN academic_years AS years ON years.id = profiles.academic_year_id
+      INNER JOIN school_levels AS levels ON levels.id = profiles.school_level_id
+      INNER JOIN subjects ON subjects.id = profiles.subject_id
+      LEFT JOIN subject_grading_profiles AS source ON source.id = profiles.copied_from_profile_id
+      WHERE years.school_id <> profiles.school_id OR levels.school_id <> profiles.school_id
+        OR subjects.school_id <> profiles.school_id
+        OR (profiles.copied_from_profile_id IS NOT NULL
+          AND (source.id IS NULL OR source.school_id <> profiles.school_id))
+        OR levels.level_code NOT IN ('elementary', 'jhs')`
+  },
+  {
+    name: 'subject_grading_components',
+    area: 'grades',
+    description: 'Subject grading components and exam parts must belong to their profile school.',
+    requiresTables: ['subject_grading_components', 'subject_grading_exam_parts'],
+    sql: `SELECT records.recordId, records.schoolId, records.parentSchoolId, records.source
+      FROM (
+        SELECT components.id AS recordId, components.school_id AS schoolId,
+          profiles.school_id AS parentSchoolId, 'component' AS source
+        FROM subject_grading_components AS components
+        INNER JOIN subject_grading_profiles AS profiles ON profiles.id = components.profile_id
+        UNION ALL
+        SELECT parts.id, parts.school_id, components.school_id, 'exam_part'
+        FROM subject_grading_exam_parts AS parts
+        INNER JOIN subject_grading_components AS components ON components.id = parts.component_id
+      ) AS records
+      WHERE records.schoolId <> records.parentSchoolId`
+  },
+  {
+    name: 'subject_grading_exam_parts',
+    area: 'grades',
+    description: 'Each exam part must belong to a component in the same school.',
+    requiresTables: ['subject_grading_exam_parts', 'subject_grading_components'],
+    sql: `SELECT parts.id AS recordId, parts.school_id AS schoolId,
+        components.school_id AS componentSchoolId, parts.component_id AS componentId
+      FROM subject_grading_exam_parts AS parts
+      LEFT JOIN subject_grading_components AS components ON components.id = parts.component_id
+      WHERE components.id IS NULL OR parts.school_id <> components.school_id`
+  },
+  {
+    name: 'subject_grading_assignments',
+    area: 'assignments',
+    description: 'Configured assignment components and exam parts must match the assignment scope and linked score item.',
+    requiresTables: ['subject_grading_profiles', 'subject_grading_components', 'subject_grading_exam_parts'],
+    requiresColumns: ['assignments.subject_grading_component_id', 'grading_items.subject_grading_component_id'],
+    sql: `SELECT assignments.id AS recordId, assignments.school_id AS schoolId,
+        sections.school_id AS sectionSchoolId, subjects.school_id AS subjectSchoolId,
+        years.school_id AS yearSchoolId, profiles.school_id AS profileSchoolId,
+        profiles.school_level_id AS profileLevelId, sections.school_level_id AS sectionLevelId,
+        profiles.academic_year_id AS profileYearId, sections.academic_year_id AS sectionYearId,
+        profiles.subject_id AS profileSubjectId, assignments.subject_id AS assignmentSubjectId,
+        components.school_id AS componentSchoolId, parts.school_id AS partSchoolId,
+        parts.component_id AS partComponentId, assignments.subject_grading_component_id AS componentId,
+        assignments.subject_grading_exam_part_id AS examPartId,
+        score_items.subject_grading_component_id AS scoreComponentId,
+        score_items.subject_grading_exam_part_id AS scoreExamPartId
+      FROM assignments
+      INNER JOIN sections ON sections.id = assignments.section_id
+      INNER JOIN subjects ON subjects.id = assignments.subject_id
+      INNER JOIN academic_years AS years ON years.id = sections.academic_year_id
+      LEFT JOIN subject_grading_components AS components ON components.id = assignments.subject_grading_component_id
+      LEFT JOIN subject_grading_profiles AS profiles ON profiles.id = components.profile_id
+      LEFT JOIN subject_grading_exam_parts AS parts ON parts.id = assignments.subject_grading_exam_part_id
+      LEFT JOIN grading_items AS score_items ON score_items.id = assignments.grading_item_id
+      WHERE sections.school_id <> assignments.school_id OR subjects.school_id <> assignments.school_id
+        OR years.school_id <> assignments.school_id
+        OR (assignments.subject_grading_component_id IS NOT NULL AND (components.id IS NULL
+          OR components.school_id <> assignments.school_id OR profiles.school_id <> assignments.school_id
+          OR profiles.school_level_id <> sections.school_level_id
+          OR profiles.academic_year_id <> sections.academic_year_id
+          OR profiles.subject_id <> assignments.subject_id))
+        OR (assignments.subject_grading_exam_part_id IS NOT NULL AND (parts.id IS NULL
+          OR parts.school_id <> assignments.school_id OR parts.component_id <> assignments.subject_grading_component_id))
+        OR (assignments.grading_item_id IS NOT NULL AND (score_items.id IS NULL
+          OR COALESCE(score_items.subject_grading_component_id, 0) <> COALESCE(assignments.subject_grading_component_id, 0)
+          OR COALESCE(score_items.subject_grading_exam_part_id, 0) <> COALESCE(assignments.subject_grading_exam_part_id, 0)))`
+  },
+  {
+    name: 'subject_grading_items',
+    area: 'grades',
+    description: 'Score items using custom components must match the section, subject, year, and exam part.',
+    requiresTables: ['subject_grading_profiles', 'subject_grading_components', 'subject_grading_exam_parts'],
+    requiresColumns: ['grading_items.subject_grading_component_id', 'grading_items.subject_grading_exam_part_id'],
+    sql: `SELECT items.id AS recordId, items.school_id AS schoolId,
+        sections.school_id AS sectionSchoolId, subjects.school_id AS subjectSchoolId,
+        years.school_id AS yearSchoolId, profiles.school_id AS profileSchoolId,
+        profiles.school_level_id AS profileLevelId, sections.school_level_id AS sectionLevelId,
+        profiles.academic_year_id AS profileYearId, sections.academic_year_id AS sectionYearId,
+        profiles.subject_id AS profileSubjectId, items.subject_id AS itemSubjectId,
+        components.school_id AS componentSchoolId, parts.school_id AS partSchoolId,
+        parts.component_id AS partComponentId
+      FROM grading_items AS items
+      INNER JOIN sections ON sections.id = items.section_id
+      INNER JOIN subjects ON subjects.id = items.subject_id
+      INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
+      INNER JOIN academic_years AS years ON years.id = terms.academic_year_id
+      LEFT JOIN subject_grading_components AS components ON components.id = items.subject_grading_component_id
+      LEFT JOIN subject_grading_profiles AS profiles ON profiles.id = components.profile_id
+      LEFT JOIN subject_grading_exam_parts AS parts ON parts.id = items.subject_grading_exam_part_id
+      WHERE sections.school_id <> items.school_id OR subjects.school_id <> items.school_id
+        OR years.school_id <> items.school_id
+        OR (items.subject_grading_component_id IS NOT NULL AND (components.id IS NULL
+          OR components.school_id <> items.school_id OR profiles.school_id <> items.school_id
+          OR profiles.school_level_id <> sections.school_level_id
+          OR profiles.academic_year_id <> sections.academic_year_id
+          OR profiles.subject_id <> items.subject_id))
+        OR (items.subject_grading_exam_part_id IS NOT NULL AND (parts.id IS NULL
+          OR parts.school_id <> items.school_id OR parts.component_id <> items.subject_grading_component_id))`
   },
   {
     name: 'student_scores',
@@ -622,6 +759,24 @@ const TENANT_ISOLATION_CHECKS = [
       WHERE records.schoolId <> records.parentSchoolId`
   },
   {
+    name: 'explicit_shs_scope_ownership',
+    area: 'database constraints',
+    description: 'SHS strand and subject grade-scope rows must belong to their related school records.',
+    requiresTables: ['school_shs_strands', 'subject_grade_scopes'],
+    sql: `SELECT records.recordId, records.source, records.schoolId, records.parentSchoolId
+      FROM (
+        SELECT strands.id AS recordId, 'school_shs_strands' AS source,
+          strands.school_id AS schoolId, levels.school_id AS parentSchoolId
+        FROM school_shs_strands AS strands
+        INNER JOIN school_levels AS levels ON levels.id = strands.school_level_id
+        UNION ALL
+        SELECT scopes.id, 'subject_grade_scopes', scopes.school_id, subjects.school_id
+        FROM subject_grade_scopes AS scopes
+        INNER JOIN subjects ON subjects.id = scopes.subject_id
+      ) AS records
+      WHERE records.schoolId <> records.parentSchoolId`
+  },
+  {
     name: 'audit_log_actors',
     area: 'audit logs',
     description: 'A school audit actor must belong to that school unless it is a platform administrator.',
@@ -636,9 +791,20 @@ const TENANT_ISOLATION_CHECKS = [
 
 async function runTenantIsolationAudit(database, sampleLimit = 20) {
   const checkedAt = new Date().toISOString();
+  const [columnRows] = await database.query(
+    `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName
+     FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`
+  );
+  const availableColumns = new Set(columnRows.map(row => `${row.tableName}.${row.columnName}`));
+  const availableTables = new Set(columnRows.map(row => row.tableName));
+  const applicableChecks = TENANT_ISOLATION_CHECKS.filter(check =>
+    (!check.requiresTables || check.requiresTables.every(table => availableTables.has(table)))
+      && (!check.requiresColumns || check.requiresColumns.every(column => availableColumns.has(column)))
+      && (!check.unlessColumns || check.unlessColumns.every(column => !availableColumns.has(column)))
+  );
   const checks = [];
 
-  for (const check of TENANT_ISOLATION_CHECKS) {
+  for (const check of applicableChecks) {
     const [[countRow]] = await database.query(
       `SELECT COUNT(*) AS mismatchCount FROM (${check.sql}) AS tenant_mismatches`
     );

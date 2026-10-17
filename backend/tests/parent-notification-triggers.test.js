@@ -15,7 +15,7 @@ const database = {
     if (sql.includes('FROM parent_notification_triggers AS triggers')) return [[{ enabled: 1, threshold: 2 }]];
     if (sql.includes('FROM parent_notification_triggers WHERE')) return [triggerRows];
     if (sql.includes('FROM school_attendance_settings')) return [[{ absenceThreshold: 2, threshold: 2 }]];
-    if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled: 1, attendanceEnabled: 1, journalsEnabled: 1 }]];
+    if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled: 1, attendanceEnabled: 0, journalsEnabled: 1 }]];
     if (sql.includes('FROM attendance_sessions AS sessions')) return [attendanceHistory];
     if (sql.includes('FROM assignments\n')) return [assignmentRows];
     if (sql.includes('FROM journal_prompts AS prompts')) return [journalRows];
@@ -62,6 +62,7 @@ test('admin settings default off and use only the session school', async () => {
   assert.equal(error, undefined);
   assert.equal(responseData.triggers.length, 5);
   assert.ok(responseData.triggers.every(item => !item.enabled));
+  assert.equal(responseData.triggers.find(item => item.code === 'consecutive_absences').available, true);
   assert.equal(responseData.triggers.find(item => item.code === 'narrative_report_released').available, false);
   assert.equal(calls[0].values[0], 1);
 });
@@ -77,9 +78,12 @@ test('admin saves validated settings transactionally; report trigger remains una
   ];
   const saved = await call(settings.updateSettings, { triggers, schoolId: 999 });
   assert.equal(saved.error, undefined);
+  assert.equal(saved.responseData.triggers.find(item => item.code === 'consecutive_absences').available, true);
   assert.equal(committed, true);
   assert.equal(calls.filter(call => call.sql.includes('INSERT INTO parent_notification_triggers')).length, 5);
   assert.ok(calls.filter(call => call.sql.includes('INSERT INTO parent_notification_triggers')).every(call => call.values[0] === 1));
+  assert.ok(calls.some(call => call.sql.includes('FROM school_portal_features')));
+  assert.ok(calls.filter(call => call.sql.includes('FROM school_portal_features')).every(call => !/attendance_enabled/i.test(call.sql)));
 
   reset();
   triggers[3].enabled = true;
@@ -102,6 +106,9 @@ test('attendance alerts only on the threshold crossing in the same subject', asy
   assert.equal(notice.values[0], 'attendance');
   assert.equal(notice.values[4], 'absence:8:2:6:19');
   assert.deepEqual(notice.values.slice(-3), [1, 1, 6]);
+  const triggerQuery = calls.find(call => call.sql.includes('FROM parent_notification_triggers AS triggers'));
+  assert.ok(triggerQuery);
+  assert.doesNotMatch(triggerQuery.sql, /features\.attendance_enabled/i);
 
   reset();
   attendanceHistory = [{ id: 21, status: 'absent' }, { id: 20, status: 'absent' }, { id: 19, status: 'absent' }];

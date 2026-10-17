@@ -7,6 +7,37 @@ const vm = require('node:vm');
 const databaseModule = require('../config/database');
 let calls;
 let state;
+
+function createState(overrides = {}) {
+  const grades = [71, 72, 73, 74].map(id => ({ id }));
+  const jhsScopes = grades.map(grade => ({ gradeLevelId: grade.id, levelCode: 'jhs', levelEnabled: 1, gradeEnabled: 1 }));
+  return {
+    subjectSchoolId: 1,
+    subjectActive: true,
+    savedJournalSubjectId: 1,
+    jhsEnabled: true,
+    enabledJhsGrades: grades,
+    subjects: {
+      1: { id: 1, name: 'Values Education', subjectCode: 'values-education-jhs', schoolLevelId: 10, gradeLevelId: null, schoolLevelCode: 'jhs' },
+      2: { id: 2, name: 'English', subjectCode: 'english', schoolLevelId: 10, gradeLevelId: null, schoolLevelCode: 'jhs' }
+    },
+    scopesBySubject: { 1: jhsScopes, 2: jhsScopes },
+    configuredJournal: true,
+    featureRowPresent: true,
+    featureValues: {
+      gradesEnabled: 1,
+      narrativeReportsEnabled: 1,
+      journalsEnabled: 1,
+      attendanceEnabled: 1,
+      sfTemplatesEnabled: 1
+    },
+    studentJhsPlacement: true,
+    committed: false,
+    rolledBack: false,
+    ...overrides
+  };
+}
+
 const connection = {
   async beginTransaction() { calls.push('BEGIN'); },
   async commit() { calls.push('COMMIT'); state.committed = true; },
@@ -14,11 +45,42 @@ const connection = {
   release() {},
   async execute(sql, values = []) {
     calls.push({ sql, values });
-    if (sql.includes('FROM school_portal_features WHERE')) return [[{ gradesEnabled: 1, narrativeReportsEnabled: 1, journalsEnabled: 1, attendanceEnabled: 1, sfTemplatesEnabled: 1 }]];
-    if (sql.includes('FROM school_portal_features\n')) return [[{ id: 9, subjectId: 2, name: 'English', isActive: 1 }]];
-    if (sql.includes('FROM school_settings')) return [[{ journalSubjectId: 1, journalSubjectName: 'Values Education' }]];
+    if (sql.startsWith('INSERT INTO school_portal_features')) {
+      state.featureRowPresent = true;
+      state.featureValues ||= {
+        gradesEnabled: 0,
+        narrativeReportsEnabled: 0,
+        journalsEnabled: 0,
+        attendanceEnabled: 0,
+        sfTemplatesEnabled: 0
+      };
+      return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('SELECT grades_enabled AS gradesEnabled')) return [state.featureRowPresent ? [state.featureValues] : []];
+    if (sql.startsWith('UPDATE school_portal_features SET')) {
+      state.featureValues = {
+        gradesEnabled: values[0],
+        narrativeReportsEnabled: values[1],
+        journalsEnabled: values[2],
+        attendanceEnabled: values[3],
+        sfTemplatesEnabled: values[4]
+      };
+      return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('FROM school_portal_features') && sql.includes('journal_subjects')) return [state.configuredJournal ? [{ id: 9, schoolId: 1, subjectId: state.savedJournalSubjectId || 1, name: 'Values Education', isActive: 1 }] : []];
+    if (sql.includes('SELECT journal_subject_id AS journalSubjectId FROM school_settings')) return [[{ journalSubjectId: state.savedJournalSubjectId ?? 1 }]];
+    if (sql.includes('FROM school_settings')) return [[{ subjectId: state.savedJournalSubjectId ?? 1, journalSubjectId: state.savedJournalSubjectId ?? 1 }]];
+    if (sql.includes('FROM subjects\n    LEFT JOIN school_levels')) {
+      const subject = state.subjects?.[String(values[0])];
+      return [[subject && state.subjectActive && state.subjectSchoolId === values[1] ? subject : undefined].filter(Boolean)];
+    }
+    if (sql.includes("FROM school_levels WHERE school_id = ? AND level_code = 'jhs'")) return [state.jhsEnabled ? [{ id: 10 }] : []];
+    if (sql.includes('FROM school_grade_levels\n    WHERE school_id = ? AND school_level_id = ?')) return [state.enabledJhsGrades || []];
+    if (sql.includes('FROM subject_grade_scopes AS scopes')) return [state.scopesBySubject?.[String(values[1])] || []];
+    if (sql.includes('FROM section_students') && sql.includes('academic_years.status = \'active\'')) return [state.studentJhsPlacement ? [{ id: 8 }] : []];
     if (sql.includes('FROM sections\n')) return [values[1] === 4 ? [{ id: 8, schoolId: 1, academicYearId: 3, name: 'St. John', studentCount: 12, gradeLevelName: 'Grade 9' }] : []];
-    if (sql.includes('FROM subjects WHERE')) return [[state.subjectSchoolId === values[1] && state.subjectActive ? { id: values[0], name: 'English' } : undefined].filter(Boolean)];
+    if (sql.includes('FROM journal_prompts')) return [[]];
+    if (sql.includes('FROM student_journal_entries')) return [[]];
     if (sql.startsWith('INSERT INTO journal_subjects') && state.failInsert) throw new Error('Database write failed');
     if (sql.startsWith('INSERT INTO audit_logs')) return [{ insertId: 3 }];
     return [{ affectedRows: 1 }];
@@ -30,7 +92,7 @@ const { listJournalSections } = require('../controllers/journalsController');
 
 async function save(body, user = { id: 3, schoolId: 1, role: 'school_admin' }, overrides = {}) {
   calls = [];
-  state = { subjectSchoolId: 1, subjectActive: true, committed: false, rolledBack: false, ...overrides };
+  state = createState(overrides);
   const result = {};
   await updatePortalFeatures({ user, body }, {
     status(code) { result.status = code; return this; },
@@ -39,9 +101,19 @@ async function save(body, user = { id: 3, schoolId: 1, role: 'school_admin' }, o
   return result;
 }
 
+async function loadFeatures(user = { id: 3, schoolId: 1, role: 'school_admin' }) {
+  calls = [];
+  const result = {};
+  await getPortalFeatures({ user }, {
+    status(code) { result.status = code; return this; },
+    json(body) { result.body = body; }
+  }, error => { result.error = error; });
+  return result;
+}
+
 test('portal features return the saved journal subject', async () => {
   calls = [];
-  state = {};
+  state = createState();
   const result = {};
   await getPortalFeatures({ user: { schoolId: 1, role: 'teacher' } }, {
     status(code) { result.status = code; return this; },
@@ -49,6 +121,78 @@ test('portal features return the saved journal subject', async () => {
   }, error => { result.error = error; });
   assert.equal(result.body.journalSubjectId, 1);
   assert.equal(result.body.journalSubjectName, 'Values Education');
+  assert.equal(result.body.journalSubjectEligible, true);
+});
+
+test('SF Templates can be enabled and disabled, with changes returned after reload', async () => {
+  const enabled = await save({ sfTemplatesEnabled: true });
+  assert.equal(enabled.error, undefined);
+  assert.equal(enabled.body.features.sfTemplatesEnabled, true);
+  assert.equal((await loadFeatures()).body.features.sfTemplatesEnabled, true);
+
+  const savedValues = { ...state.featureValues };
+  const disabled = await save({ sfTemplatesEnabled: false }, undefined, { featureValues: savedValues });
+  assert.equal(disabled.error, undefined);
+  assert.equal(disabled.body.features.sfTemplatesEnabled, false);
+  assert.equal(calls.some(call => /DELETE FROM school_form_(templates|exports)/i.test(call.sql || '')), false);
+  assert.equal((await loadFeatures()).body.features.sfTemplatesEnabled, false);
+});
+
+test('saving portal features creates a missing row and keeps Attendance enabled', async () => {
+  const result = await save(
+    { sfTemplatesEnabled: true },
+    { id: 3, schoolId: 42, role: 'school_admin' },
+    { featureRowPresent: false, featureValues: null }
+  );
+  assert.equal(result.error, undefined);
+  assert.equal(result.body.features.sfTemplatesEnabled, true);
+  assert.deepEqual(state.featureValues, {
+    gradesEnabled: false,
+    narrativeReportsEnabled: false,
+    journalsEnabled: false,
+    attendanceEnabled: true,
+    sfTemplatesEnabled: true
+  });
+  const createRowIndex = calls.findIndex(call => call.sql?.startsWith('INSERT INTO school_portal_features'));
+  const readRowIndex = calls.findIndex(call => call.sql?.includes('SELECT grades_enabled AS gradesEnabled'));
+  const update = calls.find(call => call.sql?.startsWith('UPDATE school_portal_features SET'));
+  assert.ok(createRowIndex >= 0 && createRowIndex < readRowIndex);
+  assert.equal(calls[createRowIndex].values[0], 42);
+  assert.equal(update.values.at(-1), 42);
+  assert.equal(state.committed, true);
+});
+
+test('legacy portal-feature updates cannot disable Attendance', async () => {
+  const result = await save({ attendanceEnabled: false }, undefined, {
+    featureValues: {
+      gradesEnabled: 0,
+      narrativeReportsEnabled: 0,
+      journalsEnabled: 0,
+      attendanceEnabled: 0,
+      sfTemplatesEnabled: 0
+    }
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.body.features.attendanceEnabled, true);
+  assert.equal(state.featureValues.attendanceEnabled, true);
+  const update = calls.find(call => call.sql?.startsWith('UPDATE school_portal_features SET'));
+  assert.equal(update.values[3], true);
+  assert.equal((await loadFeatures()).body.features.attendanceEnabled, true);
+});
+
+test('Portal Features exposes the SF Templates toggle and its value is actionable for teachers', () => {
+  const settingsPage = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const teacherPage = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
+  assert.match(settingsPage, /const sfTemplatesEnabled = Boolean\(features\.sfTemplatesEnabled\)/);
+  const sfTemplatesToggleIndex = settingsPage.indexOf('name="sfTemplatesEnabled"');
+  const journalsToggleIndex = settingsPage.indexOf('name="journalsEnabled"');
+  assert.ok(sfTemplatesToggleIndex >= 0 && sfTemplatesToggleIndex < journalsToggleIndex);
+  assert.match(settingsPage, /name="sfTemplatesEnabled"\s+\$\{sfTemplatesEnabled \? 'checked' : ''\}/);
+  assert.match(settingsPage, /name="journalsEnabled"\s+\$\{journalsEnabled \? 'checked' : ''\}/);
+  assert.match(settingsPage, /id="journalSubjectBlock"\s+\$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(settingsPage, /id="journalHistoryBlock"\s+\$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(settingsPage, /sfTemplatesEnabled: Boolean\(form\.elements\.sfTemplatesEnabled\?\.checked\)/);
+  assert.match(teacherPage, /Ask your school admin to enable SF Templates in School Settings > Portal Features\./);
 });
 
 test('changing journal subject saves the feature and subject in one transaction', async () => {
@@ -67,6 +211,35 @@ test('another school or an inactive subject cannot be selected', async () => {
     assert.equal(state.committed, false);
     assert.equal(state.rolledBack, true);
   }
+});
+
+test('only active JHS-only subjects with enabled grade coverage can be selected', async () => {
+  const cases = [
+    { name: 'elementary scope', scopesBySubject: { 1: [], 2: [{ gradeLevelId: 20, levelCode: 'elementary', levelEnabled: 1, gradeEnabled: 1 }] } },
+    { name: 'SHS scope', scopesBySubject: { 1: [], 2: [{ gradeLevelId: 30, levelCode: 'shs', levelEnabled: 1, gradeEnabled: 1 }] } },
+    { name: 'mixed JHS and elementary scope', scopesBySubject: { 1: [], 2: [
+      { gradeLevelId: 71, levelCode: 'jhs', levelEnabled: 1, gradeEnabled: 1 },
+      { gradeLevelId: 20, levelCode: 'elementary', levelEnabled: 1, gradeEnabled: 1 }
+    ] } },
+    { name: 'disabled JHS grade', enabledJhsGrades: [] },
+    { name: 'disabled JHS level', jhsEnabled: false }
+  ];
+  for (const scenario of cases) {
+    const result = await save({ journalSubjectId: 2 }, undefined, scenario);
+    assert.equal(result.error?.status, 400, `${scenario.name} should be rejected`);
+    assert.equal(state.rolledBack, true, `${scenario.name} should roll back`);
+  }
+  const valid = await save({ journalSubjectId: 2 }, undefined, { scopesBySubject: { 1: [], 2: createState().scopesBySubject[2] } });
+  assert.equal(valid.error, undefined);
+  assert.equal(valid.body.journalSubjectEligible, true);
+});
+
+test('a JHS subject can be saved as the default before Journals are enabled', async () => {
+  const result = await save({ journalsEnabled: false, journalSubjectId: 1 }, undefined, { savedJournalSubjectId: null });
+  assert.equal(result.error, undefined);
+  assert.equal(result.body.features.journalsEnabled, false);
+  assert.equal(result.body.journalSubjectId, 1);
+  assert.equal(result.body.journalSubjectEligible, true);
 });
 
 test('invalid subject IDs and enabling journals without a subject fail', async () => {
@@ -93,7 +266,7 @@ test('a failed journal-subject write rolls back the feature change', async () =>
 
 test('journal sections appear only for a teacher assigned to the selected subject', async () => {
   calls = [];
-  state = {};
+  state = createState();
   async function sectionsFor(teacherId) {
     const result = {};
     await listJournalSections({ user: { id: teacherId, schoolId: 1, role: 'teacher' } }, {
@@ -105,7 +278,31 @@ test('journal sections appear only for a teacher assigned to the selected subjec
   assert.equal((await sectionsFor(4)).body.sections.length, 1);
   const query = calls.find(call => call.sql?.includes('FROM sections\n'));
   assert.match(query.sql, /section_teachers\.subject_id = \?/);
+  assert.match(query.sql, /school_levels\.level_code = 'jhs'/);
+  assert.match(query.sql, /school_grade_levels\.is_enabled = TRUE/);
   assert.deepEqual(query.values.slice(0, 2), [1, 3]);
+});
+
+test('current student Journals require a JHS placement while history remains available', async () => {
+  calls = [];
+  state = createState({ studentJhsPlacement: false });
+  const result = {};
+  const { listJournalSubjects, listJournalHistory } = require('../controllers/journalsController');
+  await listJournalSubjects({ user: { id: 8, schoolId: 1, role: 'student' } }, {
+    json(body) { result.subjects = body; }
+  }, error => { result.subjectError = error; });
+  assert.equal(result.subjectError?.status, 403);
+  assert.match(result.subjectError.message, /Junior High School/);
+  assert.match(calls[0].sql, /school_levels AS journal_levels/);
+
+  calls = [];
+  state = createState({ studentJhsPlacement: false });
+  const history = {};
+  await listJournalHistory({ user: { id: 8, schoolId: 1, role: 'student' }, query: {} }, {
+    json(body) { history.body = body; }
+  }, error => { history.error = error; });
+  assert.equal(history.error, undefined);
+  assert.ok(calls.some(call => call.sql.includes('FROM journal_prompts')));
 });
 
 test('teacher access and journal reminders use current backend assignments and subject', () => {
@@ -114,26 +311,52 @@ test('teacher access and journal reminders use current backend assignments and s
   assert.match(teacher, /getJournalSections\(\)/);
   assert.match(teacher, /teacherJournalAccess = sections\.length > 0/);
   assert.match(worker, /settings\.journal_subject_id = journal_subjects\.subject_id/);
+  assert.match(worker, /level_code = 'jhs'/);
+  assert.match(worker, /subject_grade_scopes/);
 });
 
-test('teacher journal navigation is resolved once after loading access', () => {
+test('teacher journal navigation renders cached links but page guards use refreshed access', () => {
   const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
   const init = teacher.slice(teacher.indexOf("document.addEventListener('DOMContentLoaded', async () => {"));
-  assert.equal((init.match(/applyTeacherAccess\(\)/g) || []).length, 1);
-  assert.ok(init.indexOf('getJournalSections()') < init.indexOf('applyTeacherAccess()'));
-  assert.ok(init.indexOf('applyTeacherAccess()') < init.indexOf('await window.EDUGNAY_COMMUNICATION_READY'));
+  assert.ok(init.indexOf('applyTeacherSidebarSnapshot(cachedSnapshot)') < init.indexOf('getJournalSections()'));
+  assert.ok(init.indexOf('getJournalSections()') < init.indexOf('if (guardTeacherPageAccess()) return;'));
+  assert.ok(init.indexOf('if (guardTeacherPageAccess()) return;') < init.indexOf('await window.EDUGNAY_COMMUNICATION_READY'));
+  const accessCheck = teacher.match(/function teacherCanAccess\(feature\)\s*\{[\s\S]*?\n\}/)?.[0] || '';
+  assert.doesNotMatch(accessCheck, /cachedSnapshot|teacherNavigationCanAccess/);
 });
 
 test('school settings and teacher shell scripts parse after journal changes', () => {
   const admin = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-schools.html'), 'utf8');
+  const adminStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/admin/schools.css'), 'utf8');
   assert.match(admin, /state\.apiJournalSubjectId = portal\.journalSubjectId/);
+  assert.match(admin, /values-education-jhs/);
+  assert.match(admin, /journalGradeLabel/);
+  assert.match(admin, /defaultJournalSubject = eligibleJournalSubjects\.find\(subject => subject\.journalDefault\)/);
+  assert.match(admin, /escapeHtml\(subject\.name\).*escapeHtml\(subject\.journalGradeLabel\)/);
+  assert.match(admin, /schoolLevelCode === 'jhs'/);
+  assert.match(admin, /apiJournalSubjectEligible = portal\.journalSubjectEligible/);
   assert.match(admin, /journalSubjectId: journalSubjectId \? Number\(journalSubjectId\) : null/);
   assert.match(admin, /state\.apiSubjects = subjects\.filter\(subject => subject\.isActive\)/);
+  assert.match(admin, /id="journalSubjectBlock" \$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(admin, /id="journalHistoryBlock" \$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(admin, /class="top-btn secondary" type="button" id="viewSchoolJournalHistory"/);
+  assert.match(admin, /getElementById\('viewSchoolJournalHistory'\)\?\.addEventListener\('click', openSchoolJournalHistory\)/);
+  assert.match(admin, /journalSubjectBlock\.hidden = !isJournalEnabled/);
+  assert.match(admin, /journalHistoryBlock\.hidden = !isJournalEnabled/);
+  assert.match(admin, /journalToggle\?\.addEventListener\('change', syncJournalSections\)/);
+  assert.match(adminStyles, /\.school-journal-history-block\s*\{\s*border-top:\s*0;/);
   for (const [, source] of admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);
   }
   const teacher = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/shell.js'), 'utf8');
   new vm.Script(teacher);
   const student = fs.readFileSync(path.join(__dirname, '../../assets/js/student/shell.js'), 'utf8');
+  assert.match(student, /schoolLevel === 'elementary' \|\| schoolLevel === 'shs'/);
+  assert.match(student, /studentJournalHistoryAvailable !== null/);
   new vm.Script(student);
+  const journalPage = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
+  assert.match(journalPage, /user\.schoolLevel !== 'jhs'/);
+  for (const [, source] of journalPage.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
+    if (source.trim()) new vm.Script(source);
+  }
 });

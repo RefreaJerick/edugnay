@@ -7,18 +7,24 @@
 /* ── NOTIFICATIONS DATA ── */
 window.EDUGNAY_STUDENT = { currentUser: null };
 document.addEventListener('edugnay:current-user-updated', event => {
-  if (event.detail?.role === 'student') window.EDUGNAY_STUDENT.currentUser = event.detail;
+  if (event.detail?.role === 'student') {
+    window.EDUGNAY_STUDENT.currentUser = event.detail;
+    applyStudentJournalAccess();
+    renderTopbarNotifs();
+  }
 });
 
 let NOTIFICATIONS = [];
 let BACKEND_COMMUNICATION = false;
-let studentJournalHistoryAvailable = false;
+let studentJournalHistoryAvailable = null;
 
 
 function studentCanAccess(feature) {
-  return feature !== 'journals'
-    || window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false
-    || studentJournalHistoryAvailable;
+  const schoolLevel = window.EDUGNAY_STUDENT.currentUser?.schoolLevel;
+  if (feature !== 'journals') return true;
+  if (schoolLevel === 'elementary' || schoolLevel === 'shs') return studentJournalHistoryAvailable === true;
+  const currentJhsAccess = window.EDUGNAY_CONFIG?.isJournalsEnabled?.() !== false;
+  return currentJhsAccess || studentJournalHistoryAvailable === true;
 }
 
 function getStudentVisibleNotifications() {
@@ -148,7 +154,7 @@ function applyStudentJournalAccess() {
   });
 
   const page = window.location.pathname.split('/').pop().toLowerCase();
-  if (!enabled && page === 'edugnay-student-journal.html') {
+  if (!enabled && studentJournalHistoryAvailable !== null && page === 'edugnay-student-journal.html') {
     window.location.replace('./edugnay-student-dashboard.html');
   }
 }
@@ -180,12 +186,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
     try {
       const portal = await window.EDUGNAY_API.getPortalFeatures();
-      window.EDUGNAY_API.setPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId, journalSubjectName: portal.journalSubjectName });
+      window.EDUGNAY_API.setPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId,
+        journalSubjectName: portal.journalSubjectName, journalSubjectEligible: portal.journalSubjectEligible });
       try {
         const history = await window.EDUGNAY_API.getJournalHistory();
         studentJournalHistoryAvailable = history.entries.length > 0;
       } catch { studentJournalHistoryAvailable = false; }
-    } catch { window.EDUGNAY_API.setPortalFeatures(null); }
+      } catch {
+        studentJournalHistoryAvailable = false;
+        window.EDUGNAY_API.setPortalFeatures(null);
+      }
   }
   applyStudentJournalAccess();
   applyStudentAttendanceAccess();
