@@ -1,5 +1,5 @@
 const { getDatabase } = require('../config/database');
-const { DEPED_K10_SUBJECTS } = require('../config/depedK10Subjects');
+const { DEPED_GRADE_SUBJECTS } = require('../config/depedK10Subjects');
 const { writeAuditLog } = require('../utils/auditLog');
 
 function createError(message, status = 400) {
@@ -52,7 +52,7 @@ async function loadSubjectContext(connection, schoolId, lock = false) {
   const gradeRows = [...levels.values()]
     .filter(level => level.isEnabled)
     .flatMap(level => level.grades
-      .filter(grade => grade.isEnabled && DEPED_K10_SUBJECTS.some(subject => subject.levelCode === level.levelCode && subject.gradeCodes.includes(grade.gradeCode)))
+      .filter(grade => grade.isEnabled && DEPED_GRADE_SUBJECTS.some(subject => subject.levelCode === level.levelCode && subject.gradeCodes.includes(grade.gradeCode)))
       .map(grade => ({ ...grade, schoolLevelId: level.id, levelCode: level.levelCode })));
   return { levels, gradeRows };
 }
@@ -87,18 +87,28 @@ async function loadExistingSubjects(connection, schoolId, lock = false) {
   }));
 }
 
-function matchingSubjects(defaultSubject, schoolLevelId, existingSubjects) {
+function matchingSubjects(defaultSubject, schoolLevelId, existingSubjects, gradeLevelId) {
   const name = normalizedName(defaultSubject.name);
-  return existingSubjects.filter(subject => subject.subjectCode === defaultSubject.code
-    || ((subject.schoolLevelId === schoolLevelId || subject.schoolLevelId == null) && normalizedName(subject.name) === name));
+  return existingSubjects.filter(subject => {
+    if (subject.subjectCode === defaultSubject.code) return true;
+    if (defaultSubject.gradeSpecific) {
+      const exclusiveGradeMatch = subject.gradeLevelId === gradeLevelId
+        || (subject.gradeLevelIds.size === 1 && subject.gradeLevelIds.has(gradeLevelId));
+      return exclusiveGradeMatch && (subject.schoolLevelId === schoolLevelId || subject.schoolLevelId == null)
+        && normalizedName(subject.name) === name;
+    }
+    if (/-grade-[23]$/i.test(String(subject.subjectCode || ''))) return false;
+    return (subject.schoolLevelId === schoolLevelId || subject.schoolLevelId == null)
+      && normalizedName(subject.name) === name;
+  });
 }
 
 function previewForGrade(grade, existingSubjects) {
-  const defaults = DEPED_K10_SUBJECTS.filter(subject => subject.levelCode === grade.levelCode && subject.gradeCodes.includes(grade.gradeCode));
+  const defaults = DEPED_GRADE_SUBJECTS.filter(subject => subject.levelCode === grade.levelCode && subject.gradeCodes.includes(grade.gradeCode));
   return {
     ...grade,
     subjects: defaults.map(defaultSubject => {
-      const matches = matchingSubjects(defaultSubject, grade.schoolLevelId, existingSubjects);
+      const matches = matchingSubjects(defaultSubject, grade.schoolLevelId, existingSubjects, grade.id);
       const covered = matches.find(subject => subject.gradeLevelId === grade.id || subject.gradeLevelIds.has(grade.id));
       let status = 'will-add';
       let existingName = null;
@@ -136,19 +146,19 @@ async function applyDepedSubjectDefaults(req, res, next) {
     await connection.beginTransaction();
     transactionStarted = true;
     const { levels, gradeRows } = await loadSubjectContext(connection, schoolId, true);
-    if (!gradeRows.length) throw createError('Enable at least one Grade 4–10 level, save it, and review the subject defaults again.');
+    if (!gradeRows.length) throw createError('Enable at least one supported grade level, save it, and review the subject defaults again.');
     const selectedGrades = gradeRows;
     const existing = await loadExistingSubjects(connection, schoolId, true);
     const existingCodes = new Set(existing.map(subject => subject.subjectCode));
     const addedSubjects = [];
     let addedGradeScopes = 0;
 
-    for (const defaultSubject of DEPED_K10_SUBJECTS) {
+    for (const defaultSubject of DEPED_GRADE_SUBJECTS) {
       const subjectGrades = selectedGrades.filter(grade => grade.levelCode === defaultSubject.levelCode
         && defaultSubject.gradeCodes.includes(grade.gradeCode));
       if (!subjectGrades.length) continue;
       const schoolLevel = levels.get(defaultSubject.levelCode);
-      if (matchingSubjects(defaultSubject, schoolLevel.id, existing).length || existingCodes.has(defaultSubject.code)) continue;
+      if (matchingSubjects(defaultSubject, schoolLevel.id, existing, subjectGrades[0].id).length || existingCodes.has(defaultSubject.code)) continue;
 
       const [result] = await connection.execute(
         `INSERT INTO subjects (school_id, subject_code, name, school_level_id, grade_level_id, shs_grading_group)
@@ -166,7 +176,7 @@ async function applyDepedSubjectDefaults(req, res, next) {
     }
 
     await writeAuditLog(connection, req, 'deped_subject_defaults_applied', 'subjects', schoolId, {
-      summary: 'Applied revised K to 10 subject defaults',
+      summary: 'Applied DepEd subject defaults',
       gradeCodes: selectedGrades.map(grade => grade.gradeCode),
       addedSubjectCodes: addedSubjects.map(subject => subject.code),
       addedGradeScopes

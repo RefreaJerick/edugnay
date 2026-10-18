@@ -1,5 +1,15 @@
 const ELEMENTARY_GRADES = ['grade-4', 'grade-5', 'grade-6'];
 const JHS_GRADES = ['grade-7', 'grade-8', 'grade-9', 'grade-10'];
+const EARLY_GRADE_SUBJECTS = [
+  ...['grade-2', 'grade-3'].flatMap(gradeCode => [
+    { code: `filipino-${gradeCode}`, name: 'Filipino', levelCode: 'elementary', gradeCodes: [gradeCode], gradeSpecific: true },
+    { code: `english-${gradeCode}`, name: 'English', levelCode: 'elementary', gradeCodes: [gradeCode], gradeSpecific: true },
+    { code: `mathematics-${gradeCode}`, name: 'Mathematics', levelCode: 'elementary', gradeCodes: [gradeCode], gradeSpecific: true },
+    { code: `gmrc-${gradeCode}`, name: 'Good Manners and Right Conduct (GMRC)', levelCode: 'elementary', gradeCodes: [gradeCode], gradeSpecific: true },
+    { code: `makabansa-${gradeCode}`, name: 'Makabansa', levelCode: 'elementary', gradeCodes: [gradeCode], gradeSpecific: true }
+  ]),
+  { code: 'science-grade-3', name: 'Science', levelCode: 'elementary', gradeCodes: ['grade-3'], gradeSpecific: true }
+];
 
 // Learning-area names are based on DepEd's Revised K to 10 curriculum guides:
 // https://www.deped.gov.ph/matatagcurriculumk147/
@@ -23,4 +33,6 @@ const DEPED_K10_SUBJECTS = [
   { code: 'tle-jhs', name: 'Technology and Livelihood Education (TLE)', levelCode: 'jhs', gradeCodes: JHS_GRADES }
 ];
 
-module.exports = { DEPED_K10_SUBJECTS, ELEMENTARY_GRADES, JHS_GRADES };
+const DEPED_GRADE_SUBJECTS = [...EARLY_GRADE_SUBJECTS, ...DEPED_K10_SUBJECTS];
+
+module.exports = { DEPED_GRADE_SUBJECTS, DEPED_K10_SUBJECTS, EARLY_GRADE_SUBJECTS, ELEMENTARY_GRADES, JHS_GRADES };

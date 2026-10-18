@@ -87,6 +87,26 @@ test('score component headers abbreviate standard categories while retaining ful
   assert.match(sectionsSource, /categoryLabel\.dataset\.categoryName \|\| categoryLabel\.textContent\.trim\(\)/);
 });
 
+test('score component headers suppress duplicate exam-part labels and retain distinct labels', () => {
+  const helperSource = sectionsSource.match(/function getDistinctExamPartName\(componentName, examPartName\) \{[\s\S]*?\n  \}/)[0];
+  const context = vm.createContext({});
+  vm.runInContext(helperSource, context);
+  assert.equal(context.getDistinctExamPartName('Term Exam', 'TERM EXAM'), '');
+  assert.equal(context.getDistinctExamPartName('Summative Test', 'Summative Test 1'), 'Summative Test 1');
+  assert.match(sectionsSource, /c\.subjectId === c\.currentJournalSubjectId \? 'Journal' : 'Past journal'/);
+  assert.match(sectionsSource, /comp-head-name" title="' \+ window\.EDUGNAY_CONFIG\.escapeHtml\(c\.name\)/);
+});
+
+test('score component headers wrap full names and leave room for the actions button', () => {
+  assert.match(sectionsStyles, /\.comp-head-cell\s*\{[^}]*min-width:\s*148px/);
+  assert.match(sectionsStyles, /\.comp-head-title\s*\{[^}]*padding:\s*0 28px 0 0/);
+  assert.match(sectionsStyles, /\.comp-head-name\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(sectionsStyles, /\.comp-head-name\s*\{[^}]*text-transform:\s*none/);
+  assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*text-transform:\s*none/);
+  assert.match(sectionsStyles, /\.comp-head-journal\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;[^}]*text-transform:\s*none/);
+  assert.doesNotMatch(sectionsStyles, /\.comp-head-name\s*\{[^}]*text-overflow:\s*ellipsis/);
+});
+
 test('score component category labels keep their colors without pill styling', () => {
   assert.match(sectionsSource, /comp-head-type ' \+ \(typeClass\[c\.cat\] \|\| 'type-ww'\)/);
   assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*display:\s*block;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
@@ -98,8 +118,208 @@ test('score component category labels keep their colors without pill styling', (
 
 test('Publish Grades modal uses the wider shared desktop modal width', () => {
   assert.match(sectionsStyles, /\.modal\s*\{[^}]*max-width:\s*480px/);
-  assert.match(sectionsStyles, /#publishModal \.modal\s*\{[^}]*max-width:\s*600px/);
+  assert.match(sectionsStyles, /#publishModal \.modal\s*\{[^}]*max-width:\s*700px/);
   assert.match(sectionsStyles, /\.modal-backdrop\s*\{[^}]*padding:\s*20px/);
+  assert.match(sectionsStyles, /\.publish-preview-list\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(sectionsStyles, /\.publish-preview-list\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(sectionsStyles, /@media \(max-width:\s*700px\)\s*\{\s*\.publish-preview-list\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\)/);
+});
+
+test('Publish Grades method note uses an accessible info banner with separate method text', () => {
+  assert.match(sectionsSource, /id="publishGradeMethodNote" class="publish-preview-feedback publish-grade-method-note" role="note" hidden/);
+  assert.match(sectionsSource, /class="publish-method-icon" aria-hidden="true"><i data-lucide="info"><\/i><\/span>/);
+  assert.match(sectionsSource, /id="publishGradeMethodText"/);
+  assert.match(sectionsSource, /methodText\.textContent = methodDescription/);
+  assert.match(sectionsStyles, /\.publish-grade-method-note\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center/);
+  assert.match(sectionsStyles, /\.publish-method-icon\s*\{[^}]*background:\s*var\(--white\);[^}]*color:\s*var\(--blue-mid\)/);
+});
+
+test('published teacher grades use the configured passing threshold for their status color', () => {
+  const functionSource = sectionsSource.match(/function getGradeStatusTone\([\s\S]*?\n  \}/)[0];
+  const context = vm.createContext({});
+  vm.runInContext(functionSource, context);
+  assert.equal(context.getGradeStatusTone(86, 75, 70), 'grade-pass');
+  assert.equal(context.getGradeStatusTone(75, 75, 70), 'grade-pass');
+  assert.equal(context.getGradeStatusTone(72, 75, 70), 'grade-warn');
+  assert.equal(context.getGradeStatusTone(80, 83, 78), 'grade-warn');
+  assert.equal(context.getGradeStatusTone(83, 83, 78), 'grade-pass');
+  assert.match(sectionsSource, /gradeTone: grade \? getGradeStatusTone\(grade\.finalGrade\) : 'grade-unavailable'/);
+  assert.match(sectionsSource, /class="published-grade-value \$\{progress\.gradeTone\}"/);
+});
+
+test('score table labels calculated grades and keeps calculation details accessible', () => {
+  assert.match(sectionsSource, /gradeHeaderLabel\.textContent = weightedScoreOnly \? 'Weighted Grade' : 'Final Grade'/);
+  assert.doesNotMatch(sectionsSource, /final-grade-preview-note|Preview until published/);
+  assert.match(sectionsSource, /finalTh\.setAttribute\('aria-label', gradeHeaderLabel\.textContent\)/);
+  assert.match(sectionsSource, /finalCell\.textContent = String\(termGrade\)/);
+  assert.match(sectionsSource, /finalCell\.textContent = String\(rounded\)/);
+  assert.match(sectionsSource, /Weighted grade: \$\{initial\.toFixed\(2\)\}; converted to final grade/);
+  assert.match(sectionsSource, /finalCell\.setAttribute\('aria-label', `Final grade \$\{termGrade\}\. Weighted grade/);
+  assert.match(sectionsSource, /finalCell\.tabIndex = 0/);
+  const previewSource = sectionsSource.match(/function renderPublishGradePreview\([\s\S]*?\n  \}\n\n  async function flushPendingBackendScoreSaves/)[0];
+  assert.match(previewSource, /grade\.textContent = hasFinalGrade \? String\(finalGrade\) : 'Incomplete'/);
+  assert.match(previewSource, /grade\.setAttribute\('aria-label', student\.retainedPublishedGrade/);
+  assert.match(previewSource, /Below passing grade \(\$\{passingThreshold\}\)/);
+  assert.match(previewSource, /Weighted grade \$\{Number\(student\.initialGrade\)\.toFixed\(2\)\}/);
+  assert.doesNotMatch(previewSource, /Initial \$\{Number\(student\.initialGrade\)/);
+});
+
+test('Publish Grades preview presents final results and teacher-facing blocker guidance', () => {
+  const toneSource = sectionsSource.match(/function getGradeStatusTone\([\s\S]*?\n  \}/)[0];
+  const issueSource = sectionsSource.match(/function teacherFriendlyPreviewIssue\(issue\) \{[\s\S]*?\n  \}/)[0];
+  const renderSource = sectionsSource.match(/function renderPublishGradePreview\([\s\S]*?\n  \}\n\n  async function flushPendingBackendScoreSaves/)[0]
+    .replace(/\n\n  async function flushPendingBackendScoreSaves$/, '');
+  const makeElement = () => ({
+    children: [], attributes: {}, className: '', textContent: '', hidden: false, checked: false, disabled: false,
+    classList: { values: [], add(value) { this.values.push(value); }, toggle() {} },
+    setAttribute(name, value) { this.attributes[name] = value; },
+    append(...children) { this.children.push(...children); },
+    appendChild(child) { this.children.push(child); return child; },
+    replaceChildren(...children) { this.children = children; }
+  });
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, makeElement());
+    return elements.get(id);
+  };
+  element('academicPeriodSelect').selectedOptions = [{ textContent: 'Term 1' }];
+  const context = vm.createContext({
+    document: { getElementById: element, createElement: makeElement },
+    PASSING_GRADE_THRESHOLD: 75,
+    WARNING_GRADE_THRESHOLD: 70,
+    GRADE_ROUNDING: 'round',
+    CURRENT_GRADE_METHOD_LABEL: '',
+    publishPreview: null,
+    publishPreviewScope: null,
+    publishInProgress: false,
+    setPublishGradeFeedback() {},
+    updateTransferPublishButton() {}
+  });
+  vm.runInContext(`${toneSource}\n${issueSource}\n${renderSource}`, context);
+
+  const preview = {
+    readyToPublish: true,
+    gradingScale: 'deped_2026_transmutation',
+    gradingMethod: 'deped_2026_transmutation',
+    passingGradeThreshold: 75,
+    publishableCount: 5,
+    retainedPublishedCount: 0,
+    transferReviewStudentIds: [],
+    students: [
+      { studentName: 'Alyssa Mendoza', initialGrade: 83.1, finalGrade: 86, isPassing: true },
+      { studentName: 'Rafael Torres', initialGrade: 60, finalGrade: 72, isPassing: false },
+      { studentName: 'Alexandra Camille Bautista-Mendoza', initialGrade: 83.1, finalGrade: 86, isPassing: true },
+      { studentName: 'Bianca Ramos', initialGrade: 70, finalGrade: 75, isPassing: true },
+      { studentName: 'Andrea Reyes', initialGrade: 70, finalGrade: 75, isPassing: true }
+    ],
+    issues: [],
+    missingScoreCount: 0,
+    invalidScoreCount: 0
+  };
+  context.renderPublishGradePreview(preview, {});
+  assert.equal(element('publishGradeWarning').hidden, true);
+  assert.match(element('publishGradeSummary').textContent, /Final grades for 5 students are ready to publish for Term 1/);
+  assert.equal(element('publishGradeMethodNote').hidden, false);
+  assert.match(element('publishGradeMethodText').textContent, /Weighted grades are converted/);
+  const rows = element('publishPreviewStudentList').children;
+  assert.equal(rows.length, 5);
+  assert.equal(rows[2].children[0].textContent, 'Alexandra Camille Bautista-Mendoza');
+  assert.equal(rows[0].children[1].children[0].textContent, '86');
+  assert.equal(rows[0].children[1].children[0].attributes['aria-label'], 'Final grade 86.');
+  assert.match(rows[0].children[1].children.map(child => child.textContent).join(' '), /86 Weighted grade 83\.10/);
+  assert.equal(rows[1].children[1].children[0].textContent, '72');
+  assert.match(rows[1].children[1].children.map(child => child.textContent).join(' '), /72 Below passing grade \(75\)\. Weighted grade 60\.00/);
+  assert.equal(rows[1].children[1].children[0].classList.values.includes('grade-warn'), true);
+
+  context.renderPublishGradePreview({
+    ...preview,
+    gradingMethod: 'school_direct',
+    gradingScale: 'school_direct',
+    gradeRounding: 'roundup'
+  }, {});
+  assert.equal(element('publishGradeMethodNote').hidden, false);
+  assert.match(element('publishGradeMethodText').textContent, /Weighted grades are rounded up to the next whole number using the school’s grading rule/);
+
+  context.renderPublishGradePreview({
+    ...preview,
+    gradingMethod: 'unrecognized_method',
+    gradingScale: null
+  }, {});
+  assert.equal(element('publishGradeMethodNote').hidden, true);
+  assert.equal(element('publishGradeMethodText').textContent, '');
+
+  context.renderPublishGradePreview({ ...preview, readyToPublish: false, missingScoreCount: 1 }, {});
+  assert.equal(element('publishGradeWarning').hidden, false);
+  assert.match(element('publishGradeWarningText').textContent, /1 blank score field\. A score of 0 is valid/);
+
+  context.renderPublishGradePreview({
+    ...preview,
+    readyToPublish: true,
+    publishableCount: 0,
+    retainedPublishedCount: 1,
+    students: [
+      { studentName: 'Rafael Torres', finalGrade: 72, isPassing: false, retainedPublishedGrade: true, sourceSectionName: 'St. Mark', initialGrade: 60 },
+      { studentName: 'New student', finalGrade: null, initialGrade: null, isPassing: false }
+    ]
+  }, {});
+  const retainedRows = element('publishPreviewStudentList').children;
+  assert.equal(retainedRows[0].children[1].children[0].textContent, '72');
+  assert.match(retainedRows[0].children[1].children.map(child => child.textContent).join(' '), /72 Kept from St\. Mark\. Below passing grade \(75\)\./);
+  assert.doesNotMatch(retainedRows[0].children[1].children.map(child => child.textContent).join(' '), /Weighted grade/);
+  assert.equal(retainedRows[1].children[1].children[0].textContent, 'Incomplete');
+});
+
+test('Publish Grades shows actionable blockers and hides the warning when ready', () => {
+  assert.match(sectionsSource, /id="publishGradeWarning" role="alert" hidden/);
+  assert.match(sectionsSource, /A score of 0 is valid\./);
+  assert.match(sectionsSource, /warning\.hidden = Boolean\(preview\.readyToPublish\)/);
+  assert.match(sectionsSource, /Final grades for \$\{publishableCount\} .* are ready to publish/);
+  assert.match(sectionsSource, /function teacherFriendlyPreviewIssue\(issue\)/);
+  assert.match(sectionsSource, /incompatible_period_structure: 'The DepEd grading method needs three grading periods/);
+  assert.match(sectionsStyles, /\.publish-warn\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(sectionsStyles, /\.publish-preview-list\s*\{[^}]*max-height:\s*min\(48vh, 440px\)/);
+  assert.match(sectionsStyles, /\.publish-preview-list\s*\{[^}]*display:\s*grid/);
+  assert.match(sectionsStyles, /\.publish-preview-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1\.8fr\)/);
+  assert.match(sectionsStyles, /\.publish-preview-row > span\s*\{[^}]*font-weight:\s*600/);
+  assert.doesNotMatch(sectionsStyles, /\.final-grade-preview-note/);
+  assert.match(sectionsStyles, /@media \(max-width: 560px\)[\s\S]*?\.publish-preview-row \{ grid-template-columns: minmax\(0, 1fr\);/);
+});
+
+test('published section status starts hidden and follows actual period records', () => {
+  assert.match(sectionsSource, /data-publication-status="published" hidden/);
+  assert.match(sectionsSource, /publicationStatus\.hidden = grades\.length === 0/);
+  assert.match(sectionsStyles, /\.section-status-item\[hidden\][\s\S]*?display:\s*none;/);
+});
+
+test('published section status follows saved grades for the selected period', () => {
+  const functionSource = sectionsSource.match(/function updatePublishedGradesBanner\(academicPeriodId\) \{[\s\S]*?\n  \}/)[0];
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, { hidden: false, style: {}, textContent: '' });
+    return elements.get(id);
+  };
+  const publicationStatus = { hidden: true };
+  let grades = [];
+  const context = vm.createContext({
+    document: {
+      getElementById: element,
+      querySelector: () => publicationStatus
+    },
+    isBackendGradeMode: () => true,
+    getPublishedGradesForPeriod: () => grades,
+    getBackendTermId: () => 'term-1',
+    BACKEND_TERMS: [{ id: 'term-1', status: 'active' }]
+  });
+  vm.runInContext(functionSource, context);
+  context.updatePublishedGradesBanner('period-1');
+  assert.equal(publicationStatus.hidden, true);
+  assert.equal(element('publishedGradesBanner').style.display, 'none');
+
+  grades = [{ publishedAt: '2026-10-18T00:00:00.000Z' }];
+  context.updatePublishedGradesBanner('period-1');
+  assert.equal(publicationStatus.hidden, false);
+  assert.equal(element('publishedGradesBanner').style.display, 'flex');
+  assert.equal(element('republishGradesButton').style.display, 'inline-flex');
 });
 
 test('direct section access stops before subject APIs when no assignment exists', () => {

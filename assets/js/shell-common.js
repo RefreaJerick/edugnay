@@ -2,7 +2,11 @@
 
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
 const EDUGNAY_TEACHER_NAV_CACHE_PREFIX = 'edugnay_teacher_sidebar_v1:';
+const EDUGNAY_STUDENT_NAV_CACHE_PREFIX = 'edugnay_student_sidebar_v1:';
+const EDUGNAY_PROFILE_DISPLAY_KEY = 'edugnay_profile_display_v1';
+const EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY = 'edugnay_student_profile_display_v1';
 window.EDUGNAY_TEACHER_NAV_CACHE_PREFIX = EDUGNAY_TEACHER_NAV_CACHE_PREFIX;
+window.EDUGNAY_STUDENT_NAV_CACHE_PREFIX = EDUGNAY_STUDENT_NAV_CACHE_PREFIX;
 const EDUGNAY_API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 const TOAST_SOUND_STORAGE_KEY = 'edugnay_toast_sounds_enabled';
 
@@ -15,6 +19,127 @@ function clearTeacherSidebarCache() {
   } catch {
     // Continue authentication flows if session storage is unavailable.
   }
+}
+
+function clearStudentSidebarCache() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(EDUGNAY_STUDENT_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Continue authentication flows if session storage is unavailable.
+  }
+}
+
+const EDUGNAY_PROFILE_ROLE_LABELS = {
+  platform_admin: 'Platform Administrator',
+  school_admin: 'Administrator',
+  teacher: 'Faculty',
+  student: 'Student',
+  parent: 'Parent'
+};
+
+function getPortalRoleFromPath() {
+  const match = location.pathname.match(/\/views\/(student|teacher|admin|parent|platform)\//i);
+  if (!match) return null;
+  const folder = match[1].toLowerCase();
+  return folder === 'admin' ? 'school_admin' : folder === 'platform' ? 'platform_admin' : folder;
+}
+
+function clearProfileDisplaySnapshot() {
+  try {
+    sessionStorage.removeItem(EDUGNAY_PROFILE_DISPLAY_KEY);
+    sessionStorage.removeItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
+  } catch {}
+  cachedProfileDisplaySnapshot = null;
+}
+
+function isValidProfileDisplaySnapshot(snapshot) {
+  return snapshot?.version === 1
+    && Object.hasOwn(EDUGNAY_PROFILE_ROLE_LABELS, snapshot.role)
+    && Boolean(snapshot.userId)
+    && (snapshot.role === 'platform_admin' || Boolean(snapshot.schoolId))
+    && typeof snapshot.displayName === 'string' && Boolean(snapshot.displayName.trim())
+    && typeof snapshot.initials === 'string'
+    && (snapshot.avatarUrl === null || typeof snapshot.avatarUrl === 'string');
+}
+
+function readProfileDisplaySnapshot() {
+  try {
+    const stored = sessionStorage.getItem(EDUGNAY_PROFILE_DISPLAY_KEY)
+      || sessionStorage.getItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
+    const snapshot = JSON.parse(stored || 'null');
+    return isValidProfileDisplaySnapshot(snapshot) ? snapshot : null;
+  } catch { return null; }
+}
+
+function createProfileDisplaySnapshot(session) {
+  if (!session) return null;
+  const snapshot = {
+    version: 1,
+    role: session.role,
+    userId: String(session.apiUserId ?? session.userId ?? ''),
+    schoolId: String(session.apiSchoolId ?? session.schoolId ?? ''),
+    displayName: String(session.displayName || '').trim(),
+    initials: String(session.initials || '').trim(),
+    avatarUrl: session.avatarUrl || null
+  };
+  return isValidProfileDisplaySnapshot(snapshot) ? snapshot : null;
+}
+
+function profileDisplayIdentityMatches(first, second) {
+  return first?.role === second?.role
+    && String(first?.userId || '') === String(second?.userId || '')
+    && String(first?.schoolId || '') === String(second?.schoolId || '');
+}
+
+let cachedProfileDisplaySnapshot = readProfileDisplaySnapshot();
+const portalRoleForCurrentPage = getPortalRoleFromPath();
+if (portalRoleForCurrentPage) document.documentElement.classList.add('profile-chip-page');
+if (cachedProfileDisplaySnapshot && portalRoleForCurrentPage
+  && cachedProfileDisplaySnapshot.role === portalRoleForCurrentPage) {
+  document.documentElement.classList.add('profile-chip-restoring');
+} else if (cachedProfileDisplaySnapshot && portalRoleForCurrentPage
+  && cachedProfileDisplaySnapshot.role !== portalRoleForCurrentPage) {
+  clearProfileDisplaySnapshot();
+}
+
+function saveProfileDisplaySnapshot(session) {
+  const snapshot = createProfileDisplaySnapshot(session);
+  if (!snapshot) {
+    clearProfileDisplaySnapshot();
+    return;
+  }
+  if (cachedProfileDisplaySnapshot && !profileDisplayIdentityMatches(cachedProfileDisplaySnapshot, snapshot)) {
+    clearProfileDisplaySnapshot();
+  }
+  try {
+    sessionStorage.setItem(EDUGNAY_PROFILE_DISPLAY_KEY, JSON.stringify(snapshot));
+    sessionStorage.removeItem(EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY);
+  } catch {}
+  cachedProfileDisplaySnapshot = snapshot;
+}
+
+function restoreProfileChip() {
+  const snapshot = cachedProfileDisplaySnapshot;
+  if (snapshot && snapshot.role === getPortalRoleFromPath()) {
+    document.querySelectorAll('.tb-profile-name').forEach(element => { element.textContent = snapshot.displayName; });
+    document.querySelectorAll('.tb-profile-role').forEach(element => {
+      element.textContent = EDUGNAY_PROFILE_ROLE_LABELS[snapshot.role];
+    });
+    document.querySelectorAll('.tb-profile-trigger').forEach(element => {
+      element.setAttribute('aria-label', `Open profile menu for ${snapshot.displayName}`);
+    });
+    document.querySelectorAll('.tb-profile-trigger .tb-avatar').forEach(element => {
+      renderAvatar(element, {
+        id: snapshot.userId, name: snapshot.displayName, initials: snapshot.initials,
+        avatarUrl: snapshot.avatarUrl, role: snapshot.role
+      });
+    });
+    document.documentElement.classList.add('profile-chip-restored');
+  }
+  document.documentElement.classList.remove('profile-chip-restoring');
 }
 
 let appToastTimer;
@@ -1971,6 +2096,7 @@ let currentUserRequest = null;
 
 function saveFrontendSession(session) {
   window.EDUGNAY_SESSION = session;
+  saveProfileDisplaySnapshot(session);
 }
 
 function renderAvatar(element, person = {}, options = {}) {
@@ -2102,14 +2228,7 @@ async function getCurrentUser() {
 
 function applyCurrentUserToShell(session) {
   if (!session) return;
-  const roleLabels = {
-    platform_admin: 'Platform Administrator',
-    school_admin: 'Administrator',
-    teacher: 'Faculty',
-    student: 'Student',
-    parent: 'Parent'
-  };
-  const roleLabel = roleLabels[session.role] || '';
+  const roleLabel = EDUGNAY_PROFILE_ROLE_LABELS[session.role] || '';
   document.querySelectorAll('[data-current-user-name]').forEach(element => {
     element.textContent = session.displayName || '';
   });
@@ -3787,6 +3906,8 @@ async function confirmLogout() {
   try {
     sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY);
     clearTeacherSidebarCache();
+    clearStudentSidebarCache();
+    clearProfileDisplaySnapshot();
   } catch {
     // Continue to the sign-in page when session storage is unavailable.
   }
@@ -4152,7 +4273,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initToastSoundToggle();
   let apiSession = null;
   if (!isPublicPage() && EDUGNAY_API_BASE_URL) {
-    setCurrentUserShellStatus('Loading account...');
+    if (!document.documentElement.classList.contains('profile-chip-restored')) {
+      document.documentElement.classList.remove('profile-chip-restoring');
+      setCurrentUserShellStatus('Loading account...');
+    }
     try {
       apiSession = await getCurrentUser();
       applyCurrentUserToShell(apiSession);
@@ -4160,8 +4284,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error.status === 401) {
         try { sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY); } catch {}
         clearTeacherSidebarCache();
+        clearStudentSidebarCache();
+        clearProfileDisplaySnapshot();
       }
-      setCurrentUserShellStatus('Account unavailable', 'Connection issue');
+      if (error.status === 401 || !document.documentElement.classList.contains('profile-chip-restored')) {
+        setCurrentUserShellStatus('Account unavailable', 'Connection issue');
+      }
       showAppToast('Your account could not be loaded from the school database. Refresh when the connection is restored.', 'error');
     }
     if (apiSession?.apiSchoolId) {

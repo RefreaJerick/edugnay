@@ -6,17 +6,99 @@
 
 /* ── NOTIFICATIONS DATA ── */
 window.EDUGNAY_STUDENT = { currentUser: null };
-document.addEventListener('edugnay:current-user-updated', event => {
-  if (event.detail?.role === 'student') {
-    window.EDUGNAY_STUDENT.currentUser = event.detail;
-    applyStudentJournalAccess();
-    renderTopbarNotifs();
-  }
-});
-
 let NOTIFICATIONS = [];
 let BACKEND_COMMUNICATION = false;
 let studentJournalHistoryAvailable = null;
+let studentSidebarAccessReady = false;
+const STUDENT_NAV_CACHE_PREFIX = window.EDUGNAY_STUDENT_NAV_CACHE_PREFIX || 'edugnay_student_sidebar_v1:';
+const STUDENT_NAV_CACHE_POINTER = `${STUDENT_NAV_CACHE_PREFIX}current`;
+
+function getStudentSidebarIdentity(session) {
+  const schoolId = String(session?.apiSchoolId ?? session?.schoolId ?? '');
+  const studentId = String(session?.apiUserId ?? session?.userId ?? session?.id ?? '');
+  return schoolId && studentId ? { schoolId, studentId } : null;
+}
+
+function getStudentSidebarCacheKey(schoolId, studentId) {
+  return `${STUDENT_NAV_CACHE_PREFIX}${encodeURIComponent(String(schoolId))}:${encodeURIComponent(String(studentId))}`;
+}
+
+function readStudentSidebarSnapshot() {
+  try {
+    const pointer = JSON.parse(sessionStorage.getItem(STUDENT_NAV_CACHE_POINTER) || 'null');
+    if (!pointer?.schoolId || !pointer?.studentId) return null;
+    const snapshot = JSON.parse(sessionStorage.getItem(getStudentSidebarCacheKey(pointer.schoolId, pointer.studentId)) || 'null');
+    if (snapshot?.version !== 1
+      || snapshot.role !== 'student'
+      || String(snapshot.schoolId) !== String(pointer.schoolId)
+      || String(snapshot.studentId) !== String(pointer.studentId)
+      || typeof snapshot.access?.grades !== 'boolean'
+      || typeof snapshot.access?.journals !== 'boolean') return null;
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+function setStudentSidebarPrepaintState(snapshot) {
+  const classList = document.documentElement?.classList;
+  if (!classList) return;
+  classList.toggle('student-nav-hide-grades', !snapshot?.access?.grades);
+  classList.toggle('student-nav-hide-journals', !snapshot?.access?.journals);
+}
+
+function saveStudentSidebarSnapshot(snapshot) {
+  if (!snapshot?.schoolId || !snapshot?.studentId) return;
+  try {
+    sessionStorage.setItem(getStudentSidebarCacheKey(snapshot.schoolId, snapshot.studentId), JSON.stringify(snapshot));
+    sessionStorage.setItem(STUDENT_NAV_CACHE_POINTER, JSON.stringify({
+      schoolId: String(snapshot.schoolId),
+      studentId: String(snapshot.studentId)
+    }));
+  } catch {
+    // Sidebar rendering continues normally when session storage is unavailable.
+  }
+}
+
+function clearStudentSidebarSnapshot() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(STUDENT_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // A storage failure must not prevent sign-out or navigation.
+  }
+}
+
+function studentSidebarSnapshotMatchesIdentity(snapshot, session) {
+  const identity = getStudentSidebarIdentity(session);
+  return Boolean(identity && snapshot?.role === 'student'
+    && String(snapshot.schoolId) === identity.schoolId
+    && String(snapshot.studentId) === identity.studentId);
+}
+
+let cachedStudentSidebarSnapshot = readStudentSidebarSnapshot();
+setStudentSidebarPrepaintState(cachedStudentSidebarSnapshot);
+
+document.addEventListener('edugnay:current-user-updated', event => {
+  if (event.detail?.role !== 'student') {
+    clearStudentSidebarSnapshot();
+    cachedStudentSidebarSnapshot = null;
+    setStudentSidebarPrepaintState(null);
+    return;
+  }
+
+  window.EDUGNAY_STUDENT.currentUser = event.detail;
+  if (cachedStudentSidebarSnapshot && !studentSidebarSnapshotMatchesIdentity(cachedStudentSidebarSnapshot, event.detail)) {
+    clearStudentSidebarSnapshot();
+    cachedStudentSidebarSnapshot = null;
+    studentSidebarAccessReady = false;
+    setStudentSidebarPrepaintState(null);
+  }
+  if (studentSidebarAccessReady) applyStudentJournalAccess();
+  renderTopbarNotifs();
+});
 
 
 function studentCanAccess(feature) {
@@ -159,6 +241,15 @@ function applyStudentJournalAccess() {
   }
 }
 
+function applyStudentGradesAccess(enabled) {
+  document.querySelectorAll('a[href*="edugnay-student-grades.html"]').forEach(link => {
+    link.hidden = !enabled;
+    link.setAttribute('aria-hidden', String(!enabled));
+    if (!enabled) link.setAttribute('tabindex', '-1');
+    else link.removeAttribute('tabindex');
+  });
+}
+
 function applyStudentAttendanceAccess() {
   const enabled = window.EDUGNAY_CONFIG?.isAttendanceEnabled?.() !== false;
   document.querySelectorAll('a[href*="edugnay-student-attendance.html"]').forEach(link => {
@@ -184,6 +275,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backendEnabled = Boolean(window.EDUGNAY_API?.isBackendAvailable);
   if (backendEnabled) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-student-profile.html', 'student')) return;
+
+    let session = window.EDUGNAY_STUDENT.currentUser;
+    if (!session && window.EDUGNAY_API.getCurrentUser) {
+      try {
+        session = await window.EDUGNAY_API.getCurrentUser();
+        if (session?.role === 'student') window.EDUGNAY_STUDENT.currentUser = session;
+      } catch (error) {
+        if (error?.status === 401) {
+          clearStudentSidebarSnapshot();
+          cachedStudentSidebarSnapshot = null;
+          setStudentSidebarPrepaintState(null);
+          return;
+        }
+      }
+    }
+
+    if (session?.role === 'student' && cachedStudentSidebarSnapshot
+      && !studentSidebarSnapshotMatchesIdentity(cachedStudentSidebarSnapshot, session)) {
+      clearStudentSidebarSnapshot();
+      cachedStudentSidebarSnapshot = null;
+      setStudentSidebarPrepaintState(null);
+    } else if (session && session.role !== 'student') {
+      clearStudentSidebarSnapshot();
+      cachedStudentSidebarSnapshot = null;
+      setStudentSidebarPrepaintState(null);
+    }
+
     try {
       const portal = await window.EDUGNAY_API.getPortalFeatures();
       window.EDUGNAY_API.setPortalFeatures({ ...portal.features, journalSubjectId: portal.journalSubjectId,
@@ -192,11 +310,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const history = await window.EDUGNAY_API.getJournalHistory();
         studentJournalHistoryAvailable = history.entries.length > 0;
       } catch { studentJournalHistoryAvailable = false; }
-      } catch {
-        studentJournalHistoryAvailable = false;
-        window.EDUGNAY_API.setPortalFeatures(null);
-      }
+    } catch {
+      studentJournalHistoryAvailable = false;
+      window.EDUGNAY_API.setPortalFeatures(null);
+    }
   }
+
+  const session = window.EDUGNAY_STUDENT.currentUser;
+  const identity = getStudentSidebarIdentity(session);
+  const freshAccess = {
+    grades: window.EDUGNAY_CONFIG?.isGradesPageEnabled?.() !== false,
+    journals: studentCanAccess('journals')
+  };
+  const freshSnapshot = identity && session?.role === 'student' ? {
+    version: 1,
+    role: 'student',
+    ...identity,
+    access: freshAccess
+  } : null;
+  setStudentSidebarPrepaintState({ access: freshAccess });
+  applyStudentGradesAccess(freshAccess.grades);
+  if (freshSnapshot) {
+    saveStudentSidebarSnapshot(freshSnapshot);
+    cachedStudentSidebarSnapshot = freshSnapshot;
+  }
+  studentSidebarAccessReady = true;
   applyStudentJournalAccess();
   applyStudentAttendanceAccess();
   renderTopbarNotifs();

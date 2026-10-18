@@ -179,6 +179,7 @@
       </div>
     </div>
   </header>
+  <script>restoreProfileChip();</script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -364,7 +365,8 @@
     document.querySelectorAll('.profile-email-value').forEach(element => { element.textContent = user.schoolEmail || ''; });
     document.getElementById('adminEmployeeNoInput').value = user.profile?.employeeNumber || '';
     document.getElementById('contactNumberInput').value = user.profile?.contactNumber || '';
-    document.querySelectorAll('.profile-header-name, .tb-profile-name').forEach(element => { element.textContent = displayName; });
+    document.querySelectorAll('.profile-header-name').forEach(element => { element.textContent = displayName; });
+    if (user.id) document.querySelectorAll('.tb-profile-name').forEach(element => { element.textContent = displayName; });
   }
 
   renderAdminProfile({ displayName: 'Loading profile...', schoolEmail: '', profile: {} });

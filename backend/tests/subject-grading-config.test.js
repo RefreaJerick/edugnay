@@ -11,8 +11,12 @@ const SUBJECTS = [
   { id: 21, subjectCode: 'english-elementary', name: 'English', gradeCodes: 'grade-4' },
   { id: 22, subjectCode: 'local-elective', name: 'Local elective', gradeCodes: 'grade-5' }
 ];
+const EARLY_SUBJECTS = [
+  { id: 23, subjectCode: 'english-grade-2', name: 'English', gradeCodes: 'grade-2' },
+  { id: 24, subjectCode: 'science-grade-3', name: 'Science', gradeCodes: 'grade-3' }
+];
 
-function createDatabase({ published = false, linkedComponentIds = [], linkedExamPartIds = [] } = {}) {
+function createDatabase({ published = false, linkedComponentIds = [], linkedExamPartIds = [], earlyGrades = false, academicYearLabel = '2026-2027', teacherGradeCode = 'grade-4' } = {}) {
   const profiles = new Map();
   const components = new Map();
   const examParts = new Map();
@@ -20,6 +24,7 @@ function createDatabase({ published = false, linkedComponentIds = [], linkedExam
   const statements = [];
   const linkedComponents = new Set(linkedComponentIds);
   const linkedParts = new Set(linkedExamPartIds);
+  const subjectRows = earlyGrades ? [...SUBJECTS, ...EARLY_SUBJECTS] : SUBJECTS;
   const counters = { nextProfileId: 100, nextComponentId: 200, nextPartId: 300, rollbacks: 0 };
   const key = (schoolId, yearId, levelId, subjectId) => `${schoolId}:${yearId}:${levelId}:${subjectId}`;
 
@@ -29,9 +34,15 @@ function createDatabase({ published = false, linkedComponentIds = [], linkedExam
     assert.equal(params.length, placeholderCount, `SQL bind count mismatch: ${sql}`);
     statements.push({ sql, params });
 
+    if (sql.includes('SELECT sections.id AS sectionId') && sql.includes('FROM section_teachers')) {
+      return [[{
+        sectionId: 8, schoolId: SCHOOL_ID, academicYearId: 10, schoolLevelId: LEVEL_ID,
+        gradeCode: teacherGradeCode, academicYearLabel, levelCode: 'elementary', gradingPeriodType: 'trimestral'
+      }]];
+    }
     if (sql.includes('SELECT academic_years.id AS academicYearId')) {
       return [[{
-        academicYearId: Number(params[1]), academicYearLabel: '2026-2027', startDate: '2026-06-01',
+        academicYearId: Number(params[1]), academicYearLabel, startDate: '2026-06-01',
         schoolLevelId: Number(params[0]), levelCode: 'elementary', gradingPeriodType: 'trimestral', academicYearStatus: 'active'
       }]];
     }
@@ -40,7 +51,10 @@ function createDatabase({ published = false, linkedComponentIds = [], linkedExam
       const rule = finalGradeRules.get(`${params[0]}:${params[1]}:${params[2]}`);
       return [rule ? [{ ...rule }] : []];
     }
-    if (sql.includes('GROUP_CONCAT(DISTINCT enabled_grades.grade_code')) return [SUBJECTS];
+    if (sql.includes('GROUP_CONCAT(DISTINCT enabled_grades.grade_code')) {
+      const allowedGradeCodes = new Set(params.slice(0, -2));
+      return [subjectRows.filter(subject => String(subject.gradeCodes || '').split(',').some(code => allowedGradeCodes.has(code)))];
+    }
     if (sql.includes('SELECT COUNT(*) AS gradeCount') && sql.includes('FROM published_final_grades')) {
       return [[{ gradeCount: published ? 1 : 0 }]];
     }
@@ -59,7 +73,10 @@ function createDatabase({ published = false, linkedComponentIds = [], linkedExam
     if (sql.includes('subjectName') && sql.includes('subjectSchoolLevelId') && sql.includes('FROM subjects')) {
       return [[{ id: Number(params[0]), subjectName: 'English', subjectSchoolLevelId: LEVEL_ID }]];
     }
-    if (sql.includes('FROM subject_grade_scopes AS scopes')) return [[{ id: 90 }]];
+    if (sql.includes('FROM subject_grade_scopes AS scopes')) {
+      const gradeCode = { 21: 'grade-4', 22: 'grade-5', 23: 'grade-2', 24: 'grade-3' }[Number(params[1])];
+      return [[{ id: 90, gradeCode }]];
+    }
     if (sql.includes('SELECT id, code, name, component_type AS componentType, weight, sort_order AS sortOrder')) {
       return [[...(components.get(Number(params[1])) || []).map(item => ({ ...item }))]];
     }
@@ -227,6 +244,113 @@ test('DepEd preview and apply create mapped defaults, flag unmatched subjects, a
   });
 });
 
+test('Grade 2–3 profiles use two summative tests and remain independent from Grades 4–6', async () => {
+  const database = createDatabase({ earlyGrades: true });
+  await withController(database, async controller => {
+    const preview = await invoke(controller.previewDepedDefaults, {
+      user: admin, query: { academicYearId: '10', schoolLevelId: String(LEVEL_ID) }
+    });
+    const grade2 = preview.body.subjects.find(subject => subject.id === 23);
+    assert.deepEqual(grade2.defaultComponents.map(component => component.weight), [20, 50, 30]);
+    assert.deepEqual(grade2.defaultComponents[2].examParts.map(part => part.weight), [50, 50]);
+    assert.deepEqual(preview.body.subjects.find(subject => subject.id === 21).defaultComponents[2].examParts.map(part => part.weight), [30, 30, 40]);
+
+    const applied = await invoke(controller.applyDepedDefaults, {
+      user: admin, body: { academicYearId: 10, schoolLevelId: LEVEL_ID }
+    });
+    assert.equal(applied.error, undefined);
+    const grade2Profile = database.profiles.get(database.key(SCHOOL_ID, 10, LEVEL_ID, 23));
+    const grade3Profile = database.profiles.get(database.key(SCHOOL_ID, 10, LEVEL_ID, 24));
+    const grade4Profile = database.profiles.get(database.key(SCHOOL_ID, 10, LEVEL_ID, 21));
+    assert.notEqual(grade2Profile.id, grade3Profile.id);
+    assert.deepEqual(database.examParts.get(database.components.get(grade2Profile.id)[2].id).map(part => part.weight), [50, 50]);
+
+    const grade2Components = database.components.get(grade2Profile.id);
+    const grade2ExamParts = database.examParts.get(grade2Components[2].id);
+    const withTermExam = [
+      ...grade2Components.slice(0, 2),
+      { ...grade2Components[2], examParts: [
+        { ...grade2ExamParts[0], weight: 30 },
+        { ...grade2ExamParts[1], weight: 30 },
+        { code: 'term-exam', name: 'Term Exam', weight: 40 }
+      ] }
+    ];
+    const configured = await invoke(controller.saveSubjectGradingConfig, {
+      user: admin,
+      body: { academicYearId: 10, schoolLevelId: LEVEL_ID, subjectId: 23, components: withTermExam }
+    });
+    assert.equal(configured.error, undefined);
+    assert.deepEqual(configured.body.profile.components[2].examParts.map(part => part.weight), [30, 30, 40]);
+    assert.deepEqual(database.examParts.get(database.components.get(grade3Profile.id)[2].id).map(part => part.weight), [50, 50]);
+    assert.deepEqual(database.examParts.get(database.components.get(grade4Profile.id)[2].id).map(part => part.weight), [30, 30, 40]);
+  });
+});
+
+test('Grade 2–3 profiles are not offered for SY 2027–28', async () => {
+  const database = createDatabase({ earlyGrades: true, academicYearLabel: '2027-2028' });
+  await withController(database, async controller => {
+    const preview = await invoke(controller.previewDepedDefaults, {
+      user: admin, query: { academicYearId: '10', schoolLevelId: String(LEVEL_ID) }
+    });
+    assert.equal(preview.error, undefined);
+    assert.equal(preview.body.subjects.some(subject => [23, 24].includes(subject.id)), false);
+
+    const save = await invoke(controller.saveSubjectGradingConfig, {
+      user: admin,
+      body: {
+        academicYearId: 10, schoolLevelId: LEVEL_ID, subjectId: 23,
+        components: [
+          { code: 'written', name: 'Written', componentType: 'written', weight: 20 },
+          { code: 'performance', name: 'Performance', componentType: 'performance', weight: 50 },
+          { code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30,
+            examParts: [
+              { code: 'test-1', name: 'Test 1', weight: 50 },
+              { code: 'test-2', name: 'Test 2', weight: 50 }
+            ] }
+        ]
+      }
+    });
+    assert.equal(save.error?.status, 404);
+    assert.equal(database.profiles.has(database.key(SCHOOL_ID, 10, LEVEL_ID, 23)), false);
+  });
+});
+
+test('teacher score setup applies the saved Elementary rule to Grade 2 in SY 2026–27', async () => {
+  const database = createDatabase({ earlyGrades: true, teacherGradeCode: 'grade-2' });
+  database.finalGradeRules.set(`${SCHOOL_ID}:10:${LEVEL_ID}`, {
+    gradingMode: 'school_specific', passingGradeThreshold: 83, gradeRounding: 'truncate'
+  });
+  await withController(database, async controller => {
+    await invoke(controller.applyDepedDefaults, {
+      user: admin, body: { academicYearId: 10, schoolLevelId: LEVEL_ID }
+    });
+    const active = await invoke(controller.getTeacherSubjectGradingConfig, {
+      user: { id: 12, schoolId: SCHOOL_ID, role: 'teacher' },
+      query: { sectionId: '8', subjectId: '23' }
+    });
+    assert.equal(active.error, undefined);
+    assert.equal(active.body.applicable, true);
+    assert.equal(active.body.configured, true);
+    assert.equal(active.body.gradingMode, 'school_specific');
+    assert.equal(active.body.gradingMethod, 'school_direct');
+    assert.equal(active.body.passingGradeThreshold, 83);
+    assert.equal(active.body.gradeRounding, 'truncate');
+    assert.deepEqual(active.body.components.map(component => component.weight), [20, 50, 30]);
+    assert.deepEqual(active.body.components[2].examParts.map(part => part.weight), [50, 50]);
+  });
+
+  const futureDatabase = createDatabase({ earlyGrades: true, academicYearLabel: '2027-2028', teacherGradeCode: 'grade-2' });
+  await withController(futureDatabase, async controller => {
+    const future = await invoke(controller.getTeacherSubjectGradingConfig, {
+      user: { id: 12, schoolId: SCHOOL_ID, role: 'teacher' },
+      query: { sectionId: '8', subjectId: '23' }
+    });
+    assert.equal(future.error, undefined);
+    assert.equal(future.body.applicable, false);
+    assert.equal(future.body.components.length, 0);
+  });
+});
+
 test('published subject configurations are locked against edits', async () => {
   const database = createDatabase({ published: true });
   await withController(database, async controller => {
@@ -242,6 +366,30 @@ test('published subject configurations are locked against edits', async () => {
               { code: 'summative-test-1', name: 'Summative Test 1', weight: 30 },
               { code: 'summative-test-2', name: 'Summative Test 2', weight: 30 },
               { code: 'term-exam', name: 'Term Exam', weight: 40 }
+            ] }
+        ]
+      }
+    });
+    assert.equal(result.error?.status, 409);
+    assert.equal(database.counters.rollbacks, 1);
+    assert.equal(database.statements.some(entry => entry.sql.startsWith('INSERT INTO subject_grading_components')), false);
+  });
+});
+
+test('published Grade 2 profiles are locked against configuration changes', async () => {
+  const database = createDatabase({ earlyGrades: true, published: true });
+  await withController(database, async controller => {
+    const result = await invoke(controller.saveSubjectGradingConfig, {
+      user: admin,
+      body: {
+        academicYearId: 10, schoolLevelId: LEVEL_ID, subjectId: 23,
+        components: [
+          { code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: 20 },
+          { code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: 50 },
+          { code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30,
+            examParts: [
+              { code: 'summative-test-1', name: 'Summative Test 1', weight: 50 },
+              { code: 'summative-test-2', name: 'Summative Test 2', weight: 50 }
             ] }
         ]
       }
@@ -277,7 +425,7 @@ test('admins can save school-specific final-grade rules for the active year and 
   });
 });
 
-test('published Grades 4-10 results lock final-grade rules for their school year and level', async () => {
+test('published numerical Elementary and JHS grades lock final-grade rules for their school year and level', async () => {
   const database = createDatabase({ published: true });
   await withController(database, async controller => {
     const result = await invoke(controller.saveK10FinalGradeRules, {
@@ -291,6 +439,11 @@ test('published Grades 4-10 results lock final-grade rules for their school year
     assert.equal(database.counters.rollbacks, 1);
     assert.equal(database.finalGradeRules.size, 0);
     assert.equal(database.statements.some(entry => entry.sql.startsWith('INSERT INTO school_year_final_grade_rules')), false);
+    const lockQuery = database.statements.find(entry => entry.sql.includes('FROM published_final_grades AS grades'));
+    assert.deepEqual(lockQuery.params.slice(3), [
+      'grade-2', 'grade-3', 'grade-4', 'grade-5', 'grade-6',
+      'grade-7', 'grade-8', 'grade-9', 'grade-10'
+    ]);
   });
 });
 

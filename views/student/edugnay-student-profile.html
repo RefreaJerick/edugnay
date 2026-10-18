@@ -158,6 +158,7 @@
       </div>
     </div>
   </header>
+  <script>restoreProfileChip();</script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -555,7 +556,9 @@ function renderStudentProfile() {
   if (!student) {
     const profileMessage = studentProfileLoading ? 'Loading profile...' : 'Profile unavailable';
     setStudentText('student-profile-name', profileMessage);
-    setStudentText('student-topbar-name', profileMessage);
+    if (!document.documentElement.classList.contains('profile-chip-restored')) {
+      setStudentText('student-topbar-name', profileMessage);
+    }
     setStudentText('student-profile-lrn', 'Not available');
     renderStudentClassContext(null);
     setStudentText('student-profile-school-email', 'Not available');

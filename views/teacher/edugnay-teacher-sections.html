@@ -360,22 +360,20 @@
       </button>
     </div>
     <div class="modal-body">
-      <div class="publish-warn">
+      <div class="publish-warn" id="publishGradeWarning" role="alert" hidden>
         <div class="publish-warn-icon">
           <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
         </div>
         <div>
-          <div class="publish-warn-title">All grading items need a recorded score</div>
-          <div class="publish-warn-text">
-            The server calculates final grades using the school's grading rules. A score of 0 is valid; missing scores must be entered before publishing. Publishing saves the grades for <strong id="publishSectionSubject">the selected section and subject</strong>.
-          </div>
+          <div class="publish-warn-title" id="publishGradeWarningTitle">A few items need your attention</div>
+          <div class="publish-warn-text" id="publishGradeWarningText">Review the items below before publishing.</div>
         </div>
       </div>
-      <div style="font-size:13px;color:var(--gray-600);line-height:1.7;">
-        <strong style="color:var(--gray-800);" id="publishStudentCount">0 students</strong> will have their <span id="publishPeriodName">current grading period</span> final grades published.<br/>
-        Review the server-calculated results below. You can publish again after correcting scores.
+      <div id="publishGradeSummary" style="font-size:13px;color:var(--gray-700);line-height:1.7;">Review the final grades below before publishing.</div>
+      <div id="publishGradeMethodNote" class="publish-preview-feedback publish-grade-method-note" role="note" hidden>
+        <span class="publish-method-icon" aria-hidden="true"><i data-lucide="info"></i></span>
+        <span id="publishGradeMethodText">The weighted initial grade is converted to the reported term grade using the DepEd transmutation table.</span>
       </div>
-      <div id="publishGradeMethodNote" class="publish-preview-feedback" hidden>The weighted initial grade is converted to the reported term grade using the DepEd transmutation table.</div>
       <div id="publishGradeFeedback" class="publish-preview-feedback" role="status" aria-live="polite" hidden></div>
       <div id="publishPreviewStudentList" class="publish-preview-list" aria-label="Calculated final grades" hidden></div>
       <label id="transferPublishReview" class="transfer-publish-review" hidden>
@@ -748,6 +746,7 @@
       </div>
     </div>
   </header>
+  <script>restoreProfileChip();</script>
 
   <!-- ══════ MAIN ══════ -->
   <main class="main">
@@ -787,7 +786,7 @@
         </div>
       </div>
       <div class="section-header-status" aria-label="Grade recording status">
-        <div class="section-status-item is-published" data-publication-status="published">
+        <div class="section-status-item is-published" data-publication-status="published" hidden>
           <i data-lucide="check-circle"></i>
           <span id="sectionPublicationStatus">Grades published</span>
         </div>
@@ -1980,8 +1979,10 @@
 
   function updatePublishedGradesBanner(academicPeriodId) {
     const banner = document.getElementById('publishedGradesBanner');
+    const publicationStatus = document.querySelector('[data-publication-status="published"]');
     if (!isBackendGradeMode()) {
       banner.style.display = 'none';
+      if (publicationStatus) publicationStatus.hidden = true;
       return;
     }
     const status = document.getElementById('publishedPeriodStatus');
@@ -1989,6 +1990,7 @@
     const grades = getPublishedGradesForPeriod(academicPeriodId);
     const term = BACKEND_TERMS.find(item => String(item.id) === String(getBackendTermId(academicPeriodId)));
 
+    if (publicationStatus) publicationStatus.hidden = grades.length === 0;
     banner.style.display = grades.length ? 'flex' : 'none';
     button.style.display = grades.length && term?.status === 'active' ? 'inline-flex' : 'none';
     if (!grades.length) return;
@@ -2005,6 +2007,13 @@
 
   function getBackendCategory(categoryCode) {
     return BACKEND_CATEGORIES.find(category => String(category.code).toLowerCase() === String(categoryCode || '').toLowerCase()) || null;
+  }
+
+  function getGradeStatusTone(grade, passingThreshold = PASSING_GRADE_THRESHOLD, warningThreshold = WARNING_GRADE_THRESHOLD) {
+    const numericGrade = Number(grade);
+    if (!Number.isFinite(numericGrade)) return 'grade-unavailable';
+    if (numericGrade >= passingThreshold) return 'grade-pass';
+    return numericGrade >= warningThreshold ? 'grade-warn' : 'grade-fail';
   }
 
   function getBackendGradingItemForAssignment(assignment) {
@@ -2257,10 +2266,9 @@
         attendanceRate: attendanceRecords.length ? `${Math.round(attended / attendanceRecords.length * 100)}%` : '—',
         attendanceTone: attendanceRateValue == null ? 'gray' : attendanceRateValue >= 90 ? 'green' : attendanceRateValue >= 75 ? 'orange' : 'red',
         grade: grade ? Number(grade.finalGrade).toFixed(0) : '—',
-        gradeTone: grade ? 'green' : 'gray'
+        gradeTone: grade ? getGradeStatusTone(grade.finalGrade) : 'grade-unavailable'
       }];
     }));
-    const gradeColor = { green: '#16a34a', gray: 'var(--gray-400)' };
 
     tbody.innerHTML = students.length ? students.map((student, index) => {
       const progress = progressByStudent[String(student.id)];
@@ -2270,7 +2278,7 @@
           <td><div class="student-cell">${window.EDUGNAY_AVATAR.html(student, { className: 'student-av', role: 'student' })}<div><div class="student-name">${BACKEND_SECTION_MODE ? `<button class="student-name-button" type="button" data-student-details="${window.EDUGNAY_CONFIG.escapeHtml(student.id)}" aria-haspopup="dialog" aria-label="View details for ${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}">${window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</button>` : window.EDUGNAY_CONFIG.escapeHtml(student.displayName)}</div></div></div></td>
           <td style="font-size:12px;color:var(--gray-400);">${window.EDUGNAY_CONFIG.escapeHtml(student.schoolEmail || '')}</td>
           <td><span class="badge badge-${progress.attendanceTone}">${progress.attendanceRate}</span></td>
-          <td><span style="font-family:'Plus Jakarta Sans',serif;font-size:16px;font-weight:800;color:${gradeColor[progress.gradeTone] || 'var(--gray-400)'};">${progress.grade}</span></td>
+          <td><span class="published-grade-value ${progress.gradeTone}">${progress.grade}</span></td>
         </tr>`;
     }).join('') : `<tr class="panel-empty-row"><td colspan="5">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'users', title: 'No students enrolled', text: 'Students assigned to this section will appear here.' })}</td></tr>`;
 
@@ -2535,7 +2543,6 @@
     renderScoreTable(academicPeriodId);
     renderTeacherStudentList();
     document.getElementById('scorePanelPeriodName').textContent = period?.name || 'Grading period';
-    document.getElementById('publishPeriodName').textContent = period?.name || 'current grading period';
     document.getElementById('publishedPeriodName').textContent = period?.name || 'Grading period';
     updatePublishedGradesBanner(academicPeriodId);
 
@@ -2779,11 +2786,9 @@
     document.getElementById('sectionGradeBadge').textContent = gradeNumber ? `G${gradeNumber}` : 'SEC';
     updateSectionSubjectControl();
     document.getElementById('sectionStudentCount').textContent = studentCount;
-    document.getElementById('publishStudentCount').textContent = `${studentCount} ${studentCount === 1 ? 'student' : 'students'}`;
     document.getElementById('sectionPeriodName').textContent = academicPeriodName(academicPeriodId);
     document.querySelector('[data-school-year]').textContent = CURRENT_SECTION_RECORD?.academicYear || 'Academic year unavailable';
     document.getElementById('scoreSectionName').textContent = CURRENT_SECTION;
-    document.getElementById('publishSectionSubject').textContent = `${CURRENT_SECTION} · ${CURRENT_SUBJECT}`;
     document.getElementById('sectionAdviserMeta')?.toggleAttribute('hidden', !CURRENT_TEACHER_ASSIGNMENT.isAdviser);
     document.getElementById('sectionEncodingStatus').textContent = encodedCount
       ? `${encodedCount} of ${studentCount} encoded`
@@ -2929,6 +2934,12 @@
     return abbreviations[fullName.toLowerCase()] || fullName;
   }
 
+  function getDistinctExamPartName(componentName, examPartName) {
+    const partName = String(examPartName || '').trim();
+    const normalize = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    return partName && normalize(partName) !== normalize(componentName) ? partName : '';
+  }
+
   function renderScoreTable(academicPeriodId) {
     closeScoreComponentMenu();
     const theadRow = document.getElementById('scoreTheadRow');
@@ -2988,6 +2999,7 @@
 
     components.forEach(c => {
       const categoryName = String(c.categoryName || c.cat || '').trim();
+      const examPartName = getDistinctExamPartName(c.name, c.examPartName);
       const th = document.createElement('th');
       th.className = 'comp-head-cell center';
       th.dataset.cat = c.cat;
@@ -2999,7 +3011,7 @@
           '</div>' +
           '<div class="comp-head-max">/ ' + c.max + '</div>' +
           '<div class="comp-head-type ' + (typeClass[c.cat] || 'type-ww') + '" title="' + window.EDUGNAY_CONFIG.escapeHtml(categoryName) + '" data-category-name="' + window.EDUGNAY_CONFIG.escapeHtml(categoryName) + '">' + window.EDUGNAY_CONFIG.escapeHtml(gradingAverageHeaderLabel(categoryName)) + '</div>' +
-          (c.examPartName ? '<div class="comp-head-journal">' + window.EDUGNAY_CONFIG.escapeHtml(c.examPartName) + '</div>' : '') +
+          (examPartName ? '<div class="comp-head-journal">' + window.EDUGNAY_CONFIG.escapeHtml(examPartName) + '</div>' : '') +
           (c.journalPromptId ? '<div class="comp-head-journal">' + (c.subjectId === c.currentJournalSubjectId ? 'Journal' : 'Past journal') + '</div>' : '') +
         '</div>';
       theadRow.appendChild(th);
@@ -3019,9 +3031,15 @@
 
     const finalTh = document.createElement('th');
     finalTh.className = 'center';
-    finalTh.style.cssText = 'min-width:100px;background:var(--navy);color:var(--gold);';
-    finalTh.textContent = isBackendGradeMode() ? 'Estimate' : 'Final Grade';
-    if (isBackendGradeMode()) finalTh.title = 'Live estimate from entered scores. The server preview determines the grade that can be published.';
+    finalTh.style.cssText = 'min-width:148px;background:var(--navy);color:var(--gold);';
+    const weightedScoreOnly = CURRENT_GRADE_SCALE === 'legacy_shs_transmutation';
+    const gradeHeaderLabel = document.createElement('span');
+    gradeHeaderLabel.textContent = weightedScoreOnly ? 'Weighted Grade' : 'Final Grade';
+    finalTh.appendChild(gradeHeaderLabel);
+    finalTh.title = weightedScoreOnly
+      ? 'Weighted grade calculated from current scores.'
+      : 'Calculated final grade based on current scores.';
+    finalTh.setAttribute('aria-label', gradeHeaderLabel.textContent);
     theadRow.appendChild(finalTh);
 
     tbody.innerHTML = '';
@@ -3352,9 +3370,12 @@
         && Math.abs(totalWeight - 1) < 0.0001;
 
       finalCell.className = 'center computed-cell computed-final';
+      finalCell.removeAttribute('aria-label');
+      finalCell.removeAttribute('title');
+      finalCell.removeAttribute('tabindex');
       if (!canEstimate) {
         finalCell.textContent = '—';
-        finalCell.title = 'Enter valid scores for all grading items to see the estimate.';
+        finalCell.title = 'Enter valid scores for all grading items to see the calculated final grade preview.';
       } else {
         const final = Object.entries(averages).reduce(
           (total, [category, average]) => total + (average * (WEIGHTS[category] || 0)),
@@ -3362,15 +3383,18 @@
         );
         if (CURRENT_GRADE_SCALE === 'legacy_shs_transmutation') {
           const initial = Math.round((final + Number.EPSILON) * 100) / 100;
-          finalCell.textContent = `Initial ${initial.toFixed(2)}`;
-          finalCell.title = 'Weighted initial grade estimate. Open Publish Preview to see its transmuted term grade.';
+          finalCell.textContent = `Weighted grade ${initial.toFixed(2)}`;
+          finalCell.title = 'Weighted grade calculated from current scores.';
         } else if (CURRENT_GRADE_SCALE === 'deped_2026_transmutation') {
           const initial = Math.round((final + Number.EPSILON) * 100) / 100;
           const termGrade = transmuteDepedK10InitialGrade(initial);
-          finalCell.textContent = `Initial ${initial.toFixed(2)} → ${termGrade}`;
-          finalCell.title = `${CURRENT_GRADE_METHOD_LABEL}: weighted initial grade converted to the reported term grade.`;
-          finalCell.classList.add(termGrade >= PASSING_GRADE_THRESHOLD ? 'grade-pass' : termGrade >= WARNING_GRADE_THRESHOLD ? 'grade-warn' : 'grade-fail');
+          finalCell.textContent = String(termGrade);
+          finalCell.title = `Weighted grade: ${initial.toFixed(2)}; converted to final grade ${termGrade} using the DepEd method.`;
+          finalCell.setAttribute('aria-label', `Final grade ${termGrade}. Weighted grade ${initial.toFixed(2)}, converted using the DepEd method.`);
+          finalCell.tabIndex = 0;
+          finalCell.classList.add(getGradeStatusTone(termGrade));
         } else {
+          const isDepedZeroBased = CURRENT_GRADE_SCALE === 'deped_zero_based';
           const gradeToRound = usesSubjectGradingConfig
             ? Math.round((final + Number.EPSILON) * 100) / 100
             : final;
@@ -3380,17 +3404,19 @@
               ? Math.trunc(gradeToRound)
               : Math.round(gradeToRound);
 
-          finalCell.textContent = rounded;
-          finalCell.title = usesSubjectGradingConfig
-            ? `${CURRENT_GRADE_METHOD_LABEL}: weighted initial grade rounded to a whole number.`
-            : 'Live estimate using the school grading weights and rounding rule.';
-          finalCell.classList.add(
-            rounded >= PASSING_GRADE_THRESHOLD
-              ? 'grade-pass'
-              : rounded >= WARNING_GRADE_THRESHOLD
-                ? 'grade-warn'
-                : 'grade-fail'
-          );
+          finalCell.textContent = String(rounded);
+          finalCell.title = isDepedZeroBased
+            ? `Weighted grade: ${gradeToRound.toFixed(2)}; rounded to final grade ${rounded} using the DepEd method for this school year.`
+            : usesSubjectGradingConfig
+              ? `Weighted grade: ${final.toFixed(2)}; rounded to final grade ${rounded} using the school rule.`
+              : `Calculated final grade ${rounded}, using the school grading weights and rounding rule.`;
+          finalCell.setAttribute('aria-label', isDepedZeroBased
+            ? `Final grade ${rounded}. Weighted grade ${gradeToRound.toFixed(2)}, rounded using the DepEd method for this school year.`
+            : usesSubjectGradingConfig
+              ? `Final grade ${rounded}. Weighted grade ${final.toFixed(2)}, rounded using the school rule.`
+              : `Calculated final grade ${rounded}, using the school grading weights and rounding rule.`);
+          finalCell.tabIndex = 0;
+          finalCell.classList.add(getGradeStatusTone(rounded));
         }
       }
     }
@@ -4196,6 +4222,27 @@
     feedback.classList.toggle('error', Boolean(isError));
   }
 
+  function teacherFriendlyPreviewIssue(issue) {
+    const guidance = {
+      incompatible_period_structure: 'The DepEd grading method needs three grading periods for this school year. Ask your school admin to check the academic terms.',
+      unconfigured_subject_grading: 'This subject’s grading setup is incomplete. Ask your school admin to configure it before publishing.',
+      invalid_category_weights: 'The grading weights need to total 100%. Ask your school admin to review them.',
+      invalid_rounding_rule: 'The grade rounding setting needs review. Ask your school admin to check it.',
+      invalid_passing_threshold: 'The passing grade setting needs review. Ask your school admin to check it.',
+      no_grading_categories: 'No grading components are set up for this subject. Ask your school admin to configure them.',
+      no_students: 'There are no actively enrolled students in this section.',
+      duplicate_published_grade: 'A student has more than one published grade for this subject and period. Ask your school admin to review the records.',
+      no_grading_items: 'Add at least one score component for this subject and grading period.',
+      invalid_item_category: 'A score component needs to be assigned to the correct grading category. Review the item or ask your school admin for help.',
+      invalid_item_component: 'A score component does not match this subject’s grading setup. Ask your school admin to review the item.',
+      invalid_item_exam_part: 'A score component needs to use an exam part from its grading setup. Review the item or ask your school admin for help.',
+      unclassified_shs_section: 'Ask your school admin to confirm this section’s strand before publishing.',
+      unclassified_shs_subject: 'Ask your school admin to choose a grading type for this subject before publishing.',
+      invalid_shs_grading_categories: 'The SHS grading setup needs review. Ask your school admin to check its grading categories.'
+    };
+    return guidance[issue.code] || issue.message || '';
+  }
+
   function updateTransferPublishButton() {
     const required = Boolean(publishPreview?.transferReviewStudentIds?.length);
     document.getElementById('publishGradesConfirmButton').disabled = !publishPreview?.readyToPublish || publishInProgress
@@ -4205,22 +4252,40 @@
   function renderPublishGradePreview(preview, scope) {
     publishPreview = preview;
     publishPreviewScope = scope;
-    const studentCount = document.getElementById('publishStudentCount');
     const studentList = document.getElementById('publishPreviewStudentList');
     const methodNote = document.getElementById('publishGradeMethodNote');
+    const methodText = document.getElementById('publishGradeMethodText');
     const students = Array.isArray(preview.students) ? preview.students : [];
-    const isK10Method = ['deped_2026_transmutation', 'deped_zero_based', 'school_direct'].includes(preview.gradingMethod);
-    const isSchoolSpecificK10 = preview.gradingMethod === 'school_direct';
-    const showInitialGrade = preview.gradingScale === 'legacy_shs_transmutation' || isK10Method;
-    methodNote.hidden = preview.gradingScale !== 'legacy_shs_transmutation' && !isK10Method && !preview.periodStructureWarning;
-    methodNote.textContent = isK10Method
-      ? `Grade method: ${preview.gradingMethodLabel || CURRENT_GRADE_METHOD_LABEL || 'Grades 4-10 rules'}. ${isSchoolSpecificK10 ? `The weighted initial grade is reported using ${preview.gradeRounding || GRADE_ROUNDING} rounding.` : ''} ${preview.periodStructureWarning || ''}`.trim()
-      : preview.gradingScale === 'legacy_shs_transmutation'
-        ? 'The weighted initial grade is converted to the reported term grade using the DepEd transmutation table.'
-        : preview.periodStructureWarning || '';
+    const usesDepedTransmutation = ['deped_2026_transmutation', 'legacy_shs_transmutation'].includes(preview.gradingMethod)
+      || preview.gradingScale === 'legacy_shs_transmutation';
+    const usesDepedZeroBased = preview.gradingMethod === 'deped_zero_based';
+    const isSchoolSpecificMethod = preview.gradingMethod === 'school_direct';
+    const roundingDescriptions = {
+      round: 'to the nearest whole number',
+      roundup: 'up to the next whole number',
+      truncate: 'down to a whole number'
+    };
+    const roundingDescription = roundingDescriptions[preview.gradeRounding || GRADE_ROUNDING] || 'to a whole number';
+    const methodDescription = usesDepedTransmutation
+      ? 'Weighted grades are converted to final grades using the DepEd grading method.'
+      : usesDepedZeroBased
+        ? 'Weighted grades are rounded to a whole number using the DepEd method for this school year.'
+        : isSchoolSpecificMethod
+          ? `Weighted grades are rounded ${roundingDescription} using the school’s grading rule.`
+          : '';
+    methodNote.hidden = !methodDescription;
+    methodText.textContent = methodDescription;
 
     const publishableCount = preview.publishableCount ?? students.length;
-    studentCount.textContent = `${publishableCount} ${publishableCount === 1 ? 'student' : 'students'}`;
+    const periodName = document.getElementById('academicPeriodSelect')?.selectedOptions?.[0]?.textContent
+      || document.getElementById('scorePanelPeriodName')?.textContent
+      || 'this grading period';
+    const retainedGradeNote = preview.retainedPublishedCount
+      ? ` ${preview.retainedPublishedCount} previously published ${preview.retainedPublishedCount === 1 ? 'grade will' : 'grades will'} be kept.`
+      : '';
+    document.getElementById('publishGradeSummary').textContent = preview.readyToPublish
+      ? `Final grades for ${publishableCount} ${publishableCount === 1 ? 'student' : 'students'} are ready to publish for ${periodName}.${retainedGradeNote}`
+      : `Review the items below before publishing grades for ${students.length} ${students.length === 1 ? 'student' : 'students'}.`;
     studentList.replaceChildren();
     studentList.hidden = !students.length;
 
@@ -4229,32 +4294,63 @@
       row.className = 'publish-preview-row';
       const name = document.createElement('span');
       name.textContent = student.studentName || 'Student';
+      const gradeContent = document.createElement('div');
+      gradeContent.className = 'publish-preview-grade';
       const grade = document.createElement('strong');
-      grade.textContent = student.retainedPublishedGrade
-        ? `${student.finalGrade} · Kept from ${student.sourceSectionName || 'previous section'}`
-        : student.finalGrade === null || student.finalGrade === undefined
-          ? 'Incomplete'
-          : showInitialGrade
-            ? `Initial ${Number(student.initialGrade).toFixed(2)} → Term ${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`
-            : `${student.finalGrade}${student.isPassing === false ? ' · Below passing threshold' : ''}`;
-      row.append(name, grade);
+      const finalGrade = Number(student.finalGrade);
+      const hasFinalGrade = student.finalGrade !== null && student.finalGrade !== undefined && Number.isFinite(finalGrade);
+      grade.textContent = hasFinalGrade ? String(finalGrade) : 'Incomplete';
+      if (hasFinalGrade) {
+        const sourceSectionName = student.sourceSectionName || 'previous section';
+        grade.setAttribute('aria-label', student.retainedPublishedGrade
+          ? `Final grade ${finalGrade}, kept from ${sourceSectionName}.`
+          : `Final grade ${finalGrade}.`);
+        const configuredPassingThreshold = Number(preview.passingGradeThreshold);
+        const passingThreshold = Number.isFinite(configuredPassingThreshold) ? configuredPassingThreshold : PASSING_GRADE_THRESHOLD;
+        const tone = getGradeStatusTone(finalGrade, passingThreshold, Math.max(0, passingThreshold - 5));
+        grade.classList.add(tone);
+        gradeContent.append(grade);
+        if (student.retainedPublishedGrade) {
+          const retainedNote = document.createElement('small');
+          retainedNote.className = 'publish-preview-detail';
+          retainedNote.textContent = `Kept from ${sourceSectionName}.`;
+          gradeContent.append(retainedNote);
+        }
+        if (student.isPassing === false) {
+          const belowPassing = document.createElement('small');
+          belowPassing.className = 'publish-preview-detail';
+          belowPassing.textContent = `Below passing grade (${passingThreshold}).`;
+          gradeContent.append(belowPassing);
+        }
+        if (!student.retainedPublishedGrade && student.initialGrade !== null && student.initialGrade !== undefined
+          && Number.isFinite(Number(student.initialGrade))) {
+          const weightedGrade = document.createElement('small');
+          weightedGrade.className = 'publish-preview-detail';
+          weightedGrade.textContent = `Weighted grade ${Number(student.initialGrade).toFixed(2)}.`;
+          gradeContent.append(weightedGrade);
+        }
+      } else {
+        gradeContent.append(grade);
+      }
+      row.append(name, gradeContent);
       studentList.appendChild(row);
     });
 
-    const messages = (preview.issues || []).map(issue => issue.message).filter(Boolean);
+    const messages = (preview.issues || []).map(teacherFriendlyPreviewIssue).filter(Boolean);
     if (preview.missingScoreCount) {
-      messages.push(`${preview.missingScoreCount} score${preview.missingScoreCount === 1 ? '' : 's'} still need to be entered.`);
+      messages.push(`Enter scores in the ${preview.missingScoreCount} blank score field${preview.missingScoreCount === 1 ? '' : 's'}. A score of 0 is valid.`);
     }
     if (preview.invalidScoreCount) {
-      messages.push(`${preview.invalidScoreCount} invalid score${preview.invalidScoreCount === 1 ? '' : 's'} need to be corrected.`);
+      messages.push(`Correct ${preview.invalidScoreCount} score${preview.invalidScoreCount === 1 ? '' : 's'}; each must be from 0 up to the item’s maximum score.`);
     }
-    if (preview.retainedPublishedCount && !publishableCount) messages.push('All students already have a published grade for this subject and period.');
-    if (!preview.readyToPublish && !messages.length) messages.push('The grades are not ready to publish.');
+    if (preview.retainedPublishedCount && !publishableCount) messages.push('All students already have published grades for this subject and period.');
+    if (!preview.readyToPublish && !messages.length) messages.push('The grades are not ready to publish. Review the score entries and grading setup.');
+    const warning = document.getElementById('publishGradeWarning');
+    warning.hidden = Boolean(preview.readyToPublish);
+    document.getElementById('publishGradeWarningText').textContent = messages.join(' ');
     document.getElementById('transferPublishReview').hidden = !preview.transferReviewStudentIds?.length;
     document.getElementById('transferPublishAcknowledged').checked = false;
-    setPublishGradeFeedback(preview.readyToPublish
-      ? `The server calculated grades for ${publishableCount} students.${preview.retainedPublishedCount ? ` ${preview.retainedPublishedCount} earlier published grade${preview.retainedPublishedCount === 1 ? '' : 's'} will be kept.` : ''} Review them before publishing.`
-      : messages.join(' '), !preview.readyToPublish);
+    setPublishGradeFeedback('', false);
     updateTransferPublishButton();
   }
 
@@ -4284,6 +4380,7 @@
     publishPreviewScope = null;
     document.getElementById('transferPublishReview').hidden = true;
     document.getElementById('transferPublishAcknowledged').checked = false;
+    document.getElementById('publishGradeWarning').hidden = true;
     setPublishGradeFeedback('Saving pending score changes and checking the grades…');
     document.getElementById('publishPreviewStudentList').replaceChildren();
     document.getElementById('publishPreviewStudentList').hidden = true;
@@ -4310,6 +4407,7 @@
     document.getElementById('publishPreviewStudentList').replaceChildren();
     document.getElementById('publishPreviewStudentList').hidden = true;
     document.getElementById('publishGradeMethodNote').hidden = true;
+    document.getElementById('publishGradeWarning').hidden = true;
 
     if (!isBackendGradeMode()) {
       confirmButton.disabled = true;

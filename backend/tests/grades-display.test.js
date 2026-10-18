@@ -16,6 +16,8 @@ test('published grade number color follows the configured passing threshold', ()
   assert.equal(gradeScoreClass({ finalGrade: 74, passingGradeThreshold: 75 }), 'is-published is-below-passing');
   assert.equal(gradeScoreClass({ finalGrade: 75, passingGradeThreshold: 75 }), 'is-published is-passing');
   assert.equal(gradeScoreClass({ finalGrade: 92, passingGradeThreshold: 90 }), 'is-published is-passing');
+  assert.equal(gradeScoreClass({ finalGrade: 80, passingGradeThreshold: 83 }), 'is-published is-below-passing');
+  assert.equal(gradeScoreClass({ finalGrade: 83, passingGradeThreshold: 83 }), 'is-published is-passing');
   assert.equal(gradeScoreClass({ finalGrade: 0, passingGradeThreshold: 75 }), 'is-published is-below-passing');
   assert.equal(gradeScoreClass({ finalGrade: null, passingGradeThreshold: 75 }), 'is-pending');
   assert.equal(gradeScoreClass({ finalGrade: 80, passingGradeThreshold: null }), 'is-published');
@@ -38,4 +40,25 @@ test('grade display carries the threshold to published and unpublished subjects'
   assert.equal(subjects[1].passingGradeThreshold, 75);
   assert.equal(gradeScoreClass(subjects[0]), 'is-published is-passing');
   assert.equal(gradeScoreClass(subjects[1]), 'is-pending');
+});
+
+test('Grade 2–3 student and parent displays color published DepEd grades at the 75 boundary', () => {
+  const years = buildApiFinalGradeYears({
+    academicYears: [{
+      id: '10', label: '2026-2027', status: 'active', sections: [{
+        id: '21', name: 'Grade 2 - St. Matthew', gradingPeriodType: 'trimestral', passingGradeThreshold: 75,
+        terms: [{ id: '31', name: 'Term 1', sequenceNumber: 1, status: 'active' }],
+        subjects: [{ subjectId: '41', subjectName: 'Makabansa' }, { subjectId: '42', subjectName: 'English' }]
+      }]
+    }],
+    publishedGrades: [
+      { sectionId: '21', academicYearId: '10', academicTermId: '31', subjectId: '41', finalGrade: 75, passingGradeThreshold: 75 },
+      { sectionId: '21', academicYearId: '10', academicTermId: '31', subjectId: '42', finalGrade: 72, passingGradeThreshold: 75 }
+    ]
+  });
+  const subjects = years[0].periods[0].subjects;
+  assert.equal(subjects[0].passingGradeThreshold, 75);
+  assert.equal(subjects[1].passingGradeThreshold, 75);
+  assert.equal(gradeScoreClass(subjects[0]), 'is-published is-passing');
+  assert.equal(gradeScoreClass(subjects[1]), 'is-published is-below-passing');
 });

@@ -1,9 +1,33 @@
 const { getDatabase } = require('../config/database');
-const { createDepedK10DefaultComponents, getDepedK10GradeMethod, getDepedK10LearningArea, isDepedK10GradeCode } = require('../config/depedK10Grading');
+const {
+  createDepedK10DefaultComponents,
+  getDepedK10GradeMethod,
+  getDepedK10LearningArea,
+  isDepedEarlyNumericalGradeCode,
+  isDepedK10GradeCode,
+  isDepedNumericalGradeCode
+} = require('../config/depedK10Grading');
 const { writeAuditLog } = require('../utils/auditLog');
 const { GRADING_MODES, ROUNDING_RULES, loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 
 const COMPONENT_TYPES = new Set(['written', 'performance', 'examination', 'other']);
+const K10_PROFILE_GRADE_CODES = ['grade-4', 'grade-5', 'grade-6', 'grade-7', 'grade-8', 'grade-9', 'grade-10'];
+
+function isProfileGradeCode(gradeCode, academicYearLabel) {
+  return isDepedK10GradeCode(gradeCode)
+    || (isDepedEarlyNumericalGradeCode(gradeCode)
+      && getDepedK10GradeMethod(academicYearLabel) === 'deped_2026_transmutation');
+}
+
+async function getProfileGradeScopes(connection, schoolId, schoolLevelId, subjectId) {
+  const [rows] = await connection.execute(
+    `SELECT grades.grade_code AS gradeCode FROM subject_grade_scopes AS scopes
+    INNER JOIN school_grade_levels AS grades ON grades.id = scopes.grade_level_id AND grades.school_id = scopes.school_id
+    WHERE scopes.school_id = ? AND scopes.subject_id = ? AND grades.school_level_id = ?`,
+    [schoolId, subjectId, schoolLevelId]
+  );
+  return rows;
+}
 
 function createError(message, status = 400) {
   const error = new Error(message);
@@ -92,7 +116,11 @@ async function getYearAndLevel(connection, schoolId, academicYearId, schoolLevel
   return rows[0] || null;
 }
 
-async function getSubjectsForK10(connection, schoolId, levelId) {
+async function getSubjectsForK10(connection, schoolId, levelId, academicYearLabel) {
+  const allowedGradeCodes = [...K10_PROFILE_GRADE_CODES];
+  if (getDepedK10GradeMethod(academicYearLabel) === 'deped_2026_transmutation') {
+    allowedGradeCodes.push('grade-2', 'grade-3');
+  }
   const [subjects] = await connection.execute(
     `SELECT subjects.id, subjects.subject_code AS subjectCode, subjects.name,
       GROUP_CONCAT(DISTINCT enabled_grades.grade_code ORDER BY enabled_grades.sort_order SEPARATOR ',') AS gradeCodes
@@ -100,19 +128,19 @@ async function getSubjectsForK10(connection, schoolId, levelId) {
     LEFT JOIN subject_grade_scopes AS scopes ON scopes.school_id = subjects.school_id AND scopes.subject_id = subjects.id
     LEFT JOIN school_grade_levels AS enabled_grades ON enabled_grades.school_id = scopes.school_id
       AND enabled_grades.id = scopes.grade_level_id AND enabled_grades.is_enabled = TRUE
-      AND enabled_grades.grade_code IN ('grade-4','grade-5','grade-6','grade-7','grade-8','grade-9','grade-10')
+      AND enabled_grades.grade_code IN (${allowedGradeCodes.map(() => '?').join(',')})
     WHERE subjects.school_id = ? AND subjects.is_active = TRUE
       AND (subjects.school_level_id = ? OR subjects.school_level_id IS NULL)
       AND enabled_grades.id IS NOT NULL
     GROUP BY subjects.id, subjects.subject_code, subjects.name
     ORDER BY subjects.name, subjects.id`,
-    [schoolId, levelId]
+    [...allowedGradeCodes, schoolId, levelId]
   );
   return subjects.map(subject => ({
     id: Number(subject.id),
     subjectCode: subject.subjectCode,
     name: subject.name,
-    gradeCodes: String(subject.gradeCodes || '').split(',').filter(isDepedK10GradeCode),
+    gradeCodes: String(subject.gradeCodes || '').split(',').filter(code => isProfileGradeCode(code, academicYearLabel)),
     learningArea: getDepedK10LearningArea(subject.subjectCode)
   }));
 }
@@ -196,7 +224,7 @@ async function getPreviewData(connection, schoolId, academicYearId, schoolLevelI
     academicYearLabel: year.academicYearLabel,
     gradingPeriodType: year.gradingPeriodType
   });
-  const subjects = await getSubjectsForK10(connection, schoolId, schoolLevelId);
+  const subjects = await getSubjectsForK10(connection, schoolId, schoolLevelId, year.academicYearLabel);
   const result = [];
   for (const subject of subjects) {
     const profile = await getProfile(connection, schoolId, academicYearId, schoolLevelId, subject.id);
@@ -242,7 +270,7 @@ async function applyDepedDefaults(req, res, next) {
     const year = await getYearAndLevel(connection, req.user.schoolId, academicYearId, schoolLevelId, true);
     if (!year) throw createError('Academic year or school level was not found.', 404);
     if (!['elementary', 'jhs'].includes(year.levelCode)) throw createError('DepEd subject weights are available for Elementary and Junior High School.', 409);
-    const subjects = await getSubjectsForK10(connection, req.user.schoolId, schoolLevelId);
+    const subjects = await getSubjectsForK10(connection, req.user.schoolId, schoolLevelId, year.academicYearLabel);
     const summary = { added: [], alreadyConfigured: [], published: [], unmatched: [] };
     for (const subject of subjects) {
       const defaults = createDepedK10DefaultComponents(subject.subjectCode);
@@ -297,8 +325,8 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
     );
     const section = rows[0];
     if (!section) throw createError('The section and subject are not assigned to your account.', 404);
-    const method = getDepedK10GradeMethod(section.academicYearLabel);
-    if (!['elementary', 'jhs'].includes(section.levelCode) || !isDepedK10GradeCode(section.gradeCode) || method === 'standard') {
+    if (!['elementary', 'jhs'].includes(section.levelCode)
+      || !isDepedNumericalGradeCode(section.gradeCode, section.academicYearLabel)) {
       res.json({ applicable: false, gradingMethod: 'standard', components: [] });
       return;
     }
@@ -307,7 +335,8 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
       academicYearId: section.academicYearId,
       schoolLevelId: section.schoolLevelId,
       academicYearLabel: section.academicYearLabel,
-      gradingPeriodType: section.gradingPeriodType
+      gradingPeriodType: section.gradingPeriodType,
+      gradeCode: section.gradeCode
     });
     const profile = await getProfile(getDatabase(), req.user.schoolId, section.academicYearId, section.schoolLevelId, subjectId);
     res.json({
@@ -351,7 +380,7 @@ async function saveK10FinalGradeRules(req, res, next) {
     if (!year || !['elementary', 'jhs'].includes(year.levelCode)) throw createError('The academic year and school level do not match.', 404);
     if (year.academicYearStatus !== 'active') throw createError('Final-grade rules can only be changed for the active school year.', 409);
     if (getDepedK10GradeMethod(year.academicYearLabel) === 'standard') {
-      throw createError('Grades 4–10 final-grade methods are available beginning in SY 2026–27.', 409);
+      throw createError('DepEd numerical final-grade methods are available beginning in SY 2026–27.', 409);
     }
 
     const current = await loadK10FinalGradeRules(connection, {
@@ -361,7 +390,7 @@ async function saveK10FinalGradeRules(req, res, next) {
       academicYearLabel: year.academicYearLabel,
       gradingPeriodType: year.gradingPeriodType
     });
-    if (current.locked) throw createError('Final-grade rules are locked because Grade 4–10 grades have already been published for this school year.', 409);
+    if (current.locked) throw createError('Final-grade rules are locked because numerical grades have already been published for this school year.', 409);
 
     await connection.execute(
       `INSERT INTO school_year_final_grade_rules
@@ -407,14 +436,10 @@ async function getAdminSubjectGradingConfig(req, res, next) {
     if (!schoolLevelId) throw createError('Select a school level for this subject configuration.');
     const year = await getYearAndLevel(getDatabase(), req.user.schoolId, academicYearId, schoolLevelId);
     if (!year || !['elementary', 'jhs'].includes(year.levelCode)) throw createError('The academic year and school level do not match.', 404);
-    const [scopes] = await getDatabase().execute(
-      `SELECT scopes.id FROM subject_grade_scopes AS scopes
-      INNER JOIN school_grade_levels AS grades ON grades.id = scopes.grade_level_id AND grades.school_id = scopes.school_id
-      WHERE scopes.school_id = ? AND scopes.subject_id = ? AND grades.school_level_id = ?
-        AND grades.grade_code IN ('grade-4','grade-5','grade-6','grade-7','grade-8','grade-9','grade-10') LIMIT 1`,
-      [req.user.schoolId, subjectId, schoolLevelId]
-    );
-    if (!scopes.length) throw createError('The subject has no Grade 4–10 scope in this school level.', 404);
+    const scopes = await getProfileGradeScopes(getDatabase(), req.user.schoolId, schoolLevelId, subjectId);
+    if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
+      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+    }
     const profile = await getProfile(getDatabase(), req.user.schoolId, academicYearId, schoolLevelId, subjectId);
     res.json({ profile: profile ? {
       ...profile,
@@ -447,14 +472,10 @@ async function saveSubjectGradingConfig(req, res, next) {
     if (subject.subjectSchoolLevelId != null && Number(subject.subjectSchoolLevelId) !== schoolLevelId) {
       throw createError('This subject does not belong to the selected school level.', 404);
     }
-    const [scopes] = await connection.execute(
-      `SELECT scopes.id FROM subject_grade_scopes AS scopes
-      INNER JOIN school_grade_levels AS grades ON grades.id = scopes.grade_level_id AND grades.school_id = scopes.school_id
-      WHERE scopes.school_id = ? AND scopes.subject_id = ? AND grades.school_level_id = ?
-        AND grades.grade_code IN ('grade-4','grade-5','grade-6','grade-7','grade-8','grade-9','grade-10') LIMIT 1`,
-      [req.user.schoolId, subjectId, schoolLevelId]
-    );
-    if (!scopes.length) throw createError('The subject has no Grade 4–10 scope in this school level.', 404);
+    const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, subjectId);
+    if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
+      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+    }
     if (getDepedK10GradeMethod(year.academicYearLabel) === 'standard') throw createError('Subject-specific DepEd rules apply beginning in SY 2026–27.', 409);
     let profile = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId, true);
     if (await isProfileLocked(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId)) {

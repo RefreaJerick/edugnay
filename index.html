@@ -649,12 +649,13 @@
       showAuthView('signin');
     }
 
-    function clearTeacherSidebarCacheForSignIn() {
-      const prefix = 'edugnay_teacher_sidebar_v1:';
+    function clearPortalCachesForSignIn() {
+      const prefixes = ['edugnay_teacher_sidebar_v1:', 'edugnay_student_sidebar_v1:',
+        'edugnay_profile_display_v1', 'edugnay_student_profile_display_v1'];
       try {
         for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
           const key = sessionStorage.key(index);
-          if (key?.startsWith(prefix)) sessionStorage.removeItem(key);
+          if (prefixes.some(prefix => key?.startsWith(prefix))) sessionStorage.removeItem(key);
         }
       } catch { /* A storage failure must not block sign-in. */ }
     }
@@ -686,7 +687,7 @@
         }
 
         const { user } = await postAuthData('/auth/login', { schoolEmail, password });
-        clearTeacherSidebarCacheForSignIn();
+        clearPortalCachesForSignIn();
         const dashboard = DASHBOARD_BY_ROLE[user.role];
         if (!dashboard) throw new Error('This account does not have a portal route.');
 

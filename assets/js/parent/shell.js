@@ -14,6 +14,7 @@ window.EDUGNAY_PARENT = {
 
 function renderParentIdentity() {
   const parent = window.EDUGNAY_PARENT.currentUser;
+  if (!parent && document.documentElement.classList.contains('profile-chip-restored')) return;
   const displayName = parent?.displayName
     || [parent?.firstName, parent?.lastName].filter(Boolean).join(' ')
     || 'Profile unavailable';

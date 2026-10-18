@@ -27,15 +27,55 @@ const DEPED_K10_COMPONENTS = Object.freeze({
 
 const ACADEMIC_AREA_PREFIXES = [
   'english-', 'filipino-', 'mathematics-', 'science-', 'araling-panlipunan-',
-  'gmrc-', 'values-education-'
+  'gmrc-', 'values-education-', 'makabansa-'
 ];
 const APPLIED_AREA_PREFIXES = [
   'epp-', 'tle-', 'music-and-arts-', 'physical-education-and-health-'
 ];
 const K10_GRADE_CODES = new Set(['grade-4', 'grade-5', 'grade-6', 'grade-7', 'grade-8', 'grade-9', 'grade-10']);
+const EARLY_NUMERICAL_GRADE_CODES = new Set(['grade-2', 'grade-3']);
+const EARLY_GRADE_COMPONENTS = Object.freeze([
+  { code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: 20 },
+  { code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: 50 },
+  {
+    code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30,
+    examParts: [
+      { code: 'summative-test-1', name: 'Summative Test 1', weight: 50 },
+      { code: 'summative-test-2', name: 'Summative Test 2', weight: 50 }
+    ]
+  }
+]);
 
 function isDepedK10GradeCode(gradeCode) {
   return K10_GRADE_CODES.has(String(gradeCode || '').trim().toLowerCase());
+}
+
+function isDepedEarlyNumericalGradeCode(gradeCode) {
+  return EARLY_NUMERICAL_GRADE_CODES.has(String(gradeCode || '').trim().toLowerCase());
+}
+
+function isDepedNumericalGradeCode(gradeCode, academicYearLabel) {
+  const method = getDepedK10GradeMethod(academicYearLabel);
+  if (isDepedK10GradeCode(gradeCode)) return method !== 'standard';
+  return isDepedEarlyNumericalGradeCode(gradeCode) && method === 'deped_2026_transmutation';
+}
+
+function getDepedNumericalGradeBlockReason(gradeCode, academicYearLabel) {
+  const code = String(gradeCode || '').trim().toLowerCase();
+  const match = String(academicYearLabel || '').match(/20\d{2}/);
+  const startYear = match ? Number(match[0]) : null;
+  if (startYear === null || startYear < 2026) return null;
+  if (code === 'kindergarten' || code === 'grade-1') {
+    return 'Kindergarten and Grade 1 use descriptive reporting and cannot publish numerical grades for this school year.';
+  }
+  if (startYear >= 2027 && isDepedEarlyNumericalGradeCode(code)) {
+    return `The DepEd grading setup for ${code === 'grade-2' ? 'Grade 2' : 'Grade 3'} is not available for this school year yet.`;
+  }
+  return null;
+}
+
+function isDepedEarlyGradeSubjectCode(subjectCode) {
+  return /-(?:grade-2|grade-3)$/i.test(String(subjectCode || '').trim());
 }
 
 function getDepedK10LearningArea(subjectCode) {
@@ -85,7 +125,10 @@ function describeDepedK10GradeMethod(method) {
 function createDepedK10DefaultComponents(subjectCode) {
   const learningArea = getDepedK10LearningArea(subjectCode);
   if (!learningArea) return null;
-  return DEPED_K10_COMPONENTS[learningArea].map((component, index) => ({
+  const components = isDepedEarlyGradeSubjectCode(subjectCode)
+    ? EARLY_GRADE_COMPONENTS
+    : DEPED_K10_COMPONENTS[learningArea];
+  return components.map((component, index) => ({
     ...component,
     sortOrder: index + 1,
     examParts: (component.examParts || []).map((part, partIndex) => ({ ...part, sortOrder: partIndex + 1 }))
@@ -96,8 +139,12 @@ module.exports = {
   applyDepedK10GradeMethod,
   createDepedK10DefaultComponents,
   describeDepedK10GradeMethod,
+  getDepedNumericalGradeBlockReason,
   getDepedK10GradeMethod,
   getDepedK10LearningArea,
+  isDepedEarlyGradeSubjectCode,
+  isDepedEarlyNumericalGradeCode,
   isDepedK10GradeCode,
+  isDepedNumericalGradeCode,
   transmuteDepedK10InitialGrade
 };

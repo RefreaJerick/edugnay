@@ -15,6 +15,7 @@ let failOnAuditWrite = false;
 let failOnNotificationWrite = false;
 let failOnMarkerWrite = false;
 let context = {};
+let configuredTermCount = 3;
 let categories = [];
 let subjectProfile = null;
 let subjectComponents = [];
@@ -35,12 +36,34 @@ const database = {
   async execute(sql, values = []) {
     queries.push({ sql, values });
     if (sql.includes('SELECT grades_enabled AS gradesEnabled FROM school_portal_features')) return [[{ gradesEnabled: gradesEnabled ? 1 : 0 }]];
+    if (sql.includes('SELECT academic_terms.status AS academicTermStatus')) return [[{
+      academicTermStatus: 'active', academicYearStatus: 'active',
+      gradeCode: context.gradeCode, academicYearLabel: context.academicYearLabel
+    }]];
     if (sql.includes('FROM parent_notification_triggers')) return [parentTriggerEnabled ? [{ enabled: 1 }] : []];
     if (sql.startsWith('SELECT id FROM academic_terms WHERE id = ?')) return [[{ id: context.academicTermId }]];
-    if (sql.startsWith('SELECT COUNT(*) AS total FROM academic_terms')) return [[{ total: 3 }]];
-    if (sql.includes('SELECT COUNT(*) AS termCount FROM academic_terms')) return [[{ termCount: 3 }]];
+    if (sql.startsWith('SELECT COUNT(*) AS total FROM academic_terms')) return [[{ total: configuredTermCount }]];
+    if (sql.includes('SELECT COUNT(*) AS termCount FROM academic_terms')) return [[{ termCount: configuredTermCount }]];
     if (sql.includes('FROM school_year_final_grade_rules')) return [finalGradeRule ? [{ ...finalGradeRule }] : []];
     if (sql.includes('FROM published_final_grades AS grades') && sql.includes('AS gradeCount')) return [[{ gradeCount: publishedK10Grades }]];
+    if (sql.includes('FROM published_final_grades') && sql.includes('academic_years.start_date DESC')) {
+      return [savedGrades.map((record, index) => ({
+        id: index + 1,
+        schoolId: record[0],
+        studentId: record[4],
+        studentName: students.find(student => student.studentId === record[4])?.studentName || 'Student',
+        sectionId: record[1],
+        sectionName: context.sectionName,
+        subjectId: record[2],
+        subjectName: context.subjectName,
+        academicTermId: record[3],
+        academicTermName: context.academicTermName,
+        academicYearId: context.academicYearId,
+        academicYearLabel: context.academicYearLabel,
+        finalGrade: record[5],
+        publishedAt: '2026-10-18 12:00:00'
+      }))];
+    }
     if (sql.includes('SELECT id FROM subject_grading_profiles')) return [subjectProfile ? [{ id: subjectProfile.id }] : []];
     if (sql.includes('SELECT id, code, name, component_type AS componentType, weight')) return [subjectComponents];
     if (sql.includes('SELECT id, component_id AS componentId, code, name, weight')) return [subjectExamParts];
@@ -50,6 +73,9 @@ const database = {
       if (failOnNotificationWrite) throw new Error('Simulated notification failure.');
       pendingNotices.add(`${values.at(-1)}:${values[4]}`);
       return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('SELECT sections.id AS sectionId') && sql.includes('FROM section_teachers')) {
+      return [[assigned && Number(values.at(-1)) === Number(context.schoolId) ? context : undefined].filter(Boolean)];
     }
     if (sql.includes('FROM section_teachers')) return [[assigned ? context : undefined].filter(Boolean)];
     if (sql.includes('FROM section_students AS current_enrollment')) return [previousScores];
@@ -109,6 +135,7 @@ function reset() {
   failOnAuditWrite = false;
   failOnNotificationWrite = false;
   failOnMarkerWrite = false;
+  configuredTermCount = 3;
   committed = false;
   rolledBack = false;
   parentTriggerEnabled = false;
@@ -152,9 +179,9 @@ function reset() {
   ];
 }
 
-async function call(handler, { role = 'teacher', query = {}, body = {} } = {}) {
+async function call(handler, { role = 'teacher', schoolId = 1, query = {}, body = {} } = {}) {
   const result = { status: 200, data: null, error: null };
-  await handler({ user: { id: 5, schoolId: 1, role }, query, body }, {
+  await handler({ user: { id: 5, schoolId, role }, query, body }, {
     status(code) { result.status = code; return this; },
     set() { return this; },
     json(data) { result.data = data; return this; }
@@ -163,6 +190,39 @@ async function call(handler, { role = 'teacher', query = {}, body = {} } = {}) {
 }
 
 const scope = { sectionId: '8', subjectId: '2', academicTermId: '14' };
+
+function configureEarlyGradeProfile(gradeCode = 'grade-2') {
+  context.schoolLevelCode = 'elementary';
+  context.gradeCode = gradeCode;
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  subjectProfile = { id: 40 };
+  subjectComponents = [
+    { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
+    { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
+    { id: 103, code: 'examinations', name: 'Examinations', componentType: 'examination', weight: '30.00' }
+  ];
+  subjectExamParts = [
+    { id: 201, componentId: 103, code: 'summative-test-1', name: 'Summative Test 1', weight: '50.00' },
+    { id: 202, componentId: 103, code: 'summative-test-2', name: 'Summative Test 2', weight: '50.00' }
+  ];
+  students = [
+    { studentId: 101, studentName: 'Ava Cruz' },
+    { studentId: 102, studentName: 'Ben Reyes' }
+  ];
+  items = [
+    { gradingItemId: 11, title: 'Written work', subjectGradingComponentId: 101, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 12, title: 'Performance task', subjectGradingComponentId: 102, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 13, title: 'Summative Test 1', subjectGradingComponentId: 103, subjectGradingExamPartId: 201, maxScore: '10.00', componentSchoolId: 1 },
+    { gradingItemId: 14, title: 'Summative Test 2', subjectGradingComponentId: 103, subjectGradingExamPartId: 202, maxScore: '10.00', componentSchoolId: 1 }
+  ];
+  scores = [
+    { studentId: 101, gradingItemId: 11, score: '18.00' }, { studentId: 101, gradingItemId: 12, score: '16.00' },
+    { studentId: 101, gradingItemId: 13, score: '7.00' }, { studentId: 101, gradingItemId: 14, score: '8.00' },
+    { studentId: 102, gradingItemId: 11, score: '15.00' }, { studentId: 102, gradingItemId: 12, score: '10.00' },
+    { studentId: 102, gradingItemId: 13, score: '6.00' }, { studentId: 102, gradingItemId: 14, score: '7.00' }
+  ];
+}
 
 test('preview calculates weighted category percentages and applies school rounding', async () => {
   reset();
@@ -292,16 +352,263 @@ test('Grades 4-10 publication requires an item for each configured exam part', a
   assert.ok(result.data.preview.issues.some(issue => issue.code === 'exam_part_without_items' && issue.categoryCode === 'term-exam'));
 });
 
-test('Grades 1-3 keep the existing grading calculation in a 2026-27 school year', async () => {
+test('Grades 2–3 use the DepEd 2026 profile and adjusted transmutation by default', async () => {
+  for (const gradeCode of ['grade-2', 'grade-3']) {
+    reset();
+    context.schoolLevelCode = 'elementary';
+    context.gradeCode = gradeCode;
+    context.academicYearLabel = '2026-2027';
+    context.gradingPeriodType = 'trimestral';
+    finalGradeRule = null;
+    subjectProfile = { id: 40 };
+    subjectComponents = [
+      { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
+      { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
+      { id: 103, code: 'examinations', name: 'Examinations', componentType: 'examination', weight: '30.00' }
+    ];
+    subjectExamParts = [
+      { id: 201, componentId: 103, code: 'summative-test-1', name: 'Summative Test 1', weight: '50.00' },
+      { id: 202, componentId: 103, code: 'summative-test-2', name: 'Summative Test 2', weight: '50.00' }
+    ];
+    students = [
+      { studentId: 101, studentName: 'Ava Cruz' },
+      { studentId: 102, studentName: 'Ben Reyes' },
+      { studentId: 103, studentName: 'Cleo Santos' },
+      { studentId: 104, studentName: 'Dani Ramos' }
+    ];
+    items = [
+      { gradingItemId: 11, title: 'Written work', subjectGradingComponentId: 101, maxScore: '20.00', componentSchoolId: 1 },
+      { gradingItemId: 12, title: 'Performance task', subjectGradingComponentId: 102, maxScore: '20.00', componentSchoolId: 1 },
+      { gradingItemId: 13, title: 'Summative Test 1', subjectGradingComponentId: 103, subjectGradingExamPartId: 201, maxScore: '10.00', componentSchoolId: 1 },
+      { gradingItemId: 14, title: 'Summative Test 2', subjectGradingComponentId: 103, subjectGradingExamPartId: 202, maxScore: '10.00', componentSchoolId: 1 }
+    ];
+    scores = [
+      { studentId: 101, gradingItemId: 11, score: '18' }, { studentId: 101, gradingItemId: 12, score: '16' },
+      { studentId: 101, gradingItemId: 13, score: '7' }, { studentId: 101, gradingItemId: 14, score: '8' },
+      { studentId: 102, gradingItemId: 11, score: '14' }, { studentId: 102, gradingItemId: 12, score: '14' },
+      { studentId: 102, gradingItemId: 13, score: '7' }, { studentId: 102, gradingItemId: 14, score: '7' },
+      { studentId: 103, gradingItemId: 11, score: '12' }, { studentId: 103, gradingItemId: 12, score: '12' },
+      { studentId: 103, gradingItemId: 13, score: '6' }, { studentId: 103, gradingItemId: 14, score: '6' },
+      { studentId: 104, gradingItemId: 11, score: '0' }, { studentId: 104, gradingItemId: 12, score: '14' },
+      { studentId: 104, gradingItemId: 13, score: '7' }, { studentId: 104, gradingItemId: 14, score: '7' }
+    ];
+
+    const result = await call(grades.previewFinalGrades, { query: scope });
+    const preview = result.data.preview;
+    assert.equal(result.error, null, gradeCode);
+    assert.equal(preview.readyToPublish, true, gradeCode);
+    assert.equal(preview.gradingMethod, 'deped_2026_transmutation');
+    assert.equal(preview.passingGradeThreshold, 75);
+    assert.equal(preview.missingScoreCount, 0);
+    assert.deepEqual(preview.categories.map(category => category.weight), [20, 50, 30]);
+    assert.deepEqual(preview.categories[2].examParts.map(part => part.weight), [50, 50]);
+    assert.equal(preview.students[0].initialGrade, 80.5);
+    assert.equal(preview.students[0].finalGrade, 83);
+    assert.equal(preview.students[1].initialGrade, 70);
+    assert.equal(preview.students[1].finalGrade, 75);
+    assert.equal(preview.students[1].isPassing, true);
+    assert.equal(preview.students[2].initialGrade, 60);
+    assert.equal(preview.students[2].finalGrade, 72);
+    assert.equal(preview.students[2].isPassing, false);
+    assert.equal(preview.students[3].finalGrade, 71);
+    assert.equal(preview.readyToPublish, true, 'a recorded zero is a valid score');
+
+    const publication = await call(grades.publishFinalGrades, { body: scope });
+    assert.equal(publication.error, null, gradeCode);
+    assert.deepEqual(publication.data.grades.map(grade => grade.finalGrade), preview.students.map(student => student.finalGrade));
+    assert.deepEqual(savedGrades.map(record => record[5]), preview.students.map(student => student.finalGrade));
+    const teacherGrades = await call(grades.listPublishedFinalGrades, { role: 'teacher', query: { sectionId: scope.sectionId } });
+    const adminGrades = await call(grades.listPublishedFinalGrades, { role: 'school_admin', query: { sectionId: scope.sectionId } });
+    assert.deepEqual(teacherGrades.data.finalGrades.map(grade => grade.finalGrade), preview.students.map(student => student.finalGrade));
+    assert.deepEqual(adminGrades.data.finalGrades.map(grade => grade.finalGrade), preview.students.map(student => student.finalGrade));
+  }
+});
+
+test('Grades 2–3 use saved school-specific final-grade rules and publish the exact preview', async () => {
+  for (const gradeCode of ['grade-2', 'grade-3']) {
+    reset();
+    configureEarlyGradeProfile(gradeCode);
+    context.gradingPeriodType = 'quarterly';
+    configuredTermCount = 2;
+    finalGradeRule = { gradingMode: 'school_specific', passingGradeThreshold: 80, gradeRounding: 'roundup' };
+
+    const result = await call(grades.previewFinalGrades, { query: scope });
+    const preview = result.data.preview;
+    assert.equal(result.error, null, gradeCode);
+    assert.equal(preview.gradingMethod, 'school_direct', gradeCode);
+    assert.equal(preview.passingGradeThreshold, 80, gradeCode);
+    assert.equal(preview.gradeRounding, 'roundup', gradeCode);
+    assert.equal(preview.periodStructureCompatible, true, gradeCode);
+    assert.equal(preview.students[0].initialGrade, 80.5, gradeCode);
+    assert.equal(preview.students[0].finalGrade, 81, gradeCode);
+    assert.equal(preview.students[0].isPassing, true, gradeCode);
+    assert.equal(preview.students[1].initialGrade, 59.5, gradeCode);
+    assert.equal(preview.students[1].finalGrade, 60, gradeCode);
+    assert.equal(preview.students[1].isPassing, false, gradeCode);
+
+    const publication = await call(grades.publishFinalGrades, { body: scope });
+    assert.equal(publication.error, null, gradeCode);
+    assert.deepEqual(publication.data.grades.map(grade => grade.finalGrade), preview.students.map(student => student.finalGrade));
+    assert.deepEqual(savedGrades.map(record => record[5]), preview.students.map(student => student.finalGrade));
+  }
+});
+
+test('Grade 2–3 require only configured exam parts, and can add a term exam profile before scores', async () => {
   reset();
   context.schoolLevelCode = 'elementary';
   context.gradeCode = 'grade-3';
   context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  subjectProfile = { id: 40 };
+  subjectComponents = [
+    { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
+    { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
+    { id: 103, code: 'examinations', name: 'Examinations', componentType: 'examination', weight: '30.00' }
+  ];
+  subjectExamParts = [
+    { id: 201, componentId: 103, code: 'summative-test-1', name: 'Summative Test 1', weight: '30.00' },
+    { id: 202, componentId: 103, code: 'summative-test-2', name: 'Summative Test 2', weight: '30.00' },
+    { id: 203, componentId: 103, code: 'term-exam', name: 'Term Exam', weight: '40.00' }
+  ];
+  items = [
+    { gradingItemId: 11, title: 'Written work', subjectGradingComponentId: 101, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 12, title: 'Performance task', subjectGradingComponentId: 102, maxScore: '20.00', componentSchoolId: 1 },
+    { gradingItemId: 13, title: 'Summative Test 1', subjectGradingComponentId: 103, subjectGradingExamPartId: 201, maxScore: '10.00', componentSchoolId: 1 },
+    { gradingItemId: 14, title: 'Summative Test 2', subjectGradingComponentId: 103, subjectGradingExamPartId: 202, maxScore: '10.00', componentSchoolId: 1 }
+  ];
+  let result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, false);
+  assert.ok(result.data.preview.issues.some(issue => issue.code === 'exam_part_without_items' && issue.categoryCode === 'term-exam'));
+
+  items.push({ gradingItemId: 15, title: 'Term Exam', subjectGradingComponentId: 103, subjectGradingExamPartId: 203, maxScore: '10.00', componentSchoolId: 1 });
+  scores.push(
+    { studentId: 101, gradingItemId: 14, score: '8' },
+    { studentId: 102, gradingItemId: 14, score: '7' },
+    { studentId: 101, gradingItemId: 15, score: '8' },
+    { studentId: 102, gradingItemId: 15, score: '7' }
+  );
+  result = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(result.data.preview.readyToPublish, true, JSON.stringify({
+    issues: result.data.preview.issues,
+    missing: result.data.preview.students.map(student => ({ name: student.studentName, missing: student.missingItems, invalid: student.invalidScores }))
+  }));
+  assert.equal(result.data.preview.categories[2].examParts.length, 3);
+});
+
+test('The DepEd method requires three terms when no school-specific rule is selected', async () => {
+  reset();
+  context.schoolLevelCode = 'elementary';
+  context.gradeCode = 'grade-2';
+  context.academicYearLabel = '2026-2027';
+  context.gradingPeriodType = 'trimestral';
+  configuredTermCount = 2;
+  finalGradeRule = null;
+
   const result = await call(grades.previewFinalGrades, { query: scope });
-  assert.equal(result.error, null);
-  assert.equal(result.data.preview.gradingMethod, null);
-  assert.equal(result.data.preview.readyToPublish, true);
-  assert.equal(result.data.preview.students[0].finalGrade, 81);
+  const preview = result.data.preview;
+
+  assert.equal(preview.gradingMethod, 'deped_2026_transmutation');
+  assert.equal(preview.passingGradeThreshold, 75);
+  assert.equal(preview.periodStructureCompatible, false);
+  assert.ok(preview.issues.some(issue => issue.code === 'incompatible_period_structure'));
+  assert.equal(preview.readyToPublish, false);
+});
+
+test('Kindergarten, Grade 1, and out-of-scope future Grade 2–3 terms cannot publish numerical grades', async () => {
+  for (const [gradeCode, year] of [['kindergarten', '2026-2027'], ['grade-1', '2026-2027'], ['grade-2', '2027-2028'], ['grade-3', '2027-2028']]) {
+    reset();
+    context.schoolLevelCode = 'elementary';
+    context.gradeCode = gradeCode;
+    context.academicYearLabel = year;
+    const preview = await call(grades.previewFinalGrades, { query: scope });
+    assert.equal(preview.error?.status, 409, `${gradeCode} ${year}`);
+    assert.match(preview.error.message, /descriptive reporting|not available/);
+    const publication = await call(grades.publishFinalGrades, { body: scope });
+    assert.equal(publication.error?.status, 409, `${gradeCode} ${year}`);
+    assert.equal(savedGrades.length, 0);
+  }
+});
+
+test('descriptive grades and out-of-scope Grade 2–3 years cannot record numerical scores', async () => {
+  const user = { role: 'school_admin', schoolId: 1 };
+  const scopeForWrite = { sectionId: 8, subjectId: 2, academicTermId: 14 };
+
+  reset();
+  context.gradeCode = 'grade-2';
+  context.academicYearLabel = '2026-2027';
+  await assert.doesNotReject(grades.assertGradeWriteAccess(database, user, scopeForWrite));
+
+  for (const [gradeCode, academicYearLabel] of [
+    ['kindergarten', '2026-2027'], ['grade-1', '2026-2027'],
+    ['grade-2', '2027-2028'], ['grade-3', '2027-2028']
+  ]) {
+    reset();
+    context.gradeCode = gradeCode;
+    context.academicYearLabel = academicYearLabel;
+    await assert.rejects(grades.assertGradeWriteAccess(database, user, scopeForWrite), { status: 409 });
+  }
+});
+
+test('Grade 2 publication rechecks changed scores, requires transfer review, and supports republishing', async () => {
+  reset();
+  configureEarlyGradeProfile();
+  const beforeChange = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(beforeChange.data.preview.students[0].finalGrade, 83);
+
+  scores.find(record => record.studentId === 101 && record.gradingItemId === 11).score = '0.00';
+  previousScores = [{ studentId: 101, sourceSectionName: 'St. Anne', itemTitle: 'Quiz', score: '17.00', maxScore: '20.00' }];
+  const freshPreview = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(freshPreview.error, null);
+  assert.equal(freshPreview.data.preview.students[0].finalGrade, 73);
+  assert.deepEqual(freshPreview.data.preview.transferReviewStudentIds, [101]);
+
+  const blocked = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(blocked.error?.status, 409);
+  assert.equal(savedGrades.length, 0);
+
+  const published = await call(grades.publishFinalGrades, { body: { ...scope, transferReviewAcknowledged: true } });
+  assert.equal(published.error, null);
+  assert.deepEqual(published.data.grades.map(grade => grade.finalGrade), freshPreview.data.preview.students.map(student => student.finalGrade));
+  assert.equal(savedGrades[0][5], freshPreview.data.preview.students[0].finalGrade);
+
+  const republished = await call(grades.publishFinalGrades, { body: { ...scope, transferReviewAcknowledged: true } });
+  assert.equal(republished.error, null);
+  assert.equal(savedGrades.length, 4);
+});
+
+test('Grade 2 publication rejects cross-school access and rolls back a partial write failure', async () => {
+  reset();
+  configureEarlyGradeProfile();
+  const crossSchoolPreview = await call(grades.previewFinalGrades, { schoolId: 99, query: scope });
+  assert.equal(crossSchoolPreview.error?.status, 404);
+  const crossSchoolPublish = await call(grades.publishFinalGrades, { schoolId: 99, body: scope });
+  assert.equal(crossSchoolPublish.error?.status, 404);
+  assert.equal(savedGrades.length, 0);
+
+  reset();
+  configureEarlyGradeProfile();
+  failOnInsertNumber = 2;
+  const failed = await call(grades.publishFinalGrades, { body: scope });
+  assert.match(failed.error?.message || '', /Simulated database write failure/);
+  assert.equal(committed, false);
+  assert.equal(rolledBack, true);
+  assert.equal(savedGrades.length, 0);
+});
+
+test('Grade 2 cannot preview without assignment or publish in a closed term', async () => {
+  reset();
+  configureEarlyGradeProfile();
+  assigned = false;
+  const unassigned = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(unassigned.error?.status, 404);
+
+  reset();
+  configureEarlyGradeProfile();
+  context.termStatus = 'closed';
+  const closedTerm = await call(grades.publishFinalGrades, { body: scope });
+  assert.equal(closedTerm.error?.status, 409);
+  assert.equal(savedGrades.length, 0);
+  assert.equal(rolledBack, true);
 });
 
 test('legacy SHS subject groups apply their curriculum weights during grade calculation', async () => {

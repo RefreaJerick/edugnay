@@ -149,6 +149,7 @@
         </div>
       </div>
     </header>
+  <script>restoreProfileChip();</script>
 
     <main class="main">
       <section class="page-overview" aria-labelledby="page-overview-title">
@@ -222,7 +223,7 @@
           <span class="modal-heading-icon"><i data-lucide="book-open-check"></i></span>
           <div class="modal-heading-copy">
             <div class="modal-title" id="depedSubjectReviewTitle">Review DepEd subjects</div>
-            <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 4–10.</div>
+            <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 2–10.</div>
           </div>
         </div>
         <button class="modal-close" id="closeDepedSubjectReview" type="button" aria-label="Close"><i data-lucide="x"></i></button>
@@ -641,7 +642,7 @@
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
             <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS tracks and strands</div><div class="track-options">${trackOptions.map(track => { const record = trackRecords.find(item => item.displayName === track); const strands = (record?.strands || []).filter(item => item.isEnabled !== false).map(item => item.displayName); return `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}${strands.length ? `<small class="form-help">Strands: ${strands.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</small>` : '<small class="form-help">No separate strand</small>'}</span></label>`; }).join('')}</div>` : ''}</div>
-            ${['elementary', 'jhs'].includes(level) ? `<section class="school-section-block school-deped-subject-card" aria-labelledby="depedSubjectDefaultsHeading"><div><div class="school-section-block-title" id="depedSubjectDefaultsHeading">DepEd subject defaults</div><div class="school-section-block-sub">Review the subjects for enabled Grades 4–10. You can edit them later in Class Management.</div><small class="school-deped-subject-hint" id="depedSubjectReviewHint" hidden>Save grade changes before reviewing the subject defaults.</small></div><button class="top-btn secondary" id="reviewDepedSubjects" type="button"><i data-lucide="list-checks"></i> Review DepEd subjects</button></section>` : ''}
+            ${['elementary', 'jhs'].includes(level) ? `<section class="school-section-block school-deped-subject-card" aria-labelledby="depedSubjectDefaultsHeading"><div><div class="school-section-block-title" id="depedSubjectDefaultsHeading">DepEd subject defaults</div><div class="school-section-block-sub">Review the subjects for enabled Grades 2–10. You can edit them later in Class Management.</div><small class="school-deped-subject-hint" id="depedSubjectReviewHint" hidden>Save grade changes before reviewing the subject defaults.</small></div><button class="top-btn secondary" id="reviewDepedSubjects" type="button"><i data-lucide="list-checks"></i> Review DepEd subjects</button></section>` : ''}
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
@@ -649,7 +650,7 @@
       form.addEventListener('submit', saveAcademic);
       const reviewButton = document.getElementById('reviewDepedSubjects');
       if (reviewButton) {
-        const eligibleGrades = new Set(gradeOptions.filter(grade => /^Grade\s+(?:[4-9]|10)$/i.test(grade)));
+        const eligibleGrades = new Set(gradeOptions.filter(grade => /^Grade\s+(?:[2-9]|10)$/i.test(grade)));
         const savedGrades = new Set((data.enabledGrades || gradeOptions).filter(grade => eligibleGrades.has(grade)));
         const updateReviewAvailability = () => {
           const currentGrades = new Set([...form.querySelectorAll('input[name="grades"]:checked')]
@@ -677,7 +678,7 @@
     function renderDepedSubjectPreview(preview) {
       const content = document.getElementById('depedSubjectReviewContent');
       if (!preview.grades.length) {
-        content.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable at least one Grade 4–10 level in Academic Structure, save it, and review the subject defaults again.' });
+        content.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable at least one supported Grade 2–10 level in Academic Structure, save it, and review the subject defaults again.' });
         document.getElementById('applyDepedSubjectReview').disabled = true;
         return;
       }
@@ -892,10 +893,13 @@
         weight: Number(part.weight)
       })).sort((first, second) => first.name.localeCompare(second.name));
       const actual = normalize(parts);
-      const expected = normalize(defaults);
-      return actual.length === expected.length && expected.every((part, index) =>
+      const expectedSplits = [defaults, [
+        { name: 'Summative Test 1', weight: 50 },
+        { name: 'Summative Test 2', weight: 50 }
+      ]].map(normalize);
+      return expectedSplits.some(expected => actual.length === expected.length && expected.every((part, index) =>
         actual[index].name === part.name && actual[index].weight === part.weight
-      );
+      ));
     }
 
     function renderK10ComponentSummary(components, { showCustomExamDetails = false } = {}) {
@@ -937,15 +941,20 @@
       const warning = preview.periodStructureWarning
         ? '<div class="school-k10-grading-warning" role="status">' + escapeHtml(preview.periodStructureWarning) + '</div>'
         : '';
+      const hasEarlyGradeSubjects = preview.subjects.some(subject => subject.gradeCodes?.some(code => ['grade-2', 'grade-3'].includes(code)));
+      const hasK10GradeSubjects = preview.subjects.some(subject => subject.gradeCodes?.some(code => /^grade-(?:[4-9]|10)$/.test(code)));
+      const examNotes = [];
+      if (hasEarlyGradeSubjects) examNotes.push('<strong>Grades 2–3 default exam split:</strong> Summative Test 1 50% · Summative Test 2 50%. For an appropriate subject, a short term exam can be added before scores are recorded using the 30/30/40 split.');
+      if (hasK10GradeSubjects) examNotes.push('<strong>Grades 4–10 default exam split:</strong> Summative Test 1 30% · Summative Test 2 30% · Term Exam 40%.');
       return '<p class="term-modal-message deped-grading-review-intro">Applying adds only missing subject configurations. Existing custom and published configurations are preserved. Subjects without a confident learning-area match must be configured manually.</p>'
-        + '<p class="school-k10-grading-exam-note"><strong>DepEd exam split:</strong> Summative Test 1 30% · Summative Test 2 30% · Term Exam 40%.</p>'
+        + (examNotes.length ? '<p class="school-k10-grading-exam-note">' + examNotes.join('<br>') + '</p>' : '')
         + warning + '<div class="deped-grading-review-table-wrap"><table class="deped-grading-review-table">'
         + '<thead><tr><th>Subject and grade levels</th><th>Default components and weights</th><th>Current status</th></tr></thead>'
         + '<tbody>' + rows + '</tbody></table></div>';
     }
 
     function renderOtherGradeRules(apiLevel, defaults) {
-      const lowerGradeCodes = new Set(['kindergarten', 'grade-1', 'grade-2', 'grade-3']);
+      const lowerGradeCodes = new Set(['kindergarten', 'grade-1']);
       const enabledLowerGrades = (apiLevel.gradeLevels || []).filter(grade =>
         grade.isEnabled !== false && lowerGradeCodes.has(String(grade.gradeCode || '').toLowerCase())
       );
@@ -956,25 +965,28 @@
       const gradeRounding = apiLevel.gradeRounding || defaults.gradeRounding || 'round';
       const passingGradeThreshold = Number(apiLevel.passingGradeThreshold ?? defaults.passingGradeThreshold);
       return `<section class="school-section-block school-k10-other-grade-rules">
-        <div class="school-section-block-title">Current rules for enabled Kindergarten–Grade 3 levels</div>
-        <div class="school-section-block-sub">These grades remain on the existing school-level grading setup; Grades 4–10 use the subject rules above.</div>
+        <div class="school-section-block-title">Current rules for enabled Kindergarten–Grade 1 levels</div>
+        <div class="school-section-block-sub">These grades remain on the existing school-level setup; Grades 2–10 use the subject rules above when eligible for numerical grading.</div>
         <form id="schoolK3GradingForm">
           <div class="weight-list">${rules.length ? rules.map(rule => `<div class="weight-row"><label for="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}">${window.EDUGNAY_CONFIG.escapeHtml(rule.label)}</label><input id="k3-weight-${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" type="number" min="0" max="100" step="1" name="${window.EDUGNAY_CONFIG.escapeHtml(rule.id)}" value="${Number(rule.weight) || 0}"></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'scale', title: 'No grading components configured', text: 'Add grading components when the school defines its assessment rules.' })}</div>
           <div class="weight-total" id="k3WeightTotal"></div>
           <div class="school-section-block"><div class="school-section-block-title">Final grade rules</div><div class="school-form-grid"><div class="school-field"><label for="k3PassingGradeThreshold">Passing grade threshold</label><input id="k3PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="1" value="${Number.isFinite(passingGradeThreshold) ? passingGradeThreshold : 75}"><small>Students below this grade can be flagged for attention.</small></div><div class="school-field"><label for="k3GradeRounding">Grade rounding</label><select id="k3GradeRounding" name="gradeRounding"><option value="round" ${gradeRounding === 'round' ? 'selected' : ''}>Round to nearest whole number</option><option value="roundup" ${gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${gradeRounding === 'truncate' ? 'selected' : ''}>Truncate final grade</option></select><small>Applied when final grades are calculated.</small></div></div></div>
-          <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save Kindergarten–Grade 3 rules</button></div>
+          <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save Kindergarten–Grade 1 rules</button></div>
         </form>
       </section>`;
     }
 
     function renderK10GradingPane(school, level, apiLevel, preview) {
-      setSettingsHeading('Grading rules', 'Configure subject assessment weights for Grades 4–10.');
+      setSettingsHeading('Grading rules', 'Configure DepEd subject assessment weights for eligible Grades 2–10.');
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
       const gradingMode = preview.gradingMode || 'deped_policy';
       const customRules = gradingMode === 'school_specific';
       const rulesLocked = preview.locked === true;
+      const earlyTransitionGradesEnabled = String(preview.academicYearLabel || '').match(/20\d{2}/)?.[0] === '2026'
+        && (apiLevel.gradeLevels || []).some(grade => grade.isEnabled !== false
+          && ['grade-2', 'grade-3'].includes(String(grade.gradeCode || '').toLowerCase()));
       const rows = preview.subjects.map(subject => {
-        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No enabled Grade 4–10 scope');
+        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No eligible Grade 2–10 scope');
         const hasSaved = ['configured', 'published'].includes(subject.status);
         const statusLabel = subject.status === 'published' ? 'Published'
           : subject.configurationSource === 'custom' ? 'Custom'
@@ -996,7 +1008,7 @@
             <section class="school-section-block">
               <div class="school-k10-grading-toolbar"><button class="top-btn primary" type="button" id="openDepedGradingReview"><i data-lucide="list-checks"></i> Review DepEd defaults</button></div>
               ${preview.periodStructureWarning ? `<div class="school-k10-grading-warning" role="status">${escapeHtml(preview.periodStructureWarning)}</div>` : ''}
-              <div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject and grades</th><th>Components and weights</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No active Grade 4–10 subjects are configured.</td></tr>'}</tbody></table></div>
+              <div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject and grades</th><th>Components and weights</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No active eligible Grade 2–10 subjects are configured.</td></tr>'}</tbody></table></div>
             </section>
             <section class="school-section-block school-k10-final-rules">
               <div class="school-section-block-title">Final grade rules</div>
@@ -1007,7 +1019,7 @@
                   <div class="school-field"><label for="k10PassingGradeThreshold">Passing grade</label><input id="k10PassingGradeThreshold" name="passingGradeThreshold" type="number" min="0" max="100" step="0.01" value="${Number(preview.passingGradeThreshold) || 75}" ${!customRules || rulesLocked ? 'disabled' : ''}><small id="k10PassingGradeHelp">${customRules ? 'Set the passing grade for your school.' : 'DepEd default: 75.'}</small></div>
                   <div class="school-field"><label for="k10GradeRounding">Final-grade rounding</label><select id="k10GradeRounding" name="gradeRounding" ${!customRules || rulesLocked ? 'disabled' : ''}><option value="round" ${preview.gradeRounding === 'round' ? 'selected' : ''}>Nearest whole number</option><option value="roundup" ${preview.gradeRounding === 'roundup' ? 'selected' : ''}>Round up always</option><option value="truncate" ${preview.gradeRounding === 'truncate' ? 'selected' : ''}>Truncate</option></select><small id="k10GradeRoundingHelp">${customRules ? 'Applied to the weighted initial grade.' : 'DepEd default: nearest whole number.'}</small></div>
                 </div>
-                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules are locked because Grades 4–10 grades have been published for this school year.</div>' : ''}
+                ${rulesLocked ? '<div class="school-shs-review-notice" role="status">Final-grade rules are locked because numerical grades have been published for this school year.</div>' : ''}
                 <div class="school-form-footer"><button class="top-btn primary" type="submit" ${rulesLocked ? 'disabled' : ''}><i data-lucide="save"></i> Save final grade rules</button></div>
               </form>
             </section>
@@ -1276,7 +1288,7 @@
           const message = window.EDUGNAY_CONFIG.renderPanelEmptyState({
             icon: 'calendar-off',
             title: 'Active school year required',
-            text: 'Activate a supported school year under Academic Terms to configure Grade 4–10 subject grading.'
+            text: 'Activate a supported school year under Academic Terms to configure eligible Grade 2–10 subject grading.'
           });
           document.getElementById('schoolSettingsBody').innerHTML = `<div class="school-pane school-grading-pane active">${renderDivisionSwitcher(school)}<div class="school-k10-grading-panel">${message}</div></div>`;
           bindDivisionSwitcher();

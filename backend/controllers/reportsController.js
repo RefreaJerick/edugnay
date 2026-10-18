@@ -39,7 +39,11 @@ async function getSchoolGradeSummary(req, res, next) {
         subjects.name AS subject,
         AVG(published_final_grades.final_grade) AS averageGrade,
         COUNT(*) AS total,
-        SUM(CASE WHEN published_final_grades.final_grade >= school_levels.passing_grade_threshold THEN 1 ELSE 0 END) AS passing,
+        SUM(CASE WHEN published_final_grades.final_grade >= CASE
+          WHEN school_grade_levels.grade_code IN ('grade-2', 'grade-3')
+            AND SUBSTRING(academic_years.label, NULLIF(LOCATE('20', academic_years.label), 0), 4) = '2026'
+          THEN 75 ELSE school_levels.passing_grade_threshold
+        END THEN 1 ELSE 0 END) AS passing,
         SUM(CASE WHEN published_final_grades.final_grade >= 90 THEN 1 ELSE 0 END) AS band90,
         SUM(CASE WHEN published_final_grades.final_grade >= 80 AND published_final_grades.final_grade < 90 THEN 1 ELSE 0 END) AS band80,
         SUM(CASE WHEN published_final_grades.final_grade >= 75 AND published_final_grades.final_grade < 80 THEN 1 ELSE 0 END) AS band75,

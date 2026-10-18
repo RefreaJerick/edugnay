@@ -165,6 +165,7 @@
         </div>
       </div>
     </header>
+    <script>restoreProfileChip();</script>
 
     <!-- ══════ MAIN ══════ -->
     <main class="main">
@@ -470,27 +471,34 @@
           });
           renderHistory();
         };
-        if (user.schoolLevel !== 'jhs') {
-          showHistoricalOnly('Current Journals are for Junior High School students. You can still read your submitted entries below.', false);
-          return;
-        }
         if (!portal.features.journalsEnabled || !portal.journalSubjectEligible) {
           showHistoricalOnly('You can still read your submitted entries below.');
           return;
         }
-        let subjects, prompts, entries;
+        let subjects;
         try {
-          [subjects, prompts, entries] = await Promise.all([
-            window.EDUGNAY_API.getJournalSubjects(),
+          subjects = await window.EDUGNAY_API.getJournalSubjects();
+        } catch (error) {
+          const enrollmentDenied = error?.status === 403;
+          const message = enrollmentDenied
+            ? error.message || 'Current Journals are available only to students enrolled in Junior High School.'
+            : `${error.message || 'Current Journals are unavailable.'} You can still read your submitted entries below.`;
+          showHistoricalOnly(message, !enrollmentDenied);
+          return;
+        }
+        if (!subjects.length) {
+          showHistoricalOnly('Current Journals are not configured. You can still read your submitted entries below.');
+          return;
+        }
+
+        let prompts, entries;
+        try {
+          [prompts, entries] = await Promise.all([
             window.EDUGNAY_API.getJournalPrompts(),
             window.EDUGNAY_API.getJournalEntries()
           ]);
         } catch (error) {
           showHistoricalOnly(`${error.message || 'Current Journals are unavailable.'} You can still read your submitted entries below.`);
-          return;
-        }
-        if (!subjects.length) {
-          showHistoricalOnly('Current Journals are not configured. You can still read your submitted entries below.');
           return;
         }
 

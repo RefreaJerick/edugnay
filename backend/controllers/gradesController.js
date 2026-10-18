@@ -1,7 +1,12 @@
 const { getDatabase } = require('../config/database');
 const { writeAuditLog } = require('../utils/auditLog');
 const { LEGACY_SHS_GRADING_GROUPS, transmuteLegacyShsInitialGrade } = require('../config/shsCurriculum');
-const { applyDepedK10GradeMethod, getDepedK10GradeMethod, isDepedK10GradeCode } = require('../config/depedK10Grading');
+const {
+  applyDepedK10GradeMethod,
+  getDepedK10GradeMethod,
+  getDepedNumericalGradeBlockReason,
+  isDepedNumericalGradeCode
+} = require('../config/depedK10Grading');
 const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
 const { getTrigger, notifyParents } = require('../utils/parentNotifications');
 
@@ -29,7 +34,8 @@ async function assertGradeWriteAccess(connection, user, scope) {
 
   const [terms] = await connection.execute(
     `SELECT academic_terms.status AS academicTermStatus,
-      academic_years.status AS academicYearStatus
+      academic_years.status AS academicYearStatus, academic_years.label AS academicYearLabel,
+      school_grade_levels.grade_code AS gradeCode
      FROM academic_terms
      INNER JOIN sections ON sections.id = ?
        AND sections.academic_year_id = academic_terms.academic_year_id
@@ -37,10 +43,14 @@ async function assertGradeWriteAccess(connection, user, scope) {
        AND sections.school_id = ? AND sections.status = 'active'
      INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
        AND academic_years.school_id = sections.school_id
+     INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+       AND school_grade_levels.school_id = sections.school_id
      WHERE academic_terms.id = ? FOR UPDATE`,
     [scope.sectionId, user.schoolId, scope.academicTermId]
   );
   if (!terms.length) throw createError('The grading period no longer matches this section.', 404);
+  const gradeBlockReason = getDepedNumericalGradeBlockReason(terms[0].gradeCode, terms[0].academicYearLabel);
+  if (gradeBlockReason) throw createError(gradeBlockReason, 409);
   const termStatus = terms[0].academicTermStatus;
   if (terms[0].academicYearStatus !== 'active') throw createError('Records outside the active school year are read-only.', 409);
 
@@ -95,8 +105,7 @@ async function validateGradeItemScope(connection, user, section, subjectId, acad
     [section.gradeLevelId, section.academicYearId, section.schoolId, section.schoolLevelId]
   );
   const usesDepedK10Rules = ['elementary', 'jhs'].includes(gradingYear?.levelCode)
-    && isDepedK10GradeCode(gradingYear?.gradeCode)
-    && getDepedK10GradeMethod(gradingYear.academicYearLabel) !== 'standard';
+    && isDepedNumericalGradeCode(gradingYear?.gradeCode, gradingYear?.academicYearLabel);
   if (usesDepedK10Rules && (!subjectGradingComponentId || gradingCategoryId)) {
     throw createError('Use this subject’s saved school-year grading configuration for score recording.', 409);
   }
@@ -314,6 +323,47 @@ function parseGradeScopeId(value, label) {
   return id;
 }
 
+function getOverviewRuleScopeKey(row) {
+  return `${row.academicYearId}:${row.schoolLevelId}`;
+}
+
+function usesK10FinalGradeRules(row) {
+  return ['elementary', 'jhs'].includes(row.schoolLevelCode)
+    && isDepedNumericalGradeCode(row.gradeCode, row.academicYearLabel);
+}
+
+async function getOverviewK10PassingThresholds(connection, schoolId, rows) {
+  const scopes = new Map();
+  rows.forEach(row => {
+    if (!usesK10FinalGradeRules(row)) return;
+    const key = getOverviewRuleScopeKey(row);
+    if (!scopes.has(key)) scopes.set(key, row);
+  });
+
+  if (!scopes.size) return new Map();
+
+  const scopeRows = Array.from(scopes.values());
+  const scopeFilter = scopeRows.map(() => '(academic_year_id = ? AND school_level_id = ?)').join(' OR ');
+  const scopeValues = scopeRows.flatMap(row => [row.academicYearId, row.schoolLevelId]);
+  const [savedRules] = await connection.execute(
+    `SELECT academic_year_id AS academicYearId, school_level_id AS schoolLevelId,
+      grading_mode AS gradingMode, passing_grade_threshold AS passingGradeThreshold
+    FROM school_year_final_grade_rules
+    WHERE school_id = ? AND (${scopeFilter})`,
+    [schoolId, ...scopeValues]
+  );
+
+  const thresholds = new Map();
+  for (const [key, row] of scopes) {
+    const saved = savedRules.find(rule => String(rule.academicYearId) === String(row.academicYearId)
+      && String(rule.schoolLevelId) === String(row.schoolLevelId));
+    thresholds.set(key, saved?.gradingMode && saved.gradingMode !== 'deped_policy'
+      ? Number(saved.passingGradeThreshold ?? 75)
+      : 75);
+  }
+  return thresholds;
+}
+
 async function getFinalGradesOverview(req, res, next) {
   try {
     const user = req.user;
@@ -369,6 +419,8 @@ async function getFinalGradesOverview(req, res, next) {
         section_students.enrolled_at AS enrollmentEnrolledAt,
         sections.id AS sectionId, sections.name AS sectionName,
         sections.status AS sectionStatus, sections.school_level_id AS schoolLevelId,
+        school_levels.level_code AS schoolLevelCode,
+        school_grade_levels.grade_code AS gradeCode,
         school_levels.grading_period_type AS gradingPeriodType,
         school_levels.passing_grade_threshold AS passingGradeThreshold
       FROM section_students
@@ -378,6 +430,8 @@ async function getFinalGradesOverview(req, res, next) {
         AND academic_years.school_id = sections.school_id
       INNER JOIN school_levels ON school_levels.id = sections.school_level_id
         AND school_levels.school_id = sections.school_id
+      LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       WHERE section_students.student_user_id = ?
       ORDER BY academicYearStartDate DESC, sectionId DESC,
         enrollmentWithdrawnAt, enrollmentEnrolledAt DESC`,
@@ -467,26 +521,15 @@ async function getFinalGradesOverview(req, res, next) {
       });
     }
 
-    const currentYear = academicYears.find(year => year.status === 'active');
-    const currentSection = currentYear?.sections.find(section => section.status === 'active' && section.isActiveEnrollment) || null;
-    const current = currentYear && currentSection ? {
-      sectionId: currentSection.id,
-      sectionName: currentSection.name,
-      academicYearId: currentYear.id,
-      academicYearLabel: currentYear.label,
-      schoolLevelId: currentSection.schoolLevelId,
-      gradingPeriodType: currentSection.gradingPeriodType,
-      passingGradeThreshold: currentSection.passingGradeThreshold,
-      terms: currentSection.terms,
-      subjects: currentSection.subjects
-    } : null;
-
     const [gradeRows] = await database.execute(
       `SELECT published_final_grades.section_id AS sectionId,
         sections.name AS sectionName, published_final_grades.subject_id AS subjectId,
+        sections.school_level_id AS schoolLevelId,
         subjects.name AS subjectName, published_final_grades.academic_term_id AS academicTermId,
         academic_terms.name AS academicTermName,
         academic_terms.sequence_number AS academicTermSequenceNumber,
+        school_levels.level_code AS schoolLevelCode,
+        school_grade_levels.grade_code AS gradeCode,
         school_levels.grading_period_type AS gradingPeriodType,
         school_levels.passing_grade_threshold AS passingGradeThreshold,
         academic_years.id AS academicYearId, academic_years.label AS academicYearLabel,
@@ -505,6 +548,8 @@ async function getFinalGradesOverview(req, res, next) {
         AND academic_years.school_id = published_final_grades.school_id
       INNER JOIN school_levels ON school_levels.id = sections.school_level_id
         AND school_levels.school_id = sections.school_id
+      LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+        AND school_grade_levels.school_id = sections.school_id
       WHERE published_final_grades.school_id = ?
         AND published_final_grades.student_user_id = ?
       ORDER BY academic_years.start_date DESC, academic_terms.sequence_number DESC,
@@ -512,22 +557,57 @@ async function getFinalGradesOverview(req, res, next) {
       [schoolId, studentId]
     );
 
+    const k10PassingThresholds = await getOverviewK10PassingThresholds(database, schoolId, [
+      ...enrollmentRows,
+      ...gradeRows
+    ]);
+    enrollmentRows.forEach(row => {
+      if (!usesK10FinalGradeRules(row)) return;
+      const threshold = k10PassingThresholds.get(getOverviewRuleScopeKey(row));
+      if (threshold === undefined) return;
+      const section = sectionMap.get(String(row.sectionId));
+      if (section) section.passingGradeThreshold = threshold;
+    });
+
+    const currentYear = academicYears.find(year => year.status === 'active');
+    const currentSection = currentYear?.sections.find(section => section.status === 'active' && section.isActiveEnrollment) || null;
+    const current = currentYear && currentSection ? {
+      sectionId: currentSection.id,
+      sectionName: currentSection.name,
+      academicYearId: currentYear.id,
+      academicYearLabel: currentYear.label,
+      schoolLevelId: currentSection.schoolLevelId,
+      gradingPeriodType: currentSection.gradingPeriodType,
+      passingGradeThreshold: currentSection.passingGradeThreshold,
+      terms: currentSection.terms,
+      subjects: currentSection.subjects
+    } : null;
+
     res.set('Cache-Control', 'no-store');
     res.json({
       overview: {
         student: { id: String(student.id), displayName: student.displayName },
         academicYears,
         current,
-        publishedGrades: gradeRows.map(grade => ({
-          ...grade,
-          sectionId: String(grade.sectionId),
-          subjectId: String(grade.subjectId),
-          academicTermId: String(grade.academicTermId),
-          academicYearId: String(grade.academicYearId),
-          academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
-          finalGrade: Number(grade.finalGrade),
-          passingGradeThreshold: grade.passingGradeThreshold == null ? null : Number(grade.passingGradeThreshold)
-        }))
+        publishedGrades: gradeRows.map(grade => {
+          const publishedGrade = { ...grade };
+          delete publishedGrade.schoolLevelId;
+          delete publishedGrade.schoolLevelCode;
+          delete publishedGrade.gradeCode;
+          return {
+            ...publishedGrade,
+            sectionId: String(grade.sectionId),
+            subjectId: String(grade.subjectId),
+            academicTermId: String(grade.academicTermId),
+            academicYearId: String(grade.academicYearId),
+            academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
+            finalGrade: Number(grade.finalGrade),
+            passingGradeThreshold: usesK10FinalGradeRules(grade)
+              && k10PassingThresholds.has(getOverviewRuleScopeKey(grade))
+              ? k10PassingThresholds.get(getOverviewRuleScopeKey(grade))
+              : grade.passingGradeThreshold == null ? null : Number(grade.passingGradeThreshold)
+          };
+        })
       }
     });
   } catch (error) {
@@ -669,23 +749,26 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   const context = contextRows[0];
   if (!context) throw createError('The section, subject, or term is not available to your account.', 404);
   if (context.termStatus !== 'active') throw createError('Grades can only be published for the active term.', 409);
+  const gradeBlockReason = getDepedNumericalGradeBlockReason(context.gradeCode, context.academicYearLabel);
+  if (gradeBlockReason) throw createError(gradeBlockReason, 409);
 
   const schoolYearMethod = ['elementary', 'jhs'].includes(context.schoolLevelCode)
     ? getDepedK10GradeMethod(context.academicYearLabel)
     : 'standard';
-  const isDepedK10 = ['elementary', 'jhs'].includes(context.schoolLevelCode)
-    && isDepedK10GradeCode(context.gradeCode) && schoolYearMethod !== 'standard';
-  const finalGradeRules = isDepedK10 ? await loadK10FinalGradeRules(connection, {
+  const usesDepedSubjectRules = ['elementary', 'jhs'].includes(context.schoolLevelCode)
+    && isDepedNumericalGradeCode(context.gradeCode, context.academicYearLabel);
+  const finalGradeRules = usesDepedSubjectRules ? await loadK10FinalGradeRules(connection, {
     schoolId: context.schoolId,
     academicYearId: context.academicYearId,
     schoolLevelId: context.schoolLevelId,
     academicYearLabel: context.academicYearLabel,
-    gradingPeriodType: context.gradingPeriodType
+    gradingPeriodType: context.gradingPeriodType,
+    gradeCode: context.gradeCode
   }) : null;
   const gradingMethod = finalGradeRules?.gradingMethod || schoolYearMethod;
   let categories;
   let periodStructureCompatible = null;
-  if (isDepedK10) {
+  if (usesDepedSubjectRules) {
     const [profiles] = await connection.execute(
       `SELECT id FROM subject_grading_profiles
       WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ? AND subject_id = ? LIMIT 1${lock}`,
@@ -726,10 +809,10 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   }
   const categoryById = new Map(categories.map(category => [category.id, category]));
   const issues = [];
-  if (isDepedK10 && finalGradeRules.periodStructureWarning) {
+  if (usesDepedSubjectRules && finalGradeRules.periodStructureWarning) {
     issues.push({ code: 'incompatible_period_structure', message: finalGradeRules.periodStructureWarning });
   }
-  if (isDepedK10 && !categories.length) {
+  if (usesDepedSubjectRules && !categories.length) {
     issues.push({ code: 'unconfigured_subject_grading', message: 'Ask School Admin to apply or configure this subject’s grading components for the school year.' });
   }
   if (context.schoolLevelCode === 'shs') {
@@ -757,11 +840,11 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     || Math.round(weightTotal * 100) !== 10000) {
     issues.push({ code: 'invalid_category_weights', message: 'Grading category weights must be valid and total 100%.' });
   }
-  const effectiveRounding = isDepedK10 ? finalGradeRules.gradeRounding : context.gradeRounding;
+  const effectiveRounding = usesDepedSubjectRules ? finalGradeRules.gradeRounding : context.gradeRounding;
   if (!['round', 'roundup', 'truncate'].includes(effectiveRounding)) {
     issues.push({ code: 'invalid_rounding_rule', message: 'The school rounding rule is invalid.' });
   }
-  const passingGradeThreshold = isDepedK10 ? finalGradeRules.passingGradeThreshold : Number(context.passingGradeThreshold);
+  const passingGradeThreshold = usesDepedSubjectRules ? finalGradeRules.passingGradeThreshold : Number(context.passingGradeThreshold);
   if (!Number.isFinite(passingGradeThreshold) || passingGradeThreshold < 0 || passingGradeThreshold > 100) {
     issues.push({ code: 'invalid_passing_threshold', message: 'The school passing-grade threshold must be between 0 and 100.' });
   }
@@ -816,12 +899,12 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     if (!Number.isFinite(item.maxScore) || item.maxScore <= 0) {
       issues.push({ code: 'invalid_max_score', message: `“${item.title}” must have a maximum score greater than zero.` });
     }
-    if (!isDepedK10 && (!categoryById.has(item.gradingCategoryId)
+    if (!usesDepedSubjectRules && (!categoryById.has(item.gradingCategoryId)
       || Number(item.categorySchoolId) !== Number(context.schoolId)
       || Number(item.categorySchoolLevelId) !== Number(context.schoolLevelId))) {
       issues.push({ code: 'invalid_item_category', message: `“${item.title}” is not linked to a grading category for this school level.` });
     }
-    if (isDepedK10) {
+    if (usesDepedSubjectRules) {
       const component = categoryById.get(item.subjectGradingComponentId);
       const part = component?.examParts.find(examPart => examPart.id === item.subjectGradingExamPartId);
       if (!component || Number(item.componentSchoolId) !== Number(context.schoolId)) {
@@ -833,11 +916,11 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   }
   if (items.length) {
     for (const category of categories) {
-      const categoryItems = items.filter(item => (isDepedK10 ? item.subjectGradingComponentId : item.gradingCategoryId) === category.id);
+      const categoryItems = items.filter(item => (usesDepedSubjectRules ? item.subjectGradingComponentId : item.gradingCategoryId) === category.id);
       if (!categoryItems.length) {
-        issues.push({ code: isDepedK10 ? 'component_without_items' : 'category_without_items', categoryCode: category.code, message: `Add at least one grading item for ${category.name}.` });
+        issues.push({ code: usesDepedSubjectRules ? 'component_without_items' : 'category_without_items', categoryCode: category.code, message: `Add at least one grading item for ${category.name}.` });
       }
-      if (isDepedK10) {
+      if (usesDepedSubjectRules) {
         for (const part of category.examParts) {
           if (!categoryItems.some(item => item.subjectGradingExamPartId === part.id)) {
             issues.push({ code: 'exam_part_without_items', categoryCode: part.code, message: `Add at least one score component for ${part.name}.` });
@@ -889,7 +972,7 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
         invalidScores.push({ gradingItemId: item.gradingItemId, title: item.title });
         continue;
       }
-      if (isDepedK10) {
+      if (usesDepedSubjectRules) {
         const componentTotal = totals.get(item.subjectGradingComponentId);
         const partTotal = item.subjectGradingExamPartId ? partTotals.get(item.subjectGradingExamPartId) : null;
         if (partTotal) {
@@ -927,10 +1010,10 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
       }))
     })) : [];
     const weightedGrade = categoryAverages.reduce((sum, category) => sum + category.percentage * (category.weight / 100), 0);
-    const initialGrade = complete && (context.schoolLevelCode === 'shs' || isDepedK10)
+    const initialGrade = complete && (context.schoolLevelCode === 'shs' || usesDepedSubjectRules)
       ? Math.round((weightedGrade + Number.EPSILON) * 100) / 100
       : null;
-    const finalGrade = !complete ? null : isDepedK10
+    const finalGrade = !complete ? null : usesDepedSubjectRules
       ? gradingMethod === 'school_direct'
         ? roundFinalGrade(initialGrade, finalGradeRules.gradeRounding)
         : applyDepedK10GradeMethod(initialGrade, gradingMethod, 'round')
@@ -960,12 +1043,12 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
     subjectName: context.subjectName,
     academicTermId: Number(context.academicTermId),
     academicTermName: context.academicTermName,
-    gradingScale: isDepedK10 ? gradingMethod : context.schoolLevelCode === 'shs' ? 'legacy_shs_transmutation' : null,
-    gradingMethod: isDepedK10 ? gradingMethod : null,
-    gradingMethodLabel: isDepedK10 ? finalGradeRules.gradingMethodLabel : null,
+    gradingScale: usesDepedSubjectRules ? gradingMethod : context.schoolLevelCode === 'shs' ? 'legacy_shs_transmutation' : null,
+    gradingMethod: usesDepedSubjectRules ? gradingMethod : null,
+    gradingMethodLabel: usesDepedSubjectRules ? finalGradeRules.gradingMethodLabel : null,
     periodStructureCompatible,
-    periodStructureWarning: isDepedK10 ? finalGradeRules.periodStructureWarning : null,
-    gradeRounding: isDepedK10 ? finalGradeRules.gradeRounding : context.gradeRounding,
+    periodStructureWarning: usesDepedSubjectRules ? finalGradeRules.periodStructureWarning : null,
+    gradeRounding: usesDepedSubjectRules ? finalGradeRules.gradeRounding : context.gradeRounding,
     passingGradeThreshold,
     categories,
     gradingItemIds: items.map(item => item.gradingItemId),

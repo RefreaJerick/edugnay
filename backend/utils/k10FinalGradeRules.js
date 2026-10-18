@@ -1,4 +1,7 @@
-const { describeDepedK10GradeMethod, getDepedK10GradeMethod } = require('../config/depedK10Grading');
+const {
+  describeDepedK10GradeMethod,
+  getDepedK10GradeMethod
+} = require('../config/depedK10Grading');
 
 const GRADING_MODES = new Set(['deped_policy', 'school_specific']);
 const ROUNDING_RULES = new Set(['round', 'roundup', 'truncate']);
@@ -12,9 +15,9 @@ async function loadK10FinalGradeRules(connection, { schoolId, academicYearId, sc
     [schoolId, academicYearId, schoolLevelId]
   );
   const saved = rows[0] || null;
+  const policyMethod = getDepedK10GradeMethod(academicYearLabel);
   const gradingMode = saved?.gradingMode || 'deped_policy';
   const isDepedPolicy = gradingMode === 'deped_policy';
-  const policyMethod = getDepedK10GradeMethod(academicYearLabel);
   const gradingMethod = isDepedPolicy ? policyMethod : 'school_direct';
   const [[termCount]] = await connection.execute(
     'SELECT COUNT(*) AS termCount FROM academic_terms WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ?',
@@ -22,6 +25,7 @@ async function loadK10FinalGradeRules(connection, { schoolId, academicYearId, sc
   );
   const periodStructureCompatible = !isDepedPolicy
     || (gradingPeriodType === 'trimestral' && Number(termCount?.termCount || 0) === 3);
+  const publishedGradeCodes = ['grade-2', 'grade-3', 'grade-4', 'grade-5', 'grade-6', 'grade-7', 'grade-8', 'grade-9', 'grade-10'];
   const [[publishedRow]] = await connection.execute(
     `SELECT COUNT(*) AS gradeCount
     FROM published_final_grades AS grades
@@ -29,8 +33,8 @@ async function loadK10FinalGradeRules(connection, { schoolId, academicYearId, sc
     INNER JOIN school_grade_levels AS grade_levels ON grade_levels.id = sections.grade_level_id
       AND grade_levels.school_id = sections.school_id
     WHERE grades.school_id = ? AND sections.academic_year_id = ? AND sections.school_level_id = ?
-      AND grade_levels.grade_code IN ('grade-4','grade-5','grade-6','grade-7','grade-8','grade-9','grade-10')`,
-    [schoolId, academicYearId, schoolLevelId]
+      AND grade_levels.grade_code IN (${publishedGradeCodes.map(() => '?').join(',')})`,
+    [schoolId, academicYearId, schoolLevelId, ...publishedGradeCodes]
   );
   const locked = Number(publishedRow?.gradeCount || 0) > 0;
   const gradingMethodLabel = gradingMethod === 'school_direct'

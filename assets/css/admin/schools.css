@@ -1978,6 +1978,63 @@
   overflow-wrap: anywhere;
 }
 
+.school-k10-final-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.school-k10-final-rules-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.school-k10-final-rules-form > .school-form-grid {
+  margin-top: 0;
+}
+
+.school-k10-final-rules-form > .school-form-footer {
+  margin-top: 0;
+}
+
+.school-k10-transition-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-md);
+  background: var(--blue-xpale);
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.school-k10-transition-icon {
+  display: inline-flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--blue-mid);
+  box-shadow: 0 2px 7px rgba(29, 92, 180, 0.09);
+}
+
+.school-k10-transition-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.school-k10-transition-text {
+  min-width: 0;
+}
+
 .school-k10-grading-exam-note strong {
   color: var(--gray-800);
 }

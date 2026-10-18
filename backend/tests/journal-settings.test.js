@@ -355,7 +355,7 @@ test('school settings and teacher shell scripts parse after journal changes', ()
   assert.match(student, /studentJournalHistoryAvailable !== null/);
   new vm.Script(student);
   const journalPage = fs.readFileSync(path.join(__dirname, '../../views/student/edugnay-student-journal.html'), 'utf8');
-  assert.match(journalPage, /user\.schoolLevel !== 'jhs'/);
+  assert.doesNotMatch(journalPage, /user\.schoolLevel !== 'jhs'/);
   for (const [, source] of journalPage.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);
   }

@@ -681,6 +681,12 @@ html.teacher-nav-hide-reports-group .sidebar #reports-nav {
   display: none !important;
 }
 
+/* Student access snapshots keep feature links stable while fresh permissions load. */
+html.student-nav-hide-grades .sidebar a[href*="edugnay-student-grades.html"],
+html.student-nav-hide-journals .sidebar a[href*="edugnay-student-journal.html"] {
+  display: none !important;
+}
+
 /* School-level Journal access can hide nav links and dashboard surfaces. */
 .sidebar a[href*="edugnay-student-journal.html"][hidden],
 [data-student-access][hidden],
@@ -2007,6 +2013,11 @@ select:not([multiple]):disabled {
 }
 .tb-profile-trigger:hover, .tb-profile-trigger.open { background: var(--white); border-color: var(--blue-pale); }
 
+html.profile-chip-restoring .tb-profile-trigger { visibility: hidden; }
+html.profile-chip-page .tb-profile-trigger { width: 215px; }
+html.profile-chip-page .tb-profile-info { flex: 1; min-width: 0; }
+html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellipsis; }
+
 .person-avatar, .tb-avatar {
   --avatar-size: 35px;
   width: var(--avatar-size);
@@ -2134,6 +2145,7 @@ select:not([multiple]):disabled {
   .tb-profile-info { display: none; }
   .tb-chevron {display: none; }
   .tb-profile-trigger { padding: 6px; border: none; background-color: var(--white);}
+  html.profile-chip-page .tb-profile-trigger { width: auto; }
 }
 
 

@@ -7,7 +7,9 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '../..');
 const adminViews = path.join(root, 'views/admin');
 const teacherViews = path.join(root, 'views/teacher');
+const studentViews = path.join(root, 'views/student');
 const teacherNavPrefix = 'edugnay_teacher_sidebar_v1:';
+const studentNavPrefix = 'edugnay_student_sidebar_v1:';
 
 function createTeacherShellHarness({
   schoolId = '10',
@@ -150,6 +152,125 @@ function createTeacherShellHarness({
   };
 }
 
+function createStudentShellHarness({
+  session = { apiSchoolId: '10', apiUserId: '70', role: 'student', schoolLevel: 'jhs' },
+  gradesEnabled = true,
+  journalsEnabled = true,
+  journalHistory = { entries: [] },
+  failures = {},
+  cachedSnapshot = null,
+  pathname = '/views/student/edugnay-student-dashboard.html',
+  deferPortal = false
+} = {}) {
+  const storage = new Map();
+  if (cachedSnapshot) {
+    storage.set(`${studentNavPrefix}current`, JSON.stringify({
+      schoolId: cachedSnapshot.schoolId,
+      studentId: cachedSnapshot.studentId
+    }));
+    storage.set(`${studentNavPrefix}${encodeURIComponent(cachedSnapshot.schoolId)}:${encodeURIComponent(cachedSnapshot.studentId)}`, JSON.stringify(cachedSnapshot));
+  }
+
+  const accessItems = {
+    grades: { hidden: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } },
+    journals: { hidden: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } },
+    attendance: { hidden: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } },
+    journalFeature: { hidden: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } }
+  };
+  const listeners = new Map();
+  const rootClasses = new Set();
+  const document = {
+    documentElement: { classList: {
+      add: name => rootClasses.add(name),
+      remove: name => rootClasses.delete(name),
+      toggle(name, force) {
+        if (force) rootClasses.add(name);
+        else rootClasses.delete(name);
+      },
+      contains: name => rootClasses.has(name)
+    } },
+    hidden: false,
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    querySelectorAll(selector) {
+      if (selector.includes('edugnay-student-grades.html')) return [accessItems.grades];
+      if (selector.includes('edugnay-student-journal.html')) return [accessItems.journals];
+      if (selector.includes('edugnay-student-attendance.html')) return [accessItems.attendance];
+      if (selector.includes('.journal-feature')) return [accessItems.journalFeature];
+      return [];
+    },
+    getElementById() { return null; },
+    querySelector() { return null; }
+  };
+  let releasePortal;
+  const portalPromise = deferPortal ? new Promise(resolve => { releasePortal = resolve; }) : null;
+  let activeFeatures = null;
+  const location = { pathname, href: `http://localhost${pathname}`, redirect: '' };
+  location.replace = target => { location.redirect = target; };
+  const context = {
+    document,
+    sessionStorage: {
+      get length() { return storage.size; },
+      getItem: key => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: key => storage.delete(key),
+      key: index => [...storage.keys()][index] ?? null
+    },
+    URL,
+    URLSearchParams,
+    console,
+    showAppToast() {},
+    window: null
+  };
+  context.window = context;
+  context.location = location;
+  context.EDUGNAY_SCHOOL_READY = Promise.resolve();
+  context.EDUGNAY_COMMUNICATION_READY = Promise.resolve();
+  context.EDUGNAY_CONFIG = {
+    isGradesPageEnabled: () => gradesEnabled,
+    isJournalsEnabled: () => activeFeatures?.journalsEnabled ?? journalsEnabled,
+    isAttendanceEnabled: () => true
+  };
+  context.EDUGNAY_API = {
+    isBackendAvailable: true,
+    enforceProfileSetup: async () => false,
+    getCurrentUser: async () => {
+      if (failures.session) {
+        const error = new Error('session request failed');
+        error.status = failures.sessionStatus || 500;
+        throw error;
+      }
+      return session;
+    },
+    getPortalFeatures: async () => {
+      if (failures.portal) throw new Error('portal request failed');
+      if (portalPromise) return portalPromise;
+      return { features: { gradesEnabled, journalsEnabled }, journalSubjectId: 3, journalSubjectName: 'English', journalSubjectEligible: true };
+    },
+    setPortalFeatures(features) { activeFeatures = features; },
+    getJournalHistory: async () => {
+      if (failures.history) throw new Error('history request failed');
+      return journalHistory;
+    },
+    loadCommunication: async () => ({ backend: false, notifications: [] })
+  };
+
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8'), context);
+  return {
+    context,
+    accessItems,
+    rootClasses,
+    storage,
+    listeners,
+    location,
+    releasePortal,
+    getCachedSnapshot() {
+      const pointer = JSON.parse(storage.get(`${studentNavPrefix}current`) || 'null');
+      if (!pointer) return null;
+      return JSON.parse(storage.get(`${studentNavPrefix}${encodeURIComponent(pointer.schoolId)}:${encodeURIComponent(pointer.studentId)}`) || 'null');
+    }
+  };
+}
+
 function settingsItems(html) {
   const label = '<div class="nav-section-label">Settings</div>';
   const labelStart = html.indexOf(label);
@@ -235,6 +356,98 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
       'sfTemplates:SF Templates'
     ], `${filename} Reports link order`);
   }
+});
+
+test('student navigation pre-paints cached access on every portal page', () => {
+  const filenames = fs.readdirSync(studentViews).filter(filename => filename.endsWith('.html'));
+  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const studentShell = fs.readFileSync(path.join(root, 'assets/js/student/shell.js'), 'utf8');
+  const commonShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.ok(filenames.length > 0, 'expected student portal pages');
+  for (const filename of filenames) {
+    const html = fs.readFileSync(path.join(studentViews, filename), 'utf8');
+    assert.match(html, /assets\/js\/student\/shell\.js/, `${filename} should use the shared student shell`);
+  }
+  assert.match(styles, /html\.student-nav-hide-grades[\s\S]*?edugnay-student-grades\.html[\s\S]*?display:\s*none !important/);
+  assert.match(styles, /html\.student-nav-hide-journals[\s\S]*?edugnay-student-journal\.html[\s\S]*?display:\s*none !important/);
+  assert.match(studentShell, /let cachedStudentSidebarSnapshot = readStudentSidebarSnapshot\(\);/);
+  assert.match(studentShell, /setStudentSidebarPrepaintState\(cachedStudentSidebarSnapshot\);/);
+  assert.match(commonShell, /function clearStudentSidebarCache\(\)/);
+  assert.match(commonShell, /confirmLogout\(\)[\s\S]*?clearStudentSidebarCache\(\)/);
+  assert.match(commonShell, /if \(error\.status === 401\)[\s\S]*?clearStudentSidebarCache\(\)/);
+  assert.match(loginPage, /edugnay_student_sidebar_v1:/);
+});
+
+test('student sidebar uses a cached snapshot only for pre-paint, then refreshes it from live access', async () => {
+  const cachedSnapshot = {
+    version: 1,
+    role: 'student',
+    schoolId: '10',
+    studentId: '70',
+    access: { grades: false, journals: true }
+  };
+  const harness = createStudentShellHarness({
+    cachedSnapshot,
+    gradesEnabled: true,
+    journalsEnabled: false,
+    deferPortal: true,
+    pathname: '/views/student/edugnay-student-journal.html'
+  });
+
+  assert.equal(harness.rootClasses.has('student-nav-hide-grades'), true, 'cached grade visibility applies before page initialization');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'cached Journal visibility applies before page initialization');
+  harness.context.navigate('journal');
+  assert.equal(harness.location.href, `http://localhost${harness.location.pathname}`, 'cached visibility does not grant Journal access');
+
+  const initialization = harness.listeners.get('DOMContentLoaded')();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), false, 'cached state remains while fresh portal permissions are pending');
+  harness.releasePortal({
+    features: { gradesEnabled: true, journalsEnabled: false },
+    journalSubjectId: 3,
+    journalSubjectName: 'English',
+    journalSubjectEligible: true
+  });
+  await initialization;
+
+  assert.equal(harness.rootClasses.has('student-nav-hide-grades'), false, 'fresh grade access replaces the cached state');
+  assert.equal(harness.rootClasses.has('student-nav-hide-journals'), true, 'fresh Journal denial removes the stale cached link');
+  assert.equal(harness.accessItems.grades.hidden, false);
+  assert.equal(harness.accessItems.journals.hidden, true);
+  assert.equal(harness.location.redirect, './edugnay-student-dashboard.html', 'fresh access still guards the Journal page');
+  assert.deepEqual(harness.getCachedSnapshot().access, { grades: true, journals: false });
+});
+
+test('student sidebar cache is discarded on account changes and session expiry', async () => {
+  const cachedSnapshot = {
+    version: 1,
+    role: 'student',
+    schoolId: '10',
+    studentId: '70',
+    access: { grades: true, journals: true }
+  };
+  const switchHarness = createStudentShellHarness({
+    cachedSnapshot,
+    session: { apiSchoolId: '10', apiUserId: '71', role: 'student', schoolLevel: 'jhs' },
+    gradesEnabled: false,
+    journalsEnabled: false
+  });
+  const switchInitialization = switchHarness.listeners.get('DOMContentLoaded')();
+  await switchInitialization;
+
+  assert.equal(switchHarness.storage.has(`${studentNavPrefix}10:70`), false, 'old student snapshot is removed after identity mismatch');
+  assert.equal(switchHarness.getCachedSnapshot().studentId, '71');
+  assert.equal(switchHarness.rootClasses.has('student-nav-hide-grades'), true);
+  assert.equal(switchHarness.rootClasses.has('student-nav-hide-journals'), true);
+
+  const expiredHarness = createStudentShellHarness({ cachedSnapshot, failures: { session: true, sessionStatus: 401 } });
+  const expiredInitialization = expiredHarness.listeners.get('DOMContentLoaded')();
+  await expiredInitialization;
+  assert.equal(expiredHarness.rootClasses.has('student-nav-hide-grades'), true, 'expired sessions fail closed before showing cached links');
+  assert.equal(expiredHarness.rootClasses.has('student-nav-hide-journals'), true);
+  assert.equal([...expiredHarness.storage.keys()].some(key => key.startsWith(studentNavPrefix)), false, 'session expiry clears the student sidebar cache');
 });
 
 test('cached teacher navigation renders immediately, then removes a freshly revoked link', async () => {
