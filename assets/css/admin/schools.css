@@ -1,6 +1,6 @@
 .school-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 18px;
   min-width: 0;
@@ -15,53 +15,37 @@
   box-shadow: none;
 }
 
-.school-calendar-panel {
-  min-width: 0;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--panel-radius);
-  background: var(--white);
-  overflow: hidden;
-  box-shadow: none;
+.school-calendar-settings {
+  display: grid;
+  gap: 18px;
 }
 
-.school-calendar-head {
+.school-calendar-toolbar {
   display: flex;
-  align-items: flex-start;
-  padding: var(--panel-head-py) var(--panel-head-px);
-  border-bottom: 1px solid var(--panel-divider);
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
 }
 
-.school-calendar-title {
-  color: var(--gray-800);
-  font-size: var(--panel-title-size);
-  font-weight: 800;
+.school-calendar-form-panel {
+  padding: 18px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
 }
 
-.school-calendar-sub {
-  margin-top: 3px;
-  color: var(--gray-400);
-  font-size: 11px;
-  line-height: 1.4;
+.school-calendar-form-panel[hidden] {
+  display: none !important;
 }
 
-.school-calendar-body {
-  padding: 20px;
-}
-
-.school-calendar-panel .school-form-grid {
-  grid-template-columns: 1fr;
+.school-calendar-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 0;
 }
 
-.school-calendar-panel .school-form-footer {
-  flex-direction: column;
+.school-calendar-form .school-form-footer {
   margin-top: 18px;
-  padding-top: 16px;
-}
-
-.school-calendar-panel .school-form-footer .top-btn {
-  width: 100%;
-  justify-content: center;
+  padding-top: 14px;
 }
 
 .school-settings-head {
@@ -255,13 +239,80 @@
   margin-top: 18px;
 }
 
-.school-profile-pane form,
-.school-academic-pane form,
-.school-terms-pane form,
-.school-grading-pane form,
-.school-attendance-pane form,
-.school-portal-pane form {
+.school-profile-pane form {
+  max-width: none;
+}
+
+.school-profile-form-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.school-profile-form-grid > .school-field {
+  grid-column: span 2;
+}
+
+.school-profile-form-grid > .school-profile-address-field {
+  grid-column: span 4;
+}
+
+.school-profile-form-grid > .school-profile-third-field {
+  grid-column: span 2;
+}
+
+.school-profile-levels-field .school-level-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.school-profile-levels-field .school-level-option {
+  flex: 1 1 126px;
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.school-profile-pane .school-logo-preview {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.school-profile-pane .school-logo-preview > .school-logo-placeholder,
+.school-profile-pane .school-logo-preview > img {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.school-profile-pane .school-logo-preview > .school-logo-upload {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+}
+
+.school-profile-pane .school-logo-preview > .school-logo-preview-hint {
+  grid-column: 1;
+  grid-row: 3;
+  margin: 0;
+}
+
+.school-academic-pane form {
+  max-width: none;
+}
+
+.school-grading-pane form {
   max-width: 980px;
+}
+
+.school-portal-pane form {
+  max-width: none;
+}
+
+.school-terms-pane form {
+  max-width: none;
+}
+
+.school-attendance-pane form {
+  max-width: none;
 }
 
 .school-academic-pane form > .school-section-block:first-child {
@@ -271,15 +322,20 @@
 }
 
 .school-academic-pane .grade-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .term-config-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
 }
 
 .term-tracker-block {
   margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
 }
 
 .term-tracker {
@@ -437,6 +493,11 @@
   margin-top: 14px;
 }
 
+.term-schedule-list.three-term-schedule {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
 .term-schedule-row {
   display: grid;
   grid-template-columns: minmax(120px, .8fr) repeat(2, minmax(135px, 1fr)) 72px;
@@ -446,6 +507,38 @@
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--surface-muted);
+}
+
+.term-schedule-list.three-term-schedule .term-schedule-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.term-schedule-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.term-schedule-card-header .school-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.term-schedule-list.three-term-schedule .term-schedule-card-header .term-status {
+  flex: 0 0 auto;
+  width: max-content;
+  margin: 0;
+}
+
+.term-schedule-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .term-status {
@@ -750,143 +843,41 @@
   line-height: 1.4;
 }
 
-.school-deped-subject-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-}
-
-.school-deped-subject-card .top-btn {
-  flex: 0 0 auto;
-}
-
-.school-deped-subject-hint {
-  display: block;
-  margin-top: 5px;
-  color: var(--orange-dark);
-  font-size: 10px;
-}
-
-.school-deped-subject-hint[hidden] {
-  display: none;
-}
-
-.deped-subject-modal .modal {
-  display: flex;
-  width: min(1040px, 100%);
-  max-height: calc(100vh - 32px);
-  flex-direction: column;
-}
-
-.deped-subject-review-body {
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.deped-subject-grade-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.deped-subject-grade {
-  overflow: hidden;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.deped-subject-grade-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 12px;
-  background: var(--surface-muted);
-}
-
-.deped-subject-grade-head strong {
-  min-width: 0;
-  color: var(--gray-800);
-  font-size: 12px;
-}
-
-.deped-subject-grade-head > span {
-  margin-left: auto;
-  color: var(--gray-500);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.deped-subject-grade ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.deped-subject-grade li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--gray-100);
-  color: var(--gray-700);
-  font-size: 11px;
-}
-
-.deped-subject-grade li small {
-  display: block;
-  margin-top: 2px;
-  color: var(--gray-400);
-  font-size: 10px;
-}
-
-.deped-subject-status {
-  flex: 0 0 auto;
-  color: var(--blue-mid);
-  font-size: 10px;
-  font-weight: 700;
-  text-align: right;
-}
-
-.deped-subject-status.already-present {
-  color: var(--green-dark);
-}
-
-.deped-subject-status.inactive,
-.deped-subject-status.review-existing {
-  color: var(--orange-dark);
-}
-
-.deped-subject-result {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--blue-pale);
-  border-radius: var(--radius-sm);
-  color: var(--blue-mid);
-  background: var(--blue-xpale);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.deped-subject-result.error {
-  border-color: var(--red-pale);
-  color: var(--red);
-  background: var(--red-pale);
-}
-
 /* The portal access setting starts the pane, so it follows the tabs without
    adding a second, oversized top divider. */
 .school-portal-access-block {
-  margin-top: 18px;
+  margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+.school-portal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.school-portal-journal-column {
+  min-width: 0;
+}
+
+.school-portal-journal-column > .school-journal-settings-block {
+  margin-top: 0;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.school-portal-journal-column > .school-journal-history-block {
+  margin-top: 16px;
+  padding-top: 0;
+}
+
+.school-portal-journal-column .school-form-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .school-subsection-title {
@@ -897,6 +888,58 @@
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+.school-attendance-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+@media (min-width: 1440px) {
+  .school-attendance-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.school-attendance-overview > .school-section-block {
+  min-width: 0;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.school-attendance-threshold-grid {
+  grid-template-columns: 1fr;
+  margin-top: 12px;
+}
+
+.school-attendance-threshold-field {
+  grid-template-columns: minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 12px;
+}
+
+.school-attendance-threshold-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.school-attendance-threshold-field > input {
+  width: 72px;
+  justify-self: end;
+}
+
+.school-attendance-access-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+}
+
+.school-attendance-access-grid .school-toggle-row:last-child {
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--gray-100);
 }
 
 .school-attendance-code-grid {
@@ -988,26 +1031,26 @@
   stroke-width: 2;
 }
 
-.school-calendar-panel .icon-button {
+.school-calendar-settings .icon-button {
   border-color: var(--red-border);
   background: var(--red-pale);
   color: var(--red);
   transition: background .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
 }
 
-.school-calendar-panel .icon-button:hover {
+.school-calendar-settings .icon-button:hover {
   border-color: var(--red);
   background: var(--red);
   color: var(--white);
   box-shadow: 0 3px 8px rgba(239, 68, 68, .16);
 }
 
-.school-calendar-panel .icon-button:focus-visible {
+.school-calendar-settings .icon-button:focus-visible {
   outline: 2px solid var(--red);
   outline-offset: 2px;
 }
 
-.school-calendar-panel .icon-button:active {
+.school-calendar-settings .icon-button:active {
   transform: translateY(1px);
 }
 
@@ -1098,9 +1141,9 @@
 .calendar-list {
   display: grid;
   gap: 8px;
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid var(--gray-200);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .calendar-list-title {
@@ -1157,12 +1200,61 @@
 }
 
 @media (max-width: 1060px) {
-  .school-workspace {
+  .school-portal-layout {
     grid-template-columns: 1fr;
   }
 
   .grade-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .school-academic-pane .grade-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .school-profile-form-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .school-profile-form-grid > .school-profile-levels-field {
+    grid-column: 1 / -1;
+  }
+
+  .school-profile-form-grid > .school-profile-third-field {
+    grid-column: span 2;
+  }
+
+  .school-profile-form-grid > .school-profile-address-field {
+    grid-column: span 2;
+  }
+
+  .school-profile-form-grid > .school-profile-phone-field,
+  .school-profile-form-grid > .school-profile-branding-field {
+    grid-column: 1 / -1;
+  }
+
+  .term-config-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .term-schedule-list.three-term-schedule {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 760px) {
+  .school-calendar-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .school-attendance-access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .school-attendance-access-grid .school-toggle-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 }
 
@@ -1176,15 +1268,48 @@
     padding: 16px;
   }
 
-  .school-calendar-body {
-    padding: 16px;
-  }
-
   .school-form-grid,
   .grade-grid,
   .track-options,
   .school-attendance-code-grid {
     grid-template-columns: 1fr;
+  }
+
+  .school-attendance-threshold-field {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .school-attendance-threshold-field > input {
+    width: 100%;
+  }
+
+  .term-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .school-profile-levels-field .school-level-options {
+    flex-direction: column;
+  }
+
+  .school-profile-form-grid > .school-field,
+  .school-profile-form-grid > .school-profile-address-field,
+  .school-profile-form-grid > .school-profile-third-field,
+  .school-profile-form-grid > .school-profile-phone-field,
+  .school-profile-form-grid > .school-profile-branding-field {
+    grid-column: 1 / -1;
+  }
+
+  .school-profile-pane .school-logo-preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .school-profile-pane .school-logo-preview > .school-logo-placeholder,
+  .school-profile-pane .school-logo-preview > img,
+  .school-profile-pane .school-logo-preview > .school-logo-upload,
+  .school-profile-pane .school-logo-preview > .school-logo-preview-hint {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .school-academic-pane .grade-grid,
@@ -1194,27 +1319,6 @@
 
   .school-form-grid .full {
     grid-column: auto;
-  }
-
-  .school-deped-subject-card {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .school-deped-subject-card .top-btn {
-    justify-content: center;
-  }
-
-  .deped-subject-modal .modal {
-    max-height: calc(100dvh - 20px);
-  }
-
-  .deped-subject-grade li {
-    align-items: flex-start;
-  }
-
-  .deped-subject-status {
-    max-width: 44%;
   }
 
   .term-current-card,
@@ -1242,6 +1346,15 @@
   }
 
   .term-schedule-row {
+    grid-template-columns: 1fr;
+  }
+
+  .term-schedule-list.three-term-schedule {
+    grid-template-columns: 1fr;
+  }
+
+  .term-schedule-list.three-term-schedule .term-schedule-row,
+  .term-schedule-dates {
     grid-template-columns: 1fr;
   }
 
@@ -1274,6 +1387,19 @@
 
   .holiday-date {
     grid-column: 1 / -1;
+  }
+
+  .school-calendar-toolbar {
+    align-items: stretch;
+  }
+
+  .school-calendar-toolbar .top-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .school-calendar-form-panel {
+    padding: 14px;
   }
 }
 
@@ -1349,10 +1475,6 @@
 }
 
 @media (max-width: 760px) {
-  .deped-subject-grade-list {
-    grid-template-columns: 1fr;
-  }
-
   .school-shs-weight-section {
     margin-top: 14px;
   }
@@ -1388,10 +1510,19 @@
   font-size: 13px;
 }
 
+.school-k10-grading-result {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--red-pale);
+  border-radius: var(--radius-sm);
+  color: var(--red);
+  background: var(--red-pale);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .school-k10-grading-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--gray-200, #dbe3ef);
-  border-radius: 12px;
 }
 
 .school-k10-grading-table {
@@ -1442,37 +1573,9 @@
   flex-direction: column;
 }
 
-.deped-grading-review-body,
 .subject-grading-editor-body {
   overflow-y: auto;
   min-height: 0;
-}
-
-.deped-grading-review-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--gray-200, #dbe3ef);
-  border-radius: 10px;
-}
-
-.deped-grading-review-table {
-  width: 100%;
-  min-width: 660px;
-  border-collapse: collapse;
-}
-
-.deped-grading-review-table th,
-.deped-grading-review-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--gray-100, #edf1f7);
-  text-align: left;
-  font-size: 13px;
-}
-
-.deped-grading-review-table thead th {
-  background: var(--gray-50, #f7f9fc);
-  color: var(--gray-600, #60718a);
-  font-size: 10px;
-  text-transform: uppercase;
 }
 
 .subject-grading-editor-body {
@@ -1594,25 +1697,13 @@
   line-height: 1.45;
 }
 
-.school-k10-grading-table th:nth-child(1),
-.school-k10-grading-table td:nth-child(1) { width: 22%; }
-.school-k10-grading-table th:nth-child(2),
-.school-k10-grading-table td:nth-child(2) { width: 14%; }
-.school-k10-grading-table th:nth-child(3),
-.school-k10-grading-table td:nth-child(3) { width: 40%; }
-.school-k10-grading-table th:nth-child(4),
-.school-k10-grading-table td:nth-child(4) { width: 15%; }
-.school-k10-grading-table th:nth-child(5),
-.school-k10-grading-table td:nth-child(5) { width: 9%; }
-
 .school-k10-grading-grade-list {
   color: var(--gray-600, #60718a);
   font-size: 12px;
   white-space: normal;
 }
 
-.school-k10-grading-subject-name,
-.deped-grading-review-subject {
+.school-k10-grading-subject-name {
   font-size: 12.5px;
   overflow-wrap: anywhere;
 }
@@ -1621,6 +1712,26 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+}
+
+.school-k10-grading-row-note,
+.school-k10-grading-action-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--gray-500, #71829b);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.school-k10-grading-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.school-k10-grading-action-note {
+  max-width: 180px;
+  text-align: right;
 }
 
 .school-k10-grading-weight {
@@ -1675,9 +1786,9 @@
   font-size: 11px;
 }
 
-.deped-grading-review-modal .modal {
-  width: min(1040px, calc(100vw - 32px));
-  max-width: 1040px;
+.deped-grading-apply-modal .modal {
+  width: min(560px, calc(100vw - 32px));
+  max-width: 560px;
 }
 
 .subject-grading-editor-modal .modal {
@@ -1698,41 +1809,57 @@
   gap: 12px;
 }
 
-.deped-grading-review-intro {
-  margin-bottom: 12px;
-  line-height: 1.55;
+.deped-grading-confirmation-body {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-height: min(55vh, 420px);
 }
 
-.deped-grading-review-table {
-  min-width: 790px;
-  table-layout: fixed;
+.school-k10-deped-confirmation-copy,
+.school-k10-deped-confirmation-note {
+  margin: 0;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.deped-grading-review-table th,
-.deped-grading-review-table td {
+.school-k10-deped-confirmation-copy {
+  color: var(--gray-700, #46566d);
+  font-size: 13px;
+}
+
+.school-k10-deped-confirmation-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.school-k10-deped-confirmation-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
   padding: 9px 11px;
-  vertical-align: middle;
-  line-height: 1.4;
+  border: 1px solid var(--gray-200, #dbe3ef);
+  border-radius: 8px;
+  background: var(--gray-50, #f7f9fc);
+  font-size: 13px;
 }
 
-.deped-grading-review-table th:nth-child(1),
-.deped-grading-review-table td:nth-child(1) { width: 23%; }
-.deped-grading-review-table th:nth-child(2),
-.deped-grading-review-table td:nth-child(2) { width: 15%; }
-.deped-grading-review-table th:nth-child(3),
-.deped-grading-review-table td:nth-child(3) { width: 44%; }
-.deped-grading-review-table th:nth-child(4),
-.deped-grading-review-table td:nth-child(4) { width: 18%; }
-
-.deped-grading-review-subject {
+.school-k10-deped-confirmation-list strong {
+  min-width: 0;
   color: var(--gray-800, #26364d);
-  font-weight: 650;
+  overflow-wrap: anywhere;
 }
 
-.deped-grading-review-table .school-k10-grading-source {
-  max-width: 100%;
-  white-space: normal;
-  line-height: 1.3;
+.school-k10-deped-confirmation-list span {
+  flex: 0 0 auto;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
 }
 
 .subject-grading-component-card {
@@ -1832,8 +1959,9 @@
     max-height: calc(100dvh - 20px);
   }
 
-  .deped-grading-review-table {
-    min-width: 720px;
+  .deped-grading-apply-modal .modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
   }
 
   .subject-grading-editor-body {
@@ -1856,13 +1984,19 @@
   }
 
   .subject-grading-editor-modal .modal-foot,
-  .deped-grading-review-modal .modal-foot {
+  .deped-grading-apply-modal .modal-foot {
     padding: 12px 14px 16px;
   }
 
   .subject-grading-editor-modal .modal-foot .btn,
-  .deped-grading-review-modal .modal-foot .btn {
+  .deped-grading-apply-modal .modal-foot .btn {
     padding: 10px 12px;
+  }
+
+  .school-k10-deped-confirmation-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
   }
 }
 
@@ -1870,60 +2004,521 @@
 .school-k10-grading-panel {
   min-width: 0;
   margin-top: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.school-k10-grading-panel > :not(.school-k10-final-rules) {
+  grid-column: 1 / -1;
 }
 
 .school-k10-grading-panel > .school-section-block,
 .school-k10-grading-toolbar,
-.school-k10-grading-table-wrap,
-.deped-grading-review-table-wrap {
+.school-k10-grading-table-wrap {
   min-width: 0;
 }
 
+.school-k10-grading-table-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.school-k10-empty-state-actions {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 24px;
+  box-sizing: border-box;
+}
+
+.school-k10-empty-state-actions > .panel-empty-state {
+  padding-bottom: 0;
+}
+
+.school-k10-empty-state-actions > .top-btn {
+  text-decoration: none;
+}
+
 .school-k10-grading-toolbar {
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 14px 18px;
 }
 
 .school-k10-grading-toolbar > .top-btn {
-  justify-self: end;
+  flex: 0 0 auto;
   max-width: 100%;
   white-space: normal;
 }
 
-.school-k10-grading-table,
-.deped-grading-review-table {
+.school-k10-grading-table {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   table-layout: fixed;
 }
 
-.school-k10-grading-table th:nth-child(1),
-.school-k10-grading-table td:nth-child(1) { width: 30%; }
+/* Leave Subject auto-sized so it absorbs the width left by the fixed columns. */
 .school-k10-grading-table th:nth-child(2),
-.school-k10-grading-table td:nth-child(2) { width: 36%; }
+.school-k10-grading-table td:nth-child(2) { width: 14%; }
 .school-k10-grading-table th:nth-child(3),
-.school-k10-grading-table td:nth-child(3) { width: 18%; }
+.school-k10-grading-table td:nth-child(3) { width: 250px; max-width: 270px; }
 .school-k10-grading-table th:nth-child(4),
-.school-k10-grading-table td:nth-child(4) { width: 16%; }
+.school-k10-grading-table td:nth-child(4) { width: 22%; }
+.school-k10-grading-table th:nth-child(5),
+.school-k10-grading-table td:nth-child(5) { width: 15%; }
+.school-k10-grading-table th:nth-child(6),
+.school-k10-grading-table td:nth-child(6) { width: 9%; }
 
-.school-k10-grading-table th:nth-child(4),
-.school-k10-grading-table td:nth-child(4) {
+  .school-k10-grading-table td:nth-child(4) .school-k10-grading-source {
+  white-space: nowrap;
+}
+
+.school-k10-grading-table th:nth-child(6),
+.school-k10-grading-table td:nth-child(6) {
   padding-right: 6px;
   padding-left: 6px;
 }
 
-.school-k10-grading-table td:nth-child(4) {
+.school-k10-grading-table td:nth-child(6) {
   text-align: right;
 }
 
-.school-k10-grading-table td:nth-child(3) .school-k10-grading-source {
+.school-k10-grading-table td:nth-child(5) .school-k10-grading-source {
   justify-content: center;
   text-align: center;
   white-space: normal;
 }
 
-.school-k10-grading-subject-name {
+.school-k10-grading-subject-name,
+.school-k10-grading-table .school-k10-grading-grade-list {
   line-height: 1.35;
+}
+
+.school-k10-group-exception {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--gray-200, #dbe3ef);
+  border-radius: 8px;
+  background: var(--gray-50, #f7f9fc);
+}
+
+.school-k10-group-exception > div:first-child {
+  min-width: 0;
+}
+
+.school-k10-group-exception > div:first-child > strong {
+  display: inline-block;
+  margin-right: 7px;
+  color: var(--gray-800, #26364d);
+}
+
+.school-k10-individual-edit {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--blue, #1d5fbf);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.school-k10-group-exceptions {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.school-k10-group-exceptions h4 {
+  margin: 0;
+  color: var(--navy, #1d355f);
+  font-size: 14px;
+}
+
+.school-k10-exam-policy {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.school-k10-exam-policy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--gray-700, #46566d);
+}
+
+.school-k10-exam-policy-row > strong {
+  color: var(--gray-800, #26364d);
+}
+
+.school-k10-group-exam-setup .school-k10-exam-setup-hint {
+  color: var(--navy, #1d355f);
+  font-weight: 600;
+}
+
+.school-k10-group-exam-setup {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 15px;
+  border: 1px solid var(--gray-200, #dbe3ef);
+  border-radius: 10px;
+  background: var(--gray-50, #f7f9fc);
+}
+
+.school-k10-group-exam-setup h4,
+.school-k10-group-exam-setup p {
+  margin: 0;
+}
+
+.school-k10-group-exam-setup h4 {
+  color: var(--navy, #1d355f);
+  font-size: 14px;
+}
+
+.school-k10-group-exam-setup p {
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.school-k10-term-exam-choice {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+  color: var(--gray-700, #46566d);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.school-k10-term-exam-choice select {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--gray-300, #ccd6e4);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gray-800, #26364d);
+  font: inherit;
+}
+
+.school-k10-group-exam-part label {
+  display: grid;
+  gap: 5px;
+  color: var(--gray-600, #60718a);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.school-k10-group-exam-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Grouped subject grading editor: consistent sections, aligned rows, and a compact policy note. */
+.school-k10-exam-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--blue-pale);
+  border-radius: var(--radius-md);
+  background: var(--blue-xpale);
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.school-k10-exam-info-icon {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--blue-mid);
+  box-shadow: 0 2px 7px rgba(29, 92, 180, .09);
+}
+
+.school-k10-exam-info-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.school-k10-editor-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--gray-200, #dbe3ef);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.school-k10-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.school-k10-section-heading > div {
+  min-width: 0;
+}
+
+.school-k10-section-heading h3 {
+  margin: 0;
+  color: var(--gray-800, #26364d);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.school-k10-section-heading p {
+  margin: 3px 0 0;
+  color: var(--gray-500, #71829b);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.school-k10-component-table,
+.school-k10-exam-part-list,
+.school-k10-standard-exam-editor {
+  min-width: 0;
+}
+
+.school-k10-component-table,
+.school-k10-standard-exam-editor .school-k10-exam-part-list {
+  display: grid;
+  gap: 8px;
+}
+
+.school-k10-component-columns,
+.school-k10-group-component-grid {
+  display: grid;
+  grid-template-columns: minmax(100px, .85fr) minmax(150px, 1.35fr) minmax(145px, 1.1fr) minmax(88px, .65fr) 100px;
+  align-items: center;
+  gap: 9px;
+}
+
+.school-k10-component-columns,
+.school-k10-exam-part-columns {
+  color: var(--gray-500, #71829b);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.school-k10-component-columns {
+  padding: 0 12px 7px;
+}
+
+.school-k10-exam-part-columns {
+  padding: 0 0 7px;
+}
+
+.school-k10-group-component-row {
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.school-k10-group-component-grid label,
+.school-k10-group-exam-part label,
+.school-k10-standard-exam-editor .subject-grading-exam-part label {
+  min-width: 0;
+  margin: 0;
+}
+
+.school-k10-group-component-grid input,
+.school-k10-group-component-grid select,
+.school-k10-group-exam-part input,
+.school-k10-standard-exam-editor .subject-grading-exam-part input {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.school-k10-group-component-grid [data-component-field="code"],
+.school-k10-group-exam-part [data-early-part="code"],
+.school-k10-standard-exam-editor [data-part-field="code"] {
+  border-color: transparent;
+  background: var(--gray-50, #f7f9fc);
+  color: var(--gray-500, #71829b);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+}
+
+.school-k10-group-component-grid [data-component-field="name"] {
+  color: var(--gray-800, #26364d);
+  font-weight: 600;
+}
+
+.school-k10-group-component-grid > button {
+  box-sizing: border-box;
+  width: 100px;
+}
+
+.school-k10-group-component-grid > button,
+.school-k10-group-exam-part > button,
+.school-k10-standard-exam-editor .subject-grading-exam-part > button {
+  min-height: 36px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.school-k10-editor-section > .subject-grading-editor-total {
+  justify-self: end;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.school-k10-standard-exam-setup .school-k10-exam-policy {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-100, #edf1f7);
+  border-radius: 8px;
+  background: var(--gray-50, #f7f9fc);
+}
+
+.school-k10-exam-policy-note,
+.school-k10-restore-preserved-note {
+  display: block;
+  color: var(--gray-500, #71829b);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.school-k10-standard-exam-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.school-k10-standard-exam-editor h4 {
+  margin: 0;
+  color: var(--gray-700, #46566d);
+  font-size: 12px;
+}
+
+.school-k10-custom-split-label {
+  color: var(--gray-600, #60718a);
+  font-size: 11px;
+}
+
+.school-k10-exam-part-columns,
+.school-k10-standard-exam-editor .subject-grading-exam-part,
+.school-k10-group-exam-part {
+  display: grid;
+  grid-template-columns: minmax(110px, .85fr) minmax(160px, 1.4fr) minmax(88px, .65fr) 92px;
+  align-items: center;
+  gap: 9px;
+}
+
+.school-k10-standard-exam-editor .subject-grading-exam-part {
+  margin-top: 0;
+}
+
+.school-k10-group-exam-part > button,
+.school-k10-standard-exam-editor .subject-grading-exam-part > button {
+  box-sizing: border-box;
+  width: 92px;
+}
+
+.school-k10-standard-exam-editor .school-k10-exam-total-note,
+.school-k10-exam-total-note {
+  color: var(--gray-500, #71829b);
+  font-size: 11px;
+}
+
+.school-k10-add-exam-part {
+  justify-self: start;
+  min-height: 36px;
+  padding: 7px 11px;
+}
+
+.school-k10-group-exam-setup {
+  margin: 0;
+  padding: 15px;
+  background: #fff;
+}
+
+.school-k10-group-exam-setup .school-k10-section-heading {
+  margin-bottom: 1px;
+}
+
+.school-k10-term-exam-choice {
+  max-width: 460px;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.school-k10-group-exam-setup .school-k10-exam-part-list {
+  display: grid;
+  gap: 8px;
+}
+
+.school-k10-group-exam-part {
+  margin: 0;
+}
+
+.school-k10-group-exam-actions {
+  margin-top: 0;
+}
+
+.school-k10-no-exam-parts {
+  margin: 2px 0 !important;
+  color: var(--gray-500, #71829b);
+  font-size: 11px;
+}
+
+.school-k10-locked-note {
+  margin: 0;
+  color: var(--gray-500, #71829b);
+  font-size: 12px;
+}
+
+.school-k10-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.school-k10-no-exam-parts {
+  margin-top: 8px !important;
+}
+
+.school-k10-sync-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--gray-700, #46566d);
+  font-size: 12px;
+}
+
+.school-k10-sync-confirm input {
+  margin-top: 2px;
+}
+
+.school-k10-grading-table .school-k10-grading-grade-list {
+  margin-top: 0;
 }
 
 .school-k10-grading-grade-list {
@@ -1980,8 +2575,17 @@
 
 .school-k10-final-rules {
   display: flex;
+  grid-column: 1 / -1;
+  width: 66.6667%;
+  justify-self: start;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 16px;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
 }
 
 .school-k10-final-rules-form {
@@ -1991,11 +2595,26 @@
 }
 
 .school-k10-final-rules-form > .school-form-grid {
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+  max-width: none;
+  gap: 14px;
   margin-top: 0;
+}
+
+.school-k10-final-rules-form #k10PassingGradeThreshold {
+  width: 120px;
+  max-width: 100%;
 }
 
 .school-k10-final-rules-form > .school-form-footer {
   margin-top: 0;
+}
+
+@media (max-width: 1200px) {
+  .school-k10-final-rules-form > .school-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 460px;
+  }
 }
 
 .school-k10-transition-note {
@@ -2099,26 +2718,11 @@
   overflow-wrap: anywhere;
 }
 
-.deped-grading-review-table th:nth-child(1),
-.deped-grading-review-table td:nth-child(1) { width: 34%; }
-.deped-grading-review-table th:nth-child(2),
-.deped-grading-review-table td:nth-child(2) { width: 48%; }
-.deped-grading-review-table th:nth-child(3),
-.deped-grading-review-table td:nth-child(3) { width: 18%; }
-
-.deped-grading-review-subject {
-  display: block;
-  line-height: 1.35;
-}
-
-.deped-grading-review-table .school-k10-grading-grade-list {
-  font-size: 11px;
-}
-
 @media (max-width: 1280px) {
   .school-k10-grading-toolbar {
     grid-template-columns: minmax(0, 1fr);
     justify-items: end;
+    flex-wrap: wrap;
   }
 
   .school-k10-grading-toolbar > .top-btn {
@@ -2126,20 +2730,18 @@
     justify-content: center;
   }
 
-  .school-k10-grading-table-wrap,
-  .deped-grading-review-table-wrap {
+  .school-k10-grading-table-wrap {
+    width: 100%;
     overflow: visible;
-    border: 0;
   }
 
-  .school-k10-grading-table,
-  .deped-grading-review-table {
+  .school-k10-grading-table {
     display: block;
     width: 100%;
+    table-layout: fixed;
   }
 
-  .school-k10-grading-table thead,
-  .deped-grading-review-table thead {
+  .school-k10-grading-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2151,85 +2753,123 @@
     border: 0;
   }
 
-  .school-k10-grading-table tbody,
-  .deped-grading-review-table tbody {
+  .school-k10-grading-table tbody {
     display: grid;
-    gap: 10px;
   }
 
-  .school-k10-grading-table tbody tr,
-  .deped-grading-review-table tbody tr {
-    display: grid;
+  .school-k10-grading-table tbody tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
     min-width: 0;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    border: 1px solid var(--gray-200, #dbe3ef);
-    border-radius: 10px;
-    background: #fff;
+    align-items: flex-start;
+    gap: 0 18px;
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--gray-100, #edf1f7);
   }
 
-  .school-k10-grading-table tbody td,
-  .deped-grading-review-table tbody td {
+  .school-k10-grading-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .school-k10-grading-table tbody tr > td:nth-child(n) {
     min-width: 0;
-    padding: 10px 12px;
+    width: auto;
+    max-width: none;
+    padding: 0;
     border: 0;
     overflow-wrap: anywhere;
   }
 
-  .school-k10-grading-table tbody td:nth-child(1),
-  .school-k10-grading-table tbody td:nth-child(2),
-  .deped-grading-review-table tbody td:nth-child(1),
-  .deped-grading-review-table tbody td:nth-child(2) {
-    grid-column: 1 / -1;
+  .school-k10-grading-table tbody td[data-label]::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--gray-500, #71829b);
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
   }
 
-  .school-k10-grading-table tbody td:nth-child(2),
-  .deped-grading-review-table tbody td:nth-child(2) {
-    padding-top: 0;
+  .school-k10-grading-table tbody tr > td:nth-child(1),
+  .school-k10-grading-table tbody tr > td:nth-child(2) {
+    flex: 0 0 100%;
+    padding-right: 136px;
   }
 
-  .school-k10-grading-table tbody td:nth-child(3),
-  .deped-grading-review-table tbody td:nth-child(3) {
-    grid-column: 1;
-    grid-row: 3;
-    padding-top: 2px;
+  .school-k10-grading-table tbody td:nth-child(2) {
+    margin-top: 6px;
+  }
+
+  .school-k10-grading-table tbody td:nth-child(3) {
+    flex: 0 0 100%;
+    margin-top: 16px;
   }
 
   .school-k10-grading-table tbody td:nth-child(4) {
-    grid-column: 2;
-    grid-row: 3;
-    justify-self: end;
-    padding-top: 2px;
+    flex: 0 1 auto;
+    margin-top: 16px;
   }
 
-  .school-k10-grading-table tbody td:nth-child(4) .top-btn {
-    min-width: 68px;
+  .school-k10-grading-table tbody tr > td:nth-child(5) {
+    flex: 0 1 auto;
+    max-width: 220px;
+    margin-top: 16px;
+  }
+
+  .school-k10-grading-table tbody td:nth-child(6) {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+
+  .school-k10-grading-table .school-k10-grading-weights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+
+  .school-k10-grading-table .school-k10-grading-subject-name {
+    font-size: 14px;
+  }
+
+  .school-k10-grading-table tbody td:nth-child(4) .school-k10-grading-source {
+    width: fit-content;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .school-k10-grading-table tbody td:nth-child(6) .top-btn {
+    min-width: 112px;
+    min-height: 44px;
     justify-content: center;
+    white-space: nowrap;
   }
 
-  .school-k10-grading-table tbody td[colspan],
-  .deped-grading-review-table tbody td[colspan] {
-    grid-column: 1 / -1;
+  .school-k10-grading-table tbody tr.panel-empty-row {
+    padding: 0;
   }
 
-  .school-k10-grading-table tbody td[colspan]::before,
-  .deped-grading-review-table tbody td[colspan]::before {
-    content: none;
+  .school-k10-grading-table tbody tr.panel-empty-row > td {
+    flex: 1 1 100%;
+    padding-right: 0;
   }
 }
 
 @media (max-width: 760px) {
   .school-k10-grading-panel {
+    grid-template-columns: minmax(0, 1fr);
     margin-top: 14px;
   }
 
   .school-k10-grading-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: stretch;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .school-k10-grading-toolbar > .top-btn {
-    justify-self: stretch;
+    width: 100%;
     justify-content: center;
   }
 
@@ -2237,37 +2877,228 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .school-k10-grading-table tbody tr,
-  .deped-grading-review-table tbody tr {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .school-k10-grading-table tbody td:nth-child(3),
-  .school-k10-grading-table tbody td:nth-child(4),
-  .deped-grading-review-table tbody td:nth-child(3) {
+  .school-k10-final-rules {
     grid-column: 1 / -1;
-    grid-row: auto;
-    justify-self: stretch;
-    padding-top: 2px;
+    width: 100%;
+    padding: 16px;
   }
 
-  .school-k10-grading-table td:nth-child(3) .school-k10-grading-source,
-  .deped-grading-review-table .school-k10-grading-source {
+  .school-k10-grading-table tbody tr {
+    padding: 14px 12px;
+  }
+
+  .school-k10-grading-table tbody tr > td:nth-child(n) {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  .school-k10-grading-table tbody tr > td:nth-child(1),
+  .school-k10-grading-table tbody tr > td:nth-child(2) {
+    padding-right: 0;
+  }
+
+  .school-k10-grading-table tbody tr > td:nth-child(5) {
+    max-width: none;
+    margin-top: 10px;
+  }
+
+  .school-k10-grading-table td:nth-child(5) .school-k10-grading-source {
     width: fit-content;
     max-width: 100%;
     white-space: normal;
     text-align: left;
   }
 
-  .school-k10-grading-table tbody td:nth-child(4) .top-btn {
-    width: auto;
-    min-width: 0;
-    max-width: 100%;
+  .school-k10-grading-table tbody tr > td:nth-child(6) {
+    position: static;
+    margin-top: 16px;
   }
 
-  .school-k10-grading-table tbody td:nth-child(4) {
-    justify-self: end;
-    text-align: right;
+  .school-k10-grading-table tbody td:nth-child(6) .school-k10-grading-action {
+    align-items: stretch;
+  }
+
+  .school-k10-grading-table tbody td:nth-child(6) .top-btn {
+    width: 100%;
+  }
+
+  .school-k10-group-exception {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .school-k10-group-exam-part {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .school-k10-group-exam-part .top-btn {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 900px) {
+  .school-k10-component-columns,
+  .school-k10-exam-part-columns {
+    display: none;
+  }
+
+  .school-k10-group-component-grid,
+  .school-k10-group-exam-part,
+  .school-k10-standard-exam-editor .subject-grading-exam-part {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .school-k10-field-label {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: var(--gray-600, #60718a);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  .school-k10-group-component-grid > button,
+  .school-k10-group-exam-part > button,
+  .school-k10-standard-exam-editor .subject-grading-exam-part > button {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .school-k10-editor-section,
+  .school-k10-group-exam-setup {
+    padding: 12px;
+  }
+
+  .school-k10-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .school-k10-group-component-grid,
+  .school-k10-group-exam-part,
+  .school-k10-standard-exam-editor .subject-grading-exam-part {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .school-k10-component-columns,
+  .school-k10-group-component-row {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .school-k10-exam-info-banner {
+    padding: 10px 11px;
+  }
+
+  .school-k10-group-exam-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .school-k10-group-exam-actions .top-btn,
+  .school-k10-add-exam-part {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.subject-grading-editor-form [hidden] {
+  display: none !important;
+}
+
+#restoreDepedDefaults {
+  margin-right: auto;
+}
+
+.school-k10-restore-confirmation {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.school-k10-restore-confirmation h3 {
+  margin: 0 0 8px;
+  color: var(--navy, #1d355f);
+  font-size: 18px;
+}
+
+.school-k10-restore-confirmation > .term-modal-message {
+  margin: 0 0 16px;
+  line-height: 1.55;
+}
+
+.school-k10-restore-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.school-k10-restore-grid > section {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--gray-200, #dbe3ef);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.school-k10-restore-subject + .school-k10-restore-subject {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-100, #edf1f7);
+}
+
+.school-k10-restore-subject > strong {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--gray-800, #26364d);
+  font-size: 12px;
+}
+
+.school-k10-restore-preserved-note {
+  margin-top: 6px;
+}
+
+.school-k10-restore-grid h4 {
+  margin: 0 0 10px;
+  color: var(--gray-800, #26364d);
+  font-size: 13px;
+}
+
+.school-k10-restore-exam-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--gray-600, #60718a);
+  font-size: 12px;
+}
+
+.school-k10-restore-exam-details ul {
+  margin: 5px 0 0;
+  padding-left: 20px;
+}
+
+.school-k10-restore-exam-details li + li {
+  margin-top: 3px;
+}
+
+.school-k10-restore-confirmation-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .school-k10-restore-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #restoreDepedDefaults {
+    margin-right: 0;
   }
 }

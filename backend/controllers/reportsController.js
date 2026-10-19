@@ -40,9 +40,15 @@ async function getSchoolGradeSummary(req, res, next) {
         AVG(published_final_grades.final_grade) AS averageGrade,
         COUNT(*) AS total,
         SUM(CASE WHEN published_final_grades.final_grade >= CASE
-          WHEN school_grade_levels.grade_code IN ('grade-2', 'grade-3')
-            AND SUBSTRING(academic_years.label, NULLIF(LOCATE('20', academic_years.label), 0), 4) = '2026'
-          THEN 75 ELSE school_levels.passing_grade_threshold
+          WHEN school_levels.level_code IN ('elementary', 'jhs')
+            AND (school_grade_levels.grade_code IN ('grade-4', 'grade-5', 'grade-6',
+              'grade-7', 'grade-8', 'grade-9', 'grade-10')
+              OR school_grade_levels.grade_code IN ('grade-2', 'grade-3')
+                AND SUBSTRING(academic_years.label, NULLIF(LOCATE('20', academic_years.label), 0), 4) = '2026')
+            AND CAST(SUBSTRING(academic_years.label, NULLIF(LOCATE('20', academic_years.label), 0), 4) AS UNSIGNED) >= 2026
+          THEN CASE WHEN final_grade_rules.grading_mode = 'school_specific'
+            THEN final_grade_rules.passing_grade_threshold ELSE 75 END
+          ELSE school_levels.passing_grade_threshold
         END THEN 1 ELSE 0 END) AS passing,
         SUM(CASE WHEN published_final_grades.final_grade >= 90 THEN 1 ELSE 0 END) AS band90,
         SUM(CASE WHEN published_final_grades.final_grade >= 80 AND published_final_grades.final_grade < 90 THEN 1 ELSE 0 END) AS band80,
@@ -58,6 +64,10 @@ async function getSchoolGradeSummary(req, res, next) {
         AND academic_terms.school_level_id = sections.school_level_id
       INNER JOIN school_levels ON school_levels.id = sections.school_level_id
         AND school_levels.school_id = sections.school_id
+      LEFT JOIN school_year_final_grade_rules AS final_grade_rules
+        ON final_grade_rules.school_id = published_final_grades.school_id
+        AND final_grade_rules.academic_year_id = sections.academic_year_id
+        AND final_grade_rules.school_level_id = sections.school_level_id
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
         AND school_grade_levels.school_level_id = sections.school_level_id
       INNER JOIN subjects ON subjects.id = published_final_grades.subject_id

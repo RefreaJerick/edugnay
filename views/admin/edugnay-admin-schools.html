@@ -172,23 +172,12 @@
           <div class="school-tabs" id="schoolSettingsTabs" role="tablist"><button class="school-tab active" data-school-tab="profile"
               type="button">Profile & Branding</button><button class="school-tab" data-school-tab="academic"
               type="button">Academic Structure</button><button class="school-tab" data-school-tab="terms"
-              type="button">Academic Terms</button><button class="school-tab" data-school-tab="grading"
+              type="button">Academic Terms</button><button class="school-tab" data-school-tab="calendar"
+              type="button">School Calendar</button><button class="school-tab" data-school-tab="grading"
               type="button">Grading Rules</button><button class="school-tab" data-school-tab="attendance"
               type="button">Attendance Rules</button><button class="school-tab" data-school-tab="portal"
               type="button">Portal Features</button></div>
           <div class="school-settings-body" id="schoolSettingsBody"></div>
-        </section>
-        <section class="school-calendar-panel" aria-labelledby="calendar-panel-title">
-          <div class="school-calendar-head">
-            <div class="school-settings-head-main">
-              <div class="school-settings-icon"><i data-lucide="calendar-days"></i></div>
-              <div>
-                <h2 class="school-calendar-title" id="calendar-panel-title">School calendar</h2>
-                <p class="school-calendar-sub">Manage holidays and no-class notices shown across the portals.</p>
-              </div>
-            </div>
-          </div>
-          <div class="school-calendar-body" id="schoolCalendarBody"></div>
         </section>
       </div>
     </main>
@@ -216,34 +205,14 @@
     </div>
   </div>
 
-  <div class="modal-backdrop school-term-modal deped-subject-modal" id="depedSubjectReviewModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="depedSubjectReviewTitle" aria-describedby="depedSubjectReviewDescription">
+  <div class="modal-backdrop school-term-modal deped-grading-modal deped-grading-apply-modal" id="applyMissingDepedDefaultsModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="applyMissingDepedDefaultsTitle">
       <div class="modal-head">
-        <div class="modal-heading">
-          <span class="modal-heading-icon"><i data-lucide="book-open-check"></i></span>
-          <div class="modal-heading-copy">
-            <div class="modal-title" id="depedSubjectReviewTitle">Review DepEd subjects</div>
-            <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 2–10.</div>
-          </div>
-        </div>
-        <button class="modal-close" id="closeDepedSubjectReview" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+        <div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="scale"></i></span><div class="modal-heading-copy"><div class="modal-title" id="applyMissingDepedDefaultsTitle">Apply missing DepEd setups?</div><div class="modal-sub">Only subjects without a saved setup are included.</div></div></div>
+        <button class="modal-close" id="closeApplyMissingDepedDefaults" type="button" aria-label="Close" onclick="closeK10GradingModal('applyMissingDepedDefaultsModal')"><i data-lucide="x"></i></button>
       </div>
-      <div class="modal-body deped-subject-review-body" id="depedSubjectReviewContent" aria-live="polite"></div>
-      <div class="modal-foot">
-        <button class="btn btn-cancel" id="cancelDepedSubjectReview" type="button">Cancel</button>
-        <button class="btn btn-save" id="applyDepedSubjectReview" type="button" disabled>Apply DepEd subjects</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop school-term-modal deped-grading-modal deped-grading-review-modal" id="depedGradingReviewModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="depedGradingReviewTitle">
-      <div class="modal-head">
-        <div class="modal-heading"><span class="modal-heading-icon"><i data-lucide="scale"></i></span><div class="modal-heading-copy"><div class="modal-title" id="depedGradingReviewTitle">Review DepEd grading defaults</div><div class="modal-sub">Preview the subject weights before applying them.</div></div></div>
-        <button class="modal-close" id="closeDepedGradingReview" type="button" aria-label="Close" onclick="closeK10GradingModal('depedGradingReviewModal')"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body deped-grading-review-body" id="depedGradingReviewBody"></div>
-      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('depedGradingReviewModal')">Cancel</button><button class="btn btn-save" type="button" id="applyDepedGradingDefaults">Apply DepEd defaults</button></div>
+      <div class="modal-body deped-grading-confirmation-body" id="applyMissingDepedDefaultsBody" aria-live="polite"></div>
+      <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('applyMissingDepedDefaultsModal')">Cancel</button><button class="btn btn-save" type="button" id="confirmApplyMissingDepedDefaults" disabled>Apply defaults</button></div>
     </div>
   </div>
 
@@ -255,7 +224,17 @@
       </div>
       <form id="subjectGradingEditorForm" class="subject-grading-editor-form">
         <div class="modal-body subject-grading-editor-body" id="subjectGradingEditorBody"></div>
-        <div class="modal-foot"><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('subjectGradingEditorModal')">Cancel</button><button class="btn btn-save" type="submit" id="saveSubjectGradingConfig">Save subject rules</button></div>
+        <section class="modal-body school-k10-restore-confirmation" id="restoreDepedDefaultsConfirmation" aria-labelledby="restoreDepedDefaultsTitle" hidden>
+          <h3 id="restoreDepedDefaultsTitle">Restore this subject’s DepEd defaults?</h3>
+          <p class="term-modal-message" id="restoreDepedDefaultsDescription">This replaces the saved component names, weights, and exam parts for this school year. Any unsaved changes in the editor will be discarded. Existing score and assignment links are kept when their components and exam parts match; restoration is blocked if a linked item would need to be removed.</p>
+          <div class="school-k10-restore-grid">
+            <section><h4>Current saved setup</h4><div id="restoreDepedCurrentSummary"></div></section>
+            <section><h4 id="restoreDepedDefaultsHeading">DepEd defaults</h4><div id="restoreDepedDefaultsSummary"></div></section>
+          </div>
+          <div class="school-k10-grading-warning" id="restoreDepedDefaultsError" role="alert" hidden></div>
+        </section>
+        <div class="modal-foot" id="subjectGradingEditorFooter"><button class="btn btn-cancel" type="button" id="restoreDepedDefaults" hidden>Restore DepEd defaults</button><button class="btn btn-cancel" type="button" onclick="closeK10GradingModal('subjectGradingEditorModal')">Cancel</button><button class="btn btn-save" type="submit" id="saveSubjectGradingConfig">Save subject rules</button></div>
+        <div class="modal-foot school-k10-restore-confirmation-actions" id="restoreDepedDefaultsFooter" hidden><button class="btn btn-cancel" type="button" id="cancelRestoreDepedDefaults">Back to editor</button><button class="btn btn-save" type="button" id="confirmRestoreDepedDefaults">Restore DepEd defaults</button></div>
       </form>
     </div>
   </div>
@@ -326,7 +305,16 @@
       k10GradingRequestId: 0,
       k10EditorSubject: null,
       k10EditorComponents: [],
+      k10EditorGroup: null,
+      k10EditorRestoreMode: null,
+      k10EarlyExamChoice: null,
+      k10EarlyExamParts: [],
+      k10StandardExamOriginal: '',
+      k10GroupDiverged: false,
+      k10GroupSyncConfirmed: false,
       calendarNotices: [],
+      calendarFormOpen: false,
+      calendarFocusRequested: false,
       calendarError: '',
       calendarLoading: true
     };
@@ -563,21 +551,21 @@
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-profile-pane active">
           <form id="schoolProfileForm">
-            <div class="school-form-grid">
+            <div class="school-form-grid school-profile-form-grid">
               <div class="school-field">
                 <label for="profileName">School name</label>
                 <input id="profileName" name="name" required value="${window.EDUGNAY_CONFIG.escapeHtml(school?.name)}">
               </div>
               <div class="school-field">
+                <label for="schoolIdInput">School ID</label>
+                <input id="schoolIdInput" name="schoolId" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolId)}">
+              </div>
+              <div class="school-field school-profile-levels-field">
                 <label>School levels served</label>
                 <div class="school-level-options" role="group" aria-label="School levels served">
                   ${SCHOOL_LEVELS.map(level => `<label class="school-level-option"><input type="checkbox" name="schoolLevels" value="${window.EDUGNAY_CONFIG.escapeHtml(level.value)}" ${schoolLevels(school).includes(level.value) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(level.label)}</span></label>`).join('')}
                 </div>
                 <small>Select every level offered by the school.</small>
-              </div>
-              <div class="school-field">
-                <label for="schoolIdInput">School ID</label>
-                <input id="schoolIdInput" name="schoolId" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.schoolId)}">
               </div>
               <div class="school-field">
                 <label for="profileRegion">Region</label>
@@ -591,30 +579,30 @@
                 <label for="profileDistrict">District</label>
                 <input id="profileDistrict" name="districtName" placeholder="e.g. San Pedro District" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.districtName)}">
               </div>
-              <div class="school-field">
+              <div class="school-field school-profile-address-field">
                 <label for="profileAddress">Address</label>
                 <input id="profileAddress" name="address" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.address)}">
               </div>
-              <div class="school-field">
+              <div class="school-field school-profile-phone-field">
                 <label for="profilePhone">Contact number</label>
                 <input id="profilePhone" name="phone" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.phone)}">
               </div>
-              <div class="school-field">
+              <div class="school-field school-profile-third-field">
                 <label for="profileEmail">School email</label>
                 <input id="profileEmail" name="email" type="email" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.email)}">
               </div>
-              <div class="school-field">
+              <div class="school-field school-profile-third-field">
                 <label for="profileWebsite">Website</label>
                 <input id="profileWebsite" name="website" value="${window.EDUGNAY_CONFIG.escapeHtml(school?.website)}">
               </div>
-              <div class="school-field school-branding-field">
+              <div class="school-field school-profile-third-field school-profile-branding-field">
                 <label for="profileLogo">Logo or branding</label>
                 <div class="school-logo-preview" id="profileLogoPreview">
                   <span class="school-logo-placeholder" id="profileLogoPlaceholder" ${school?.logoUrl ? 'hidden' : ''} aria-hidden="${school?.logoUrl ? 'true' : 'false'}"><i data-lucide="image"></i></span>
                   <img id="profileLogoImage" src="${school?.logoUrl ? window.EDUGNAY_CONFIG.escapeHtml(school.logoUrl) : ''}" alt="${window.EDUGNAY_CONFIG.escapeHtml(school?.name || 'School')} logo" ${school?.logoUrl ? '' : 'hidden'}>
                   <div class="school-logo-upload"><input id="profileLogo" name="logo" type="file" accept="image/png,image/jpeg,image/webp"></div>
+                  <small class="school-logo-preview-hint">The school logo is used across the school profile and portal shell.</small>
                 </div>
-                <small>The school logo is used across the school profile and portal shell.</small>
               </div>
             </div>
             <div class="school-form-footer">
@@ -641,115 +629,14 @@
         <div class="school-pane school-academic-pane active">
           ${renderDivisionSwitcher(school)}
           <form id="schoolAcademicForm">
-            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div><span class="school-type-chip">${window.EDUGNAY_CONFIG.escapeHtml(catalog.label)}</span></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS tracks and strands</div><div class="track-options">${trackOptions.map(track => { const record = trackRecords.find(item => item.displayName === track); const strands = (record?.strands || []).filter(item => item.isEnabled !== false).map(item => item.displayName); return `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}${strands.length ? `<small class="form-help">Strands: ${strands.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</small>` : '<small class="form-help">No separate strand</small>'}</span></label>`; }).join('')}</div>` : ''}</div>
-            ${['elementary', 'jhs'].includes(level) ? `<section class="school-section-block school-deped-subject-card" aria-labelledby="depedSubjectDefaultsHeading"><div><div class="school-section-block-title" id="depedSubjectDefaultsHeading">DepEd subject defaults</div><div class="school-section-block-sub">Review the subjects for enabled Grades 2–10. You can edit them later in Class Management.</div><small class="school-deped-subject-hint" id="depedSubjectReviewHint" hidden>Save grade changes before reviewing the subject defaults.</small></div><button class="top-btn secondary" id="reviewDepedSubjects" type="button"><i data-lucide="list-checks"></i> Review DepEd subjects</button></section>` : ''}
+            <div class="school-section-block"><div class="school-section-block-head"><div class="school-section-block-title">Enabled grade levels</div></div>${gradeOptions.length ? `<div class="grade-grid">${gradeOptions.map(grade => `<label class="check-item academic-option"><input type="checkbox" name="grades" value="${window.EDUGNAY_CONFIG.escapeHtml(grade)}" ${enabledGrades.includes(grade) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(grade)}</span></label>`).join('')}</div>` : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'layers-3', title: 'No grade levels configured', text: 'Grade levels will appear here when the school structure is set.' })}${trackOptions.length ? `<div class="school-section-block-title school-subsection-title">SHS tracks and strands</div><div class="track-options">${trackOptions.map(track => { const record = trackRecords.find(item => item.displayName === track); const strands = (record?.strands || []).filter(item => item.isEnabled !== false).map(item => item.displayName); return `<label class="check-item academic-option"><input type="checkbox" name="tracks" value="${window.EDUGNAY_CONFIG.escapeHtml(track)}" ${(data.tracks || []).includes(track) ? 'checked' : ''}><span>${window.EDUGNAY_CONFIG.escapeHtml(track)}${strands.length ? `<small class="form-help">Strands: ${strands.map(window.EDUGNAY_CONFIG.escapeHtml).join(', ')}</small>` : '<small class="form-help">No separate strand</small>'}</span></label>`; }).join('')}</div>` : ''}</div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save academic structure</button></div>
           </form>
         </div>`;
       const form = document.getElementById('schoolAcademicForm');
       form.addEventListener('submit', saveAcademic);
-      const reviewButton = document.getElementById('reviewDepedSubjects');
-      if (reviewButton) {
-        const eligibleGrades = new Set(gradeOptions.filter(grade => /^Grade\s+(?:[2-9]|10)$/i.test(grade)));
-        const savedGrades = new Set((data.enabledGrades || gradeOptions).filter(grade => eligibleGrades.has(grade)));
-        const updateReviewAvailability = () => {
-          const currentGrades = new Set([...form.querySelectorAll('input[name="grades"]:checked')]
-            .map(input => input.value).filter(grade => eligibleGrades.has(grade)));
-          const unchanged = currentGrades.size === savedGrades.size
-            && [...currentGrades].every(grade => savedGrades.has(grade));
-          reviewButton.disabled = !state.apiActive || !unchanged;
-          document.getElementById('depedSubjectReviewHint').hidden = unchanged && state.apiActive;
-        };
-        form.querySelectorAll('input[name="grades"]').forEach(input => input.addEventListener('change', updateReviewAvailability));
-        reviewButton.addEventListener('click', openDepedSubjectReview);
-        updateReviewAvailability();
-      }
       bindDivisionSwitcher();
       if (window.lucide) lucide.createIcons();
-    }
-
-    const depedSubjectStatusText = {
-      'will-add': 'Will be added',
-      'already-present': 'Already in subject list',
-      inactive: 'Inactive entry left unchanged',
-      'review-existing': 'Existing entry needs review'
-    };
-
-    function renderDepedSubjectPreview(preview) {
-      const content = document.getElementById('depedSubjectReviewContent');
-      if (!preview.grades.length) {
-        content.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable at least one supported Grade 2–10 level in Academic Structure, save it, and review the subject defaults again.' });
-        document.getElementById('applyDepedSubjectReview').disabled = true;
-        return;
-      }
-      content.innerHTML = `<p class="term-modal-message">These are the current defaults for the grades your school has enabled. Existing entries will be left as they are.</p><div class="deped-subject-grade-list">${preview.grades.map(grade => `<section class="deped-subject-grade"><div class="deped-subject-grade-head"><strong>${window.EDUGNAY_CONFIG.escapeHtml(grade.displayName)}</strong><span>${grade.subjects.length} subjects</span></div><ul>${grade.subjects.map(subject => `<li><span>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}${subject.existingName && subject.existingName !== subject.name ? `<small>Existing: ${window.EDUGNAY_CONFIG.escapeHtml(subject.existingName)}</small>` : ''}</span><span class="deped-subject-status ${window.EDUGNAY_CONFIG.escapeHtml(subject.status)}">${window.EDUGNAY_CONFIG.escapeHtml(depedSubjectStatusText[subject.status] || 'Review')}</span></li>`).join('')}</ul></section>`).join('')}</div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
-      updateDepedSubjectApplyButton();
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function updateDepedSubjectApplyButton() {
-      const content = document.getElementById('depedSubjectReviewContent');
-      document.getElementById('applyDepedSubjectReview').disabled = !content.querySelector('.deped-subject-status.will-add');
-    }
-
-    async function openDepedSubjectReview() {
-      const modal = document.getElementById('depedSubjectReviewModal');
-      const content = document.getElementById('depedSubjectReviewContent');
-      content.innerHTML = '<p class="term-modal-message">Loading subject defaults…</p>';
-      document.getElementById('applyDepedSubjectReview').disabled = true;
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-      try {
-        const preview = await window.EDUGNAY_API.getDepedSubjectPreview();
-        renderDepedSubjectPreview(preview);
-      } catch (error) {
-        content.innerHTML = `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be loaded.')}</p>`;
-      }
-      document.getElementById('closeDepedSubjectReview').focus();
-    }
-
-    function closeDepedSubjectReview() {
-      const modal = document.getElementById('depedSubjectReviewModal');
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-
-    async function applyDepedSubjects() {
-      const button = document.getElementById('applyDepedSubjectReview');
-      const content = document.getElementById('depedSubjectReviewContent');
-      button.disabled = true;
-      button.textContent = 'Applying...';
-      let result;
-      try {
-        result = await window.EDUGNAY_API.applyDepedSubjectDefaults();
-      } catch (error) {
-        const status = document.getElementById('depedSubjectApplyResult');
-        if (status) {
-          status.hidden = false;
-          status.classList.add('error');
-          status.textContent = error.message || 'The subject defaults could not be applied.';
-        } else {
-          content.insertAdjacentHTML('afterbegin', `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be applied.')}</p>`);
-        }
-        button.textContent = 'Apply DepEd subjects';
-        updateDepedSubjectApplyButton();
-        return;
-      }
-      const successMessage = result.addedSubjects.length
-        ? `${result.addedSubjects.length} subjects added across ${result.addedGradeScopes} grade assignments. Existing subjects were left unchanged.`
-        : 'No new subjects were added. Matching existing entries were left unchanged for review.';
-      try {
-        renderDepedSubjectPreview(await window.EDUGNAY_API.getDepedSubjectPreview());
-      } catch {
-        // The subject changes are already saved; leave the current review visible if refresh fails.
-      }
-      const status = document.getElementById('depedSubjectApplyResult');
-      if (status) {
-        status.hidden = false;
-        status.textContent = successMessage;
-      }
-      button.textContent = 'Apply DepEd subjects';
-      updateDepedSubjectApplyButton();
     }
 
     function formatTermDate(value) {
@@ -765,6 +652,7 @@
       const periods = draft?.academicPeriods || (Array.isArray(data.academicPeriods) ? data.academicPeriods : []);
       const gradingPeriodType = draft?.gradingPeriodType || data.gradingPeriodType;
       const type = window.EDUGNAY_CONFIG.academicPeriodTypes[gradingPeriodType] || window.EDUGNAY_CONFIG.academicPeriodTypes.quarterly;
+      const threeTermSchedule = type.id === 'three_term';
       const activePeriod = periods.find(period => period.id === data.activeAcademicPeriodId) || null;
       const nextPeriod = periods.find(period => period.status === 'upcoming') || null;
       const hasStarted = periods.some(period => period.status !== 'upcoming');
@@ -824,8 +712,18 @@
 
             <div class="school-section-block">
               <div class="school-section-block-head"><div><div class="school-section-block-title">Planned schedule</div><div class="school-section-block-sub">Closed and active periods are protected. Upcoming dates may still be adjusted.</div></div></div>
-              <div class="term-schedule-list">
-                ${periods.map(period => `<div class="term-schedule-row" data-term-period>
+              <div class="term-schedule-list ${threeTermSchedule ? 'three-term-schedule' : ''}">
+                ${periods.map(period => threeTermSchedule ? `<div class="term-schedule-row term-schedule-card" data-term-period>
+                  <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
+                  <div class="term-schedule-card-header">
+                    <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
+                    <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
+                  </div>
+                  <div class="term-schedule-dates">
+                    <div class="school-field"><label>Start date</label><input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                    <div class="school-field"><label>End date</label><input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                  </div>
+                </div>` : `<div class="term-schedule-row" data-term-period>
                   <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
                   <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
                   <div class="school-field"><label>Start date</label><input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
@@ -882,6 +780,33 @@
       return names.length ? names.join(', ') : fallback;
     }
 
+    function getK10CatalogSubjectKey(subject) {
+      if (!subject.learningArea) return null;
+      const code = String(subject.subjectCode || '').toLowerCase();
+      const match = code.match(/^(.+)-(?:grade-[23]|elementary|jhs)$/);
+      const catalogKeys = new Set([
+        'araling-panlipunan', 'english', 'epp', 'filipino', 'gmrc', 'makabansa',
+        'mathematics', 'music-and-arts', 'physical-education-and-health', 'science', 'tle', 'values-education'
+      ]);
+      return match && catalogKeys.has(match[1]) ? match[1] : null;
+    }
+
+    function groupK10SubjectsByLearningArea(subjects) {
+      const groups = [];
+      const byCatalogKey = new Map();
+      (Array.isArray(subjects) ? subjects : []).forEach(subject => {
+        const key = getK10CatalogSubjectKey(subject);
+        let group = key ? byCatalogKey.get(key) : null;
+        if (!group) {
+          group = { name: subject.name, catalogKey: key, subjects: [] };
+          groups.push(group);
+          if (key) byCatalogKey.set(key, group);
+        }
+        group.subjects.push(subject);
+      });
+      return groups.map(group => ({ ...group, grouped: Boolean(group.catalogKey) && group.subjects.length > 1 }));
+    }
+
     function isDefaultK10ExamSplit(parts) {
       const defaults = [
         { name: 'Summative Test 1', weight: 30 },
@@ -893,16 +818,13 @@
         weight: Number(part.weight)
       })).sort((first, second) => first.name.localeCompare(second.name));
       const actual = normalize(parts);
-      const expectedSplits = [defaults, [
-        { name: 'Summative Test 1', weight: 50 },
-        { name: 'Summative Test 2', weight: 50 }
-      ]].map(normalize);
-      return expectedSplits.some(expected => actual.length === expected.length && expected.every((part, index) =>
+      const expected = normalize(defaults);
+      return actual.length === expected.length && expected.every((part, index) =>
         actual[index].name === part.name && actual[index].weight === part.weight
-      ));
+      );
     }
 
-    function renderK10ComponentSummary(components, { showCustomExamDetails = false } = {}) {
+    function renderK10ComponentSummary(components, { showCustomExamDetails = false, showExamDetails = false, note = '' } = {}) {
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
       const list = Array.isArray(components) ? components : [];
       const componentLabels = list.map(component => `<span class="school-k10-grading-weight"><span>${escapeHtml(component.name || 'Component')}</span> <strong>${Number(component.weight) || 0}%</strong></span>`).join('');
@@ -911,46 +833,202 @@
       const customExamDetails = showCustomExamDetails && examGroups.length && !commonExamSplit
         ? `<details class="school-k10-grading-exam-details"><summary>View custom exam split</summary>${examGroups.map(component => `<div class="school-k10-grading-exam-group"><strong>${escapeHtml(component.name || 'Examinations')}</strong><span>${component.examParts.map(part => `${escapeHtml(part.name || 'Exam part')} ${Number(part.weight) || 0}%`).join(' · ')}</span></div>`).join('')}</details>`
         : '';
-      return `<div class="school-k10-grading-weights">${componentLabels || '<span class="school-k10-grading-no-weights">No components configured</span>'}</div>${customExamDetails}`;
-    }
-
-    function getDepedGradingReviewStatus(subject) {
-      if (subject.status === 'published') return { label: 'Locked', badgeClass: 'badge-gray' };
-      if (subject.status === 'configured') {
-        if (subject.configurationSource === 'deped_default') return { label: 'Applied', badgeClass: 'badge-green' };
-        if (subject.configurationSource === 'custom') return { label: 'Custom', badgeClass: 'badge-purple' };
-        if (subject.configurationSource === 'copied_custom') return { label: 'Review copy', badgeClass: 'badge-orange' };
-        return { label: 'Configured', badgeClass: 'badge-gray' };
-      }
-      return subject.learningArea
-        ? { label: 'Not applied', badgeClass: 'badge-blue' }
-        : { label: 'Manual setup', badgeClass: 'badge-orange' };
-    }
-
-    function renderDepedGradingReviewBody(preview, escapeHtml) {
-      const rows = preview.subjects.map(subject => {
-        const status = getDepedGradingReviewStatus(subject);
-        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No enabled grade scope');
-        const weights = subject.learningArea
-          ? renderK10ComponentSummary(createPreviewDefaults(subject))
-          : '<span class="school-k10-grading-no-match">Needs manual setup</span>';
-        return '<tr><td><span class="deped-grading-review-subject">' + escapeHtml(subject.name) + '</span>'
-          + '<span class="school-k10-grading-grade-list">' + escapeHtml(gradeNames) + '</span></td><td>' + weights + '</td>'
-          + '<td><span class="school-k10-grading-source badge ' + status.badgeClass + '">' + escapeHtml(status.label) + '</span></td></tr>';
-      }).join('');
-      const warning = preview.periodStructureWarning
-        ? '<div class="school-k10-grading-warning" role="status">' + escapeHtml(preview.periodStructureWarning) + '</div>'
+      const examDetails = showExamDetails && examGroups.length
+        ? `<div class="school-k10-restore-exam-details">${examGroups.map(component => `<div><strong>${escapeHtml(component.name || 'Examinations')}</strong><ul>${component.examParts.map(part => `<li>${escapeHtml(part.name || 'Exam part')}: ${Number(part.weight) || 0}%</li>`).join('')}</ul></div>`).join('')}</div>`
         : '';
-      const hasEarlyGradeSubjects = preview.subjects.some(subject => subject.gradeCodes?.some(code => ['grade-2', 'grade-3'].includes(code)));
-      const hasK10GradeSubjects = preview.subjects.some(subject => subject.gradeCodes?.some(code => /^grade-(?:[4-9]|10)$/.test(code)));
-      const examNotes = [];
-      if (hasEarlyGradeSubjects) examNotes.push('<strong>Grades 2–3 default exam split:</strong> Summative Test 1 50% · Summative Test 2 50%. For an appropriate subject, a short term exam can be added before scores are recorded using the 30/30/40 split.');
-      if (hasK10GradeSubjects) examNotes.push('<strong>Grades 4–10 default exam split:</strong> Summative Test 1 30% · Summative Test 2 30% · Term Exam 40%.');
-      return '<p class="term-modal-message deped-grading-review-intro">Applying adds only missing subject configurations. Existing custom and published configurations are preserved. Subjects without a confident learning-area match must be configured manually.</p>'
-        + (examNotes.length ? '<p class="school-k10-grading-exam-note">' + examNotes.join('<br>') + '</p>' : '')
-        + warning + '<div class="deped-grading-review-table-wrap"><table class="deped-grading-review-table">'
-        + '<thead><tr><th>Subject and grade levels</th><th>Default components and weights</th><th>Current status</th></tr></thead>'
-        + '<tbody>' + rows + '</tbody></table></div>';
+      const noteMarkup = note ? `<span class="school-k10-grading-row-note">${escapeHtml(note)}</span>` : '';
+      return `<div class="school-k10-grading-weights">${componentLabels || '<span class="school-k10-grading-no-weights">No components configured</span>'}</div>${customExamDetails}${examDetails}${noteMarkup}`;
+    }
+
+    function getK10SubjectSetupState(subject) {
+      const isLocked = subject.status === 'published';
+      const isSaved = subject.status === 'configured' || (isLocked && Boolean(subject.configurationSource));
+      const needsPolicyReview = Boolean(subject.needsPolicyReview);
+      const needsExamSetup = Boolean(subject.needsExamSetup);
+      return {
+        isSaved,
+        isLocked,
+        needsPolicyReview,
+        needsExamSetup,
+        label: isLocked ? 'Published' : needsExamSetup ? 'Needs exam setup' : needsPolicyReview ? 'Review exam setup' : isSaved ? 'Saved' : 'Not saved',
+        badgeClass: needsPolicyReview || needsExamSetup ? 'badge-orange' : isSaved ? 'badge-green' : 'badge-blue'
+      };
+    }
+
+    function isK10EarlyGradeSubject(subject) {
+      return Boolean(subject.requiresExamSetup)
+        || (Array.isArray(subject.gradeCodes) && subject.gradeCodes.some(code => ['grade-2', 'grade-3'].includes(String(code).toLowerCase())));
+    }
+
+    function getK10SubjectWeightNote(subject, isSaved) {
+      if (subject.needsExamSetup) {
+        return subject.needsPolicyReview
+          ? 'This previous suggested setup has no usable exam parts. Choose the school’s exam parts and weights before saving.'
+          : 'DepEd does not set a fixed Grades 2–3 exam split. Choose the assessment parts and weights for this subject.';
+      }
+      if (subject.needsPolicyReview) {
+        return subject.status === 'published'
+          ? 'Published grades are preserved; this previous exam split is shown for reference.'
+          : 'Review this previous suggested exam split and save it to confirm the school’s choice.';
+      }
+      if (!isSaved) {
+        if (subject.status === 'published') {
+          return subject.learningArea
+            ? 'Suggested DepEd weights. Published grades lock this setup.'
+            : 'No matching DepEd default; published grades lock this setup.';
+        }
+        return subject.learningArea
+          ? 'Suggested DepEd weights. Applying defaults saves them.'
+          : 'Set up weights manually.';
+      }
+      if (subject.configurationSource === 'custom') return 'School-edited weights.';
+      if (subject.configurationSource === 'copied_custom') return 'Copied from a previous year; review these weights.';
+      return '';
+    }
+
+    function getK10CatalogGroupState(group) {
+      const states = group.subjects.map(getK10SubjectSetupState);
+      const needsReview = states.some(item => item.needsPolicyReview);
+      const needsExamSetup = states.some(item => item.needsExamSetup);
+      const hasMissing = group.subjects.some(subject => subject.status === 'ready' || subject.status === 'unmatched');
+      const allLocked = states.every(item => item.isLocked);
+      const summaries = group.subjects.filter(subject => ['configured', 'published'].includes(subject.status)).map(subject => (subject.components || [])
+        .map(component => `${component.code}:${Number(component.weight)}`)
+        .sort().join('|'));
+      const weightsDiffer = new Set(summaries.filter(Boolean)).size > 1;
+      const earlyParts = group.subjects.filter(isK10EarlyGradeSubject).map(subject => {
+        const exam = (subject.components || []).find(component => component.componentType === 'examination');
+        return (exam?.examParts || []).map(part => `${part.code}:${Number(part.weight)}`).sort().join('|');
+      }).filter(Boolean);
+      const earlyExamDiffers = new Set(earlyParts).size > 1;
+      const standardParts = group.subjects.filter(subject => !isK10EarlyGradeSubject(subject)).map(subject => {
+        const exam = (subject.components || []).find(component => component.componentType === 'examination');
+        return (exam?.examParts || []).map(part => `${part.code}:${Number(part.weight)}`).sort().join('|');
+      }).filter(Boolean);
+      const standardExamDiffers = new Set(standardParts).size > 1;
+      const differentSetups = weightsDiffer || earlyExamDiffers || standardExamDiffers;
+      const isSaved = states.every(item => item.isSaved && !item.needsPolicyReview && !item.needsExamSetup) && !differentSetups;
+      const status = needsReview ? { label: 'Review exam setup', badgeClass: 'badge-orange' }
+        : needsExamSetup ? { label: 'Needs exam setup', badgeClass: 'badge-orange' }
+          : hasMissing ? { label: 'Needs setup', badgeClass: 'badge-blue' }
+            : differentSetups ? { label: 'Different setups', badgeClass: 'badge-orange' }
+            : allLocked ? { label: 'Published', badgeClass: 'badge-green' }
+              : states.some(item => item.isLocked) ? { label: 'Some grades published', badgeClass: 'badge-orange' }
+              : { label: 'Saved', badgeClass: 'badge-green' };
+      return { ...status, isSaved, allLocked, needsReview, needsExamSetup, hasMissing, weightsDiffer, earlyExamDiffers, standardExamDiffers, differentSetups };
+    }
+
+    function getK10CatalogGroupWeightComponents(group, setup) {
+      if (setup.weightsDiffer) {
+        const policy = group.subjects.find(subject => subject.learningArea && subject.defaultComponents?.length);
+        if (policy) return policy.defaultComponents;
+      }
+      const saved = group.subjects.find(subject =>
+        ['configured', 'published'].includes(subject.status) && subject.components?.length
+      );
+      if (saved) return saved.components;
+      const suggested = group.subjects.find(subject => subject.learningArea && subject.defaultComponents?.length);
+      return suggested?.defaultComponents || group.subjects[0]?.components || [];
+    }
+
+    function getK10CatalogGroupNote(group, setup) {
+      if (!group.catalogKey) return getK10SubjectWeightNote(group.subjects[0], setup.isSaved);
+      if (setup.needsReview) return 'Review the earlier exam choice in Configure.';
+      if (setup.needsExamSetup) return '';
+      if (setup.hasMissing) return '';
+      if (setup.differentSetups) return 'Saved setups differ. Review them in Configure.';
+      if (group.subjects.some(subject => subject.status === 'published')) return 'Published grades lock affected profiles.';
+      return '';
+    }
+
+    function getK10ComponentsSignature(components, includeExamParts = true) {
+      return (Array.isArray(components) ? components : []).map(component => {
+        const examParts = includeExamParts
+          ? (Array.isArray(component.examParts) ? component.examParts : []).map(part => [
+            String(part.code || '').trim().toLowerCase(),
+            String(part.name || '').trim().toLowerCase(),
+            Number(part.weight) || 0
+          ]).sort((first, second) => first[0].localeCompare(second[0]))
+          : [];
+        return [
+          String(component.code || '').trim().toLowerCase(),
+          String(component.name || '').trim().toLowerCase(),
+          String(component.componentType || '').trim().toLowerCase(),
+          Number(component.weight) || 0,
+          examParts
+        ];
+      }).sort((first, second) => first[0].localeCompare(second[0])).map(value => JSON.stringify(value)).join('|');
+    }
+
+    function getK10CatalogGroupDepedAlignment(group, setup) {
+      const subjects = Array.isArray(group?.subjects) ? group.subjects : [];
+      const matched = subjects.filter(subject => subject.learningArea && subject.defaultComponents?.length);
+      const alignment = (label, badgeClass) => ({ label, badgeClass });
+      if (!matched.length) return alignment('No DepEd default', 'badge-blue');
+      if (matched.length !== subjects.length || matched.some(subject => subject.status === 'ready' || subject.status === 'unmatched'
+        || (subject.status === 'published' && !subject.configurationSource))) {
+        return alignment('Not set', 'badge-orange');
+      }
+      if (matched.some(subject => subject.needsExamSetup)) return alignment('Not set', 'badge-orange');
+      if (matched.some(subject => subject.needsPolicyReview)) return alignment('Review needed', 'badge-orange');
+
+      const signaturesByBand = new Map();
+      matched.forEach(subject => {
+        const band = isK10EarlyGradeSubject(subject) ? 'early' : 'standard';
+        if (!signaturesByBand.has(band)) signaturesByBand.set(band, new Set());
+        signaturesByBand.get(band).add(getK10ComponentsSignature(subject.components));
+      });
+      if ([...signaturesByBand.values()].some(signatures => signatures.size > 1)) {
+        return alignment('Mixed', 'badge-orange');
+      }
+
+      const matchesDefault = matched.map(subject => {
+        const earlyGrade = isK10EarlyGradeSubject(subject);
+        return getK10ComponentsSignature(subject.components, !earlyGrade)
+          === getK10ComponentsSignature(subject.defaultComponents, !earlyGrade);
+      });
+      if (matchesDefault.every(Boolean)) {
+        return alignment(matched.some(isK10EarlyGradeSubject)
+          ? 'DepEd weights + school exam choice'
+          : 'DepEd default', 'badge-green');
+      }
+      if (matchesDefault.some(Boolean) || setup.differentSetups) return alignment('Mixed', 'badge-orange');
+      return alignment('School-customized', 'badge-blue');
+    }
+
+    function renderK10GroupedSubjectRows(subjects, renderGroup) {
+      return groupK10SubjectsByLearningArea(subjects).map(group => renderGroup(group)).join('');
+    }
+
+    function getMissingDepedGradingSubjects(subjects) {
+      return (Array.isArray(subjects) ? subjects : []).filter(subject =>
+        subject.status === 'ready'
+        && !subject.needsExamSetup
+        && !isK10EarlyGradeSubject(subject)
+        && Array.isArray(subject.defaultComponents)
+        && subject.defaultComponents.length > 0
+      );
+    }
+
+    function renderMissingDepedDefaultsConfirmation(preview, escapeHtml) {
+      const targets = getMissingDepedGradingSubjects(preview.subjects);
+      const subjects = groupK10SubjectsByLearningArea(targets).map(group => {
+        const gradeCodes = [...new Set(group.subjects.flatMap(subject => subject.gradeCodes || []))];
+        const grades = formatK10GradeNames(gradeCodes, 'Grade scope not set');
+        return `<li><strong>${escapeHtml(group.name)}</strong><span>${escapeHtml(grades)}</span></li>`;
+      }).join('');
+      const earlySetupNeeded = preview.subjects.some(subject =>
+        isK10EarlyGradeSubject(subject)
+        && subject.status !== 'published'
+        && (subject.needsExamSetup || subject.needsPolicyReview)
+      );
+      const earlyNote = earlySetupNeeded
+        ? '<p class="school-k10-deped-confirmation-note">Grades 2–3 still need an exam choice in Configure.</p>'
+        : '';
+      return `<p class="school-k10-deped-confirmation-copy">This will add DepEd setups for ${targets.length} eligible subject${targets.length === 1 ? '' : 's'}.</p>`
+        + `<ul class="school-k10-deped-confirmation-list">${subjects}</ul>`
+        + '<p class="school-k10-deped-confirmation-note">Saved setups are unchanged.</p>'
+        + earlyNote;
     }
 
     function renderOtherGradeRules(apiLevel, defaults) {
@@ -977,7 +1055,7 @@
     }
 
     function renderK10GradingPane(school, level, apiLevel, preview) {
-      setSettingsHeading('Grading rules', 'Configure DepEd subject assessment weights for eligible Grades 2–10.');
+      setSettingsHeading('Grading rules', 'Configure policy-based weights by learning area for eligible Grades 2–10.');
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
       const gradingMode = preview.gradingMode || 'deped_policy';
       const customRules = gradingMode === 'school_specific';
@@ -985,30 +1063,35 @@
       const earlyTransitionGradesEnabled = String(preview.academicYearLabel || '').match(/20\d{2}/)?.[0] === '2026'
         && (apiLevel.gradeLevels || []).some(grade => grade.isEnabled !== false
           && ['grade-2', 'grade-3'].includes(String(grade.gradeCode || '').toLowerCase()));
-      const rows = preview.subjects.map(subject => {
-        const gradeNames = formatK10GradeNames(subject.gradeCodes, 'No eligible Grade 2–10 scope');
-        const hasSaved = ['configured', 'published'].includes(subject.status);
-        const statusLabel = subject.status === 'published' ? 'Published'
-          : subject.configurationSource === 'custom' ? 'Custom'
-            : subject.configurationSource === 'copied_custom' ? 'Review copy'
-              : subject.configurationSource === 'deped_default' ? 'DepEd default'
-                : subject.status === 'unmatched' ? 'Setup needed' : 'Default available';
-        const statusBadgeClass = subject.status === 'published' ? 'badge-gray'
-          : subject.configurationSource === 'custom' ? 'badge-purple'
-            : subject.status === 'unmatched' || subject.configurationSource === 'copied_custom' ? 'badge-orange' : 'badge-blue';
-        const summary = hasSaved || subject.learningArea
-          ? renderK10ComponentSummary(subject.components, { showCustomExamDetails: true })
-          : '<span class="school-k10-grading-no-match">No confident DepEd learning-area match</span>';
-        return `<tr><td><span class="school-k10-grading-subject-name">${escapeHtml(subject.name)}</span><span class="school-k10-grading-grade-list">${escapeHtml(gradeNames)}</span></td><td>${summary}</td><td><span class="school-k10-grading-source badge ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></td><td><button class="top-btn secondary" type="button" data-k10-edit-subject="${Number(subject.id)}" ${subject.status === 'published' ? 'disabled title="Published grades lock this school-year configuration."' : ''}>${subject.status === 'unmatched' ? 'Set up' : 'Edit'}</button></td></tr>`;
-      }).join('');
+      const rows = renderK10GroupedSubjectRows(preview.subjects, group => {
+        const setup = getK10CatalogGroupState(group);
+        const gradeCodes = [...new Set(group.subjects.flatMap(subject => subject.gradeCodes || []))];
+        const gradeNames = formatK10GradeNames(gradeCodes, 'No eligible Grade 2–10 scope');
+        const representative = group.subjects.find(subject => subject.learningArea && subject.defaultComponents?.length) || group.subjects[0];
+        const weightComponents = getK10CatalogGroupWeightComponents(group, setup);
+        const weightNote = setup.weightsDiffer ? 'DepEd weights shown; saved setups differ.' : '';
+        const depedAlignment = getK10CatalogGroupDepedAlignment(group, setup);
+        const summary = representative.learningArea
+          ? renderK10ComponentSummary(weightComponents, { note: weightNote })
+          : `<span class="school-k10-grading-no-match">${escapeHtml(getK10SubjectWeightNote(representative, false))}</span>`;
+        const action = group.catalogKey
+          ? `<div class="school-k10-grading-action"><button class="top-btn secondary" type="button" data-k10-configure-group="${escapeHtml(group.catalogKey)}">Configure</button></div>`
+          : `<div class="school-k10-grading-action"><button class="top-btn secondary" type="button" data-k10-edit-subject="${Number(representative.id)}" ${setup.allLocked ? 'disabled title="Published grades lock this school-year configuration."' : ''}>${setup.needsExamSetup ? 'Set up' : setup.needsReview ? 'Review' : setup.isSaved ? 'Edit' : 'Set up'}</button></div>`;
+        const note = getK10CatalogGroupNote(group, setup);
+        return `<tr><td><span class="school-k10-grading-subject-name">${escapeHtml(group.name)}</span></td><td data-label="Grade levels"><span class="school-k10-grading-grade-list">${escapeHtml(gradeNames)}</span></td><td data-label="Components and weights">${summary}</td><td data-label="DepEd alignment"><span class="school-k10-grading-source badge ${depedAlignment.badgeClass}">${escapeHtml(depedAlignment.label)}</span></td><td data-label="Setup status"><span class="school-k10-grading-source badge ${setup.badgeClass}">${escapeHtml(setup.label)}</span>${note ? `<span class="school-k10-grading-row-note">${escapeHtml(note)}</span>` : ''}</td><td>${action}</td></tr>`;
+      });
+      const missingDepedSubjects = getMissingDepedGradingSubjects(preview.subjects);
+      const applyMissingButton = missingDepedSubjects.length
+        ? '<button class="top-btn primary" type="button" id="openApplyMissingDepedDefaults"><i data-lucide="list-checks"></i> Apply missing DepEd setups</button>'
+        : '';
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-grading-pane active">
           ${renderDivisionSwitcher(school)}
           <div class="school-k10-grading-panel">
             <section class="school-section-block">
-              <div class="school-k10-grading-toolbar"><button class="top-btn primary" type="button" id="openDepedGradingReview"><i data-lucide="list-checks"></i> Review DepEd defaults</button></div>
+              ${applyMissingButton ? `<div class="school-k10-grading-toolbar">${applyMissingButton}</div>` : ''}
               ${preview.periodStructureWarning ? `<div class="school-k10-grading-warning" role="status">${escapeHtml(preview.periodStructureWarning)}</div>` : ''}
-              <div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject and grades</th><th>Components and weights</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No active eligible Grade 2–10 subjects are configured.</td></tr>'}</tbody></table></div>
+              <div class="school-k10-grading-table-wrap"><table class="school-k10-grading-table"><thead><tr><th>Subject</th><th>Grade levels</th><th>Components and weights</th><th>DepEd alignment</th><th>Setup status</th><th>Action</th></tr></thead><tbody>${rows || `<tr class="panel-empty-row"><td colspan="6"><div class="school-k10-empty-state-actions">${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible subjects yet', text: 'Add subjects for the enabled grades in Class Management.' })}<a class="top-btn secondary" href="edugnay-admin-management.html" onclick="localStorage.setItem('managementTab','subjects')"><i data-lucide="library"></i> Manage subjects</a></div></td></tr>`}</tbody></table></div>
             </section>
             <section class="school-section-block school-k10-final-rules">
               <div class="school-section-block-title">Final grade rules</div>
@@ -1026,7 +1109,8 @@
           </div>
           ${renderOtherGradeRules(apiLevel, window.EDUGNAY_CONFIG.createDivision(level))}
         </div>`;
-      document.getElementById('openDepedGradingReview').addEventListener('click', openDepedGradingReview);
+      const openApplyMissingButton = document.getElementById('openApplyMissingDepedDefaults');
+      if (openApplyMissingButton) openApplyMissingButton.addEventListener('click', openApplyMissingDepedDefaults);
       const k10FinalRulesForm = document.getElementById('k10FinalGradeRulesForm');
       if (k10FinalRulesForm) {
         const modeInput = k10FinalRulesForm.elements.gradingMode;
@@ -1070,6 +1154,10 @@
       document.querySelectorAll('[data-k10-edit-subject]').forEach(button => button.addEventListener('click', () => {
         const subject = preview.subjects.find(item => Number(item.id) === Number(button.dataset.k10EditSubject));
         if (subject) openSubjectGradingEditor(subject, preview);
+      }));
+      document.querySelectorAll('[data-k10-configure-group]').forEach(button => button.addEventListener('click', () => {
+        const group = groupK10SubjectsByLearningArea(preview.subjects).find(item => item.catalogKey === button.dataset.k10ConfigureGroup);
+        if (group) openK10CatalogGroupEditor(group, preview);
       }));
       bindDivisionSwitcher();
       if (window.lucide) lucide.createIcons();
@@ -1118,27 +1206,32 @@
       }
     }
 
-    async function openDepedGradingReview() {
+    async function openApplyMissingDepedDefaults() {
       const year = activeK10GradingYear();
       const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
-      const body = document.getElementById('depedGradingReviewBody');
-      const applyButton = document.getElementById('applyDepedGradingDefaults');
+      const body = document.getElementById('applyMissingDepedDefaultsBody');
+      const applyButton = document.getElementById('confirmApplyMissingDepedDefaults');
       if (!year || !apiLevel?.id) return;
-      body.innerHTML = '<p class="term-modal-message" role="status">Loading subject weights…</p>';
+      body.innerHTML = '<p class="term-modal-message" role="status">Checking missing setups…</p>';
       applyButton.disabled = true;
-      openK10GradingModal('depedGradingReviewModal');
+      openK10GradingModal('applyMissingDepedDefaultsModal');
       try {
-        let preview = state.k10GradingPreview;
-        if (!preview || String(preview.academicYearId) !== String(year.id)) {
-          preview = await window.EDUGNAY_API.getDepedK10GradingPreview({ academicYearId: year.id, schoolLevelId: apiLevel.id });
-          state.k10GradingPreview = preview;
+        const preview = await window.EDUGNAY_API.getDepedK10GradingPreview({ academicYearId: year.id, schoolLevelId: apiLevel.id });
+        state.k10GradingPreview = preview;
+        const targets = getMissingDepedGradingSubjects(preview.subjects);
+        if (!targets.length) {
+          closeK10GradingModal('applyMissingDepedDefaultsModal');
+          renderGradingPane();
+          showAppToast('No missing DepEd setups to apply.');
+          return;
         }
         const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
-        body.innerHTML = renderDepedGradingReviewBody(preview, escapeHtml);
-        applyButton.disabled = !preview.subjects.some(subject => subject.status === 'ready');
-        document.getElementById('closeDepedGradingReview').focus();
+        body.innerHTML = renderMissingDepedDefaultsConfirmation(preview, escapeHtml);
+        applyButton.textContent = `Apply to ${targets.length} subject${targets.length === 1 ? '' : 's'}`;
+        applyButton.disabled = false;
+        document.getElementById('closeApplyMissingDepedDefaults').focus();
       } catch (error) {
-        body.innerHTML = `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject weights could not be loaded.')}</p>`;
+        body.innerHTML = `<p class="school-k10-grading-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'Missing setups could not be checked.')}</p>`;
       }
     }
 
@@ -1146,42 +1239,279 @@
       return subject.defaultComponents || subject.components || [];
     }
 
-    async function applyDepedGradingDefaults() {
+    async function applyMissingDepedDefaults() {
       const year = activeK10GradingYear();
       const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
-      const button = document.getElementById('applyDepedGradingDefaults');
+      const button = document.getElementById('confirmApplyMissingDepedDefaults');
+      const body = document.getElementById('applyMissingDepedDefaultsBody');
       if (!year || !apiLevel?.id) return;
+      const buttonLabel = button.textContent;
       button.disabled = true;
       button.textContent = 'Applying…';
       try {
         const result = await window.EDUGNAY_API.applyDepedK10GradingDefaults({ academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id) });
         state.k10GradingPreview = result.preview;
-        closeK10GradingModal('depedGradingReviewModal');
+        closeK10GradingModal('applyMissingDepedDefaultsModal');
         renderGradingPane();
         const count = result.added.length;
-        showAppToast(count ? `DepEd defaults applied to ${count} subject${count === 1 ? '' : 's'}. Existing and published configurations were preserved.` : 'No new DepEd defaults were needed. Existing configurations were preserved.');
+        const setupCount = result.needsExamSetup?.length || 0;
+        const appliedMessage = count
+          ? `Added DepEd setups to ${count} subject${count === 1 ? '' : 's'}.`
+          : 'No missing DepEd setups were added.';
+        showAppToast(`${appliedMessage}${setupCount ? ' Grades 2–3 still need an exam choice in Configure.' : ''}`);
       } catch (error) {
-        const body = document.getElementById('depedGradingReviewBody');
-        body.insertAdjacentHTML('afterbegin', `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'DepEd defaults could not be applied.')}</p>`);
+        body.insertAdjacentHTML('afterbegin', `<p class="school-k10-grading-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'DepEd setups could not be applied.')}</p>`);
       } finally {
-        button.textContent = 'Apply DepEd defaults';
-        button.disabled = false;
+        if (document.getElementById('applyMissingDepedDefaultsModal').classList.contains('open')) {
+          button.textContent = buttonLabel;
+          button.disabled = false;
+        }
       }
+    }
+
+    function getK10ExamParts(subject) {
+      return (subject.components || []).find(component => component.componentType === 'examination')?.examParts || [];
+    }
+
+    function isK10TermExamPart(part) {
+      return /term[\s-]*exam/i.test(`${part?.name || ''} ${part?.code || ''}`);
+    }
+
+    function renderK10GroupExceptions() {
+      const group = state.k10EditorGroup;
+      if (!group) return '';
+      const subjects = group.allSubjects;
+      const setup = getK10CatalogGroupState({ subjects });
+      const showAll = setup.differentSetups || setup.allLocked;
+      const exceptions = subjects.filter(subject => subject.status === 'published'
+        || (showAll && subject.status === 'configured'));
+      if (!exceptions.length) return '';
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      return `<section class="school-k10-group-exceptions"><h4>Grade-specific exceptions</h4>${exceptions.map(subject => {
+        const grade = formatK10GradeNames(subject.gradeCodes, 'Grade scope not set');
+        const subjectSetup = getK10SubjectSetupState(subject);
+        const note = subject.status === 'published' ? 'Published grades lock this setup.'
+          : setup.differentSetups ? 'Saved setup differs.' : '';
+        const components = showAll && subject.components?.length
+          ? renderK10ComponentSummary(subject.components, { showExamDetails: true }) : '';
+        return `<div class="school-k10-group-exception"><div><strong>${escapeHtml(grade)}</strong><span class="school-k10-grading-source badge ${subjectSetup.badgeClass}">${escapeHtml(subjectSetup.label)}</span>${note ? `<span class="school-k10-grading-row-note">${escapeHtml(note)}</span>` : ''}${components}</div>${subject.status !== 'published' ? `<button class="school-k10-individual-edit" type="button" data-k10-edit-exception="${Number(subject.id)}">Edit ${escapeHtml(grade)}</button>` : ''}</div>`;
+      }).join('')}</section>`;
+    }
+
+    function getK10GroupRestoreTargets() {
+      const group = state.k10EditorGroup;
+      if (!group) return [];
+      return group.subjects.filter(subject => {
+        if (subject.status !== 'configured' || !subject.defaultComponents?.length || subject.needsPolicyReview) return false;
+        if (isK10EarlyGradeSubject(subject) && !getK10ExamParts(subject).length) return false;
+        return ['custom', 'copied_custom'].includes(subject.configurationSource);
+      });
+    }
+
+    function renderK10GroupRestoreSummary(subjects, useDefaults = false) {
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      return subjects.map(subject => {
+        let components = useDefaults ? subject.defaultComponents : subject.components;
+        if (useDefaults && isK10EarlyGradeSubject(subject)) {
+          const savedExamParts = getK10ExamParts(subject);
+          components = components.map(component => component.componentType === 'examination'
+            ? { ...component, examParts: savedExamParts }
+            : component);
+        }
+        const grade = formatK10GradeNames(subject.gradeCodes, 'eligible grades');
+        const retainedChoice = useDefaults && isK10EarlyGradeSubject(subject)
+          ? '<small class="school-k10-restore-preserved-note">Grades 2–3 exam choice is preserved.</small>' : '';
+        return `<div class="school-k10-restore-subject"><strong>${escapeHtml(subject.name)} · ${escapeHtml(grade)}</strong>${renderK10ComponentSummary(components, { showExamDetails: true })}${retainedChoice}</div>`;
+      }).join('');
+    }
+
+    function openK10CatalogGroupEditor(group, preview) {
+      const editable = group.subjects.filter(subject => subject.status !== 'published');
+      const standardSubjects = editable.filter(subject => !isK10EarlyGradeSubject(subject));
+      const source = standardSubjects.find(subject => subject.status === 'configured' && subject.components?.length)
+        || standardSubjects.find(subject => subject.defaultComponents?.length)
+        || editable.find(subject => subject.status === 'configured' && subject.components?.length)
+        || editable[0] || group.subjects[0];
+      const earlySubjects = editable.filter(isK10EarlyGradeSubject);
+      const savedEarly = earlySubjects.filter(subject => subject.status === 'configured');
+      const existingParts = savedEarly[0] ? getK10ExamParts(savedEarly[0]) : [];
+      const hasTermExam = existingParts.some(isK10TermExamPart);
+      state.k10EditorSubject = source;
+      state.k10EditorGroup = { ...group, subjects: editable, allSubjects: group.subjects, lockedSubjects: group.subjects.filter(subject => subject.status === 'published') };
+      state.k10EditorRestoreMode = 'group';
+      state.k10EditorComponents = JSON.parse(JSON.stringify(source.components?.length ? source.components : source.defaultComponents || []));
+      state.k10StandardExamOriginal = getK10ExamPartsSignature(state.k10EditorComponents.find(component => component.componentType === 'examination')?.examParts || []);
+      const editableSetup = getK10CatalogGroupState({ subjects: editable });
+      state.k10GroupDiverged = editableSetup.differentSetups;
+      state.k10GroupSyncConfirmed = false;
+      state.k10EarlyExamChoice = existingParts.length ? (hasTermExam ? 'yes' : 'no') : null;
+      state.k10EarlyExamParts = JSON.parse(JSON.stringify(existingParts));
+      const gradeNames = formatK10GradeNames([...new Set(group.subjects.flatMap(subject => subject.gradeCodes || []))], 'eligible grades');
+      document.getElementById('subjectGradingEditorTitle').textContent = 'Configure subject grading';
+      document.getElementById('subjectGradingEditorSubtitle').textContent = `${group.name} · ${gradeNames} · ${preview.academicYearLabel}`;
+      const dialog = document.querySelector('#subjectGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'subjectGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      document.getElementById('restoreDepedDefaults').hidden = !getK10GroupRestoreTargets().length;
+      document.getElementById('subjectGradingEditorBody').hidden = false;
+      document.getElementById('restoreDepedDefaultsConfirmation').hidden = true;
+      document.getElementById('subjectGradingEditorFooter').hidden = !editable.length;
+      document.getElementById('restoreDepedDefaultsFooter').hidden = true;
+      renderSubjectGradingEditor();
+      openK10GradingModal('subjectGradingEditorModal');
+      (editable.length ? document.getElementById('saveSubjectGradingConfig') : document.querySelector('#subjectGradingEditorModal .modal-close')).focus();
     }
 
     function openSubjectGradingEditor(subject, preview) {
       if (subject.status === 'published') return;
       state.k10EditorSubject = subject;
-      state.k10EditorComponents = JSON.parse(JSON.stringify(subject.components || []));
-      document.getElementById('subjectGradingEditorTitle').textContent = subject.status === 'unmatched' ? 'Set up subject grading' : 'Edit subject grading';
+      state.k10EditorGroup = null;
+      state.k10EditorRestoreMode = 'single';
+      state.k10EditorComponents = JSON.parse(JSON.stringify(subject.components?.length ? subject.components : subject.defaultComponents || []));
+      state.k10EarlyExamChoice = null;
+      state.k10EarlyExamParts = [];
+      state.k10StandardExamOriginal = '';
+      state.k10GroupDiverged = false;
+      document.getElementById('subjectGradingEditorTitle').textContent = subject.needsExamSetup
+        ? 'Set up exam parts' : subject.needsPolicyReview ? 'Review exam setup' : ['configured', 'published'].includes(subject.status) ? 'Edit subject grading' : 'Set up subject grading';
       document.getElementById('subjectGradingEditorSubtitle').textContent = `${subject.name} · ${preview.academicYearLabel}`;
+      const dialog = document.querySelector('#subjectGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'subjectGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      const canRestore = subject.status === 'configured'
+        && !isK10EarlyGradeSubject(subject)
+        && ['custom', 'copied_custom'].includes(subject.configurationSource)
+        && Array.isArray(subject.defaultComponents) && subject.defaultComponents.length > 0;
+      document.getElementById('restoreDepedDefaults').hidden = !canRestore;
+      document.getElementById('subjectGradingEditorBody').hidden = false;
+      document.getElementById('restoreDepedDefaultsConfirmation').hidden = true;
+      document.getElementById('subjectGradingEditorFooter').hidden = false;
+      document.getElementById('restoreDepedDefaultsFooter').hidden = true;
       renderSubjectGradingEditor();
       openK10GradingModal('subjectGradingEditorModal');
       document.getElementById('saveSubjectGradingConfig').focus();
     }
 
+    function showRestoreDepedDefaultsConfirmation() {
+      if (state.k10EditorGroup) {
+        const targets = getK10GroupRestoreTargets();
+        if (!targets.length) return;
+        state.k10EditorRestoreMode = 'group';
+        document.getElementById('restoreDepedDefaultsTitle').textContent = `Restore DepEd defaults for ${state.k10EditorGroup.name}?`;
+        document.getElementById('restoreDepedDefaultsDescription').textContent = 'This restores DepEd component weights and the prescribed exam split for eligible grades. Saved Grades 2–3 exam choices are preserved. Published grades and profiles needing review are left unchanged.';
+        document.getElementById('restoreDepedCurrentSummary').innerHTML = renderK10GroupRestoreSummary(targets);
+        document.getElementById('restoreDepedDefaultsSummary').innerHTML = renderK10GroupRestoreSummary(targets, true);
+        document.getElementById('restoreDepedDefaultsHeading').textContent = `DepEd defaults for ${state.k10GradingPreview?.academicYearLabel || 'this school year'}`;
+        document.getElementById('restoreDepedDefaultsError').hidden = true;
+        document.getElementById('subjectGradingEditorBody').hidden = true;
+        document.getElementById('subjectGradingEditorFooter').hidden = true;
+        document.getElementById('restoreDepedDefaultsConfirmation').hidden = false;
+        document.getElementById('restoreDepedDefaultsFooter').hidden = false;
+        const groupDialog = document.querySelector('#subjectGradingEditorModal [role="dialog"]');
+        groupDialog.setAttribute('aria-labelledby', 'restoreDepedDefaultsTitle');
+        groupDialog.setAttribute('aria-describedby', 'restoreDepedDefaultsDescription');
+        document.getElementById('confirmRestoreDepedDefaults').focus();
+        return;
+      }
+      const subject = state.k10EditorSubject;
+      const year = activeK10GradingYear();
+      if (!subject || !year || subject.status !== 'configured'
+        || isK10EarlyGradeSubject(subject)
+        || !['custom', 'copied_custom'].includes(subject.configurationSource)
+        || !subject.defaultComponents?.length) return;
+      document.getElementById('restoreDepedCurrentSummary').innerHTML = renderK10ComponentSummary(subject.components, { showExamDetails: true });
+      document.getElementById('restoreDepedDefaultsSummary').innerHTML = renderK10ComponentSummary(subject.defaultComponents, { showExamDetails: true });
+      document.getElementById('restoreDepedDefaultsHeading').textContent = `DepEd defaults for ${year.label || state.k10GradingPreview?.academicYearLabel || 'this school year'}`;
+      document.getElementById('restoreDepedDefaultsError').hidden = true;
+      document.getElementById('subjectGradingEditorBody').hidden = true;
+      document.getElementById('subjectGradingEditorFooter').hidden = true;
+      document.getElementById('restoreDepedDefaultsConfirmation').hidden = false;
+      document.getElementById('restoreDepedDefaultsFooter').hidden = false;
+      const dialog = document.querySelector('#subjectGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'restoreDepedDefaultsTitle');
+      dialog.setAttribute('aria-describedby', 'restoreDepedDefaultsDescription');
+      document.getElementById('confirmRestoreDepedDefaults').focus();
+    }
+
+    function cancelRestoreDepedDefaultsConfirmation() {
+      document.getElementById('restoreDepedDefaultsConfirmation').hidden = true;
+      document.getElementById('restoreDepedDefaultsFooter').hidden = true;
+      document.getElementById('subjectGradingEditorBody').hidden = false;
+      document.getElementById('subjectGradingEditorFooter').hidden = false;
+      const dialog = document.querySelector('#subjectGradingEditorModal [role="dialog"]');
+      dialog.setAttribute('aria-labelledby', 'subjectGradingEditorTitle');
+      dialog.removeAttribute('aria-describedby');
+      if (state.k10EditorGroup) state.k10EditorRestoreMode = 'group';
+      document.getElementById('restoreDepedDefaults').focus();
+    }
+
+    async function confirmRestoreDepedDefaults() {
+      if (state.k10EditorGroup && state.k10EditorRestoreMode === 'group') {
+        const year = activeK10GradingYear();
+        const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+        const targets = getK10GroupRestoreTargets();
+        const groupName = state.k10EditorGroup?.name || 'Subject group';
+        const button = document.getElementById('confirmRestoreDepedDefaults');
+        const errorNode = document.getElementById('restoreDepedDefaultsError');
+        if (!year || !apiLevel?.id || !targets.length) return;
+        button.disabled = true;
+        errorNode.hidden = true;
+        try {
+          const restored = await window.EDUGNAY_API.restoreDepedCatalogSubjectGroupDefaults({
+            academicYearId: Number(year.id),
+            schoolLevelId: Number(apiLevel.id),
+            groupKey: state.k10EditorGroup.catalogKey,
+            subjectIds: targets.map(subject => Number(subject.id))
+          });
+          state.k10GradingPreview = restored.preview;
+          closeK10GradingModal('subjectGradingEditorModal');
+          renderGradingPane();
+          showAppToast(`${groupName} restored to DepEd defaults. Grades 2–3 exam choices were preserved.`);
+        } catch (error) {
+          errorNode.hidden = false;
+          errorNode.textContent = error.message || 'DepEd defaults could not be restored for this subject group.';
+        } finally { button.disabled = false; }
+        return;
+      }
+      const subject = state.k10EditorSubject;
+      const year = activeK10GradingYear();
+      const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
+      const button = document.getElementById('confirmRestoreDepedDefaults');
+      const errorNode = document.getElementById('restoreDepedDefaultsError');
+      if (!subject || !year || !apiLevel?.id) return;
+      button.disabled = true;
+      errorNode.hidden = true;
+      try {
+        const restored = await window.EDUGNAY_API.restoreDepedSubjectDefaults({
+          academicYearId: Number(year.id),
+          schoolLevelId: Number(apiLevel.id),
+          subjectId: Number(subject.id)
+        });
+        state.k10GradingPreview = {
+          ...state.k10GradingPreview,
+          subjects: state.k10GradingPreview.subjects.map(item => Number(item.id) === Number(subject.id)
+            ? { ...item, status: 'configured', configurationSource: 'deped_default', components: restored.profile.components }
+            : item)
+        };
+        let previewRefreshFailed = false;
+        try {
+          state.k10GradingPreview = await window.EDUGNAY_API.getDepedK10GradingPreview({
+            academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id)
+          });
+        } catch { previewRefreshFailed = true; }
+        closeK10GradingModal('subjectGradingEditorModal');
+        renderGradingPane();
+        showAppToast(previewRefreshFailed
+          ? `${subject.name} was restored. The table could not be refreshed; reload the page to verify it.`
+          : `${subject.name} restored to DepEd defaults.`);
+      } catch (error) {
+        errorNode.hidden = false;
+        errorNode.textContent = error.message || 'DepEd defaults could not be restored.';
+      } finally { button.disabled = false; }
+    }
+
     function collectSubjectGradingEditor() {
-      return [...document.querySelectorAll('#subjectGradingEditorBody .subject-grading-component-card')].map((card, index) => ({
+      const components = [...document.querySelectorAll('#subjectGradingEditorBody .subject-grading-component-card')].map((card, index) => ({
         ...(card.dataset.componentId ? { id: Number(card.dataset.componentId) } : {}),
         code: card.querySelector('[data-component-field="code"]').value.trim(),
         name: card.querySelector('[data-component-field="name"]').value.trim(),
@@ -1196,79 +1526,354 @@
           sortOrder: partIndex + 1
         }))
       }));
+      if (state.k10EditorGroup) {
+        document.querySelectorAll('#subjectGradingEditorBody .school-k10-standard-exam-editor').forEach(editor => {
+          const component = components[Number(editor.dataset.componentIndex)];
+          if (!component) return;
+          component.examParts = [...editor.querySelectorAll('.subject-grading-exam-part')].map((part, partIndex) => ({
+            ...(part.dataset.partId ? { id: Number(part.dataset.partId) } : {}),
+            code: part.querySelector('[data-part-field="code"]').value.trim(),
+            name: part.querySelector('[data-part-field="name"]').value.trim(),
+            weight: Number(part.querySelector('[data-part-field="weight"]').value),
+            sortOrder: partIndex + 1
+          }));
+        });
+      }
+      return components;
+    }
+
+    function collectK10EarlyExamEditor() {
+      return [...document.querySelectorAll('#k10EarlyExamParts .school-k10-group-exam-part')].map((part, index) => ({
+        code: part.querySelector('[data-early-part="code"]').value.trim(),
+        name: part.querySelector('[data-early-part="name"]').value.trim(),
+        weight: Number(part.querySelector('[data-early-part="weight"]').value),
+        sortOrder: index + 1
+      }));
+    }
+
+    function captureK10EditorState() {
+      state.k10EditorComponents = collectSubjectGradingEditor();
+      if (state.k10EditorGroup) {
+        state.k10EarlyExamParts = collectK10EarlyExamEditor();
+        const choice = document.getElementById('k10EarlyTermExamChoice');
+        if (choice) state.k10EarlyExamChoice = choice.value || null;
+        const confirmation = document.getElementById('k10GroupSyncConfirmation');
+        if (confirmation) state.k10GroupSyncConfirmed = confirmation.checked;
+      }
+    }
+
+    function getK10ExamPartsSignature(parts) {
+      return JSON.stringify((parts || []).map(part => ({
+        code: String(part.code || '').trim(), name: String(part.name || '').trim(), weight: Number(part.weight)
+      })));
+    }
+
+    function mapK10ComponentsToProfile(sharedComponents, subject, earlyExamParts, standardExamEdited = false) {
+      const existingComponents = subject.components || [];
+      return sharedComponents.map(component => {
+        const existing = existingComponents.find(item => item.code === component.code);
+        const { id: ignoredComponentId, ...shared } = component;
+        const result = { ...shared, ...(existing?.id ? { id: existing.id } : {}) };
+        const parts = component.componentType !== 'examination' ? []
+          : isK10EarlyGradeSubject(subject) ? earlyExamParts
+            : standardExamEdited ? component.examParts || []
+              : subject.status === 'configured' && existing ? existing.examParts || []
+              : subject.defaultComponents?.find(item => item.componentType === 'examination')?.examParts || component.examParts || [];
+        result.examParts = parts.map(part => {
+          const oldPart = (existing?.examParts || []).find(item => item.code === part.code);
+          const { id: ignoredPartId, ...sharedPart } = part;
+          return { ...sharedPart, ...(oldPart?.id ? { id: oldPart.id } : {}) };
+        });
+        return result;
+      });
+    }
+
+    function renderK10EarlyExamGroupEditor() {
+      const group = state.k10EditorGroup;
+      if (!group || !group.subjects.some(isK10EarlyGradeSubject)) return '';
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const selected = state.k10EarlyExamChoice || '';
+      const parts = state.k10EarlyExamParts || [];
+      const rows = selected ? parts.map((part, index) => `<div class="school-k10-group-exam-part">
+        <label><span class="school-k10-field-label">Part code</span><input class="form-input" aria-label="Part code" data-early-part="code" value="${escapeHtml(part.code || '')}" maxlength="50"></label>
+        <label><span class="school-k10-field-label">Part name</span><input class="form-input" aria-label="Part name" data-early-part="name" value="${escapeHtml(part.name || '')}" maxlength="120"></label>
+        <label><span class="school-k10-field-label">Weight (%)</span><input class="form-input" aria-label="Weight (%)" type="number" min="0" max="100" step="0.01" data-early-part="weight" value="${part.weight == null || part.weight === '' ? '' : Number(part.weight)}"></label>
+        <button class="top-btn secondary" type="button" data-remove-early-part="${index}">Remove</button>
+      </div>`).join('') : '';
+      return `<section class="school-k10-editor-section school-k10-group-exam-setup" aria-labelledby="schoolK10EarlyExamTitle">
+        <div class="school-k10-section-heading"><div><h3 id="schoolK10EarlyExamTitle">Grades 2–3 exam setup</h3><p>One school choice for both grades.</p></div></div>
+        <label class="school-k10-term-exam-choice">Does this subject use a term exam?
+          <select id="k10EarlyTermExamChoice"><option value="" ${!selected ? 'selected' : ''}>Choose an option</option><option value="no" ${selected === 'no' ? 'selected' : ''}>No term exam</option><option value="yes" ${selected === 'yes' ? 'selected' : ''}>Yes, include a term exam</option></select>
+        </label>
+        ${selected ? `<div id="k10EarlyExamParts" class="school-k10-exam-part-list"><div class="school-k10-exam-part-columns" aria-hidden="true"><span>Part code</span><span>Part name</span><span>Weight</span><span></span></div>${rows || '<p class="school-k10-no-exam-parts">Add the exam parts used by this subject.</p>'}<small class="school-k10-exam-total-note">Exam-part weights must total 100%.</small></div><div class="school-k10-group-exam-actions"><button class="top-btn secondary" type="button" id="addK10EarlyExamPart">Add exam part</button><button class="top-btn secondary" type="button" id="useK10GradesFourToSixSplit">Use the Grades 4–6 split (30/30/40)</button></div>` : ''}
+      </section>`;
+    }
+
+    function renderK10GroupExamInfoBanner() {
+      const group = state.k10EditorGroup;
+      if (!group) return '';
+      const allSubjects = group.allSubjects || group.subjects || [];
+      const hasEarlyGrades = allSubjects.some(isK10EarlyGradeSubject);
+      const hasStandardGrades = allSubjects.some(subject => !isK10EarlyGradeSubject(subject));
+      const message = hasEarlyGrades && hasStandardGrades
+        ? 'Grades 4–6 and JHS follow DepEd’s prescribed exam split. In Grades 2–3, a term exam is optional where appropriate, so the school chooses one exam setup for both grades.'
+        : hasEarlyGrades
+          ? 'DepEd allows term exams in selected Grades 2–3 learning areas when appropriate. The school chooses one exam setup for both grades.'
+          : 'Grades 4–6 and JHS follow the DepEd exam split shown below.';
+      return `<div class="school-k10-exam-info-banner" role="note"><span class="school-k10-exam-info-icon"><i data-lucide="info"></i></span><span>${message}</span></div>`;
+    }
+
+    function renderK10GroupStandardExamSummary({ showCustom = true } = {}) {
+      const group = state.k10EditorGroup;
+      if (!group) return '';
+      const standard = group.allSubjects.filter(subject => !isK10EarlyGradeSubject(subject));
+      if (!standard.length) return '';
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const gradeNames = formatK10GradeNames([...new Set(standard.flatMap(subject => subject.gradeCodes || []))]);
+      const custom = !showCustom ? '' : standard.flatMap(subject => {
+        if (!['configured', 'published'].includes(subject.status)) return [];
+        const parts = getK10ExamParts(subject);
+        if (!parts.length || isDefaultK10ExamSplit(parts)) return [];
+        const grade = formatK10GradeNames(subject.gradeCodes);
+        const split = parts.map(part => `${escapeHtml(part.name || 'Exam part')} ${Number(part.weight) || 0}%`).join(' · ');
+        return [`<div class="school-k10-exam-policy-row"><strong>Saved custom split · ${escapeHtml(grade)}</strong><span>${split}</span></div>`];
+      }).join('');
+      return `<div class="school-k10-exam-policy"><div class="school-k10-exam-policy-row"><strong>DepEd exam split · ${escapeHtml(gradeNames)}</strong><span>ST1 30% · ST2 30% · Term exam 40%</span></div><small class="school-k10-exam-policy-note">Percentages are within Examinations.</small>${custom}</div>`;
+    }
+
+    function renderK10GroupStandardExamSection(components, hasEditableStandard) {
+      const group = state.k10EditorGroup;
+      if (!group) return '';
+      const standardSubjects = (group.allSubjects || group.subjects || []).filter(subject => !isK10EarlyGradeSubject(subject));
+      if (!standardSubjects.length) return '';
+      const standardGradeCodes = new Set(standardSubjects.flatMap(subject => subject.gradeCodes || []).map(code => String(code).toLowerCase()));
+      const hasElementaryStandardGrades = ['grade-4', 'grade-5', 'grade-6'].some(code => standardGradeCodes.has(code));
+      const hasJhsGrades = ['grade-7', 'grade-8', 'grade-9', 'grade-10'].some(code => standardGradeCodes.has(code));
+      const standardExamTitle = hasElementaryStandardGrades && hasJhsGrades
+        ? 'Grades 4–6 and JHS exam setup'
+        : hasElementaryStandardGrades
+          ? 'Grades 4–6 exam setup'
+          : hasJhsGrades ? 'JHS exam setup' : 'Exam setup';
+      const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
+      const examComponents = hasEditableStandard
+        ? components.map((component, index) => ({ component, index })).filter(item => item.component.componentType === 'examination')
+        : [];
+      const editors = examComponents.map(({ component, index }) => {
+        const parts = component.examParts || [];
+        const isSavedCustomSplit = parts.length && !isDefaultK10ExamSplit(parts);
+        const rows = parts.map((part, partIndex) => `<div class="subject-grading-exam-part" data-part-index="${partIndex}" ${part.id ? `data-part-id="${Number(part.id)}"` : ''}>
+          <label><span class="school-k10-field-label">Part code</span><input class="form-input" aria-label="Part code" data-part-field="code" maxlength="50" value="${escapeHtml(part.code || '')}"></label><label><span class="school-k10-field-label">Part name</span><input class="form-input" aria-label="Part name" data-part-field="name" maxlength="120" value="${escapeHtml(part.name || '')}"></label><label><span class="school-k10-field-label">Weight (%)</span><input class="form-input" aria-label="Weight (%)" type="number" min="0" max="100" step="0.01" data-part-field="weight" value="${part.weight == null || part.weight === '' ? '' : Number(part.weight)}"></label><button class="top-btn secondary" type="button" data-remove-exam-part="${index}:${partIndex}">Remove</button>
+        </div>`).join('');
+        return `<div class="school-k10-standard-exam-editor" data-component-index="${index}">${examComponents.length > 1 ? `<h4>${escapeHtml(component.name || `Examinations ${index + 1}`)}</h4>` : ''}${isSavedCustomSplit ? '<strong class="school-k10-custom-split-label">Saved custom split</strong>' : ''}<div class="school-k10-exam-part-columns" aria-hidden="true"><span>Part code</span><span>Part name</span><span>Weight</span><span></span></div><div class="school-k10-exam-part-list">${rows || '<p class="school-k10-no-exam-parts">Add the exam parts used by these grades.</p>'}</div><small class="school-k10-exam-total-note">Exam-part weights must total 100%.</small><button class="top-btn secondary school-k10-add-exam-part" type="button" data-add-exam-part="${index}">Add exam part</button></div>`;
+      }).join('');
+      const emptyEditorMessage = hasEditableStandard
+        ? 'Add an Examinations component above to edit these exam parts.'
+        : 'These grade profiles are locked because grades have already been published.';
+      const summary = renderK10GroupStandardExamSummary({ showCustom: true });
+      return `<section class="school-k10-editor-section school-k10-standard-exam-setup" aria-labelledby="schoolK10StandardExamTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10StandardExamTitle">${standardExamTitle}</h3><p>DepEd-required exam parts</p></div></div>${summary}${editors || `<p class="school-k10-locked-note">${emptyEditorMessage}</p>`}</section>`;
     }
 
     function renderSubjectGradingEditor() {
       const escapeHtml = window.EDUGNAY_CONFIG.escapeHtml;
       const body = document.getElementById('subjectGradingEditorBody');
       const components = state.k10EditorComponents;
-      const cards = components.map((component, index) => `<section class="subject-grading-component-card" data-component-index="${index}" ${component.id ? `data-component-id="${Number(component.id)}"` : ''}>
-        <div class="subject-grading-component-grid">
-          <label>Component code<input class="form-input" data-component-field="code" maxlength="50" value="${escapeHtml(component.code || '')}"></label>
-          <label>Component name<input class="form-input" data-component-field="name" maxlength="120" value="${escapeHtml(component.name || '')}"></label>
-          <label>Type<select class="form-select" data-component-field="type"><option value="written" ${component.componentType === 'written' ? 'selected' : ''}>Written/Oral Works</option><option value="performance" ${component.componentType === 'performance' ? 'selected' : ''}>Performance Tasks</option><option value="examination" ${component.componentType === 'examination' ? 'selected' : ''}>Examinations</option><option value="other" ${component.componentType === 'other' ? 'selected' : ''}>Other</option></select></label>
-          <label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-component-field="weight" value="${Number(component.weight) || 0}"></label>
-          <button class="top-btn secondary" type="button" data-remove-component="${index}">Remove</button>
-        </div>
-        ${component.componentType === 'examination' ? `<div class="subject-grading-exam-parts"><div class="subject-grading-editor-toolbar"><strong>Exam parts</strong><button class="top-btn secondary" type="button" data-add-exam-part="${index}">Add exam part</button></div>${(component.examParts || []).map((part, partIndex) => `<div class="subject-grading-exam-part" data-part-index="${partIndex}" ${part.id ? `data-part-id="${Number(part.id)}"` : ''}>
-          <label>Part code<input class="form-input" data-part-field="code" maxlength="50" value="${escapeHtml(part.code || '')}"></label><label>Part name<input class="form-input" data-part-field="name" maxlength="120" value="${escapeHtml(part.name || '')}"></label><label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-part-field="weight" value="${Number(part.weight) || 0}"></label><button class="top-btn secondary" type="button" data-remove-exam-part="${index}:${partIndex}">Remove</button>
-        </div>`).join('')}<div class="subject-grading-editor-total">Exam-part weights must total 100%.</div></div>` : ''}
-      </section>`).join('');
+      const hasEditableStandard = state.k10EditorGroup?.subjects.some(subject => !isK10EarlyGradeSubject(subject));
+      const displayComponents = state.k10EditorGroup && !hasEditableStandard
+        ? components.map(component => component.componentType === 'examination' ? { ...component, examParts: [] } : component)
+        : components;
+      const standardParts = components.find(component => component.componentType === 'examination')?.examParts || [];
+      const standardSplitCustom = hasEditableStandard && standardParts.length && !isDefaultK10ExamSplit(standardParts);
+      const cards = displayComponents.map((component, index) => {
+        const grid = state.k10EditorGroup
+          ? `<div class="subject-grading-component-grid school-k10-group-component-grid">
+              <label><span class="school-k10-field-label">Component code</span><input class="form-input" aria-label="Component code" data-component-field="code" maxlength="50" value="${escapeHtml(component.code || '')}"></label>
+              <label><span class="school-k10-field-label">Component name</span><input class="form-input" aria-label="Component name" data-component-field="name" maxlength="120" value="${escapeHtml(component.name || '')}"></label>
+              <label><span class="school-k10-field-label">Type</span><select class="form-select" aria-label="Component type" data-component-field="type"><option value="written" ${component.componentType === 'written' ? 'selected' : ''}>Written/Oral Works</option><option value="performance" ${component.componentType === 'performance' ? 'selected' : ''}>Performance Tasks</option><option value="examination" ${component.componentType === 'examination' ? 'selected' : ''}>Examinations</option><option value="other" ${component.componentType === 'other' ? 'selected' : ''}>Other</option></select></label>
+              <label><span class="school-k10-field-label">Weight (%)</span><input class="form-input" aria-label="Weight (%)" type="number" min="0" max="100" step="0.01" data-component-field="weight" value="${Number(component.weight) || 0}"></label>
+              <button class="top-btn secondary" type="button" data-remove-component="${index}">Remove</button>
+            </div>`
+          : `<div class="subject-grading-component-grid">
+              <label>Component code<input class="form-input" data-component-field="code" maxlength="50" value="${escapeHtml(component.code || '')}"></label>
+              <label>Component name<input class="form-input" data-component-field="name" maxlength="120" value="${escapeHtml(component.name || '')}"></label>
+              <label>Type<select class="form-select" data-component-field="type"><option value="written" ${component.componentType === 'written' ? 'selected' : ''}>Written/Oral Works</option><option value="performance" ${component.componentType === 'performance' ? 'selected' : ''}>Performance Tasks</option><option value="examination" ${component.componentType === 'examination' ? 'selected' : ''}>Examinations</option><option value="other" ${component.componentType === 'other' ? 'selected' : ''}>Other</option></select></label>
+              <label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-component-field="weight" value="${Number(component.weight) || 0}"></label>
+              <button class="top-btn secondary" type="button" data-remove-component="${index}">Remove</button>
+            </div>`;
+        const individualExamParts = !state.k10EditorGroup && component.componentType === 'examination'
+          ? `<div class="subject-grading-exam-parts"><div class="subject-grading-editor-toolbar"><strong>Exam parts${standardSplitCustom ? ' · saved custom split' : ''}</strong><button class="top-btn secondary" type="button" data-add-exam-part="${index}">Add exam part</button></div>${(component.examParts || []).map((part, partIndex) => `<div class="subject-grading-exam-part" data-part-index="${partIndex}" ${part.id ? `data-part-id="${Number(part.id)}"` : ''}>
+              <label>Part code<input class="form-input" data-part-field="code" maxlength="50" value="${escapeHtml(part.code || '')}"></label><label>Part name<input class="form-input" data-part-field="name" maxlength="120" value="${escapeHtml(part.name || '')}"></label><label>Weight (%)<input class="form-input" type="number" min="0" max="100" step="0.01" data-part-field="weight" value="${Number(part.weight) || 0}"></label><button class="top-btn secondary" type="button" data-remove-exam-part="${index}:${partIndex}">Remove</button>
+            </div>`).join('')}<div class="subject-grading-editor-total">Exam-part weights must total 100%.</div></div>` : '';
+        return `<section class="subject-grading-component-card ${state.k10EditorGroup ? 'school-k10-group-component-row' : ''}" data-component-index="${index}" ${component.id ? `data-component-id="${Number(component.id)}"` : ''}>${grid}${individualExamParts}</section>`;
+      }).join('');
       const total = components.reduce((sum, component) => sum + (Number(component.weight) || 0), 0);
-      body.innerHTML = `<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">The component weights must total 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total">Total weight: ${total.toFixed(2)}%</div>`;
+      const earlyExamNote = state.k10EditorGroup
+        ? renderK10EarlyExamGroupEditor()
+        : isK10EarlyGradeSubject(state.k10EditorSubject)
+        ? `<div class="school-k10-grading-exam-note">DepEd does not prescribe a fixed exam-part split for Grades 2–3. Choose one or more assessment parts and weights totaling 100% of Examinations. A term exam is optional for selected learning areas and must be short and low-pressure.${state.k10EditorSubject.needsPolicyReview ? ' This saved split came from the former suggested setup; saving confirms the school’s choice.' : ''}</div>`
+        : '';
+      const exceptions = state.k10EditorGroup ? renderK10GroupExceptions() : '';
+      const syncPrompt = state.k10GroupDiverged
+        ? `<div class="school-k10-grading-warning">Editable grades have different saved setups. Shared weights and any exam-part changes will apply to the affected editable grades.</div><label class="school-k10-sync-confirm"><input id="k10GroupSyncConfirmation" type="checkbox" ${state.k10GroupSyncConfirmed ? 'checked' : ''}> Apply shared setup to editable grades</label>` : '';
+      const readOnly = state.k10EditorGroup && !state.k10EditorGroup.subjects.length;
+      if (state.k10EditorGroup) {
+        const hasAnyStandard = (state.k10EditorGroup.allSubjects || []).some(subject => !isK10EarlyGradeSubject(subject));
+        const groupContent = `${renderK10GroupExamInfoBanner()}<div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>`;
+        body.innerHTML = readOnly
+          ? `${groupContent}${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, false) : ''}${exceptions}`
+          : `${groupContent}<section class="school-k10-editor-section school-k10-components-section" aria-labelledby="schoolK10ComponentsTitle"><div class="school-k10-section-heading"><div><h3 id="schoolK10ComponentsTitle">Component weights</h3><p>Set the weight for each grading component.</p></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div class="school-k10-component-table"><div class="school-k10-component-columns" aria-hidden="true"><span>Code</span><span>Component</span><span>Type</span><span>Weight (%)</span><span></span></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}</div><div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div></section>${hasAnyStandard ? renderK10GroupStandardExamSection(displayComponents, hasEditableStandard) : ''}${earlyExamNote}${exceptions}${syncPrompt}`;
+      } else {
+        body.innerHTML = `<div class="subject-grading-editor-toolbar"><div><strong>Subject components</strong><div class="subject-grading-editor-total">Total must be 100%.</div></div><button class="top-btn secondary" type="button" id="addSubjectGradingComponent">Add component</button></div><div id="subjectGradingEditorError" class="school-k10-grading-warning" role="alert" hidden></div>${cards || '<p class="term-modal-message">Add at least one component.</p>'}<div class="subject-grading-editor-total" id="subjectGradingComponentTotal">Total weight: ${total.toFixed(2)}%</div>${earlyExamNote}`;
+      }
+      if (readOnly) return;
+      body.querySelectorAll('[data-k10-edit-exception]').forEach(button => button.addEventListener('click', () => {
+        if (!window.confirm('Open this grade separately? Unsaved shared changes will be discarded.')) return;
+        const subject = state.k10EditorGroup.allSubjects.find(item => Number(item.id) === Number(button.dataset.k10EditException));
+        if (subject) openSubjectGradingEditor(subject, state.k10GradingPreview);
+      }));
+      const earlyChoice = document.getElementById('k10EarlyTermExamChoice');
+      if (earlyChoice) earlyChoice.addEventListener('change', () => {
+        captureK10EditorState();
+        state.k10EarlyExamChoice = earlyChoice.value || null;
+        if (state.k10EarlyExamChoice && !state.k10EarlyExamParts.length) {
+          state.k10EarlyExamParts = [
+            { code: 'summative-test-1', name: 'Summative Test 1', weight: '' },
+            { code: 'summative-test-2', name: 'Summative Test 2', weight: '' }
+          ];
+        }
+        if (state.k10EarlyExamChoice === 'yes' && !state.k10EarlyExamParts.some(isK10TermExamPart)) {
+          state.k10EarlyExamParts.push({ code: 'term-exam', name: 'Term Exam', weight: '' });
+        }
+        if (state.k10EarlyExamChoice === 'no') {
+          state.k10EarlyExamParts = state.k10EarlyExamParts.filter(part => !isK10TermExamPart(part));
+        }
+        renderSubjectGradingEditor();
+      });
+      const addEarlyPart = document.getElementById('addK10EarlyExamPart');
+      if (addEarlyPart) addEarlyPart.addEventListener('click', () => {
+        captureK10EditorState();
+        state.k10EarlyExamParts = collectK10EarlyExamEditor();
+        const next = state.k10EarlyExamParts.filter(part => !isK10TermExamPart(part)).length + 1;
+        state.k10EarlyExamParts.push({ code: `summative-test-${next}`, name: `Summative Test ${next}`, weight: '' });
+        renderSubjectGradingEditor();
+      });
+      body.querySelectorAll('[data-remove-early-part]').forEach(button => button.addEventListener('click', () => {
+        captureK10EditorState();
+        state.k10EarlyExamParts = collectK10EarlyExamEditor();
+        state.k10EarlyExamParts.splice(Number(button.dataset.removeEarlyPart), 1);
+        renderSubjectGradingEditor();
+      }));
+      const usePolicySplit = document.getElementById('useK10GradesFourToSixSplit');
+      if (usePolicySplit) usePolicySplit.addEventListener('click', () => {
+        captureK10EditorState();
+        state.k10EarlyExamChoice = 'yes';
+        state.k10EarlyExamParts = [
+          { code: 'summative-test-1', name: 'Summative Test 1', weight: 30 },
+          { code: 'summative-test-2', name: 'Summative Test 2', weight: 30 },
+          { code: 'term-exam', name: 'Term Exam', weight: 40 }
+        ];
+        renderSubjectGradingEditor();
+      });
+      const syncConfirmation = document.getElementById('k10GroupSyncConfirmation');
+      if (syncConfirmation) syncConfirmation.addEventListener('change', () => { state.k10GroupSyncConfirmed = syncConfirmation.checked; });
       document.getElementById('addSubjectGradingComponent').addEventListener('click', () => {
-        state.k10EditorComponents = collectSubjectGradingEditor();
+        captureK10EditorState();
         const index = state.k10EditorComponents.length + 1;
         state.k10EditorComponents.push({ code: `school-component-${index}`, name: '', componentType: 'other', weight: 0, examParts: [] });
         renderSubjectGradingEditor();
       });
       body.querySelectorAll('[data-remove-component]').forEach(button => button.addEventListener('click', () => {
-        state.k10EditorComponents = collectSubjectGradingEditor();
+        captureK10EditorState();
         state.k10EditorComponents.splice(Number(button.dataset.removeComponent), 1);
         renderSubjectGradingEditor();
       }));
       body.querySelectorAll('[data-add-exam-part]').forEach(button => button.addEventListener('click', () => {
-        state.k10EditorComponents = collectSubjectGradingEditor();
+        captureK10EditorState();
         const index = Number(button.dataset.addExamPart);
         const parts = state.k10EditorComponents[index].examParts;
         parts.push({ code: `exam-part-${parts.length + 1}`, name: '', weight: 0 });
         renderSubjectGradingEditor();
       }));
       body.querySelectorAll('[data-remove-exam-part]').forEach(button => button.addEventListener('click', () => {
-        state.k10EditorComponents = collectSubjectGradingEditor();
+        captureK10EditorState();
         const [componentIndex, partIndex] = button.dataset.removeExamPart.split(':').map(Number);
         state.k10EditorComponents[componentIndex].examParts.splice(partIndex, 1);
         renderSubjectGradingEditor();
       }));
       body.querySelectorAll('[data-component-field="type"]').forEach(select => select.addEventListener('change', () => {
-        state.k10EditorComponents = collectSubjectGradingEditor();
+        captureK10EditorState();
         if (select.value !== 'examination') state.k10EditorComponents[Number(select.closest('.subject-grading-component-card').dataset.componentIndex)].examParts = [];
         renderSubjectGradingEditor();
       }));
       body.oninput = event => {
         if (event.target.matches('[data-component-field="weight"]')) {
           const sum = collectSubjectGradingEditor().reduce((total, component) => total + (Number(component.weight) || 0), 0);
-          const totalNode = body.querySelector('.subject-grading-editor-total:last-child');
+          const totalNode = document.getElementById('subjectGradingComponentTotal') || body.querySelector('.subject-grading-editor-total:last-child');
           if (totalNode) totalNode.textContent = `Total weight: ${sum.toFixed(2)}%`;
         }
       };
+      if (window.lucide) lucide.createIcons();
     }
 
     async function saveSubjectGradingEditor(event) {
       event.preventDefault();
       const subject = state.k10EditorSubject;
+      const group = state.k10EditorGroup;
       const year = activeK10GradingYear();
       const button = document.getElementById('saveSubjectGradingConfig');
       if (!subject || !year) return;
       state.k10EditorComponents = collectSubjectGradingEditor();
+      if (group) {
+        state.k10EarlyExamChoice = document.getElementById('k10EarlyTermExamChoice')?.value || null;
+        state.k10EarlyExamParts = collectK10EarlyExamEditor();
+        state.k10GroupSyncConfirmed = document.getElementById('k10GroupSyncConfirmation')?.checked === true;
+      }
       button.disabled = true;
       try {
-        await window.EDUGNAY_API.saveSubjectGradingConfig({ academicYearId: Number(year.id), schoolLevelId: Number(state.k10GradingPreview?.schoolLevelId), subjectId: Number(subject.id), components: state.k10EditorComponents });
+        if (group) {
+          const hasEarlyGrades = group.subjects.some(isK10EarlyGradeSubject);
+          const hasStandardGrades = group.subjects.some(item => !isK10EarlyGradeSubject(item));
+          const standardExamParts = state.k10EditorComponents.find(component => component.componentType === 'examination')?.examParts || [];
+          const standardExamEdited = hasStandardGrades && getK10ExamPartsSignature(standardExamParts) !== state.k10StandardExamOriginal;
+          if (hasEarlyGrades && !state.k10EarlyExamChoice) throw new Error('Choose whether this subject uses a Grades 2–3 term exam.');
+          if (state.k10GroupDiverged && !state.k10GroupSyncConfirmed) {
+            throw new Error('Confirm that you want to apply one shared setup to the differing editable grades.');
+          }
+          if (standardExamEdited && state.k10EditorComponents.some(component => component.componentType === 'examination')) {
+            const total = standardExamParts.reduce((sum, part) => sum + Number(part.weight || 0), 0);
+            if (!standardExamParts.length || Math.round(total * 100) !== 10000 || standardExamParts.some(part => !part.code || !part.name || !Number.isFinite(part.weight))) {
+              throw new Error('Grades 4–10 exam parts need names and weights totaling 100%.');
+            }
+          }
+          let earlyParts = state.k10EarlyExamParts;
+          if (state.k10EarlyExamChoice === 'no') earlyParts = earlyParts.filter(part => !isK10TermExamPart(part));
+          if (state.k10EarlyExamChoice === 'yes' && !earlyParts.some(isK10TermExamPart)) {
+            throw new Error('Add a Term Exam part or choose No term exam.');
+          }
+          if (hasEarlyGrades) {
+            const total = earlyParts.reduce((sum, part) => sum + Number(part.weight || 0), 0);
+            if (!earlyParts.length || Math.round(total * 100) !== 10000 || earlyParts.some(part => !part.code || !part.name)) {
+              throw new Error('Grades 2–3 exam parts need names and weights totaling 100%.');
+            }
+          }
+          const targets = group.subjects.filter(item => item.status !== 'published').map(item => ({
+            subjectId: Number(item.id),
+            components: mapK10ComponentsToProfile(state.k10EditorComponents, item, earlyParts, standardExamEdited)
+          }));
+          if (!targets.length) throw new Error('All grade profiles in this subject group are locked by published grades.');
+          await window.EDUGNAY_API.saveK10CatalogSubjectGroupConfig({
+            academicYearId: Number(year.id),
+            schoolLevelId: Number(state.k10GradingPreview?.schoolLevelId),
+            groupKey: group.catalogKey,
+            targets
+          });
+        } else {
+          await window.EDUGNAY_API.saveSubjectGradingConfig({ academicYearId: Number(year.id), schoolLevelId: Number(state.k10GradingPreview?.schoolLevelId), subjectId: Number(subject.id), components: state.k10EditorComponents });
+        }
         const apiLevel = getApiLevel(activeDivision(activeSchool()).level);
         state.k10GradingPreview = await window.EDUGNAY_API.getDepedK10GradingPreview({ academicYearId: Number(year.id), schoolLevelId: Number(apiLevel.id) });
         closeK10GradingModal('subjectGradingEditorModal');
         renderGradingPane();
-        showAppToast(`${subject.name} grading rules saved.`);
+        showAppToast(`${group?.name || subject.name} grading rules saved.`);
       } catch (error) {
         const message = document.getElementById('subjectGradingEditorError');
         if (message) { message.hidden = false; message.textContent = error.message || 'Subject grading rules could not be saved.'; }
@@ -1422,56 +2027,62 @@
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-portal-pane active">
           <form id="schoolPortalForm">
-            <div class="school-section-block school-portal-access-block">
-              <div class="school-section-block-head">
-                <div>
-                  <div class="school-section-block-title">Portal access</div>
-                  <div class="school-section-block-sub">Control optional features that appear in the student, parent, and teacher portals.</div>
+            <div class="school-portal-layout" id="schoolPortalLayout">
+              <div class="school-section-block school-portal-access-block">
+                <div class="school-section-block-head">
+                  <div>
+                    <div class="school-section-block-title">Portal access</div>
+                    <div class="school-section-block-sub">Control optional features that appear in the student, parent, and teacher portals.</div>
+                  </div>
+                </div>
+                <div class="school-toggle-list">
+                  <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Allow students and parents to view grades</strong><small>When disabled, the Grades page and its navigation are hidden from student and parent portals.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="gradesPageEnabled" ${gradesPageEnabled ? 'checked' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
+                  <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Enable AI-assisted Narrative Reports</strong><small>Advisers review summaries built from verified attendance, journal, assignment, and progress records before parents can view them.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="narrativeReportsEnabled" ${narrativeReportsEnabled ? 'checked' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
+                  <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Enable SF Templates</strong><small>Allow teachers to access the official School Form templates and generate forms with school data.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="sfTemplatesEnabled" ${sfTemplatesEnabled ? 'checked' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
+                  <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow JHS students to submit reflections and teachers assigned to the selected subject to review them.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${noEligibleJournalSubjects && !journalsEnabled ? 'disabled' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
                 </div>
               </div>
-              <div class="school-toggle-list">
-                <label class="school-toggle-row">
-                  <span class="school-toggle-copy"><strong>Allow students and parents to view grades</strong><small>When disabled, the Grades page and its navigation are hidden from student and parent portals.</small></span>
-                  <input class="school-toggle-input" type="checkbox" name="gradesPageEnabled" ${gradesPageEnabled ? 'checked' : ''}>
-                  <span class="school-toggle-control" aria-hidden="true"></span>
-                </label>
-                <label class="school-toggle-row">
-                  <span class="school-toggle-copy"><strong>Enable AI-assisted Narrative Reports</strong><small>Advisers review summaries built from verified attendance, journal, assignment, and progress records before parents can view them.</small></span>
-                  <input class="school-toggle-input" type="checkbox" name="narrativeReportsEnabled" ${narrativeReportsEnabled ? 'checked' : ''}>
-                  <span class="school-toggle-control" aria-hidden="true"></span>
-                </label>
-                <label class="school-toggle-row">
-                  <span class="school-toggle-copy"><strong>Enable SF Templates</strong><small>Allow teachers to access the official School Form templates and generate forms with school data.</small></span>
-                  <input class="school-toggle-input" type="checkbox" name="sfTemplatesEnabled" ${sfTemplatesEnabled ? 'checked' : ''}>
-                  <span class="school-toggle-control" aria-hidden="true"></span>
-                </label>
-                <label class="school-toggle-row">
-                  <span class="school-toggle-copy"><strong>Enable Journals</strong><small>Allow JHS students to submit reflections and teachers assigned to the selected subject to review them.</small></span>
-                  <input class="school-toggle-input" type="checkbox" name="journalsEnabled" ${journalsEnabled ? 'checked' : ''} ${noEligibleJournalSubjects && !journalsEnabled ? 'disabled' : ''}>
-                  <span class="school-toggle-control" aria-hidden="true"></span>
-                </label>
+              <div class="school-portal-journal-column" id="journalSettingsColumn">
+                <div class="school-section-block school-journal-settings-block ${journalsEnabled ? '' : 'is-disabled'}" id="journalSubjectBlock" aria-disabled="${journalsEnabled ? 'false' : 'true'}">
+                  <div class="school-section-block-head">
+                    <div>
+                      <div class="school-section-block-title">Journal subject</div>
+                      <div class="school-section-block-sub">Choose one active subject scoped to this school’s enabled JHS grades.</div>
+                    </div>
+                  </div>
+                  <div class="school-form-grid">
+                    <div class="school-field">
+                      <label for="journalSubjectId">Subject used for Journals</label>
+                      <select id="journalSubjectId" name="journalSubjectId" ${journalsEnabled && (eligibleJournalSubjects.length || savedJournalSubjectId) ? '' : 'disabled'}>
+                        <option value="" ${journalSubjectId ? '' : 'selected'}>Select a JHS subject</option>
+                        ${eligibleJournalSubjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${String(subject.id) === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)} · ${window.EDUGNAY_CONFIG.escapeHtml(subject.journalGradeLabel)}${subject.journalDefault ? ' (default)' : ''}</option>`).join('')}
+                        ${savedJournalSubjectId && !hasJournalSubject ? `<option value="${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubjectId)}" selected disabled>${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubject?.name || 'Previously selected subject')} · unavailable for JHS</option>` : ''}
+                      </select>
+                      <small>${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectHelp)}</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="school-section-block school-journal-history-block" id="journalHistoryBlock" ${journalsEnabled ? '' : 'hidden'}>
+                  <button class="top-btn secondary" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button>
+                </div>
               </div>
             </div>
-            <div class="school-section-block school-journal-settings-block" id="journalSubjectBlock" ${journalsEnabled ? '' : 'hidden'}>
-              <div class="school-section-block-head">
-                <div>
-                  <div class="school-section-block-title">Journal subject</div>
-                  <div class="school-section-block-sub">Choose one active subject scoped to this school’s enabled JHS grades.</div>
-                </div>
-              </div>
-              <div class="school-form-grid">
-                <div class="school-field">
-                  <label for="journalSubjectId">Subject used for Journals</label>
-                  <select id="journalSubjectId" name="journalSubjectId" ${eligibleJournalSubjects.length || savedJournalSubjectId ? '' : 'disabled'}>
-                    <option value="" ${journalSubjectId ? '' : 'selected'}>Select a JHS subject</option>
-                    ${eligibleJournalSubjects.map(subject => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(subject.id)}" ${String(subject.id) === journalSubjectId ? 'selected' : ''}>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)} · ${window.EDUGNAY_CONFIG.escapeHtml(subject.journalGradeLabel)}${subject.journalDefault ? ' (default)' : ''}</option>`).join('')}
-                    ${savedJournalSubjectId && !hasJournalSubject ? `<option value="${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubjectId)}" selected disabled>${window.EDUGNAY_CONFIG.escapeHtml(savedJournalSubject?.name || 'Previously selected subject')} · unavailable for JHS</option>` : ''}
-                  </select>
-                  <small>${window.EDUGNAY_CONFIG.escapeHtml(journalSubjectHelp)}</small>
-                </div>
-              </div>
-            </div>
-            <div class="school-section-block school-journal-history-block" id="journalHistoryBlock" ${journalsEnabled ? '' : 'hidden'}><button class="top-btn secondary" type="button" id="viewSchoolJournalHistory"><i data-lucide="history"></i> View journal history</button></div>
             <div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="save"></i> Save portal features</button></div>
           </form>
         </div>`;
@@ -1483,9 +2094,12 @@
       const journalHistoryBlock = document.getElementById('journalHistoryBlock');
       const syncJournalSections = () => {
         const isJournalEnabled = Boolean(journalToggle?.checked);
-        if (journalSubjectBlock) journalSubjectBlock.hidden = !isJournalEnabled;
+        if (journalSubjectBlock) {
+          journalSubjectBlock.classList.toggle('is-disabled', !isJournalEnabled);
+          journalSubjectBlock.setAttribute('aria-disabled', String(!isJournalEnabled));
+        }
         if (journalHistoryBlock) journalHistoryBlock.hidden = !isJournalEnabled;
-        if (journalSubjectSelect) journalSubjectSelect.disabled = !eligibleJournalSubjects.length && !savedJournalSubjectId;
+        if (journalSubjectSelect) journalSubjectSelect.disabled = !isJournalEnabled || (!eligibleJournalSubjects.length && !savedJournalSubjectId);
       };
       journalToggle?.addEventListener('change', syncJournalSections);
       syncJournalSections();
@@ -1500,17 +2114,19 @@
       document.getElementById('schoolSettingsBody').innerHTML = `
         <div class="school-pane school-attendance-pane active">
           <form id="schoolAttendanceForm">
-            <div class="school-section-block school-attendance-codes-block">
-              <div class="school-section-block-title">Attendance status codes</div>
-              <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${window.EDUGNAY_CONFIG.escapeHtml(code.tone || code.id)}"><span class="school-attendance-code-mark">${window.EDUGNAY_CONFIG.escapeHtml(code.key)}</span><span><strong>${window.EDUGNAY_CONFIG.escapeHtml(code.name)}</strong><small>${window.EDUGNAY_CONFIG.escapeHtml(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'Attendance codes unavailable', text: 'The built-in attendance codes are missing for this school.' })}</div>
-            </div>
-            <div class="school-section-block">
-              <div class="school-section-block-title">Absence thresholds</div>
-              <div class="school-form-grid"><div class="school-field"><label for="maxUnexcusedAbsences">Maximum unexcused absences</label><input id="maxUnexcusedAbsences" name="maxUnexcusedAbsences" type="number" min="1" step="1" value="${Number(rules.maxUnexcusedAbsences) || 5}"><small>Flag a learner after this many unexcused absences.</small></div><div class="school-field"><label for="consecutiveAbsencesAlert">Consecutive absences alert</label><input id="consecutiveAbsencesAlert" name="consecutiveAbsencesAlert" type="number" min="1" step="1" value="${Number(rules.consecutiveAbsencesAlert) || 3}"><small>Days in a row before the attendance alert is raised.</small></div><div class="school-field"><label for="lateCountAsAbsence">Late count equals one absence</label><input id="lateCountAsAbsence" name="lateCountAsAbsence" type="number" min="1" step="1" value="${Number(rules.lateCountAsAbsence) || 3}"><small>Number of late records equivalent to one absence.</small></div></div>
+            <div class="school-attendance-overview">
+              <div class="school-section-block school-attendance-codes-block">
+                <div class="school-section-block-title">Attendance status codes</div>
+                <div class="school-attendance-code-grid">${codes.length ? codes.map(code => `<div class="school-attendance-code" data-tone="${window.EDUGNAY_CONFIG.escapeHtml(code.tone || code.id)}"><span class="school-attendance-code-mark">${window.EDUGNAY_CONFIG.escapeHtml(code.key)}</span><span><strong>${window.EDUGNAY_CONFIG.escapeHtml(code.name)}</strong><small>${window.EDUGNAY_CONFIG.escapeHtml(code.description)}</small></span></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-x', title: 'Attendance codes unavailable', text: 'The built-in attendance codes are missing for this school.' })}</div>
+              </div>
+              <div class="school-section-block school-attendance-thresholds-block">
+                <div class="school-section-block-title">Absence thresholds</div>
+                <div class="school-form-grid school-attendance-threshold-grid"><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="maxUnexcusedAbsences">Maximum unexcused absences</label><small>Flag a learner after this many unexcused absences.</small></div><input id="maxUnexcusedAbsences" name="maxUnexcusedAbsences" type="number" min="1" step="1" value="${Number(rules.maxUnexcusedAbsences) || 5}"></div><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="consecutiveAbsencesAlert">Consecutive absences alert</label><small>Days in a row before the attendance alert is raised.</small></div><input id="consecutiveAbsencesAlert" name="consecutiveAbsencesAlert" type="number" min="1" step="1" value="${Number(rules.consecutiveAbsencesAlert) || 3}"></div></div>
+              </div>
             </div>
             <div class="school-section-block">
               <div class="school-section-block-title">Attendance access</div>
-              <div class="school-toggle-list">
+              <div class="school-toggle-list school-attendance-access-grid">
                 <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Count excused absences in total</strong><small>Include excused absences when comparing against the maximum allowed limit.</small></span><input class="school-toggle-input" type="checkbox" name="countExcusedAbsences" ${rules.countExcusedAbsences ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
                 <label class="school-toggle-row"><span class="school-toggle-copy"><strong>Allow teachers to edit past attendance</strong><small>Allow corrections to attendance records from previous school days.</small></span><input class="school-toggle-input" type="checkbox" name="allowEditPastAttendance" ${rules.allowEditPastAttendance !== false ? 'checked' : ''}><span class="school-toggle-control" aria-hidden="true"></span></label>
               </div>
@@ -1522,19 +2138,55 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function renderCalendarPane() {
+    function updateSchoolSettingsHash(hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash ? `#${hash}` : ''}`);
+    }
+
+    function renderCalendarNoticesList() {
+      const list = document.getElementById('calendarNoticeList');
+      if (!list) return;
       const holidays = state.calendarNotices;
-      document.getElementById('schoolCalendarBody').innerHTML = `<form id="holidayForm"><div class="school-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today."></div></div><div class="school-form-footer"><button class="top-btn primary" type="submit"><i data-lucide="plus"></i> Add calendar notice</button></div></form><div class="calendar-list"><div class="calendar-list-title">Saved notices</div>${state.calendarLoading ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading notices', text: 'Please wait.' }) : state.calendarError ? `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Notices unavailable', text: state.calendarError })}<button class="top-btn" type="button" id="retryCalendarNotices">Retry</button>` : holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
-      document.getElementById('holidayForm').addEventListener('submit', addHoliday);
-      document.querySelectorAll('[data-remove-holiday]').forEach(button => button.addEventListener('click', () => removeHoliday(button.dataset.removeHoliday)));
-      document.getElementById('retryCalendarNotices')?.addEventListener('click', loadCalendarNotices);
+      list.innerHTML = `<div class="calendar-list-title">Notices</div>${state.calendarLoading ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading notices', text: 'Please wait.' }) : state.calendarError ? `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'Notices unavailable', text: state.calendarError })}<button class="top-btn" type="button" id="retryCalendarNotices">Retry</button>` : holidays.length ? holidays.map(day => `<div class="holiday-row"><div class="holiday-date">${window.EDUGNAY_CONFIG.escapeHtml(day.date)}</div><div><div class="holiday-title">${window.EDUGNAY_CONFIG.escapeHtml(day.title)}</div><div class="holiday-detail">${window.EDUGNAY_CONFIG.escapeHtml(day.detail)}</div></div><button class="icon-button" type="button" data-remove-holiday="${window.EDUGNAY_CONFIG.escapeHtml(day.id)}" title="Remove notice" aria-label="Remove ${window.EDUGNAY_CONFIG.escapeHtml(day.title)} notice"><i data-lucide="trash-2"></i></button></div>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'calendar-off', title: 'No calendar notices yet', text: 'Add a holiday or no-class notice to show it here.' })}</div>`;
+      list.querySelectorAll('[data-remove-holiday]').forEach(button => button.addEventListener('click', () => removeHoliday(button.dataset.removeHoliday)));
+      list.querySelector('#retryCalendarNotices')?.addEventListener('click', loadCalendarNotices);
       if (window.lucide) lucide.createIcons();
+    }
+
+    function renderCalendarPane() {
+      if (!state.apiActive || state.tab !== 'calendar') return;
+      setSettingsHeading('School Calendar', 'Manage holidays and no-class notices.');
+      document.getElementById('schoolSettingsBody').innerHTML = `<section class="school-calendar-settings" aria-label="School calendar notices">
+        <div class="school-calendar-toolbar"><button class="top-btn primary" id="toggleCalendarNoticeForm" type="button" aria-controls="calendarNoticeFormPanel" aria-expanded="${state.calendarFormOpen}"><i data-lucide="${state.calendarFormOpen ? 'x' : 'plus'}"></i> ${state.calendarFormOpen ? 'Close form' : 'Add notice'}</button></div>
+        <div class="calendar-list" id="calendarNoticeList" aria-live="polite"></div>
+        <div class="school-calendar-form-panel" id="calendarNoticeFormPanel" ${state.calendarFormOpen ? '' : 'hidden'}>
+          <form id="holidayForm" class="school-calendar-form"><div class="school-form-grid school-calendar-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" maxlength="255" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today." maxlength="2000"></div></div><div class="school-form-footer"><button class="top-btn secondary" id="cancelCalendarNotice" type="button">Cancel</button><button class="top-btn primary" type="submit"><i data-lucide="check"></i> Save notice</button></div></form>
+        </div>
+      </section>`;
+      document.getElementById('toggleCalendarNoticeForm').addEventListener('click', () => setCalendarNoticeFormOpen(!state.calendarFormOpen));
+      document.getElementById('cancelCalendarNotice').addEventListener('click', () => setCalendarNoticeFormOpen(false));
+      document.getElementById('holidayForm').addEventListener('submit', addHoliday);
+      renderCalendarNoticesList();
+      if (window.lucide) lucide.createIcons();
+      if (state.calendarFocusRequested) {
+        const date = document.getElementById('holidayDate');
+        if (date) {
+          state.calendarFocusRequested = false;
+          date.focus();
+        }
+      }
+    }
+
+    function setCalendarNoticeFormOpen(isOpen) {
+      state.calendarFormOpen = isOpen;
+      state.calendarFocusRequested = isOpen;
+      updateSchoolSettingsHash(isOpen ? 'add-calendar-notice' : 'school-calendar');
+      renderCalendarPane();
     }
 
     async function loadCalendarNotices() {
       state.calendarLoading = true;
       state.calendarError = '';
-      renderCalendarPane();
+      renderCalendarNoticesList();
       try {
         await window.EDUGNAY_SCHOOL_READY;
         state.calendarNotices = await window.EDUGNAY_API.getCalendarNotices();
@@ -1543,7 +2195,7 @@
         state.calendarError = error.message || 'Could not load calendar notices.';
       } finally {
         state.calendarLoading = false;
-        renderCalendarPane();
+        renderCalendarNoticesList();
       }
     }
 
@@ -1554,12 +2206,13 @@
       }
       if (state.tab === 'academic') renderAcademicPane();
       else if (state.tab === 'terms') renderAcademicTermsPane();
+      else if (state.tab === 'calendar') renderCalendarPane();
       else if (state.tab === 'grading') renderGradingPane();
       else if (state.tab === 'attendance') renderAttendancePane();
       else if (state.tab === 'portal') renderPortalFeaturesPane();
       else renderProfilePane();
     }
-    function renderAll() { renderPane(); renderCalendarPane(); if (window.lucide) lucide.createIcons(); }
+    function renderAll() { renderPane(); if (window.lucide) lucide.createIcons(); }
 
     async function loadBackendSchoolSettings() {
       state.apiLoading = true;
@@ -2189,9 +2842,7 @@
       event.preventDefault();
       const form = event.currentTarget;
       const school = activeSchool();
-      const journalSubjectId = String(form.elements.journalSubjectId?.disabled
-        ? state.apiJournalSubjectId || ''
-        : form.elements.journalSubjectId?.value || '');
+      const journalSubjectId = String(form.elements.journalSubjectId?.value ?? state.apiJournalSubjectId ?? '');
       const eligibleSubjects = getEligibleJournalSubjects();
       const journalSubjectIsEligible = eligibleSubjects.some(subject => String(subject.id) === journalSubjectId);
       if (form.elements.journalsEnabled?.checked && !journalSubjectIsEligible) {
@@ -2246,7 +2897,6 @@
       const settings = {
         maxUnexcusedAbsences: toPositiveNumber('maxUnexcusedAbsences', 5),
         consecutiveAbsencesAlert: toPositiveNumber('consecutiveAbsencesAlert', 3),
-        lateCountAsAbsence: toPositiveNumber('lateCountAsAbsence', 3),
         countExcusedAbsences: values.has('countExcusedAbsences'),
         allowEditPastAttendance: values.has('allowEditPastAttendance')
       };
@@ -2265,7 +2915,10 @@
       const values = Object.fromEntries(new FormData(form).entries());
       try {
         await window.EDUGNAY_API.request('/school/calendar-notices', { method: 'POST', body: JSON.stringify(values) });
-        form.reset();
+        state.calendarFormOpen = false;
+        state.calendarFocusRequested = false;
+        updateSchoolSettingsHash('school-calendar');
+        renderCalendarPane();
         await loadCalendarNotices();
         showAppToast('Calendar notice added.');
       } catch (error) { notify(error.message || 'The notice could not be added.'); }
@@ -2283,29 +2936,44 @@
     document.getElementById('cancelTermAction').addEventListener('click', closeTermActionModal);
     document.getElementById('termActionModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeTermActionModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.termAction) closeTermActionModal(); });
-    document.getElementById('closeDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
-    document.getElementById('cancelDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
-    document.getElementById('applyDepedSubjectReview').addEventListener('click', applyDepedSubjects);
-    document.getElementById('depedSubjectReviewModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeDepedSubjectReview(); });
-    document.getElementById('applyDepedGradingDefaults').addEventListener('click', applyDepedGradingDefaults);
+    document.getElementById('confirmApplyMissingDepedDefaults').addEventListener('click', applyMissingDepedDefaults);
     document.getElementById('subjectGradingEditorForm').addEventListener('submit', saveSubjectGradingEditor);
-    document.getElementById('depedGradingReviewModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeK10GradingModal('depedGradingReviewModal'); });
+    document.getElementById('restoreDepedDefaults').addEventListener('click', showRestoreDepedDefaultsConfirmation);
+    document.getElementById('cancelRestoreDepedDefaults').addEventListener('click', cancelRestoreDepedDefaultsConfirmation);
+    document.getElementById('confirmRestoreDepedDefaults').addEventListener('click', confirmRestoreDepedDefaults);
+    document.getElementById('applyMissingDepedDefaultsModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeK10GradingModal('applyMissingDepedDefaultsModal'); });
     document.getElementById('subjectGradingEditorModal').addEventListener('click', event => { if (event.target === event.currentTarget) closeK10GradingModal('subjectGradingEditorModal'); });
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
-      for (const id of ['depedGradingReviewModal', 'subjectGradingEditorModal']) {
+      for (const id of ['applyMissingDepedDefaultsModal', 'subjectGradingEditorModal']) {
         if (document.getElementById(id).classList.contains('open')) closeK10GradingModal(id);
       }
     });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && document.getElementById('depedSubjectReviewModal').classList.contains('open')) closeDepedSubjectReview();
-    });
-    document.querySelectorAll('[data-school-tab]').forEach(tab => tab.addEventListener('click', () => { state.tab = tab.dataset.schoolTab; document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item === tab)); renderPane(); }));
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (window.location.hash === '#academic-terms') {
-        state.tab = 'terms';
-        document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item.dataset.schoolTab === 'terms'));
+    document.querySelectorAll('[data-school-tab]').forEach(tab => tab.addEventListener('click', () => {
+      state.tab = tab.dataset.schoolTab;
+      if (state.tab !== 'calendar') {
+        state.calendarFormOpen = false;
+        state.calendarFocusRequested = false;
       }
+      const hash = state.tab === 'calendar'
+        ? (state.calendarFormOpen ? 'add-calendar-notice' : 'school-calendar')
+        : state.tab === 'terms' ? 'academic-terms' : '';
+      updateSchoolSettingsHash(hash);
+      document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item === tab));
+      renderPane();
+    }));
+    document.addEventListener('DOMContentLoaded', async () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#academic-structure') {
+        state.tab = 'academic';
+      } else if (hash === '#academic-terms') {
+        state.tab = 'terms';
+      } else if (hash === '#school-calendar' || hash === '#add-calendar-notice') {
+        state.tab = 'calendar';
+        state.calendarFormOpen = hash === '#add-calendar-notice';
+        state.calendarFocusRequested = state.calendarFormOpen;
+      }
+      document.querySelectorAll('[data-school-tab]').forEach(item => item.classList.toggle('active', item.dataset.schoolTab === state.tab));
       loadBackendSchoolSettings();
       loadCalendarNotices();
     });

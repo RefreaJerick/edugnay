@@ -3,6 +3,7 @@ const {
   createDepedK10DefaultComponents,
   getDepedK10GradeMethod,
   getDepedK10LearningArea,
+  isDepedEarlyGradeSubjectCode,
   isDepedEarlyNumericalGradeCode,
   isDepedK10GradeCode,
   isDepedNumericalGradeCode
@@ -12,6 +13,15 @@ const { GRADING_MODES, ROUNDING_RULES, loadK10FinalGradeRules } = require('../ut
 
 const COMPONENT_TYPES = new Set(['written', 'performance', 'examination', 'other']);
 const K10_PROFILE_GRADE_CODES = ['grade-4', 'grade-5', 'grade-6', 'grade-7', 'grade-8', 'grade-9', 'grade-10'];
+const K10_CATALOG_SUBJECT_KEYS = new Set([
+  'araling-panlipunan', 'english', 'epp', 'filipino', 'gmrc', 'makabansa',
+  'mathematics', 'music-and-arts', 'physical-education-and-health', 'science', 'tle', 'values-education'
+]);
+
+function getK10CatalogSubjectGroupKey(subjectCode) {
+  const match = String(subjectCode || '').trim().toLowerCase().match(/^(.+)-(?:grade-[23]|elementary|jhs)$/);
+  return match && K10_CATALOG_SUBJECT_KEYS.has(match[1]) ? match[1] : null;
+}
 
 function isProfileGradeCode(gradeCode, academicYearLabel) {
   return isDepedK10GradeCode(gradeCode)
@@ -157,10 +167,10 @@ async function getProfile(connection, schoolId, academicYearId, schoolLevelId, s
   return rows[0] || null;
 }
 
-async function getProfileComponents(connection, schoolId, profileId) {
+async function getProfileComponents(connection, schoolId, profileId, lock = false) {
   const [components] = await connection.execute(
     `SELECT id, code, name, component_type AS componentType, weight, sort_order AS sortOrder
-    FROM subject_grading_components WHERE school_id = ? AND profile_id = ? ORDER BY sort_order, id`,
+    FROM subject_grading_components WHERE school_id = ? AND profile_id = ? ORDER BY sort_order, id${lock ? ' FOR UPDATE' : ''}`,
     [schoolId, profileId]
   );
   const result = components.map(component => ({ ...component, id: Number(component.id), weight: Number(component.weight), examParts: [] }));
@@ -169,7 +179,7 @@ async function getProfileComponents(connection, schoolId, profileId) {
   const placeholders = ids.map(() => '?').join(',');
   const [parts] = await connection.execute(
     `SELECT id, component_id AS componentId, code, name, weight, sort_order AS sortOrder
-    FROM subject_grading_exam_parts WHERE school_id = ? AND component_id IN (${placeholders}) ORDER BY sort_order, id`,
+    FROM subject_grading_exam_parts WHERE school_id = ? AND component_id IN (${placeholders}) ORDER BY sort_order, id${lock ? ' FOR UPDATE' : ''}`,
     [schoolId, ...ids]
   );
   const byId = new Map(result.map(component => [component.id, component]));
@@ -230,11 +240,19 @@ async function getPreviewData(connection, schoolId, academicYearId, schoolLevelI
     const profile = await getProfile(connection, schoolId, academicYearId, schoolLevelId, subject.id);
     const locked = await isProfileLocked(connection, schoolId, academicYearId, schoolLevelId, subject.id);
     const defaults = createDepedK10DefaultComponents(subject.subjectCode);
+    const components = profile ? await getProfileComponents(connection, schoolId, profile.id) : defaults || [];
+    const isEarlyGrade = isDepedEarlyGradeSubjectCode(subject.subjectCode);
+    const hasExamParts = components.some(component => component.componentType === 'examination' && component.examParts.length > 0);
+    const needsExamSetup = isEarlyGrade && !hasExamParts;
+    const needsPolicyReview = isDepedEarlyGradeSubjectCode(subject.subjectCode)
+      && profile?.configurationSource === 'deped_default';
     result.push({
       ...subject,
       status: locked ? 'published' : profile ? 'configured' : defaults ? 'ready' : 'unmatched',
       configurationSource: profile?.configurationSource || null,
-      components: profile ? await getProfileComponents(connection, schoolId, profile.id) : defaults || [],
+      needsExamSetup,
+      needsPolicyReview,
+      components,
       defaultComponents: defaults || []
     });
   }
@@ -271,7 +289,7 @@ async function applyDepedDefaults(req, res, next) {
     if (!year) throw createError('Academic year or school level was not found.', 404);
     if (!['elementary', 'jhs'].includes(year.levelCode)) throw createError('DepEd subject weights are available for Elementary and Junior High School.', 409);
     const subjects = await getSubjectsForK10(connection, req.user.schoolId, schoolLevelId, year.academicYearLabel);
-    const summary = { added: [], alreadyConfigured: [], published: [], unmatched: [] };
+    const summary = { added: [], alreadyConfigured: [], published: [], needsExamSetup: [], unmatched: [] };
     for (const subject of subjects) {
       const defaults = createDepedK10DefaultComponents(subject.subjectCode);
       if (!defaults) { summary.unmatched.push({ subjectId: subject.id, subjectName: subject.name }); continue; }
@@ -281,6 +299,10 @@ async function applyDepedDefaults(req, res, next) {
       }
       if (await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subject.id)) {
         summary.alreadyConfigured.push({ subjectId: subject.id, subjectName: subject.name });
+        continue;
+      }
+      if (isDepedEarlyGradeSubjectCode(subject.subjectCode)) {
+        summary.needsExamSetup.push({ subjectId: subject.id, subjectName: subject.name });
         continue;
       }
       await insertProfile(connection, {
@@ -339,13 +361,25 @@ async function getTeacherSubjectGradingConfig(req, res, next) {
       gradeCode: section.gradeCode
     });
     const profile = await getProfile(getDatabase(), req.user.schoolId, section.academicYearId, section.schoolLevelId, subjectId);
+    const components = profile ? await getProfileComponents(getDatabase(), req.user.schoolId, profile.id) : [];
+    const profileLocked = profile ? await isProfileLocked(
+      getDatabase(), req.user.schoolId, section.academicYearId, section.schoolLevelId, subjectId
+    ) : false;
+    const needsExamSetup = isDepedEarlyNumericalGradeCode(section.gradeCode)
+      && !components.some(component => component.componentType === 'examination' && component.examParts.length > 0);
+    const needsPolicyReview = !profileLocked && isDepedEarlyNumericalGradeCode(section.gradeCode)
+      && getDepedK10GradeMethod(section.academicYearLabel) === 'deped_2026_transmutation'
+      && profile?.configurationSource === 'deped_default';
     res.json({
       applicable: true,
       configured: Boolean(profile),
+      locked: profileLocked,
+      needsExamSetup,
       configurationSource: profile?.configurationSource || null,
+      needsPolicyReview,
       academicYearId: Number(section.academicYearId),
       academicYearLabel: section.academicYearLabel,
-      components: profile ? await getProfileComponents(getDatabase(), req.user.schoolId, profile.id) : [],
+      components,
       ...finalGradeRules
     });
   } catch (error) { next(error); }
@@ -450,7 +484,8 @@ async function getAdminSubjectGradingConfig(req, res, next) {
 }
 
 async function saveSubjectGradingConfig(req, res, next) {
-  const connection = await getDatabase().getConnection();
+  const ownsConnection = !req.gradingConnection;
+  const connection = req.gradingConnection || await getDatabase().getConnection();
   let transactionStarted = false;
   try {
     if (req.user.role !== 'school_admin') throw createError('Only School Admin can manage grading rules.', 403);
@@ -458,15 +493,24 @@ async function saveSubjectGradingConfig(req, res, next) {
     const schoolLevelId = parseId(req.body.schoolLevelId, 'School level');
     const subjectId = parseId(req.body.subjectId, 'Subject');
     const components = normalizeComponents(req.body.components);
-    await connection.beginTransaction();
-    transactionStarted = true;
+    if (!req.gradingBatch) {
+      await connection.beginTransaction();
+      transactionStarted = true;
+    }
     const [subjects] = await connection.execute(
-      `SELECT id, name AS subjectName, school_level_id AS subjectSchoolLevelId
+      `SELECT id, subject_code AS subjectCode, name AS subjectName, school_level_id AS subjectSchoolLevelId
       FROM subjects WHERE id = ? AND school_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE`,
       [subjectId, req.user.schoolId]
     );
     const subject = subjects[0];
     if (!subject) throw createError('The subject is not active in this school.', 404);
+    if (req.gradingBatch && getK10CatalogSubjectGroupKey(subject.subjectCode) !== req.gradingGroupKey) {
+      throw createError('Every saved profile must remain in the selected catalog subject group.', 404);
+    }
+    if (isDepedEarlyGradeSubjectCode(subject.subjectCode)
+      && components.filter(component => component.componentType === 'examination').length !== 1) {
+      throw createError('Grades 2–3 setups must include one Examinations component with selected exam parts totaling 100%.', 400);
+    }
     const year = await getYearAndLevel(connection, req.user.schoolId, academicYearId, schoolLevelId, true);
     if (!year || !['elementary', 'jhs'].includes(year.levelCode)) throw createError('The academic year and school level do not match.', 404);
     if (subject.subjectSchoolLevelId != null && Number(subject.subjectSchoolLevelId) !== schoolLevelId) {
@@ -561,14 +605,316 @@ async function saveSubjectGradingConfig(req, res, next) {
     await writeAuditLog(connection, req, 'subject_grading_config_updated', 'subject_grading_profile', profile.id, {
       summary: `${subject.subjectName} grading configuration`, subjectId, academicYearId
     });
+    if (!req.gradingBatch) {
+      await connection.commit();
+      transactionStarted = false;
+    }
+    const saved = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId);
+    const profileResult = { ...saved, components: await getProfileComponents(connection, req.user.schoolId, saved.id), locked: false };
+    if (req.gradingBatch) return profileResult;
+    res.json({ profile: profileResult });
+  } catch (error) {
+    if (transactionStarted) await connection.rollback();
+    if (req.gradingBatch) throw error;
+    next(error);
+  } finally { if (ownsConnection) connection.release(); }
+}
+
+async function saveK10CatalogSubjectGroupConfig(req, res, next) {
+  const connection = await getDatabase().getConnection();
+  let transactionStarted = false;
+  try {
+    if (req.user.role !== 'school_admin') throw createError('Only School Admin can manage grading rules.', 403);
+    const academicYearId = parseId(req.body.academicYearId, 'Academic year');
+    const schoolLevelId = parseId(req.body.schoolLevelId, 'School level');
+    const groupKey = String(req.body.groupKey || '').trim().toLowerCase();
+    if (!K10_CATALOG_SUBJECT_KEYS.has(groupKey)) throw createError('Select a supported catalog subject group.');
+    if (!Array.isArray(req.body.targets) || !req.body.targets.length || req.body.targets.length > 20) {
+      throw createError('Select one or more grade profiles to save.');
+    }
+    const targets = req.body.targets.map(target => ({
+      subjectId: parseId(target?.subjectId, 'Subject'),
+      components: normalizeComponents(target?.components)
+    }));
+    if (new Set(targets.map(target => target.subjectId)).size !== targets.length) throw createError('A subject can only appear once in a group save.');
+    const componentSignatures = new Set(targets.map(target => JSON.stringify(target.components.map(component => ({
+      code: component.code, name: component.name, componentType: component.componentType, weight: component.weight
+    })).sort((first, second) => first.code.localeCompare(second.code)))));
+    if (componentSignatures.size > 1) throw createError('Shared component names and weights must match across the selected grade profiles.');
+    const year = await getYearAndLevel(connection, req.user.schoolId, academicYearId, schoolLevelId);
+    if (!year || !['elementary', 'jhs'].includes(year.levelCode)
+      || getDepedK10GradeMethod(year.academicYearLabel) === 'standard') {
+      throw createError('The academic year and school level do not support catalog grading profiles.', 409);
+    }
+    const subjects = [];
+    for (const target of targets) {
+      const [rows] = await connection.execute(
+        `SELECT id, subject_code AS subjectCode, school_level_id AS subjectSchoolLevelId
+        FROM subjects WHERE id = ? AND school_id = ? AND is_active = TRUE LIMIT 1`,
+        [target.subjectId, req.user.schoolId]
+      );
+      const subject = rows[0];
+      if (!subject || getK10CatalogSubjectGroupKey(subject.subjectCode) !== groupKey) {
+        throw createError('Every selected subject must belong to this active catalog group and school.', 404);
+      }
+      if (subject.subjectSchoolLevelId != null && Number(subject.subjectSchoolLevelId) !== schoolLevelId) {
+        throw createError('Every selected subject must belong to the selected school level.', 404);
+      }
+      const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, target.subjectId);
+      if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
+        throw createError('Every selected subject must have an eligible numerical-grade scope in this school year.', 404);
+      }
+      subjects.push(subject);
+    }
+    const earlyExamSignatures = targets.flatMap((target, index) => isDepedEarlyGradeSubjectCode(subjects[index].subjectCode)
+      ? [JSON.stringify(target.components.find(component => component.componentType === 'examination')?.examParts.map(part => ({ code: part.code, name: part.name, weight: part.weight })) || [])]
+      : []);
+    if (new Set(earlyExamSignatures).size > 1) throw createError('Grades 2 and 3 must use the same school-selected exam setup when saved together.');
+
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const profiles = [];
+    for (const target of targets) {
+      const profileRequest = Object.create(req);
+      profileRequest.body = { academicYearId, schoolLevelId, subjectId: target.subjectId, components: target.components };
+      profileRequest.gradingConnection = connection;
+      profileRequest.gradingBatch = true;
+      profileRequest.gradingGroupKey = groupKey;
+      profiles.push(await saveSubjectGradingConfig(profileRequest, null, error => { throw error; }));
+    }
     await connection.commit();
     transactionStarted = false;
-    const saved = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId);
-    res.json({ profile: { ...saved, components: await getProfileComponents(connection, req.user.schoolId, saved.id), locked: false } });
+    res.json({ profiles });
   } catch (error) {
     if (transactionStarted) await connection.rollback();
     next(error);
   } finally { connection.release(); }
+}
+
+async function getGradingItemUsage(connection, schoolId, column, id) {
+  const supportedColumns = {
+    component: 'subject_grading_component_id',
+    examPart: 'subject_grading_exam_part_id'
+  };
+  const field = supportedColumns[column];
+  if (!field) throw new Error('Unsupported grading configuration link type.');
+  const [[usage]] = await connection.execute(
+    `SELECT (SELECT COUNT(*) FROM grading_items WHERE school_id = ? AND ${field} = ?)
+      + (SELECT COUNT(*) FROM assignments WHERE school_id = ? AND ${field} = ?) AS total`,
+    [schoolId, id, schoolId, id]
+  );
+  return Number(usage?.total || 0);
+}
+
+async function restoreDepedSubjectDefaults(req, res, next) {
+  let connection;
+  const ownsConnection = !req.gradingConnection;
+  let transactionStarted = false;
+  let restoreSubjectName = '';
+  try {
+    if (req.user.role !== 'school_admin') throw createError('Only School Admin can manage grading rules.', 403);
+    const academicYearId = parseId(req.body.academicYearId, 'Academic year');
+    const schoolLevelId = parseId(req.body.schoolLevelId, 'School level');
+    const subjectId = parseId(req.body.subjectId, 'Subject');
+    connection = req.gradingConnection || await getDatabase().getConnection();
+    if (!req.gradingBatch) {
+      await connection.beginTransaction();
+      transactionStarted = true;
+    }
+
+    const [subjects] = await connection.execute(
+      `SELECT id, subject_code AS subjectCode, name AS subjectName, school_level_id AS subjectSchoolLevelId
+      FROM subjects WHERE id = ? AND school_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE`,
+      [subjectId, req.user.schoolId]
+    );
+    const subject = subjects[0];
+    if (!subject) throw createError('The subject is not active in this school.', 404);
+    restoreSubjectName = subject.subjectName;
+    if (req.gradingGroupKey && getK10CatalogSubjectGroupKey(subject.subjectCode) !== req.gradingGroupKey) {
+      throw createError('Every selected subject must belong to this active catalog group and school.', 404);
+    }
+    const year = await getYearAndLevel(connection, req.user.schoolId, academicYearId, schoolLevelId, true);
+    if (!year || !['elementary', 'jhs'].includes(year.levelCode)) throw createError('The academic year and school level do not match.', 404);
+    if (subject.subjectSchoolLevelId != null && Number(subject.subjectSchoolLevelId) !== schoolLevelId) {
+      throw createError('This subject does not belong to the selected school level.', 404);
+    }
+    const scopes = await getProfileGradeScopes(connection, req.user.schoolId, schoolLevelId, subjectId);
+    if (!scopes.some(scope => isProfileGradeCode(scope.gradeCode, year.academicYearLabel))) {
+      throw createError('The subject has no eligible numerical-grade scope in this school level and school year.', 404);
+    }
+    if (getDepedK10GradeMethod(year.academicYearLabel) === 'standard') {
+      throw createError('Subject-specific DepEd rules apply beginning in SY 2026–27.', 409);
+    }
+    const preserveEarlyExamChoice = req.gradingPreserveEarlyExamChoice === true
+      && isDepedEarlyGradeSubjectCode(subject.subjectCode);
+    if (isDepedEarlyGradeSubjectCode(subject.subjectCode) && !preserveEarlyExamChoice) {
+      throw createError('DepEd does not prescribe a fixed exam-part split for Grades 2–3. Configure the school-selected exam parts in the subject editor.', 409);
+    }
+    let defaults = createDepedK10DefaultComponents(subject.subjectCode);
+    if (!defaults) throw createError('There is no matching DepEd setup for this subject.', 409);
+    if (await isProfileLocked(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId)) {
+      throw createError('This subject’s setup cannot be restored because grades have already been published for this school year.', 409);
+    }
+    const profile = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId, true);
+    if (!profile) throw createError('This subject has no saved setup to restore. Apply DepEd defaults to save a new setup.', 409);
+
+    const existing = await getProfileComponents(connection, req.user.schoolId, profile.id, true);
+    if (preserveEarlyExamChoice) {
+      if (profile.configurationSource === 'deped_default') {
+        throw createError('Review the saved Grades 2–3 exam choice before restoring this group.', 409);
+      }
+      const savedExamParts = existing.find(component => component.componentType === 'examination')?.examParts || [];
+      if (!savedExamParts.length) throw createError('Save the Grades 2–3 exam choice before restoring this group.', 409);
+      defaults = defaults.map(component => component.componentType === 'examination'
+        ? { ...component, examParts: savedExamParts.map((part, index) => ({ ...part, sortOrder: index + 1 })) }
+        : component);
+    }
+    const desiredByCode = new Map(defaults.map(component => [component.code, component]));
+    const existingByCode = new Map(existing.map(component => [component.code, component]));
+    const desiredPartsByComponent = new Map(defaults.map(component => [component.code, new Set((component.examParts || []).map(part => part.code))]));
+
+    for (const component of existing) {
+      const desired = desiredByCode.get(component.code);
+      if (!desired) {
+        if (await getGradingItemUsage(connection, req.user.schoolId, 'component', component.id)) {
+          throw createError(`“${component.name}” is linked to a score or assignment and cannot be removed during restoration.`, 409);
+        }
+        for (const part of component.examParts) {
+          if (await getGradingItemUsage(connection, req.user.schoolId, 'examPart', part.id)) {
+            throw createError(`“${part.name}” is linked to a score or assignment and cannot be removed during restoration.`, 409);
+          }
+        }
+        continue;
+      }
+      if (component.componentType !== desired.componentType
+        && await getGradingItemUsage(connection, req.user.schoolId, 'component', component.id)) {
+        throw createError(`“${component.name}” is linked to a score or assignment and cannot change assessment type during restoration.`, 409);
+      }
+      const desiredPartCodes = desiredPartsByComponent.get(component.code);
+      for (const part of component.examParts) {
+        if (!desiredPartCodes.has(part.code)
+          && await getGradingItemUsage(connection, req.user.schoolId, 'examPart', part.id)) {
+          throw createError(`“${part.name}” is linked to a score or assignment and cannot be removed during restoration.`, 409);
+        }
+      }
+    }
+
+    for (const component of existing) {
+      if (desiredByCode.has(component.code)) continue;
+      await connection.execute('DELETE FROM subject_grading_components WHERE id = ? AND school_id = ?', [component.id, req.user.schoolId]);
+    }
+
+    for (const [index, desired] of defaults.entries()) {
+      const current = existingByCode.get(desired.code);
+      let componentId = current?.id;
+      if (current) {
+        await connection.execute(
+          `UPDATE subject_grading_components SET code = ?, name = ?, component_type = ?, weight = ?, sort_order = ?
+          WHERE id = ? AND school_id = ? AND profile_id = ?`,
+          [desired.code, desired.name, desired.componentType, desired.weight, index + 1, componentId, req.user.schoolId, profile.id]
+        );
+      } else {
+        const [inserted] = await connection.execute(
+          `INSERT INTO subject_grading_components
+            (school_id, profile_id, code, name, component_type, weight, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.schoolId, profile.id, desired.code, desired.name, desired.componentType, desired.weight, index + 1]
+        );
+        componentId = Number(inserted.insertId);
+      }
+
+      const currentParts = current?.examParts || [];
+      const desiredPartCodes = new Set((desired.examParts || []).map(part => part.code));
+      for (const part of currentParts) {
+        if (desiredPartCodes.has(part.code)) continue;
+        await connection.execute('DELETE FROM subject_grading_exam_parts WHERE id = ? AND school_id = ?', [part.id, req.user.schoolId]);
+      }
+      const currentPartsByCode = new Map(currentParts.map(part => [part.code, part]));
+      for (const [partIndex, desiredPart] of (desired.examParts || []).entries()) {
+        const currentPart = currentPartsByCode.get(desiredPart.code);
+        if (currentPart) {
+          await connection.execute(
+            `UPDATE subject_grading_exam_parts SET code = ?, name = ?, weight = ?, sort_order = ?
+            WHERE id = ? AND school_id = ? AND component_id = ?`,
+            [desiredPart.code, desiredPart.name, desiredPart.weight, partIndex + 1, currentPart.id, req.user.schoolId, componentId]
+          );
+        } else {
+          await connection.execute(
+            `INSERT INTO subject_grading_exam_parts
+              (school_id, component_id, code, name, weight, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
+            [req.user.schoolId, componentId, desiredPart.code, desiredPart.name, desiredPart.weight, partIndex + 1]
+          );
+        }
+      }
+    }
+
+    const restoredSource = preserveEarlyExamChoice ? 'custom' : 'deped_default';
+    await connection.execute(
+      `UPDATE subject_grading_profiles SET configuration_source = ?, copied_from_profile_id = NULL
+      WHERE id = ? AND school_id = ?`,
+      [restoredSource, profile.id, req.user.schoolId]
+    );
+    await writeAuditLog(connection, req, 'subject_grading_defaults_restored', 'subject_grading_profile', profile.id, {
+      summary: `${subject.subjectName} DepEd defaults restored`, subjectId, academicYearId, schoolLevelId
+    });
+    const saved = await getProfile(connection, req.user.schoolId, academicYearId, schoolLevelId, subjectId);
+    const restoredComponents = await getProfileComponents(connection, req.user.schoolId, saved.id);
+    if (req.gradingBatch) return { ...saved, components: restoredComponents, locked: false };
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ profile: { ...saved, components: restoredComponents, locked: false } });
+  } catch (error) {
+    if (transactionStarted) await connection.rollback();
+    if (req.gradingBatch) throw createError(`${restoreSubjectName ? `${restoreSubjectName}: ` : ''}${error.message}`, error.status || 500);
+    next(error);
+  } finally { if (ownsConnection) connection?.release(); }
+}
+
+async function restoreDepedCatalogSubjectGroupDefaults(req, res, next) {
+  let connection;
+  let transactionStarted = false;
+  try {
+    if (req.user.role !== 'school_admin') throw createError('Only School Admin can manage grading rules.', 403);
+    const academicYearId = parseId(req.body.academicYearId, 'Academic year');
+    const schoolLevelId = parseId(req.body.schoolLevelId, 'School level');
+    const groupKey = String(req.body.groupKey || '').trim().toLowerCase();
+    if (!K10_CATALOG_SUBJECT_KEYS.has(groupKey)) throw createError('Select a supported catalog subject group.');
+    if (!Array.isArray(req.body.subjectIds) || !req.body.subjectIds.length || req.body.subjectIds.length > 20) {
+      throw createError('Select one or more saved subject profiles to restore.');
+    }
+    const subjectIds = req.body.subjectIds.map(id => parseId(id, 'Subject'));
+    if (new Set(subjectIds).size !== subjectIds.length) throw createError('A subject can only be restored once in a group request.');
+
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const year = await getYearAndLevel(connection, req.user.schoolId, academicYearId, schoolLevelId, true);
+    if (!year || !['elementary', 'jhs'].includes(year.levelCode)
+      || getDepedK10GradeMethod(year.academicYearLabel) === 'standard') {
+      throw createError('The academic year and school level do not support DepEd catalog defaults.', 409);
+    }
+
+    const profiles = [];
+    for (const subjectId of subjectIds) {
+      const restoreRequest = Object.create(req);
+      restoreRequest.body = { academicYearId, schoolLevelId, subjectId };
+      restoreRequest.gradingConnection = connection;
+      restoreRequest.gradingBatch = true;
+      restoreRequest.gradingGroupKey = groupKey;
+      restoreRequest.gradingPreserveEarlyExamChoice = true;
+      profiles.push(await restoreDepedSubjectDefaults(restoreRequest, null, error => { throw error; }));
+    }
+
+    await writeAuditLog(connection, req, 'subject_grading_group_defaults_restored', 'subject_grading_profile', academicYearId, {
+      summary: `${year.academicYearLabel} ${groupKey} DepEd defaults restored`, subjectIds
+    });
+    await connection.commit();
+    transactionStarted = false;
+    const preview = await getPreviewData(getDatabase(), req.user.schoolId, academicYearId, schoolLevelId);
+    res.json({ profiles, preview });
+  } catch (error) {
+    if (transactionStarted) await connection.rollback();
+    next(error);
+  } finally { connection?.release(); }
 }
 
 async function copyCustomProfilesForward(connection, schoolId, academicYearId, startDate) {
@@ -607,6 +953,9 @@ module.exports = {
   getAdminSubjectGradingConfig,
   getTeacherSubjectGradingConfig,
   previewDepedDefaults,
+  restoreDepedCatalogSubjectGroupDefaults,
+  restoreDepedSubjectDefaults,
   saveK10FinalGradeRules,
+  saveK10CatalogSubjectGroupConfig,
   saveSubjectGradingConfig
 };

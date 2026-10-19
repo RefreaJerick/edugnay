@@ -1,3 +1,6 @@
+// DepEd Order No. 015, s. 2026 (Tables 9 and 12, KS1 transition):
+// component weights follow the learning-area groups; Grade 2–3 exam parts are
+// intentionally not preset because the term exam is only used where appropriate.
 const DEPED_K10_COMPONENTS = Object.freeze({
   academic: Object.freeze([
     { code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: 20 },
@@ -34,18 +37,6 @@ const APPLIED_AREA_PREFIXES = [
 ];
 const K10_GRADE_CODES = new Set(['grade-4', 'grade-5', 'grade-6', 'grade-7', 'grade-8', 'grade-9', 'grade-10']);
 const EARLY_NUMERICAL_GRADE_CODES = new Set(['grade-2', 'grade-3']);
-const EARLY_GRADE_COMPONENTS = Object.freeze([
-  { code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: 20 },
-  { code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: 50 },
-  {
-    code: 'examinations', name: 'Examinations', componentType: 'examination', weight: 30,
-    examParts: [
-      { code: 'summative-test-1', name: 'Summative Test 1', weight: 50 },
-      { code: 'summative-test-2', name: 'Summative Test 2', weight: 50 }
-    ]
-  }
-]);
-
 function isDepedK10GradeCode(gradeCode) {
   return K10_GRADE_CODES.has(String(gradeCode || '').trim().toLowerCase());
 }
@@ -125,13 +116,13 @@ function describeDepedK10GradeMethod(method) {
 function createDepedK10DefaultComponents(subjectCode) {
   const learningArea = getDepedK10LearningArea(subjectCode);
   if (!learningArea) return null;
-  const components = isDepedEarlyGradeSubjectCode(subjectCode)
-    ? EARLY_GRADE_COMPONENTS
-    : DEPED_K10_COMPONENTS[learningArea];
+  const components = DEPED_K10_COMPONENTS[learningArea];
+  const requiresEarlyExamSetup = isDepedEarlyGradeSubjectCode(subjectCode);
   return components.map((component, index) => ({
     ...component,
     sortOrder: index + 1,
-    examParts: (component.examParts || []).map((part, partIndex) => ({ ...part, sortOrder: partIndex + 1 }))
+    examParts: (requiresEarlyExamSetup && component.componentType === 'examination' ? [] : component.examParts || [])
+      .map((part, partIndex) => ({ ...part, sortOrder: partIndex + 1 }))
   }));
 }
 

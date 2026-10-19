@@ -482,6 +482,27 @@
     let DASHBOARD_TEACHER_ID = '';
     let DASHBOARD_TEACHER_TODOS = [];
     let TEACHER_SECTIONS = [];
+    const TEACHER_FLAGS_PREVIEW = new URLSearchParams(window.location.search).get('previewFlags') === '1';
+    const SAMPLE_FLAGGED_STUDENTS = [
+      { studentId: 'preview-1', name: 'Sample Student One', initials: 'S1', sectionId: 'preview-9a', sectionName: 'St. Paul', grade: 'Grade 9', reasons: [
+        { type: 'absence', count: 4, threshold: 4 },
+        { type: 'grade', subject: 'Math', grade: 72, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-2', name: 'Sample Student Two', initials: 'S2', sectionId: 'preview-7', sectionName: 'St. Matthew', grade: 'Grade 7', reasons: [
+        { type: 'grade', subject: 'Science', grade: 70, threshold: 75, term: 'Term 1' },
+        { type: 'grade', subject: 'Math', grade: 73, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-3', name: 'Sample Student Three', initials: 'S3', sectionId: 'preview-10', sectionName: 'St. James', grade: 'Grade 10', reasons: [
+        { type: 'absence', count: 6, threshold: 5 },
+        { type: 'grade', subject: 'English', grade: 74, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-4', name: 'Sample Student Four', initials: 'S4', sectionId: 'preview-9b', sectionName: 'St. Peter', grade: 'Grade 9', reasons: [
+        { type: 'absence', count: 3, threshold: 3 },
+        { type: 'consecutive', count: 3, threshold: 3, subject: 'Math' }
+      ] }
+    ];
+    let TEACHER_FLAGS = TEACHER_FLAGS_PREVIEW ? SAMPLE_FLAGGED_STUDENTS : [];
+    let TEACHER_FLAGS_ERROR = '';
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
 
     function getTeacherSectionSub(section) {
@@ -1000,8 +1021,8 @@
         TEACHER_SUMMARY_CARDS[1].sub = TEACHER_SECTIONS_ERROR || 'Assigned for the current term';
         const attentionCard = TEACHER_SUMMARY_CARDS.find(card => card.label === 'Needs Attention');
         if (attentionCard) {
-          attentionCard.value = '—';
-          attentionCard.sub = 'Student risk indicators are not connected yet';
+          attentionCard.value = TEACHER_FLAGS_ERROR ? '—' : TEACHER_FLAGS.length;
+          attentionCard.sub = TEACHER_FLAGS_ERROR || 'Students meeting attendance or grade criteria';
         }
         summaryList.innerHTML = TEACHER_SUMMARY_CARDS.map(card => `
           <div class="stat-card ${card.tone}">
@@ -1075,16 +1096,29 @@
       if (flagList) {
         const flagFilter = document.getElementById('flagSectionFilter');
         if (flagFilter) {
+          const sections = new Map(TEACHER_SECTIONS.map(section => [section.sectionId, section.name]));
+          TEACHER_FLAGS.forEach(student => {
+            if (!sections.has(student.sectionId)) sections.set(student.sectionId, `${student.grade} – ${student.sectionName}`);
+          });
           flagFilter.innerHTML = [
             '<option value="all">All My Sections</option>',
-            ...TEACHER_SECTIONS.map(section => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(section.sectionId)}">${window.EDUGNAY_CONFIG.escapeHtml(section.name)}</option>`)
+            ...[...sections].map(([id, name]) => `<option value="${window.EDUGNAY_CONFIG.escapeHtml(id)}">${window.EDUGNAY_CONFIG.escapeHtml(name)}</option>`)
           ].join('');
         }
-        flagList.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
-          icon: 'cloud-off',
-          title: 'Student indicators unavailable',
-          text: 'Risk indicators are not connected to the backend yet.'
-        });
+        const escape = window.EDUGNAY_CONFIG.escapeHtml;
+        flagList.innerHTML = TEACHER_FLAGS_ERROR
+          ? window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Student indicators unavailable', text: TEACHER_FLAGS_ERROR })
+          : TEACHER_FLAGS.length ? TEACHER_FLAGS.map(student => `
+            <div class="flag-card" data-section="${escape(student.sectionId)}">
+              <div class="flag-card-top"><div class="flag-av" style="background:var(--blue-mid)">${escape(student.initials || '?')}</div>
+                <div class="flag-info"><div class="flag-name">${escape(student.name)}</div>
+                  <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
+              <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
+                ? `${reason.subject}: ${reason.grade}`
+                : reason.type === 'consecutive' ? `${reason.count} consecutive · ${reason.subject}`
+                  : `${reason.count} absences`)}</span>`).join('')}</div>
+            </div>`).join('')
+            : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
       }
       lucide.createIcons();
     }
@@ -1217,6 +1251,10 @@
       }
     }
     document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('flagGridSingle').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({
+        icon: 'loader-circle', title: 'Loading student indicators',
+        text: 'Checking confirmed attendance and published grades.'
+      });
       if (TEACHER_DASHBOARD_API_ENABLED) {
         document.getElementById('teacher-summary-cards').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading dashboard data', text: 'Please wait while your assigned sections are loaded.' });
         document.getElementById('sectionCardsContainer').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading sections', text: 'Please wait while your assigned sections are loaded.' });
@@ -1230,6 +1268,18 @@
         }
       } else {
         TEACHER_SECTIONS_ERROR = 'The backend is required to load your assigned sections.';
+      }
+      if (TEACHER_FLAGS_PREVIEW) {
+        TEACHER_FLAGS = SAMPLE_FLAGGED_STUDENTS;
+      } else if (TEACHER_DASHBOARD_API_ENABLED && !TEACHER_SECTIONS_ERROR) {
+        try {
+          const result = await window.EDUGNAY_API.getTeacherStudentFlags();
+          TEACHER_FLAGS = result.flaggedStudents || [];
+        } catch (error) {
+          TEACHER_FLAGS_ERROR = error.message || 'Student indicators could not be loaded.';
+        }
+      } else {
+        TEACHER_FLAGS_ERROR = TEACHER_SECTIONS_ERROR || 'The backend is required to load student indicators.';
       }
       await window.EDUGNAY_COMMUNICATION_READY;
       if (window.EDUGNAY_COMMUNICATION?.backend) {

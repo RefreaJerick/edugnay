@@ -266,7 +266,6 @@
 
       </div>
 
-      <!-- Flagged students remain unavailable until the school has configured risk criteria. -->
       <div class="section-title">
         <h2>Flagged Students</h2>
         <div class="section-line"></div>
@@ -274,15 +273,9 @@
 
       <div class="panel" style="animation:fadeUp 0.4s ease 0.05s both;margin-bottom:24px;">
         <div class="panel-head">
-          <div class="panel-title">Flagging criteria are not configured</div>
+          <div class="panel-title">Students meeting attendance or grade criteria</div>
         </div>
-
-        <div class="panel-empty-slot" role="status">
-          <div class="panel-empty-state">
-            <div class="panel-empty-state-title">No risk rules are configured</div>
-            <div class="panel-empty-state-text">Student flags will appear here after the school defines the criteria.</div>
-          </div>
-        </div>
+        <div class="flag-grid" id="report-flagged-students" role="status"></div>
       </div>
 
     </main>
@@ -300,10 +293,30 @@
       attendanceBreakdown: [],
       attendanceRate: null,
       attendanceRecordCount: 0,
-      absenceTriggers: []
+      absenceTriggers: [],
+      flaggedStudents: []
     };
 
     const REPORTS_TONE_COLORS = { high: 'var(--green)', mid: 'var(--blue-mid)', low: 'var(--orange)' };
+    const FLAGGED_STUDENTS_PREVIEW = new URLSearchParams(window.location.search).get('previewFlags') === '1';
+    const SAMPLE_FLAGGED_STUDENTS = [
+      { studentId: 'preview-1', name: 'Sample Student One', initials: 'S1', sectionId: 'preview-9a', sectionName: 'St. Paul', grade: 'Grade 9', reasons: [
+        { type: 'absence', count: 4, threshold: 4 },
+        { type: 'grade', subject: 'Math', grade: 72, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-2', name: 'Sample Student Two', initials: 'S2', sectionId: 'preview-7', sectionName: 'St. Matthew', grade: 'Grade 7', reasons: [
+        { type: 'grade', subject: 'Science', grade: 70, threshold: 75, term: 'Term 1' },
+        { type: 'grade', subject: 'Math', grade: 73, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-3', name: 'Sample Student Three', initials: 'S3', sectionId: 'preview-10', sectionName: 'St. James', grade: 'Grade 10', reasons: [
+        { type: 'absence', count: 6, threshold: 5 },
+        { type: 'grade', subject: 'English', grade: 74, threshold: 75, term: 'Term 1' }
+      ] },
+      { studentId: 'preview-4', name: 'Sample Student Four', initials: 'S4', sectionId: 'preview-9b', sectionName: 'St. Peter', grade: 'Grade 9', reasons: [
+        { type: 'absence', count: 3, threshold: 3 },
+        { type: 'consecutive', count: 3, threshold: 3, subject: 'Math' }
+      ] }
+    ];
 
     function buildReportSummary(data = REPORTS_DATA) {
       const outcome = data.gradeOutcome;
@@ -407,8 +420,34 @@
         donut.innerHTML = `<div class="donut"><svg viewBox="0 0 100 100" width="126" height="126"><circle class="donut-bg" cx="50" cy="50" r="40"/>${segments}</svg><div class="donut-label"><div class="donut-num">${Number(present.value) || 0}%</div><div class="donut-sub">Present</div></div></div><div class="donut-legend">${breakdown.map(row => `<div class="legend-item"><div class="legend-dot" style="background:${colors[row.label] || 'var(--blue-mid)'};"></div><span class="legend-label">${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><span class="legend-val">${Number(row.value) || 0}%</span></div>`).join('')}</div>`;
       }
       triggersElement.innerHTML = triggers.length
-        ? `<div class="distribution-title">Absence triggers fired</div><div class="trigger-list">${triggers.map(row => `<div class="trigger-row ${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span>${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><strong>${Number(row.value) || 0}</strong></div>`).join('')}</div>`
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No absence triggers', text: 'No students currently meet the subject-absence triggers.' });
+        ? `<div class="distribution-title">Attendance indicators</div><div class="trigger-list">${triggers.map(row => `<div class="trigger-row ${window.EDUGNAY_CONFIG.escapeHtml(row.tone)}"><span>${window.EDUGNAY_CONFIG.escapeHtml(row.label)}</span><strong>${Number(row.value) || 0}</strong></div>`).join('')}</div>`
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'triangle-alert', title: 'No attendance indicators', text: 'No confirmed attendance records are available.' });
+    }
+
+    function renderFlaggedStudents(data = REPORTS_DATA) {
+      const panel = document.getElementById('report-flagged-students');
+      if (attendanceSummaryError && !FLAGGED_STUDENTS_PREVIEW) {
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Student indicators unavailable', text: attendanceSummaryError });
+        return;
+      }
+      if (reportsLoading && !FLAGGED_STUDENTS_PREVIEW) {
+        panel.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading student indicators', text: 'Checking confirmed attendance and published grades.' });
+        return;
+      }
+      const flagged = FLAGGED_STUDENTS_PREVIEW ? SAMPLE_FLAGGED_STUDENTS
+        : Array.isArray(data.flaggedStudents) ? data.flaggedStudents : [];
+      const escape = window.EDUGNAY_CONFIG.escapeHtml;
+      panel.innerHTML = flagged.length ? flagged.map(student => `
+        <div class="flag-card"><div class="flag-card-top">
+          <div class="flag-av" style="background:var(--blue-mid)">${escape(student.initials || '?')}</div>
+          <div class="flag-info"><div class="flag-name">${escape(student.name)}</div>
+            <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
+          <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
+            ? `${reason.subject}: ${reason.grade}`
+            : reason.type === 'consecutive' ? `${reason.count} consecutive · ${reason.subject}`
+              : `${reason.count} absences`)}</span>`).join('')}</div>
+        </div>`).join('')
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
     }
 
     function renderReportPanels(data = REPORTS_DATA) {
@@ -416,6 +455,7 @@
       renderSubjectPerformance(data);
       renderGradeOutcome(data);
       renderAttendance(data);
+      renderFlaggedStudents(data);
     }
 
     function updateReportPeriodLabel(label) {
@@ -431,7 +471,7 @@
       Object.assign(REPORTS_DATA, {
         academicYear: null, subjectPerformance: [], gradeOutcome: null,
         attendanceByGrade: [], attendanceBreakdown: [], attendanceRate: null,
-        attendanceRecordCount: 0, absenceTriggers: []
+        attendanceRecordCount: 0, absenceTriggers: [], flaggedStudents: []
       });
       renderReportPanels();
 

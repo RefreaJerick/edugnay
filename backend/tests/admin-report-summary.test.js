@@ -48,7 +48,9 @@ test('school report uses published grades and the signed-in school year scope', 
   assert.match(gradeQuery.sql, /published_final_grades\.school_id = \?/);
   assert.match(gradeQuery.sql, /academic_years\.id = \?/);
   assert.match(gradeQuery.sql, /school_grade_levels\.grade_code IN \('grade-2', 'grade-3'\)/);
-  assert.match(gradeQuery.sql, /THEN 75 ELSE school_levels\.passing_grade_threshold/);
+  assert.match(gradeQuery.sql, /final_grade_rules\.grading_mode = 'school_specific'/);
+  assert.match(gradeQuery.sql, /THEN final_grade_rules\.passing_grade_threshold ELSE 75 END/);
+  assert.match(gradeQuery.sql, /ELSE school_levels\.passing_grade_threshold/);
   assert.equal(result.headers['Cache-Control'], 'no-store');
 });
 

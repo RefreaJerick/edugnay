@@ -189,7 +189,12 @@ test('Portal Features exposes the SF Templates toggle and its value is actionabl
   assert.ok(sfTemplatesToggleIndex >= 0 && sfTemplatesToggleIndex < journalsToggleIndex);
   assert.match(settingsPage, /name="sfTemplatesEnabled"\s+\$\{sfTemplatesEnabled \? 'checked' : ''\}/);
   assert.match(settingsPage, /name="journalsEnabled"\s+\$\{journalsEnabled \? 'checked' : ''\}/);
-  assert.match(settingsPage, /id="journalSubjectBlock"\s+\$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(settingsPage, /school-journal-settings-block \$\{journalsEnabled \? '' : 'is-disabled'\}/);
+  assert.match(settingsPage, /id="journalSubjectBlock" aria-disabled="\$\{journalsEnabled \? 'false' : 'true'\}"/);
+  assert.doesNotMatch(settingsPage, /id="journalSubjectBlock"[^>]*hidden/);
+  assert.match(settingsPage, /<select id="journalSubjectId" name="journalSubjectId" \$\{journalsEnabled && \(eligibleJournalSubjects\.length \|\| savedJournalSubjectId\) \? '' : 'disabled'\}>/);
+  assert.match(settingsPage, /journalSubjectSelect\.disabled = !isJournalEnabled \|\| \(!eligibleJournalSubjects\.length && !savedJournalSubjectId\)/);
+  assert.match(settingsPage, /journalSubjectBlock\.classList\.toggle\('is-disabled', !isJournalEnabled\)/);
   assert.match(settingsPage, /id="journalHistoryBlock"\s+\$\{journalsEnabled \? '' : 'hidden'\}/);
   assert.match(settingsPage, /sfTemplatesEnabled: Boolean\(form\.elements\.sfTemplatesEnabled\?\.checked\)/);
   assert.match(teacherPage, /Ask your school admin to enable SF Templates in School Settings > Portal Features\./);
@@ -337,14 +342,20 @@ test('school settings and teacher shell scripts parse after journal changes', ()
   assert.match(admin, /apiJournalSubjectEligible = portal\.journalSubjectEligible/);
   assert.match(admin, /journalSubjectId: journalSubjectId \? Number\(journalSubjectId\) : null/);
   assert.match(admin, /state\.apiSubjects = subjects\.filter\(subject => subject\.isActive\)/);
-  assert.match(admin, /id="journalSubjectBlock" \$\{journalsEnabled \? '' : 'hidden'\}/);
+  assert.match(admin, /school-journal-settings-block \$\{journalsEnabled \? '' : 'is-disabled'\}/);
+  assert.match(admin, /id="journalSubjectBlock" aria-disabled="\$\{journalsEnabled \? 'false' : 'true'\}"/);
+  assert.doesNotMatch(admin, /id="journalSubjectBlock"[^>]*hidden/);
+  assert.match(admin, /journalSubjectSelect\.disabled = !isJournalEnabled \|\| \(!eligibleJournalSubjects\.length && !savedJournalSubjectId\)/);
+  assert.match(admin, /journalSubjectBlock\.classList\.toggle\('is-disabled', !isJournalEnabled\)/);
   assert.match(admin, /id="journalHistoryBlock" \$\{journalsEnabled \? '' : 'hidden'\}/);
   assert.match(admin, /class="top-btn secondary" type="button" id="viewSchoolJournalHistory"/);
   assert.match(admin, /getElementById\('viewSchoolJournalHistory'\)\?\.addEventListener\('click', openSchoolJournalHistory\)/);
-  assert.match(admin, /journalSubjectBlock\.hidden = !isJournalEnabled/);
   assert.match(admin, /journalHistoryBlock\.hidden = !isJournalEnabled/);
+  assert.match(admin, /form\.elements\.journalSubjectId\?\.value \?\? state\.apiJournalSubjectId/);
   assert.match(admin, /journalToggle\?\.addEventListener\('change', syncJournalSections\)/);
   assert.match(adminStyles, /\.school-journal-history-block\s*\{\s*border-top:\s*0;/);
+  assert.match(adminStyles, /\.school-portal-journal-column > \.school-journal-settings-block\s*\{[^}]*padding:\s*16px;[^}]*border:\s*1px solid var\(--gray-200\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*var\(--gray-50\);/s);
+  assert.doesNotMatch(adminStyles, /\.school-journal-settings-block\.is-disabled\s*\{/);
   for (const [, source] of admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);
   }

@@ -536,6 +536,14 @@
                 </div>
                 <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
               </a>
+              <a href="edugnay-admin-schools.html#add-calendar-notice" class="qa-item">
+                <div class="qa-icon"><i data-lucide="calendar-plus" style="width:18px;height:18px;"></i></div>
+                <div class="qa-text">
+                  <div class="qa-title">Add Calendar Notice</div>
+                  <div class="qa-desc">Add a holiday or no-class notice</div>
+                </div>
+                <div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div>
+              </a>
               <a href="#" class="qa-item" onclick="openAnnouncementModal(); return false;">
                 <div class="qa-icon"><i data-lucide="megaphone" style="width:18px;height:18px;"></i></div>
                 <div class="qa-text">
@@ -820,9 +828,10 @@
     }
 
     const ADMIN_QUICK_ACTIONS = [
-      { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', action: "window.location.href='edugnay-admin-users.html?action=add'; return false;" },
-      { icon: 'user-plus', title: 'Assign Student to Section', desc: 'Place an existing student in a section', action: "openStudentModal();" },
-      { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: "openAnnouncementModal(); return false;" }
+      { icon: 'user-plus', title: 'Add New Account', desc: 'Create teacher, student or parent', href: 'edugnay-admin-users.html?action=add' },
+      { icon: 'user-plus', title: 'Assign Student to Section', desc: 'Place an existing student in a section', action: 'openStudentModal(); return false;' },
+      { icon: 'calendar-plus', title: 'Add Calendar Notice', desc: 'Add a holiday or no-class notice', href: 'edugnay-admin-schools.html#add-calendar-notice' },
+      { icon: 'megaphone', title: 'Post Announcement', desc: 'Broadcast to all user groups', action: 'openAnnouncementModal(); return false;' }
     ];
 
     function renderAdminDashboard() {
@@ -847,7 +856,7 @@
       if (actions) {
         actions.innerHTML = ADMIN_QUICK_ACTIONS.length
           ? ADMIN_QUICK_ACTIONS.map(action => `
-            <a href="#" class="qa-item" onclick="${action.action}"><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
+            <a href="${action.href || '#'}" class="qa-item" ${action.action ? `onclick="${action.action}"` : ''}><div class="qa-icon"><i data-lucide="${action.icon}" style="width:18px;height:18px;"></i></div><div class="qa-text"><div class="qa-title">${action.title}</div><div class="qa-desc">${action.desc}</div></div><div class="qa-arrow"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></div></a>`).join('')
           : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'zap-off', title: 'No quick actions', text: 'Available shortcuts will appear here when they are configured.' });
       }
       lucide.createIcons();

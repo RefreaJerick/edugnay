@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { notifyConsecutiveAbsences } = require('../utils/parentNotifications');
+const { getStudentFlags } = require('../utils/studentFlags');
 
 const ATTENDANCE_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
 
@@ -509,7 +510,6 @@ async function getSchoolAttendanceSummary(req, res, next) {
     );
     const sections = new Map();
     const counts = { present: 0, absent: 0, late: 0, excused: 0 };
-    const absences = new Map();
     const lateStudents = new Set();
     rows.forEach(row => {
       const count = Number(row.total);
@@ -518,7 +518,6 @@ async function getSchoolAttendanceSummary(req, res, next) {
       if (row.status === 'present' || row.status === 'late') section.attended += count;
       sections.set(row.sectionId, section);
       counts[row.status] = (counts[row.status] || 0) + count;
-      if (row.status === 'absent') absences.set(row.studentId, (absences.get(row.studentId) || 0) + count);
       if (row.status === 'late') lateStudents.add(row.studentId);
     });
     const grades = new Map();
@@ -530,6 +529,7 @@ async function getSchoolAttendanceSummary(req, res, next) {
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
     const attendanceRate = total ? Math.round(((counts.present + counts.late) / total) * 100) : null;
     const colors = { present: 'var(--green)', late: 'var(--orange)', absent: 'var(--red)', excused: 'var(--blue-mid)' };
+    const flags = await getStudentFlags(database, { schoolId: req.user.schoolId, yearId });
     res.set('Cache-Control', 'no-store');
     res.json({
       academicYearId: yearId ? String(yearId) : null,
@@ -540,12 +540,24 @@ async function getSchoolAttendanceSummary(req, res, next) {
         label: status[0].toUpperCase() + status.slice(1),
         value: Math.round(count / total * 100), color: colors[status]
       })) : [],
+      flaggedStudents: flags.students,
       absenceTriggers: [
-        { label: 'Students with 3+ subject absences', value: Array.from(absences.values()).filter(count => count >= 3).length, tone: 'red' },
+        { label: `Students with ${flags.maximum}+ dates with absences`,
+          value: flags.students.filter(student => student.reasons.some(reason => reason.type === 'absence')).length, tone: 'red' },
         { label: 'Students with late subject records', value: lateStudents.size, tone: 'orange' }
       ]
     });
   } catch (error) { next(error); }
 }
 
-module.exports = { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance };
+async function getTeacherStudentFlags(req, res, next) {
+  try {
+    const flags = await getStudentFlags(getDatabase(), {
+      schoolId: req.user.schoolId, teacherId: req.user.id
+    });
+    res.set('Cache-Control', 'no-store');
+    res.json({ flaggedStudents: flags.students });
+  } catch (error) { next(error); }
+}
+
+module.exports = { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getTeacherStudentFlags, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance };

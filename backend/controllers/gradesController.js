@@ -5,6 +5,7 @@ const {
   applyDepedK10GradeMethod,
   getDepedK10GradeMethod,
   getDepedNumericalGradeBlockReason,
+  isDepedEarlyNumericalGradeCode,
   isDepedNumericalGradeCode
 } = require('../config/depedK10Grading');
 const { loadK10FinalGradeRules } = require('../utils/k10FinalGradeRules');
@@ -767,15 +768,24 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   }) : null;
   const gradingMethod = finalGradeRules?.gradingMethod || schoolYearMethod;
   let categories;
+  let subjectConfigurationSource = null;
+  let subjectHasPublishedGrades = false;
   let periodStructureCompatible = null;
   if (usesDepedSubjectRules) {
     const [profiles] = await connection.execute(
-      `SELECT id FROM subject_grading_profiles
-      WHERE school_id = ? AND academic_year_id = ? AND school_level_id = ? AND subject_id = ? LIMIT 1${lock}`,
+      `SELECT profiles.id, profiles.configuration_source AS configurationSource,
+        (SELECT COUNT(*) FROM published_final_grades AS grades
+          INNER JOIN sections ON sections.id = grades.section_id AND sections.school_id = grades.school_id
+          WHERE grades.school_id = profiles.school_id AND sections.academic_year_id = profiles.academic_year_id
+            AND sections.school_level_id = profiles.school_level_id AND grades.subject_id = profiles.subject_id) AS publishedGradeCount
+      FROM subject_grading_profiles AS profiles
+      WHERE profiles.school_id = ? AND profiles.academic_year_id = ? AND profiles.school_level_id = ? AND profiles.subject_id = ? LIMIT 1${lock}`,
       [context.schoolId, context.academicYearId, context.schoolLevelId, context.subjectId]
     );
     if (!profiles.length) categories = [];
     else {
+      subjectConfigurationSource = profiles[0].configurationSource;
+      subjectHasPublishedGrades = Number(profiles[0].publishedGradeCount || 0) > 0;
       const [componentRows] = await connection.execute(
         `SELECT id, code, name, component_type AS componentType, weight
         FROM subject_grading_components WHERE school_id = ? AND profile_id = ? ORDER BY sort_order, id${lock}`,
@@ -814,6 +824,23 @@ async function buildFinalGradePreview(connection, user, scope, lockRows = false)
   }
   if (usesDepedSubjectRules && !categories.length) {
     issues.push({ code: 'unconfigured_subject_grading', message: 'Ask School Admin to apply or configure this subject’s grading components for the school year.' });
+  }
+  const isEarlyTransitionGrade = usesDepedSubjectRules
+    && isDepedEarlyNumericalGradeCode(context.gradeCode)
+    && getDepedK10GradeMethod(context.academicYearLabel) === 'deped_2026_transmutation';
+  if (isEarlyTransitionGrade && categories.length
+    && !categories.some(category => category.componentType === 'examination' && category.examParts.length > 0)) {
+    issues.push({
+      code: 'early_grade_exam_setup_required',
+      message: 'Ask the school admin to configure at least one Grades 2–3 exam part before publishing.'
+    });
+  }
+  if (isEarlyTransitionGrade && categories.length
+    && subjectConfigurationSource === 'deped_default' && !subjectHasPublishedGrades) {
+    issues.push({
+      code: 'early_grade_exam_setup_review_required',
+      message: 'This Grades 2–3 exam split came from the former suggested default. Ask the school admin to review and save the school-selected exam parts before publishing.'
+    });
   }
   if (context.schoolLevelCode === 'shs') {
     if (['academic', 'tvl'].includes(context.trackCode) && !context.strandId) {

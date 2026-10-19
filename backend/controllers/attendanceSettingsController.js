@@ -7,7 +7,6 @@ async function getAttendanceSettings(req, res, next) {
     const [[settings]] = await getDatabase().execute(
       `SELECT max_unexcused_absences AS maxUnexcusedAbsences,
         consecutive_absences_alert AS consecutiveAbsencesAlert,
-        late_count_as_absence AS lateCountAsAbsence,
         count_excused_absences AS countExcusedAbsences,
         allow_edit_past_attendance AS allowEditPastAttendance
       FROM school_attendance_settings WHERE school_id = ?`, [schoolId]
@@ -20,7 +19,6 @@ async function getAttendanceSettings(req, res, next) {
     res.json({ settings: {
       maxUnexcusedAbsences: settings?.maxUnexcusedAbsences ?? 5,
       consecutiveAbsencesAlert: settings?.consecutiveAbsencesAlert ?? 3,
-      lateCountAsAbsence: settings?.lateCountAsAbsence ?? 3,
       countExcusedAbsences: Boolean(settings?.countExcusedAbsences),
       allowEditPastAttendance: settings?.allowEditPastAttendance == null ? true : Boolean(settings.allowEditPastAttendance),
       statusCodes: codes.map(code => ({ id: code.id, name: code.name,
@@ -30,7 +28,7 @@ async function getAttendanceSettings(req, res, next) {
 }
 
 async function updateAttendanceSettings(req, res, next) {
-  const fields = ['maxUnexcusedAbsences', 'consecutiveAbsencesAlert', 'lateCountAsAbsence'];
+  const fields = ['maxUnexcusedAbsences', 'consecutiveAbsencesAlert'];
   const counts = fields.map(field => Number(req.body?.[field]));
   if (counts.some(value => !Number.isInteger(value) || value < 1 || value > 255)
     || typeof req.body?.countExcusedAbsences !== 'boolean'
@@ -44,11 +42,10 @@ async function updateAttendanceSettings(req, res, next) {
     await connection.execute(
       `INSERT INTO school_attendance_settings
         (school_id, max_unexcused_absences, consecutive_absences_alert,
-        late_count_as_absence, count_excused_absences, allow_edit_past_attendance)
-      VALUES (?, ?, ?, ?, ?, ?)
+        count_excused_absences, allow_edit_past_attendance)
+      VALUES (?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE max_unexcused_absences = VALUES(max_unexcused_absences),
         consecutive_absences_alert = VALUES(consecutive_absences_alert),
-        late_count_as_absence = VALUES(late_count_as_absence),
         count_excused_absences = VALUES(count_excused_absences),
         allow_edit_past_attendance = VALUES(allow_edit_past_attendance)`,
       [req.user.schoolId, ...counts, req.body.countExcusedAbsences, req.body.allowEditPastAttendance]

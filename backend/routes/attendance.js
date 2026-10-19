@@ -1,5 +1,5 @@
 const express = require('express');
-const { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance } = require('../controllers/attendanceController');
+const { getParentAttendance, getStudentAttendance, getSchoolAttendanceSummary, getTeacherStudentFlags, getSectionAttendance, getSectionAttendanceHistory, saveSectionAttendance } = require('../controllers/attendanceController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/authorize');
 
@@ -10,6 +10,7 @@ router.get('/children', requireRoles('parent'), getParentAttendance);
 router.get('/me', requireRoles('student'), getStudentAttendance);
 router.get('/school-summary', requireRoles('school_admin'), getSchoolAttendanceSummary);
 router.use(requireRoles('teacher'));
+router.get('/teacher-flags', getTeacherStudentFlags);
 router.get('/sections/:sectionId/subjects/:subjectId/history', getSectionAttendanceHistory);
 router.get('/sections/:sectionId/subjects/:subjectId', getSectionAttendance);
 router.put('/sections/:sectionId/subjects/:subjectId', saveSectionAttendance);

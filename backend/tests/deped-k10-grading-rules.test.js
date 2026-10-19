@@ -26,17 +26,22 @@ test('DepEd default weights map each configured learning area correctly', () => 
   assert.deepEqual(createDepedK10DefaultComponents('english-jhs')[2].examParts.map(part => part.weight), [30, 30, 40]);
 });
 
-test('Grade 2–3 subject defaults use separate two-test exam profiles', () => {
+test('Grades 2–3 default exam parts remain unconfigured', () => {
   for (const gradeCode of ['grade-2', 'grade-3']) {
     for (const area of ['filipino', 'english', 'mathematics', 'gmrc', 'makabansa']) {
       const components = createDepedK10DefaultComponents(`${area}-${gradeCode}`);
       assert.deepEqual(components.map(component => component.weight), [20, 50, 30]);
-      assert.deepEqual(components[2].examParts.map(part => part.weight), [50, 50]);
+      assert.deepEqual(components[2].examParts, []);
+    }
+    for (const area of ['epp', 'music-and-arts', 'physical-education-and-health']) {
+      const components = createDepedK10DefaultComponents(`${area}-${gradeCode}`);
+      assert.deepEqual(components.map(component => component.weight), [20, 60, 20]);
+      assert.deepEqual(components[2].examParts, []);
     }
   }
   const grade3Science = createDepedK10DefaultComponents('science-grade-3');
   assert.deepEqual(grade3Science.map(component => component.weight), [20, 50, 30]);
-  assert.deepEqual(grade3Science[2].examParts.map(part => part.weight), [50, 50]);
+  assert.deepEqual(grade3Science[2].examParts, []);
   assert.deepEqual(createDepedK10DefaultComponents('english-elementary')[2].examParts.map(part => part.weight), [30, 30, 40]);
   assert.equal(getDepedK10LearningArea('makabansa-grade-2'), 'academic');
 });
@@ -75,6 +80,8 @@ test('2026 adjusted transmutation matches the table around representative bounda
 
 test('DepEd subject grading excludes descriptive grades and the teacher panel script parses', () => {
   const page = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
+  assert.match(page, /early_grade_exam_setup_required/);
+  assert.match(page, /early_grade_exam_setup_review_required/);
   const scripts = [...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)];
   assert.ok(scripts.length);
   for (const [index, script] of scripts.entries()) {

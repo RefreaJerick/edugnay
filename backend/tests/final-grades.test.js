@@ -31,6 +31,7 @@ let parentTriggerEnabled = false;
 let gradesEnabled = true;
 let finalGradeRule = null;
 let publishedK10Grades = 0;
+let publishedSubjectGrades = 0;
 
 const database = {
   async execute(sql, values = []) {
@@ -64,7 +65,11 @@ const database = {
         publishedAt: '2026-10-18 12:00:00'
       }))];
     }
-    if (sql.includes('SELECT id FROM subject_grading_profiles')) return [subjectProfile ? [{ id: subjectProfile.id }] : []];
+    if (sql.includes('FROM subject_grading_profiles AS profiles')) return [subjectProfile ? [{
+      id: subjectProfile.id,
+      configurationSource: subjectProfile.configurationSource || 'custom',
+      publishedGradeCount: publishedSubjectGrades
+    }] : []];
     if (sql.includes('SELECT id, code, name, component_type AS componentType, weight')) return [subjectComponents];
     if (sql.includes('SELECT id, component_id AS componentId, code, name, weight')) return [subjectExamParts];
     if (sql.includes('SELECT passing_grade_threshold AS threshold FROM school_levels')) return [[{ threshold: 75 }]];
@@ -142,6 +147,7 @@ function reset() {
   gradesEnabled = true;
   finalGradeRule = null;
   publishedK10Grades = 0;
+  publishedSubjectGrades = 0;
   previousScores = [];
   previousPublished = [];
   context = {
@@ -196,7 +202,7 @@ function configureEarlyGradeProfile(gradeCode = 'grade-2') {
   context.gradeCode = gradeCode;
   context.academicYearLabel = '2026-2027';
   context.gradingPeriodType = 'trimestral';
-  subjectProfile = { id: 40 };
+  subjectProfile = { id: 40, configurationSource: 'custom' };
   subjectComponents = [
     { id: 101, code: 'written-oral-works', name: 'Written/Oral Works', componentType: 'written', weight: '20.00' },
     { id: 102, code: 'performance-tasks', name: 'Performance Tasks', componentType: 'performance', weight: '50.00' },
@@ -352,7 +358,7 @@ test('Grades 4-10 publication requires an item for each configured exam part', a
   assert.ok(result.data.preview.issues.some(issue => issue.code === 'exam_part_without_items' && issue.categoryCode === 'term-exam'));
 });
 
-test('Grades 2–3 use the DepEd 2026 profile and adjusted transmutation by default', async () => {
+test('Configured Grades 2–3 setups use the 2026 adjusted transmutation method', async () => {
   for (const gradeCode of ['grade-2', 'grade-3']) {
     reset();
     context.schoolLevelCode = 'elementary';
@@ -493,6 +499,45 @@ test('Grade 2–3 require only configured exam parts, and can add a term exam pr
     missing: result.data.preview.students.map(student => ({ name: student.studentName, missing: student.missingItems, invalid: student.invalidScores }))
   }));
   assert.equal(result.data.preview.categories[2].examParts.length, 3);
+});
+
+test('legacy Grades 2–3 DepEd-default splits block new publication until reviewed', async () => {
+  for (const gradeCode of ['grade-2', 'grade-3']) {
+    reset();
+    configureEarlyGradeProfile(gradeCode);
+    subjectProfile.configurationSource = 'deped_default';
+    const originalScores = scores.map(score => ({ ...score }));
+
+    const preview = await call(grades.previewFinalGrades, { query: scope });
+    assert.equal(preview.error, null, gradeCode);
+    assert.equal(preview.data.preview.readyToPublish, false, gradeCode);
+    assert.ok(preview.data.preview.issues.some(issue => issue.code === 'early_grade_exam_setup_review_required'), gradeCode);
+
+    const publication = await call(grades.publishFinalGrades, { body: scope });
+    assert.equal(publication.error?.status, 409, gradeCode);
+    assert.equal(savedGrades.length, 0, gradeCode);
+    assert.deepEqual(scores, originalScores, 'blocking publication does not alter recorded scores');
+
+    subjectProfile.configurationSource = 'custom';
+    const confirmedPreview = await call(grades.previewFinalGrades, { query: scope });
+    assert.equal(confirmedPreview.data.preview.readyToPublish, true, gradeCode);
+    assert.equal(confirmedPreview.data.preview.issues.some(issue => issue.code === 'early_grade_exam_setup_review_required'), false, gradeCode);
+  }
+
+  reset();
+  configureEarlyGradeProfile('grade-2');
+  subjectComponents = subjectComponents.filter(component => component.componentType !== 'examination');
+  const missingExamParts = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(missingExamParts.data.preview.readyToPublish, false);
+  assert.ok(missingExamParts.data.preview.issues.some(issue => issue.code === 'early_grade_exam_setup_required'));
+
+  reset();
+  configureEarlyGradeProfile('grade-2');
+  subjectProfile.configurationSource = 'deped_default';
+  publishedSubjectGrades = 1;
+  const alreadyPublished = await call(grades.previewFinalGrades, { query: scope });
+  assert.equal(alreadyPublished.error, null);
+  assert.equal(alreadyPublished.data.preview.issues.some(issue => issue.code === 'early_grade_exam_setup_review_required'), false);
 });
 
 test('The DepEd method requires three terms when no school-specific rule is selected', async () => {

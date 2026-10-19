@@ -1385,6 +1385,20 @@ async function applyApiDepedK10GradingDefaults(values = {}) {
   });
 }
 
+async function restoreApiDepedSubjectDefaults(values = {}) {
+  return requestApi('/deped-k10/subject-defaults', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+}
+
+async function restoreApiDepedCatalogSubjectGroupDefaults(values = {}) {
+  return requestApi('/deped-k10/subject-group-defaults', {
+    method: 'POST',
+    body: JSON.stringify(values)
+  });
+}
+
 async function saveApiK10FinalGradeRules(values = {}) {
   return requestApi('/deped-k10/final-grade-rules', {
     method: 'PUT',
@@ -1403,6 +1417,13 @@ async function getApiSubjectGradingConfig(filters = {}) {
 
 async function saveApiSubjectGradingConfig(values = {}) {
   return requestApi('/subject-grading-config', {
+    method: 'PUT',
+    body: JSON.stringify(values)
+  });
+}
+
+async function saveApiK10CatalogSubjectGroupConfig(values = {}) {
+  return requestApi('/deped-k10/subject-group-config', {
     method: 'PUT',
     body: JSON.stringify(values)
   });
@@ -1514,6 +1535,10 @@ async function getApiStudentAttendance() {
 async function getApiSchoolAttendanceSummary(academicYearId = '') {
   const query = academicYearId ? `?academicYearId=${Number(academicYearId)}` : '';
   return requestApi(`/attendance/school-summary${query}`);
+}
+
+async function getApiTeacherStudentFlags() {
+  return requestApi('/attendance/teacher-flags');
 }
 
 async function getApiSchoolGradeSummary(academicYearId = '') {
@@ -2013,9 +2038,12 @@ window.EDUGNAY_API = {
   updateGradingCategories: updateApiGradingCategories,
   getDepedK10GradingPreview: getApiDepedK10GradingPreview,
   applyDepedK10GradingDefaults: applyApiDepedK10GradingDefaults,
+  restoreDepedSubjectDefaults: restoreApiDepedSubjectDefaults,
+  restoreDepedCatalogSubjectGroupDefaults: restoreApiDepedCatalogSubjectGroupDefaults,
   saveK10FinalGradeRules: saveApiK10FinalGradeRules,
   getSubjectGradingConfig: getApiSubjectGradingConfig,
   saveSubjectGradingConfig: saveApiSubjectGradingConfig,
+  saveK10CatalogSubjectGroupConfig: saveApiK10CatalogSubjectGroupConfig,
   getSectionAttendance: getApiSectionAttendance,
   getSectionAttendanceHistory: getApiSectionAttendanceHistory,
   saveSectionAttendance: saveApiSectionAttendance,
@@ -2031,6 +2059,7 @@ window.EDUGNAY_API = {
   getArchivedYear: getApiArchivedYear,
   archiveAcademicYear: archiveApiAcademicYear,
   getSchoolAttendanceSummary: getApiSchoolAttendanceSummary,
+  getTeacherStudentFlags: getApiTeacherStudentFlags,
   getSchoolGradeSummary: getApiSchoolGradeSummary,
   getStudentQr: getApiStudentQr,
   regenerateStudentQr: regenerateApiStudentQr,
@@ -2665,7 +2694,6 @@ function applyCurrentDateToGradingBanners() {
         : DEFAULT_ATTENDANCE_CODES.map(code => ({ ...code })),
       maxUnexcusedAbsences: Number.isFinite(Number(values.maxUnexcusedAbsences)) ? Number(values.maxUnexcusedAbsences) : 5,
       consecutiveAbsencesAlert: Number.isFinite(Number(values.consecutiveAbsencesAlert)) ? Number(values.consecutiveAbsencesAlert) : 3,
-      lateCountAsAbsence: Number.isFinite(Number(values.lateCountAsAbsence)) ? Number(values.lateCountAsAbsence) : 3,
       countExcusedAbsences: Boolean(values.countExcusedAbsences),
       allowEditPastAttendance: values.allowEditPastAttendance !== false
     };

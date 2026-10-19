@@ -23,6 +23,10 @@ const database = {
     if (sql.includes('SELECT id FROM academic_years WHERE id = ? AND school_id = ?')) {
       return [values[0] === 5 && values[1] === 1 ? [{ id: 5 }] : []];
     }
+    if (sql.includes('SELECT id, label FROM academic_years WHERE school_id = ?')) {
+      return [[{ id: 5, label: '2026–2027' }]];
+    }
+    if (sql.includes('FROM section_students') && sql.includes('school_grade_levels.display_name AS grade')) return [[]];
     if (sql.includes('FROM school_portal_features')) return [attendanceEnabled == null ? [] : [{ attendanceEnabled }]];
     if (sql.includes('FROM school_attendance_settings')) return [[{ allowEditPastAttendance: 1 }]];
     if (sql.includes('FROM attendance_sessions') && sql.includes('INNER JOIN sections')) {

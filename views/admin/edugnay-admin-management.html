@@ -833,6 +833,7 @@
               <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px;"></i></span>
               <input class="search-input" type="text" id="subjectSearchInput" placeholder="Search subjects..." oninput="filterSubjects()"/>
             </div>
+            <button class="top-btn secondary" id="reviewDepedSubjects" type="button" hidden><i data-lucide="list-checks"></i> Review DepEd subjects</button>
             <button class="top-btn primary" onclick="openSubjectModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i>Add Subject</button>
           </div>
         </div>
@@ -963,12 +964,32 @@
   </main>
 </div>
 
+<div class="modal-backdrop deped-subject-modal" id="depedSubjectReviewModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="depedSubjectReviewTitle" aria-describedby="depedSubjectReviewDescription">
+    <div class="modal-head">
+      <div class="modal-heading">
+        <span class="modal-heading-icon"><i data-lucide="book-open-check"></i></span>
+        <div class="modal-heading-copy">
+          <div class="modal-title" id="depedSubjectReviewTitle">Review DepEd subjects</div>
+          <div class="modal-sub" id="depedSubjectReviewDescription">Review subjects for enabled Grades 2–10.</div>
+        </div>
+      </div>
+      <button class="modal-close" id="closeDepedSubjectReview" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body deped-subject-review-body" id="depedSubjectReviewContent" aria-live="polite"></div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel" id="cancelDepedSubjectReview" type="button">Cancel</button>
+      <button class="btn btn-save" id="applyDepedSubjectReview" type="button" disabled>Apply DepEd subjects</button>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   closeSectionMenus();
   closeSectionAddModal(); closeSectionEditModal(); closeClassifyStrandModal(); closeSectionStudentsModal();
-  closeSubjectModal(); closeTeacherModal();
+  closeSubjectModal(); closeTeacherModal(); closeDepedSubjectReview();
   closeStudentAssignModal(); closeConfirmRemoveModal(); closeImportStudentsModal();
 });
 
@@ -1131,6 +1152,19 @@ function normalizeManagementApiStudent(user) {
   };
 }
 
+function managementSubjectTypeForDisplay(subject, gradeFilter = activeSubjectGrade) {
+  const isShsView = gradeFilter === 'all'
+    ? subject.schoolLevelCode === 'shs' || (!subject.schoolLevelCode && (subject.gradeScopes || []).some(scope => scope.schoolLevelCode === 'shs'))
+    : gradeFilter.split(':')[0] === 'shs';
+  return isShsView ? subject.type || '' : '';
+}
+
+function managementSubjectDescriptor(subject, fallback = '', gradeFilter = activeSubjectGrade) {
+  const type = managementSubjectTypeForDisplay(subject, gradeFilter);
+  if (type) return `${subject.code || 'Subject'} · ${type}`;
+  return subject.code || fallback;
+}
+
 function managementApiSubjectRecord(subject) {
   const level = subject.schoolLevelCode || '';
   const grade = subject.gradeLevelName || '';
@@ -1146,15 +1180,17 @@ function managementApiSubjectRecord(subject) {
     other_immersion: 'TVL, Sports, or Arts immersion, performance, or exhibit'
   };
   const hasShsScope = (subject.gradeScopes || []).some(scope => scope.schoolLevelCode === 'shs');
+  const isShsSubject = level === 'shs' || hasShsScope || Boolean(subject.shsGradingGroup);
   return {
     id: subject.id,
     apiId: subject.apiId,
     schoolId: subject.schoolId,
     name: subject.name,
     code: subject.code,
+    schoolLevelCode: level,
     schoolLevelName: subject.schoolLevelName || (level ? managementLevelLabel(level) : ''),
     gradeLevelName: grade,
-    type: groupLabels[subject.shsGradingGroup] || (hasShsScope ? 'Needs SHS classification' : subject.type || 'Core Subject'),
+    type: isShsSubject ? groupLabels[subject.shsGradingGroup] || 'Needs SHS classification' : '',
     isActive: subject.isActive,
     gradeLevelIds: subject.gradeLevelIds || [],
     gradeScopes: subject.gradeScopes || [],
@@ -1751,6 +1787,10 @@ function getTeacherAssignmentStats() {
 
 function renderSubjects() {
   const subjectRecords = managementSubjectRecords();
+  const reviewDepedButton = document.getElementById('reviewDepedSubjects');
+  if (reviewDepedButton) {
+    reviewDepedButton.hidden = !managementSchoolLevels().some(level => ['elementary', 'jhs'].includes(level));
+  }
   const assignmentStats = getTeacherAssignmentStats();
   const subjectSlots = subjectRecords.reduce((total, subject) => total + subject.total, 0);
   renderManagementStatCards('subjects-summary-cards', [
@@ -1760,11 +1800,14 @@ function renderSubjects() {
     { tone: 'orange', icon: 'alert-circle', value: assignmentStats.unassigned, label: 'Slots Unassigned', sub: 'Still needs a teacher' },
   ]);
   const subjectGrid = document.getElementById('subjectTableBody');
-  subjectGrid.innerHTML = subjectRecords.map(subject => `
+  subjectGrid.innerHTML = subjectRecords.map(subject => {
+    const descriptor = managementSubjectDescriptor(subject);
+    return `
     <article class="subject-card" data-grades="${subject.grades.join(',')}" data-name="${subject.name.toLowerCase()}" data-id="${subject.id}">
-      <div class="subject-card-content"><div class="subj-name">${subject.name}</div><div class="subj-code-text">${subject.code} · ${subject.type}</div></div>
+      <div class="subject-card-content"><div class="subj-name">${subject.name}</div><div class="subj-code-text">${descriptor}</div></div>
       <div class="subject-card-actions row-actions"><button class="row-btn edit" onclick="openSubjectModal('${subject.id}')">Edit</button><button class="row-btn remove">Remove</button></div>
-    </article>`).join('');
+    </article>`;
+  }).join('');
   updateManagementEmptySlot(subjectGrid, 'subjects', {
     icon: 'book-open',
     title: 'No subjects found',
@@ -1781,6 +1824,108 @@ function renderSubjects() {
   renderInactiveSubjects();
   lucide.createIcons();
 }
+
+const depedSubjectStatusText = {
+  'will-add': 'Will be added',
+  'already-present': 'Already in subject list',
+  inactive: 'Inactive entry left unchanged',
+  'review-existing': 'Existing entry needs review'
+};
+
+function renderDepedSubjectPreview(preview) {
+  const content = document.getElementById('depedSubjectReviewContent');
+  const grades = Array.isArray(preview?.grades) ? preview.grades : [];
+  if (!grades.length) {
+    content.innerHTML = `${window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'book-open', title: 'No eligible grades', text: 'Enable and save a supported Grade 2–10 level in Academic Structure before adding its DepEd subjects.' })}<div class="deped-subject-empty-action"><a class="top-btn secondary" href="edugnay-admin-schools.html#academic-structure"><i data-lucide="settings-2"></i> Open Academic Structure</a></div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
+    document.getElementById('applyDepedSubjectReview').disabled = true;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+  content.innerHTML = `<p class="term-modal-message">These are the current defaults for the grades your school has enabled. Existing entries will be left as they are.</p><div class="deped-subject-grade-list">${grades.map(grade => `<section class="deped-subject-grade"><div class="deped-subject-grade-head"><strong>${window.EDUGNAY_CONFIG.escapeHtml(grade.displayName)}</strong><span>${grade.subjects.length} subjects</span></div><ul>${grade.subjects.map(subject => `<li><span>${window.EDUGNAY_CONFIG.escapeHtml(subject.name)}${subject.existingName && subject.existingName !== subject.name ? `<small>Existing: ${window.EDUGNAY_CONFIG.escapeHtml(subject.existingName)}</small>` : ''}</span><span class="deped-subject-status ${window.EDUGNAY_CONFIG.escapeHtml(subject.status)}">${window.EDUGNAY_CONFIG.escapeHtml(depedSubjectStatusText[subject.status] || 'Review')}</span></li>`).join('')}</ul></section>`).join('')}</div><div class="deped-subject-result" id="depedSubjectApplyResult" role="status" hidden></div>`;
+  updateDepedSubjectApplyButton();
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateDepedSubjectApplyButton() {
+  const content = document.getElementById('depedSubjectReviewContent');
+  document.getElementById('applyDepedSubjectReview').disabled = !content.querySelector('.deped-subject-status.will-add');
+}
+
+async function openDepedSubjectReview() {
+  const modal = document.getElementById('depedSubjectReviewModal');
+  const content = document.getElementById('depedSubjectReviewContent');
+  content.innerHTML = '<p class="term-modal-message" role="status">Loading subject defaults…</p>';
+  document.getElementById('applyDepedSubjectReview').disabled = true;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  try {
+    renderDepedSubjectPreview(await window.EDUGNAY_API.getDepedSubjectPreview());
+  } catch (error) {
+    content.innerHTML = `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be loaded.')}</p>`;
+  }
+  document.getElementById('closeDepedSubjectReview').focus();
+}
+
+function closeDepedSubjectReview() {
+  const modal = document.getElementById('depedSubjectReviewModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+async function applyDepedSubjects() {
+  const button = document.getElementById('applyDepedSubjectReview');
+  const content = document.getElementById('depedSubjectReviewContent');
+  button.disabled = true;
+  button.textContent = 'Applying...';
+  let result;
+  try {
+    result = await window.EDUGNAY_API.applyDepedSubjectDefaults();
+  } catch (error) {
+    const status = document.getElementById('depedSubjectApplyResult');
+    if (status) {
+      status.hidden = false;
+      status.classList.add('error');
+      status.textContent = error.message || 'The subject defaults could not be applied.';
+    } else {
+      content.insertAdjacentHTML('afterbegin', `<p class="deped-subject-result error" role="alert">${window.EDUGNAY_CONFIG.escapeHtml(error.message || 'The subject defaults could not be applied.')}</p>`);
+    }
+    button.textContent = 'Apply DepEd subjects';
+    updateDepedSubjectApplyButton();
+    return;
+  }
+
+  const addedSubjects = Array.isArray(result?.addedSubjects) ? result.addedSubjects : [];
+  const successMessage = addedSubjects.length
+    ? `${addedSubjects.length} subjects added across ${result.addedGradeScopes} grade assignments. Existing subjects were left unchanged.`
+    : 'No new subjects were added. Matching existing entries were left unchanged for review.';
+  let refreshMessage = '';
+  try {
+    await refreshManagementViews();
+  } catch {
+    refreshMessage = ' The subject list could not refresh; reload the page to verify the changes.';
+  }
+  try {
+    renderDepedSubjectPreview(await window.EDUGNAY_API.getDepedSubjectPreview());
+  } catch {
+    // The subject changes are saved; keep the current preview visible if it cannot refresh.
+  }
+  const status = document.getElementById('depedSubjectApplyResult');
+  if (status) {
+    status.hidden = false;
+    status.textContent = successMessage + refreshMessage;
+  }
+  button.textContent = 'Apply DepEd subjects';
+  updateDepedSubjectApplyButton();
+}
+
+document.getElementById('reviewDepedSubjects').addEventListener('click', openDepedSubjectReview);
+document.getElementById('closeDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
+document.getElementById('cancelDepedSubjectReview').addEventListener('click', closeDepedSubjectReview);
+document.getElementById('applyDepedSubjectReview').addEventListener('click', applyDepedSubjects);
+document.getElementById('depedSubjectReviewModal').addEventListener('click', event => {
+  if (event.target === event.currentTarget) closeDepedSubjectReview();
+});
 
 const managementTeacherCollapseState = {};
 let teacherTargetSection = null;
@@ -3120,7 +3265,7 @@ function openSubjectRemoveConfirmation(subject) {
     contextValue: activeSubjectGrade,
     contextStrand: activeSubjectStrand,
     name: subject.name,
-    context: `${subject.code || 'Subject'} · ${subject.type || 'Configured subject'}`,
+    context: managementSubjectDescriptor(subject, 'Configured subject'),
     contextLabel: 'Subject',
     title: `Remove: ${subject.name}`,
     sub: 'Remove this subject from the selected grade or strand.',
