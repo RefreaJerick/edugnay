@@ -1229,7 +1229,6 @@ body.sf-validation-modal-open {
   line-height: 1.4;
 }
 
-.sf-grade-breakdown-average,
 .sf-grade-breakdown-subject-final {
   flex: 0 0 auto;
   color: var(--gray-700);

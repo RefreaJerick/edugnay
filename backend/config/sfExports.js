@@ -123,7 +123,7 @@ function cloneSf9SubjectRow(rowXml, rowNumber) {
     .map(match => match[0])
     .filter(cell => {
       const column = /\br="([A-Z]+)\d+"/i.exec(cell)?.[1]?.toUpperCase();
-      return column && columnIndex(column) >= columnIndex('B') && columnIndex(column) <= columnIndex('L');
+      return column && columnIndex(column) >= columnIndex('B') && columnIndex(column) <= columnIndex('K');
     })
     .map(cell => {
       const attributes = /^<c\b([^>]*)/.exec(cell)?.[1] || '';
@@ -277,9 +277,10 @@ async function getEditableCells(template, mappedCells = []) {
     const existing = new Set(editableCells.map(cell => cell.cellAddress));
     const dynamicAddresses = [];
     for (let row = 42; row < 42 + Math.max(0, subjectCount - 10); row += 1) {
-      dynamicAddresses.push(`B${row}`, `F${row}`, `G${row}`, `H${row}`, `I${row}`, `J${row}`, `K${row}`);
+      dynamicAddresses.push(`B${row}`, ...SF9.periodColumns.map(column => `${column}${row}`),
+        `${SF9.finalGradeColumn}${row}`, `${SF9.remarksColumn}${row}`);
     }
-    dynamicAddresses.push(`J${42 + Math.max(0, subjectCount - 10)}`);
+    dynamicAddresses.push(`${SF9.finalGradeColumn}${42 + Math.max(0, subjectCount - 10)}`);
     dynamicAddresses.forEach(cellAddress => {
       if (!existing.has(cellAddress)) editableCells.push({
         cellAddress,

@@ -201,8 +201,11 @@ test('generated preview actions stay hidden unless a generated preview is render
   assert.match(styles, /\.sf-preview-actions \{\s*display: flex;\s*flex: 0 0 auto;\s*align-items: center;\s*justify-content: flex-end;/);
   assert.match(script, /previewActions: document\.getElementById\('sfPreviewActions'\)/);
   assert.doesNotMatch(script, /reviewIssuesButton|sfReviewIssues/);
-  assert.match(script, /Calculated from published grades in edUgnay records/);
+  assert.match(script, /Published grades from edUgnay records for adviser review/);
   assert.match(script, /LRN correction applies only to this download/);
+  assert.match(script, /form\.formCode === 'SF5'[\s\S]*?form\.schoolYear === '2026-2027'[\s\S]*?printed proficiency bands against the DepEd LIS form before submission/);
+  assert.match(script, /forms\.some\(form => form\.formCode === 'SF5' && form\.schoolYear === '2026-2027'\)/);
+  assert.match(script, /sf5Reminder[\s\S]*?showAppToast\(hasLrnCorrection/);
 
   const editPersistence = script.slice(script.indexOf('function preservePreviewEdits'), script.indexOf('function changePreviewZoom'));
   const issueModal = script.slice(script.indexOf('function generatedValidationIssues'), script.indexOf('function renderSf5Breakdown'));
@@ -481,7 +484,7 @@ test('SF8 supports senior-high strands and remains limited to the adviser active
   ({ sectionGradeCode, sectionGradeLevel, sectionStrandName } = previous);
 });
 
-test('SF9 selects a learner from the adviser roster and maps published grades for two to four terms', async () => {
+test('SF9 selects a learner from the adviser roster and maps published grades to the supplied three-term layout', async () => {
   const previous = { sectionGradeCode, sectionGradeLevel, sf9ConfiguredTerms, sf9PublishedGrades };
   sectionGradeCode = 'grade-4';
   sectionGradeLevel = 'Grade 4';
@@ -505,19 +508,24 @@ test('SF9 selects a learner from the adviser roster and maps published grades fo
     assert.equal(cells.get('C17'), 'Dela Cruz, Juan');
     assert.equal(cells.get('I18'), 4);
     assert.equal(cells.get('H27'), 'Ms. Maria Reyes');
-    assert.deepEqual(['F31', 'G31', 'H31', 'I31'].map(address => cells.get(address)),
-      termCount === 4 ? ['Q1', 'Q2', 'Q3', 'Q4']
-        : Array.from({ length: 4 }, (_, index) => sf9ConfiguredTerms[index]?.name || ''));
+    assert.equal(cells.has('F31') || cells.has('G31') || cells.has('H31') || cells.has('I31'), false,
+      'printed T1-T3 headings stay in the static workbook template');
     assert.equal(cells.get('F32'), 80);
-    assert.equal(cells.get('J32'), 80 + (termCount - 1));
-    assert.equal(cells.get('J42'), 80 + (termCount - 1));
+    assert.equal(cells.get('G32'), termCount >= 2 ? 82 : '');
+    assert.equal(cells.get('H32'), termCount >= 3 ? 84 : '');
+    assert.equal(cells.get('I32'), termCount === 3 ? 82 : '');
+    assert.equal(cells.has('J32'), false, 'column J is Remarks, not Final Grade');
+    assert.equal(cells.get('I42'), '');
+    assert.equal(preview.body.issues.some(issue => issue.fieldKey === 'terms'), termCount !== 3);
     assert.equal(preview.body.previewFingerprint.length, 64);
     assert.ok(preview.body.issues.some(issue => issue.fieldKey === 'draft'));
     const editable = new Map(preview.body.editableCells.map(cell => [cell.cellAddress, cell.type]));
     assert.equal(editable.get('C17'), 'text');
     assert.equal(editable.get('I18'), 'number');
     assert.equal(editable.get('F32'), 'number');
-    assert.equal(editable.get('J42'), 'number');
+    assert.equal(editable.get('I32'), 'number');
+    assert.equal(editable.get('J32'), 'text');
+    assert.equal(editable.get('I42'), 'number');
     assert.equal(editable.has('F30'), false);
     assert.equal(editable.has('A32'), false);
   }
@@ -534,8 +542,8 @@ test('SF9 flags missing and conflicting period grades and permits only adviser-o
   const missing = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
   const missingCells = new Map(missing.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(missingCells.get('G32'), '');
-  assert.equal(missingCells.get('J32'), '');
-  assert.equal(missingCells.get('J42'), '');
+  assert.equal(missingCells.get('I32'), '');
+  assert.equal(missingCells.get('I42'), '');
   assert.ok(missing.body.issues.some(issue => /no published grade/.test(issue.message)));
 
   sf9PublishedGrades = [...sf9PublishedGrades, { ...sf9PublishedGrades[0], sectionName: 'Another Former Section' }];
@@ -568,6 +576,8 @@ test('SF9 exposes archived closed-year sections and rejects stale preview export
   }));
   const details = await call(controller.getTemplateDetails, 'GET', {}, {}, '9');
   assert.equal(details.error, null);
+  assert.equal(details.body.mappings.find(mapping => mapping.fieldKey === 'finalGrade').cellReference, 'I32');
+  assert.equal(details.body.mappings.find(mapping => mapping.fieldKey === 'generalAverage').cellReference, 'I42');
   assert.ok(details.body.sections.some(section => section.id === 1 && section.academicYearStatus === 'closed'));
   assert.match(sectionQuery.sql, /academic_years\.status IN \('active', 'closed'\)/);
   assert.match(sectionQuery.sql, /sections\.status = 'archived' AND academic_years\.status = 'closed'/);
@@ -579,8 +589,8 @@ test('SF9 exposes archived closed-year sections and rejects stale preview export
   assert.equal(closedPreview.error, null);
   const closedCells = new Map(closedPreview.body.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(closedCells.get('I18'), 4);
-  assert.deepEqual(['F31', 'G31', 'H31', 'I31'].map(address => closedCells.get(address)),
-    ['Semester 1', 'Semester 2', '', '']);
+  assert.equal(closedCells.has('F31') || closedCells.has('G31') || closedCells.has('H31') || closedCells.has('I31'), false,
+    'closed-year reports retain the supplied T1-T3 labels');
 
   const preview = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8', studentId: '10' }, '9');
   sf9PublishedGrades = sf9PublishedGrades.map(grade => ({ ...grade, finalGrade: grade.finalGrade - 1 }));
@@ -701,7 +711,9 @@ test('combined preview supports SF5 in every pair, triple, and four-form selecti
     const sf5Form = result.body.forms.find(form => form.formCode === 'SF5');
     if (sf5Form) {
       assert.equal(sf5Form.breakdown.length, 1);
-      assert.equal(sf5Form.pages[0].find(cell => cell.cellAddress === 'F13')?.value, publishedFinalGrade, JSON.stringify(sf5Form));
+      assert.equal(sf5Form.pages[0].find(cell => cell.cellAddress === 'F13')?.value, '', JSON.stringify(sf5Form));
+      assert.match(sf5Form.issues.find(issue => issue.fieldKey === 'draft').message,
+        /printed proficiency bands may differ from the descriptors in DepEd Order No\. 015, s\. 2026/);
     }
   }
 
@@ -1280,22 +1292,54 @@ test('a historical advisory section cannot be previewed directly', async () => {
   assert.deepEqual(sectionQuery.values, [1, 1, 3]);
 });
 
-test('SF1 preserves a foreign birthplace without requiring a province', async () => {
+test('SF1 leaves foreign birthplace blank for adviser review', async () => {
   const original = learner;
   learner = { ...learner, birthPlace: 'Jabriya', birthPlaceRegion: null, birthCountry: 'Kuwait' };
   const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
   assert.equal(result.error, null);
-  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, 'Jabriya, Kuwait');
-  assert.equal(result.body.issues.some(issue => issue.fieldKey === 'birthCountry'), false);
+  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
+  assert.equal(result.body.issues.some(issue => issue.fieldKey === 'birthPlaceProvince'), true);
   learner = original;
 });
 
-test('SF1 retains an old birthplace and flags its unconfirmed country', async () => {
+test('SF1 uses only a confirmed Philippine birth province, not the locality or home province', async () => {
+  const original = learner;
+  learner = { ...learner, birthPlace: 'Tacloban City', birthPlaceRegion: 'Leyte',
+    birthCountry: 'Philippines', province: 'Samar', legacyBirthPlace: 'Ormoc' };
+  const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
+  assert.equal(result.error, null);
+  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, 'Leyte');
+  assert.equal(result.body.issues.some(issue => issue.fieldKey === 'birthPlaceProvince'), false);
+  learner = original;
+});
+
+test('SF1 leaves missing and Philippine-without-province birthplaces blank and editable', async () => {
+  const original = learner;
+  for (const birthCountry of [null, 'Philippines']) {
+    learner = { ...original, birthPlace: 'Tacloban City', birthPlaceRegion: null, birthCountry };
+    const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
+    assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
+    assert.ok(result.body.issues.some(issue => issue.fieldKey === 'birthPlaceProvince'));
+    assert.equal(result.body.editableCells.find(cell => cell.cellAddress === 'J10')?.type, 'text');
+  }
+  learner = original;
+});
+
+test('SF1 leaves an unconfirmed legacy birthplace blank', async () => {
   const original = learner;
   learner = { ...learner, legacyBirthPlace: 'Pangasinan' };
   const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
-  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, 'Pangasinan');
-  assert.ok(result.body.issues.some(issue => issue.fieldKey === 'birthCountry'));
+  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
+  assert.ok(result.body.issues.some(issue => issue.fieldKey === 'birthPlaceProvince'));
+  learner = original;
+});
+
+test('SF1 does not treat a legacy birthplace as confirmed even with a Philippine country', async () => {
+  const original = learner;
+  learner = { ...learner, legacyBirthPlace: 'Pangasinan', birthCountry: 'Philippines', birthPlaceRegion: null };
+  const result = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
+  assert.equal(result.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
+  assert.ok(result.body.issues.some(issue => issue.fieldKey === 'birthPlaceProvince'));
   learner = original;
 });
 
@@ -1371,6 +1415,40 @@ test('a corrected SF1 LRN only changes the downloaded combined workbook', async 
   learner = original;
 });
 
+test('SF1 adviser birth-province edits survive individual and combined downloads', async () => {
+  const original = learner;
+  learner = { ...learner, birthPlace: 'Jabriya', birthCountry: 'Kuwait', birthPlaceRegion: null };
+  const individual = await call(controller.previewTemplate, 'GET', {}, { sectionId: '8' });
+  assert.equal(individual.body.mappedCells.find(cell => cell.cellAddress === 'J10').value, '');
+  assert.equal(individual.body.editableCells.find(cell => cell.cellAddress === 'J10').type, 'text');
+  const individualTemplate = { formCode: 'SF1', filePath: '/assets/templates/school-forms/sf1.xlsx',
+    sheetName: 'School Form 1 (SF1)' };
+  const individualPage = individual.body.pages[0].map(cell => cell.cellAddress === 'J10'
+    ? { ...cell, value: 'Adviser-confirmed province' } : cell);
+  const individualBytes = await createExportWorkbook(individualTemplate, [individualPage]);
+  const individualWorkbook = new ExcelJS.Workbook();
+  await individualWorkbook.xlsx.load(individualBytes);
+  assert.equal(individualWorkbook.getWorksheet('School Form 1 (SF1)').getCell('J10').value,
+    'Adviser-confirmed province');
+
+  const combined = await call(controller.previewCombinedTemplates, 'POST', {
+    templateIds: [1, 2], sectionId: 8, month: '2026-10'
+  });
+  const combinedExport = await call(controller.generateCombinedTemplates, 'POST', {
+    templateIds: [1, 2], sectionId: 8, month: '2026-10',
+    previewFingerprint: combined.body.previewFingerprint,
+    forms: combined.body.forms.map(form => ({ templateId: form.templateId,
+      edits: form.formCode === 'SF1' ? [{ cellAddress: 'J10', value: 'Adviser-confirmed province' }] : [] }))
+  });
+  assert.equal(combinedExport.status, 200);
+  const combinedWorkbook = new ExcelJS.Workbook();
+  await combinedWorkbook.xlsx.load(combinedExport.body);
+  assert.equal(combinedWorkbook.getWorksheet('School Form 1 (SF1)').getCell('J10').value,
+    'Adviser-confirmed province');
+  assert.equal(learner.birthPlaceRegion, null);
+  learner = original;
+});
+
 test('edits follow overflow pages in the combined workbook', async () => {
   learnerRows = Array.from({ length: 25 }, (_, index) => ({
     ...learner,
@@ -1406,27 +1484,27 @@ test('edits follow overflow pages in the combined workbook', async () => {
   learnerRows = null;
 });
 
-test('clearing an SF5 average affects only the exported workbook', async () => {
+test('entering an SF5 average affects only the exported workbook', async () => {
   const preview = await call(controller.previewCombinedTemplates, 'POST', {
     templateIds: [1, 5], sectionId: 8
   });
   const sf5 = preview.body.forms.find(form => form.formCode === 'SF5');
-  assert.equal(sf5.breakdown[0].generalAverage, publishedFinalGrade);
+  assert.equal(sf5.breakdown[0].generalAverage, null);
   writes = 0;
   const result = await call(controller.generateCombinedTemplates, 'POST', {
     templateIds: [1, 5], sectionId: 8,
     previewFingerprint: preview.body.previewFingerprint,
     forms: preview.body.forms.map(form => ({
       templateId: form.templateId,
-      edits: form.formCode === 'SF5' ? [{ cellAddress: 'F13', value: '' }] : []
+      edits: form.formCode === 'SF5' ? [{ cellAddress: 'F13', value: '89.25' }] : []
     }))
   });
   assert.equal(result.status, 200);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.body);
-  assert.equal(workbook.getWorksheet('School Form 5 (SF5)').getCell('F13').value, null);
+  assert.equal(workbook.getWorksheet('School Form 5 (SF5)').getCell('F13').value, 89.25);
   assert.equal(publishedFinalGrade, 90);
-  assert.equal(sf5.breakdown[0].generalAverage, 90);
+  assert.equal(sf5.breakdown[0].generalAverage, null);
 });
 
 test('more than 49 learners blocks export before any write', async () => {

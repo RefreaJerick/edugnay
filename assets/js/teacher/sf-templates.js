@@ -560,16 +560,13 @@ function renderSf5Breakdown(form) {
   if (form.formCode !== 'SF5' || !form.breakdown?.length) return '';
   const learners = form.breakdown.filter(item => item.page === (form.selectedPage || 0) + 1);
   return `<details class="sf-grade-breakdown">
-    <summary>General-average breakdown <span class="sf-grade-breakdown-count">${learners.length} learners</span></summary>
+    <summary>Published term-grade breakdown <span class="sf-grade-breakdown-count">${learners.length} learners</span></summary>
     <div class="sf-grade-breakdown-list">
-      <p class="sf-grade-breakdown-source">Calculated from published grades in edUgnay records. Workbook edits do not change these records or this breakdown.</p>
+      <p class="sf-grade-breakdown-source">Published grades from edUgnay records for adviser review. Check the worksheet's general average separately; workbook edits do not change these records.</p>
       ${learners.map(learner => `
       <div class="sf-grade-breakdown-learner">
         <div class="sf-grade-breakdown-learner-head">
           <strong class="sf-grade-breakdown-learner-name">${escapeHtml(learner.name)}</strong>
-          ${learner.generalAverage == null
-            ? ''
-            : `<span class="sf-grade-breakdown-average">${Number(learner.generalAverage).toFixed(2)}</span>`}
         </div>
         <ul class="sf-grade-breakdown-subjects">${learner.subjects.map(subject => {
           const termDetails = subject.termDetails || [
@@ -695,7 +692,9 @@ function renderGeneratedPreview() {
   if (issues.length) renderValidationModal(issues);
   else clearValidationModal();
   sfElements.previewSubtitle.textContent = form.formCode === 'SF5'
-    ? 'Review the year-end draft and grade breakdown. Complete decisions and signatures in the downloaded workbook.'
+    ? form.schoolYear === '2026-2027'
+      ? 'SF5 draft: check its printed proficiency bands against the DepEd LIS form before submission. Enter general averages, summaries, decisions, and signatures after review.'
+      : 'Review the year-end draft and grade breakdown. Complete decisions and signatures in the downloaded workbook.'
     : form.formCode === 'SF3'
     ? 'Review the roster draft. Complete book details in the downloaded workbook.'
     : form.formCode === 'SF8'
@@ -847,9 +846,11 @@ async function downloadGeneratedWorkbook() {
         && form.edits?.some(edit => edit.cellAddress === issue.cellReference)));
     const combinedCodeList = sfState.combined?.forms.map(form => form.formCode).join(', ');
     const message = sfState.combined ? `Combined ${combinedCodeList} workbook download started.` : 'Workbook download started.';
+    const sf5Reminder = forms.some(form => form.formCode === 'SF5' && form.schoolYear === '2026-2027')
+      ? ' SF5 is a draft; verify its printed proficiency bands against the DepEd LIS form before submission.' : '';
     showAppToast(hasLrnCorrection
-      ? `${message} The LRN correction applies only to this download; the saved student record is unchanged.`
-      : message);
+      ? `${message} The LRN correction applies only to this download; the saved student record is unchanged.${sf5Reminder}`
+      : `${message}${sf5Reminder}`);
   } catch (error) {
     if (sfState.generated && error.exportId) sfState.generated.exportId = error.exportId;
     if (error.status === 409) {

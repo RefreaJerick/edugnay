@@ -34,13 +34,19 @@ function completeGrades(studentId) {
     published(studentId, 12, 21, 91), published(studentId, 12, 22, 94)];
 }
 
-test('SF5 computes one two-decimal average from all configured subject-period grades, including retained grades', () => {
+test('SF5 leaves complete general averages blank and keeps retained term grades in the breakdown', () => {
   const result = buildSf5Pages(school, section, [learner(1), learner(2, 'female')], subjects, terms,
     [...completeGrades(1), ...completeGrades(2)]);
+  const draftWarning = result.issues.find(issue => issue.fieldKey === 'draft');
+  assert.match(draftWarning.message, /General averages and proficiency summaries are left blank/);
+  assert.match(draftWarning.message, /printed proficiency bands may differ from the descriptors in DepEd Order No\. 015, s\. 2026/);
+  assert.match(draftWarning.message, /SF5 issued through DepEd LIS before submission/);
   assert.equal(result.pages[0].find(cell => cell.cellAddress === 'A13').value, '100000000001');
   assert.equal(result.pages[0].find(cell => cell.cellAddress === 'B13').value, 'Sample, Student1, A');
-  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F13').value, 88.75);
-  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F34').value, 88.75);
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F13').value, '');
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F34').value, '');
+  assert.equal(result.pages[0].some(cell => /^N(?:2[4-9]|3[0-2])$/.test(cell.cellAddress)), false);
+  assert.equal(result.breakdown[0].generalAverage, null);
   assert.equal(result.breakdown[0].subjects[0].terms[1].section, 'Old Section');
   assert.deepEqual(result.breakdown[0].subjects[0].termDetails.map(term => term.term), ['Quarter 1', 'Quarter 2']);
   assert.deepEqual(result.breakdown[0].subjects[0].termDetails.map(term => term.grade), [80, 90]);
@@ -52,9 +58,9 @@ test('SF5 supports semestral and three-term configurations without guessing miss
     const configuredTerms = Array.from({ length: count }, (_, i) => ({ id: i + 1, name: `Term ${i + 1}` }));
     const grades = configuredTerms.map(term => published(1, 11, term.id, 80 + term.id));
     const complete = buildSf5Pages(school, section, [learner(1)], [subjects[0]], configuredTerms, grades);
-    assert.equal(complete.pages[0].find(cell => cell.cellAddress === 'F13').value, 81 + (count - 1) / 2);
+    assert.equal(complete.pages[0].find(cell => cell.cellAddress === 'F13').value, '');
     const incomplete = buildSf5Pages(school, section, [learner(1)], [subjects[0]], configuredTerms, grades.slice(1));
-    assert.equal(incomplete.pages[0].some(cell => cell.cellAddress === 'F13'), false);
+    assert.equal(incomplete.pages[0].find(cell => cell.cellAddress === 'F13').value, '');
     assert.ok(incomplete.issues.some(issue => issue.fieldKey === 'generalAverage'));
   }
 });
@@ -62,13 +68,37 @@ test('SF5 supports semestral and three-term configurations without guessing miss
 test('SF5 leaves a conflicting or incomplete learner average blank, without blocking other learners', () => {
   const grades = [...completeGrades(1), ...completeGrades(2), published(1, 11, 22, 95, 'Other Section')];
   const result = buildSf5Pages(school, section, [learner(1), learner(2, 'female')], subjects, terms, grades);
-  assert.equal(result.pages[0].some(cell => cell.cellAddress === 'F13'), false);
-  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F34').value, 88.75);
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F13').value, '');
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F34').value, '');
   assert.ok(result.breakdown[0].subjects[0].missingTerms.some(term => term.reason === 'conflicting published grades'));
   assert.deepEqual(result.breakdown[0].subjects[0].termDetails.map(term => term.term), ['Quarter 1', 'Quarter 2']);
   assert.equal(result.breakdown[0].subjects[0].termDetails[1].reason, 'conflicting published grades');
   assert.equal(result.breakdown[0].subjects[0].termDetails[1].grade, null);
   assert.equal(result.issues.filter(issue => issue.fieldKey === 'generalAverage').length, 1);
+});
+
+test('SF5 leaves nullable grades unverified and permits an adviser-entered average in an individual workbook', async () => {
+  const result = buildSf5Pages(school, section, [learner(1)], subjects, terms,
+    [{ ...completeGrades(1)[0], finalGrade: null }, ...completeGrades(1).slice(1)]);
+  assert.equal(result.breakdown[0].subjects[0].termDetails[0].grade, null);
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F13').value, '');
+  const editable = new Map((await require('../config/sfExports').getEditableCells(template, result.pages[0]))
+    .map(cell => [cell.cellAddress, cell.type]));
+  assert.equal(editable.get('F13'), 'number');
+  const editedPage = result.pages[0].map(cell => cell.cellAddress === 'F13'
+    ? { ...cell, value: 88.25 } : cell);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await createExportWorkbook(template, [editedPage]));
+  assert.equal(workbook.getWorksheet(SF5.sheetName).getCell('F13').value, 88.25);
+  assert.equal(result.breakdown[0].generalAverage, null);
+});
+
+test('SF5 leaves earlier school-year calculation behavior unchanged', () => {
+  const earlierSection = { ...section, academicYear: '2025-2026' };
+  const result = buildSf5Pages(school, earlierSection, [learner(1)], subjects, terms, completeGrades(1));
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'F13').value, 88.75);
+  assert.equal(result.breakdown[0].generalAverage, 88.75);
+  assert.doesNotMatch(result.issues.find(issue => issue.fieldKey === 'draft').message, /DepEd Order No\. 015, s\. 2026/);
 });
 
 test('SF5 adds pages while preserving its separate male and female roster slots', () => {
@@ -156,6 +186,36 @@ test('SF5 supports mixed active-year selections and retains individual closed-ye
   assert.match(api, /getMyAdvisorySections\(\['SF5', 'SF9'\]\.includes\(template\.formCode\)\)/);
 });
 
+test('SF5 warning stays visible in individual and combined previews and repeats after download', async () => {
+  const script = await fs.readFile(path.resolve(__dirname, '..', '..', 'assets', 'js', 'teacher', 'sf-templates.js'), 'utf8');
+  const previewSource = script.slice(script.indexOf('function renderGeneratedPreview() {'), script.indexOf('\nasync function generateForm'));
+  const downloadSource = script.slice(script.indexOf('async function downloadGeneratedWorkbook() {'), script.indexOf('\nfunction startXlsxDownload'));
+  const sf5Form = { formCode: 'SF5', schoolYear: '2026-2027', preview: {}, pages: [[]],
+    selectedPage: 0, templateId: 'sf5', sectionId: '8', editableCells: [], mappedCells: [], edits: [],
+    hasBlockingIssues: false, issues: [], fileName: 'sf5.xlsx' };
+  const sf1Form = { ...sf5Form, formCode: 'SF1', templateId: 'sf1' };
+  for (const combined of [false, true]) {
+    const notices = [];
+    const elements = { previewContent: { innerHTML: '' }, previewSubtitle: { textContent: '' },
+      editButton: { disabled: false, textContent: '' }, downloadButton: { disabled: false, innerHTML: '', textContent: '' },
+      previewActions: { hidden: true } };
+    const state = { generated: sf5Form, editing: false,
+      combined: combined ? { forms: [sf1Form, sf5Form], templateIds: ['sf1', 'sf5'], sectionId: '8',
+        hasBlockingIssues: false, previewFingerprint: 'test' } : null };
+    const context = { sfState: state, sfElements: elements, document: { getElementById: () => ({}) },
+      window: { EDUGNAY_CONFIG: { exportSfForm: async () => ({ buffer: new Uint8Array(), fileName: 'sf5.xlsx' }),
+        exportCombinedSfForms: async () => ({ buffer: new Uint8Array(), fileName: 'combined.xlsx' }) } },
+      generatedValidationIssues: () => [], clearValidationModal: () => {}, renderSf5Breakdown: () => '',
+      renderWorkbook: () => {}, escapeHtml: value => value, startXlsxDownload: () => {},
+      showAppToast: message => notices.push(message) };
+    vm.runInNewContext(`(${previewSource})`, context)();
+    assert.match(elements.previewSubtitle.textContent, /printed proficiency bands against the DepEd LIS form/);
+    await vm.runInNewContext(`(${downloadSource})`, context)();
+    assert.match(notices[0], /SF5 is a draft; verify its printed proficiency bands against the DepEd LIS form/);
+    assert.match(notices[0], combined ? /Combined SF1, SF5 workbook download started/ : /Workbook download started/);
+  }
+});
+
 test('SF5 breakdown omits the learner incomplete pill, keeps plain subject status, and preserves term order', async () => {
   const page = await fs.readFile(path.resolve(__dirname, '..', '..', 'assets', 'js', 'teacher', 'sf-templates.js'), 'utf8');
   const styles = await fs.readFile(path.resolve(__dirname, '..', '..', 'assets', 'css', 'teacher', 'sf-templates.css'), 'utf8');
@@ -180,10 +240,11 @@ test('SF5 breakdown omits the learner incomplete pill, keeps plain subject statu
     .map(match => match[1]);
   assert.equal(learnerHeads.length, 2);
   assert.doesNotMatch(learnerHeads[0], /Incomplete|badge/);
-  assert.match(learnerHeads[1], /sf-grade-breakdown-average">89\.25<\/span>/);
+  assert.doesNotMatch(learnerHeads[1], /sf-grade-breakdown-average/);
   assert.match(html, /class="sf-grade-breakdown-subject-status">Incomplete<\/span>/);
   assert.match(html, /class="sf-grade-breakdown-subject-final">91\.25<\/span>/);
-  assert.match(html, /Calculated from published grades in edUgnay records/);
+  assert.match(html, /Published grades from edUgnay records for adviser review/);
+  assert.match(html, /Check the worksheet's general average separately/);
   assert.match(html, /Quarter 1[\s\S]*no published grade[\s\S]*Quarter 2[\s\S]*87\.00[\s\S]*St\. Matthew/);
   assert.match(html, /class="sf-grade-breakdown-term is-missing"/);
   assert.match(styles, /\.sf-grade-breakdown-subjects\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
@@ -227,7 +288,7 @@ test('SF5 preview permits a closed year only for an adviser, rejects stale previ
   };
   const preview = await invoke(controller.previewTemplate, request());
   assert.equal(preview.error, undefined);
-  assert.equal(preview.result.mappedCells.find(cell => cell.cellAddress === 'F13')?.value, 90,
+  assert.equal(preview.result.mappedCells.find(cell => cell.cellAddress === 'F13')?.value, '',
     JSON.stringify(preview.result.issues));
   assert.equal(preview.result.editableCells.find(cell => cell.cellAddress === 'F13')?.type, 'number');
   assert.match(sectionSql, /academic_years\.status IN \('active', 'closed'\)/);

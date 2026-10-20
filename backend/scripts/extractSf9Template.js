@@ -29,20 +29,6 @@ async function copyPart(source, output, sourceName, outputName = sourceName) {
   output.file(outputName, await part.async('nodebuffer'));
 }
 
-function columnNumber(label) {
-  return [...label].reduce((value, character) => value * 26 + character.charCodeAt(0) - 64, 0);
-}
-
-function columnLabel(value) {
-  let result = '';
-  while (value > 0) {
-    const remainder = (value - 1) % 26;
-    result = String.fromCharCode(65 + remainder) + result;
-    value = Math.floor((value - 1) / 26);
-  }
-  return result;
-}
-
 function clearCellContents(cellTag) {
   const attributes = cellTag.replace(/\s+t="[^"]*"/i, '');
   return attributes.replace(/>([\s\S]*?)<\/c>$/, '> </c>')
@@ -65,20 +51,6 @@ function rewriteCell(cellTag, rowNumber, newColumn = null, contents = null) {
   return result;
 }
 
-function insertCellByColumn(rowXml, cellTag) {
-  const targetColumn = columnNumber(/\br="([A-Z]+)\d+"/i.exec(cellTag)?.[1] || 'A');
-  let inserted = false;
-  const nextRow = rowXml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/gi, existingCell => {
-    const existingColumn = columnNumber(/\br="([A-Z]+)\d+"/i.exec(existingCell)?.[1] || 'A');
-    if (!inserted && existingColumn > targetColumn) {
-      inserted = true;
-      return cellTag + existingCell;
-    }
-    return existingCell;
-  });
-  return inserted ? nextRow : nextRow.replace('</row>', `${cellTag}</row>`);
-}
-
 function clearFormulaCell(cellTag) {
   const opening = /^<c\b[^>]*>/.exec(cellTag)?.[0];
   if (!opening) return cellTag;
@@ -87,57 +59,18 @@ function clearFormulaCell(cellTag) {
 }
 
 function transformSf9Worksheet(xml) {
-  const headerRow = /<row\b(?=[^>]*\br="31")[^>]*>[\s\S]*?<\/row>/.exec(xml)?.[0];
-  if (!headerRow) throw new Error('The supplied SF9 worksheet is missing its term header row.');
-
   let nextXml = xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, rowXml => {
     const rowNumber = Number(/\br="(\d+)"/.exec(rowXml)?.[1] || 0);
-    const additions = [];
-    let transformed = rowXml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, cellTag => {
+    return rowXml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, cellTag => {
       const address = /\br="([A-Z]+)(\d+)"/i.exec(cellTag);
       if (!address) return cellTag;
       const cellRow = Number(address[2]);
-      let cellColumn = address[1].toUpperCase();
-      if (rowNumber >= 30 && rowNumber <= 43 && cellRow === rowNumber && cellColumn === 'L') return '';
+      const cellColumn = address[1].toUpperCase();
       const isFormula = /<f\b/i.test(cellTag)
         || /^I(?:3[2-9]|4[0-3])$/.test(`${cellColumn}${cellRow}`);
-      if (rowNumber >= 30 && rowNumber <= 43
-        && cellRow === rowNumber && columnNumber(cellColumn) >= columnNumber('I')
-        && columnNumber(cellColumn) <= columnNumber('K')) {
-        cellColumn = columnLabel(columnNumber(cellColumn) + 1);
-      }
-      return rewriteCell(cellTag, rowNumber, cellColumn, isFormula ? 'clear' : null);
+      return rewriteCell(cellTag, rowNumber, null, isFormula ? 'clear' : null);
     });
-
-    if (rowNumber === 31) {
-      const termFourStyle = /<c\b(?=[^>]*\br="H31")[^>]*\/>|<c\b(?=[^>]*\br="H31")[^>]*>[\s\S]*?<\/c>/i.exec(headerRow)?.[0];
-      if (!termFourStyle) throw new Error('The SF9 worksheet is missing the third-term cell style.');
-      transformed = insertCellByColumn(transformed, rewriteCell(termFourStyle, 31, 'I', 'T4'));
-    }
-    if (rowNumber >= 32 && rowNumber <= 41) {
-      const sourceStyle = /<c\b(?=[^>]*\br="H\d+")[^>]*\/>|<c\b(?=[^>]*\br="H\d+")[^>]*>[\s\S]*?<\/c>/i;
-      const match = sourceStyle.exec(rowXml);
-      if (!match) throw new Error(`The SF9 worksheet is missing the fourth-term style source on row ${rowNumber}.`);
-      const newTerm = rewriteCell(match[0], rowNumber, 'I', 'clear');
-      transformed = insertCellByColumn(transformed, newTerm);
-    }
-    return transformed;
   });
-
-  nextXml = nextXml.replace(/<mergeCell\b[^>]*\bref="([A-Z]+)(\d+):([A-Z]+)(\d+)"[^>]*\/>/g,
-    (tag, firstColumn, firstRow, lastColumn, lastRow) => {
-      const startRow = Number(firstRow);
-      const endRow = Number(lastRow);
-      if (startRow === 30 && endRow === 30 && firstColumn === 'F' && lastColumn === 'H') {
-        return tag.replace(/\bref="[^"]+"/, 'ref="F30:I30"');
-      }
-      if (startRow >= 30 && endRow <= 43
-        && columnNumber(firstColumn) >= columnNumber('I')
-        && columnNumber(lastColumn) <= columnNumber('K')) {
-        return tag.replace(/\bref="[^"]+"/, `ref="${columnLabel(columnNumber(firstColumn) + 1)}${firstRow}:${columnLabel(columnNumber(lastColumn) + 1)}${lastRow}"`);
-      }
-      return tag;
-    });
 
   nextXml = nextXml.replace(/(<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*\/>|<c\b(?=[^>]*\br="(?:B12|B15|B9|B(?:3[2-9]|4[01]))")[^>]*>[\s\S]*?<\/c>)/gi,
     cellTag => clearFormulaCell(cellTag));

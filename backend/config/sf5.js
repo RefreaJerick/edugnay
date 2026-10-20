@@ -13,8 +13,11 @@ const SF5 = {
 };
 
 function buildSf5Pages(school, section, learners, subjects, terms, grades) {
+  const adviserAverage = section.academicYear === '2026-2027';
   const issues = [{ severity: 'warning', fieldKey: 'draft', cellReference: null,
-    message: 'SF5 is a draft. Verify final ratings and complete promotion decisions, incomplete subjects, summaries, and signatures in the downloaded workbook.' }];
+    message: adviserAverage
+      ? 'SF5 is a draft. General averages and proficiency summaries are left blank for adviser entry. The printed proficiency bands may differ from the descriptors in DepEd Order No. 015, s. 2026; verify them against the SF5 issued through DepEd LIS before submission. Review published term grades and complete final ratings, promotion decisions, and signatures.'
+      : 'SF5 is a draft. Verify final ratings and complete promotion decisions, incomplete subjects, summaries, and signatures in the downloaded workbook.' }];
   if (!school.depedSchoolId) issues.push({ severity: 'warning', fieldKey: 'schoolId', cellReference: 'C5', message: 'The school ID is not configured.' });
   if (!learners.length) issues.push({ severity: 'warning', fieldKey: 'roster', cellReference: null, message: 'No active students are assigned to this section.' });
   if (!subjects.length) issues.push({ severity: 'warning', fieldKey: 'subjects', cellReference: null, message: 'No subjects are assigned to this section; general averages remain blank.' });
@@ -74,9 +77,13 @@ function buildSf5Pages(school, section, learners, subjects, terms, grades) {
           const termDetails = [];
           for (const term of terms) {
             const matches = learnerGrades.get(`${subject.id}:${term.id}`) || [];
-            if (matches.length !== 1 || !Number.isFinite(Number(matches[0].finalGrade))) {
+            const gradeValue = matches[0]?.finalGrade;
+            if (matches.length !== 1 || gradeValue === null || gradeValue === undefined || gradeValue === ''
+              || !Number.isFinite(Number(gradeValue))
+              || (adviserAverage && (Number(gradeValue) < 0 || Number(gradeValue) > 100))) {
               complete = false;
-              const reason = matches.length > 1 ? 'conflicting published grades' : 'no published grade';
+              const reason = matches.length > 1 ? 'conflicting published grades'
+                : matches.length ? 'invalid published grade' : 'no published grade';
               missingTerms.push({ term: term.name, reason });
               termDetails.push({ term: term.name, grade: null, section: null, reason });
               gaps.push(`${subject.name} / ${term.name}: ${reason}`);
@@ -90,13 +97,13 @@ function buildSf5Pages(school, section, learners, subjects, terms, grades) {
             ? termResults.reduce((sum, item) => sum + item.grade, 0) / terms.length : null;
           if (rawFinal !== null) rawSubjectGrades.push(rawFinal);
           subjectResults.push({ subject: subject.name, terms: termResults, missingTerms, termDetails,
-            finalGrade: rawFinal === null ? null : Number(rawFinal.toFixed(2)) });
+            finalGrade: adviserAverage || rawFinal === null ? null : Number(rawFinal.toFixed(2)) });
         }
         if (gaps.length) issues.push({ severity: 'warning', fieldKey: 'generalAverage', cellReference: `F${row}`,
-          message: `${name}: general average remains blank (${gaps.length} missing or conflicting subject-period grades). See the breakdown.` });
-        const average = complete
+          message: `${name}: ${gaps.length} missing, invalid, or conflicting subject-period grades. Review the breakdown before entering the general average.` });
+        const average = !adviserAverage && complete
           ? Number((rawSubjectGrades.reduce((sum, grade) => sum + grade, 0) / subjects.length).toFixed(2)) : null;
-        if (average !== null) cells.push({ cellAddress: `F${row}`, value: average, type: 'number' });
+        if (adviserAverage || average !== null) cells.push({ cellAddress: `F${row}`, value: average ?? '', type: 'number' });
         breakdown.push({ studentId: learner.userId, name, page: pageIndex + 1, generalAverage: average, subjects: subjectResults });
       });
     }

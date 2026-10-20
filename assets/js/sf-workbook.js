@@ -40,14 +40,16 @@
       requiredSheets: ['SF9 - GRADE 4-10'],
       previewRows: 52,
       previewColumns: 30,
+      excludeTrailingRows: true,
+      excludeTrailingColumns: true,
       mergeCount: 125,
       anchors: {
         B14: "LEARNER'S PERFORMANCE REPORT",
         B29: 'LEARNING PROGRESS AND ACHIEVEMENT',
         B30: 'Learning Areas',
         F30: 'TERM',
-        J30: 'Final Grade',
-        K30: 'Remarks',
+        I30: 'Final Grade',
+        J30: 'Remarks',
         Q14: "TEACHER'S COMMENTS / REMARKS"
       },
       fields: {
@@ -65,7 +67,7 @@
         section: { cellAddress: 'K18', source: 'header.section', type: 'text' },
         strand: { cellAddress: 'C19', source: 'header.strand', type: 'text' },
         adviser: { cellAddress: 'H27', source: 'header.adviser', type: 'text' },
-        generalAverage: { cellAddress: 'J42', source: 'calculation.generalAverage', type: 'number' }
+        generalAverage: { cellAddress: 'I42', source: 'calculation.generalAverage', type: 'number' }
       },
       rows: []
     },
@@ -366,14 +368,14 @@
     for (let rowNumber = 42; rowNumber < 42 + extraRows; rowNumber += 1) {
       const targetRow = worksheet.getRow(rowNumber);
       targetRow.height = styleSource.height;
-      for (let columnNumber = 2; columnNumber <= 12; columnNumber += 1) {
+      for (let columnNumber = 2; columnNumber <= 11; columnNumber += 1) {
         const sourceCell = styleSource.getCell(columnNumber);
         const targetCell = targetRow.getCell(columnNumber);
         targetCell.style = JSON.parse(JSON.stringify(sourceCell.style || {}));
         if (sourceCell.numFmt) targetCell.numFmt = sourceCell.numFmt;
       }
       worksheet.mergeCells(`B${rowNumber}:E${rowNumber}`);
-      worksheet.mergeCells(`K${rowNumber}:L${rowNumber}`);
+      worksheet.mergeCells(`J${rowNumber}:K${rowNumber}`);
     }
     worksheet.pageSetup.printArea = `A2:AD${52 + extraRows}`;
     return extraRows;
@@ -435,7 +437,8 @@
       name: worksheet.name,
       rowCount: actualRows,
       columnCount: actualColumns,
-      truncated: actualRows > rowCount || (actualColumns > columnCount && !definition.excludeTrailingColumns),
+      truncated: (actualRows > rowCount && !definition.excludeTrailingRows)
+        || (actualColumns > columnCount && !definition.excludeTrailingColumns),
       columnWidths: Array.from({ length: columnCount }, (_, index) => {
         const width = worksheet.getColumn(index + 1).width || 10;
         return Math.min(220, Math.max(48, Math.round(width * 7)));

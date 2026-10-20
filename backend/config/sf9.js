@@ -3,9 +3,9 @@ const SF9 = {
   sheetName: 'SF9 - GRADE 4-10',
   firstSubjectRow: 32,
   baseSubjectRows: 10,
-  periodColumns: ['F', 'G', 'H', 'I'],
-  finalGradeColumn: 'J',
-  remarksColumn: 'K',
+  periodColumns: ['F', 'G', 'H'],
+  finalGradeColumn: 'I',
+  remarksColumn: 'J',
   headers: {
     region: 'B7',
     division: 'B8',
@@ -44,8 +44,12 @@ function learnerAge(birthDate, schoolYear) {
 }
 
 function buildSf9Pages(school, section, adviser, learner, subjects, terms, grades) {
+  const currentPolicy = section.academicYear === '2026-2027';
+  const reportTerms = terms.slice(0, SF9.periodColumns.length);
   const issues = [{ severity: 'warning', fieldKey: 'draft', cellReference: null,
-    message: 'SF9 is a draft. Class-day attendance, comments, signatures, and transfer details are left blank for adviser completion from verified records. Review grades and learner details before issuing the report card.' }];
+    message: currentPolicy
+      ? 'SF9 is a draft. Enter the general average manually after review. Any GMRC/Values Education grades require separate domain-based verification and are left blank. Complete attendance, comments, signatures, and transfer details from verified records.'
+      : 'SF9 is a draft. Class-day attendance, comments, signatures, and transfer details are left blank for adviser completion from verified records. Review grades and learner details before issuing the report card.' }];
   const requireValue = (value, fieldKey, cellReference, label) => {
     if (!String(value || '').trim()) issues.push({ severity: 'warning', fieldKey, cellReference,
       message: `${label} is not configured.` });
@@ -70,8 +74,10 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
   }
   if (!subjects.length) issues.push({ severity: 'warning', fieldKey: 'subjects', cellReference: null,
     message: 'No subjects are assigned to this section.' });
-  if (!terms.length || terms.length > SF9.periodColumns.length) issues.push({ severity: 'error', fieldKey: 'terms', cellReference: null,
-    message: 'SF9 requires two to four configured grading periods for this school level.' });
+  if (!terms.length || terms.length > 4) issues.push({ severity: 'error', fieldKey: 'terms', cellReference: null,
+    message: 'SF9 requires one to four configured grading periods for this school level.' });
+  if (terms.length !== SF9.periodColumns.length) issues.push({ severity: 'warning', fieldKey: 'terms', cellReference: null,
+    message: `SF9 has three printed term columns, but this section has ${terms.length} configured grading periods. Only the first three periods can be shown, and calculated subject Final Grades will remain blank. Configure exactly three grading periods or enter and verify Final Grades manually.` });
 
   const gradesBySubject = new Map();
   for (const grade of grades) {
@@ -97,28 +103,34 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
       type: ['age', 'gradeLevel'].includes(fieldKey) ? 'number' : 'text' });
   });
 
-  const termHeaderNames = terms.length === SF9.periodColumns.length
-    ? SF9.periodColumns.map((_, index) => `Q${index + 1}`)
-    : terms.map(term => term.name);
-  SF9.periodColumns.forEach((column, index) => {
-    cells.push({ cellAddress: `${column}31`, value: termHeaderNames[index] || '', type: 'text' });
-  });
-
-  let allSubjectsComplete = subjects.length > 0 && terms.length > 0 && terms.length <= SF9.periodColumns.length;
+  let allSubjectsComplete = subjects.length > 0 && terms.length === SF9.periodColumns.length;
   const subjectFinalGrades = [];
   subjects.forEach((subject, subjectIndex) => {
     const row = SF9.firstSubjectRow + subjectIndex;
+    const policyReview = currentPolicy && (/^(gmrc|values-education)(?:-|$)/i.test(String(subject.code || ''))
+      || /^(?:good manners and right conduct(?:\s*\(gmrc\))?|gmrc|values education)$/i.test(String(subject.name || '').trim()));
     const subjectGrades = [];
-    let subjectComplete = terms.length > 0 && terms.length <= SF9.periodColumns.length;
-    terms.slice(0, SF9.periodColumns.length).forEach((term, termIndex) => {
+    let subjectComplete = terms.length === SF9.periodColumns.length;
+    if (policyReview) {
+      issues.push({ severity: 'warning', fieldKey: 'gradePolicyReview', cellReference: `F${row}`,
+        message: `${subject.name}: term and final grades are blank because the GMRC/Values Education domain-weight calculation is not implemented. Adviser must verify and enter them manually.` });
+      cells.push({ cellAddress: `B${row}`, value: subject.name, type: 'text' });
+      SF9.periodColumns.forEach(column => cells.push({ cellAddress: `${column}${row}`, value: '', type: 'number' }));
+      cells.push({ cellAddress: `${SF9.finalGradeColumn}${row}`, value: '', type: 'number' });
+      allSubjectsComplete = false;
+      return;
+    }
+    reportTerms.forEach((term, termIndex) => {
       const matchingGrades = gradesBySubject.get(`${subject.id}:${term.id}`) || [];
       const cellAddress = `${SF9.periodColumns[termIndex]}${row}`;
       const gradeValue = matchingGrades[0]?.finalGrade;
       if (matchingGrades.length !== 1 || gradeValue === null || gradeValue === undefined
-        || gradeValue === '' || !Number.isFinite(Number(gradeValue))) {
+        || gradeValue === '' || !Number.isFinite(Number(gradeValue))
+        || (currentPolicy && (Number(gradeValue) < 0 || Number(gradeValue) > 100))) {
         subjectComplete = false;
         allSubjectsComplete = false;
-        const reason = matchingGrades.length > 1 ? 'conflicting published grades' : 'no published grade';
+        const reason = matchingGrades.length > 1 ? 'conflicting published grades'
+          : matchingGrades.length ? 'invalid published grade' : 'no published grade';
         issues.push({ severity: 'warning', fieldKey: 'grade', cellReference: cellAddress,
           message: `${subject.name}, ${term.name}: ${reason}.` });
         cells.push({ cellAddress, value: '', type: 'number' });
@@ -129,24 +141,29 @@ function buildSf9Pages(school, section, adviser, learner, subjects, terms, grade
       }
     });
 
-    for (let periodIndex = terms.length; periodIndex < SF9.periodColumns.length; periodIndex += 1) {
+    for (let periodIndex = reportTerms.length; periodIndex < SF9.periodColumns.length; periodIndex += 1) {
       cells.push({ cellAddress: `${SF9.periodColumns[periodIndex]}${row}`, value: '', type: 'number' });
     }
 
-    const finalGrade = subjectComplete && subjectGrades.length === terms.length
-      ? Number((subjectGrades.reduce((sum, grade) => sum + grade, 0) / terms.length).toFixed(2)) : null;
+    const finalGrade = subjectComplete && subjectGrades.length === SF9.periodColumns.length
+      ? currentPolicy
+        ? Math.round(subjectGrades.reduce((sum, grade) => sum + grade, 0) / terms.length)
+        : Number((subjectGrades.reduce((sum, grade) => sum + grade, 0) / terms.length).toFixed(2))
+      : null;
     if (finalGrade === null) allSubjectsComplete = false;
     else subjectFinalGrades.push(finalGrade);
     cells.push({ cellAddress: `B${row}`, value: subject.name, type: 'text' });
     cells.push({ cellAddress: `${SF9.finalGradeColumn}${row}`, value: finalGrade ?? '', type: 'number' });
   });
 
-  const generalAverage = allSubjectsComplete && subjectFinalGrades.length === subjects.length
+  const generalAverage = !currentPolicy && allSubjectsComplete && subjectFinalGrades.length === subjects.length
     ? Number((subjectFinalGrades.reduce((sum, grade) => sum + grade, 0) / subjects.length).toFixed(2)) : null;
-  const averageCellAddress = `J${SF9.firstSubjectRow + Math.max(SF9.baseSubjectRows, subjects.length)}`;
+  const averageCellAddress = `${SF9.finalGradeColumn}${SF9.firstSubjectRow + Math.max(SF9.baseSubjectRows, subjects.length)}`;
   cells.push({ cellAddress: averageCellAddress, value: generalAverage ?? '', type: 'number' });
-  if (!allSubjectsComplete && subjects.length) issues.push({ severity: 'warning', fieldKey: 'generalAverage', cellReference: averageCellAddress,
-    message: 'The general average remains blank until every assigned subject has a published grade for every configured period.' });
+  if (!currentPolicy && !allSubjectsComplete && subjects.length) issues.push({ severity: 'warning', fieldKey: 'generalAverage', cellReference: averageCellAddress,
+    message: terms.length !== SF9.periodColumns.length
+      ? 'The general average remains blank because SF9 requires exactly three configured grading periods.'
+      : 'The general average remains blank until every assigned subject has a published grade for all three periods.' });
 
   return { pages: [cells], issues, generalAverage, averageCellAddress };
 }

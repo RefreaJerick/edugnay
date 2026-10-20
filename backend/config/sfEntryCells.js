@@ -64,8 +64,8 @@ const entries = {
       range(118, 120, columnNumber('B'), columnNumber('O'))]
   },
   SF9: {
-    addresses: [...Object.values(SF9.headers), 'J42'],
-    ranges: [range(32, 41, columnNumber('B'), columnNumber('L')),
+    addresses: [...Object.values(SF9.headers), `${SF9.finalGradeColumn}42`],
+    ranges: [range(32, 41, columnNumber('B'), columnNumber('K')),
       range(5, 10, columnNumber('R'), columnNumber('AC')),
       range(15, 26, columnNumber('Q'), columnNumber('AC')),
       range(27, 27, columnNumber('B'), columnNumber('K')),
@@ -98,6 +98,7 @@ function getFormEntryType(formCode, address, cell) {
   const dateFormat = String(cell?.numFmt || '').toLowerCase();
   if (formCode === 'SF1') {
     if (/^B(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
+    if (/^J(?:1\d|[2-5]\d)$/.test(normalized)) return 'text';
     if (/^H(?:1\d|[2-5]\d)$/.test(normalized)) return 'date';
     if (/^I(?:1\d|[2-5]\d)$/.test(normalized) || /^[TU]6[1-4]$/.test(normalized)) return 'number';
   }
@@ -122,8 +123,8 @@ function getFormEntryType(formCode, address, cell) {
   if (formCode === 'SF9' && parts && parts.row >= 5 && parts.row <= 10
     && parts.column >= columnNumber('R') && parts.column <= columnNumber('AC')) return 'number';
   if (formCode === 'SF9' && parts && parts.row >= 32 && parts.column >= columnNumber('F')
-    && parts.column <= columnNumber('J')) return 'number';
-  if (formCode === 'SF9' && normalized === 'J42') return 'number';
+    && parts.column <= columnNumber(SF9.finalGradeColumn)) return 'number';
+  if (formCode === 'SF9' && normalized === `${SF9.finalGradeColumn}42`) return 'number';
   if (formCode === 'SF3' && parts && parts.row === 9
     && parts.column >= columnNumber('D') && parts.column <= columnNumber('S')) return 'text';
   if (formCode === 'SF3' && parts && parts.row >= 12 && parts.row <= 59 && parts.row !== 36

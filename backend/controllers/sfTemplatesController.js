@@ -291,7 +291,7 @@ async function getSf2Learners(database, schoolId, sectionId, month) {
 
 async function getSf5GradeData(database, schoolId, section, learners) {
   const [subjects] = await database.execute(
-    `SELECT DISTINCT subjects.id, subjects.name FROM section_teachers
+    `SELECT DISTINCT subjects.id, subjects.name, subjects.code FROM section_teachers
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
     WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
     ORDER BY subjects.name, subjects.id`, [schoolId, section.id]
@@ -382,7 +382,6 @@ function buildGenerationData(school, section, learners) {
     [
       ['sex', learner.sex, 'G', 'sex'],
       ['birthDate', learner.birthDate, 'H', 'birth date'],
-      ['birthPlaceProvince', learner.birthPlace || learner.legacyBirthPlace, 'J', 'place of birth'],
       ['motherTongue', learner.motherTongue, 'L', 'mother tongue'],
       ['religion', learner.religion, 'N', 'religion']
     ].forEach(([fieldKey, value, column, label]) => {
@@ -390,9 +389,10 @@ function buildGenerationData(school, section, learners) {
         issues.push({ severity: 'warning', fieldKey, cellReference: `${column}${row}`, message: `${learner.lastName}, ${learner.firstName} has no ${label}.` });
       }
     });
-    if (!learner.birthCountry) {
-      issues.push({ severity: 'warning', fieldKey: 'birthCountry', cellReference: `J${row}`, message: `${learner.lastName}, ${learner.firstName} has not confirmed their country of birth.` });
-    }
+    const philippineBirth = /^philippines$/i.test(String(learner.birthCountry || '').trim());
+    const birthProvince = philippineBirth ? String(learner.birthPlaceRegion || '').trim() : '';
+    if (!birthProvince) issues.push({ severity: 'warning', fieldKey: 'birthPlaceProvince', cellReference: `J${row}`,
+      message: `${learner.lastName}, ${learner.firstName}: birth province is blank because a Philippine birth province is not confirmed. Verify and enter it in SF1 if applicable.` });
     if (!contact) {
       issues.push({ severity: 'warning', fieldKey: 'contactNumber', cellReference: `Z${row}`, message: `${learner.lastName}, ${learner.firstName} has no parent or guardian contact number.` });
     }
@@ -404,7 +404,7 @@ function buildGenerationData(school, section, learners) {
       sex: learner.sex ? String(learner.sex).charAt(0).toUpperCase() : '',
       birthDate: learner.birthDate,
       age: calculateAge(learner.birthDate, referenceDate),
-      birthPlaceProvince: [learner.birthPlace || learner.legacyBirthPlace, learner.birthPlaceRegion, learner.birthCountry].filter(Boolean).join(', '),
+      birthPlaceProvince: birthProvince,
       motherTongue: learner.motherTongue,
       indigenousGroup: learner.indigenousGroup,
       religion: learner.religion,
@@ -591,8 +591,8 @@ async function getTemplateDetails(req, res, next) {
       ? [...Object.entries(SF9.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF9.sheetName, cellReference })),
         { fieldKey: 'subjectName', worksheetName: SF9.sheetName, cellReference: `B${SF9.firstSubjectRow}` },
         { fieldKey: 'firstPeriodGrade', worksheetName: SF9.sheetName, cellReference: `F${SF9.firstSubjectRow}` },
-        { fieldKey: 'finalGrade', worksheetName: SF9.sheetName, cellReference: `J${SF9.firstSubjectRow}` },
-        { fieldKey: 'generalAverage', worksheetName: SF9.sheetName, cellReference: 'J42' }]
+        { fieldKey: 'finalGrade', worksheetName: SF9.sheetName, cellReference: `${SF9.finalGradeColumn}${SF9.firstSubjectRow}` },
+        { fieldKey: 'generalAverage', worksheetName: SF9.sheetName, cellReference: `${SF9.finalGradeColumn}42` }]
       : template.formCode === 'SF8'
       ? [...Object.entries(SF8.headers).map(([fieldKey, cellReference]) => ({ fieldKey, worksheetName: SF8.sheetName, cellReference })),
         ...[['maleLrn', 'B12'], ['maleName', 'C12'], ['maleBirthDate', 'G12'],

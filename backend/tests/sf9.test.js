@@ -64,7 +64,7 @@ function gradesFor(subjectList, termList) {
   })));
 }
 
-test('SF9 calculates subject and general averages only from complete published period grades', () => {
+test('SF9 calculates whole-number subject finals only with three complete terms and leaves general average blank', () => {
   for (const termCount of [2, 3, 4]) {
     const subjectList = subjects(2);
     const termList = terms(termCount);
@@ -73,15 +73,18 @@ test('SF9 calculates subject and general averages only from complete published p
     const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
     const average = 80 + (termCount - 1);
 
-    assert.equal(cells.get('J32'), average);
-    assert.equal(cells.get('J33'), average);
-    assert.equal(result.averageCellAddress, 'J42');
-    assert.equal(cells.get('J42'), average);
+    assert.equal(cells.get('I32'), termCount === 3 ? average : '');
+    assert.equal(cells.get('I33'), termCount === 3 ? average : '');
+    assert.equal(result.averageCellAddress, 'I42');
+    assert.equal(cells.get('I42'), '');
+    assert.equal(result.generalAverage, null);
+    assert.equal(result.issues.some(issue => issue.fieldKey === 'terms'), termCount !== 3);
     assert.equal(cells.get('I18'), 4);
-    assert.equal(cells.get('F31'), termCount === 4 ? 'Q1' : 'Term 1');
-    assert.equal(cells.get('G31'), termCount === 4 ? 'Q2' : 'Term 2');
-    assert.equal(cells.get('H31'), termCount === 4 ? 'Q3' : termCount === 3 ? 'Term 3' : '');
-    assert.equal(cells.get('I31'), termCount === 4 ? 'Q4' : '');
+    assert.equal(cells.has('F31') || cells.has('G31') || cells.has('H31') || cells.has('I31'), false,
+      'printed SF9 term headings remain in the template');
+    assert.equal(cells.get('F32'), 80);
+    assert.equal(cells.get('G32'), 82);
+    assert.equal(cells.get('H32'), termCount >= 3 ? 84 : '');
     assert.equal(result.issues.some(issue => issue.fieldKey === 'grade'), false);
   }
 
@@ -92,19 +95,89 @@ test('SF9 calculates subject and general averages only from complete published p
     assert.equal(new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value])).get('I18'), grade);
   }
 
+  const legacySection = { ...section, academicYear: '2025-2026' };
+  const legacySubjects = subjects(1);
+  const legacyTerms = terms(4);
+  const legacy = buildSf9Pages(school, legacySection, 'Ms. Adviser', learner, legacySubjects, legacyTerms,
+    gradesFor(legacySubjects, legacyTerms));
+  const legacyCells = new Map(legacy.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(legacyCells.has('I31'), false, 'older years also retain the printed T1-T3 headings');
+  assert.equal(legacyCells.get('H32'), 84, 'only the first three configured terms are displayed');
+  assert.equal(legacyCells.get('I32'), '', 'four configured terms leave Final Grade blank');
+  assert.ok(legacy.issues.some(issue => issue.fieldKey === 'terms'));
+
   const subjectList = subjects(1);
   const termList = terms(4);
   const grades = gradesFor(subjectList, termList);
   const missing = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjectList, termList, grades.slice(1));
   const missingCells = new Map(missing.pages[0].map(cell => [cell.cellAddress, cell.value]));
   assert.equal(missingCells.get('F32'), '');
-  assert.equal(missingCells.get('J32'), '');
-  assert.equal(missingCells.get('J42'), '');
+  assert.equal(missingCells.get('I32'), '');
+  assert.equal(missingCells.get('I42'), '');
   assert.ok(missing.issues.some(issue => /no published grade/.test(issue.message)));
 
   const conflict = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjectList, termList,
     [...grades, { ...grades[0], sectionName: 'Conflicting Previous Section' }]);
   assert.ok(conflict.issues.some(issue => /conflicting published grades/.test(issue.message)));
+});
+
+test('SF9 rounds 74/75/75 to 75 and rejects missing, duplicate, and invalid published grades', () => {
+  const subjectList = subjects(1);
+  const termList = terms(3);
+  const grades = gradesFor(subjectList, termList).map((grade, index) => ({
+    ...grade, finalGrade: [74, 75, 75][index]
+  }));
+  const cellsFor = records => new Map(buildSf9Pages(school, section, 'Ms. Adviser', learner,
+    subjectList, termList, records).pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cellsFor(grades).get('I32'), 75);
+  assert.equal(cellsFor(grades).get('I42'), '');
+  assert.equal(cellsFor(grades.slice(1)).get('I32'), '');
+  assert.equal(cellsFor([...grades, { ...grades[0], sectionName: 'Other Section' }]).get('I32'), '');
+  assert.equal(cellsFor([{ ...grades[0], finalGrade: null }, ...grades.slice(1)]).get('I32'), '');
+  assert.equal(cellsFor([{ ...grades[0], finalGrade: 101 }, ...grades.slice(1)]).get('I32'), '');
+});
+
+test('SF9 leaves GMRC and Values Education term and final grades for adviser domain review', async () => {
+  const termList = terms(3);
+  const subjectList = [
+    { id: 1, code: 'gmrc-elementary', name: 'Good Manners and Right Conduct (GMRC)' },
+    { id: 2, code: 'values-education-jhs', name: 'Values Education' },
+    { id: 3, code: 'english-jhs', name: 'English' }
+  ];
+  const result = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjectList, termList,
+    gradesFor(subjectList, termList));
+  const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  for (const row of [32, 33]) {
+    for (const column of ['F', 'G', 'H', 'I']) assert.equal(cells.get(`${column}${row}`), '');
+  }
+  assert.equal(cells.get('I34'), 82);
+  assert.equal(cells.get('I42'), '');
+  assert.equal(result.issues.filter(issue => issue.fieldKey === 'gradePolicyReview').length, 2);
+  const editable = new Set((await getEditableCells(template, result.pages[0])).map(cell => cell.cellAddress));
+  for (const address of ['F32', 'I32', 'F33', 'I33', 'I42']) assert.ok(editable.has(address));
+  const editedPage = result.pages[0].map(cell => cell.cellAddress === 'F32' || cell.cellAddress === 'I32'
+    ? { ...cell, value: 80 } : cell.cellAddress === 'I42' ? { ...cell, value: 81 } : cell);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await createExportWorkbook(template, [editedPage]));
+  const sheet = workbook.getWorksheet(SF9.sheetName);
+  assert.equal(sheet.getCell('F32').value, 80);
+  assert.equal(sheet.getCell('I32').value, 80);
+  assert.equal(sheet.getCell('I42').value, 81);
+  assert.equal(result.pages[0].find(cell => cell.cellAddress === 'I32').value, '');
+});
+
+test('SF9 retains earlier school-year average behavior', () => {
+  const earlierSection = { ...section, academicYear: '2025-2026' };
+  const subjectList = subjects(1);
+  const termList = terms(3);
+  const historicalGrades = gradesFor(subjectList, termList).map((grade, index) => ({
+    ...grade, finalGrade: [80, 82, 83][index]
+  }));
+  const result = buildSf9Pages(school, earlierSection, 'Ms. Adviser', learner,
+    subjectList, termList, historicalGrades);
+  const cells = new Map(result.pages[0].map(cell => [cell.cellAddress, cell.value]));
+  assert.equal(cells.get('I32'), 81.67);
+  assert.equal(cells.get('I42'), 81.67);
 });
 
 test('SF9 places all assigned subjects before a dynamically positioned average row', () => {
@@ -117,10 +190,10 @@ test('SF9 places all assigned subjects before a dynamically positioned average r
   assert.equal(cells.get('B41'), 'Subject 10');
   assert.equal(cells.get('B42'), 'Subject 11');
   assert.equal(cells.get('B43'), 'Subject 12');
-  assert.equal(result.averageCellAddress, 'J44');
-  assert.equal(cells.get('J44'), 83);
-  assert.equal(cells.has('J42'), true);
-  assert.equal(cells.has('J43'), true);
+  assert.equal(result.averageCellAddress, 'I44');
+  assert.equal(cells.get('I44'), '');
+  assert.equal(cells.has('I42'), true);
+  assert.equal(cells.has('I43'), true);
 });
 
 test('SF9 entry-cell validation keeps labels protected and supports overflow subject rows', async () => {
@@ -130,7 +203,10 @@ test('SF9 entry-cell validation keeps labels protected and supports overflow sub
   const editableTen = new Map((await getEditableCells(template, mappedTen)).map(cell => [cell.cellAddress, cell.type]));
   assert.equal(editableTen.get('C17'), 'text');
   assert.equal(editableTen.get('F32'), 'number');
-  assert.equal(editableTen.get('J42'), 'number');
+  assert.equal(editableTen.get('I32'), 'number');
+  assert.equal(editableTen.get('J32'), 'text');
+  assert.equal(editableTen.get('I42'), 'number');
+  assert.equal(editableTen.has('L32'), false);
   assert.equal(editableTen.has('F30'), false);
   assert.equal(editableTen.has('A32'), false);
   assert.equal(editableTen.has('B14'), false);
@@ -140,8 +216,8 @@ test('SF9 entry-cell validation keeps labels protected and supports overflow sub
     gradesFor(twelveSubjects, terms(4))).pages[0];
   const editableTwelve = new Map((await getEditableCells(template, mappedTwelve)).map(cell => [cell.cellAddress, cell.type]));
   assert.equal(editableTwelve.get('F42'), 'number');
-  assert.equal(editableTwelve.get('J43'), 'number');
-  assert.equal(editableTwelve.get('J44'), 'number');
+  assert.equal(editableTwelve.get('I43'), 'number');
+  assert.equal(editableTwelve.get('I44'), 'number');
 });
 
 test('SF9 browser preview extends subject rows and the print area for overflow subjects', async () => {
@@ -154,18 +230,30 @@ test('SF9 browser preview extends subject rows and the print area for overflow s
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(templatePath);
   const worksheet = workbook.getWorksheet(SF9.sheetName);
+  const standardPreview = browser.worksheetPreview(worksheet,
+    { id: 'sf9-learner-performance-v1', formCode: 'SF9' }, []);
+  const otherFormPreview = browser.worksheetPreview(worksheet,
+    { id: 'sf5-promotion-proficiency-v1', formCode: 'SF5' }, []);
+  assert.equal(standardPreview.rows.length, 52);
+  assert.equal(standardPreview.columnWidths.length, 30);
+  assert.equal(standardPreview.truncated, false);
+  assert.equal(otherFormPreview.truncated, true);
+
   const extraRows = browser.extendSf9PreviewRows(worksheet, 12);
   for (let index = 0; index < 12; index += 1) worksheet.getCell(`B${32 + index}`).value = `Subject ${index + 1}`;
   const preview = browser.worksheetPreview(worksheet,
     { id: 'sf9-learner-performance-v1', formCode: 'SF9', previewRows: 52 + extraRows },
-    ['B42', 'B43', 'J44']);
+    ['B42', 'B43', 'I44']);
 
   assert.equal(extraRows, 2);
   assert.equal(worksheet.pageSetup.printArea, 'A2:AD54');
+  assert.equal(worksheet.model.merges.includes('J42:K42'), true);
+  assert.equal(worksheet.model.merges.includes('K42:L42'), false);
   assert.equal(preview.rows.length, 54);
+  assert.equal(preview.truncated, false);
   assert.equal(preview.rows[41].cells.find(cell => cell.address === 'B42').text, 'Subject 11');
   assert.equal(preview.rows[42].cells.find(cell => cell.address === 'B43').text, 'Subject 12');
-  assert.equal(preview.rows[43].cells.find(cell => cell.address === 'J44').editable, true);
+  assert.equal(preview.rows[43].cells.find(cell => cell.address === 'I44').editable, true);
 });
 
 test('SF9 manual preview edits are written to the XLSX only', async () => {
@@ -216,9 +304,13 @@ test('SF9 source and generated workbook preserve its image, layout, and print se
   const addresses = [...sourceXml.matchAll(/<c\b[^>]*\br="([A-Z]+\d+)"/g)].map(match => match[1]);
   assert.equal(new Set(addresses).size, addresses.length, 'source template cell references must be unique');
   assert.doesNotMatch(sourceXml, /<f\b|#REF!|<x14:dataValidations\b/);
-  for (const address of ['B12', 'B15', 'C17', 'C18', 'I17', 'K17', 'J42']) {
+  for (const address of ['B12', 'B15', 'C17', 'C18', 'I17', 'K17', 'I42']) {
     assert.equal(sourceSheet.getCell(address).value, null, `${address} should not contain sample learner or school data`);
   }
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => sourceSheet.getCell(address).value), ['T1', 'T2', 'T3']);
+  assert.equal(sourceSheet.getCell('I30').value, 'Final Grade');
+  assert.equal(sourceSheet.getCell('J30').value, 'Remarks');
+  assert.equal(sourceSheet.getCell('I31').value, 'Final Grade', 'I31 is part of the merged Final Grade heading, not a T4 cell');
 
   const subjectList = subjects(12);
   const termList = terms(4);
@@ -242,13 +334,39 @@ test('SF9 source and generated workbook preserve its image, layout, and print se
   assert.equal(sheet.pageSetup.orientation, 'landscape');
   assert.equal(sheet.pageSetup.printArea, 'A2:AD54');
   assert.equal(sheet.getCell('B43').value, 'Subject 12');
-  assert.equal(sheet.getCell('J44').value, mapped.generalAverage);
-  assert.equal(sheet.getCell('F31').value, 'Q1');
-  assert.equal(sheet.getCell('G31').value, 'Q2');
-  assert.equal(sheet.getCell('H31').value, 'Q3');
-  assert.equal(sheet.getCell('I31').value, 'Q4');
+  assert.equal(sheet.getCell('I44').value, mapped.generalAverage);
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => sheet.getCell(address).value), ['T1', 'T2', 'T3']);
+  assert.equal(sheet.getCell('I30').value, 'Final Grade');
+  assert.equal(sheet.getCell('J30').value, 'Remarks');
+  assert.equal(sheet.getCell('F32').value, 80);
+  assert.equal(sheet.getCell('G32').value, 82);
+  assert.equal(sheet.getCell('H32').value, 84);
+  assert.equal(sheet.getCell('I32').value, null, 'four configured terms leave Final Grade blank');
+  assert.equal(sheet.getCell('J32').value, null);
   assert.deepEqual(await exportedZip.file('xl/styles.xml').async('nodebuffer'),
     await sourceZip.file('xl/styles.xml').async('nodebuffer'));
+
+  const threeTerms = terms(3);
+  const threeTermPages = buildSf9Pages(school, section, 'Ms. Adviser', learner, subjects(1), threeTerms,
+    gradesFor(subjects(1), threeTerms));
+  const threeTermBytes = await createExportWorkbook(template, threeTermPages.pages);
+  const threeTermWorkbook = new ExcelJS.Workbook();
+  await threeTermWorkbook.xlsx.load(threeTermBytes);
+  const threeTermSheet = threeTermWorkbook.getWorksheet(SF9.sheetName);
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => threeTermSheet.getCell(address).value), ['T1', 'T2', 'T3']);
+  assert.equal(threeTermSheet.getCell('I32').value, 82);
+
+  const legacySection = { ...section, academicYear: '2025-2026' };
+  const legacyTerms = terms(4);
+  const legacyPages = buildSf9Pages(school, legacySection, 'Ms. Adviser', learner, subjects(1), legacyTerms,
+    gradesFor(subjects(1), legacyTerms));
+  const legacyBytes = await createExportWorkbook(template, legacyPages.pages);
+  const legacyWorkbook = new ExcelJS.Workbook();
+  await legacyWorkbook.xlsx.load(legacyBytes);
+  const legacySheet = legacyWorkbook.getWorksheet(SF9.sheetName);
+  assert.deepEqual(['F31', 'G31', 'H31'].map(address => legacySheet.getCell(address).value), ['T1', 'T2', 'T3']);
+  assert.equal(legacySheet.getCell('I32').value, null, 'all years use the supplied three-term layout');
+  assert.equal(legacySheet.getCell('J32').value, null);
 });
 
 test('SF9 learner selection and preview stay adviser-only, level-limited, and separate from combined forms', async () => {
