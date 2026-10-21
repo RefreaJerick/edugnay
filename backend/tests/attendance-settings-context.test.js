@@ -70,8 +70,12 @@ test('attendance rules show fixed codes without offering code setup controls', (
   assert.match(styles, /\.school-attendance-overview\s*\{[^}]*grid-template-columns:\s*1fr;/s);
   assert.match(styles, /@media \(min-width:\s*1440px\)[\s\S]*?\.school-attendance-overview\s*\{\s*grid-template-columns:\s*repeat\(2,/);
   assert.match(styles, /\.school-attendance-threshold-grid\s*\{\s*grid-template-columns:\s*1fr;/);
-  assert.match(page, /school-attendance-threshold-field[\s\S]*?school-attendance-threshold-copy[\s\S]*?<label for="maxUnexcusedAbsences">[\s\S]*?<small>Flag a learner after this many unexcused absences\.<\/small>[\s\S]*?<input id="maxUnexcusedAbsences"/);
-  assert.match(page, /school-attendance-threshold-copy[\s\S]*?<label for="consecutiveAbsencesAlert">[\s\S]*?<small>Days in a row before the attendance alert is raised\.<\/small>[\s\S]*?<input id="consecutiveAbsencesAlert"/);
+  assert.match(page, /id="absence-threshold-label">Absence-day limit/);
+  assert.match(page, /Flag after this many dates with an absence in any subject\. Each date counts once\. Excused absences do not count\./);
+  assert.match(page, /Flag after this many dates with an absence in any subject\. Each date counts once\. Excused absences also count\./);
+  assert.match(page, /excusedToggle\.addEventListener\('change', updateAbsenceThresholdCopy\)/);
+  assert.match(page, /<label for="consecutiveAbsencesAlert">Consecutive missed class dates/);
+  assert.match(page, /Flag after this many recorded class dates missed in a row for the same subject\./);
   assert.match(styles, /\.school-attendance-threshold-field\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+72px;[^}]*align-items:\s*center;/s);
   assert.match(styles, /\.school-attendance-threshold-field\s*>\s*input\s*\{[^}]*width:\s*72px;/s);
   assert.match(styles, /@media \(max-width: 560px\)[\s\S]*?\.school-attendance-threshold-field\s*\{\s*grid-template-columns:\s*1fr;\s*align-items:\s*stretch;/);

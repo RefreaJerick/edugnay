@@ -21,14 +21,16 @@ async function getSettings(req, res, next) {
       [req.user.schoolId]
     );
     const [[features]] = await getDatabase().execute(
-      'SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
+      `SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled,
+        narrative_reports_enabled AS narrativeReportsEnabled FROM school_portal_features WHERE school_id = ?`,
       [req.user.schoolId]
     );
+    const reportNotificationsAvailable = Boolean(features?.narrativeReportsEnabled) && process.env.AI_REPORTS_RELEASE_ENABLED === 'true';
     const availability = {
       grade_below_threshold: Boolean(features?.gradesEnabled),
       consecutive_absences: true,
       assignment_not_completed: true,
-      narrative_report_released: false,
+      narrative_report_released: reportNotificationsAvailable,
       journal_not_submitted: Boolean(features?.journalsEnabled)
     };
     res.set('Cache-Control', 'no-store');
@@ -50,13 +52,15 @@ async function updateSettings(req, res, next) {
       error.status = 400;
       throw error;
     }
-    if (triggers.some(item => item.code === 'narrative_report_released' && item.enabled)) {
-      const error = new Error('Report notifications cannot be enabled until reports are released through the backend.');
+    const reportTrigger = triggers.find(item => item.code === 'narrative_report_released');
+    if (reportTrigger.enabled && process.env.AI_REPORTS_RELEASE_ENABLED !== 'true') {
+      const error = new Error('Report notifications are unavailable while report release is disabled.');
       error.status = 409;
       throw error;
     }
     const [[features]] = await getDatabase().execute(
-      'SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled FROM school_portal_features WHERE school_id = ?',
+      `SELECT grades_enabled AS gradesEnabled, journals_enabled AS journalsEnabled,
+        narrative_reports_enabled AS narrativeReportsEnabled FROM school_portal_features WHERE school_id = ?`,
       [req.user.schoolId]
     );
     if (triggers.some(item => item.enabled && (
@@ -64,6 +68,11 @@ async function updateSettings(req, res, next) {
       (item.code === 'journal_not_submitted' && !features?.journalsEnabled)
     ))) {
       const error = new Error('Enable the related portal feature before its parent notification.');
+      error.status = 409;
+      throw error;
+    }
+    if (reportTrigger.enabled && !features?.narrativeReportsEnabled) {
+      const error = new Error('Enable Narrative Reports before its parent notification.');
       error.status = 409;
       throw error;
     }
@@ -92,6 +101,7 @@ async function updateSettings(req, res, next) {
       available: item.code === 'assignment_not_completed' ||
         (item.code === 'grade_below_threshold' && Boolean(features?.gradesEnabled)) ||
         item.code === 'consecutive_absences' ||
+        (item.code === 'narrative_report_released' && Boolean(features?.narrativeReportsEnabled) && process.env.AI_REPORTS_RELEASE_ENABLED === 'true') ||
         (item.code === 'journal_not_submitted' && Boolean(features?.journalsEnabled))
     })) });
   } catch (error) {

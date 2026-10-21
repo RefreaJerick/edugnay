@@ -453,7 +453,7 @@ test('report dashboards do not present unavailable reports as empty backend coun
   const parentDashboard = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
   const parentReports = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
   assert.doesNotMatch(teacherDashboard, /TEACHER_ADVISORY_REPORTS|PENDING_REPORTS|Reports to Confirm/);
-  assert.match(parentDashboard, /showEmptyReport\('Narrative reports unavailable'/);
-  assert.doesNotMatch(parentDashboard, /No weekly report yet/);
+  assert.match(parentDashboard, /showEmptyReport\('Reports unavailable'/);
+  assert.match(parentDashboard, /No shared report yet/);
   assert.doesNotMatch(parentReports, /reports\[\]|frontend report generation|frontend report array/);
 });

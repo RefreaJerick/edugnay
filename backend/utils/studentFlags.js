@@ -1,4 +1,5 @@
 const { isDepedNumericalGradeCode } = require('../config/depedK10Grading');
+const { consecutiveMissedMeetingDates } = require('./attendanceStreak');
 
 function dateKey(value) {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
@@ -44,15 +45,10 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
   }
   for (const [id, student] of studentMap) {
     const count = absenceCounts.get(id) || 0;
-    if (count >= maximum) student.reasons.push({ type: 'absence', count, threshold: maximum });
+    if (count >= maximum) student.reasons.push({ type: 'absence', count, threshold: maximum, includesExcused: countExcused });
   }
   for (const records of subjectRecords.values()) {
-    records.sort((a, b) => dateKey(b.date).localeCompare(dateKey(a.date)) || Number(b.sessionId) - Number(a.sessionId));
-    let count = 0;
-    for (const record of records) {
-      if (record.status !== 'absent') break;
-      count++;
-    }
+    const count = consecutiveMissedMeetingDates(records).length;
     const student = studentMap.get(String(records[0].studentId));
     if (count >= consecutive && student.sectionId === String(records[0].sectionId)) {
       student.reasons.push({

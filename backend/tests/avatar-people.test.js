@@ -79,11 +79,12 @@ test('all audited other-person surfaces use the shared renderer', () => {
   }
 });
 
-test('narrative reports do not show demo people while generation is unavailable', () => {
+test('narrative report pages do not show demo people', () => {
   const teacherReports = read('views/teacher/edugnay-teacher-reports.html');
   const parentReports = read('views/parent/edugnay-parent-reports.html');
-  assert.match(teacherReports, /Narrative reports are unavailable/);
-  assert.match(parentReports, /Narrative reports are unavailable/);
+  assert.match(teacherReports, /generation-state/);
+  assert.match(parentReports, /parentReportChildSwitcher/);
+  assert.match(parentReports, /parent-report-list/);
   assert.doesNotMatch(teacherReports, /reportStudentPerson|generateReports/);
   assert.doesNotMatch(parentReports, /reportTeacherPerson|getReportsForStudent/);
   assert.match(read('assets/css/styles.css'), /\.person-avatar--compact\s*\{\s*--avatar-size:\s*43px;/);

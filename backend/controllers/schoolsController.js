@@ -9,6 +9,7 @@ const { writeAuditLog } = require('../utils/auditLog');
 const { SHS_STRANDS, SHS_TRACKS } = require('../config/shsCurriculum');
 const { schoolDomainCandidate } = require('../utils/schoolEmailDomain');
 const { schoolEmailBase, schoolEmailCandidate } = require('../utils/schoolUserEmail');
+const { DEFAULT_WEEK, normalizeWeekSettings } = require('../utils/reportWeekSettings');
 const { wakeSchoolRegistrationEmailWorker } = require('../workers/schoolRegistrationEmailWorker');
 const {
   sendSchoolRegistrationSubmittedEmail
@@ -178,11 +179,14 @@ async function getStructure(database, schoolId) {
 async function getFeatures(database, schoolId) {
   const [[features]] = await database.execute(
     `SELECT grades_enabled AS gradesEnabled, narrative_reports_enabled AS narrativeReportsEnabled,
+      ai_evidence_approved_at AS aiEvidenceApprovedAt,
       journals_enabled AS journalsEnabled,
       sf_templates_enabled AS sfTemplatesEnabled FROM school_portal_features WHERE school_id = ?`, [schoolId]
   );
   return {
     ...Object.fromEntries(FEATURE_FIELDS.map(field => [field, Boolean(features?.[field])])),
+    aiEvidenceApproved: Boolean(features?.aiEvidenceApprovedAt),
+    aiEvidenceApprovedAt: features?.aiEvidenceApprovedAt || null,
     attendanceEnabled: true
   };
 }
@@ -1166,8 +1170,18 @@ async function updatePortalFeatures(req, res, next) {
   let transactionStarted = false;
   try {
     const body = req.body || {};
-    const unknown = Object.keys(body).find(field => !FEATURE_FIELDS.includes(field) && field !== 'journalSubjectId');
+    const unknown = Object.keys(body).find(field => !FEATURE_FIELDS.includes(field) &&
+      !['journalSubjectId', 'weekStartDay', 'weekEndDay', 'aiEvidenceApproved'].includes(field));
     if (unknown || !Object.keys(body).length) throw createError('Provide valid portal feature settings.');
+    if (Object.hasOwn(body, 'aiEvidenceApproved') && typeof body.aiEvidenceApproved !== 'boolean') {
+      throw createError('AI evidence approval must be enabled or disabled.');
+    }
+    const hasWeekStart = Object.hasOwn(body, 'weekStartDay');
+    const hasWeekEnd = Object.hasOwn(body, 'weekEndDay');
+    if (hasWeekStart !== hasWeekEnd) throw createError('Provide both report week weekdays together.');
+    const requestedWeekSettings = hasWeekStart
+      ? normalizeWeekSettings({ weekStartDay: body.weekStartDay, weekEndDay: body.weekEndDay })
+      : null;
     const schoolId = requireSchoolAdminSchool(req);
     connection = await getDatabase().getConnection();
     await connection.beginTransaction();
@@ -1177,7 +1191,10 @@ async function updatePortalFeatures(req, res, next) {
       [schoolId]
     );
     const current = await getFeatures(connection, schoolId);
-    const [[settings]] = await connection.execute('SELECT journal_subject_id AS journalSubjectId FROM school_settings WHERE school_id = ? FOR UPDATE', [schoolId]);
+    const [[settings]] = await connection.execute(`SELECT journal_subject_id AS journalSubjectId,
+      narrative_report_week_start_day AS weekStartDay,
+      narrative_report_week_end_day AS weekEndDay
+      FROM school_settings WHERE school_id = ? FOR UPDATE`, [schoolId]);
     if (!settings) throw createError('School settings were not found.', 404);
     FEATURE_FIELDS.forEach(field => { if (Object.hasOwn(body, field)) current[field] = boolean(body[field]); });
     current.attendanceEnabled = true;
@@ -1185,6 +1202,10 @@ async function updatePortalFeatures(req, res, next) {
       ? body.journalSubjectId === null ? null : /^\d+$/.test(String(body.journalSubjectId)) ? parseId(body.journalSubjectId) : null
       : settings.journalSubjectId;
     const selectionChanged = Number(journalSubjectId || 0) !== Number(settings.journalSubjectId || 0);
+    const reportWeekSettings = requestedWeekSettings || {
+      weekStartDay: Number(settings.weekStartDay) || DEFAULT_WEEK.weekStartDay,
+      weekEndDay: Number(settings.weekEndDay) || DEFAULT_WEEK.weekEndDay
+    };
     if (Object.hasOwn(body, 'journalSubjectId') && body.journalSubjectId !== null && !journalSubjectId) throw createError('Select a valid journal subject.');
     if (current.journalsEnabled && !journalSubjectId) throw createError('Select a journal subject before enabling Journals.');
     const journalSubjectStatus = await getJournalSubjectEligibility(connection, schoolId, journalSubjectId);
@@ -1195,11 +1216,31 @@ async function updatePortalFeatures(req, res, next) {
         VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = TRUE`, [schoolId, journalSubjectId, journalSubjectStatus.subject.name]);
     }
     await connection.execute(`UPDATE school_portal_features SET grades_enabled=?, narrative_reports_enabled=?, journals_enabled=?, attendance_enabled=?, sf_templates_enabled=? WHERE school_id=?`, [current.gradesEnabled, current.narrativeReportsEnabled, current.journalsEnabled, current.attendanceEnabled, current.sfTemplatesEnabled, schoolId]);
-    await connection.execute('UPDATE school_settings SET journal_subject_id = ? WHERE school_id = ?', [journalSubjectId, schoolId]);
+    if (Object.hasOwn(body, 'aiEvidenceApproved') && body.aiEvidenceApproved !== current.aiEvidenceApproved) {
+      await connection.execute(
+        `UPDATE school_portal_features SET ai_evidence_approved_at = ?,
+          ai_evidence_approved_by_user_id = ? WHERE school_id = ?`,
+        [body.aiEvidenceApproved ? new Date() : null, body.aiEvidenceApproved ? Number(req.user.id) : null, schoolId]
+      );
+      await writeAuditLog(connection, req,
+        body.aiEvidenceApproved ? 'ai_report_evidence_approved' : 'ai_report_evidence_approval_revoked',
+        'school_portal_features', schoolId, { summary: 'AI report evidence sharing' });
+      current.aiEvidenceApproved = body.aiEvidenceApproved;
+      current.aiEvidenceApprovedAt = body.aiEvidenceApproved ? new Date() : null;
+    }
+    await connection.execute(`UPDATE school_settings SET journal_subject_id = ?,
+      narrative_report_week_start_day = ?, narrative_report_week_end_day = ? WHERE school_id = ?`,
+    [journalSubjectId, reportWeekSettings.weekStartDay, reportWeekSettings.weekEndDay, schoolId]);
     await writeAuditLog(connection, req, 'portal_features_updated', 'school_portal_features', schoolId, { summary: 'School portal features' });
+    if (requestedWeekSettings &&
+      (requestedWeekSettings.weekStartDay !== Number(settings.weekStartDay) || requestedWeekSettings.weekEndDay !== Number(settings.weekEndDay))) {
+      await writeAuditLog(connection, req, 'narrative_report_week_updated', 'school_settings', schoolId, {
+        summary: 'Narrative report week updated', ...reportWeekSettings
+      });
+    }
     await connection.commit();
     transactionStarted = false;
-    res.status(200).json({ features: current, journalSubjectId, journalSubjectEligible: journalSubjectStatus.eligible });
+    res.status(200).json({ features: current, journalSubjectId, journalSubjectEligible: journalSubjectStatus.eligible, reportWeekSettings });
   } catch (error) { if (transactionStarted) { try { await connection.rollback(); } catch {} } next(error); } finally { connection?.release(); }
 }
 

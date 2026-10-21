@@ -186,7 +186,7 @@
           <div class="child-switcher" id="child-switcher"></div>
           <!-- end children[] loop -->
 
-          <!-- Weekly Report — confirmed only, fully invisible if not yet confirmed -->
+          <!-- Latest report that the adviser has released to this parent -->
           <!-- Page JavaScript loads the selected child's dashboard data and renders this HTML shell. -->
           <section class="report-hero" aria-labelledby="report-status-title">
             <div class="report-hero-head">
@@ -198,7 +198,7 @@
             <h2 class="report-hero-title" id="report-status-title"></h2>
             <p class="report-hero-description">Review attendance, grades, and teacher notes.</p>
           </section>
-          <!-- Empty report state is rendered by updateChildContext() when no confirmed report exists. -->
+          <!-- Empty report state is rendered when no report has been released. -->
 
           <!-- Daily attendance & assignments — LIVE, not report-gated -->
           <section class="panel panel-daily-activity" aria-labelledby="dailyActivityTitle">
@@ -370,7 +370,8 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function updateChildContext() {
+    let reportRequestVersion = 0;
+    async function updateChildContext() {
       const child = getCurrentChild();
       const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
       if (dashboardPeriod && child?.schoolLevel) {
@@ -384,7 +385,33 @@
         hero.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'file-text', title, text });
         if (window.lucide) lucide.createIcons();
       };
-      showEmptyReport('Narrative reports unavailable', 'Report data is not connected yet.');
+      const requestVersion = ++reportRequestVersion;
+      if (!child || !window.EDUGNAY_API?.isBackendAvailable) {
+        showEmptyReport('No shared report yet', 'Reports released by the adviser will appear here.');
+        return;
+      }
+      const reportLink = document.getElementById('report-hero-link');
+      try {
+        const response = await window.EDUGNAY_API.request('/reports/parent/children/' + encodeURIComponent(child.id));
+        if (requestVersion !== reportRequestVersion) return;
+        const report = response.reports?.[0];
+        if (!report) {
+          showEmptyReport('No shared report yet', 'Reports released by the adviser will appear here.');
+          return;
+        }
+        const start = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+          .format(new Date(report.weekStartDate + 'T00:00:00.000Z'));
+        const end = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+          .format(new Date(report.weekEndDate + 'T00:00:00.000Z'));
+        hero.classList.remove('is-empty');
+        document.getElementById('report-status-title').textContent = 'Week of ' + start + ' – ' + end;
+        hero.querySelector('.report-hero-description').textContent = 'A weekly progress report is available for ' + child.displayName + '.';
+        const query = new URLSearchParams({ studentId: child.id, reportId: report.id });
+        reportLink.href = 'edugnay-parent-reports.html?' + query.toString();
+      } catch (error) {
+        if (requestVersion !== reportRequestVersion) return;
+        showEmptyReport('Reports unavailable', error.message || 'Shared reports could not be loaded.');
+      }
     }
 
     function switchChild(childKey, el) {

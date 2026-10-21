@@ -687,6 +687,12 @@ html.student-nav-hide-journals .sidebar a[href*="edugnay-student-journal.html"] 
   display: none !important;
 }
 
+/* Parent feature links use the last verified access before the page paints. */
+html.parent-nav-hide-grades .sidebar a[href*="edugnay-parent-grades.html"],
+html.parent-nav-hide-reports .sidebar a[href*="edugnay-parent-reports.html"] {
+  display: none !important;
+}
+
 /* School-level Journal access can hide nav links and dashboard surfaces. */
 .sidebar a[href*="edugnay-student-journal.html"][hidden],
 [data-student-access][hidden],

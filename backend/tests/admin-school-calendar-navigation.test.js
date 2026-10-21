@@ -15,7 +15,7 @@ function checkInlineScript(page, filename) {
   new vm.Script(scripts.at(-1)[1], { filename });
 }
 
-test('School Calendar is a full-width settings tab with direct links to the notice form', () => {
+test('School Calendar contains only notice management and direct links to the notice form', () => {
   assert.match(settingsPage, /data-school-tab="calendar"[\s\S]*?School Calendar/);
   assert.doesNotMatch(settingsPage, /<section class="school-calendar-panel"/);
   assert.match(settingsPage, /state\.tab === 'calendar'\) renderCalendarPane\(\)/);
@@ -24,6 +24,15 @@ test('School Calendar is a full-width settings tab with direct links to the noti
   assert.match(settingsPage, /date\.focus\(\)/);
   assert.match(settingsPage, /id="toggleCalendarNoticeForm"/);
   assert.match(settingsPage, /id="calendarNoticeList"/);
+  assert.match(settingsPage, /state\.reportWeekSettings = reportWeek\.settings/);
+  const calendarStart = settingsPage.indexOf('    function renderCalendarPane()');
+  const calendarEnd = settingsPage.indexOf('\n    function setCalendarNoticeFormOpen', calendarStart);
+  const calendarRenderer = settingsPage.slice(calendarStart, calendarEnd);
+  assert.match(calendarRenderer, /Manage holidays and no-class notices\./);
+  assert.match(calendarRenderer, /aria-label="School calendar notices"/);
+  assert.match(calendarRenderer, /Add notice/);
+  assert.doesNotMatch(calendarRenderer, /Narrative report week|weekStartDay|weekEndDay|Save report week/);
+  assert.doesNotMatch(settingsPage, /function saveReportWeekSettings/);
   assert.match(settingsStyles, /\.school-workspace\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
   assert.match(settingsStyles, /@media \(max-width: 760px\)[\s\S]*?\.school-calendar-form-grid\s*\{[^}]*grid-template-columns/s);
   checkInlineScript(settingsPage, 'edugnay-admin-schools.inline.js');
@@ -74,7 +83,6 @@ test('Academic Structure uses the available width and removes the redundant scho
   assert.match(settingsStyles, /\.school-grading-pane form\s*\{\s*max-width:\s*980px;/);
   assert.match(settingsStyles, /\.school-portal-pane form\s*\{\s*max-width:\s*none;/);
   assert.match(settingsStyles, /\.school-academic-pane \.grade-grid\s*\{\s*grid-template-columns:\s*repeat\(4,/);
-  assert.match(settingsStyles, /\.school-academic-pane \.school-deped-subject-card\s*\{\s*max-width:\s*980px;/);
   assert.match(settingsStyles, /@media \(max-width: 1060px\)[\s\S]*?\.school-academic-pane \.grade-grid\s*\{\s*grid-template-columns:\s*repeat\(2,/);
   assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-academic-pane \.grade-grid,[\s\S]*?grid-template-columns:\s*1fr;/);
   checkInlineScript(settingsPage, 'edugnay-admin-schools.inline.js');
@@ -91,9 +99,13 @@ test('Portal Features keeps Journal subject visible and disabled while Journals 
   const layoutMarkup = portalRenderer.slice(layoutStart, footerStart);
 
   assert.match(layoutMarkup, /class="school-portal-layout" id="schoolPortalLayout"/);
-  assert.ok(layoutMarkup.indexOf('school-portal-access-block') < layoutMarkup.indexOf('school-portal-journal-column'));
-  assert.match(layoutMarkup, /id="journalSettingsColumn"/);
-  assert.doesNotMatch(layoutMarkup, /id="journalSettingsColumn"[^>]*hidden/);
+  assert.ok(layoutMarkup.indexOf('school-portal-access-block') < layoutMarkup.indexOf('school-portal-settings-column'));
+  assert.match(layoutMarkup, /id="portalSettingsColumn"/);
+  assert.doesNotMatch(layoutMarkup, /id="portalSettingsColumn"[^>]*hidden/);
+  assert.ok(layoutMarkup.indexOf('id="reportWeekSettingsBlock"') < layoutMarkup.indexOf('id="journalSubjectBlock"'));
+  assert.match(layoutMarkup, /school-report-week-settings-block \$\{narrativeReportsEnabled \? '' : 'is-disabled'\}[^>]*aria-disabled="\$\{narrativeReportsEnabled \? 'false' : 'true'\}"/);
+  assert.match(layoutMarkup, /select id="reportWeekStartDay" name="weekStartDay" \$\{narrativeReportsEnabled \? '' : 'disabled'\}/);
+  assert.match(layoutMarkup, /select id="reportWeekEndDay" name="weekEndDay" \$\{narrativeReportsEnabled \? '' : 'disabled'\}/);
   assert.match(layoutMarkup, /school-journal-settings-block \$\{journalsEnabled \? '' : 'is-disabled'\}[^>]*aria-disabled="\$\{journalsEnabled \? 'false' : 'true'\}"/);
   assert.doesNotMatch(layoutMarkup, /id="journalSubjectBlock"[^>]*hidden/);
   assert.match(layoutMarkup, /id="journalHistoryBlock" \$\{journalsEnabled \? '' : 'hidden'\}/);
@@ -101,16 +113,27 @@ test('Portal Features keeps Journal subject visible and disabled while Journals 
   assert.match(portalRenderer, /journalSubjectBlock\.setAttribute\('aria-disabled', String\(!isJournalEnabled\)\)/);
   assert.match(portalRenderer, /journalHistoryBlock\.hidden = !isJournalEnabled/);
   assert.match(portalRenderer, /journalSubjectSelect\.disabled = !isJournalEnabled \|\| \(!eligibleJournalSubjects\.length && !savedJournalSubjectId\)/);
-  assert.doesNotMatch(portalRenderer, /journalSettingsColumn\.hidden|journalSubjectBlock\.hidden/);
+  assert.match(portalRenderer, /reportWeekBlock\.classList\.toggle\('is-disabled', !isNarrativeReportsEnabled\)/);
+  assert.match(portalRenderer, /reportWeekBlock\.setAttribute\('aria-disabled', String\(!isNarrativeReportsEnabled\)\)/);
+  assert.match(portalRenderer, /reportWeekStartDay\.disabled = !isNarrativeReportsEnabled/);
+  assert.match(portalRenderer, /reportWeekEndDay\.disabled = !isNarrativeReportsEnabled/);
+  assert.match(portalRenderer, /narrativeToggle\?\.addEventListener\('change', syncReportWeekSettings\)/);
+  assert.doesNotMatch(portalRenderer, /portalSettingsColumn\.hidden|journalSubjectBlock\.hidden|reportWeekSettingsBlock\.hidden/);
   assert.match(settingsPage, /form\.elements\.journalSubjectId\?\.value \?\? state\.apiJournalSubjectId/);
+  assert.match(settingsPage, /weekStartDay: Number\(form\.elements\.weekStartDay\.value\)/);
+  assert.match(settingsPage, /weekEndDay: Number\(form\.elements\.weekEndDay\.value\)/);
+  assert.match(settingsPage, /state\.reportWeekSettings = result\.reportWeekSettings \|\| state\.reportWeekSettings/);
   assert.match(portalRenderer, /<\/div>\s*<div class="school-form-footer"[\s\S]*?Save portal features/);
 
   assert.match(settingsStyles, /\.school-portal-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 3fr\) minmax\(0, 2fr\)/s);
   assert.doesNotMatch(settingsStyles, /\.school-portal-layout:not\(\.has-journals\)/);
-  assert.match(settingsStyles, /\.school-portal-journal-column > \.school-journal-settings-block\s*\{[^}]*padding:\s*16px;[^}]*border:\s*1px solid var\(--gray-200\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*var\(--gray-50\);/s);
+  assert.match(settingsStyles, /\.school-portal-settings-column > \.school-portal-setting-block\s*\{[^}]*padding:\s*16px;[^}]*border:\s*1px solid var\(--gray-200\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*var\(--gray-50\);/s);
   assert.doesNotMatch(settingsStyles, /\.school-journal-settings-block\.is-disabled\s*\{/);
-  assert.match(settingsStyles, /\.school-portal-journal-column \.school-form-grid\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/);
+  assert.match(settingsStyles, /\.school-portal-settings-column \.school-form-grid\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/);
+  assert.match(settingsStyles, /\.school-portal-settings-column \.school-report-week-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*max-width:\s*360px;/s);
+  assert.match(settingsStyles, /\.school-report-week-grid > \.school-field,\s*\.school-report-week-grid select\s*\{[^}]*max-width:\s*180px;/s);
   assert.match(settingsStyles, /@media \(max-width: 1060px\)[\s\S]*?\.school-portal-layout\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(settingsStyles, /@media \(max-width: 560px\)[\s\S]*?\.school-portal-settings-column \.school-report-week-grid\s*\{\s*grid-template-columns:\s*minmax\(0, 180px\);/);
   checkInlineScript(settingsPage, 'edugnay-admin-schools.inline.js');
 });
 

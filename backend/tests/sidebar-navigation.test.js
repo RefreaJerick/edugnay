@@ -8,8 +8,10 @@ const root = path.join(__dirname, '../..');
 const adminViews = path.join(root, 'views/admin');
 const teacherViews = path.join(root, 'views/teacher');
 const studentViews = path.join(root, 'views/student');
+const parentViews = path.join(root, 'views/parent');
 const teacherNavPrefix = 'edugnay_teacher_sidebar_v1:';
 const studentNavPrefix = 'edugnay_student_sidebar_v1:';
+const parentNavPrefix = 'edugnay_parent_sidebar_v1:';
 
 function createTeacherShellHarness({
   schoolId = '10',
@@ -271,6 +273,89 @@ function createStudentShellHarness({
   };
 }
 
+function createParentShellHarness({
+  cachedSnapshot = null,
+  session = { apiSchoolId: '10', apiUserId: '80', role: 'parent' },
+  gradesEnabled = true,
+  reportsEnabled = true,
+  schoolFailure = false,
+  sessionFailure = null,
+  pathname = '/views/parent/edugnay-parent-dashboard.html'
+} = {}) {
+  const storage = new Map();
+  if (cachedSnapshot) {
+    storage.set(`${parentNavPrefix}current`, JSON.stringify({
+      schoolId: cachedSnapshot.schoolId, parentId: cachedSnapshot.parentId
+    }));
+    storage.set(`${parentNavPrefix}${cachedSnapshot.schoolId}:${cachedSnapshot.parentId}`, JSON.stringify(cachedSnapshot));
+  }
+  const rootClasses = new Set();
+  const listeners = new Map();
+  const reportHero = { hidden: false };
+  const document = {
+    documentElement: { classList: {
+      toggle(name, hide) { if (hide) rootClasses.add(name); else rootClasses.delete(name); },
+      contains: name => rootClasses.has(name)
+    } },
+    addEventListener(type, callback) { listeners.set(type, callback); },
+    querySelectorAll(selector) { return selector.includes('.report-hero') ? [reportHero] : []; },
+    getElementById() { return null; },
+    querySelector() { return null; }
+  };
+  let finishSchool;
+  let failSchool;
+  let school = null;
+  const schoolReady = new Promise((resolve, reject) => {
+    finishSchool = resolve;
+    failSchool = reject;
+  });
+  const location = { pathname, href: `http://localhost${pathname}`, redirect: '' };
+  location.replace = target => { location.redirect = target; };
+  const context = {
+    document, location, console: { warn() {} }, showAppToast() {}, window: null,
+    sessionStorage: {
+      get length() { return storage.size; },
+      getItem: key => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: key => storage.delete(key),
+      key: index => [...storage.keys()][index] ?? null
+    },
+    EDUGNAY_SCHOOL_READY: schoolReady,
+    EDUGNAY_CONFIG: {
+      getActiveSchool: () => school,
+      getInitials: () => 'PL',
+      isGradesPageEnabled: () => Boolean(school?.gradesPageEnabled),
+      isNarrativeReportsEnabled: () => Boolean(school?.narrativeReportsEnabled)
+    },
+    EDUGNAY_API: {
+      isBackendAvailable: true,
+      loadCommunication: async () => ({ backend: false }),
+      enforceProfileSetup: async () => false,
+      getCurrentUser: async () => {
+        if (sessionFailure) throw Object.assign(new Error('session failed'), { status: sessionFailure });
+        return session;
+      }
+    }
+  };
+  context.window = context;
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8'), context);
+  return {
+    context, storage, rootClasses, listeners, location, reportHero,
+    resolveSchoolReady() {
+      if (schoolFailure) failSchool(new Error('school failed'));
+      else {
+        school = { id: session?.apiSchoolId || '10', gradesPageEnabled: gradesEnabled,
+          narrativeReportsEnabled: reportsEnabled };
+        finishSchool();
+      }
+    },
+    getCachedSnapshot() {
+      const pointer = JSON.parse(storage.get(`${parentNavPrefix}current`) || 'null');
+      return pointer ? JSON.parse(storage.get(`${parentNavPrefix}${pointer.schoolId}:${pointer.parentId}`) || 'null') : null;
+    }
+  };
+}
+
 function settingsItems(html) {
   const label = '<div class="nav-section-label">Settings</div>';
   const labelStart = html.indexOf(label);
@@ -342,7 +427,7 @@ test('teacher sidebar uses a school- and teacher-scoped session snapshot before 
   assert.match(commonShell, /async function confirmLogout\(\)[\s\S]*?clearTeacherSidebarCache\(\)/);
   assert.match(commonShell, /if \(error\.status === 401\)[\s\S]*?clearTeacherSidebarCache\(\)/);
   const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(loginPage, /function clearTeacherSidebarCacheForSignIn\(\)[\s\S]*?edugnay_teacher_sidebar_v1:[\s\S]*?clearTeacherSidebarCacheForSignIn\(\);/);
+  assert.match(loginPage, /function clearPortalCachesForSignIn\(\)[\s\S]*?edugnay_teacher_sidebar_v1:[\s\S]*?clearPortalCachesForSignIn\(\);/);
 
   for (const filename of pages) {
     const html = fs.readFileSync(path.join(teacherViews, filename), 'utf8');
@@ -448,6 +533,116 @@ test('student sidebar cache is discarded on account changes and session expiry',
   assert.equal(expiredHarness.rootClasses.has('student-nav-hide-grades'), true, 'expired sessions fail closed before showing cached links');
   assert.equal(expiredHarness.rootClasses.has('student-nav-hide-journals'), true);
   assert.equal([...expiredHarness.storage.keys()].some(key => key.startsWith(studentNavPrefix)), false, 'session expiry clears the student sidebar cache');
+});
+
+test('parent feature links use shared prepaint classes on every portal page', () => {
+  const pages = fs.readdirSync(parentViews).filter(filename => filename.endsWith('.html'));
+  const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
+  const parentShell = fs.readFileSync(path.join(root, 'assets/js/parent/shell.js'), 'utf8');
+  const commonShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
+  const loginPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.ok(pages.length > 0);
+  for (const filename of pages) {
+    const html = fs.readFileSync(path.join(parentViews, filename), 'utf8');
+    assert.match(html, /assets\/js\/parent\/shell\.js/, `${filename} loads the parent shell`);
+  }
+  assert.match(styles, /html\.parent-nav-hide-grades .*edugnay-parent-grades\.html[\s\S]*?display:\s*none !important/);
+  assert.match(styles, /html\.parent-nav-hide-reports .*edugnay-parent-reports\.html[\s\S]*?display:\s*none !important/);
+  assert.match(parentShell, /let cachedParentSidebarSnapshot = readParentSidebarSnapshot\(\);\s*setParentSidebarPrepaintState\(cachedParentSidebarSnapshot\);/);
+  assert.match(commonShell, /function clearParentSidebarCache\(\)/);
+  assert.match(commonShell, /confirmLogout\(\)[\s\S]*?clearParentSidebarCache\(\)/);
+  assert.match(commonShell, /if \(error\.status === 401\)[\s\S]*?clearParentSidebarCache\(\)/);
+  assert.match(loginPage, /edugnay_parent_sidebar_v1:/);
+  assert.match(commonShell, /if \(pageName\.startsWith\('edugnay-parent-'\)\) return;/);
+});
+
+test('parent sidebar starts hidden on first visit and refreshes cached access without a flash', async () => {
+  const cold = createParentShellHarness({ gradesEnabled: false, reportsEnabled: true });
+  assert.equal(cold.rootClasses.has('parent-nav-hide-grades'), true);
+  assert.equal(cold.rootClasses.has('parent-nav-hide-reports'), true);
+  const coldInit = cold.listeners.get('DOMContentLoaded')();
+  cold.resolveSchoolReady();
+  await coldInit;
+  assert.equal(cold.rootClasses.has('parent-nav-hide-grades'), true);
+  assert.equal(cold.rootClasses.has('parent-nav-hide-reports'), false);
+  assert.deepEqual(cold.getCachedSnapshot().access, { grades: false, reports: true });
+
+  const cached = createParentShellHarness({
+    cachedSnapshot: cold.getCachedSnapshot(), gradesEnabled: true, reportsEnabled: false,
+    pathname: '/views/parent/edugnay-parent-reports.html'
+  });
+  assert.equal(cached.rootClasses.has('parent-nav-hide-grades'), true);
+  assert.equal(cached.rootClasses.has('parent-nav-hide-reports'), false);
+  const init = cached.listeners.get('DOMContentLoaded')();
+  assert.equal(cached.rootClasses.has('parent-nav-hide-reports'), false, 'cached menu holds during the request');
+  cached.resolveSchoolReady();
+  await init;
+  assert.equal(cached.rootClasses.has('parent-nav-hide-grades'), false);
+  assert.equal(cached.rootClasses.has('parent-nav-hide-reports'), true);
+  assert.equal(cached.location.redirect, './edugnay-parent-dashboard.html');
+  assert.deepEqual(cached.getCachedSnapshot().access, { grades: true, reports: false });
+
+  const gradesPage = createParentShellHarness({
+    gradesEnabled: false, pathname: '/views/parent/edugnay-parent-grades.html'
+  });
+  const gradesInit = gradesPage.listeners.get('DOMContentLoaded')();
+  gradesPage.resolveSchoolReady();
+  await gradesInit;
+  assert.equal(gradesPage.location.redirect, './edugnay-parent-dashboard.html');
+});
+
+test('parent sidebar isolates accounts and keeps verified access through a temporary failure', async () => {
+  const snapshot = { version: 1, role: 'parent', schoolId: '10', parentId: '80',
+    access: { grades: true, reports: false } };
+  const switched = createParentShellHarness({
+    cachedSnapshot: snapshot, session: { apiSchoolId: '10', apiUserId: '81', role: 'parent' },
+    gradesEnabled: false, reportsEnabled: true
+  });
+  switched.listeners.get('edugnay:current-user-updated')({ detail: { apiSchoolId: '10', apiUserId: '81', role: 'parent' } });
+  assert.equal(switched.rootClasses.has('parent-nav-hide-grades'), true);
+  assert.equal(switched.rootClasses.has('parent-nav-hide-reports'), true);
+  assert.equal(switched.storage.has(`${parentNavPrefix}10:80`), false);
+  const switchedInit = switched.listeners.get('DOMContentLoaded')();
+  switched.resolveSchoolReady();
+  await switchedInit;
+  assert.equal(switched.getCachedSnapshot().parentId, '81');
+  assert.equal(switched.rootClasses.has('parent-nav-hide-reports'), false);
+
+  const otherSchool = createParentShellHarness({
+    cachedSnapshot: snapshot, session: { apiSchoolId: '11', apiUserId: '80', role: 'parent' }
+  });
+  otherSchool.listeners.get('edugnay:current-user-updated')({
+    detail: { apiSchoolId: '11', apiUserId: '80', role: 'parent' }
+  });
+  assert.equal(otherSchool.rootClasses.has('parent-nav-hide-grades'), true);
+  const otherSchoolInit = otherSchool.listeners.get('DOMContentLoaded')();
+  otherSchool.resolveSchoolReady();
+  await otherSchoolInit;
+  assert.equal(otherSchool.getCachedSnapshot().schoolId, '11');
+  assert.equal(otherSchool.storage.has(`${parentNavPrefix}10:80`), false);
+
+  const outage = createParentShellHarness({ cachedSnapshot: snapshot, schoolFailure: true });
+  const outageInit = outage.listeners.get('DOMContentLoaded')();
+  outage.resolveSchoolReady();
+  await outageInit;
+  assert.equal(outage.rootClasses.has('parent-nav-hide-grades'), false);
+  assert.equal(outage.rootClasses.has('parent-nav-hide-reports'), true);
+  assert.deepEqual(outage.getCachedSnapshot().access, snapshot.access);
+
+  const accountOutage = createParentShellHarness({ cachedSnapshot: snapshot, sessionFailure: 500 });
+  const accountOutageInit = accountOutage.listeners.get('DOMContentLoaded')();
+  accountOutage.resolveSchoolReady();
+  await accountOutageInit;
+  assert.equal(accountOutage.rootClasses.has('parent-nav-hide-grades'), false);
+  assert.deepEqual(accountOutage.getCachedSnapshot().access, snapshot.access);
+
+  const expired = createParentShellHarness({ cachedSnapshot: snapshot, sessionFailure: 401 });
+  const expiredInit = expired.listeners.get('DOMContentLoaded')();
+  expired.resolveSchoolReady();
+  await expiredInit;
+  assert.equal(expired.rootClasses.has('parent-nav-hide-grades'), true);
+  assert.equal(expired.rootClasses.has('parent-nav-hide-reports'), true);
+  assert.equal(expired.getCachedSnapshot(), null);
 });
 
 test('cached teacher navigation renders immediately, then removes a freshly revoked link', async () => {

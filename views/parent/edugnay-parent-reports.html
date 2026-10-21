@@ -12,6 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
   <link rel="stylesheet" href="../../assets/css/parent/reports.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
@@ -21,10 +22,6 @@
 </head>
 
 <body data-page-title="Narrative Reports">
-
-  <!--
-  Narrative report data and generation remain unavailable until backend integration.
--->
 
   <div class="shell">
     <div class="sidebar-overlay" id="overlay" onclick="toggleDrawer(false)"></div>
@@ -151,15 +148,26 @@
   <section class="portal-overview" aria-labelledby="reports-page-title">
     <div class="portal-overview-copy">
       <h1 class="portal-overview-title" id="reports-page-title">Narrative Reports</h1>
-      <p class="portal-overview-description">Progress summaries and teacher insights.</p>
+      <p class="portal-overview-description">Weekly progress reports shared by your child’s adviser.</p>
     </div>
   </section>
-  <div class="panel" role="status" style="padding: 24px;">
-    <h2>Narrative reports are unavailable</h2>
-    <p>Report generation is not connected yet. Existing records are preserved in the school database.</p>
+  <div class="child-switcher" id="parentReportChildSwitcher" aria-label="Select a student"></div>
+  <p class="parent-reports-message" id="parent-reports-message" role="status">Loading linked children…</p>
+  <div class="panel-empty-slot" id="parent-reports-empty" hidden></div>
+  <div id="parent-reports-content" hidden>
+    <section class="latest-report-hero" id="latest-report" aria-labelledby="latest-report-title"></section>
+    <div class="report-timeline" id="parent-report-list" aria-live="polite"></div>
   </div>
 </main>
 </div>
+<div class="modal-backdrop parent-report-modal-backdrop" id="parent-report-modal" hidden>
+  <div class="modal parent-report-modal" role="dialog" aria-modal="true" aria-labelledby="parent-report-modal-title" aria-describedby="parent-report-modal-sub">
+    <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon" aria-hidden="true"><i data-lucide="file-text"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="parent-report-modal-title">Weekly Narrative Report</h2><p class="modal-sub" id="parent-report-modal-sub"></p></div></div><button class="modal-close" type="button" data-close-report aria-label="Close report"><i data-lucide="x"></i></button></div>
+    <div class="modal-body parent-report-modal-body"><p class="rm-text" id="parent-report-modal-summary"></p><div id="parent-report-modal-actions"></div></div>
+    <div class="modal-foot parent-report-modal-foot"><span class="rm-foot-meta modal-foot-left" id="parent-report-modal-meta"></span><button class="top-btn secondary" type="button" data-close-report>Close</button></div>
+  </div>
+</div>
+<script src="../../assets/js/parent/narrative-reports.js"></script>
 <script>document.addEventListener('DOMContentLoaded', () => window.lucide?.createIcons?.());</script>
 
 </body>

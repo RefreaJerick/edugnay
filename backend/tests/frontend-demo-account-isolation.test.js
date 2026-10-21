@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const shell = fs.readFileSync(path.join(__dirname, '../../assets/js/shell-common.js'), 'utf8');
 const parentReports = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
+const parentReportsScript = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
 const adminUsers = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-users.html'), 'utf8');
 const adminProfile = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-profile.html'), 'utf8');
 const parentProfile = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-profile.html'), 'utf8');
@@ -30,9 +31,13 @@ test('default record arrays are empty, including reports', () => {
   assert.doesNotMatch(shell, /const DEFAULT_REPORTS\s*=|makeDemoReport/);
 });
 
-test('parent reports show unavailable state without demo records', () => {
-  assert.match(parentReports, /Narrative reports are unavailable/);
+test('parent reports use linked-child backend data without demo records', () => {
+  assert.match(parentReports, /parentReportChildSwitcher/);
+  assert.match(parentReports, /parent-report-list/);
+  assert.match(parentReportsScript, /getParentChildren\(\)/);
+  assert.match(parentReportsScript, /reports\/parent\/children/);
   assert.doesNotMatch(parentReports, /getReportsForStudent|makeDemoParentChildren/);
+  assert.doesNotMatch(parentReportsScript, /makeDemoParentChildren|DEFAULT_REPORTS/);
 });
 
 test('admin account list keeps a visible backend load error and disables local account fallback', () => {

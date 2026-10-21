@@ -278,6 +278,15 @@
         <div class="flag-grid" id="report-flagged-students" role="status"></div>
       </div>
 
+      <div class="section-title"><h2>Weekly report release history</h2><div class="section-line"></div></div>
+      <div class="panel release-history-panel">
+        <div class="panel-head"><div class="panel-title">Released weekly reports</div></div>
+        <div class="release-history-layout">
+          <div id="school-release-list" role="status">Loading release history…</div>
+          <div id="school-release-detail" role="status">Select a report to view its released versions and correction reasons.</div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -285,6 +294,44 @@
     let gradeSummaryError = '';
     let attendanceSummaryError = '';
     let reportsLoading = true;
+    const escapeReleaseText = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
+
+    async function loadSchoolReleaseHistory() {
+      const list = document.getElementById('school-release-list');
+      try {
+        const data = await window.EDUGNAY_API.request('/reports/weekly-release-history');
+        list.innerHTML = data.reports.length ? data.reports.map(report => `
+          <button type="button" class="school-release-item" data-release-report-id="${escapeReleaseText(report.reportId)}">
+            <strong>${escapeReleaseText(report.learnerName)}</strong>
+            <span>${escapeReleaseText(report.sectionName)} · Week of ${escapeReleaseText(String(report.weekStartDate).slice(0, 10))} · Version ${escapeReleaseText(report.latestVersion)}</span>
+          </button>`).join('') : 'No weekly reports have been released yet.';
+      } catch (error) {
+        list.textContent = 'Release history could not be loaded.';
+      }
+    }
+
+    async function showSchoolReleaseHistory(reportId) {
+      const detail = document.getElementById('school-release-detail');
+      detail.textContent = 'Loading released versions…';
+      try {
+        const history = await window.EDUGNAY_API.request(`/reports/weekly-drafts/${encodeURIComponent(reportId)}/history`);
+        detail.innerHTML = history.releases.map(version => `
+          <article class="school-release-version">
+            <h3>Version ${escapeReleaseText(version.versionNumber)}</h3>
+            <p class="school-release-meta">Released by ${escapeReleaseText(version.adviserName || 'Adviser')} · ${escapeReleaseText(String(version.releasedAt).slice(0, 10))}</p>
+            <p>${escapeReleaseText(version.summary)}</p>
+            ${version.parentActions.length ? `<ul>${version.parentActions.map(action => `<li>${escapeReleaseText(action)}</li>`).join('')}</ul>` : ''}
+          </article>`).join('') + (history.reopens.length ? `<h3>Correction reasons</h3>${history.reopens.map(item => `
+          <p class="school-release-reason">${escapeReleaseText(item.reason)} <span class="school-release-meta">· ${escapeReleaseText(item.adviserName || 'Adviser')} · ${escapeReleaseText(String(item.reopenedAt).slice(0, 10))}</span></p>`).join('')}` : '');
+      } catch (error) {
+        detail.textContent = 'This report history could not be loaded.';
+      }
+    }
+
+    document.getElementById('school-release-list').addEventListener('click', event => {
+      const button = event.target.closest('[data-release-report-id]');
+      if (button) showSchoolReleaseHistory(button.dataset.releaseReportId);
+    });
     const REPORTS_DATA = {
       academicYear: null,
       subjectPerformance: [],
@@ -444,8 +491,8 @@
             <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
           <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
             ? `${reason.subject}: ${reason.grade}`
-            : reason.type === 'consecutive' ? `${reason.count} consecutive · ${reason.subject}`
-              : `${reason.count} absences`)}</span>`).join('')}</div>
+                : reason.type === 'consecutive' ? `${reason.count} missed ${reason.subject} meeting dates in a row`
+                  : `${reason.count} dates with a recorded ${reason.includesExcused ? 'subject absence (including excused)' : 'unexcused subject absence'}`)}</span>`).join('')}</div>
         </div>`).join('')
         : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
     }
@@ -508,8 +555,11 @@
         gradeSummaryError = 'Published grade data could not be loaded.';
         attendanceSummaryError = 'Confirmed subject attendance could not be loaded.';
         renderReportPanels();
+        document.getElementById('school-release-list').textContent = 'Backend unavailable.';
         return;
       }
+
+      loadSchoolReleaseHistory();
 
       try {
         const years = await window.EDUGNAY_API.getAcademicYears();

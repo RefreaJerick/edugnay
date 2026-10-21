@@ -316,8 +316,16 @@
       calendarFormOpen: false,
       calendarFocusRequested: false,
       calendarError: '',
-      calendarLoading: true
+      calendarLoading: true,
+      reportWeekSettings: { weekStartDay: 1, weekEndDay: 6 }
     };
+
+    const REPORT_WEEKDAYS = [
+      { value: 1, label: 'Monday' }, { value: 2, label: 'Tuesday' },
+      { value: 3, label: 'Wednesday' }, { value: 4, label: 'Thursday' },
+      { value: 5, label: 'Friday' }, { value: 6, label: 'Saturday' },
+      { value: 7, label: 'Sunday' }
+    ];
 
     function activeSchool() { return state.school; }
     function setSettingsHeading(title, subtitle) { document.getElementById('settingsTitle').textContent = title; document.getElementById('settingsSubtitle').textContent = subtitle; }
@@ -2016,6 +2024,7 @@
       const features = state.apiFeatures || {};
       const gradesPageEnabled = Boolean(features.gradesEnabled);
       const narrativeReportsEnabled = Boolean(features.narrativeReportsEnabled);
+      const aiEvidenceApproved = Boolean(features.aiEvidenceApproved);
       const journalsEnabled = Boolean(features.journalsEnabled);
       const sfTemplatesEnabled = Boolean(features.sfTemplatesEnabled);
       const noEligibleJournalSubjects = !eligibleJournalSubjects.length;
@@ -2047,6 +2056,11 @@
                     <span class="school-toggle-control" aria-hidden="true"></span>
                   </label>
                   <label class="school-toggle-row">
+                    <span class="school-toggle-copy"><strong>Approve sending learner evidence to the AI service</strong><small>Includes attendance, assignments, published grades for follow-up candidates, adviser notes, and journal reflections. Required before generating reports; you can revoke approval to stop future requests.</small></span>
+                    <input class="school-toggle-input" type="checkbox" name="aiEvidenceApproved" ${aiEvidenceApproved ? 'checked' : ''}>
+                    <span class="school-toggle-control" aria-hidden="true"></span>
+                  </label>
+                  <label class="school-toggle-row">
                     <span class="school-toggle-copy"><strong>Enable SF Templates</strong><small>Allow teachers to access the official School Form templates and generate forms with school data.</small></span>
                     <input class="school-toggle-input" type="checkbox" name="sfTemplatesEnabled" ${sfTemplatesEnabled ? 'checked' : ''}>
                     <span class="school-toggle-control" aria-hidden="true"></span>
@@ -2058,8 +2072,20 @@
                   </label>
                 </div>
               </div>
-              <div class="school-portal-journal-column" id="journalSettingsColumn">
-                <div class="school-section-block school-journal-settings-block ${journalsEnabled ? '' : 'is-disabled'}" id="journalSubjectBlock" aria-disabled="${journalsEnabled ? 'false' : 'true'}">
+              <div class="school-portal-settings-column" id="portalSettingsColumn">
+                <div class="school-section-block school-portal-setting-block school-report-week-settings-block ${narrativeReportsEnabled ? '' : 'is-disabled'}" id="reportWeekSettingsBlock" aria-disabled="${narrativeReportsEnabled ? 'false' : 'true'}">
+                  <div class="school-section-block-head">
+                    <div>
+                      <div class="school-section-block-title">Narrative report week</div>
+                      <div class="school-section-block-sub">Choose the recurring weekdays covered by weekly reports. Existing report dates stay unchanged if this setting changes.</div>
+                    </div>
+                  </div>
+                  <div class="school-form-grid school-report-week-grid">
+                    <div class="school-field"><label for="reportWeekStartDay">Week starts</label><select id="reportWeekStartDay" name="weekStartDay" ${narrativeReportsEnabled ? '' : 'disabled'}>${REPORT_WEEKDAYS.map(day => `<option value="${day.value}" ${Number(state.reportWeekSettings.weekStartDay) === day.value ? 'selected' : ''}>${day.label}</option>`).join('')}</select></div>
+                    <div class="school-field"><label for="reportWeekEndDay">Week ends</label><select id="reportWeekEndDay" name="weekEndDay" ${narrativeReportsEnabled ? '' : 'disabled'}>${REPORT_WEEKDAYS.map(day => `<option value="${day.value}" ${Number(state.reportWeekSettings.weekEndDay) === day.value ? 'selected' : ''}>${day.label}</option>`).join('')}</select></div>
+                  </div>
+                </div>
+                <div class="school-section-block school-portal-setting-block school-journal-settings-block ${journalsEnabled ? '' : 'is-disabled'}" id="journalSubjectBlock" aria-disabled="${journalsEnabled ? 'false' : 'true'}">
                   <div class="school-section-block-head">
                     <div>
                       <div class="school-section-block-title">Journal subject</div>
@@ -2092,6 +2118,19 @@
       const journalSubjectSelect = document.getElementById('journalSubjectId');
       const journalSubjectBlock = document.getElementById('journalSubjectBlock');
       const journalHistoryBlock = document.getElementById('journalHistoryBlock');
+      const narrativeToggle = document.querySelector('#schoolPortalForm [name="narrativeReportsEnabled"]');
+      const reportWeekBlock = document.getElementById('reportWeekSettingsBlock');
+      const reportWeekStartDay = document.getElementById('reportWeekStartDay');
+      const reportWeekEndDay = document.getElementById('reportWeekEndDay');
+      const syncReportWeekSettings = () => {
+        const isNarrativeReportsEnabled = Boolean(narrativeToggle?.checked);
+        if (reportWeekBlock) {
+          reportWeekBlock.classList.toggle('is-disabled', !isNarrativeReportsEnabled);
+          reportWeekBlock.setAttribute('aria-disabled', String(!isNarrativeReportsEnabled));
+        }
+        if (reportWeekStartDay) reportWeekStartDay.disabled = !isNarrativeReportsEnabled;
+        if (reportWeekEndDay) reportWeekEndDay.disabled = !isNarrativeReportsEnabled;
+      };
       const syncJournalSections = () => {
         const isJournalEnabled = Boolean(journalToggle?.checked);
         if (journalSubjectBlock) {
@@ -2102,7 +2141,9 @@
         if (journalSubjectSelect) journalSubjectSelect.disabled = !isJournalEnabled || (!eligibleJournalSubjects.length && !savedJournalSubjectId);
       };
       journalToggle?.addEventListener('change', syncJournalSections);
+      narrativeToggle?.addEventListener('change', syncReportWeekSettings);
       syncJournalSections();
+      syncReportWeekSettings();
       if (window.lucide) lucide.createIcons();
     }
 
@@ -2121,7 +2162,7 @@
               </div>
               <div class="school-section-block school-attendance-thresholds-block">
                 <div class="school-section-block-title">Absence thresholds</div>
-                <div class="school-form-grid school-attendance-threshold-grid"><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="maxUnexcusedAbsences">Maximum unexcused absences</label><small>Flag a learner after this many unexcused absences.</small></div><input id="maxUnexcusedAbsences" name="maxUnexcusedAbsences" type="number" min="1" step="1" value="${Number(rules.maxUnexcusedAbsences) || 5}"></div><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="consecutiveAbsencesAlert">Consecutive absences alert</label><small>Days in a row before the attendance alert is raised.</small></div><input id="consecutiveAbsencesAlert" name="consecutiveAbsencesAlert" type="number" min="1" step="1" value="${Number(rules.consecutiveAbsencesAlert) || 3}"></div></div>
+                <div class="school-form-grid school-attendance-threshold-grid"><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="maxUnexcusedAbsences" id="absence-threshold-label">Absence-day limit</label><small id="absence-threshold-help"></small></div><input id="maxUnexcusedAbsences" name="maxUnexcusedAbsences" type="number" min="1" step="1" value="${Number(rules.maxUnexcusedAbsences) || 5}"></div><div class="school-field school-attendance-threshold-field"><div class="school-attendance-threshold-copy"><label for="consecutiveAbsencesAlert">Consecutive missed class dates</label><small>Flag after this many recorded class dates missed in a row for the same subject.</small></div><input id="consecutiveAbsencesAlert" name="consecutiveAbsencesAlert" type="number" min="1" step="1" value="${Number(rules.consecutiveAbsencesAlert) || 3}"></div></div>
               </div>
             </div>
             <div class="school-section-block">
@@ -2135,6 +2176,14 @@
           </form>
         </div>`;
       document.getElementById('schoolAttendanceForm').addEventListener('submit', saveAttendance);
+      const excusedToggle = document.querySelector('#schoolAttendanceForm [name="countExcusedAbsences"]');
+      const updateAbsenceThresholdCopy = () => {
+        document.getElementById('absence-threshold-help').textContent = excusedToggle.checked
+          ? 'Flag after this many dates with an absence in any subject. Each date counts once. Excused absences also count.'
+          : 'Flag after this many dates with an absence in any subject. Each date counts once. Excused absences do not count.';
+      };
+      excusedToggle.addEventListener('change', updateAbsenceThresholdCopy);
+      updateAbsenceThresholdCopy();
       if (window.lucide) lucide.createIcons();
     }
 
@@ -2156,10 +2205,12 @@
       if (!state.apiActive || state.tab !== 'calendar') return;
       setSettingsHeading('School Calendar', 'Manage holidays and no-class notices.');
       document.getElementById('schoolSettingsBody').innerHTML = `<section class="school-calendar-settings" aria-label="School calendar notices">
+        <div class="school-calendar-notices">
         <div class="school-calendar-toolbar"><button class="top-btn primary" id="toggleCalendarNoticeForm" type="button" aria-controls="calendarNoticeFormPanel" aria-expanded="${state.calendarFormOpen}"><i data-lucide="${state.calendarFormOpen ? 'x' : 'plus'}"></i> ${state.calendarFormOpen ? 'Close form' : 'Add notice'}</button></div>
         <div class="calendar-list" id="calendarNoticeList" aria-live="polite"></div>
         <div class="school-calendar-form-panel" id="calendarNoticeFormPanel" ${state.calendarFormOpen ? '' : 'hidden'}>
           <form id="holidayForm" class="school-calendar-form"><div class="school-form-grid school-calendar-form-grid"><div class="school-field"><label for="holidayDate">Date</label><input id="holidayDate" name="date" type="date" required></div><div class="school-field"><label for="holidayTitle">Title</label><input id="holidayTitle" name="title" placeholder="School holiday" maxlength="255" required></div><div class="school-field"><label for="holidayDetail">Notice</label><input id="holidayDetail" name="detail" placeholder="No classes today." maxlength="2000"></div></div><div class="school-form-footer"><button class="top-btn secondary" id="cancelCalendarNotice" type="button">Cancel</button><button class="top-btn primary" type="submit"><i data-lucide="check"></i> Save notice</button></div></form>
+        </div>
         </div>
       </section>`;
       document.getElementById('toggleCalendarNoticeForm').addEventListener('click', () => setCalendarNoticeFormOpen(!state.calendarFormOpen));
@@ -2219,14 +2270,15 @@
       renderSettingsApiState();
       try {
         await window.EDUGNAY_SCHOOL_READY;
-        const [apiSchool, portal, structure, years, gradingSettings, subjects, attendance] = await Promise.all([
+        const [apiSchool, portal, structure, years, gradingSettings, subjects, attendance, reportWeek] = await Promise.all([
           window.EDUGNAY_API.getSchoolSettings(),
           window.EDUGNAY_API.getPortalFeatures(),
           window.EDUGNAY_API.getAcademicStructure(),
           window.EDUGNAY_API.getAcademicYears(),
           window.EDUGNAY_API.getGradingSettings(),
           window.EDUGNAY_API.getSubjects(),
-          window.EDUGNAY_API.request('/school/attendance-settings')
+          window.EDUGNAY_API.request('/school/attendance-settings'),
+          window.EDUGNAY_API.request('/reports/weekly-settings')
         ]);
         if (!apiSchool?.id || !structure.length) throw new Error('The school settings response is incomplete.');
         applyApiSchoolSettings(apiSchool);
@@ -2235,6 +2287,7 @@
         state.apiShsGradingTypes = gradingSettings.shsGradingTypes;
         state.publishedShsGradeCount = gradingSettings.publishedShsGradeCount;
         state.apiAttendanceRules = attendance.settings;
+        state.reportWeekSettings = reportWeek.settings || state.reportWeekSettings;
         const activeYear = years.find(year => year.status === 'active') || years[0] || null;
         const terms = activeYear
           ? await window.EDUGNAY_API.getAcademicTerms({ academicYearId: activeYear.id })
@@ -2866,13 +2919,17 @@
           const result = await window.EDUGNAY_API.updatePortalFeatures({
             gradesEnabled: Boolean(form.elements.gradesPageEnabled?.checked),
             narrativeReportsEnabled: Boolean(form.elements.narrativeReportsEnabled?.checked),
+            aiEvidenceApproved: Boolean(form.elements.aiEvidenceApproved?.checked),
             journalsEnabled: Boolean(form.elements.journalsEnabled?.checked),
             journalSubjectId: journalSubjectId ? Number(journalSubjectId) : null,
-            sfTemplatesEnabled: Boolean(form.elements.sfTemplatesEnabled?.checked)
+            sfTemplatesEnabled: Boolean(form.elements.sfTemplatesEnabled?.checked),
+            weekStartDay: Number(form.elements.weekStartDay.value),
+            weekEndDay: Number(form.elements.weekEndDay.value)
           });
           state.apiFeatures = result.features;
           state.apiJournalSubjectId = result.journalSubjectId;
           state.apiJournalSubjectEligible = result.journalSubjectEligible;
+          state.reportWeekSettings = result.reportWeekSettings || state.reportWeekSettings;
           school.gradesPageEnabled = Boolean(result.features.gradesEnabled);
           school.narrativeReportsEnabled = Boolean(result.features.narrativeReportsEnabled);
           school.journalsEnabled = Boolean(result.features.journalsEnabled);

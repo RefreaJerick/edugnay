@@ -91,7 +91,7 @@ async function runShellInit(harness, loadCurrentUser) {
     initToastSoundToggle() {}, isPublicPage: () => false,
     getCurrentUser: loadCurrentUser,
     setCurrentUserShellStatus(label) { harness.name.textContent = label; },
-    clearTeacherSidebarCache() {}, clearStudentSidebarCache() {},
+    clearTeacherSidebarCache() {}, clearStudentSidebarCache() {}, clearParentSidebarCache() {},
     showAppToast() {}, applyCurrentDateToGradingBanners() {}, applyActiveSchoolToShell() {},
     applyGradePortalAccess() {}, applyPageTitleToTopbar() {}, initScrollFades() {}, initSidebarScrollbars() {}
   });
@@ -190,6 +190,7 @@ test('sign-in, sign-out and expired sessions clear the shared display snapshot',
   harness.context.requestApi = async () => {};
   harness.context.clearTeacherSidebarCache = () => {};
   harness.context.clearStudentSidebarCache = () => {};
+  harness.context.clearParentSidebarCache = () => {};
   harness.context.isPublicPage = () => false;
   vm.runInContext(source.slice(clearStart, clearEnd), harness.context);
   await harness.context.confirmLogout();

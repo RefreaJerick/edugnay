@@ -15,7 +15,7 @@ const database = {
     if (sql.includes('FROM parent_notification_triggers AS triggers')) return [[{ enabled: 1, threshold: 2 }]];
     if (sql.includes('FROM parent_notification_triggers WHERE')) return [triggerRows];
     if (sql.includes('FROM school_attendance_settings')) return [[{ absenceThreshold: 2, threshold: 2 }]];
-    if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled: 1, attendanceEnabled: 0, journalsEnabled: 1 }]];
+    if (sql.includes('FROM school_portal_features')) return [[{ gradesEnabled: 1, attendanceEnabled: 0, journalsEnabled: 1, narrativeReportsEnabled: 1 }]];
     if (sql.includes('FROM attendance_sessions AS sessions')) return [attendanceHistory];
     if (sql.includes('FROM assignments\n')) return [assignmentRows];
     if (sql.includes('FROM journal_prompts AS prompts')) return [journalRows];
@@ -64,6 +64,8 @@ test('admin settings default off and use only the session school', async () => {
   assert.ok(responseData.triggers.every(item => !item.enabled));
   assert.equal(responseData.triggers.find(item => item.code === 'consecutive_absences').available, true);
   assert.equal(responseData.triggers.find(item => item.code === 'narrative_report_released').available, false);
+  const configPage = require('fs').readFileSync(require('path').join(__dirname, '../../views/admin/edugnay-admin-system-config.html'), 'utf8');
+  assert.match(configPage, /label: 'Consecutive missed class dates'/);
   assert.equal(calls[0].values[0], 1);
 });
 
@@ -98,9 +100,39 @@ test('admin saves validated settings transactionally; report trigger remains una
   assert.equal(committed, false);
 });
 
+test('report-release notifications become configurable only when the release gate is enabled', async () => {
+  const previous = process.env.AI_REPORTS_RELEASE_ENABLED;
+  try {
+    process.env.AI_REPORTS_RELEASE_ENABLED = 'true';
+    reset();
+    const loaded = await call(settings.getSettings);
+    const reportSetting = loaded.responseData.triggers.find(item => item.code === 'narrative_report_released');
+    assert.equal(reportSetting.available, true);
+    assert.equal(reportSetting.enabled, false);
+
+    const triggers = [
+      { code: 'grade_below_threshold', enabled: false, threshold: null },
+      { code: 'consecutive_absences', enabled: false, threshold: null },
+      { code: 'assignment_not_completed', enabled: false, threshold: 2 },
+      { code: 'narrative_report_released', enabled: true, threshold: null },
+      { code: 'journal_not_submitted', enabled: false, threshold: 2 }
+    ];
+    const saved = await call(settings.updateSettings, { triggers });
+    assert.equal(saved.error, undefined);
+    assert.equal(saved.responseData.triggers.find(item => item.code === 'narrative_report_released').available, true);
+  } finally {
+    if (previous === undefined) delete process.env.AI_REPORTS_RELEASE_ENABLED;
+    else process.env.AI_REPORTS_RELEASE_ENABLED = previous;
+  }
+});
+
 test('attendance alerts only on the threshold crossing in the same subject', async () => {
   reset();
-  attendanceHistory = [{ id: 20, status: 'absent' }, { id: 19, status: 'absent' }, { id: 18, status: 'present' }];
+  attendanceHistory = [
+    { sessionId: 20, date: '2026-10-03', status: 'absent' },
+    { sessionId: 19, date: '2026-10-01', status: 'absent' },
+    { sessionId: 18, date: '2026-09-30', status: 'present' }
+  ];
   await notifyConsecutiveAbsences(database, 1, 8, 2, 6);
   const notice = calls.find(call => call.sql.includes('INSERT INTO notifications'));
   assert.equal(notice.values[0], 'attendance');
@@ -111,9 +143,43 @@ test('attendance alerts only on the threshold crossing in the same subject', asy
   assert.doesNotMatch(triggerQuery.sql, /features\.attendance_enabled/i);
 
   reset();
-  attendanceHistory = [{ id: 21, status: 'absent' }, { id: 20, status: 'absent' }, { id: 19, status: 'absent' }];
+  attendanceHistory = [
+    { sessionId: 21, date: '2026-10-05', status: 'absent' },
+    { sessionId: 20, date: '2026-10-03', status: 'absent' },
+    { sessionId: 19, date: '2026-10-01', status: 'absent' }
+  ];
   await notifyConsecutiveAbsences(database, 1, 8, 2, 6);
   assert.equal(calls.some(call => call.sql.includes('INSERT INTO notifications')), false);
+});
+
+test('parent absence alerts count distinct fully missed subject dates', async () => {
+  reset();
+  attendanceHistory = [
+    { sessionId: 21, date: '2026-10-03', status: 'absent' },
+    { sessionId: 20, date: '2026-10-03', status: 'absent' }
+  ];
+  await notifyConsecutiveAbsences(database, 1, 8, 2, 6);
+  assert.equal(calls.some(call => call.sql.includes('INSERT INTO notifications')), false);
+
+  reset();
+  attendanceHistory = [
+    { sessionId: 21, date: '2026-10-03', status: 'absent' },
+    { sessionId: 20, date: '2026-10-03', status: 'present' },
+    { sessionId: 19, date: '2026-10-01', status: 'absent' },
+    { sessionId: 18, date: '2026-09-30', status: 'absent' }
+  ];
+  await notifyConsecutiveAbsences(database, 1, 8, 2, 6);
+  assert.equal(calls.some(call => call.sql.includes('INSERT INTO notifications')), false);
+
+  reset();
+  attendanceHistory = [
+    { sessionId: 22, date: '2026-10-03', status: 'absent' },
+    { sessionId: 21, date: '2026-10-03', status: 'absent' },
+    { sessionId: 19, date: '2026-10-01', status: 'absent' }
+  ];
+  await notifyConsecutiveAbsences(database, 1, 8, 2, 6);
+  assert.equal(calls.find(call => call.sql.includes('INSERT INTO notifications')).values[4], 'absence:8:2:6:19');
+  assert.match(calls.find(call => call.sql.includes('FROM attendance_sessions AS sessions')).sql, /DATE_FORMAT\(sessions\.attendance_date/);
 });
 
 test('overdue checks skip unknown offline statuses and notify after an exact missed streak', async () => {

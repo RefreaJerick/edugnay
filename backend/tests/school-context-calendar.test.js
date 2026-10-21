@@ -37,6 +37,49 @@ test('school context returns only the authenticated school and its current perio
   assert.deepEqual(calls, [[7], [7], [7, '2026-2027']]);
 });
 
+test('shared shell omits a missing school-year suffix instead of displaying null', () => {
+  const source = shell.match(/function applyActiveSchoolToShell\(\) \{[\s\S]*?\n\}/)[0];
+  const render = schoolYear => {
+    const activePeriod = { textContent: '', dataset: {} };
+    const schoolContext = { textContent: '' };
+    const yearElement = { textContent: '' };
+    const school = { id: 7, name: 'Test School', shortName: 'TS', schoolType: 'elementary', schoolLevels: [], activeDivision: 'elem', schoolYear };
+    const context = {
+      window: {
+        EDUGNAY_API_SCHOOL_CONTEXT: school,
+        EDUGNAY_CONFIG: {
+          getActiveSchool: () => school,
+          getSchoolTypeInfo: () => ({ label: 'Elementary' }),
+          getCurrentAcademicPeriod: () => null,
+          isGradesPageEnabled: () => false
+        }
+      },
+      document: {
+        body: { dataset: {} },
+        querySelectorAll(selector) {
+          if (selector === '[data-active-academic-period]') return [activePeriod];
+          if (selector === '[data-school-context]') return [schoolContext];
+          if (selector === '[data-school-year]') return [yearElement];
+          return [];
+        }
+      }
+    };
+    vm.runInNewContext(`${source}\napplyActiveSchoolToShell();`, context);
+    return { activePeriod: activePeriod.textContent, schoolContext: schoolContext.textContent, year: yearElement.textContent };
+  };
+
+  assert.deepEqual(render(null), {
+    activePeriod: 'No active grading period',
+    schoolContext: 'Elementary',
+    year: ''
+  });
+  assert.deepEqual(render('2026-2027'), {
+    activePeriod: 'No active grading period · S.Y. 2026-2027',
+    schoolContext: 'Elementary · 2026-2027',
+    year: '2026-2027'
+  });
+});
+
 test('calendar listing uses the signed-in school and preserves local date', async () => {
   database = { async execute(sql, params) {
     assert.match(sql, /WHERE school_id = \?/);

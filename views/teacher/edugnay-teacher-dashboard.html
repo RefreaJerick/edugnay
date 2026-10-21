@@ -1115,8 +1115,8 @@
                   <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
               <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
                 ? `${reason.subject}: ${reason.grade}`
-                : reason.type === 'consecutive' ? `${reason.count} consecutive · ${reason.subject}`
-                  : `${reason.count} absences`)}</span>`).join('')}</div>
+                : reason.type === 'consecutive' ? `${reason.count} missed ${reason.subject} meeting dates in a row`
+                  : `${reason.count} dates with a recorded ${reason.includesExcused ? 'subject absence (including excused)' : 'unexcused subject absence'}`)}</span>`).join('')}</div>
             </div>`).join('')
             : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
       }

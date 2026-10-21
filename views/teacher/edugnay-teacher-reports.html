@@ -177,15 +177,109 @@
   <section class="portal-overview" aria-labelledby="reports-page-title">
     <div class="portal-overview-copy">
       <h1 class="portal-overview-title" id="reports-page-title">Narrative Reports</h1>
-      <p class="portal-overview-description">Progress summaries and teacher insights.</p>
+      <p class="portal-overview-description">Review weekly learner evidence and prepare reports for families.</p>
     </div>
   </section>
-  <div class="panel" role="status" style="padding: 24px;">
-    <h2>Narrative reports are unavailable</h2>
-    <p>Report generation is not connected yet. Existing records are preserved in the school database.</p>
+  <section class="pipeline-banner" aria-labelledby="pipeline-title">
+    <div class="pipeline-head">
+      <div class="pipeline-title-wrap">
+        <span class="pipeline-icon"><i data-lucide="workflow"></i></span>
+        <div><h2 class="pipeline-title" id="pipeline-title">Weekly Report Generation Pipeline</h2>
+          <p class="pipeline-sub" id="pipeline-context">Loading your advisory section…</p></div>
+      </div>
+      <span class="badge" id="generation-state">Checking generation availability…</span>
+    </div>
+    <div class="pipeline-flow" aria-label="Report preparation steps">
+      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="user-check"></i></span><span class="flow-step-label">Attendance</span><span class="flow-step-sub">Confirmed records</span></div>
+      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="clipboard-check"></i></span><span class="flow-step-label">Assignments</span><span class="flow-step-sub">Across subjects</span></div>
+      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="chart-no-axes-column"></i></span><span class="flow-step-label">Academic</span><span class="flow-step-sub">Candidates only</span></div>
+      <div class="flow-step"><span class="flow-step-icon"><i data-lucide="notebook-pen"></i></span><span class="flow-step-label">Journal</span><span class="flow-step-sub">Values Education</span></div>
+      <div class="flow-step ai"><span class="flow-step-icon"><i data-lucide="sparkles"></i></span><span class="flow-step-label">AI draft</span><span class="flow-step-sub">Adviser reviews</span></div>
+      <div class="flow-step final"><span class="flow-step-icon"><i data-lucide="send"></i></span><span class="flow-step-label">To parent</span><span class="flow-step-sub">After adviser release</span></div>
+    </div>
+  </section>
+  <div class="reports-overview">
+    <section class="report-selection-card" aria-labelledby="report-selection-title">
+      <div class="report-selection-head">
+        <h2 class="report-selection-title" id="report-selection-title">Report selection</h2>
+        <p>Choose the advisory section and reporting week.</p>
+      </div>
+      <div class="reports-context-controls">
+        <label for="report-section">Advisory section <select id="report-section"></select></label>
+        <label for="report-week">Report week <select id="report-week"></select></label>
+      </div>
+    </section>
+    <div class="summary-strip" aria-label="Weekly report counts">
+      <div class="stat-card purple">
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="file-text" style="width:20px;height:20px;"></i></div></div>
+        <div class="stat-card-num" id="count-total">0</div>
+        <div class="stat-card-label">Reports in selected week</div>
+        <div class="stat-card-sub">Selected reporting period</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="hourglass" style="width:20px;height:20px;"></i></div></div>
+        <div class="stat-card-num" id="count-drafts">0</div>
+        <div class="stat-card-label">Awaiting confirmation</div>
+        <div class="stat-card-sub">Drafts waiting for adviser review</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="circle-check-big" style="width:20px;height:20px;"></i></div></div>
+        <div class="stat-card-num" id="count-confirmed">0</div>
+        <div class="stat-card-label">Confirmed reports</div>
+        <div class="stat-card-sub">Held or released to parents</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-card-top"><div class="stat-card-icon"><i data-lucide="triangle-alert" style="width:20px;height:20px;"></i></div></div>
+        <div class="stat-card-num" id="count-follow-up">0</div>
+        <div class="stat-card-label">Internal follow-ups</div>
+        <div class="stat-card-sub">Approved for internal follow-up</div>
+      </div>
+    </div>
   </div>
+  <section class="panel" aria-labelledby="weekly-reports-title">
+    <div class="panel-head">
+      <div><h2 class="panel-title" id="weekly-reports-title">Weekly Reports</h2><p class="report-panel-hint" id="week-caption">Select a section and week.</p></div>
+      <div class="panel-head-right">
+        <div class="filter-row"><label class="search-wrap"><span class="search-icon" aria-hidden="true"><i data-lucide="search"></i></span><input class="search-input" id="report-search" type="search" placeholder="Search learner" aria-label="Search learner"></label>
+          <select class="select-filter" id="report-status" aria-label="Filter report status"><option value="all">All statuses</option><option value="missing">No draft</option><option value="draft">Needs review</option><option value="confirmed">Confirmed</option></select></div>
+        <div class="generation-control">
+          <button class="top-btn primary" id="open-generation" type="button" disabled><i data-lucide="sparkles"></i> Generate Reports</button>
+          <p class="generation-control-help" id="generation-control-help" role="status" aria-live="polite" hidden></p>
+        </div>
+      </div>
+    </div>
+    <p class="reports-message" id="reports-message" role="status">Loading reports…</p>
+    <div class="reports-grid" id="reports-grid"></div>
+  </section>
 </main>
 </div>
+<div class="modal-backdrop" id="gen-modal" aria-hidden="true">
+  <div class="review-modal gen-modal" role="dialog" aria-modal="true" aria-labelledby="gen-title">
+    <div class="review-modal-head"><span class="pipeline-icon"><i data-lucide="sparkles"></i></span><div><h2 class="review-modal-title" id="gen-title">Generate Weekly Reports</h2><p class="review-modal-sub" id="gen-subtitle"></p></div><button class="modal-close" type="button" data-close-modal aria-label="Close generation dialog"><i data-lucide="x"></i></button></div>
+    <div class="review-body"><p class="gen-intro">Drafts use confirmed attendance, assignment completion, and relevant Values Education reflections from the selected week. Academic grades are included only for follow-up candidates. Each draft still needs adviser review.</p>
+      <div class="gen-note-panel"><div class="gen-note-head"><div><strong class="gen-note-title">Optional learner notes</strong><p class="gen-note-help">Add relevant classroom observations. Avoid unnecessary sensitive details.</p></div><span class="gen-note-count" id="gen-count"></span></div><div class="gen-student-notes" id="gen-students"></div></div>
+      <p class="reports-message" id="gen-message" role="status"></p>
+      <button class="top-btn primary gen-start-button" id="start-generation" type="button"><i data-lucide="sparkles"></i> Start Generation</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="review-modal" aria-hidden="true">
+  <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title">
+    <div class="review-modal-head"><span class="review-avatar person-avatar person-avatar--compact" data-avatar-tone="green" id="review-avatar" aria-hidden="true"></span><div><h2 class="review-modal-title" id="review-title">Learner report</h2><p class="review-modal-sub" id="review-subtitle"></p></div><button class="modal-close" type="button" data-close-modal aria-label="Close review dialog"><i data-lucide="x"></i></button></div>
+    <div class="review-body">
+      <section class="review-section"><h3 class="review-section-label"><i data-lucide="database" aria-hidden="true"></i> Data sources used</h3><div class="data-source-grid" id="review-evidence"></div></section>
+      <section class="review-section teacher-note-review-section"><h3 class="review-section-label"><i data-lucide="message-square-text" aria-hidden="true"></i> Teacher note used for generation</h3><div class="teacher-note-review" id="review-note"></div><p class="teacher-note-review-help">Visible to teachers only; never included in the parent report.</p></section>
+      <section class="review-section"><label class="review-section-label" for="review-summary"><i data-lucide="sparkles" aria-hidden="true"></i> AI-generated parent report</label><textarea class="ai-report-text" id="review-summary" maxlength="1800"></textarea><div class="regenerate-row"><button class="btn-sm purple" id="regenerate-report" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i> Regenerate draft</button></div></section>
+      <section class="review-section"><h3 class="review-section-label"><i data-lucide="list-checks" aria-hidden="true"></i> Recommended actions for parent</h3><p class="recommended-actions-help">Review, edit, add, or remove these suggestions before confirmation.</p><div class="recommended-actions-editor" id="review-actions"></div><button class="btn-sm primary recommended-action-add" id="add-action" type="button"><i data-lucide="plus" aria-hidden="true"></i> Add action</button></section>
+      <section class="review-section" id="follow-up-section" hidden><h3 class="review-section-label"><i data-lucide="heart-handshake" aria-hidden="true"></i> Suggested adviser follow-up</h3><p class="teacher-note-review" id="follow-up-text"></p><div class="follow-up-evidence"><strong id="follow-up-evidence-heading">Recorded reasons through this report week</strong><ul id="follow-up-reasons"></ul></div><p class="recommended-actions-help">For advisers only. Choose when confirming; saving a draft does not apply this choice. No “at-risk” label is shown to parents.</p><div class="follow-up-choices"><label><input type="radio" name="follow-up-decision" value="accept"> Accept follow-up</label><label><input type="radio" name="follow-up-decision" value="dismiss"> Dismiss suggestion</label></div></section>
+      <section class="review-section report-history-section" id="report-history-section" hidden><div class="report-history-heading"><h3 class="review-section-label"><i data-lucide="history" aria-hidden="true"></i> Released versions</h3><button class="top-btn secondary report-history-toggle" id="report-history" type="button" aria-controls="report-history-content" aria-expanded="false">Show versions</button></div><div id="report-history-content" hidden></div></section>
+      <section class="review-section report-reopen-section" id="report-reopen-section" hidden><label class="review-section-label" for="report-reopen-reason"><i data-lucide="file-pen-line" aria-hidden="true"></i> Reason for correction</label><textarea class="ai-report-text" id="report-reopen-reason" maxlength="500" rows="3" placeholder="Describe what needs to be corrected."></textarea><p class="recommended-actions-help">This reason is visible to school staff only. Parents keep seeing the last released version until you release the correction.</p><div class="report-reopen-actions"><button class="top-btn secondary" id="cancel-reopen" type="button">Cancel</button><button class="top-btn confirm-btn" id="submit-reopen" type="button">Reopen report</button></div></section>
+      <p class="reports-message" id="review-message" role="status"></p>
+    </div>
+    <div class="review-modal-foot"><span class="review-modal-foot-left" id="review-release-note">Confirming saves the report. Releasing it to parents is a separate step.</span><div class="review-modal-foot-actions"><button class="top-btn secondary" type="button" data-close-modal>Close</button><button class="top-btn secondary" id="reopen-report" type="button" hidden>Reopen report</button><button class="top-btn secondary" id="save-review" type="button">Save draft</button><button class="top-btn confirm-btn" id="confirm-review" type="button">Confirm report</button><button class="top-btn confirm-btn" id="release-report" type="button" hidden>Release to Parents</button></div></div>
+  </div>
+</div>
+<script src="../../assets/js/teacher/narrative-reports.js"></script>
 <script>document.addEventListener('DOMContentLoaded', () => window.lucide?.createIcons?.());</script>
 </body>
 </html>

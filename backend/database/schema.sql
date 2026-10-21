@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS school_portal_features (
   school_id BIGINT UNSIGNED PRIMARY KEY,
   grades_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   narrative_reports_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ai_evidence_approved_at DATETIME NULL,
+  ai_evidence_approved_by_user_id BIGINT UNSIGNED NULL,
   journals_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   attendance_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   sf_templates_enabled BOOLEAN NOT NULL DEFAULT FALSE,
@@ -426,6 +428,8 @@ CREATE TABLE IF NOT EXISTS school_settings (
   notification_email VARCHAR(255) NULL,
   current_school_year_label VARCHAR(30) NULL,
   journal_subject_id BIGINT UNSIGNED NULL,
+  narrative_report_week_start_day TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  narrative_report_week_end_day TINYINT UNSIGNED NOT NULL DEFAULT 6,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_school_settings_school
@@ -1034,23 +1038,72 @@ CREATE TABLE IF NOT EXISTS narrative_reports (
   section_id BIGINT UNSIGNED NOT NULL,
   teacher_user_id BIGINT UNSIGNED NOT NULL,
   academic_term_id BIGINT UNSIGNED NULL,
+  report_week_start_date DATE NULL,
+  report_week_end_date DATE NULL,
   report_period_key VARCHAR(50) NOT NULL,
   report_period_label VARCHAR(120) NOT NULL,
   teacher_note TEXT NULL,
+  ai_model VARCHAR(100) NULL,
   generated_summary TEXT NOT NULL,
   teacher_edited_summary TEXT NULL,
+  ai_follow_up_suggestion TEXT NULL,
   report_status VARCHAR(30) NOT NULL DEFAULT 'draft',
   is_at_risk BOOLEAN NOT NULL DEFAULT FALSE,
   generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   confirmed_at DATETIME NULL,
+  released_at DATETIME NULL,
+  pending_correction BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_narrative_reports_student_period (student_user_id, report_period_key),
+  KEY idx_narrative_reports_released (school_id, student_user_id, released_at, report_week_start_date),
   CONSTRAINT fk_narrative_reports_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
   CONSTRAINT fk_narrative_reports_student FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_narrative_reports_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
   CONSTRAINT fk_narrative_reports_teacher FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_narrative_reports_term FOREIGN KEY (academic_term_id) REFERENCES academic_terms(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS narrative_report_releases (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  narrative_report_id BIGINT UNSIGNED NOT NULL,
+  version_number INT UNSIGNED NOT NULL,
+  summary TEXT NOT NULL,
+  parent_actions JSON NOT NULL,
+  released_at DATETIME NOT NULL,
+  released_by_user_id BIGINT UNSIGNED NULL,
+  released_by_name VARCHAR(255) NOT NULL,
+  UNIQUE KEY uq_narrative_release_version (school_id, narrative_report_id, version_number),
+  KEY idx_narrative_release_latest (narrative_report_id, version_number),
+  CONSTRAINT fk_narrative_release_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_narrative_release_report FOREIGN KEY (narrative_report_id) REFERENCES narrative_reports(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_narrative_release_adviser FOREIGN KEY (released_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TRIGGER narrative_release_no_update BEFORE UPDATE ON narrative_report_releases
+FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Released report snapshots cannot be changed';
+
+CREATE TRIGGER narrative_release_no_delete BEFORE DELETE ON narrative_report_releases
+FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Released report snapshots cannot be deleted';
+
+CREATE TABLE IF NOT EXISTS ai_report_daily_usage (
+  school_id BIGINT UNSIGNED NOT NULL,
+  usage_date DATE NOT NULL,
+  call_count INT UNSIGNED NOT NULL DEFAULT 0,
+  input_tokens BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  output_tokens BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (school_id, usage_date),
+  CONSTRAINT fk_ai_report_usage_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS ai_report_daily_errors (
+  school_id BIGINT UNSIGNED NOT NULL,
+  usage_date DATE NOT NULL,
+  error_category VARCHAR(40) NOT NULL,
+  error_count INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (school_id, usage_date, error_category),
+  CONSTRAINT fk_ai_report_errors_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS report_recommendations (

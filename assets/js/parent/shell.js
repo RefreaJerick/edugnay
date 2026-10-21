@@ -11,6 +11,77 @@ window.EDUGNAY_PARENT = {
   currentUser: null,
   children: []
 };
+const PARENT_NAV_CACHE_PREFIX = window.EDUGNAY_PARENT_NAV_CACHE_PREFIX || 'edugnay_parent_sidebar_v1:';
+const PARENT_NAV_CACHE_POINTER = `${PARENT_NAV_CACHE_PREFIX}current`;
+
+function parentSidebarIdentity(user) {
+  const schoolId = String(user?.apiSchoolId ?? user?.schoolId ?? '');
+  const parentId = String(user?.apiUserId ?? user?.userId ?? user?.id ?? '');
+  return schoolId && parentId ? { schoolId, parentId } : null;
+}
+
+function parentSidebarCacheKey(schoolId, parentId) {
+  return `${PARENT_NAV_CACHE_PREFIX}${encodeURIComponent(schoolId)}:${encodeURIComponent(parentId)}`;
+}
+
+function readParentSidebarSnapshot() {
+  try {
+    const pointer = JSON.parse(sessionStorage.getItem(PARENT_NAV_CACHE_POINTER) || 'null');
+    if (!pointer?.schoolId || !pointer?.parentId) return null;
+    const snapshot = JSON.parse(sessionStorage.getItem(parentSidebarCacheKey(pointer.schoolId, pointer.parentId)) || 'null');
+    if (snapshot?.version !== 1 || snapshot.role !== 'parent'
+      || String(snapshot.schoolId) !== String(pointer.schoolId)
+      || String(snapshot.parentId) !== String(pointer.parentId)
+      || typeof snapshot.access?.grades !== 'boolean'
+      || typeof snapshot.access?.reports !== 'boolean') return null;
+    return snapshot;
+  } catch { return null; }
+}
+
+function setParentSidebarPrepaintState(snapshot) {
+  const classes = document.documentElement?.classList;
+  if (!classes) return;
+  classes.toggle('parent-nav-hide-grades', !snapshot?.access?.grades);
+  classes.toggle('parent-nav-hide-reports', !snapshot?.access?.reports);
+}
+
+function saveParentSidebarSnapshot(snapshot) {
+  try {
+    sessionStorage.setItem(parentSidebarCacheKey(snapshot.schoolId, snapshot.parentId), JSON.stringify(snapshot));
+    sessionStorage.setItem(PARENT_NAV_CACHE_POINTER, JSON.stringify({
+      schoolId: snapshot.schoolId, parentId: snapshot.parentId
+    }));
+  } catch { /* Navigation still works when session storage is unavailable. */ }
+}
+
+function clearParentSidebarSnapshot() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(PARENT_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch { /* Continue when session storage is unavailable. */ }
+  cachedParentSidebarSnapshot = null;
+  setParentSidebarPrepaintState(null);
+}
+
+function parentSidebarSnapshotMatchesUser(snapshot, user) {
+  const identity = parentSidebarIdentity(user);
+  return Boolean(identity && user?.role === 'parent'
+    && snapshot?.schoolId === identity.schoolId && snapshot?.parentId === identity.parentId);
+}
+
+let cachedParentSidebarSnapshot = readParentSidebarSnapshot();
+setParentSidebarPrepaintState(cachedParentSidebarSnapshot);
+
+document.addEventListener('edugnay:current-user-updated', event => {
+  const user = event.detail;
+  if (cachedParentSidebarSnapshot && !parentSidebarSnapshotMatchesUser(cachedParentSidebarSnapshot, user)) {
+    clearParentSidebarSnapshot();
+  }
+  if (user?.role === 'parent') window.EDUGNAY_PARENT.currentUser = user;
+  else window.EDUGNAY_PARENT.currentUser = null;
+});
 
 function renderParentIdentity() {
   const parent = window.EDUGNAY_PARENT.currentUser;
@@ -101,7 +172,15 @@ function renderTopbarNotifs() {
 }
 
 function goToTopbarNotif(link, id) {
-  markCurrentNotificationRead(id).finally(() => navigate(link.page));
+  markCurrentNotificationRead(id).finally(() => {
+    if (link.page === 'reports' && /^\d+$/.test(String(link.studentId || ''))) {
+      const query = new URLSearchParams({ studentId: String(link.studentId) });
+      if (/^\d+$/.test(String(link.reportId || ''))) query.set('reportId', String(link.reportId));
+      window.location.href = './edugnay-parent-reports.html?' + query.toString();
+      return;
+    }
+    navigate(link.page);
+  });
 }
 
 window.EDUGNAY_NOTIFICATION_CONTEXT = {
@@ -166,24 +245,48 @@ function navigate(page) {
   }
 }
 
-function applyParentReportAccess() {
-  const enabled = window.EDUGNAY_CONFIG?.isNarrativeReportsEnabled?.() !== false;
-  document.querySelectorAll('a[href*="edugnay-parent-reports.html"]').forEach(link => {
-    link.hidden = !enabled;
-    link.setAttribute('aria-hidden', String(!enabled));
-    if (!enabled) link.setAttribute('tabindex', '-1');
-    else link.removeAttribute('tabindex');
-  });
-
+function applyParentReportAccess(enabled) {
   document.querySelectorAll('.report-hero, .report-hero-link').forEach(item => {
     item.hidden = !enabled;
   });
+}
 
+function applyParentSidebarAccess(snapshot, verified = false) {
+  setParentSidebarPrepaintState(snapshot);
+  applyParentReportAccess(Boolean(snapshot?.access?.reports));
+  if (!verified) return;
   const page = window.location.pathname.split('/').pop().toLowerCase();
-  if (!enabled && page === 'edugnay-parent-reports.html') {
+  if ((!snapshot.access.grades && page === 'edugnay-parent-grades.html')
+    || (!snapshot.access.reports && page === 'edugnay-parent-reports.html')) {
     window.location.replace('./edugnay-parent-dashboard.html');
   }
 }
+
+function refreshParentSidebarAccess() {
+  const user = window.EDUGNAY_PARENT.currentUser;
+  const identity = parentSidebarIdentity(user);
+  const school = PARENT_CONFIG?.getActiveSchool?.();
+  if (school?.id && identity && String(school.id) !== identity.schoolId) {
+    clearParentSidebarSnapshot();
+    return;
+  }
+  if (!identity || user?.role !== 'parent' || !school?.id
+    || String(school.id) !== identity.schoolId) return;
+  const snapshot = {
+    version: 1, role: 'parent', ...identity,
+    access: {
+      grades: PARENT_CONFIG.isGradesPageEnabled(),
+      reports: PARENT_CONFIG.isNarrativeReportsEnabled()
+    }
+  };
+  cachedParentSidebarSnapshot = snapshot;
+  saveParentSidebarSnapshot(snapshot);
+  applyParentSidebarAccess(snapshot, true);
+}
+
+document.addEventListener('edugnay:school-context-updated', () => {
+  if (window.EDUGNAY_PARENT.currentUser) refreshParentSidebarAccess();
+});
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { toggleDrawer(false); }
@@ -191,20 +294,26 @@ document.addEventListener('keydown', e => {
 
 /* ── INIT ── */
 document.addEventListener('DOMContentLoaded', async () => {
-  try { await window.EDUGNAY_SCHOOL_READY; }
+  applyParentSidebarAccess(cachedParentSidebarSnapshot);
+  let schoolReady = false;
+  try { await window.EDUGNAY_SCHOOL_READY; schoolReady = true; }
   catch { showAppToast('School information could not be loaded.', 'error'); }
-  await window.EDUGNAY_COMMUNICATION_READY;
   if (PARENT_BACKEND_MODE) {
     if (await window.EDUGNAY_API.enforceProfileSetup('edugnay-parent-profile.html', 'parent')) return;
     try {
       const user = await window.EDUGNAY_API.getCurrentUser();
-      if (user?.role !== 'parent') return;
+      if (user?.role !== 'parent') {
+        clearParentSidebarSnapshot();
+        return;
+      }
       window.EDUGNAY_PARENT.currentUser = user;
     } catch (error) {
+      if (error.status === 401) clearParentSidebarSnapshot();
       console.warn('Parent identity could not be loaded.', error.message);
     }
   }
   renderParentIdentity();
-  applyParentReportAccess();
+  if (schoolReady && window.EDUGNAY_PARENT.currentUser) refreshParentSidebarAccess();
+  await window.EDUGNAY_COMMUNICATION_READY;
   renderTopbarNotifs();
 });

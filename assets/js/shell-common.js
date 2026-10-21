@@ -3,10 +3,12 @@
 const EDUGNAY_SESSION_STORAGE_KEY = 'edugnay_session';
 const EDUGNAY_TEACHER_NAV_CACHE_PREFIX = 'edugnay_teacher_sidebar_v1:';
 const EDUGNAY_STUDENT_NAV_CACHE_PREFIX = 'edugnay_student_sidebar_v1:';
+const EDUGNAY_PARENT_NAV_CACHE_PREFIX = 'edugnay_parent_sidebar_v1:';
 const EDUGNAY_PROFILE_DISPLAY_KEY = 'edugnay_profile_display_v1';
 const EDUGNAY_LEGACY_STUDENT_PROFILE_DISPLAY_KEY = 'edugnay_student_profile_display_v1';
 window.EDUGNAY_TEACHER_NAV_CACHE_PREFIX = EDUGNAY_TEACHER_NAV_CACHE_PREFIX;
 window.EDUGNAY_STUDENT_NAV_CACHE_PREFIX = EDUGNAY_STUDENT_NAV_CACHE_PREFIX;
+window.EDUGNAY_PARENT_NAV_CACHE_PREFIX = EDUGNAY_PARENT_NAV_CACHE_PREFIX;
 const EDUGNAY_API_BASE_URL = String(window.EDUGNAY_APP_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 const TOAST_SOUND_STORAGE_KEY = 'edugnay_toast_sounds_enabled';
 
@@ -26,6 +28,17 @@ function clearStudentSidebarCache() {
     for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
       const key = sessionStorage.key(index);
       if (key?.startsWith(EDUGNAY_STUDENT_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Continue authentication flows if session storage is unavailable.
+  }
+}
+
+function clearParentSidebarCache() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(EDUGNAY_PARENT_NAV_CACHE_PREFIX)) sessionStorage.removeItem(key);
     }
   } catch {
     // Continue authentication flows if session storage is unavailable.
@@ -497,7 +510,8 @@ async function updateApiPortalFeatures(values = {}) {
   return {
     features: response?.features || {},
     journalSubjectId: response?.journalSubjectId || null,
-    journalSubjectEligible: Boolean(response?.journalSubjectEligible)
+    journalSubjectEligible: Boolean(response?.journalSubjectEligible),
+    reportWeekSettings: response?.reportWeekSettings || null
   };
 }
 
@@ -1715,7 +1729,21 @@ function normalizeApiNotification(record) {
   const type = String(record.type || 'notification').toLowerCase();
   const page = API_NOTIFICATION_PAGE_BY_TYPE[type] || 'notifications';
   let link = { page };
-  if (type === 'grading_period_reopen') {
+  if (type === 'report') {
+    try {
+      const target = new URL(String(record.targetPath || ''), window.location.origin);
+      const studentId = target.searchParams.get('studentId') || '';
+      const reportId = target.searchParams.get('reportId') || '';
+      if (target.origin === window.location.origin
+        && target.pathname === '/views/parent/edugnay-parent-reports.html'
+        && /^\d+$/.test(studentId)
+        && /^\d+$/.test(reportId)) {
+        link = { page: 'reports', studentId, reportId };
+      }
+    } catch {
+      link = { page: 'reports' };
+    }
+  } else if (type === 'grading_period_reopen') {
     try {
       const target = new URL(String(record.targetPath || ''), window.location.origin);
       const sectionId = target.searchParams.get('sectionId') || '';
@@ -3935,6 +3963,7 @@ async function confirmLogout() {
     sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY);
     clearTeacherSidebarCache();
     clearStudentSidebarCache();
+    clearParentSidebarCache();
     clearProfileDisplaySnapshot();
   } catch {
     // Continue to the sign-in page when session storage is unavailable.
@@ -3952,6 +3981,7 @@ function applyActiveSchoolToShell() {
   const school = window.EDUGNAY_API_SCHOOL_CONTEXT || config.getActiveSchool();
   if (!school) return;
   const typeLabel = config.getSchoolTypeInfo(school.schoolLevels).label;
+  const schoolYear = String(school.schoolYear || '').trim();
 
   document.querySelectorAll('.brand-sub:not([data-platform-brand])').forEach(element => {
     element.textContent = school.shortName;
@@ -3965,18 +3995,19 @@ function applyActiveSchoolToShell() {
     element.textContent = typeLabel;
   });
   document.querySelectorAll('[data-school-year]').forEach(element => {
-    element.textContent = school.schoolYear;
+    element.textContent = schoolYear;
   });
   document.querySelectorAll('[data-active-academic-period]').forEach(element => {
     const schoolLevel = element.dataset.schoolLevel || school.activeDivision;
     const activePeriod = config.getCurrentAcademicPeriod(school.id, schoolLevel);
+    const schoolYearSuffix = schoolYear ? ` · S.Y. ${schoolYear}` : '';
     const activePeriodLabel = activePeriod
-      ? `${activePeriod.name} · S.Y. ${school.schoolYear}`
-      : `No active grading period · S.Y. ${school.schoolYear}`;
+      ? `${activePeriod.name}${schoolYearSuffix}`
+      : `No active grading period${schoolYearSuffix}`;
     element.textContent = activePeriodLabel;
   });
   document.querySelectorAll('[data-school-context]').forEach(element => {
-    element.textContent = `${typeLabel} · ${school.schoolYear}`;
+    element.textContent = schoolYear ? `${typeLabel} · ${schoolYear}` : typeLabel;
   });
   document.body.dataset.activeSchool = school.id;
   document.body.dataset.schoolType = school.schoolType;
@@ -3993,6 +4024,7 @@ function applyGradePortalAccess() {
   const pageName = location.pathname.split('/').pop().toLowerCase();
   const isStudentOrParentPage = /edugnay-(student|parent)-/.test(pageName);
   if (!isStudentOrParentPage) return;
+  if (pageName.startsWith('edugnay-parent-')) return; // Parent shell owns its sidebar and page guard.
 
   const enabled = window.EDUGNAY_CONFIG.isGradesPageEnabled();
   const gradeLinks = document.querySelectorAll(
@@ -4313,6 +4345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { sessionStorage.removeItem(EDUGNAY_SESSION_STORAGE_KEY); } catch {}
         clearTeacherSidebarCache();
         clearStudentSidebarCache();
+        clearParentSidebarCache();
         clearProfileDisplaySnapshot();
       }
       if (error.status === 401 || !document.documentElement.classList.contains('profile-chip-restored')) {

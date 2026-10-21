@@ -10,6 +10,7 @@ const CATEGORIES = {
   announcements: ['announcement_draft_created', 'announcement_scheduled', 'announcement_published', 'announcement_updated', 'announcement_pinned', 'announcement_unpinned', 'announcement_deleted'],
   school_configuration: [
     'school_settings_updated', 'school_logo_updated', 'portal_features_updated', 'academic_structure_updated',
+    'narrative_report_week_updated',
     'deped_subject_defaults_applied',
     'academic_year_created', 'academic_year_updated', 'academic_term_created', 'academic_term_updated',
     'academic_term_activated', 'academic_term_completed', 'academic_term_extended', 'grading_categories_updated',
@@ -71,6 +72,7 @@ const ACTION_LABELS = {
   announcement_updated: ['updated an announcement', 'megaphone', 'blue', 'announcements'],
   announcement_deleted: ['deleted an announcement', 'megaphone', 'red', 'announcements'],
   school_settings_updated: ['updated school settings', 'settings-2', 'gold', 'school_configuration'],
+  narrative_report_week_updated: ['updated the narrative report week', 'calendar-days', 'gold', 'school_configuration'],
   portal_features_updated: ['updated portal features', 'settings-2', 'gold', 'school_configuration'],
   academic_structure_updated: ['updated the academic structure', 'settings-2', 'gold', 'school_configuration'],
   deped_subject_defaults_applied: ['applied DepEd subject defaults', 'book-open-check', 'blue', 'school_configuration'],

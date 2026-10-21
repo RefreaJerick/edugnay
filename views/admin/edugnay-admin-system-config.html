@@ -353,9 +353,9 @@
 <script>
   const NOTIFICATION_TRIGGER_LABELS = [
     { code: 'grade_below_threshold', icon: 'trending-down', color: 'var(--red)', background: 'var(--red-pale)', label: 'Grade Falls Below Threshold', description: 'After a final grade is published below the school level passing grade.' },
-    { code: 'consecutive_absences', icon: 'calendar-x', color: '#d97706', background: 'var(--orange-pale)', label: 'Consecutive Absences', description: 'After confirmed absences in the same subject reach the attendance alert count.' },
+    { code: 'consecutive_absences', icon: 'calendar-x', color: '#d97706', background: 'var(--orange-pale)', label: 'Consecutive missed class dates', description: 'Notify parents after this many recorded class dates are missed in a row for the same subject.' },
     { code: 'assignment_not_completed', icon: 'clipboard-check', color: '#16a34a', background: 'var(--green-pale)', label: 'Assignment Not Completed', description: 'After this many consecutive due assignments are incomplete.', unit: 'tasks' },
-    { code: 'narrative_report_released', icon: 'file-text', color: '#92400e', background: 'var(--gold-pale)', label: 'Narrative Report Released', description: 'Unavailable until narrative reports have a backend release flow.' },
+    { code: 'narrative_report_released', icon: 'file-text', color: '#92400e', background: 'var(--gold-pale)', label: 'Narrative Report Released', description: 'Notify linked parents when an adviser releases a weekly report.' },
     { code: 'journal_not_submitted', icon: 'notebook-pen', color: 'var(--gray-500)', background: 'var(--gray-100)', label: 'Journal Not Submitted', description: 'After this many consecutive closed journal prompts are missed.', unit: 'prompts' }
   ];
   let savedNotificationTriggers = null;
@@ -367,7 +367,10 @@
     if (!list || !notificationDraft) return;
     list.innerHTML = NOTIFICATION_TRIGGER_LABELS.map(meta => {
       const setting = notificationDraft.find(item => item.code === meta.code);
-      return `<div class="trigger-row" data-code="${meta.code}"><div class="trigger-icon" style="background:${meta.background};color:${meta.color};"><i data-lucide="${meta.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${meta.label}</div><div class="trigger-desc">${meta.description}${meta.code === 'consecutive_absences' ? ` Current count: ${notificationAbsenceThreshold}.` : ''}${setting.available || meta.code === 'narrative_report_released' ? '' : ' Enable its portal feature first.'}</div></div>${meta.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" aria-label="${meta.label} count" type="number" value="${setting.threshold}" min="1" max="20"/><span class="trigger-unit">${meta.unit}</span></div>` : ''}<button class="toggle ${setting.enabled ? 'on' : ''}" type="button" role="switch" aria-label="${meta.label}" aria-checked="${setting.enabled}" ${setting.available ? '' : 'disabled'}></button></div>`;
+      const description = !setting.available && meta.code === 'narrative_report_released'
+        ? 'Enable Narrative Reports and wait until report release is enabled for the school.'
+        : meta.description;
+      return `<div class="trigger-row" data-code="${meta.code}"><div class="trigger-icon" style="background:${meta.background};color:${meta.color};"><i data-lucide="${meta.icon}" style="width:16px;height:16px;"></i></div><div class="trigger-info"><div class="trigger-label">${meta.label}</div><div class="trigger-desc">${description}${meta.code === 'consecutive_absences' ? ` Current count: ${notificationAbsenceThreshold}.` : ''}${setting.available || meta.code === 'narrative_report_released' ? '' : ' Enable its portal feature first.'}</div></div>${meta.unit ? `<div class="trigger-input-wrap"><input class="trigger-input" aria-label="${meta.label} count" type="number" value="${setting.threshold}" min="1" max="20"/><span class="trigger-unit">${meta.unit}</span></div>` : ''}<button class="toggle ${setting.enabled ? 'on' : ''}" type="button" role="switch" aria-label="${meta.label}" aria-checked="${setting.enabled}" ${setting.available ? '' : 'disabled'}></button></div>`;
     }).join('');
     lucide.createIcons();
   }

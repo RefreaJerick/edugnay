@@ -859,11 +859,13 @@
   margin-top: 18px;
 }
 
-.school-portal-journal-column {
+.school-portal-settings-column {
   min-width: 0;
+  display: grid;
+  gap: 16px;
 }
 
-.school-portal-journal-column > .school-journal-settings-block {
+.school-portal-settings-column > .school-portal-setting-block {
   margin-top: 0;
   padding: 16px;
   border: 1px solid var(--gray-200);
@@ -871,13 +873,25 @@
   background: var(--gray-50);
 }
 
-.school-portal-journal-column > .school-journal-history-block {
-  margin-top: 16px;
+.school-portal-settings-column > .school-journal-history-block {
+  margin-top: 0;
   padding-top: 0;
 }
 
-.school-portal-journal-column .school-form-grid {
+.school-portal-settings-column .school-form-grid {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.school-portal-settings-column .school-report-week-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 360px;
+}
+
+.school-report-week-grid > .school-field,
+.school-report-week-grid select {
+  width: 100%;
+  max-width: 180px;
 }
 
 .school-subsection-title {
@@ -1273,6 +1287,10 @@
   .track-options,
   .school-attendance-code-grid {
     grid-template-columns: 1fr;
+  }
+
+  .school-portal-settings-column .school-report-week-grid {
+    grid-template-columns: minmax(0, 180px);
   }
 
   .school-attendance-threshold-field {

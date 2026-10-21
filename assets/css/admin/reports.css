@@ -120,6 +120,19 @@
   color: var(--blue-light);
 }
 
+.release-history-panel { margin-bottom: 24px; }
+.release-history-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 20px; padding: 20px 24px; font-size: 13px; color: var(--gray-700); }
+#school-release-list { display: grid; align-content: start; gap: 8px; }
+.school-release-item { width: 100%; padding: 12px; text-align: left; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); color: var(--gray-800); cursor: pointer; }
+.school-release-item:hover, .school-release-item:focus-visible { border-color: var(--blue-mid); outline: 2px solid var(--blue-xpale); }
+.school-release-item strong, .school-release-item span { display: block; }
+.school-release-item span, .school-release-meta { margin-top: 4px; color: var(--gray-500); font-size: 11px; }
+.school-release-version { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.school-release-version h3, #school-release-detail > h3 { font-size: 14px; margin: 0; }
+.school-release-version p { white-space: pre-wrap; }
+.school-release-reason { overflow-wrap: anywhere; }
+@media (max-width: 700px) { .release-history-layout { grid-template-columns: 1fr; padding: 16px; } }
+
 /* ── TWO COL ── */
 .two-col {
   display: grid;

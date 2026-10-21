@@ -22,6 +22,7 @@ function createState(overrides = {}) {
       2: { id: 2, name: 'English', subjectCode: 'english', schoolLevelId: 10, gradeLevelId: null, schoolLevelCode: 'jhs' }
     },
     scopesBySubject: { 1: jhsScopes, 2: jhsScopes },
+    reportWeekSettings: { weekStartDay: 1, weekEndDay: 6 },
     configuredJournal: true,
     featureRowPresent: true,
     featureValues: {
@@ -39,9 +40,20 @@ function createState(overrides = {}) {
 }
 
 const connection = {
-  async beginTransaction() { calls.push('BEGIN'); },
+  async beginTransaction() {
+    calls.push('BEGIN');
+    state.transactionSnapshot = {
+      featureValues: state.featureValues ? { ...state.featureValues } : null,
+      savedJournalSubjectId: state.savedJournalSubjectId,
+      reportWeekSettings: { ...state.reportWeekSettings }
+    };
+  },
   async commit() { calls.push('COMMIT'); state.committed = true; },
-  async rollback() { calls.push('ROLLBACK'); state.rolledBack = true; },
+  async rollback() {
+    calls.push('ROLLBACK');
+    if (state.transactionSnapshot) Object.assign(state, state.transactionSnapshot);
+    state.rolledBack = true;
+  },
   release() {},
   async execute(sql, values = []) {
     calls.push({ sql, values });
@@ -57,8 +69,17 @@ const connection = {
       return [{ affectedRows: 1 }];
     }
     if (sql.includes('SELECT grades_enabled AS gradesEnabled')) return [state.featureRowPresent ? [state.featureValues] : []];
+    if (sql.startsWith('UPDATE school_portal_features SET ai_evidence_approved_at')) {
+      state.featureValues.aiEvidenceApprovedAt = values[0];
+      state.featureValues.aiEvidenceApprovedByUserId = values[1];
+      return [{ affectedRows: 1 }];
+    }
     if (sql.startsWith('UPDATE school_portal_features SET')) {
       state.featureValues = {
+        ...(state.featureValues?.aiEvidenceApprovedAt !== undefined ? {
+          aiEvidenceApprovedAt: state.featureValues.aiEvidenceApprovedAt,
+          aiEvidenceApprovedByUserId: state.featureValues.aiEvidenceApprovedByUserId
+        } : {}),
         gradesEnabled: values[0],
         narrativeReportsEnabled: values[1],
         journalsEnabled: values[2],
@@ -68,7 +89,16 @@ const connection = {
       return [{ affectedRows: 1 }];
     }
     if (sql.includes('FROM school_portal_features') && sql.includes('journal_subjects')) return [state.configuredJournal ? [{ id: 9, schoolId: 1, subjectId: state.savedJournalSubjectId || 1, name: 'Values Education', isActive: 1 }] : []];
-    if (sql.includes('SELECT journal_subject_id AS journalSubjectId FROM school_settings')) return [[{ journalSubjectId: state.savedJournalSubjectId ?? 1 }]];
+    if (sql.includes('journal_subject_id AS journalSubjectId') && sql.includes('FROM school_settings')) return [[{
+      journalSubjectId: state.savedJournalSubjectId ?? 1,
+      ...state.reportWeekSettings
+    }]];
+    if (sql.startsWith('UPDATE school_settings SET journal_subject_id')) {
+      if (state.failWeekUpdate) throw new Error('Week settings write failed');
+      state.savedJournalSubjectId = values[0];
+      state.reportWeekSettings = { weekStartDay: values[1], weekEndDay: values[2] };
+      return [{ affectedRows: 1 }];
+    }
     if (sql.includes('FROM school_settings')) return [[{ subjectId: state.savedJournalSubjectId ?? 1, journalSubjectId: state.savedJournalSubjectId ?? 1 }]];
     if (sql.includes('FROM subjects\n    LEFT JOIN school_levels')) {
       const subject = state.subjects?.[String(values[0])];
@@ -100,6 +130,20 @@ async function save(body, user = { id: 3, schoolId: 1, role: 'school_admin' }, o
   }, error => { result.error = error; });
   return result;
 }
+
+test('school admin approval records an actor and revocation disables future AI evidence sharing', async () => {
+  const approved = await save({ aiEvidenceApproved: true });
+  assert.equal(approved.error, undefined);
+  assert.equal(approved.body.features.aiEvidenceApproved, true);
+  assert.equal(state.featureValues.aiEvidenceApprovedByUserId, 3);
+  assert.ok(calls.some(call => call.sql?.includes('INSERT INTO audit_logs') && call.values[2] === 'ai_report_evidence_approved'));
+  const savedValues = { ...state.featureValues };
+  const revoked = await save({ aiEvidenceApproved: false }, undefined, { featureValues: savedValues });
+  assert.equal(revoked.error, undefined);
+  assert.equal(revoked.body.features.aiEvidenceApproved, false);
+  assert.equal(state.featureValues.aiEvidenceApprovedAt, null);
+  assert.ok(calls.some(call => call.sql?.includes('INSERT INTO audit_logs') && call.values[2] === 'ai_report_evidence_approval_revoked'));
+});
 
 async function loadFeatures(user = { id: 3, schoolId: 1, role: 'school_admin' }) {
   calls = [];
@@ -207,6 +251,57 @@ test('changing journal subject saves the feature and subject in one transaction'
   assert.equal(state.committed, true);
   assert.ok(calls.some(call => call.sql?.startsWith('INSERT INTO journal_subjects')));
   assert.ok(calls.some(call => call.sql?.startsWith('UPDATE school_settings SET journal_subject_id')));
+});
+
+test('portal features save report weekdays with feature settings, including while Narrative Reports is disabled', async () => {
+  const result = await save({ narrativeReportsEnabled: false, weekStartDay: 2, weekEndDay: 7 });
+  assert.equal(result.error, undefined);
+  assert.deepEqual(result.body.reportWeekSettings, { weekStartDay: 2, weekEndDay: 7 });
+  assert.deepEqual(state.reportWeekSettings, { weekStartDay: 2, weekEndDay: 7 });
+  assert.equal(state.featureValues.narrativeReportsEnabled, false);
+  assert.equal(state.committed, true);
+  assert.ok(calls.some(call => call.sql?.startsWith('UPDATE school_settings SET journal_subject_id')));
+  assert.ok(calls.some(call => call.sql?.startsWith('INSERT INTO audit_logs') && call.values.includes('narrative_report_week_updated')));
+
+  const reenabled = await save({ narrativeReportsEnabled: true, weekStartDay: 2, weekEndDay: 7 }, undefined, {
+    reportWeekSettings: { weekStartDay: 2, weekEndDay: 7 }
+  });
+  assert.equal(reenabled.error, undefined);
+  assert.equal(reenabled.body.features.narrativeReportsEnabled, true);
+  assert.deepEqual(reenabled.body.reportWeekSettings, { weekStartDay: 2, weekEndDay: 7 });
+});
+
+test('portal feature updates reject incomplete or invalid weekday pairs before writing', async () => {
+  for (const body of [
+    { weekStartDay: 1 }, { weekEndDay: 6 }, { weekStartDay: 0, weekEndDay: 6 },
+    { weekStartDay: 1, weekEndDay: 1 }, { weekStartDay: 'monday', weekEndDay: 6 }
+  ]) {
+    const result = await save(body);
+    assert.equal(result.error?.status, 400, JSON.stringify(body));
+    assert.equal(state.committed, false);
+    assert.equal(state.rolledBack, false);
+    assert.equal(calls.some(call => call.sql?.startsWith('UPDATE school_portal_features SET')), false);
+  }
+});
+
+test('legacy portal-feature updates preserve saved report weekdays when omitted', async () => {
+  const result = await save({ sfTemplatesEnabled: false }, undefined, {
+    reportWeekSettings: { weekStartDay: 3, weekEndDay: 5 }
+  });
+  assert.equal(result.error, undefined);
+  assert.deepEqual(result.body.reportWeekSettings, { weekStartDay: 3, weekEndDay: 5 });
+  assert.deepEqual(state.reportWeekSettings, { weekStartDay: 3, weekEndDay: 5 });
+});
+
+test('a failed weekday write rolls back portal-feature changes in the same transaction', async () => {
+  const result = await save({ narrativeReportsEnabled: false, weekStartDay: 2, weekEndDay: 5 }, undefined, { failWeekUpdate: true });
+  assert.equal(result.error?.message, 'Week settings write failed');
+  assert.equal(state.rolledBack, true);
+  assert.equal(state.committed, false);
+  assert.equal(state.featureValues.narrativeReportsEnabled, 1);
+  assert.deepEqual(state.reportWeekSettings, { weekStartDay: 1, weekEndDay: 6 });
+  assert.ok(calls.some(call => call.sql?.startsWith('UPDATE school_portal_features SET')));
+  assert.equal(calls.at(-1), 'ROLLBACK');
 });
 
 test('another school or an inactive subject cannot be selected', async () => {
@@ -354,7 +449,7 @@ test('school settings and teacher shell scripts parse after journal changes', ()
   assert.match(admin, /form\.elements\.journalSubjectId\?\.value \?\? state\.apiJournalSubjectId/);
   assert.match(admin, /journalToggle\?\.addEventListener\('change', syncJournalSections\)/);
   assert.match(adminStyles, /\.school-journal-history-block\s*\{\s*border-top:\s*0;/);
-  assert.match(adminStyles, /\.school-portal-journal-column > \.school-journal-settings-block\s*\{[^}]*padding:\s*16px;[^}]*border:\s*1px solid var\(--gray-200\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*var\(--gray-50\);/s);
+  assert.match(adminStyles, /\.school-portal-settings-column > \.school-portal-setting-block\s*\{[^}]*padding:\s*16px;[^}]*border:\s*1px solid var\(--gray-200\);[^}]*border-radius:\s*var\(--radius-md\);[^}]*background:\s*var\(--gray-50\);/s);
   assert.doesNotMatch(adminStyles, /\.school-journal-settings-block\.is-disabled\s*\{/);
   for (const [, source] of admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (source.trim()) new vm.Script(source);

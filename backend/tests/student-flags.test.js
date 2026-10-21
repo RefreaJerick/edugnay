@@ -50,6 +50,25 @@ test('only the current same-subject absence streak is flagged', () => {
   assert.equal(result[0].reasons[0].count, 2);
 });
 
+test('same-subject sessions count once per meeting date and mixed dates break the streak', () => {
+  const attendance = [
+    record(1, '2026-10-01', 'present'),
+    { ...record(1, '2026-10-03', 'absent'), sessionId: 30 },
+    { ...record(1, '2026-10-03', 'absent'), sessionId: 31 },
+    { ...record(1, '2026-10-07', 'absent'), sessionId: 32 }
+  ];
+  const settings = { ...base.settings, maxUnexcusedAbsences: 9 };
+  const result = buildStudentFlags({ ...base, attendance, settings });
+  assert.equal(result[0].reasons[0].type, 'consecutive');
+  assert.equal(result[0].reasons[0].count, 2);
+  assert.deepEqual(buildStudentFlags({ ...base, attendance: [
+    ...attendance, { ...record(1, '2026-10-07', 'present'), sessionId: 33 }
+  ], settings }), []);
+  assert.deepEqual(buildStudentFlags({ ...base, attendance: [
+    ...attendance, { ...record(1, '2026-10-07', 'excused'), sessionId: 33 }
+  ], settings }), []);
+});
+
 test('latest published subject grade and effective division rule determine the grade flag', () => {
   const result = buildStudentFlags({ ...base,
     grades: [grade(1, 5, 70, 1), grade(1, 5, 80, 2), grade(1, 6, 80, 1),

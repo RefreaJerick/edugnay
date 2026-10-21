@@ -5,7 +5,8 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-attendance.html'), 'utf8');
-const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]).find(Boolean);
+const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+  .map(match => match[1]).find(source => source.includes('function loadAttendance'));
 const shared = fs.readFileSync(path.join(__dirname, '../../assets/js/attendance-history.js'), 'utf8');
 
 function createPage(api) {

@@ -1,4 +1,7 @@
+const { consecutiveMissedMeetingDates } = require('./attendanceStreak');
+
 async function getTrigger(connection, schoolId, code) {
+  if (code === 'narrative_report_released' && process.env.AI_REPORTS_RELEASE_ENABLED !== 'true') return null;
   const [[row]] = await connection.execute(
     `SELECT triggers.is_enabled AS enabled, triggers.threshold
     FROM parent_notification_triggers AS triggers
@@ -38,24 +41,26 @@ async function notifyConsecutiveAbsences(connection, schoolId, sectionId, subjec
   );
   const threshold = Number(settings?.threshold || 3);
   const [history] = await connection.execute(
-    `SELECT sessions.id, records.attendance_status AS status
+    `SELECT sessions.id AS sessionId,
+      DATE_FORMAT(sessions.attendance_date, '%Y-%m-%d') AS date,
+      records.attendance_status AS status
     FROM attendance_sessions AS sessions
     INNER JOIN attendance_records AS records ON records.school_id = sessions.school_id
       AND records.attendance_session_id = sessions.id
     WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.subject_id = ?
       AND sessions.status = 'confirmed' AND records.student_user_id = ?
-    ORDER BY sessions.attendance_date DESC, sessions.id DESC LIMIT ?`,
-    [schoolId, sectionId, subjectId, studentId, threshold + 1]
+    ORDER BY sessions.attendance_date DESC, sessions.id DESC`,
+    [schoolId, sectionId, subjectId, studentId]
   );
-  if (history.length < threshold || history[0].status !== 'absent' ||
-    history.slice(0, threshold).some(item => item.status !== 'absent') || history[threshold]?.status === 'absent') return;
+  const missedDates = consecutiveMissedMeetingDates(history);
+  if (missedDates.length !== threshold) return;
   const [[student]] = await connection.execute('SELECT display_name AS name FROM users WHERE id = ? AND school_id = ?', [studentId, schoolId]);
   const [[subject]] = await connection.execute('SELECT name FROM subjects WHERE id = ? AND school_id = ?', [subjectId, schoolId]);
   await notifyParents(connection, {
     schoolId, studentId, code: 'consecutive_absences',
-    eventKey: `absence:${sectionId}:${subjectId}:${studentId}:${history[threshold - 1].id}`,
-    title: 'Consecutive absences',
-    message: `${student.name} has ${threshold} consecutive confirmed absences in ${subject.name}.`,
+    eventKey: `absence:${sectionId}:${subjectId}:${studentId}:${missedDates[threshold - 1].sessionId}`,
+    title: 'Consecutive missed subject meeting dates',
+    message: `${student.name} missed ${threshold} consecutive recorded meeting dates in ${subject.name}.`,
     targetPath: '/views/parent/edugnay-parent-attendance.html'
   });
 }
