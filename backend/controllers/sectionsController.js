@@ -187,7 +187,11 @@ async function listSections(req, res, next) {
     if (scope && scope !== 'teaching') throw createError('Invalid section scope.');
     if (scope === 'teaching' && req.user.role !== 'teacher') throw createError('Teaching sections are available to teachers only.', 403);
     const access = getAccessFilter(req, scope);
-    const [sections] = await getDatabase().execute(`${sectionSelect()}${access.sql ? ` WHERE ${access.sql}` : ''} ORDER BY school_grade_levels.sort_order, sections.name`, access.values);
+    const [sections] = await getDatabase().execute(`${sectionSelect()}${access.sql ? ` WHERE ${access.sql}` : ''}
+      ORDER BY CASE school_levels.level_code WHEN 'elementary' THEN 0 WHEN 'jhs' THEN 1 WHEN 'shs' THEN 2 ELSE 3 END,
+        CASE WHEN school_grade_levels.grade_code = 'kindergarten' THEN 0
+          ELSE CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED) END,
+        sections.name`, access.values);
     const formatted = sections.map(formatSection);
     if (scope !== 'teaching' || !formatted.length) {
       res.json({ sections: formatted });

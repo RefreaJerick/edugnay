@@ -143,13 +143,18 @@ async function getStructure(database, schoolId) {
   const [levels] = await database.execute(
     `SELECT id, level_code AS levelCode, display_name AS displayName, grading_period_type AS gradingPeriodType,
       grade_rounding AS gradeRounding, passing_grade_threshold AS passingGradeThreshold, is_enabled AS isEnabled
-    FROM school_levels WHERE school_id = ? ORDER BY id`, [schoolId]
+    FROM school_levels WHERE school_id = ?
+    ORDER BY CASE level_code WHEN 'elementary' THEN 0 WHEN 'jhs' THEN 1 WHEN 'shs' THEN 2 ELSE 3 END, id`, [schoolId]
   );
   const [grades] = await database.execute(
     `SELECT school_grade_levels.id, school_grade_levels.school_level_id AS schoolLevelId, school_grade_levels.grade_code AS gradeCode, school_grade_levels.display_name AS displayName,
       school_grade_levels.sort_order AS sortOrder, school_grade_levels.is_enabled AS isEnabled
     FROM school_grade_levels INNER JOIN school_levels ON school_levels.id = school_grade_levels.school_level_id
-    WHERE school_levels.school_id = ? ORDER BY school_grade_levels.sort_order`, [schoolId]
+    WHERE school_levels.school_id = ?
+    ORDER BY CASE school_levels.level_code WHEN 'elementary' THEN 0 WHEN 'jhs' THEN 1 WHEN 'shs' THEN 2 ELSE 3 END,
+      CASE WHEN school_grade_levels.grade_code = 'kindergarten' THEN 0
+        ELSE CAST(SUBSTRING_INDEX(school_grade_levels.grade_code, '-', -1) AS UNSIGNED) END,
+      school_grade_levels.id`, [schoolId]
   );
   const [tracks] = await database.execute(
     `SELECT school_shs_tracks.id, school_shs_tracks.school_level_id AS schoolLevelId, school_shs_tracks.track_code AS trackCode, school_shs_tracks.display_name AS displayName, school_shs_tracks.is_enabled AS isEnabled

@@ -888,7 +888,10 @@
       const gradeSelect = document.getElementById('teacherMaterialGrade');
       if (!gradeSelect) return;
       const selectedGrade = gradeSelect.value;
-      const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))];
+      const gradeNumber = grade => /^kindergarten$/i.test(String(grade))
+        ? 0 : Number((String(grade).match(/\d+/) || [99])[0]);
+      const grades = [...new Set(TEACHER_MATERIAL_SECTIONS.map(section => section.grade))]
+        .sort((a, b) => gradeNumber(a) - gradeNumber(b) || String(a).localeCompare(String(b)));
       gradeSelect.replaceChildren(new Option('Select a grade level', ''), ...grades.map(grade =>
         new Option(formatTeacherMaterialGrade(grade), grade)
       ));
