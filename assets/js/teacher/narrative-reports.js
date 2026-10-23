@@ -384,7 +384,7 @@
 
   function updateRegenerateButton() {
     const report = state.reports.find(item => item.id === state.selectedReportId);
-    $('regenerate-report').disabled = !report || report.status !== 'draft' || Boolean(report.releasedAt) ||
+    $('regenerate-report').disabled = !report || report.status !== 'draft' || Boolean(report.releasedAt && !report.pendingCorrection) ||
       !state.generationEnabled || state.busy || state.regenerateConfirmOpen;
   }
 
@@ -540,7 +540,7 @@
 
   async function regenerate() {
     const report = state.reports.find(item => item.id === state.selectedReportId);
-    if (!report || report.status !== 'draft' || report.releasedAt || !state.generationEnabled || state.busy ||
+    if (!report || report.status !== 'draft' || report.releasedAt && !report.pendingCorrection || !state.generationEnabled || state.busy ||
       !state.regenerateConfirmOpen) return;
     state.busy = true;
     setRegenerateConfirmation(false);

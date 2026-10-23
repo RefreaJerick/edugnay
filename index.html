@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Academix</title>
   <link rel="icon" href="./assets/images/edUgnay-logo-circle.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/images/edUgnay-logo-circle.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -660,6 +662,19 @@
       } catch { /* A storage failure must not block sign-in. */ }
     }
 
+    function destinationForUser(user) {
+      const dashboard = DASHBOARD_BY_ROLE[user.role];
+      if (!dashboard) return null;
+      const requestedPath = new URLSearchParams(window.location.search).get('returnTo');
+      const folder = { school_admin: 'admin', platform_admin: 'platform' }[user.role] || user.role;
+      const appRoot = new URL('./', window.location.href);
+      const destination = requestedPath ? new URL(requestedPath, window.location.origin) : null;
+      const expectedPath = new URL(`views/${folder}/edugnay-${folder}-notifications.html`, appRoot).pathname;
+      return destination?.origin === window.location.origin && destination.pathname === expectedPath
+        && /^\d+$/.test(destination.searchParams.get('pushNotice') || '')
+        ? destination.href : dashboard;
+    }
+
     async function checkEmail(event) {
       if (event) event.preventDefault();
       const form = document.getElementById('signInForm');
@@ -688,10 +703,9 @@
 
         const { user } = await postAuthData('/auth/login', { schoolEmail, password });
         clearPortalCachesForSignIn();
-        const dashboard = DASHBOARD_BY_ROLE[user.role];
-        if (!dashboard) throw new Error('This account does not have a portal route.');
-
-        window.location.href = dashboard;
+        const destination = destinationForUser(user);
+        if (!destination) throw new Error('This account does not have a portal route.');
+        window.location.href = destination;
       } catch (error) {
         setAuthMessage('signInMessage', error.message || 'Unable to sign in right now. Please try again.', true);
         passwordInput.focus();
@@ -703,6 +717,16 @@
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('resetFlowButton').hidden = !AUTH_CONFIG.frontendOnly;
       if (AUTH_STATE.resetToken) showAuthView('reset');
+      if (!AUTH_STATE.resetToken && AUTH_CONFIG.apiBaseUrl) {
+        fetch(`${AUTH_CONFIG.apiBaseUrl}/auth/me`, { credentials: 'include' })
+          .then(response => response.ok ? response.json() : null)
+          .then(data => {
+            if (data?.user) {
+              const destination = destinationForUser(data.user);
+              if (destination) window.location.replace(destination);
+            }
+          }).catch(() => {});
+      }
     });
   </script>
 

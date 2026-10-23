@@ -246,7 +246,7 @@ test('admin release history view is read-only and parses as JavaScript', () => {
   }
 });
 
-test('teacher correction UI keeps regeneration disabled and parent UI labels updated releases', () => {
+test('teacher correction UI keeps regeneration visible and parent UI labels updated releases', () => {
   const root = path.join(__dirname, '../..');
   const teacher = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
   const parent = fs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');

@@ -9,6 +9,7 @@ const { apiRateLimit, networkRateLimit } = require('./config/apiRateLimit');
 const { startAnnouncementEmailWorker } = require('./workers/announcementEmailWorker');
 const { startSchoolRegistrationEmailWorker } = require('./workers/schoolRegistrationEmailWorker');
 const { startParentNotificationWorker } = require('./workers/parentNotificationWorker');
+const { startPushNotificationWorker } = require('./workers/pushNotificationWorker');
 const { startScheduledAnnouncementWorker } = require('./workers/scheduledAnnouncementWorker');
 const { getFrontendOrigin, getTrustProxyHops } = require('./config/deployment');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -110,4 +111,5 @@ server.on('error', error => {
 startAnnouncementEmailWorker();
 startSchoolRegistrationEmailWorker();
 startParentNotificationWorker();
+startPushNotificationWorker();
 startScheduledAnnouncementWorker();

@@ -20,20 +20,38 @@ let lastValues = [];
 let committed = false;
 let rolledBack = false;
 let failMaterialDelete = false;
+let failAuditWrite = false;
 let studentEnrolled = true;
+let queryLog = [];
+let auditEntries = [];
 const material = {
   id: 42, schoolId: 1, sectionId: 8, subjectId: 2, teacherUserId: 3,
   title: 'Test material', type: 'pdf', mimeType: 'application/pdf',
   originalFileName: 'sample.pdf', storedFileName: '00000000-0000-0000-0000-000000000042.pdf',
-  fileSizeBytes: 30, status: 'published', subjectName: 'Values Education', teacherName: 'Ms. Reyes'
+  fileSizeBytes: 30, status: 'published', subjectName: 'Values Education', teacherName: 'Ms. Reyes',
+  sectionName: 'St. Peter', sectionGrade: 'Grade 8'
 };
 const database = {
-  async execute(sql, values) {
+  async execute(sql, values = []) {
     lastQuery = sql;
     lastValues = values;
+    queryLog.push({ sql, values });
     if (sql.includes('FROM section_teachers')) return [assigned ? [{ id: 8 }] : []];
     if (sql.includes('FROM academic_terms')) return [[]];
-    if (sql.includes('INSERT INTO learning_materials')) return [{ insertId: 42 }];
+    if (sql.includes('INSERT INTO learning_materials')) {
+      material.title = values[5];
+      material.status = values[11];
+      return [{ insertId: 42 }];
+    }
+    if (sql.startsWith('INSERT INTO audit_logs')) {
+      if (failAuditWrite) throw new Error('Audit write failed.');
+      auditEntries.push({ actionType: values[2], details: JSON.parse(values[5]) });
+      return [{ insertId: auditEntries.length }];
+    }
+    if (sql.startsWith('UPDATE learning_materials SET status =')) {
+      material.status = values[0];
+      return [{ affectedRows: 1 }];
+    }
     if (sql.includes('DELETE FROM learning_materials')) {
       if (failMaterialDelete) throw new Error('Database delete failed.');
       return [{ affectedRows: 1 }];
@@ -42,16 +60,16 @@ const database = {
       if (sql.includes('LIMIT 1') && (values[1] !== material.schoolId
         || (sql.includes("materials.status = 'published'") && material.status !== 'published')
         || (sql.includes('FROM section_students') && !studentEnrolled))) return [[]];
-      return [[material]];
+      return [[{ ...material }]];
     }
     throw new Error(`Unexpected query: ${sql}`);
   },
   async getConnection() {
     return {
       execute: (...args) => database.execute(...args),
-      beginTransaction: async () => {},
-      commit: async () => { committed = true; },
-      rollback: async () => { rolledBack = true; },
+      beginTransaction: async () => { queryLog.push({ sql: 'BEGIN', values: [] }); },
+      commit: async () => { committed = true; queryLog.push({ sql: 'COMMIT', values: [] }); },
+      rollback: async () => { rolledBack = true; queryLog.push({ sql: 'ROLLBACK', values: [] }); },
       release: () => {}
     };
   }
@@ -235,6 +253,9 @@ test('valid upload commits metadata and hides private file path', async () => {
   const filePath = path.join(directory, 'sample.pdf');
   await fs.writeFile(filePath, '%PDF-1.4\nTest material');
   committed = false;
+  auditEntries = [];
+  queryLog = [];
+  material.status = 'published';
   try {
     const result = await call(controller.createMaterial, {
       user: { id: 3, schoolId: 1, role: 'teacher' },
@@ -247,7 +268,79 @@ test('valid upload commits metadata and hides private file path', async () => {
     assert.equal(result.status, 201);
     assert.equal(committed, true);
     assert.equal(result.data.material.storedFileName, undefined);
+    assert.equal(auditEntries[0].actionType, 'learning_material_uploaded');
+    assert.equal(auditEntries[0].details.summary, 'Test material · Values Education · Grade 8 · St. Peter');
+    assert.equal(auditEntries[0].details.status, 'published');
+    assert.equal(JSON.stringify(auditEntries[0]).includes(filePath), false);
+    assert.ok(queryLog.findIndex(query => query.sql.startsWith('INSERT INTO audit_logs'))
+      < queryLog.findIndex(query => query.sql === 'COMMIT'));
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('draft upload is logged with its subject and section', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'academix-material-'));
+  const filePath = path.join(directory, 'sample.pdf');
+  await fs.writeFile(filePath, '%PDF-1.4\nTest material');
+  auditEntries = [];
+  material.status = 'draft';
+  try {
+    const result = await call(controller.createMaterial, {
+      user: { id: 3, schoolId: 1, role: 'teacher' }, materialSectionId: 8, materialSubjectId: 2,
+      body: { title: 'Draft material', status: 'draft' },
+      file: { path: filePath, filename: '00000000-0000-0000-0000-000000000042.pdf', originalname: 'sample.pdf', size: 20 }
+    });
+    assert.equal(result.error, null);
+    assert.equal(auditEntries[0].details.summary, 'Draft material · Values Education · Grade 8 · St. Peter');
+    assert.equal(auditEntries[0].details.status, 'draft');
+  } finally {
+    material.status = 'published';
+    material.title = 'Test material';
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('material visibility changes are logged, but an unchanged status is not', async () => {
+  material.status = 'published';
+  auditEntries = [];
+  queryLog = [];
+  const user = { id: 3, schoolId: 1, role: 'teacher' };
+  const unchanged = await call(controller.updateMaterial, { user, params: { materialId: '42' }, body: { status: 'published' } });
+  assert.equal(unchanged.error, null);
+  assert.equal(auditEntries.length, 0);
+  assert.equal(queryLog.some(query => query.sql.startsWith('UPDATE learning_materials SET status =')), false);
+
+  const changed = await call(controller.updateMaterial, { user, params: { materialId: '42' }, body: { status: 'draft' } });
+  assert.equal(changed.error, null);
+  assert.equal(auditEntries.length, 1);
+  assert.equal(auditEntries[0].actionType, 'learning_material_visibility_changed');
+  assert.equal(auditEntries[0].details.fromStatus, 'published');
+  assert.equal(auditEntries[0].details.toStatus, 'draft');
+  assert.equal(auditEntries[0].details.summary, 'Test material · Values Education · Grade 8 · St. Peter');
+
+  material.status = 'draft';
+  const republished = await call(controller.updateMaterial, { user, params: { materialId: '42' }, body: { status: 'published' } });
+  assert.equal(republished.error, null);
+  assert.equal(auditEntries.length, 2);
+  assert.equal(auditEntries[1].details.fromStatus, 'draft');
+  assert.equal(auditEntries[1].details.toStatus, 'published');
+});
+
+test('a failed material audit rolls back a visibility change', async () => {
+  material.status = 'published';
+  auditEntries = [];
+  rolledBack = false;
+  failAuditWrite = true;
+  try {
+    const result = await call(controller.updateMaterial, {
+      user: { id: 3, schoolId: 1, role: 'teacher' }, params: { materialId: '42' }, body: { status: 'draft' }
+    });
+    assert.match(result.error?.message || '', /Audit write failed/);
+    assert.equal(rolledBack, true);
+    assert.equal(auditEntries.length, 0);
+  } finally {
+    failAuditWrite = false;
+    material.status = 'published';
+  }
 });
 
 test('invalid upload rolls back and removes the newly stored file', async () => {
@@ -273,6 +366,9 @@ test('teacher removal permanently deletes the uploaded file and owned database r
   const fileName = `${crypto.randomUUID()}.pdf`;
   const filePath = path.join(materialUploadDirectory, fileName);
   material.storedFileName = fileName;
+  material.status = 'published';
+  auditEntries = [];
+  queryLog = [];
   await fs.writeFile(filePath, '%PDF-1.4\nTest material');
   try {
     const result = await call(controller.deleteMaterial, {
@@ -280,12 +376,43 @@ test('teacher removal permanently deletes the uploaded file and owned database r
     });
     assert.equal(result.error, null);
     assert.equal(result.status, 204);
-    assert.match(lastQuery, /DELETE FROM learning_materials WHERE id = \? AND school_id = \? AND teacher_user_id = \?/);
-    assert.deepEqual(lastValues, [42, 1, 3]);
+    assert.ok(queryLog.some(query => /DELETE FROM learning_materials WHERE id = \? AND school_id = \? AND teacher_user_id = \?/.test(query.sql)));
+    const deleteQuery = queryLog.find(query => query.sql.startsWith('DELETE FROM learning_materials'));
+    assert.deepEqual(deleteQuery.values, [42, 1, 3]);
+    assert.equal(auditEntries[0].actionType, 'learning_material_deleted');
+    assert.equal(auditEntries[0].details.summary, 'Test material · Values Education · Grade 8 · St. Peter');
+    assert.equal(auditEntries[0].details.status, 'published');
+    assert.ok(queryLog.findIndex(query => query.sql.startsWith('INSERT INTO audit_logs'))
+      < queryLog.findIndex(query => query.sql === 'COMMIT'));
     await assert.rejects(fs.stat(filePath), { code: 'ENOENT' });
   } finally {
     material.storedFileName = originalFileName;
     await fs.rm(filePath, { force: true });
+  }
+});
+
+test('a file cleanup warning does not undo the material deletion audit', async () => {
+  const fileName = `${crypto.randomUUID()}.pdf`;
+  const filePath = path.join(materialUploadDirectory, fileName);
+  await fs.mkdir(materialUploadDirectory, { recursive: true });
+  await fs.mkdir(filePath);
+  material.storedFileName = fileName;
+  auditEntries = [];
+  queryLog = [];
+  try {
+    const result = await call(controller.deleteMaterial, {
+      user: { id: 3, schoolId: 1, role: 'teacher' }, params: { materialId: '42' }
+    });
+    assert.equal(result.error, null);
+    assert.equal(result.status, 200);
+    assert.equal(result.data.fileCleanupPending, true);
+    assert.equal(auditEntries[0].actionType, 'learning_material_deleted');
+    const auditIndex = queryLog.findIndex(query => query.sql.startsWith('INSERT INTO audit_logs'));
+    const commitIndex = queryLog.findIndex(query => query.sql === 'COMMIT');
+    assert.ok(auditIndex >= 0 && auditIndex < commitIndex);
+  } finally {
+    material.storedFileName = '00000000-0000-0000-0000-000000000042.pdf';
+    await fs.rm(filePath, { recursive: true, force: true });
   }
 });
 

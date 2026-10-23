@@ -10,13 +10,14 @@ const connection = {
   async commit() { queries.push('COMMIT'); state.committed = true; },
   async rollback() { queries.push('ROLLBACK'); state.rolledBack = true; },
   release() {},
-  async execute(sql) {
+  async execute(sql, values = []) {
     queries.push(sql);
     if (sql.includes('WHERE assignments.id = ? AND assignments.school_id = ? LIMIT 1')) {
       return [state.visible ? [{
         id: 4, schoolId: 1, sectionId: 8, subjectId: 2,
         academicTermId: 6, gradingCategoryId: 3, gradingItemId: 12,
-        teacherUserId: 5, title: 'test', academicYearStatus: 'active'
+        teacherUserId: 5, title: 'test', status: 'published', academicYearStatus: 'active',
+        sectionName: 'St. John', sectionGrade: 'Grade 8', subjectName: 'English'
       }] : []];
     }
     if (sql.includes('FROM section_teachers INNER JOIN sections')) {
@@ -52,6 +53,7 @@ const connection = {
     }
     if (sql.startsWith('INSERT INTO audit_logs')) {
       if (state.auditFails) throw new Error('Audit write failed');
+      state.auditDetails = JSON.parse(values[5]);
       return [{ insertId: 1 }];
     }
     throw new Error(`Unexpected query: ${sql}`);
@@ -89,6 +91,9 @@ test('empty linked assignment and component are deleted in one transaction', asy
   assert.ok(queries.findIndex(sql => sql.startsWith('DELETE FROM student_scores'))
     < queries.findIndex(sql => sql.startsWith('DELETE FROM grading_items')));
   assert.ok(queries.some(sql => sql.startsWith('INSERT INTO audit_logs')));
+  assert.equal(state.auditDetails.summary, 'test · English · Grade 8 · St. John');
+  assert.equal(state.auditDetails.sectionId, 8);
+  assert.equal(state.auditDetails.subjectId, 2);
   assert.equal(queries.at(-1), 'COMMIT');
 });
 

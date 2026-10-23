@@ -450,6 +450,30 @@ test('a report confirmed during generation is never overwritten', async () => {
   assert.ok(database.calls.includes('ROLLBACK'));
 });
 
+test('only an open correction draft can regenerate a previously released report', async () => {
+  const released = { id: 77, sectionId: 22, status: 'draft', releasedAt: '2026-10-23T08:00:00', pendingCorrection: 1 };
+  const database = fakeDatabase({ existing: { 4: released }, locked: { 4: released } });
+  const regenerated = await processWeeklyGeneration(request({ studentIds: [4], regenerateDrafts: true }), {
+    database, evidenceBuilder: async () => weeklyEvidence(), ai: async () => draft
+  });
+  assert.equal(regenerated.results[0].status, 'generated');
+  const update = database.calls.find(call => call.sql?.startsWith('UPDATE narrative_reports SET'));
+  assert.ok(update);
+  assert.doesNotMatch(update.sql.split('WHERE')[0], /released_at|pending_correction|report_status\s*=/i);
+  assert.equal(database.calls.some(call => call.sql?.includes('narrative_report_releases')), false);
+
+  for (const blocked of [
+    { ...released, pendingCorrection: 0 },
+    { ...released, status: 'confirmed' }
+  ]) {
+    const result = await processWeeklyGeneration(request({ studentIds: [4], regenerateDrafts: true }), {
+      database: fakeDatabase({ existing: { 4: blocked } }), evidenceBuilder: async () => weeklyEvidence(),
+      ai: async () => { throw new Error('AI should not be called'); }
+    });
+    assert.equal(result.results[0].reason, 'released_correction_manual_only');
+  }
+});
+
 test('a failed source write rolls back the draft and reports a learner error', async () => {
   const database = fakeDatabase({ failSourceInsert: true });
   const result = await processWeeklyGeneration(request({ studentIds: [4] }), {

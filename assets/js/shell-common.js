@@ -3951,6 +3951,13 @@ function toggleDrawer(open) {
 }
 
 async function confirmLogout() {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && getPortalRoleFromPath()) {
+    try {
+      const appRoot = new URL('../../', window.location.href);
+      const registration = await navigator.serviceWorker.getRegistration(appRoot.href);
+      await (await registration?.pushManager?.getSubscription())?.unsubscribe();
+    } catch { /* Server-side session removal also disables this device. */ }
+  }
   if (EDUGNAY_API_BASE_URL) {
     try {
       await requestApi('/auth/logout', { method: 'POST' });

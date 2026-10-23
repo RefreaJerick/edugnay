@@ -3,6 +3,7 @@ const path = require('path');
 const JSZip = require('jszip');
 const { getDatabase } = require('../config/database');
 const { materialUploadDirectory, materialTypes } = require('../config/uploads');
+const { writeAuditLog } = require('../utils/auditLog');
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -46,17 +47,36 @@ function materialSelect() {
     materials.original_file_name AS originalFileName, materials.stored_file_name AS storedFileName,
     materials.file_type AS type, materials.mime_type AS mimeType, materials.file_size_bytes AS fileSizeBytes,
     materials.status, materials.posted_at AS postedAt, materials.created_at AS createdAt,
+    sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
     subjects.name AS subjectName, teachers.display_name AS teacherName, academic_terms.name AS academicTermName
   FROM learning_materials AS materials
+  INNER JOIN sections ON sections.id = materials.section_id AND sections.school_id = materials.school_id
+  LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+    AND school_grade_levels.school_id = sections.school_id
   INNER JOIN subjects ON subjects.id = materials.subject_id AND subjects.school_id = materials.school_id
   INNER JOIN users AS teachers ON teachers.id = materials.teacher_user_id AND teachers.school_id = materials.school_id
   LEFT JOIN academic_terms ON academic_terms.id = materials.academic_term_id AND academic_terms.school_id = materials.school_id`;
 }
 
 function publicMaterial(row) {
-  const { storedFileName, mimeType, ...visible } = row;
+  const { storedFileName, mimeType, sectionName, sectionGrade, ...visible } = row;
   return { ...visible, id: String(row.id), sectionId: String(row.sectionId),
     subjectId: String(row.subjectId), fileSizeBytes: Number(row.fileSizeBytes) };
+}
+
+function materialAuditDetails(material, status, extra = {}) {
+  const sectionLabel = [material.sectionGrade, material.sectionName].filter(Boolean).join(' · ');
+  return {
+    summary: [material.title, material.subjectName, sectionLabel].filter(Boolean).join(' · '),
+    title: material.title,
+    subjectName: material.subjectName || null,
+    sectionId: material.sectionId,
+    sectionName: material.sectionName || null,
+    sectionGrade: material.sectionGrade || null,
+    subjectId: material.subjectId,
+    status,
+    ...extra
+  };
 }
 
 async function listMaterials(req, res, next) {
@@ -149,6 +169,8 @@ async function createMaterial(req, res, next) {
         path.extname(req.file.filename).slice(1), materialTypes[path.extname(req.file.filename)], req.file.size, status]
     );
     const [rows] = await connection.execute(`${materialSelect()} WHERE materials.id = ? AND materials.school_id = ?`, [result.insertId, req.user.schoolId]);
+    await writeAuditLog(connection, req, 'learning_material_uploaded', 'learning_material', result.insertId,
+      materialAuditDetails(rows[0], status));
     await connection.commit();
     committed = true;
     res.status(201).json({ material: publicMaterial(rows[0]) });
@@ -161,7 +183,7 @@ async function createMaterial(req, res, next) {
   }
 }
 
-async function findMaterial(req, database) {
+async function findMaterial(req, database, lock = false) {
   const materialId = id(req.params.materialId, 'material ID');
   const where = ['materials.id = ?', 'materials.school_id = ?', "materials.status <> 'archived'"];
   const values = [materialId, req.user.schoolId];
@@ -178,7 +200,7 @@ async function findMaterial(req, database) {
       AND section_students.student_user_id = ? AND section_students.withdrawn_at IS NULL)`);
     values.push(req.user.id);
   } else fail('You cannot access this material.', 403);
-  const [rows] = await database.execute(`${materialSelect()} WHERE ${where.join(' AND ')} LIMIT 1`, values);
+  const [rows] = await database.execute(`${materialSelect()} WHERE ${where.join(' AND ')} LIMIT 1${lock ? ' FOR UPDATE' : ''}`, values);
   if (!rows[0]) fail('This learning material is unavailable.', 404);
   if (req.user.role === 'teacher' && !await teacherAssignment(database, req.user, rows[0].sectionId, rows[0].subjectId)) {
     fail('This learning material is unavailable.', 404);
@@ -187,35 +209,59 @@ async function findMaterial(req, database) {
 }
 
 async function updateMaterial(req, res, next) {
+  let connection = null;
+  let transactionStarted = false;
   try {
-    const database = getDatabase();
-    const material = await findMaterial(req, database);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const material = await findMaterial(req, connection, true);
     const status = String(req.body.status || '');
     if (!['draft', 'published'].includes(status)) fail('Choose draft or published visibility.');
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can change this material.', 403);
-    await database.execute(
-      `UPDATE learning_materials SET status = ?, posted_at = CASE WHEN ? = 'published' THEN COALESCE(posted_at, NOW()) ELSE NULL END WHERE id = ? AND school_id = ? AND teacher_user_id = ?`,
-      [status, status, material.id, req.user.schoolId, req.user.id]
-    );
-    const [rows] = await database.execute(`${materialSelect()} WHERE materials.id = ? AND materials.school_id = ?`, [material.id, req.user.schoolId]);
-    res.json({ material: publicMaterial(rows[0]) });
-  } catch (error) { next(error); }
+    let updatedMaterial = material;
+    if (status !== material.status) {
+      const [result] = await connection.execute(
+        `UPDATE learning_materials SET status = ?, posted_at = CASE WHEN ? = 'published' THEN COALESCE(posted_at, NOW()) ELSE NULL END WHERE id = ? AND school_id = ? AND teacher_user_id = ?`,
+        [status, status, material.id, req.user.schoolId, req.user.id]
+      );
+      if (!result.affectedRows) fail('This learning material is unavailable.', 404);
+      const [updatedRows] = await connection.execute(`${materialSelect()} WHERE materials.id = ? AND materials.school_id = ?`, [material.id, req.user.schoolId]);
+      updatedMaterial = updatedRows[0];
+      await writeAuditLog(connection, req, 'learning_material_visibility_changed', 'learning_material', material.id,
+        materialAuditDetails(updatedMaterial, status, { fromStatus: material.status, toStatus: status }));
+    }
+    await connection.commit();
+    transactionStarted = false;
+    res.json({ material: publicMaterial(updatedMaterial) });
+  } catch (error) {
+    if (connection && transactionStarted) await connection.rollback().catch(() => {});
+    next(error);
+  } finally { connection?.release(); }
 }
 
 async function deleteMaterial(req, res, next) {
+  let connection = null;
+  let transactionStarted = false;
   try {
-    const database = getDatabase();
-    const material = await findMaterial(req, database);
+    connection = await getDatabase().getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const material = await findMaterial(req, connection, true);
     if (req.user.role !== 'teacher') fail('Only the uploading teacher can remove this material.', 403);
     if (!/^[a-f0-9-]{36}\.(pdf|doc|docx|ppt|pptx|xls|xlsx|jpg|png|mp4)$/.test(material.storedFileName)) {
       fail('The stored file is invalid.', 500);
     }
     const filePath = path.join(materialUploadDirectory, material.storedFileName);
-    const [result] = await database.execute(
+    const [result] = await connection.execute(
       'DELETE FROM learning_materials WHERE id = ? AND school_id = ? AND teacher_user_id = ?',
       [material.id, req.user.schoolId, req.user.id]
     );
     if (!result.affectedRows) fail('This learning material is unavailable.', 404);
+    await writeAuditLog(connection, req, 'learning_material_deleted', 'learning_material', material.id,
+      materialAuditDetails(material, material.status));
+    await connection.commit();
+    transactionStarted = false;
     let fileCleanupPending = false;
     try {
       await fs.promises.unlink(filePath);
@@ -227,7 +273,10 @@ async function deleteMaterial(req, res, next) {
     }
     if (fileCleanupPending) return res.status(200).json({ deleted: true, fileCleanupPending: true });
     res.status(204).end();
-  } catch (error) { next(error); }
+  } catch (error) {
+    if (connection && transactionStarted) await connection.rollback().catch(() => {});
+    next(error);
+  } finally { connection?.release(); }
 }
 
 async function openMaterial(req, res, next) {

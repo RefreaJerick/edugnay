@@ -123,7 +123,8 @@ function assignmentSelect() {
     assignments.title, assignments.description, assignments.due_at AS dueAt, assignments.max_score AS maxScore,
     assignments.online_submission_enabled AS onlineSubmissionEnabled,
     assignments.status, assignments.created_at AS createdAt, assignments.updated_at AS updatedAt,
-    sections.name AS sectionName, academic_years.status AS academicYearStatus,
+    sections.name AS sectionName, school_grade_levels.display_name AS sectionGrade,
+    academic_years.status AS academicYearStatus,
     subjects.name AS subjectName, academic_terms.name AS academicTermName,
     grading_categories.code AS gradingCategoryCode, grading_categories.name AS gradingCategoryName,
     subject_grading_components.code AS subjectGradingComponentCode, subject_grading_components.name AS subjectGradingComponentName,
@@ -131,12 +132,48 @@ function assignmentSelect() {
     teachers.display_name AS teacherName
   FROM assignments INNER JOIN sections ON sections.id = assignments.section_id AND sections.school_id = assignments.school_id
   INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+  LEFT JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
+    AND school_grade_levels.school_id = sections.school_id
   INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
   LEFT JOIN academic_terms ON academic_terms.id = assignments.academic_term_id AND academic_terms.school_id = assignments.school_id
   LEFT JOIN grading_categories ON grading_categories.id = assignments.grading_category_id AND grading_categories.school_id = assignments.school_id
   LEFT JOIN subject_grading_components ON subject_grading_components.id = assignments.subject_grading_component_id AND subject_grading_components.school_id = assignments.school_id
   LEFT JOIN subject_grading_exam_parts ON subject_grading_exam_parts.id = assignments.subject_grading_exam_part_id AND subject_grading_exam_parts.school_id = assignments.school_id
   INNER JOIN users AS teachers ON teachers.id = assignments.teacher_user_id AND teachers.school_id = assignments.school_id`;
+}
+
+function assignmentAuditDetails(assignment, status, extra = {}) {
+  const sectionLabel = [assignment.sectionGrade, assignment.sectionName].filter(Boolean).join(' · ');
+  return {
+    summary: [assignment.title, assignment.subjectName, sectionLabel].filter(Boolean).join(' · '),
+    title: assignment.title,
+    subjectName: assignment.subjectName || null,
+    sectionId: assignment.sectionId,
+    sectionName: assignment.sectionName || null,
+    sectionGrade: assignment.sectionGrade || null,
+    subjectId: assignment.subjectId,
+    status,
+    ...extra
+  };
+}
+
+function comparableDateTime(value) {
+  if (!value) return null;
+  return (value instanceof Date ? value.toISOString().replace('T', ' ') : String(value).replace('T', ' ')).slice(0, 19);
+}
+
+function nullableNumber(value) {
+  return value === null || value === undefined || value === '' ? null : Number(value);
+}
+
+function assignmentDetailsChanged(current, next) {
+  return current.title !== next.title
+    || String(current.description || '') !== String(next.description || '')
+    || comparableDateTime(current.dueAt) !== comparableDateTime(next.dueAt)
+    || nullableNumber(current.maxScore) !== nullableNumber(next.maxScore)
+    || Number(current.onlineSubmissionEnabled) !== Number(next.onlineSubmissionEnabled)
+    || ['academicTermId', 'gradingCategoryId', 'subjectGradingComponentId', 'subjectGradingExamPartId']
+      .some(field => String(current[field] || '') !== String(next[field] || ''));
 }
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId) {
@@ -499,6 +536,8 @@ async function createAssignment(req, res, next) {
       );
     }
     const assignment = await getAssignmentForManagement(connection, req.user, result.insertId);
+    await writeAuditLog(connection, req, 'assignment_created', 'assignment', result.insertId,
+      assignmentAuditDetails(assignment, status));
     await connection.commit();
     transactionStarted = false;
     res.status(201).json({ assignment: formatAssignment(assignment) });
@@ -540,6 +579,11 @@ async function updateAssignment(req, res, next) {
       : req.body.onlineSubmissionEnabled === true;
     const status = req.body.status === undefined ? current.status : String(req.body.status);
     if (!ASSIGNMENT_STATUSES.has(status)) throw createError('Assignment status is invalid.');
+    const statusChanged = current.status !== status;
+    const detailsChanged = assignmentDetailsChanged(current, {
+      title, description, dueAt, maxScore, onlineSubmissionEnabled: onlineSubmissionEnabled ? 1 : 0,
+      academicTermId, gradingCategoryId, subjectGradingComponentId, subjectGradingExamPartId
+    });
     if (current.gradingItemId) {
       const [[scores]] = await connection.execute(
         'SELECT MAX(score) AS highest FROM student_scores WHERE school_id = ? AND grading_item_id = ?',
@@ -562,7 +606,17 @@ async function updateAssignment(req, res, next) {
       'UPDATE grading_items SET title = ?, max_score = ? WHERE id = ? AND school_id = ?',
       [title, maxScore, current.gradingItemId, req.user.schoolId]
     );
-    const assignment = formatAssignment(await getAssignmentForManagement(connection, req.user, assignmentId));
+    const updatedRow = await getAssignmentForManagement(connection, req.user, assignmentId);
+    if (statusChanged || detailsChanged) {
+      await writeAuditLog(connection, req, 'assignment_updated', 'assignment', assignmentId,
+        assignmentAuditDetails(updatedRow, status, {
+          fromStatus: current.status,
+          toStatus: status,
+          statusChanged,
+          detailsChanged
+        }));
+    }
+    const assignment = formatAssignment(updatedRow);
     await connection.commit();
     transactionStarted = false;
     res.json({ assignment });
@@ -654,10 +708,11 @@ async function deleteAssignment(req, res, next) {
         [assignment.gradingItemId, assignment.schoolId]
       );
     }
-    await writeAuditLog(connection, req, 'assignment_deleted', 'assignment', assignmentId, {
-      summary: assignment.title, gradingItemId: assignment.gradingItemId || null,
-      submissionCount: submissions.length
-    });
+    await writeAuditLog(connection, req, 'assignment_deleted', 'assignment', assignmentId,
+      assignmentAuditDetails(assignment, assignment.status, {
+        gradingItemId: assignment.gradingItemId || null,
+        submissionCount: submissions.length
+      }));
     await connection.commit();
     transactionStarted = false;
     let fileCleanupPending = false;

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Notifications | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
@@ -14,6 +15,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/push-notifications.js"></script>
   <script src="../../assets/js/platform/shell.js"></script>
 </head>
 <body class="platform-notifications" data-platform-portal="true" data-page-title="Notifications">
@@ -176,7 +178,7 @@
         const groupHtml = group !== lastGroup ? `<div class="notif-group-label">${escapeHtml(group)}</div>` : '';
         lastGroup = group;
         return `${groupHtml}
-          <div class="notif-item ${notification.read ? '' : 'unread'}" role="button" tabindex="0" data-platform-notification="${escapeHtml(notification.id)}">
+          <div class="notif-item ${notification.read ? '' : 'unread'}" role="button" tabindex="0" data-platform-notification="${escapeHtml(notification.id)}" data-notification-id="${escapeHtml(notification.id)}">
             <div class="nt-icon ${escapeHtml(notification.tone || 'blue')}"><i data-lucide="${escapeHtml(notification.icon || 'bell')}" style="width:15px;height:15px;"></i></div>
             <div class="nt-body">
               <div class="nt-text"><strong>${escapeHtml(notification.title || 'Platform notification')}</strong></div>

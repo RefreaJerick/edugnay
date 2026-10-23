@@ -79,7 +79,7 @@ function sourceReferences(student, journalApplicable = false) {
 async function existingReport(database, schoolId, studentId, key, lock = false) {
   const [rows] = await database.execute(
     `SELECT id, section_id AS sectionId, teacher_note AS teacherNote, report_status AS status,
-      released_at AS releasedAt
+      released_at AS releasedAt, pending_correction AS pendingCorrection
     FROM narrative_reports WHERE school_id = ? AND student_user_id = ? AND report_period_key = ?
     LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
     [schoolId, studentId, key]
@@ -90,7 +90,8 @@ async function existingReport(database, schoolId, studentId, key, lock = false) 
 function skipReason(existing, sectionId, regenerate) {
   if (!existing) return null;
   if (Number(existing.sectionId) !== Number(sectionId)) return 'another_section';
-  if (existing.releasedAt) return 'released_correction_manual_only';
+  if (existing.releasedAt && !(existing.status === 'draft' && existing.pendingCorrection))
+    return 'released_correction_manual_only';
   if (existing.status === 'confirmed') return 'already_confirmed';
   if (existing.status !== 'draft') return 'not_editable';
   return regenerate ? null : 'draft_exists';

@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const databaseModule = require('../config/database');
@@ -70,12 +72,12 @@ test('school activity rejects unsupported categories and malformed cursors befor
   assert.equal(queries.length, 0);
 });
 
-test('all nine activity categories are accepted and filtered by stored action types', async () => {
+test('all twelve activity categories are accepted and filtered by stored action types', async () => {
   queries.length = 0;
   rows = [];
   const categories = [
-    'accounts', 'class_management', 'announcements', 'school_configuration',
-    'reopen_requests', 'grades', 'attendance', 'school_forms', 'archives'
+    'accounts', 'class_management', 'announcements', 'narrative_reports', 'assignments',
+    'learning_materials', 'school_configuration', 'reopen_requests', 'grades', 'attendance', 'school_forms', 'archives'
   ];
   for (const category of categories) {
     const result = await call(activity.listSchoolActivity, {
@@ -85,7 +87,7 @@ test('all nine activity categories are accepted and filtered by stored action ty
     assert.match(queries.at(-1).sql, /audit_logs\.action_type IN/);
     assert.equal(queries.at(-1).values[0], 4);
   }
-  assert.equal(queries.length, 9);
+  assert.equal(queries.length, 12);
 });
 
 test('activity records use known category labels and a safe fallback for unknown actions', async () => {
@@ -102,6 +104,106 @@ test('activity records use known category labels and a safe fallback for unknown
   assert.equal(result.data.activities[1].detail, 'SF1');
   assert.equal(result.data.activities[2].category, 'system');
   assert.equal(result.data.activities[2].actor, 'System');
+});
+
+test('narrative report activity names the action, section, and report week when available', async () => {
+  rows = [
+    { id: 10, schoolId: 4, actionType: 'narrative_report_draft_regenerated', entityType: 'narrative_reports',
+      details: { sectionId: 15, reportWeekStartDate: '2026-10-19' }, sectionGrade: 'Grade 5',
+      sectionName: 'St. John', createdAt: '2026-10-23T01:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 9, schoolId: 4, actionType: 'narrative_report_released_to_parents', entityType: 'narrative_reports',
+      details: { sectionId: 15, weekStartDate: '2026-10-19' }, sectionGrade: null,
+      sectionName: null, createdAt: '2026-10-23T00:00:00.000Z', actor: 'Maya Santos' },
+    { id: 8, schoolId: 4, actionType: 'parent_notification_triggers_updated', entityType: 'parent_notification_triggers',
+      details: { summary: 'Parent notification settings updated' }, createdAt: '2026-10-22T23:00:00.000Z', actor: 'Alex Test Admin' }
+  ];
+  const result = await call(activity.listSchoolActivity, { user: { id: 7, schoolId: 4 }, query: {} });
+  assert.equal(result.error, null);
+  assert.equal(result.data.activities[0].title, 'regenerated a report draft for Grade 5 · St. John');
+  assert.equal(result.data.activities[0].detail, '· Week of Oct 19, 2026');
+  assert.equal(result.data.activities[0].category, 'narrative_reports');
+  assert.equal(result.data.activities[1].title, 'released a weekly report to parents');
+  assert.equal(result.data.activities[1].detail, '· Week of Oct 19, 2026');
+  assert.equal(result.data.activities[2].title, 'updated parent notification settings');
+  assert.equal(result.data.activities[2].detail, '');
+  assert.match(queries.at(-1).sql, /LEFT JOIN sections AS activity_sections/);
+});
+
+test('activity search can find a report by section or grade name', async () => {
+  queries.length = 0;
+  rows = [];
+  const result = await call(activity.listSchoolActivity, {
+    user: { id: 7, schoolId: 4 }, query: { category: 'narrative_reports', search: 'St. John' }
+  });
+  assert.equal(result.error, null);
+  assert.match(queries[0].sql, /activity_sections\.name LIKE \?/);
+  assert.match(queries[0].sql, /school_grade_levels\.display_name LIKE \?/);
+  assert.deepEqual(queries[0].values.slice(0, 7), [4,
+    'narrative_report_draft_generated', 'narrative_report_draft_regenerated', 'narrative_report_draft_reviewed',
+    'narrative_report_confirmed_held', 'narrative_report_reopened', 'narrative_report_released_to_parents']);
+  assert.equal(queries[0].values.at(-6), '%St. John%');
+});
+
+test('assignment and learning material activity uses clear labels and saved item context', async () => {
+  rows = [
+    { id: 16, schoolId: 4, actionType: 'assignment_created', entityType: 'assignment',
+      details: { summary: 'Reading task · English · Grade 5 · St. John', status: 'draft' }, createdAt: '2026-10-23T03:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 15, schoolId: 4, actionType: 'assignment_updated', entityType: 'assignment',
+      details: { summary: 'Reading task · English · Grade 5 · St. John', status: 'published', fromStatus: 'draft', toStatus: 'published', statusChanged: true, detailsChanged: true }, createdAt: '2026-10-23T02:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 14, schoolId: 4, actionType: 'assignment_deleted', entityType: 'assignment',
+      details: { summary: 'Old task · English · Grade 5 · St. John', status: 'closed' }, createdAt: '2026-10-23T01:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 13, schoolId: 4, actionType: 'learning_material_uploaded', entityType: 'learning_material',
+      details: { summary: 'Chapter 2 · English · Grade 5 · St. John', status: 'published' }, createdAt: '2026-10-22T03:00:00.000Z', actor: 'Maya Santos' },
+    { id: 12, schoolId: 4, actionType: 'learning_material_visibility_changed', entityType: 'learning_material',
+      details: { summary: 'Chapter 2 · English · Grade 5 · St. John', status: 'draft', fromStatus: 'published', toStatus: 'draft' }, createdAt: '2026-10-22T02:00:00.000Z', actor: 'Maya Santos' },
+    { id: 11, schoolId: 4, actionType: 'learning_material_deleted', entityType: 'learning_material',
+      details: { summary: 'Old handout · English · Grade 5 · St. John', status: 'draft' }, createdAt: '2026-10-22T01:00:00.000Z', actor: 'Maya Santos' },
+    { id: 10, schoolId: 4, actionType: 'assignment_updated', entityType: 'assignment',
+      details: { summary: 'Task · English · Grade 5 · St. John', status: 'closed', fromStatus: 'published', toStatus: 'closed', statusChanged: true, detailsChanged: false }, createdAt: '2026-10-21T03:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 9, schoolId: 4, actionType: 'assignment_updated', entityType: 'assignment',
+      details: { summary: 'Task · English · Grade 5 · St. John', status: 'draft', fromStatus: 'closed', toStatus: 'draft', statusChanged: true, detailsChanged: false }, createdAt: '2026-10-21T02:00:00.000Z', actor: 'Carlo Reyes' },
+    { id: 8, schoolId: 4, actionType: 'learning_material_visibility_changed', entityType: 'learning_material',
+      details: { summary: 'Chapter 2 · English · Grade 5 · St. John', status: 'published', fromStatus: 'draft', toStatus: 'published' }, createdAt: '2026-10-21T01:00:00.000Z', actor: 'Maya Santos' }
+  ];
+  const result = await call(activity.listSchoolActivity, { user: { id: 7, schoolId: 4 }, query: {} });
+  assert.equal(result.error, null);
+  const events = result.data.activities;
+  assert.equal(events[0].title, 'created an assignment');
+  assert.equal(events[0].detail, ': Reading task · English · Grade 5 · St. John (Draft)');
+  assert.equal(events[0].category, 'assignments');
+  assert.equal(events[1].title, 'updated and published an assignment');
+  assert.equal(events[2].title, 'deleted an assignment');
+  assert.equal(events[2].category, 'assignments');
+  assert.equal(events[3].title, 'uploaded a learning material');
+  assert.equal(events[3].category, 'learning_materials');
+  assert.equal(events[4].title, 'moved a learning material to draft');
+  assert.equal(events[5].detail, ': Old handout · English · Grade 5 · St. John (Draft)');
+  assert.equal(events[6].title, 'closed an assignment');
+  assert.equal(events[7].title, 'moved an assignment to draft');
+  assert.equal(events[8].title, 'published a learning material');
+});
+
+test('assignment and learning material filters are available on the admin Activity page', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../../views/admin/edugnay-admin-activity.html'), 'utf8');
+  assert.match(html, /data-tag="assignments"[^>]*>Assignments<\/button>/);
+  assert.match(html, /data-tag="learning_materials"[^>]*>Learning materials<\/button>/);
+});
+
+test('assignment and learning material search uses their saved item context', async () => {
+  queries.length = 0;
+  rows = [];
+  const result = await call(activity.listSchoolActivity, {
+    user: { id: 7, schoolId: 4 }, query: { category: 'assignments', search: 'English' }
+  });
+  assert.equal(result.error, null);
+  assert.deepEqual(queries[0].values.slice(0, 4), [4, 'assignment_created', 'assignment_updated', 'assignment_deleted']);
+  assert.match(queries[0].sql, /JSON_UNQUOTE\(JSON_EXTRACT\(audit_logs\.details, '\$\.summary'\)\) LIKE \?/);
+  assert.equal(queries[0].values.at(-5), '%English%');
+
+  await call(activity.listSchoolActivity, {
+    user: { id: 7, schoolId: 4 }, query: { category: 'grades' }
+  });
+  assert.equal(queries.at(-1).values.includes('assignment_deleted'), false);
 });
 
 test('platform activity queries school account events only and pages them', async () => {

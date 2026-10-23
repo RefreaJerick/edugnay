@@ -8,6 +8,7 @@ const {
   createSession,
   deleteSession,
   deleteSessionsForUser,
+  getSessionToken,
   setSessionCookie
 } = require('../config/session');
 
@@ -63,6 +64,8 @@ async function login(req, res, next) {
       return invalidCredentials(res);
     }
 
+    const previousToken = req.headers?.cookie ? getSessionToken(req) : null;
+    if (previousToken) await deleteSession(previousToken);
     const token = await createSession(user.id);
     await database.execute('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
     delete user.passwordHash;

@@ -447,6 +447,40 @@ test('inline regeneration confirmation cancels safely and starts only after expl
   assert.equal(controls['regenerate-confirmation'].hidden, true);
 });
 
+test('regeneration is available for open corrections but not released or confirmed reports', async () => {
+  const helpers = teacherScript.slice(teacherScript.indexOf('  function updateRegenerateButton()'), teacherScript.indexOf('  function showReview('));
+  const regeneration = teacherScript.slice(teacherScript.indexOf('  async function regenerate()'), teacherScript.indexOf('  async function releaseReport('));
+  const report = { id: '19', studentId: '111', status: 'draft', releasedAt: '2026-10-23', pendingCorrection: true };
+  const state = { reports: [report], selectedReportId: '19', generationEnabled: true, busy: false,
+    regenerateConfirmOpen: false, evidence: { section: { id: '15' }, reportWeek: { startDate: '2026-10-19' } } };
+  const controls = {
+    'regenerate-report': { disabled: true, setAttribute() {}, removeAttribute() {} },
+    'regenerate-confirmation': { hidden: true },
+    'regenerate-report-label': { textContent: 'Regenerate draft' },
+    'review-modal': { querySelector() { return { focus() {} }; } },
+    'keep-current-draft': { focus() {} }
+  };
+  let requests = 0;
+  const actions = vm.runInNewContext(`${helpers}\n${regeneration}\n({ updateRegenerateButton, openRegenerateConfirmation, regenerate })`, {
+    state, $: id => controls[id], api: { async request() { requests++; return { results: [{ status: 'generated' }] }; } },
+    async loadWeek() {}, showReview() {}, showAppToast() {}, setMessage() {}
+  });
+  actions.updateRegenerateButton();
+  assert.equal(controls['regenerate-report'].disabled, false);
+  actions.openRegenerateConfirmation();
+  await actions.regenerate();
+  assert.equal(requests, 1);
+
+  for (const change of [
+    { pendingCorrection: false }, { status: 'confirmed' }, { status: 'draft', pendingCorrection: true, generationEnabled: false }
+  ]) {
+    Object.assign(report, { status: 'draft', pendingCorrection: true }, change);
+    state.generationEnabled = change.generationEnabled ?? true;
+    actions.updateRegenerateButton();
+    assert.equal(controls['regenerate-report'].disabled, true);
+  }
+});
+
 test('shared student avatar uses initials without a photo and after a photo load failure', () => {
   const root = path.join(__dirname, '../..');
   const commonScript = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
