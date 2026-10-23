@@ -52,7 +52,7 @@ function selectedStudents(body, evidence) {
   return { students: normalizedIds.map(id => roster.get(String(id))), notes, regenerate: body.regenerateDrafts === true };
 }
 
-function sourceReferences(student) {
+function sourceReferences(student, journalApplicable = false) {
   const references = [];
   const add = (type, value) => {
     const id = positiveId(value);
@@ -66,8 +66,10 @@ function sourceReferences(student) {
     add('assignment', source.assignmentId);
     if (source.submissionId) add('assignment_submission', source.submissionId);
   });
-  student.journal.sources.filter(source => ['submitted', 'reviewed'].includes(source.status)).slice(-3)
-    .forEach(source => add('journal_entry', source.entryId));
+  if (journalApplicable) {
+    student.journal.sources.filter(source => ['submitted', 'reviewed'].includes(source.status)).slice(-3)
+      .forEach(source => add('journal_entry', source.entryId));
+  }
   student.academicRecords
     .forEach(source => add('published_final_grade', source.gradeId));
   (student.academicScores || []).forEach(score => add('student_score', score.scoreId));
@@ -144,7 +146,7 @@ async function saveDraft({ database, req, student, evidence, draft, teacherNote,
         [reportId, action, index + 1]
       );
     }
-    const references = sourceReferences(student);
+    const references = sourceReferences(student, evidence.section.journalApplicable);
     if (references.length) {
       await connection.execute(
         `INSERT INTO report_data_sources (narrative_report_id, source_type, source_record_id) VALUES ${references.map(() => '(?, ?, ?)').join(', ')}`,
@@ -190,7 +192,8 @@ async function processWeeklyGeneration(req, {
         }
         const teacherNote = Object.hasOwn(selection.notes, student.id)
           ? selection.notes[student.id].trim() : existing?.teacherNote || '';
-        const draft = await generate({ student, reportWeek: evidence.reportWeek, teacherNote });
+        const draft = await generate({ student, reportWeek: evidence.reportWeek, teacherNote,
+          journalApplicable: evidence.section.journalApplicable });
         outcome = await saveDraft({ database, req, student, evidence, draft, teacherNote, regenerate: selection.regenerate });
       }
     } catch (error) {

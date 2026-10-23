@@ -140,9 +140,12 @@ test('AI quota reserves before sending, counts failures, isolates schools, and r
       }
       return [{ affectedRows: 1 }];
     } };
-    const input = { database, schoolId: 1, student: {}, reportWeek: {}, teacherNote: '' };
+    const input = { database, schoolId: 1, student: {}, reportWeek: {}, teacherNote: '', journalApplicable: true };
     const now = new Date('2026-10-21T16:30:00Z');
-    await generateWithQuota(input, { now, provider: async () => ({ usage: { inputTokens: 10, outputTokens: 5 } }) });
+    await generateWithQuota(input, { now, provider: async ({ journalApplicable }) => {
+      assert.equal(journalApplicable, true);
+      return { usage: { inputTokens: 10, outputTokens: 5 } };
+    } });
     await assert.rejects(generateWithQuota(input, { now, provider: async () => {
       const error = new Error('Provider failed'); error.category = 'provider'; throw error;
     } }), /Provider failed/);
@@ -249,7 +252,8 @@ test('teacher correction UI keeps regeneration disabled and parent UI labels upd
   const parent = fs.readFileSync(path.join(root, 'assets/js/parent/narrative-reports.js'), 'utf8');
   const teacherPage = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
   const teacherStyles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
-  assert.match(teacher, /'regenerate-report'\)\.hidden = !editable \|\| Boolean\(report\.releasedAt\)/);
+  assert.doesNotMatch(teacher, /'regenerate-report'\)\.hidden/);
+  assert.match(teacher, /async function submitReopen[\s\S]*?finally \{[\s\S]*?updateRegenerateButton\(\)/);
   assert.match(teacher, /report\.pendingCorrection[\s\S]*?Parents still see the last released version/);
   assert.match(teacherStyles, /\.report-history-correction p \{[^}]*font-size: 12px;[^}]*line-height: 1\.55;/);
   assert.match(teacher, /\/weekly-drafts\/\$\{encodeURIComponent\(report\.id\)\}\/reopen/);
@@ -282,4 +286,40 @@ test('teacher correction UI keeps regeneration disabled and parent UI labels upd
   assert.match(teacherStyles, /#review-modal \.report-history-correction p\s*\{[^}]*overflow-wrap:\s*anywhere/s);
   assert.match(parent, /Number\(report\.versionNumber\) > 1 && report\.correctedAt/);
   assert.match(parent, /Updated on/);
+});
+
+test('regeneration stays visible and is enabled only for an available unreleased draft', () => {
+  const root = path.join(__dirname, '../..');
+  const teacher = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  const button = { disabled: true };
+  const report = { id: '101', status: 'draft', releasedAt: null };
+  const state = { reports: [report], selectedReportId: '101', generationEnabled: true, busy: false, regenerateConfirmOpen: false };
+  const source = teacher.slice(teacher.indexOf('  function updateRegenerateButton()'), teacher.indexOf('  function showReview('));
+  const update = vm.runInNewContext(`${source}\nupdateRegenerateButton`, { state, $: () => button });
+
+  update();
+  assert.equal(button.disabled, false, 'an unreleased draft can be regenerated');
+  state.busy = true;
+  update();
+  assert.equal(button.disabled, true, 'processing disables regeneration');
+  state.busy = false;
+  report.status = 'confirmed';
+  update();
+  assert.equal(button.disabled, true, 'confirmation disables regeneration');
+  report.status = 'draft';
+  update();
+  assert.equal(button.disabled, false, 'reopening an unreleased report restores regeneration');
+  state.regenerateConfirmOpen = true;
+  update();
+  assert.equal(button.disabled, true, 'the confirmation choice disables the original trigger');
+  state.regenerateConfirmOpen = false;
+  report.releasedAt = '2026-10-23T00:00:00';
+  update();
+  assert.equal(button.disabled, true, 'released corrections cannot be regenerated');
+  report.releasedAt = null;
+  state.generationEnabled = false;
+  update();
+  assert.equal(button.disabled, true, 'AI generation being unavailable disables regeneration');
+  assert.match(styles, /\.btn-sm\.purple:hover:not\(:disabled\)/);
 });

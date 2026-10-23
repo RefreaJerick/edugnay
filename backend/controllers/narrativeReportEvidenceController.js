@@ -147,6 +147,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
     const [sectionRows] = await database.execute(
       `SELECT sections.id AS sectionId, sections.name AS sectionName,
         sections.academic_year_id AS academicYearId, sections.school_level_id AS schoolLevelId,
+        school_levels.level_code AS schoolLevelCode,
         sections.grade_level_id AS gradeLevelId,
         DATE_FORMAT(academic_years.start_date, '%Y-%m-%d') AS academicYearStartDate,
         DATE_FORMAT(academic_years.end_date, '%Y-%m-%d') AS academicYearEndDate,
@@ -162,6 +163,8 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         AND academic_years.school_id = sections.school_id
       INNER JOIN school_grade_levels ON school_grade_levels.id = sections.grade_level_id
         AND school_grade_levels.school_id = sections.school_id
+      INNER JOIN school_levels ON school_levels.id = sections.school_level_id
+        AND school_levels.school_id = sections.school_id
       LEFT JOIN school_portal_features ON school_portal_features.school_id = sections.school_id
       LEFT JOIN school_settings ON school_settings.school_id = sections.school_id
       WHERE sections.id = ? AND sections.school_id = ? AND sections.status = 'active'
@@ -172,6 +175,8 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
     const section = sectionRows[0];
     if (!section) throw createError('Advisory section not found.', 404);
     if (Number(section.reportsEnabled) !== 1) throw createError('Narrative Reports are not enabled for this school.', 403);
+    const journalApplicable = section.schoolLevelCode === 'jhs' &&
+      Number(section.journalsEnabled) === 1 && Boolean(section.journalSubjectId);
 
     const settings = {
       weekStartDay: Number(section.weekStartDay) || DEFAULT_WEEK.weekStartDay,
@@ -306,7 +311,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         });
       });
 
-      if (Number(section.journalsEnabled) === 1 && section.journalSubjectId) {
+      if (journalApplicable) {
         const [journalRows] = await database.execute(
           `SELECT entries.id AS entryId, entries.student_user_id AS studentId,
             subjects.name AS subjectName, entries.prompt_text AS promptText,
@@ -476,7 +481,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       section: {
         id: String(section.sectionId), name: section.sectionName,
         gradeLevel: section.gradeLevelName, academicYearId: String(section.academicYearId),
-        academicYearLabel: section.academicYearLabel
+        academicYearLabel: section.academicYearLabel, journalApplicable
       },
       reportWeek: { ...period, dataThroughDate: evidenceEndDate },
       students: students.map(({ enrolledDate, withdrawnDate, ...student }) => student)

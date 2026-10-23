@@ -5,9 +5,10 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const { saveReviewDraft, confirmDraft, reviewValues } = require('../controllers/narrativeReportReviewController');
+const teacherScript = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
 
 test('adviser week options include the current week and retain completed weeks within the academic year', () => {
-  const script = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
+  const script = teacherScript;
   const helpers = script.slice(script.indexOf('  function addDays('), script.indexOf('  function populateWeeks('));
   const weekOptions = vm.runInNewContext(`${helpers}\nweekOptions`);
   const section = { academicYearStartDate: '2026-10-01', academicYearEndDate: '2027-03-31' };
@@ -30,6 +31,85 @@ test('adviser week options include the current week and retain completed weeks w
   assert.equal(fridayTuesday[0].endDate, '2026-10-20');
   assert.match(script, /option\.endDate >= today \? ' · In progress'/);
   assert.match(script, /In progress · Evidence through \$\{formatDate\(evidence\.reportWeek\.dataThroughDate\)\}/);
+  assert.match(script, /const notice = \$\('report-week-notice'\);[\s\S]*?notice\.hidden = false;[\s\S]*?notice\.querySelector\('span'\)\.textContent = inProgress/);
+  assert.match(script, /This report week has ended\. Review the reports below before confirming or releasing them to parents\./);
+  assert.match(script, /if \(!weeks\.length\) \{\s*\$\('report-week-notice'\)\.hidden = true;/);
+});
+
+function weekNoticeHarness({ endDate = '2026-10-23', today = '2026-10-23', fail = false, gate } = {}) {
+  const noticeText = { textContent: '' };
+  const elements = {
+    'report-section': { value: '15' },
+    'report-week': { value: '2026-10-19' },
+    'report-week-notice': { hidden: false, querySelector: () => noticeText },
+    'reports-grid': { innerHTML: '' },
+    'week-caption': { textContent: '' },
+    'pipeline-context': { textContent: '' }
+  };
+  const state = { evidence: null, reports: [] };
+  const messages = {};
+  const source = teacherScript.slice(teacherScript.indexOf('  async function loadWeek()'), teacherScript.indexOf('  function generationCandidates()'));
+  const loadWeek = vm.runInNewContext(`${source}\nloadWeek`, {
+    state,
+    $: id => elements[id],
+    setGenerationButtonState() {},
+    renderCounts() {},
+    renderCards() {},
+    updateGenerationControl() {},
+    setMessage(id, text, error) { messages[id] = { text, error }; },
+    formatDate: value => value,
+    schoolToday: () => today,
+    api: { async request(url) {
+      if (gate) await gate;
+      if (fail) throw new Error('Weekly reports could not be loaded.');
+      if (url.includes('/weekly-evidence?')) return {
+        section: { gradeLevel: 'Grade 8', name: 'St. Peter' },
+        reportWeek: { startDate: '2026-10-19', endDate, dataThroughDate: today }
+      };
+      return { reports: [] };
+    } }
+  });
+  return { loadWeek, elements, noticeText, messages };
+}
+
+test('week notice shows current or past guidance after loading and stays hidden during loading and errors', async () => {
+  let finish;
+  const gate = new Promise(resolve => { finish = resolve; });
+  const current = weekNoticeHarness({ gate });
+  const pending = current.loadWeek();
+  assert.equal(current.elements['report-week-notice'].hidden, true);
+  finish();
+  await pending;
+  assert.equal(current.elements['report-week-notice'].hidden, false);
+  assert.equal(current.noticeText.textContent, 'This report week is still in progress. A report generated now uses records available so far. For a more complete report, generate it after the week ends.');
+
+  const past = weekNoticeHarness({ endDate: '2026-10-16', today: '2026-10-23' });
+  await past.loadWeek();
+  assert.equal(past.elements['report-week-notice'].hidden, false);
+  assert.equal(past.noticeText.textContent, 'This report week has ended. Review the reports below before confirming or releasing them to parents.');
+
+  const failed = weekNoticeHarness({ fail: true });
+  await failed.loadWeek();
+  assert.equal(failed.elements['report-week-notice'].hidden, true);
+  assert.equal(failed.messages['reports-message'].error, true);
+});
+
+test('week notice is hidden when the section has no selectable report weeks', () => {
+  const elements = {
+    'report-section': { value: '15' },
+    'report-week': { innerHTML: '', disabled: false },
+    'report-week-notice': { hidden: false },
+    'week-caption': { textContent: '' }
+  };
+  const source = teacherScript.slice(teacherScript.indexOf('  function populateWeeks()'), teacherScript.indexOf('  function setGenerationButtonState('));
+  const populateWeeks = vm.runInNewContext(`${source}\npopulateWeeks`, {
+    state: { sections: [{ id: '15' }], settings: {}, evidence: {}, reports: [] },
+    $: id => elements[id], weekOptions: () => [], schoolToday: () => '2026-10-23',
+    escape: value => value, formatDate: value => value,
+    renderCounts() {}, renderEmptyState() {}, setGenerationButtonState() {}
+  });
+  populateWeeks();
+  assert.equal(elements['report-week-notice'].hidden, true);
 });
 
 function request(body = {}) {
@@ -168,7 +248,6 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(page, /id="follow-up-section" hidden><h3 class="review-section-label"><i data-lucide="heart-handshake" aria-hidden="true"><\/i> Suggested adviser follow-up<\/h3>/);
   assert.match(page, /id="follow-up-reasons"/);
   assert.match(page, /id="report-week-notice" hidden/);
-  assert.match(script, /\$\('report-week-notice'\)\.hidden = !inProgress/);
   assert.match(script, /reason\.type === 'low_scores'/);
   assert.match(script, /detail\.textContent = .*score\.maxScore/);
   assert.match(script, /student\.candidateReasons/);
@@ -251,6 +330,121 @@ test('adviser report actions use success toasts and show regeneration progress',
   assert.match(script, /showAppToast\('Draft regenerated\.'\)/);
   assert.match(script, /showAppToast\(report\.pendingCorrection \? 'Correction released to parents\.' : 'Report released to parents\.'\)/);
   assert.match(script, /showAppToast\('Report reopened for correction\.'\)/);
+});
+
+test('adviser cards and review evidence omit Journal outside eligible JHS sections', () => {
+  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/adviser/narrative-reports.css'), 'utf8');
+  assert.match(styles, /\.report-card-metrics\.without-journal \{ grid-template-columns: 1fr; \}/);
+  assert.match(styles, /#review-modal \.data-source-grid\.without-journal \.ds-academic \{ grid-column: 1 \/ -1; \}/);
+  const student = {
+    id: '4', displayName: 'Ari Student', initials: 'AS',
+    attendance: { recordedSessions: 1, absent: 0, present: 1 },
+    assignments: { total: 1, submitted: 1 },
+    academicRecords: [], academicScores: [], academicScoresOmitted: 0,
+    journal: { entries: [{ entryText: 'A private reflection.' }] }
+  };
+  const state = { evidence: { section: { gradeLevel: 'Grade 7', name: 'St. Matthew', journalApplicable: false },
+    students: [student] } };
+  const elements = {
+    'report-search': { value: '' }, 'report-status': { value: 'all' }, 'reports-grid': { innerHTML: '' },
+    'review-evidence': { innerHTML: '', withoutJournal: false,
+      classList: { toggle(name, value) { elements['review-evidence'].withoutJournal = value; } } }
+  };
+  const context = { state, student, $: id => elements[id], reportFor: () => null,
+    studentInitials: item => item.initials, escape: value => String(value), setMessage() {},
+    window: { lucide: { createIcons() {} } } };
+  const cardsSource = teacherScript.slice(teacherScript.indexOf('  function renderCards()'), teacherScript.indexOf('  async function loadWeek()'));
+  const renderCards = vm.runInNewContext(`${cardsSource}\nrenderCards`, context);
+  const reviewStart = teacherScript.indexOf('  function showReview(');
+  const reviewSource = teacherScript.slice(teacherScript.indexOf('    const attendance = student.attendance;', reviewStart),
+    teacherScript.indexOf('    window.lucide?.createIcons?.();', reviewStart));
+  const renderReviewEvidence = vm.runInNewContext(`function renderReviewEvidence() {\n${reviewSource}\n}\nrenderReviewEvidence`, context);
+
+  renderCards();
+  renderReviewEvidence();
+  assert.match(elements['reports-grid'].innerHTML, /report-card-metrics without-journal/);
+  assert.doesNotMatch(elements['reports-grid'].innerHTML, /Journal/);
+  assert.equal(elements['review-evidence'].withoutJournal, true);
+  assert.doesNotMatch(elements['review-evidence'].innerHTML, /Journal/);
+  assert.match(elements['review-evidence'].innerHTML, /Academic records/);
+
+  state.evidence.section.journalApplicable = true;
+  renderCards();
+  renderReviewEvidence();
+  assert.match(elements['reports-grid'].innerHTML, /Journal/);
+  assert.match(elements['review-evidence'].innerHTML, /Journal/);
+  assert.equal(elements['review-evidence'].withoutJournal, false);
+});
+
+test('inline regeneration confirmation cancels safely and starts only after explicit confirmation', async () => {
+  const root = path.join(__dirname, '../..');
+  const page = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
+  assert.match(page, /id="regenerate-confirmation"[^>]*hidden/);
+  assert.match(page, /id="keep-current-draft"/);
+  assert.match(page, /id="confirm-regenerate"/);
+  assert.match(styles, /\.regenerate-confirmation\[hidden\] \{ display: none; \}/);
+  assert.doesNotMatch(teacherScript, /window\.confirm\('Replace this draft/);
+
+  const helpers = teacherScript.slice(teacherScript.indexOf('  function updateRegenerateButton()'), teacherScript.indexOf('  function showReview('));
+  const regeneration = teacherScript.slice(teacherScript.indexOf('  async function regenerate()'), teacherScript.indexOf('  async function releaseReport('));
+  const report = { id: '19', studentId: '111', status: 'draft', releasedAt: null };
+  const state = { reports: [report], selectedReportId: '19', generationEnabled: true, busy: false,
+    regenerateConfirmOpen: false, evidence: { section: { id: '15' }, reportWeek: { startDate: '2026-10-19' } } };
+  let focused, requests = 0, resolveRequest, message, toast;
+  const controls = {
+    'regenerate-report': { disabled: false, attributes: {}, setAttribute(key, value) { this.attributes[key] = value; },
+      removeAttribute(key) { delete this.attributes[key]; }, focus() { focused = 'regenerate-report'; } },
+    'regenerate-confirmation': { hidden: true },
+    'keep-current-draft': { focus() { focused = 'keep-current-draft'; } },
+    'regenerate-report-label': { textContent: 'Regenerate draft' },
+    'review-modal': { querySelector() { return { focus() { focused = 'review-dialog'; } }; } }
+  };
+  const api = { request() { requests += 1; return new Promise(resolve => { resolveRequest = resolve; }); } };
+  const actions = vm.runInNewContext(`${helpers}\n${regeneration}\n({ updateRegenerateButton, openRegenerateConfirmation, cancelRegenerateConfirmation, regenerate })`, {
+    state, $: id => controls[id], api, async loadWeek() {}, showReview() {},
+    showAppToast(value) { toast = value; }, setMessage(id, value) { message = value; }
+  });
+
+  actions.updateRegenerateButton();
+  actions.openRegenerateConfirmation();
+  assert.equal(requests, 0);
+  assert.equal(controls['regenerate-confirmation'].hidden, false);
+  assert.equal(controls['regenerate-report'].disabled, true);
+  assert.equal(controls['regenerate-report'].attributes['aria-expanded'], 'true');
+  assert.equal(focused, 'keep-current-draft');
+  actions.cancelRegenerateConfirmation();
+  assert.equal(requests, 0);
+  assert.equal(controls['regenerate-confirmation'].hidden, true);
+  assert.equal(controls['regenerate-report'].disabled, false);
+  assert.equal(focused, 'regenerate-report');
+
+  await actions.regenerate();
+  assert.equal(requests, 0, 'the request cannot start without the inline confirmation');
+  actions.openRegenerateConfirmation();
+  const pending = actions.regenerate();
+  assert.equal(requests, 1);
+  assert.equal(state.busy, true);
+  assert.equal(controls['regenerate-confirmation'].hidden, true);
+  assert.equal(controls['regenerate-report-label'].textContent, 'Regenerating...');
+  assert.equal(focused, 'review-dialog');
+  await actions.regenerate();
+  assert.equal(requests, 1, 'a second confirmation cannot start another request');
+  resolveRequest({ results: [{ status: 'generated' }] });
+  await pending;
+  assert.equal(state.busy, false);
+  assert.equal(controls['regenerate-report'].disabled, false);
+  assert.equal(controls['regenerate-report-label'].textContent, 'Regenerate draft');
+  assert.equal(toast, 'Draft regenerated.');
+
+  actions.openRegenerateConfirmation();
+  const failed = actions.regenerate();
+  resolveRequest({ results: [{ status: 'error', message: 'Provider unavailable' }] });
+  await failed;
+  assert.equal(message, 'Provider unavailable');
+  assert.equal(state.busy, false);
+  assert.equal(controls['regenerate-report'].disabled, false);
+  assert.equal(controls['regenerate-confirmation'].hidden, true);
 });
 
 test('shared student avatar uses initials without a photo and after a photo load failure', () => {

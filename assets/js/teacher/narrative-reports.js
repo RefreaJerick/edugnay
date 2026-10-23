@@ -4,7 +4,7 @@
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const state = { sections: [], evidence: null, reports: [], settings: null,
     generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false, reportsEnabled: false,
-    releaseEnabled: false, selectedReportId: null, busy: false, modalReturnFocus: new Map() };
+    releaseEnabled: false, selectedReportId: null, busy: false, regenerateConfirmOpen: false, modalReturnFocus: new Map() };
 
   function addDays(date, count) {
     const value = new Date(`${date}T00:00:00.000Z`);
@@ -43,6 +43,7 @@
     $('report-week').innerHTML = weeks.map(option => `<option value="${option.startDate}">${escape(formatDate(option.startDate))}–${escape(formatDate(option.endDate))}${option.endDate >= today ? ' · In progress' : ''}</option>`).join('');
     $('report-week').disabled = !weeks.length;
     if (!weeks.length) {
+      $('report-week-notice').hidden = true;
       state.evidence = null;
       state.reports = [];
       $('week-caption').textContent = 'No report week available.';
@@ -165,11 +166,12 @@
       const assignmentMetric = assignmentTotal
         ? `<strong class="rc-metric-val">${escape(student.assignments.submitted)}/${escape(assignmentTotal)}</strong><div class="rc-metric-label">Assignments</div>`
         : '<strong class="rc-metric-val">—</strong><div class="rc-metric-label">Assignments</div><div class="rc-metric-detail">No assignments due</div>';
+      const journalApplicable = state.evidence.section.journalApplicable === true;
       return `<article class="report-card${report?.isAtRisk ? ' at-risk' : ''}">
-        <div class="report-card-head">${avatar}<div class="report-card-identity"><strong class="report-card-name">${escape(student.displayName)}</strong><span class="report-card-meta">${escape(state.evidence.section.gradeLevel)} · ${escape(state.evidence.section.name)}</span></div></div>
-        <div class="report-card-metrics"><div class="rc-metric wide${hasAttendanceRecords ? ' has-records' : ''}"><strong class="rc-metric-val">${hasAttendanceRecords ? escape(absences) : '—'}</strong><span class="rc-metric-label"> Absences</span><div class="rc-metric-detail">${escape(attendance)}</div></div>
+        <div class="report-card-head">${avatar}<div class="report-card-identity"><strong class="report-card-name">${escape(student.displayName)}</strong><span class="report-card-meta">${escape(state.evidence.section.gradeLevel)} · ${escape(state.evidence.section.name)}</span></div>${report?.isAtRisk ? '<span class="at-risk-flag">Adviser follow-up</span>' : ''}</div>
+        <div class="report-card-metrics${journalApplicable ? '' : ' without-journal'}"><div class="rc-metric wide${hasAttendanceRecords ? ' has-records' : ''}"><strong class="rc-metric-val">${hasAttendanceRecords ? escape(absences) : '—'}</strong><span class="rc-metric-label"> Absences</span><div class="rc-metric-detail">${escape(attendance)}</div></div>
           <div class="rc-metric">${assignmentMetric}</div>
-          <div class="rc-metric"><strong class="rc-metric-val">${escape(student.journal.entries.length)}</strong><div class="rc-metric-label">Journal</div></div></div>
+          ${journalApplicable ? `<div class="rc-metric"><strong class="rc-metric-val">${escape(student.journal.entries.length)}</strong><div class="rc-metric-label">Journal</div></div>` : ''}</div>
         <div class="report-card-excerpt"><div class="excerpt-label"><i data-lucide="sparkles"></i> Report summary</div><p class="excerpt-text${report ? '' : ' pending'}">${escape(summary)}</p></div>
         <div class="report-card-foot"><span class="badge badge-${statusTone} report-card-status">${escape(status)}</span>${report ? `<button class="btn-sm ghost report-card-review" type="button" data-review-id="${escape(report.id)}"><i data-lucide="eye" aria-hidden="true"></i> Review</button>` : ''}</div></article>`;
     }).join('');
@@ -205,7 +207,11 @@
       const label = `${formatDate(evidence.reportWeek.startDate)}–${formatDate(evidence.reportWeek.endDate)}`;
       $('pipeline-context').textContent = `${evidence.section.gradeLevel} · ${evidence.section.name} · Across all subjects`;
       const inProgress = evidence.reportWeek.endDate >= schoolToday();
-      $('report-week-notice').hidden = !inProgress;
+      const notice = $('report-week-notice');
+      notice.hidden = false;
+      notice.querySelector('span').textContent = inProgress
+        ? 'This report week is still in progress. A report generated now uses records available so far. For a more complete report, generate it after the week ends.'
+        : 'This report week has ended. Review the reports below before confirming or releasing them to parents.';
       $('week-caption').textContent = inProgress
         ? `${label} · In progress · Evidence through ${formatDate(evidence.reportWeek.dataThroughDate)}`
         : label;
@@ -376,6 +382,30 @@
     $('add-action').disabled = report?.status !== 'draft' || $('review-actions').children.length >= 3;
   }
 
+  function updateRegenerateButton() {
+    const report = state.reports.find(item => item.id === state.selectedReportId);
+    $('regenerate-report').disabled = !report || report.status !== 'draft' || Boolean(report.releasedAt) ||
+      !state.generationEnabled || state.busy || state.regenerateConfirmOpen;
+  }
+
+  function setRegenerateConfirmation(open) {
+    state.regenerateConfirmOpen = open;
+    $('regenerate-confirmation').hidden = !open;
+    $('regenerate-report').setAttribute('aria-expanded', String(open));
+    updateRegenerateButton();
+  }
+
+  function openRegenerateConfirmation() {
+    if ($('regenerate-report').disabled) return;
+    setRegenerateConfirmation(true);
+    $('keep-current-draft').focus();
+  }
+
+  function cancelRegenerateConfirmation() {
+    setRegenerateConfirmation(false);
+    $('regenerate-report').focus();
+  }
+
   function showReview(reportId) {
     const report = state.reports.find(item => item.id === reportId);
     const student = state.evidence?.students.find(item => item.id === report?.studentId);
@@ -395,12 +425,15 @@
     const attendance = student.attendance;
     const assignments = student.assignments;
     const scoreCount = student.academicScores?.length || 0;
-    $('review-evidence').innerHTML = [
+    const journalApplicable = state.evidence.section.journalApplicable === true;
+    const sources = [
       { key: 'attendance', icon: 'user-round-check', label: 'Attendance', value: attendance.recordedSessions ? `${attendance.present}/${attendance.recordedSessions} present · ${attendance.absent} absent` : 'No confirmed records', detail: attendance.recordedSessions ? `${attendance.recordedSessions} recorded sessions across subjects` : 'Missing records are not treated as absences.' },
       { key: 'assignments', icon: 'clipboard-check', label: 'Assignment completion', value: assignments.total ? `${assignments.submitted}/${assignments.total} submitted` : 'No assignments due', detail: assignments.total ? 'Published assignments due in the selected week' : 'Across all subjects for this week' },
-      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities not included; review before confirming.` : 'Recorded during the selected week' },
-      { key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Reflection text is treated as untrusted input.' }
-    ].map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
+      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities not included; review before confirming.` : 'Recorded during the selected week' }
+    ];
+    if (journalApplicable) sources.push({ key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Reflection text is treated as untrusted input.' });
+    $('review-evidence').classList.toggle('without-journal', !journalApplicable);
+    $('review-evidence').innerHTML = sources.map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
     window.lucide?.createIcons?.();
     $('review-note').textContent = report.teacherNote || 'No teacher note provided.';
     $('review-summary').value = report.editedSummary || report.generatedSummary;
@@ -435,8 +468,7 @@
     });
     $('save-review').hidden = !editable;
     $('confirm-review').hidden = !editable;
-    $('regenerate-report').hidden = !editable || Boolean(report.releasedAt);
-    $('regenerate-report').disabled = !state.generationEnabled || Boolean(report.releasedAt);
+    setRegenerateConfirmation(false);
     const historySection = $('report-history-section');
     const historyContent = $('report-history-content');
     const historyToggle = $('report-history');
@@ -479,9 +511,11 @@
     if (state.busy) return;
     const id = state.selectedReportId;
     if (!id) return;
+    setRegenerateConfirmation(false);
     state.busy = true;
     $('save-review').disabled = true;
     $('confirm-review').disabled = true;
+    updateRegenerateButton();
     try {
       const body = reviewPayload();
       const report = state.reports.find(item => item.id === id);
@@ -501,15 +535,16 @@
         ? report.pendingCorrection ? 'Correction confirmed. Not sent to parents.' : 'Report confirmed. Not sent to parents.'
         : 'Draft saved.');
     } catch (error) { setMessage('review-message', error.message || 'The report could not be saved.', true); }
-    finally { state.busy = false; $('save-review').disabled = false; $('confirm-review').disabled = false; }
+    finally { state.busy = false; $('save-review').disabled = false; $('confirm-review').disabled = false; updateRegenerateButton(); }
   }
 
   async function regenerate() {
     const report = state.reports.find(item => item.id === state.selectedReportId);
     if (!report || report.status !== 'draft' || report.releasedAt || !state.generationEnabled || state.busy ||
-      !window.confirm('Replace this draft and its edits with a new AI draft?')) return;
+      !state.regenerateConfirmOpen) return;
     state.busy = true;
-    $('regenerate-report').disabled = true;
+    setRegenerateConfirmation(false);
+    $('review-modal').querySelector('[role="dialog"]').focus();
     $('regenerate-report-label').textContent = 'Regenerating...';
     $('regenerate-report').setAttribute('aria-busy', 'true');
     try {
@@ -526,7 +561,7 @@
       state.busy = false;
       $('regenerate-report-label').textContent = 'Regenerate draft';
       $('regenerate-report').removeAttribute('aria-busy');
-      $('regenerate-report').disabled = !state.generationEnabled || Boolean(report.releasedAt);
+      updateRegenerateButton();
     }
   }
 
@@ -536,13 +571,14 @@
       !state.releaseEnabled || state.busy) return;
     state.busy = true;
     $('release-report').disabled = true;
+    updateRegenerateButton();
     try {
       await api.request(`/reports/weekly-drafts/${encodeURIComponent(report.id)}/release`, { method: 'POST' });
       await loadWeek();
       showReview(report.id);
       showAppToast(report.pendingCorrection ? 'Correction released to parents.' : 'Report released to parents.');
     } catch (error) { setMessage('review-message', error.message || 'The report could not be released.', true); }
-    finally { state.busy = false; $('release-report').disabled = false; }
+    finally { state.busy = false; $('release-report').disabled = false; updateRegenerateButton(); }
   }
 
   async function submitReopen() {
@@ -556,6 +592,7 @@
     }
     state.busy = true;
     $('submit-reopen').disabled = true;
+    updateRegenerateButton();
     try {
       await api.request(`/reports/weekly-drafts/${encodeURIComponent(report.id)}/reopen`, {
         method: 'POST', body: JSON.stringify({ reason })
@@ -568,6 +605,7 @@
     } finally {
       state.busy = false;
       $('submit-reopen').disabled = false;
+      updateRegenerateButton();
     }
   }
 
@@ -677,7 +715,9 @@
     $('add-action').addEventListener('click', () => appendAction());
     $('save-review').addEventListener('click', () => saveReview(false));
     $('confirm-review').addEventListener('click', () => saveReview(true));
-    $('regenerate-report').addEventListener('click', regenerate);
+    $('regenerate-report').addEventListener('click', openRegenerateConfirmation);
+    $('keep-current-draft').addEventListener('click', cancelRegenerateConfirmation);
+    $('confirm-regenerate').addEventListener('click', regenerate);
     $('release-report').addEventListener('click', releaseReport);
     $('reopen-report').addEventListener('click', () => {
       $('report-reopen-section').hidden = false;
@@ -689,7 +729,10 @@
     document.querySelectorAll('[data-close-modal]').forEach(button => button.addEventListener('click', () => closeModal(button.closest('.modal-backdrop').id)));
     document.querySelectorAll('.modal-backdrop').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal && !state.busy) closeModal(modal.id); }));
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !state.busy) document.querySelectorAll('.modal-backdrop.open').forEach(modal => closeModal(modal.id));
+      if (event.key === 'Escape' && !state.busy) {
+        if (state.regenerateConfirmOpen) cancelRegenerateConfirmation();
+        else document.querySelectorAll('.modal-backdrop.open').forEach(modal => closeModal(modal.id));
+      }
       if (event.key !== 'Tab') return;
       const backdrop = document.querySelector('.modal-backdrop.open');
       const dialog = backdrop?.querySelector('[role="dialog"]');

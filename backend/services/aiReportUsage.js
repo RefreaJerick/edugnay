@@ -72,13 +72,13 @@ async function recordModelOutcome(database, schoolId, date, usage, error) {
   }
 }
 
-async function generateWithQuota({ database, schoolId, student, reportWeek, teacherNote },
+async function generateWithQuota({ database, schoolId, student, reportWeek, teacherNote, journalApplicable },
   { provider = generateNarrativeDraft, now = new Date() } = {}) {
   await requireAiEvidenceApproval(database, schoolId);
   const date = await reserveModelCall(database, schoolId, manilaDate(now));
   let draft;
   try {
-    draft = await provider({ student, reportWeek, teacherNote });
+    draft = await provider({ student, reportWeek, teacherNote, journalApplicable });
   } catch (error) {
     await recordModelOutcome(database, schoolId, date, error.usage, error);
     throw error;

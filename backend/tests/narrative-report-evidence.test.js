@@ -77,7 +77,7 @@ test('weekly evidence keeps the full configured week but stops evidence at today
         sectionId: 22, sectionName: 'St. Matthew', academicYearId: 9, schoolLevelId: 3,
         gradeLevelId: 7, academicYearStartDate: addDays(weekStart, -180),
         academicYearEndDate: addDays(weekEnd, 100), academicYearLabel: '2026-2027',
-        gradeLevelName: 'Grade 7', reportsEnabled: 1, journalSubjectId: null,
+        gradeLevelName: 'Grade 7', schoolLevelCode: 'jhs', reportsEnabled: 1, journalSubjectId: null,
         journalsEnabled: 0, weekStartDay: 1, weekEndDay: 6
       }]];
       if (sql.includes('FROM section_students')) return [[]];
@@ -191,7 +191,7 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
         sectionId: 22, sectionName: 'St. Matthew', academicYearId: 9, schoolLevelId: 3,
         gradeLevelId: 7, academicYearStartDate: addDays(weekStart, -180),
         academicYearEndDate: addDays(weekEnd, 100), academicYearLabel: '2026-2027',
-        gradeLevelName: 'Grade 7', reportsEnabled: 1, journalSubjectId: 55,
+        gradeLevelName: 'Grade 7', schoolLevelCode: 'jhs', reportsEnabled: 1, journalSubjectId: 55,
         journalsEnabled: 1, weekStartDay: 1, weekEndDay: 6
       }]];
       if (sql.includes('FROM section_students')) return [[
@@ -276,6 +276,49 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
   assert.equal(result.headers['Cache-Control'], 'no-store');
 });
 
+test('journal evidence is collected only for configured JHS sections', async () => {
+  const weekStart = addDays(startOfCurrentMondayWeek(), -7);
+  const weekEnd = addDays(weekStart, 5);
+  for (const scenario of [
+    { level: 'elementary', journalsEnabled: 1, journalSubjectId: 55, expected: false },
+    { level: 'shs', journalsEnabled: 1, journalSubjectId: 55, expected: false },
+    { level: 'jhs', journalsEnabled: 0, journalSubjectId: 55, expected: false },
+    { level: 'jhs', journalsEnabled: 1, journalSubjectId: null, expected: false },
+    { level: 'jhs', journalsEnabled: 1, journalSubjectId: 55, expected: true }
+  ]) {
+    const calls = [];
+    const database = { async execute(sql, values = []) {
+      calls.push({ sql, values });
+      if (sql.includes('FROM sections')) return [[{
+        sectionId: 22, sectionName: 'St. Matthew', academicYearId: 9, schoolLevelId: 3,
+        schoolLevelCode: scenario.level, gradeLevelId: 7,
+        academicYearStartDate: addDays(weekStart, -180), academicYearEndDate: addDays(weekEnd, 100),
+        academicYearLabel: '2026-2027', gradeLevelName: 'Grade 7', reportsEnabled: 1,
+        journalSubjectId: scenario.journalSubjectId, journalsEnabled: scenario.journalsEnabled,
+        weekStartDay: 1, weekEndDay: 6
+      }]];
+      if (sql.includes('FROM section_students')) return [[{
+        studentId: 101, displayName: 'Ari Student', initials: 'AS',
+        enrolledDate: addDays(weekStart, -30), withdrawnDate: null
+      }]];
+      if (sql.includes('FROM student_journal_entries AS entries')) return [[{
+        entryId: 601, studentId: 101, subjectName: 'Values Education', promptText: 'Reflect on teamwork.',
+        entryText: 'I helped my group.', entryStatus: 'submitted', submittedAt: `${weekStart}T09:00:00`
+      }]];
+      return [[]];
+    } };
+    const result = await invoke(getWeeklyEvidence, {
+      user: { id: 8, schoolId: 4, role: 'teacher' },
+      query: { sectionId: '22', startDate: weekStart }
+    }, database);
+    assert.equal(result.error, undefined, scenario.level);
+    assert.equal(result.body.section.journalApplicable, scenario.expected, scenario.level);
+    assert.equal(calls.some(call => call.sql.includes('FROM student_journal_entries AS entries')),
+      scenario.expected, scenario.level);
+    assert.equal(result.body.students[0].journal.entries.length, scenario.expected ? 1 : 0, scenario.level);
+  }
+});
+
 test('weekly evidence respects enrollment dates for transferred learners and does not treat missing history as a risk', async () => {
   const weekStart = addDays(startOfCurrentMondayWeek(), -7);
   const weekEnd = addDays(weekStart, 5);
@@ -290,7 +333,7 @@ test('weekly evidence respects enrollment dates for transferred learners and doe
         sectionId: 22, sectionName: 'St. Matthew', academicYearId: 9, schoolLevelId: 3,
         gradeLevelId: 7, academicYearStartDate: addDays(weekStart, -180),
         academicYearEndDate: addDays(weekEnd, 100), academicYearLabel: '2026-2027',
-        gradeLevelName: 'Grade 7', reportsEnabled: 1, journalSubjectId: 55,
+        gradeLevelName: 'Grade 7', schoolLevelCode: 'jhs', reportsEnabled: 1, journalSubjectId: 55,
         journalsEnabled: 1, weekStartDay: 1, weekEndDay: 6
       }]];
       if (sql.includes('FROM section_students')) return [[{

@@ -64,7 +64,7 @@ async function main() {
   const selected = process.argv[2] ? examples.filter(example => example.id === process.argv[2]) : examples;
   if (!selected.length) throw new Error('Unknown fixture. Use complete, limited, follow-up, excused, or missed-work.');
   for (const example of selected) {
-    const draft = await generateNarrativeDraft({ student: example.student, reportWeek });
+    const draft = await generateNarrativeDraft({ student: example.student, reportWeek, journalApplicable: true });
     if (!example.student.followUpCandidate && draft.followUpSuggestion) throw new Error(`${example.label}: unexpected internal follow-up suggestion.`);
     if (/\bat-risk\b|ignore all previous instructions|perfect grade/i.test(`${draft.summary} ${draft.parentActions.join(' ')}`)) {
       throw new Error(`${example.label}: parent content contains a private label or untrusted instruction.`);
