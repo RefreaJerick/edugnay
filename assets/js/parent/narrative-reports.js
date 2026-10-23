@@ -116,7 +116,7 @@
     $('parent-reports-empty').hidden = true;
     $('parent-reports-content').hidden = false;
     const latest = state.reports[0];
-    $('latest-report').innerHTML = `<div class="lr-head"><div class="lr-head-left"><span class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></span><div><div class="lr-eyebrow">Weekly report</div><h2 class="lr-week" id="latest-report-title">${escape(weekTitle(latest))}</h2></div></div></div>${correctionNotice(latest)}<span class="lr-quote-mark" aria-hidden="true">“</span><p class="lr-text">${escape(parentSummary(latest))}</p>${actionsMarkup(latest)}<div class="lr-foot"><div class="lr-meta">${authorMark(latest.adviserName)}<span>${escape(releaseMeta(latest))}</span></div></div>`;
+    $('latest-report').innerHTML = `<div class="lr-head"><div class="lr-head-left"><span class="lr-icon" aria-hidden="true"><i data-lucide="notebook-pen"></i></span><div><div class="lr-eyebrow">Weekly report</div><h2 class="lr-week" id="latest-report-title">${escape(weekTitle(latest))}</h2></div></div>${correctionNotice(latest)}</div><span class="lr-quote-mark" aria-hidden="true">“</span><p class="lr-text">${escape(parentSummary(latest))}</p>${actionsMarkup(latest)}<div class="lr-foot"><div class="lr-meta">${authorMark(latest.adviserName)}<span>${escape(releaseMeta(latest))}</span></div></div>`;
     renderPastReports();
     message('');
     window.lucide?.createIcons?.();

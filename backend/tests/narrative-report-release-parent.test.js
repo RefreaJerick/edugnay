@@ -187,7 +187,7 @@ test('release flag defaults off and parent routes require parent authorization',
 test('parent page features the latest report and shows every past report without exposing private fields', async () => {
   const reports = [
     { id: '101', studentId: '4', weekStartDate: '2026-10-12', weekEndDate: '2026-10-17',
-      summary: 'Approved summary for Sam: latest approved summary', parentActions: [], adviserName: 'Ms. Adviser',
+      summary: 'Approved summary for Sam: latest approved summary. In Values Education, Sam scored 6/10, 7/10, and 5/10 this week.', parentActions: [], adviserName: 'Ms. Adviser',
       releasedAt: '2026-10-18T10:00:00', correctedAt: '2026-10-18T10:00:00', versionNumber: 2,
       teacherNote: 'PRIVATE NOTE' },
     { id: '99', studentId: '4', weekStartDate: '2025-06-02', weekEndDate: '2025-06-07',
@@ -238,7 +238,7 @@ test('parent page features the latest report and shows every past report without
         if (url.endsWith('/99')) return { report: reports[1] };
         if (/\/\d+\/\d+$/.test(url)) throw Object.assign(new Error('Not found'), { status: 404 });
         if (url.endsWith('/5')) return { reports: [] };
-        if (url.endsWith('/6')) return { reports: [reports[0]] };
+        if (url.endsWith('/6')) return { reports: [{ ...reports[0], versionNumber: 1, correctedAt: null }] };
         return { reports };
       }
     },
@@ -252,10 +252,15 @@ test('parent page features the latest report and shows every past report without
     lucide: { createIcons() {} }
   };
   const script = fs.readFileSync(path.join(__dirname, '../../assets/js/parent/narrative-reports.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '../../assets/css/parent/reports.css'), 'utf8');
+  assert.match(styles, /\.latest-report-hero \.lr-head \.report-correction-notice\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin:\s*0;/s);
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.latest-report-hero \.lr-head \{\s*display:\s*block;\s*\}[\s\S]*?\.latest-report-hero \.lr-head \.report-correction-notice \{\s*margin:\s*10px 0 0 48px;/);
   vm.runInNewContext(script, { window, document, URL, URLSearchParams, Intl, Date, String, Number, Set, Array });
   await listeners.DOMContentLoaded();
   assert.match(get('latest-report').innerHTML, /Latest approved summary/);
+  assert.match(get('latest-report').innerHTML, /Values Education.*6\/10, 7\/10, and 5\/10/);
   assert.match(get('latest-report').innerHTML, /Updated on October 18, 2026/);
+  assert.match(get('latest-report').innerHTML, /class="lr-head"[\s\S]*?class="report-correction-notice"[\s\S]*?<\/div><span class="lr-quote-mark"/);
   assert.doesNotMatch(get('latest-report').innerHTML, /Approved summary for Sam:/);
   assert.doesNotMatch(get('latest-report').innerHTML, /Older approved summary|PRIVATE NOTE/);
   assert.doesNotMatch(get('latest-report').innerHTML, /Recommended actions/);
@@ -298,6 +303,7 @@ test('parent page features the latest report and shows every past report without
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(get('parent-reports-content').hidden, false);
   assert.match(get('latest-report').innerHTML, /Latest approved summary/);
+  assert.doesNotMatch(get('latest-report').innerHTML, /report-correction-notice/);
   assert.match(get('parent-report-list').innerHTML, /No earlier reports/);
   assert.equal((get('parent-report-list').innerHTML.match(/class="timeline-entry"/g) || []).length, 0);
   get('parentReportChildSwitcher').listeners.click({ target: { closest: () => ({ dataset: { studentId: '4' } }) } });

@@ -137,6 +137,11 @@
   font-weight: 700;
 }
 
+.latest-report-hero .lr-head .report-correction-notice {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
 .lr-foot {
   position: relative;
   z-index: 1;
@@ -361,6 +366,14 @@
 @media (max-width: 760px) {
   .latest-report-hero {
     padding: 20px;
+  }
+
+  .latest-report-hero .lr-head {
+    display: block;
+  }
+
+  .latest-report-hero .lr-head .report-correction-notice {
+    margin: 10px 0 0 48px;
   }
 
   .lr-week {

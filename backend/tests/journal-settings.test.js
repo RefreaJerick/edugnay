@@ -145,6 +145,24 @@ test('school admin approval records an actor and revocation disables future AI e
   assert.ok(calls.some(call => call.sql?.includes('INSERT INTO audit_logs') && call.values[2] === 'ai_report_evidence_approval_revoked'));
 });
 
+test('turning Reports off and on retains the recorded AI approval', async () => {
+  const approved = await save({ narrativeReportsEnabled: true, aiEvidenceApproved: true });
+  assert.equal(approved.error, undefined);
+  const savedValues = { ...state.featureValues };
+  const turnedOff = await save({ narrativeReportsEnabled: false, aiEvidenceApproved: true }, undefined, { featureValues: savedValues });
+  assert.equal(turnedOff.error, undefined);
+  assert.equal(turnedOff.body.features.narrativeReportsEnabled, false);
+  assert.equal(turnedOff.body.features.aiEvidenceApproved, true);
+  assert.equal(state.featureValues.aiEvidenceApprovedAt, savedValues.aiEvidenceApprovedAt);
+  assert.equal(state.featureValues.aiEvidenceApprovedByUserId, savedValues.aiEvidenceApprovedByUserId);
+  assert.ok(!calls.some(call => call.sql?.includes('INSERT INTO audit_logs') && /ai_report_evidence_approval/.test(call.values?.[2])));
+  const turnedOn = await save({ narrativeReportsEnabled: true, aiEvidenceApproved: true }, undefined, { featureValues: { ...state.featureValues } });
+  assert.equal(turnedOn.error, undefined);
+  assert.equal(turnedOn.body.features.narrativeReportsEnabled, true);
+  assert.equal(turnedOn.body.features.aiEvidenceApproved, true);
+  assert.equal(state.featureValues.aiEvidenceApprovedAt, savedValues.aiEvidenceApprovedAt);
+});
+
 async function loadFeatures(user = { id: 3, schoolId: 1, role: 'school_admin' }) {
   calls = [];
   const result = {};

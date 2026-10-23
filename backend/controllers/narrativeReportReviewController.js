@@ -340,7 +340,7 @@ async function listSchoolReleaseHistory(req, res, next) {
     const schoolId = Number(req.user.schoolId);
     const [rows] = await getDatabase().execute(
       `SELECT reports.id AS reportId, students.display_name AS learnerName,
-        sections.name AS sectionName, reports.report_week_start_date AS weekStartDate,
+        sections.name AS sectionName, DATE_FORMAT(reports.report_week_start_date, '%Y-%m-%d') AS weekStartDate,
         MAX(releases.version_number) AS latestVersion, MAX(releases.released_at) AS latestReleaseAt
       FROM narrative_report_releases AS releases
       INNER JOIN narrative_reports AS reports ON reports.id = releases.narrative_report_id

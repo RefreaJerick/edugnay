@@ -99,6 +99,11 @@ test('Portal Features keeps Journal subject visible and disabled while Journals 
   const layoutMarkup = portalRenderer.slice(layoutStart, footerStart);
 
   assert.match(layoutMarkup, /class="school-portal-layout" id="schoolPortalLayout"/);
+  assert.match(layoutMarkup, /<strong>Show Narrative Reports<\/strong>/);
+  assert.match(layoutMarkup, /<strong>Allow AI to generate new drafts<\/strong>/);
+  assert.match(layoutMarkup, /school-report-ai-toggle/);
+  assert.match(portalRenderer, /Approval is saved, but no evidence is sent while Narrative Reports are off/);
+  assert.match(portalRenderer, /aiApprovalToggle\?\.addEventListener\('change', syncReportWeekSettings\)/);
   assert.ok(layoutMarkup.indexOf('school-portal-access-block') < layoutMarkup.indexOf('school-portal-settings-column'));
   assert.match(layoutMarkup, /id="portalSettingsColumn"/);
   assert.doesNotMatch(layoutMarkup, /id="portalSettingsColumn"[^>]*hidden/);

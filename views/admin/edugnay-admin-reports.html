@@ -282,8 +282,8 @@
       <div class="panel release-history-panel">
         <div class="panel-head"><div class="panel-title">Released weekly reports</div></div>
         <div class="release-history-layout">
-          <div id="school-release-list" role="status">Loading release history…</div>
-          <div id="school-release-detail" role="status">Select a report to view its released versions and correction reasons.</div>
+          <div id="school-release-list" aria-label="Released weekly reports" aria-live="polite"></div>
+          <div id="school-release-detail" class="school-release-detail" role="region" aria-label="Selected report history" aria-live="polite"></div>
         </div>
       </div>
 
@@ -294,37 +294,61 @@
     let gradeSummaryError = '';
     let attendanceSummaryError = '';
     let reportsLoading = true;
+    let schoolReleaseHistoryRequest = 0;
     const escapeReleaseText = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
+    const formatReleaseDate = value => {
+      const date = String(value ?? '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+      return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(`${date}T00:00:00Z`));
+    };
+    document.getElementById('school-release-list').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading report history', text: 'Released weekly reports are being loaded.' });
+    document.getElementById('school-release-detail').innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'mouse-pointer-click', title: 'Select a report', text: 'Choose a released report to view its versions and correction history.' });
+    window.lucide?.createIcons?.();
 
     async function loadSchoolReleaseHistory() {
       const list = document.getElementById('school-release-list');
       try {
         const data = await window.EDUGNAY_API.request('/reports/weekly-release-history');
         list.innerHTML = data.reports.length ? data.reports.map(report => `
-          <button type="button" class="school-release-item" data-release-report-id="${escapeReleaseText(report.reportId)}">
+          <button type="button" class="school-release-item" aria-pressed="false" data-release-report-id="${escapeReleaseText(report.reportId)}">
             <strong>${escapeReleaseText(report.learnerName)}</strong>
-            <span>${escapeReleaseText(report.sectionName)} · Week of ${escapeReleaseText(String(report.weekStartDate).slice(0, 10))} · Version ${escapeReleaseText(report.latestVersion)}</span>
-          </button>`).join('') : 'No weekly reports have been released yet.';
+            <span class="school-release-item-meta"><span>${escapeReleaseText(report.sectionName)}</span><span>Week of ${escapeReleaseText(formatReleaseDate(report.weekStartDate))}</span><span>Version ${escapeReleaseText(report.latestVersion)}</span></span>
+          </button>`).join('') : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'files', title: 'No released reports yet', text: 'Released weekly reports will appear here.' });
+        window.lucide?.createIcons?.();
       } catch (error) {
-        list.textContent = 'Release history could not be loaded.';
+        list.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Report history unavailable', text: 'Released reports could not be loaded.' });
+        window.lucide?.createIcons?.();
       }
     }
 
     async function showSchoolReleaseHistory(reportId) {
       const detail = document.getElementById('school-release-detail');
-      detail.textContent = 'Loading released versions…';
+      const requestId = ++schoolReleaseHistoryRequest;
+      document.querySelectorAll('#school-release-list [data-release-report-id]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.releaseReportId === String(reportId)));
+      });
+      detail.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'loader-circle', title: 'Loading report history', text: 'Released versions and correction history are being loaded.' });
+      window.lucide?.createIcons?.();
       try {
         const history = await window.EDUGNAY_API.request(`/reports/weekly-drafts/${encodeURIComponent(reportId)}/history`);
-        detail.innerHTML = history.releases.map(version => `
+        if (requestId !== schoolReleaseHistoryRequest) return;
+        detail.innerHTML = history.releases.length ? `${history.releases.map((version, index) => `
           <article class="school-release-version">
-            <h3>Version ${escapeReleaseText(version.versionNumber)}</h3>
-            <p class="school-release-meta">Released by ${escapeReleaseText(version.adviserName || 'Adviser')} · ${escapeReleaseText(String(version.releasedAt).slice(0, 10))}</p>
-            <p>${escapeReleaseText(version.summary)}</p>
-            ${version.parentActions.length ? `<ul>${version.parentActions.map(action => `<li>${escapeReleaseText(action)}</li>`).join('')}</ul>` : ''}
-          </article>`).join('') + (history.reopens.length ? `<h3>Correction reasons</h3>${history.reopens.map(item => `
-          <p class="school-release-reason">${escapeReleaseText(item.reason)} <span class="school-release-meta">· ${escapeReleaseText(item.adviserName || 'Adviser')} · ${escapeReleaseText(String(item.reopenedAt).slice(0, 10))}</span></p>`).join('')}` : '');
+            <header class="school-release-version-head">
+              <h3>Version ${escapeReleaseText(version.versionNumber)}${index === 0 ? '<span class="school-release-current">Current parent version</span>' : ''}</h3>
+              <div class="school-release-meta"><span>Released ${escapeReleaseText(formatReleaseDate(version.releasedAt))}</span><span>By ${escapeReleaseText(version.adviserName || 'Adviser')}</span></div>
+            </header>
+            <section class="school-release-summary"><h4>Parent summary</h4><p>${escapeReleaseText(version.summary)}</p></section>
+            ${version.parentActions.length ? `<section class="school-release-actions"><h4><i data-lucide="list-checks" aria-hidden="true"></i> Recommended actions</h4><ul>${version.parentActions.map(action => `<li>${escapeReleaseText(action)}</li>`).join('')}</ul></section>` : ''}
+          </article>`).join('')}${history.reopens.length ? `<section class="school-release-corrections"><h3><i data-lucide="file-clock" aria-hidden="true"></i> Correction history</h3>${history.reopens.map(item => `
+          <article class="school-release-correction"><p>${escapeReleaseText(item.reason)}</p><div class="school-release-meta"><span>Recorded ${escapeReleaseText(formatReleaseDate(item.reopenedAt))}</span><span>By ${escapeReleaseText(item.adviserName || 'Adviser')}</span></div></article>`).join('')}</section>` : ''}`
+          : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'files', title: 'No released versions', text: 'This report has no saved release versions.' });
+        window.lucide?.createIcons?.();
       } catch (error) {
-        detail.textContent = 'This report history could not be loaded.';
+        if (requestId !== schoolReleaseHistoryRequest) return;
+        detail.innerHTML = window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'cloud-off', title: 'Report history unavailable', text: 'Released versions and correction history could not be loaded.' });
+        window.lucide?.createIcons?.();
       }
     }
 
@@ -489,12 +513,13 @@
           <div class="flag-av" style="background:var(--blue-mid)">${escape(student.initials || '?')}</div>
           <div class="flag-info"><div class="flag-name">${escape(student.name)}</div>
             <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
-          <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
+          <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${['grade', 'low_scores'].includes(reason.type) ? 'gold' : 'red'}"><i data-lucide="${['grade', 'low_scores'].includes(reason.type) ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
             ? `${reason.subject}: ${reason.grade}`
+                : reason.type === 'low_scores' ? `${reason.subject}: 3 low scores this report week`
                 : reason.type === 'consecutive' ? `${reason.count} missed ${reason.subject} meeting dates in a row`
                   : `${reason.count} dates with a recorded ${reason.includesExcused ? 'subject absence (including excused)' : 'unexcused subject absence'}`)}</span>`).join('')}</div>
         </div>`).join('')
-        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
+        : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or academic criteria.' });
     }
 
     function renderReportPanels(data = REPORTS_DATA) {

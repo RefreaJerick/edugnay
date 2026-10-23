@@ -1236,9 +1236,9 @@
       const payload = {
         firstName: data.firstName,
         lastName: data.lastName,
-        personalEmail: data.personalEmail,
-        role: data.role
+        personalEmail: data.personalEmail
       };
+      if (!data.userId) payload.role = data.role;
       if (data.employeeNo !== undefined) payload.employeeNo = data.employeeNo;
       if (data.lrn !== undefined) payload.lrn = data.lrn;
       if (data.parentLinks !== undefined && (!data.userId ||

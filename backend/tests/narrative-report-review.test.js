@@ -6,6 +6,32 @@ const vm = require('node:vm');
 
 const { saveReviewDraft, confirmDraft, reviewValues } = require('../controllers/narrativeReportReviewController');
 
+test('adviser week options include the current week and retain completed weeks within the academic year', () => {
+  const script = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/narrative-reports.js'), 'utf8');
+  const helpers = script.slice(script.indexOf('  function addDays('), script.indexOf('  function populateWeeks('));
+  const weekOptions = vm.runInNewContext(`${helpers}\nweekOptions`);
+  const section = { academicYearStartDate: '2026-10-01', academicYearEndDate: '2027-03-31' };
+  const mondayFriday = { weekStartDay: 1, weekEndDay: 5 };
+  const current = weekOptions(mondayFriday, section, '2026-10-22');
+  assert.equal(current[0].startDate, '2026-10-19');
+  assert.equal(current[0].endDate, '2026-10-23');
+  assert.equal(current[1].startDate, '2026-10-12');
+  assert.equal(current.length, 4);
+
+  const afterWeek = weekOptions(mondayFriday, section, '2026-10-24');
+  assert.equal(afterWeek[0].startDate, '2026-10-19');
+  assert.ok(afterWeek[0].endDate < '2026-10-24', 'the same week is complete after Friday');
+  const pastYear = weekOptions(mondayFriday, { ...section, academicYearEndDate: '2026-10-16' }, '2026-10-22');
+  assert.equal(pastYear[0].startDate, '2026-10-12');
+  assert.deepEqual(Array.from(weekOptions(mondayFriday, { ...section, academicYearStartDate: '2026-10-23' }, '2026-10-22')), []);
+
+  const fridayTuesday = weekOptions({ weekStartDay: 5, weekEndDay: 2 }, section, '2026-10-22');
+  assert.equal(fridayTuesday[0].startDate, '2026-10-16');
+  assert.equal(fridayTuesday[0].endDate, '2026-10-20');
+  assert.match(script, /option\.endDate >= today \? ' · In progress'/);
+  assert.match(script, /In progress · Evidence through \$\{formatDate\(evidence\.reportWeek\.dataThroughDate\)\}/);
+});
+
 function request(body = {}) {
   return {
     user: { id: 3, schoolId: 1, role: 'teacher' }, params: { reportId: '101' }, body
@@ -141,10 +167,15 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /report\.followUpSuggestion/);
   assert.match(page, /id="follow-up-section" hidden><h3 class="review-section-label"><i data-lucide="heart-handshake" aria-hidden="true"><\/i> Suggested adviser follow-up<\/h3>/);
   assert.match(page, /id="follow-up-reasons"/);
+  assert.match(page, /id="report-week-notice" hidden/);
+  assert.match(script, /\$\('report-week-notice'\)\.hidden = !inProgress/);
+  assert.match(script, /reason\.type === 'low_scores'/);
+  assert.match(script, /detail\.textContent = .*score\.maxScore/);
   assert.match(script, /student\.candidateReasons/);
   assert.match(script, /item\.textContent = value/);
-  assert.match(script, /No qualifying attendance or published-grade reason/);
-  assert.match(page, /id="generation-control-help"/);
+  assert.match(script, /No AI follow-up suggestion was provided/);
+  assert.doesNotMatch(page, /generation-control-help/);
+  assert.doesNotMatch(script, /generation-control-help/);
   assert.match(script, /hasAttendanceRecords/);
   assert.match(script, /report-card-avatar/);
   assert.match(styles, /\.report-card-excerpt \{ padding: 12px 14px 12px; \}/);
@@ -161,8 +192,18 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /data-source-card ds-/);
   assert.match(script, /getClientRects\(\)/);
   assert.match(script, /updateGenerationControl/);
+  assert.match(script, /Narrative Reports are off/);
+  assert.match(script, /school AI approval is missing/);
+  assert.match(script, /the server has paused AI generation/);
   assert.match(script, /!state\.generationEnabled/);
-  assert.match(styles, /\.generation-control-help/);
+  assert.doesNotMatch(styles, /generation-control-help/);
+  assert.match(script, /function setGenerationButtonState\(disabled, reason = ''\)/);
+  assert.match(script, /button\.title = reason/);
+  assert.match(script, /button\.setAttribute\('aria-label', reason \? `Generate Reports unavailable:/);
+  assert.match(script, /setGenerationButtonState\(true, 'No report week is available for generation\.'/);
+  assert.match(script, /setGenerationButtonState\(true, 'Weekly report data could not be loaded\.'/);
+  assert.match(script, /No learners are available for this section and week\./);
+  assert.match(script, /Every learner already has a draft or confirmed report\./);
   assert.match(styles, /\.follow-up-evidence\s*\{[^}]*border:\s*1px solid var\(--blue-pale\);[^}]*background:\s*var\(--surface-blue\);/s);
   assert.match(styles, /\.follow-up-choices input\[type="radio"\]\s*\{[^}]*margin:\s*0;[^}]*align-self:\s*center;/s);
   assert.match(styles, /#review-modal \.review-modal-foot-actions > \[hidden\]\s*\{\s*display:\s*none;\s*\}/);
@@ -170,7 +211,8 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(script, /\$\('confirm-review'\)\.hidden = !editable/);
   assert.match(script, /\$\('release-report'\)\.hidden = editable \|\| Boolean\(report\.releasedAt && !report\.pendingCorrection\) \|\| !state\.releaseEnabled/);
   assert.match(page, /class="review-avatar person-avatar person-avatar--compact"[^>]*id="review-avatar"/);
-  assert.match(styles, /\.excerpt-text\s*\{[^}]*-webkit-line-clamp:\s*3/s);
+  assert.match(styles, /\.excerpt-text\s*\{[^}]*min-height:\s*68px;[^}]*overflow-wrap:\s*anywhere;/s);
+  assert.doesNotMatch(styles, /-webkit-line-clamp|\.excerpt-text\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(styles, /\.person-avatar\.report-card-avatar\s*\{\s*--avatar-size:\s*38px;/);
   assert.match(styles, /\.report-card \.excerpt-label\s*\{[^}]*font-size:\s*9px/s);
   assert.match(styles, /\.report-card \.excerpt-label\s*>\s*svg\s*\{[^}]*width:\s*12px/s);
@@ -195,6 +237,20 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(styles, /@media \(max-width: 520px\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/confirm.*requireSchoolUser.*requireRoles\('teacher'\)/);
   assert.match(routes, /weekly-drafts\/:reportId\/release.*requireSchoolUser.*requireRoles\('teacher'\)/);
+});
+
+test('adviser report actions use success toasts and show regeneration progress', () => {
+  const root = path.join(__dirname, '../..');
+  const page = fs.readFileSync(path.join(root, 'views/teacher/edugnay-teacher-reports.html'), 'utf8');
+  const script = fs.readFileSync(path.join(root, 'assets/js/teacher/narrative-reports.js'), 'utf8');
+  assert.match(page, /id="regenerate-report-label">Regenerate draft<\/span>/);
+  assert.match(script, /if \(generated\) showAppToast\(/);
+  assert.match(script, /showAppToast\(confirm[\s\S]*?'Correction confirmed\. Not sent to parents\.'[\s\S]*?'Report confirmed\. Not sent to parents\.'[\s\S]*?'Draft saved\.'/);
+  assert.match(script, /'regenerate-report-label'\)\.textContent = 'Regenerating\.\.\.'/);
+  assert.match(script, /'regenerate-report-label'\)\.textContent = 'Regenerate draft'/);
+  assert.match(script, /showAppToast\('Draft regenerated\.'\)/);
+  assert.match(script, /showAppToast\(report\.pendingCorrection \? 'Correction released to parents\.' : 'Report released to parents\.'\)/);
+  assert.match(script, /showAppToast\('Report reopened for correction\.'\)/);
 });
 
 test('shared student avatar uses initials without a photo and after a photo load failure', () => {

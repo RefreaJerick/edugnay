@@ -250,15 +250,6 @@
     .generation-control {
       display: grid;
       justify-items: end;
-      gap: 5px;
-    }
-    .generation-control-help {
-      max-width: 260px;
-      margin: 0;
-      color: var(--gray-500);
-      font-size: 10px;
-      line-height: 1.4;
-      text-align: right;
     }
 
     /* â”€â”€ FILTER ROW â”€â”€ */
@@ -778,6 +769,54 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    #gen-modal .gen-modal {
+      width: min(480px, calc(100vw - 32px));
+      max-width: 480px;
+      max-height: calc(100vh - 32px);
+    }
+    #gen-modal .gen-loading-view { display: none; }
+    #gen-modal .gen-loading-view[hidden] { display: none; }
+    #gen-modal.is-generating .review-modal-head,
+    #gen-modal.is-generating .gen-intro,
+    #gen-modal.is-generating .gen-note-panel,
+    #gen-modal.is-generating #gen-message,
+    #gen-modal.is-generating #start-generation { display: none; }
+    #gen-modal.is-generating .review-body {
+      display: flex;
+      min-height: 250px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 28px;
+      text-align: center;
+    }
+    #gen-modal.is-generating .gen-loading-view:not([hidden]) {
+      display: flex;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #gen-modal .gen-loading-view .gen-spinner { margin: 0 0 20px; }
+    #gen-modal .gen-loading-view strong {
+      color: var(--gray-800);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    #gen-modal .gen-loading-view p {
+      max-width: 100%;
+      margin: 8px 0 0;
+      color: var(--gray-500);
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    #gen-modal .modal-close:disabled { opacity: .55; cursor: not-allowed; }
+    @media (prefers-reduced-motion: reduce) {
+      #gen-modal .gen-loading-view .gen-spinner { animation: none; }
+    }
 
     .gen-progress-title {
       font-family: 'Plus Jakarta Sans', sans-serif;
@@ -1307,7 +1346,6 @@
   .filter-row { flex-direction: column; }
   .search-wrap, .select-filter { width: 100%; min-width: 0; }
   .generation-control { width: 100%; justify-items: stretch; }
-  .generation-control-help { max-width: none; text-align: left; }
   .panel-head-right .generation-control > .top-btn { width: 100%; justify-content: center; }
   .reports-grid { grid-template-columns: 1fr; padding: 12px; }
   .review-modal { max-height: calc(100vh - 20px); }
@@ -1397,6 +1435,9 @@
 }
 .report-selection-title { margin: 0; color: var(--gray-800); font-size: 13px; font-weight: 700; }
 .report-selection-head p { margin: 4px 0 0; color: var(--gray-400); font-size: 11px; line-height: 1.4; }
+.report-week-notice { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--blue-pale); border-radius: 7px; background: var(--surface-blue); color: var(--gray-700); font-size: 12px; line-height: 1.5; }
+.report-week-notice[hidden] { display: none; }
+.report-week-notice svg { flex: 0 0 16px; width: 16px; height: 16px; color: var(--blue-mid); }
 .reports-overview .summary-strip {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -1418,12 +1459,14 @@
 .review-modal { max-height: min(88vh, 900px); }
 .review-section-label { display: block; }
 .follow-up-choices { display: flex; gap: 18px; flex-wrap: wrap; color: var(--gray-700); font-size: 12px; }
+.follow-up-choices[hidden], #follow-up-help[hidden] { display: none; }
 .follow-up-choices label { display: inline-flex; align-items: center; gap: 6px; line-height: 1.4; cursor: pointer; }
 .follow-up-choices input[type="radio"] { width: 14px; height: 14px; margin: 0; flex: 0 0 14px; align-self: center; }
 .follow-up-evidence { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--blue-pale); border-radius: 7px; background: var(--surface-blue); color: var(--gray-700); font-size: 12px; }
 .follow-up-evidence strong { display: block; margin-bottom: 5px; }
 .follow-up-evidence ul { margin: 0; padding-left: 18px; }
 .follow-up-evidence li + li { margin-top: 4px; }
+.follow-up-evidence .follow-up-scores { margin: 6px 0 8px; padding-left: 18px; color: var(--gray-600); overflow-wrap: anywhere; }
 .top-btn:disabled, .btn-sm:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 760px) {
   .reports-context-controls label { flex: 1 1 180px; }
@@ -1486,11 +1529,7 @@
 .report-card .excerpt-label > svg { width: 12px !important; height: 12px !important; flex: 0 0 12px; }
 .excerpt-text {
   min-height: 68px;
-  overflow: hidden;
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
 .report-card .excerpt-text { font-size: 10px; }
 .report-card-foot { min-height: 52px; padding: 10px 14px; margin-top: auto; }
@@ -1498,7 +1537,6 @@
 .report-card-review { gap: 6px; }
 .report-card-review > svg { width: 14px !important; height: 14px !important; flex: 0 0 14px; }
 .generation-control { max-width: 290px; }
-.generation-control-help { max-width: 290px; color: var(--gray-500); font-size: 10px; line-height: 1.4; }
 
 .review-modal {
   width: min(900px, calc(100vw - 40px));
@@ -1702,7 +1740,7 @@
 #review-modal .report-history-corrections { display: grid; gap: 7px; margin-top: 10px; padding: 10px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
 #review-modal .report-history-corrections h4 { color: var(--gray-600); }
 #review-modal .report-history-correction { padding: 8px 9px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); }
-#review-modal .report-history-correction p { margin: 0 0 5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+#review-modal .report-history-correction p { margin: 0 0 6px; color: var(--gray-700); font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 #review-modal .report-history-correction .report-history-meta { font-size: 10px; }
 #review-modal .report-reopen-section .ai-report-text { height: 88px; min-height: 88px; }
 #review-modal .report-reopen-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }

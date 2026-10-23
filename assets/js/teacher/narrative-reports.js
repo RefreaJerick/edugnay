@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const escape = value => window.EDUGNAY_CONFIG.escapeHtml(String(value ?? ''));
   const state = { sections: [], evidence: null, reports: [], settings: null,
-    generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false,
+    generationEnabled: false, generationSwitchEnabled: false, aiEvidenceApproved: false, reportsEnabled: false,
     releaseEnabled: false, selectedReportId: null, busy: false, modalReturnFocus: new Map() };
 
   function addDays(date, count) {
@@ -22,17 +22,16 @@
     return `${date.year}-${date.month}-${date.day}`;
   }
 
-  function weekOptions(settings, section) {
-    const today = schoolToday();
+  function weekOptions(settings, section, today = schoolToday()) {
     const anchor = section.academicYearEndDate && section.academicYearEndDate < today
       ? [addDays(section.academicYearEndDate, 7), today].sort()[0] : today;
     const first = addDays(anchor, -((weekday(anchor) - settings.weekStartDay + 7) % 7));
     const span = (settings.weekEndDay - settings.weekStartDay + 7) % 7;
-    const latest = addDays(first, span) < anchor ? first : addDays(first, -7);
-    return Array.from({ length: 12 }, (_, index) => {
-      const startDate = addDays(latest, -7 * index);
+    return Array.from({ length: 13 }, (_, index) => {
+      const startDate = addDays(first, -7 * index);
       return { startDate, endDate: addDays(startDate, span) };
-    }).filter(week => week.endDate < today &&
+    }).filter(week => week.startDate <= today &&
+      (!section.academicYearStartDate || section.academicYearStartDate <= today) &&
       (!section.academicYearStartDate || week.endDate >= section.academicYearStartDate) &&
       (!section.academicYearEndDate || week.startDate <= section.academicYearEndDate));
   }
@@ -40,19 +39,24 @@
   function populateWeeks() {
     const section = state.sections.find(item => item.id === $('report-section').value);
     const weeks = section ? weekOptions(state.settings, section) : [];
-    $('report-week').innerHTML = weeks.map(option => `<option value="${option.startDate}">${escape(formatDate(option.startDate))}–${escape(formatDate(option.endDate))}</option>`).join('');
+    const today = schoolToday();
+    $('report-week').innerHTML = weeks.map(option => `<option value="${option.startDate}">${escape(formatDate(option.startDate))}–${escape(formatDate(option.endDate))}${option.endDate >= today ? ' · In progress' : ''}</option>`).join('');
     $('report-week').disabled = !weeks.length;
     if (!weeks.length) {
       state.evidence = null;
       state.reports = [];
-      $('week-caption').textContent = 'No completed report week available.';
+      $('week-caption').textContent = 'No report week available.';
       renderCounts();
-      renderEmptyState('calendar-days', 'No report week available', 'No completed report week is available for this academic year.');
-      $('open-generation').disabled = true;
-      setMessage('generation-control-help', 'No completed report week is available for generation.');
-    } else {
-      setMessage('generation-control-help', '');
+      renderEmptyState('calendar-days', 'No report week available', 'No report week is available for this academic year.');
+      setGenerationButtonState(true, 'No report week is available for generation.');
     }
+  }
+
+  function setGenerationButtonState(disabled, reason = '') {
+    const button = $('open-generation');
+    button.disabled = disabled;
+    button.title = reason;
+    button.setAttribute('aria-label', reason ? `Generate Reports unavailable: ${reason}` : 'Generate Reports');
   }
 
   function formatDate(value) {
@@ -114,6 +118,7 @@
     if (reason.type === 'grade') {
       return `Published ${reason.subject} grade ${reason.grade}${reason.term ? ` in ${reason.term}` : ''} (passing threshold: ${reason.threshold}).`;
     }
+    if (reason.type === 'low_scores') return `${reason.subject}: three scored activities below 75% this report week.`;
     return '';
   }
 
@@ -181,10 +186,11 @@
     const sectionId = $('report-section').value;
     const startDate = $('report-week').value;
     if (!sectionId || !startDate) return;
+    $('report-week-notice').hidden = true;
     state.evidence = null;
     state.reports = [];
     $('reports-grid').innerHTML = '';
-    $('open-generation').disabled = true;
+    setGenerationButtonState(true, 'Loading the selected week.');
     $('week-caption').textContent = 'Loading selected week…';
     renderCounts();
     setMessage('reports-message', 'Loading weekly evidence and drafts…');
@@ -198,14 +204,17 @@
       state.reports = drafts.reports || [];
       const label = `${formatDate(evidence.reportWeek.startDate)}–${formatDate(evidence.reportWeek.endDate)}`;
       $('pipeline-context').textContent = `${evidence.section.gradeLevel} · ${evidence.section.name} · Across all subjects`;
-      $('week-caption').textContent = label;
+      const inProgress = evidence.reportWeek.endDate >= schoolToday();
+      $('report-week-notice').hidden = !inProgress;
+      $('week-caption').textContent = inProgress
+        ? `${label} · In progress · Evidence through ${formatDate(evidence.reportWeek.dataThroughDate)}`
+        : label;
       renderCounts();
       renderCards();
       updateGenerationControl();
     } catch (error) {
       setMessage('reports-message', error.message || 'Weekly reports could not be loaded.', true);
-      $('open-generation').disabled = true;
-      setMessage('generation-control-help', 'Weekly evidence could not be loaded, so report generation is unavailable.');
+      setGenerationButtonState(true, 'Weekly report data could not be loaded.');
     }
   }
 
@@ -216,25 +225,26 @@
   function updateGenerationControl() {
     const candidates = generationCandidates();
     const hasLearners = Boolean(state.evidence?.students?.length);
+    const blockers = [
+      !state.reportsEnabled && 'Narrative Reports are off',
+      !state.aiEvidenceApproved && 'school AI approval is missing',
+      !state.generationSwitchEnabled && 'the server has paused AI generation'
+    ].filter(Boolean);
     const reason = !state.evidence
       ? ''
       : !state.generationEnabled
-        ? state.generationSwitchEnabled && !state.aiEvidenceApproved
-          ? 'AI generation is paused until the school admin approves sending learner evidence to the AI service.'
-          : 'AI generation is paused by the server setting.'
+        ? `AI generation is paused: ${blockers.join('; ')}.`
         : !hasLearners
           ? 'No learners are available for this section and week.'
           : !candidates.length
             ? 'Every learner already has a draft or confirmed report.'
             : '';
-    $('open-generation').disabled = !state.evidence || !state.generationEnabled || !hasLearners || !candidates.length;
-    $('open-generation').title = reason;
-    setMessage('generation-control-help', reason);
+    setGenerationButtonState(!state.evidence || !state.generationEnabled || !hasLearners || !candidates.length, reason);
   }
 
   function showGeneration() {
     const candidates = generationCandidates();
-    if (!state.generationEnabled || !candidates.length) return;
+    if (state.busy || !state.generationEnabled || !candidates.length) return;
     $('gen-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${candidates.length} learner${candidates.length === 1 ? '' : 's'} without drafts`;
     $('gen-count').textContent = `${candidates.length} learners`;
     const list = $('gen-students');
@@ -273,11 +283,27 @@
       row.append(head, note, meta);
       list.append(row);
     }
-    $('start-generation').disabled = !state.generationEnabled || !candidates.length;
+    setGenerationLoading(false);
     setMessage('gen-message', !state.generationEnabled
       ? 'Live AI generation is disabled. No learner data will be sent to OpenAI until the school enables it.'
       : !candidates.length ? 'Every learner already has a draft or confirmed report.' : '');
     openModal('gen-modal');
+  }
+
+  function setGenerationLoading(loading) {
+    const modal = $('gen-modal');
+    const dialog = modal.querySelector('[role="dialog"]');
+    modal.classList.toggle('is-generating', loading);
+    $('gen-progress').hidden = !loading;
+    if (!loading) $('gen-progress-detail').textContent = '';
+    $('start-generation-label').textContent = loading ? 'Generating...' : 'Start Generation';
+    $('start-generation').disabled = loading || !state.generationEnabled || !generationCandidates().length;
+    $('start-generation').setAttribute('aria-busy', String(loading));
+    $('gen-close').disabled = loading;
+    $('gen-students').querySelectorAll('textarea').forEach(note => { note.disabled = loading; });
+    dialog.setAttribute('aria-labelledby', loading ? 'gen-loading-title' : 'gen-title');
+    dialog.setAttribute('aria-busy', String(loading));
+    if (loading) dialog.focus();
   }
 
   async function generate() {
@@ -286,13 +312,16 @@
     if (!candidates.length) return;
     const notes = Object.fromEntries([...$('gen-students').querySelectorAll('textarea')].map(node => [node.dataset.studentId, node.value]));
     state.busy = true;
-    $('start-generation').disabled = true;
+    setGenerationLoading(true);
+    setMessage('gen-message', '');
     let generated = 0;
     const failed = [];
     try {
       for (let index = 0; index < candidates.length; index += 5) {
         const batch = candidates.slice(index, index + 5);
-        setMessage('gen-message', `Generating ${index + 1}–${index + batch.length} of ${candidates.length}…`);
+        $('gen-progress-detail').textContent = batch.length === 1
+          ? `Processing learner ${index + 1} of ${candidates.length}.`
+          : `Processing learners ${index + 1}–${index + batch.length} of ${candidates.length}.`;
         try {
           const result = await api.request('/reports/weekly-drafts/generate', {
             method: 'POST', body: JSON.stringify({
@@ -310,9 +339,14 @@
       }
       await loadWeek();
       setMessage('gen-message', `${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ` ${failed.length} could not be generated: ${failed.join('; ')}` : ' Review each draft before confirmation.'}`, Boolean(failed.length));
+      if (generated) showAppToast(`${generated} draft${generated === 1 ? '' : 's'} generated.${failed.length ? ' Some learners could not be generated.' : ''}`);
+    } catch (error) {
+      setMessage('gen-message', error.message || 'Report generation could not be completed.', true);
     } finally {
       state.busy = false;
-      $('start-generation').disabled = true;
+      setGenerationLoading(false);
+      const focusTarget = $('start-generation').disabled ? $('gen-close') : $('start-generation');
+      focusTarget.focus();
     }
   }
 
@@ -360,10 +394,11 @@
     $('review-subtitle').textContent = `${state.evidence.section.gradeLevel} · ${state.evidence.section.name} · ${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}`;
     const attendance = student.attendance;
     const assignments = student.assignments;
+    const scoreCount = student.academicScores?.length || 0;
     $('review-evidence').innerHTML = [
       { key: 'attendance', icon: 'user-round-check', label: 'Attendance', value: attendance.recordedSessions ? `${attendance.present}/${attendance.recordedSessions} present · ${attendance.absent} absent` : 'No confirmed records', detail: attendance.recordedSessions ? `${attendance.recordedSessions} recorded sessions across subjects` : 'Missing records are not treated as absences.' },
       { key: 'assignments', icon: 'clipboard-check', label: 'Assignment completion', value: assignments.total ? `${assignments.submitted}/${assignments.total} submitted` : 'No assignments due', detail: assignments.total ? 'Published assignments due in the selected week' : 'Across all subjects for this week' },
-      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: student.followUpCandidate ? student.academicRecords.length ? `${student.academicRecords.length} published record(s)` : 'No published records' : 'Not included', detail: student.followUpCandidate ? 'Adviser review only' : 'Included only for follow-up candidates' },
+      { key: 'academic', icon: 'chart-no-axes-column', label: 'Academic records', value: [student.academicRecords.length && `${student.academicRecords.length} published record(s)`, scoreCount && `${scoreCount} scored activities`].filter(Boolean).join(' · ') || 'No academic records', detail: student.academicScoresOmitted ? `${student.academicScoresOmitted} more scored activities not included; review before confirming.` : 'Recorded during the selected week' },
       { key: 'journal', icon: 'notebook-pen', label: 'Journal · Values Education', value: `${student.journal.entries.length} relevant submission(s)`, detail: 'Reflection text is treated as untrusted input.' }
     ].map(source => `<div class="data-source-card ds-${source.key}"><span class="ds-icon" aria-hidden="true"><i data-lucide="${source.icon}"></i></span><div class="ds-content"><strong class="ds-val">${escape(source.value)}</strong><div class="ds-detail">${escape(source.detail)}</div><div class="ds-label">${escape(source.label)}</div></div></div>`).join('');
     window.lucide?.createIcons?.();
@@ -372,15 +407,26 @@
     $('review-summary').disabled = !editable;
     $('review-actions').replaceChildren();
     report.parentActions.forEach(action => appendAction(action, !editable));
-    $('follow-up-section').hidden = !report.followUpSuggestion;
-    $('follow-up-text').textContent = report.followUpSuggestion || '';
-    const reasons = (student.candidateReasons || []).map(candidateReasonText).filter(Boolean);
-    $('follow-up-evidence-heading').textContent = `Recorded reasons through ${formatDate(state.evidence.reportWeek.dataThroughDate || report.reportWeekEndDate)}`;
-    $('follow-up-reasons').replaceChildren(...(reasons.length ? reasons : [
-      'No qualifying attendance or published-grade reason is currently recorded through this report week.'
-    ]).map(value => {
+    const lowScores = (student.candidateReasons || []).filter(reason => reason.type === 'low_scores');
+    $('follow-up-section').hidden = !report.followUpSuggestion && !lowScores.length;
+    $('follow-up-text').textContent = report.followUpSuggestion || 'No AI follow-up suggestion was provided. Review the recorded reasons below.';
+    $('follow-up-help').hidden = !report.followUpSuggestion;
+    $('follow-up-choices').hidden = !report.followUpSuggestion;
+    const reasons = (student.candidateReasons || []).map(reason => ({ reason, text: candidateReasonText(reason) })).filter(item => item.text);
+    $('follow-up-evidence-heading').textContent = `Recorded reasons for ${formatDate(report.reportWeekStartDate)}–${formatDate(report.reportWeekEndDate)}`;
+    $('follow-up-reasons').replaceChildren(...reasons.map(({ reason, text: value }) => {
       const item = document.createElement('li');
       item.textContent = value;
+      if (reason.type === 'low_scores') {
+        const scores = document.createElement('ul');
+        scores.className = 'follow-up-scores';
+        reason.scores.forEach(score => {
+          const detail = document.createElement('li');
+          detail.textContent = `${score.title} · ${formatDate(score.date)} · ${score.score}/${score.maxScore}`;
+          scores.append(detail);
+        });
+        item.append(scores);
+      }
       return item;
     }));
     document.querySelectorAll('input[name="follow-up-decision"]').forEach(input => {
@@ -451,16 +497,21 @@
       await loadWeek();
       if (confirm) closeModal('review-modal', true);
       else showReview(id);
+      showAppToast(confirm
+        ? report.pendingCorrection ? 'Correction confirmed. Not sent to parents.' : 'Report confirmed. Not sent to parents.'
+        : 'Draft saved.');
     } catch (error) { setMessage('review-message', error.message || 'The report could not be saved.', true); }
     finally { state.busy = false; $('save-review').disabled = false; $('confirm-review').disabled = false; }
   }
 
   async function regenerate() {
     const report = state.reports.find(item => item.id === state.selectedReportId);
-    if (!report || report.releasedAt || !state.generationEnabled ||
+    if (!report || report.status !== 'draft' || report.releasedAt || !state.generationEnabled || state.busy ||
       !window.confirm('Replace this draft and its edits with a new AI draft?')) return;
     state.busy = true;
     $('regenerate-report').disabled = true;
+    $('regenerate-report-label').textContent = 'Regenerating...';
+    $('regenerate-report').setAttribute('aria-busy', 'true');
     try {
       const result = await api.request('/reports/weekly-drafts/generate', { method: 'POST', body: JSON.stringify({
         sectionId: state.evidence.section.id, startDate: state.evidence.reportWeek.startDate,
@@ -469,8 +520,14 @@
       if (result.results[0]?.status !== 'generated') throw new Error(result.results[0]?.message || 'The draft was not regenerated.');
       await loadWeek();
       showReview(report.id);
+      showAppToast('Draft regenerated.');
     } catch (error) { setMessage('review-message', error.message || 'Regeneration failed.', true); }
-    finally { state.busy = false; $('regenerate-report').disabled = !state.generationEnabled; }
+    finally {
+      state.busy = false;
+      $('regenerate-report-label').textContent = 'Regenerate draft';
+      $('regenerate-report').removeAttribute('aria-busy');
+      $('regenerate-report').disabled = !state.generationEnabled || Boolean(report.releasedAt);
+    }
   }
 
   async function releaseReport() {
@@ -483,6 +540,7 @@
       await api.request(`/reports/weekly-drafts/${encodeURIComponent(report.id)}/release`, { method: 'POST' });
       await loadWeek();
       showReview(report.id);
+      showAppToast(report.pendingCorrection ? 'Correction released to parents.' : 'Report released to parents.');
     } catch (error) { setMessage('review-message', error.message || 'The report could not be released.', true); }
     finally { state.busy = false; $('release-report').disabled = false; }
   }
@@ -504,6 +562,7 @@
       });
       await loadWeek();
       showReview(report.id);
+      showAppToast('Report reopened for correction.');
     } catch (error) {
       setMessage('review-message', error.message || 'The report could not be reopened.', true);
     } finally {
@@ -576,8 +635,14 @@
       state.generationEnabled = Boolean(week.generationEnabled);
       state.generationSwitchEnabled = Boolean(week.generationSwitchEnabled);
       state.aiEvidenceApproved = Boolean(week.aiEvidenceApproved);
+      state.reportsEnabled = Boolean(week.reportsEnabled);
       state.releaseEnabled = Boolean(week.releaseEnabled);
-      $('generation-state').textContent = state.generationEnabled ? 'AI generation available' : 'AI generation paused';
+      const blockers = [
+        !state.reportsEnabled && 'Reports off',
+        !state.aiEvidenceApproved && 'school approval missing',
+        !state.generationSwitchEnabled && 'server paused'
+      ].filter(Boolean);
+      $('generation-state').textContent = state.generationEnabled ? 'AI generation available' : `AI generation paused: ${blockers.join('; ')}`;
       $('generation-state').classList.toggle('is-enabled', state.generationEnabled);
       $('generation-state').classList.toggle('is-paused', !state.generationEnabled);
       state.sections = sections.filter(section => String(section.adviserUserId) === String(session.apiUserId) &&
@@ -589,8 +654,7 @@
         $('week-caption').textContent = 'No advisory section selected.';
         renderCounts();
         renderEmptyState('door-open', 'No advisory section assigned', 'An active advisory section must be assigned before weekly reports can be viewed.');
-        $('open-generation').disabled = true;
-        setMessage('generation-control-help', 'No active advisory section is available for report generation.');
+        setGenerationButtonState(true, 'No active advisory section is available for report generation.');
         $('pipeline-context').textContent = 'No active advisory section';
         return;
       }

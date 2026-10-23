@@ -14,7 +14,30 @@ function schoolToday() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function buildStudentFlags({ students, attendance, grades, rules, settings, yearLabel }) {
+function lowScoreReasons(scores = []) {
+  const bySubject = new Map();
+  for (const score of scores) {
+    if (score.score == null || !Number.isFinite(Number(score.score)) || !(Number(score.maxScore) > 0)) continue;
+    const key = `${score.studentId}:${score.subjectId}`;
+    if (!bySubject.has(key)) bySubject.set(key, []);
+    bySubject.get(key).push(score);
+  }
+  const reasons = new Map();
+  for (const items of bySubject.values()) {
+    items.sort((a, b) => String(b.itemDate).localeCompare(String(a.itemDate)) || Number(b.itemId) - Number(a.itemId));
+    const latest = items.slice(0, 3);
+    if (latest.length !== 3 || !latest.every(item => Number(item.score) / Number(item.maxScore) < .75)) continue;
+    const studentId = String(latest[0].studentId);
+    if (!reasons.has(studentId)) reasons.set(studentId, []);
+    reasons.get(studentId).push({ type: 'low_scores', subject: latest[0].subjectName, count: 3,
+      scores: latest.map(item => ({ scoreId: String(item.scoreId), itemId: String(item.itemId), title: item.title,
+        date: String(item.itemDate).slice(0, 10), score: Number(item.score), maxScore: Number(item.maxScore) })) });
+  }
+  for (const studentReasons of reasons.values()) studentReasons.sort((a, b) => a.subject.localeCompare(b.subject));
+  return reasons;
+}
+
+function buildStudentFlags({ students, attendance, grades, rules, settings, yearLabel, scores = [] }) {
   const maximum = Number(settings?.maxUnexcusedAbsences ?? 5);
   const consecutive = Number(settings?.consecutiveAbsencesAlert ?? 3);
   const countExcused = Boolean(settings?.countExcusedAbsences);
@@ -81,6 +104,10 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
         threshold, term: grade.termName
       });
     }
+  }
+  for (const [studentId, reasons] of lowScoreReasons(scores)) {
+    const student = studentMap.get(studentId);
+    if (student) student.reasons.push(...reasons);
   }
   return [...studentMap.values()].filter(student => student.reasons.length)
     .sort((a, b) => a.name.localeCompare(b.name) || a.studentId.localeCompare(b.studentId));
@@ -189,10 +216,43 @@ async function getStudentFlags(database, { schoolId, yearId, teacherId = null })
     FROM school_year_final_grade_rules WHERE school_id = ? AND academic_year_id = ?`,
     [schoolId, year.id]
   );
+  const [[weekSettings] = []] = await database.execute(
+    `SELECT narrative_report_week_start_day AS weekStartDay,
+      narrative_report_week_end_day AS weekEndDay FROM school_settings WHERE school_id = ?`, [schoolId]
+  );
+  const today = schoolToday();
+  const day = new Date(`${today}T00:00:00.000Z`).getUTCDay() || 7;
+  const startDay = Number(weekSettings?.weekStartDay) || 1;
+  const offset = (day - startDay + 7) % 7;
+  const weekStart = new Date(`${today}T00:00:00.000Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() - offset);
+  const weekStartDate = weekStart.toISOString().slice(0, 10);
+  const endOffset = (Number(weekSettings?.weekEndDay) || 6) - startDay + 7;
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + endOffset % 7);
+  const weekEndDate = [weekEnd.toISOString().slice(0, 10), today].sort()[0];
+  const [scores] = await database.execute(
+    `SELECT scores.id AS scoreId, scores.student_user_id AS studentId, items.id AS itemId,
+      items.section_id AS sectionId,
+      items.subject_id AS subjectId, subjects.name AS subjectName,
+      items.title, items.max_score AS maxScore, scores.score,
+      DATE_FORMAT(items.recorded_at, '%Y-%m-%d') AS itemDate
+    FROM student_scores AS scores
+    INNER JOIN grading_items AS items ON items.id = scores.grading_item_id
+      AND items.school_id = scores.school_id AND items.max_score > 0
+    INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
+      AND terms.academic_year_id = ?
+    INNER JOIN subjects ON subjects.id = items.subject_id AND subjects.school_id = items.school_id
+    WHERE scores.school_id = ? AND items.section_id IN (${placeholders})
+      AND scores.student_user_id IN (${studentPlaceholders}) AND scores.score IS NOT NULL
+      AND DATE(items.recorded_at) BETWEEN ? AND ? AND DATE(scores.recorded_at) <= ?`,
+    [year.id, schoolId, ...sectionIds, ...studentIds, weekStartDate, weekEndDate, weekEndDate]
+  );
   return {
-    students: buildStudentFlags({ students, attendance, grades, rules, settings, yearLabel: year.label }),
+    students: buildStudentFlags({ students, attendance, grades, rules, settings, yearLabel: year.label,
+      scores: scores.filter(score => String(students.find(student => String(student.studentId) === String(score.studentId))?.sectionId) === String(score.sectionId)) }),
     maximum: Number(settings?.maxUnexcusedAbsences ?? 5)
   };
 }
 
-module.exports = { buildStudentFlags, getStudentFlags };
+module.exports = { buildStudentFlags, getStudentFlags, lowScoreReasons };

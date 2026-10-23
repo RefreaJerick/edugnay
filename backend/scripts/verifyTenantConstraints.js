@@ -48,7 +48,7 @@ function readExpectedSchema() {
   const sql = migrationNames.map(name => fs.readFileSync(
     path.join(__dirname, '../database/migrations', name),
     'utf8'
-  )).join('\n');
+  )).join('\n').replace(/^[ \t]*--.*$/gm, '');
 
   const uniqueIndexes = [];
   for (const statement of sql.split(';')) {

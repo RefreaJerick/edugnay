@@ -851,6 +851,17 @@
   border-top: 0;
 }
 
+.school-portal-access-block .school-report-ai-toggle {
+  margin-left: 16px;
+  padding-left: 14px;
+  border-left: 2px solid var(--blue-pale);
+}
+
+.school-portal-access-block .school-report-ai-status {
+  color: var(--blue-dark, #1d4f91);
+  font-weight: 600;
+}
+
 .school-portal-layout {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);

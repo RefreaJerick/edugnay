@@ -35,3 +35,8 @@ test('account form previews but never submits a client-chosen login address', ()
   assert.doesNotMatch(page, /schoolEmail:\s*accountFieldValue\('accountSchoolEmail'\)/);
   assert.match(page, /openBackendCredentialDeliveryModal\(result\.user, result\.emailDelivery\)/);
 });
+
+test('editing an account does not submit its immutable role', () => {
+  assert.match(page, /if \(!data\.userId\) payload\.role = data\.role/);
+  assert.doesNotMatch(page, /role:\s*data\.role/);
+});

@@ -6,8 +6,23 @@ let activeDatabase;
 databaseModule.getDatabase = () => activeDatabase;
 const {
   addDays, getWeeklyEvidence, getWeeklySettings, normalizeWeekSettings,
-  reportWeekRange, updateWeeklySettings
+  reportWeekRange, reportSubmissionStatus, updateWeeklySettings
 } = require('../controllers/narrativeReportEvidenceController');
+
+test('assignment completion respects the evidence cutoff and later status changes', () => {
+  const dueDate = '2026-10-20';
+  const base = { dueDate, onlineSubmissionEnabled: 1, submissionId: 4,
+    savedStatus: 'submitted', filePath: '/private/example', submittedAt: '2026-10-23T09:00:00',
+    statusUpdatedAt: '2026-10-23T09:00:00' };
+  assert.equal(reportSubmissionStatus(base, '2026-10-22'), 'pending');
+  assert.equal(reportSubmissionStatus(base, '2026-10-23'), 'submitted');
+  assert.equal(reportSubmissionStatus({ ...base, onlineSubmissionEnabled: 0, filePath: null,
+    submittedAt: null, statusUpdatedAt: '2026-10-21T09:00:00' }, '2026-10-22'), 'submitted');
+  assert.equal(reportSubmissionStatus({ ...base, onlineSubmissionEnabled: 0, filePath: null,
+    submittedAt: null }, '2026-10-22'), 'pending');
+  assert.equal(reportSubmissionStatus({ ...base, submissionId: null, savedStatus: null,
+    filePath: null, submittedAt: null }, '2026-10-22'), 'not_submitted');
+});
 
 function dateInSchoolZone() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -94,6 +109,36 @@ test('weekly settings endpoint returns the Monday-Saturday defaults when no row 
   });
   assert.deepEqual(result.body.settings, { weekStartDay: 1, weekEndDay: 6 });
   assert.equal(result.headers['Cache-Control'], 'no-store');
+  assert.equal(result.body.reportsEnabled, false);
+  assert.equal(result.body.generationEnabled, false);
+});
+
+test('weekly generation status requires Reports, school approval, and the server switch', async () => {
+  const previous = process.env.AI_REPORTS_GENERATION_ENABLED;
+  try {
+    for (const serverEnabled of [false, true]) {
+      process.env.AI_REPORTS_GENERATION_ENABLED = String(serverEnabled);
+      for (const reportsEnabled of [false, true]) {
+        for (const approved of [false, true]) {
+          const result = await invoke(getWeeklySettings, { user: { schoolId: 4 } }, {
+            async execute(sql) {
+              if (sql.includes('FROM school_settings')) return [[{ weekStartDay: 1, weekEndDay: 6 }]];
+              assert.match(sql, /narrative_reports_enabled AS reportsEnabled/);
+              return [[{ reportsEnabled: Number(reportsEnabled), approvedAt: approved ? '2026-10-22 08:00:00' : null }]];
+            }
+          });
+          assert.equal(result.error, undefined);
+          assert.equal(result.body.reportsEnabled, reportsEnabled);
+          assert.equal(result.body.aiEvidenceApproved, approved);
+          assert.equal(result.body.generationSwitchEnabled, serverEnabled);
+          assert.equal(result.body.generationEnabled, serverEnabled && reportsEnabled && approved);
+        }
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AI_REPORTS_GENERATION_ENABLED;
+    else process.env.AI_REPORTS_GENERATION_ENABLED = previous;
+  }
 });
 
 test('weekly settings update persists values and writes an audit record', async () => {
@@ -160,7 +205,7 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
       ]];
       if (sql.includes('FROM assignments')) return [[
         { assignmentId: 401, title: 'Reading response', subjectId: 11, subjectName: 'English', onlineSubmissionEnabled: 1, dueDate: evidenceDate, studentId: 101, submissionId: 501, savedStatus: 'submitted', filePath: '/uploads/response.pdf', submittedAt: `${evidenceDate}T08:00:00` },
-        { assignmentId: 402, title: 'Class presentation', subjectId: 12, subjectName: 'Math', onlineSubmissionEnabled: 0, dueDate: evidenceDate, studentId: 101, submissionId: 502, savedStatus: 'submitted', filePath: null, submittedAt: null },
+        { assignmentId: 402, title: 'Class presentation', subjectId: 12, subjectName: 'Math', onlineSubmissionEnabled: 0, dueDate: evidenceDate, studentId: 101, submissionId: 502, savedStatus: 'submitted', filePath: null, submittedAt: `${evidenceDate}T08:00:00` },
         { assignmentId: 401, title: 'Reading response', subjectId: 11, subjectName: 'English', onlineSubmissionEnabled: 1, dueDate: dataThrough, studentId: 102, submissionId: null, savedStatus: null, filePath: null, submittedAt: null }
       ]];
       if (sql.includes('FROM student_journal_entries AS entries')) return [[{
@@ -174,7 +219,15 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
         gradeId: 701, studentId: 102, subjectId: 13, subjectName: 'Mathematics', finalGrade: 70,
         publishedAt: `${evidenceDate}T10:00:00`, termSequence: 1, termName: 'Term 1',
         levelCode: 'jhs', schoolLevelId: 3, levelPassingGradeThreshold: 75, gradeCode: 'grade-7'
+      }, {
+        gradeId: 702, studentId: 101, subjectId: 11, subjectName: 'English', finalGrade: 85,
+        publishedAt: `${evidenceDate}T11:00:00`, termSequence: 1, termName: 'Term 1',
+        levelCode: 'jhs', schoolLevelId: 3, levelPassingGradeThreshold: 75, gradeCode: 'grade-7'
       }]];
+      if (sql.includes('FROM student_scores AS scores')) return [Array.from({ length: 22 }, (_, index) => ({
+        scoreId: 901 + index, studentId: 101, itemId: 801 + index, subjectId: 11, subjectName: 'English',
+        title: `Reading check ${index + 1}`, maxScore: 10, score: 9, itemDate: evidenceDate
+      }))];
       if (sql.includes('FROM school_attendance_settings')) return [[{
         maxUnexcusedAbsences: 99, consecutiveAbsencesAlert: 99, countExcusedAbsences: 0
       }]];
@@ -198,7 +251,10 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
   assert.equal(ari.assignments.submitted, 2);
   assert.equal(ari.journal.entries[0].entryText, 'I helped my group finish our activity.');
   assert.equal(ari.followUpCandidate, false);
-  assert.equal(ari.academicRecords.length, 0);
+  assert.equal(ari.academicRecords.length, 1);
+  assert.equal(ari.academicScores.length, 20);
+  assert.equal(ari.academicScoresOmitted, 2);
+  assert.equal(ari.academicScores[0].score, 9);
   assert.equal(ari.hasAvatar, true);
   assert.equal(ari.avatarUrl, '/api/users/101/avatar?v=7');
   assert.equal(ari.avatarVersion, 7);
@@ -248,7 +304,7 @@ test('weekly evidence respects enrollment dates for transferred learners and doe
       ]];
       if (sql.includes('FROM assignments')) return [[
         { assignmentId: 821, title: 'Before enrollment', subjectId: 11, subjectName: 'English', onlineSubmissionEnabled: 0, dueDate: beforeEnrollment, studentId: 103, submissionId: 831, savedStatus: 'not_submitted', filePath: null, submittedAt: null },
-        { assignmentId: 822, title: 'During enrollment', subjectId: 11, subjectName: 'English', onlineSubmissionEnabled: 0, dueDate: enrolledDate, studentId: 103, submissionId: 832, savedStatus: 'submitted', filePath: null, submittedAt: null }
+        { assignmentId: 822, title: 'During enrollment', subjectId: 11, subjectName: 'English', onlineSubmissionEnabled: 0, dueDate: enrolledDate, studentId: 103, submissionId: 832, savedStatus: 'submitted', filePath: null, submittedAt: `${enrolledDate}T09:00:00` }
       ]];
       if (sql.includes('FROM student_journal_entries AS entries')) return [[
         { entryId: 841, studentId: 103, subjectName: 'Values Education', promptText: 'Before transfer', entryText: 'Old entry.', entryStatus: 'submitted', submittedAt: `${beforeEnrollment}T09:00:00` },
@@ -261,6 +317,7 @@ test('weekly evidence respects enrollment dates for transferred learners and doe
         { studentId: 103, sessionId: 803, sectionId: 22, subjectId: 11, date: afterWithdrawal, status: 'absent', subjectName: 'English' }
       ]];
       if (sql.includes('FROM published_final_grades AS grades')) return [[]];
+      if (sql.includes('FROM student_scores AS scores')) return [[]];
       if (sql.includes('FROM school_attendance_settings')) return [[{
         maxUnexcusedAbsences: 1, consecutiveAbsencesAlert: 1, countExcusedAbsences: 0
       }]];

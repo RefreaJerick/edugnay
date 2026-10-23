@@ -1,6 +1,24 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { buildStudentFlags, getStudentFlags } = require('../utils/studentFlags');
+const { buildStudentFlags, getStudentFlags, lowScoreReasons } = require('../utils/studentFlags');
+
+test('weekly low-score reasons are per subject and use the latest three scored items', () => {
+  const score = (studentId, subjectId, itemId, points, maxScore = 10) => ({
+    scoreId: itemId + 100, studentId, subjectId, subjectName: subjectId === 1 ? 'Math' : 'Science',
+    itemId, title: `Activity ${itemId}`, itemDate: `2026-10-${String(19 + itemId).padStart(2, '0')}`,
+    score: points, maxScore
+  });
+  const rows = [score(1, 1, 1, 7), score(1, 1, 2, 14, 20), score(1, 1, 3, 6),
+    score(1, 2, 1, 6), score(1, 2, 2, 6), score(1, 2, 3, 7),
+    score(2, 1, 1, 6), score(2, 1, 2, 7.5), score(2, 1, 3, 6),
+    score(3, 1, 1, 6), score(3, 1, 2, 6)];
+  const reasons = lowScoreReasons(rows);
+  assert.deepEqual(reasons.get('1').map(reason => reason.subject), ['Math', 'Science']);
+  assert.deepEqual(reasons.get('1')[0].scores.map(item => item.itemId), ['3', '2', '1']);
+  assert.equal(reasons.has('2'), false);
+  assert.equal(reasons.has('3'), false);
+  assert.equal(lowScoreReasons([...rows, score(1, 1, 4, 8)]).get('1').some(reason => reason.subject === 'Math'), false);
+});
 
 const students = [
   { studentId: 1, name: 'Ada', initials: 'AD', sectionId: 10, sectionName: 'A', grade: 'Grade 2' },
@@ -117,6 +135,8 @@ test('teacher query scopes roster and published grades to assignments', async ()
     if (sql.includes('FROM attendance_records AS records')) return [[]];
     if (sql.includes('FROM published_final_grades')) return [[]];
     if (sql.includes('FROM school_year_final_grade_rules')) return [[]];
+    if (sql.includes('FROM school_settings')) return [[]];
+    if (sql.includes('FROM student_scores AS scores')) return [[]];
     throw new Error(`Unexpected query: ${sql}`);
   } };
   await getStudentFlags(database, { schoolId: 7, teacherId: 8 });
@@ -143,6 +163,8 @@ test('admin selected year uses saved settings and combines attendance and grade 
     ]];
     if (sql.includes('FROM published_final_grades')) return [[grade(1, 5, 74, 1)]];
     if (sql.includes('FROM school_year_final_grade_rules')) return [[]];
+    if (sql.includes('FROM school_settings')) return [[]];
+    if (sql.includes('FROM student_scores AS scores')) return [[]];
     throw new Error(`Unexpected query: ${sql}`);
   } };
   const result = await getStudentFlags(database, { schoolId: 7, yearId: 12 });

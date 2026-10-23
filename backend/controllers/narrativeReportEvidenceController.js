@@ -74,14 +74,16 @@ async function getWeeklySettings(req, res, next) {
     const schoolId = parseId(req.user?.schoolId, 'school ID');
     const settings = await readWeekSettings(getDatabase(), schoolId);
     const [[approval]] = await getDatabase().execute(
-      'SELECT ai_evidence_approved_at AS approvedAt FROM school_portal_features WHERE school_id = ?',
+      'SELECT narrative_reports_enabled AS reportsEnabled, ai_evidence_approved_at AS approvedAt FROM school_portal_features WHERE school_id = ?',
       [schoolId]
     );
     const aiEvidenceApproved = Boolean(approval?.approvedAt);
+    const reportsEnabled = Boolean(approval?.reportsEnabled);
     res.set('Cache-Control', 'no-store');
     res.json({
       settings, weekdays: WEEKDAY_LABELS,
-      generationEnabled: process.env.AI_REPORTS_GENERATION_ENABLED === 'true' && aiEvidenceApproved,
+      generationEnabled: process.env.AI_REPORTS_GENERATION_ENABLED === 'true' && reportsEnabled && aiEvidenceApproved,
+      reportsEnabled,
       aiEvidenceApproved,
       generationSwitchEnabled: process.env.AI_REPORTS_GENERATION_ENABLED === 'true',
       releaseEnabled: process.env.AI_REPORTS_RELEASE_ENABLED === 'true'
@@ -121,9 +123,12 @@ async function updateWeeklySettings(req, res, next) {
 }
 
 function reportSubmissionStatus(row, throughDate) {
-  const uploaded = Boolean(row.filePath) && row.savedStatus === 'submitted';
+  const recordedInTime = !row.statusUpdatedAt || String(row.statusUpdatedAt).slice(0, 10) <= throughDate;
+  const submittedInTime = row.submittedAt && String(row.submittedAt).slice(0, 10) <= throughDate;
+  const uploaded = recordedInTime && submittedInTime && Boolean(row.filePath) && row.savedStatus === 'submitted';
   const manual = Number(row.onlineSubmissionEnabled) !== 1 &&
-    ['pending', 'submitted', 'not_submitted'].includes(row.savedStatus) ? row.savedStatus : null;
+    recordedInTime && ['pending', 'submitted', 'not_submitted'].includes(row.savedStatus) ? row.savedStatus : null;
+  if (row.submissionId && !recordedInTime) return 'pending';
   return uploaded ? 'submitted' : manual || (row.dueDate && row.dueDate < throughDate ? 'not_submitted' : 'pending');
 }
 
@@ -204,7 +209,8 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       enrolledDate: row.enrolledDate, withdrawnDate: row.withdrawnDate,
       attendance: emptyAttendance(), assignments: { total: 0, submitted: 0, notSubmitted: 0, pending: 0, sources: [] },
       journal: { subjectName: null, entries: [], sources: [] },
-      followUpCandidate: false, candidateReasons: [], academicRecords: []
+      followUpCandidate: false, candidateReasons: [], academicRecords: [],
+      academicScores: [], academicScoresOmitted: 0, lowScoreReasons: []
     }));
     const byStudent = new Map(students.map(student => [student.id, student]));
 
@@ -268,7 +274,8 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           assignment_submissions.id AS submissionId,
           assignment_submissions.submission_status AS savedStatus,
           assignment_submissions.file_path AS filePath,
-          DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt
+          DATE_FORMAT(assignment_submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt,
+          DATE_FORMAT(assignment_submissions.updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
         FROM assignments
         INNER JOIN subjects ON subjects.id = assignments.subject_id AND subjects.school_id = assignments.school_id
         INNER JOIN section_students ON section_students.school_id = assignments.school_id
@@ -293,9 +300,9 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         else if (status === 'not_submitted') student.assignments.notSubmitted++;
         else student.assignments.pending++;
         student.assignments.sources.push({
-          assignmentId: String(row.assignmentId), submissionId: row.submissionId == null ? null : String(row.submissionId),
+          assignmentId: String(row.assignmentId), submissionId: status === 'submitted' && row.submissionId != null ? String(row.submissionId) : null,
           subjectId: String(row.subjectId), subjectName: row.subjectName, title: row.title,
-          dueDate: row.dueDate, status, submittedAt: row.submittedAt || null
+          dueDate: row.dueDate, status, submittedAt: status === 'submitted' ? row.submittedAt || null : null
         });
       });
 
@@ -343,7 +350,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         WHERE sessions.school_id = ? AND sessions.section_id = ? AND sessions.status = 'confirmed'
           AND sessions.attendance_date BETWEEN ? AND ?
         ORDER BY sessions.attendance_date, sessions.id`,
-        [schoolId, sectionId, section.academicYearStartDate, evidenceEndDate]
+        [schoolId, sectionId, evidenceStartDate, evidenceEndDate]
       );
       const [gradeRows] = await database.execute(
         `SELECT grades.id AS gradeId, grades.student_user_id AS studentId,
@@ -363,10 +370,28 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           AND grade_levels.id = ?
         INNER JOIN subjects ON subjects.id = grades.subject_id AND subjects.school_id = grades.school_id
         WHERE grades.school_id = ? AND grades.section_id = ?
-          AND DATE(grades.published_at) <= ?
+          AND DATE(grades.published_at) BETWEEN ? AND ?
           AND grades.student_user_id IN (${placeholders})
         ORDER BY terms.sequence_number, grades.published_at, grades.id`,
-        [section.academicYearId, section.schoolLevelId, section.gradeLevelId, schoolId, sectionId, evidenceEndDate, ...studentIds]
+        [section.academicYearId, section.schoolLevelId, section.gradeLevelId, schoolId, sectionId, evidenceStartDate, evidenceEndDate, ...studentIds]
+      );
+      const [scoreRows] = await database.execute(
+        `SELECT scores.id AS scoreId, scores.student_user_id AS studentId, items.id AS itemId,
+          items.subject_id AS subjectId, subjects.name AS subjectName,
+          items.title, items.max_score AS maxScore, scores.score,
+          DATE_FORMAT(items.recorded_at, '%Y-%m-%d') AS itemDate
+        FROM student_scores AS scores
+        INNER JOIN grading_items AS items ON items.id = scores.grading_item_id AND items.school_id = scores.school_id
+          AND items.section_id = ? AND items.max_score > 0
+        INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
+          AND terms.academic_year_id = ?
+        INNER JOIN subjects ON subjects.id = items.subject_id AND subjects.school_id = items.school_id
+        WHERE scores.school_id = ? AND scores.student_user_id IN (${placeholders})
+          AND scores.score IS NOT NULL
+          AND DATE(items.recorded_at) BETWEEN ? AND ?
+          AND DATE(scores.recorded_at) <= ?
+        ORDER BY items.recorded_at DESC, items.id DESC`,
+        [sectionId, section.academicYearId, schoolId, ...studentIds, evidenceStartDate, evidenceEndDate, evidenceEndDate]
       );
       const [riskSettingsRows] = await database.execute(
         `SELECT max_unexcused_absences AS maxUnexcusedAbsences,
@@ -391,15 +416,31 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           const student = byStudent.get(String(row.studentId));
           return student && dateWithinEnrollment(row.date, student);
         }),
-        grades: gradeRows,
+        grades: gradeRows.filter(row => {
+          const learner = byStudent.get(String(row.studentId));
+          return learner && dateWithinEnrollment(String(row.publishedAt).slice(0, 10), learner);
+        }),
+        scores: scoreRows.filter(row => {
+          const learner = byStudent.get(String(row.studentId));
+          return learner && dateWithinEnrollment(String(row.itemDate).slice(0, 10), learner);
+        }),
         rules: gradeRules,
         settings: riskSettingsRows[0] || {},
         yearLabel: section.academicYearLabel
       });
       const flagsByStudent = new Map(flags.map(flag => [flag.studentId, flag]));
+      const weeklyScoresByStudent = new Map();
+      scoreRows.forEach(row => {
+        const learner = byStudent.get(String(row.studentId));
+        if (!learner || !dateWithinEnrollment(String(row.itemDate).slice(0, 10), learner)) return;
+        if (!weeklyScoresByStudent.has(learner.id)) weeklyScoresByStudent.set(learner.id, []);
+        weeklyScoresByStudent.get(learner.id).push(row);
+      });
       const latestGradesByStudent = new Map();
       gradeRows.forEach(grade => {
         const studentId = String(grade.studentId);
+        const learner = byStudent.get(studentId);
+        if (!learner || !dateWithinEnrollment(String(grade.publishedAt).slice(0, 10), learner)) return;
         const subjects = latestGradesByStudent.get(studentId) || new Map();
         const current = subjects.get(String(grade.subjectId));
         if (!current || Number(grade.termSequence) > Number(current.termSequence) ||
@@ -410,9 +451,18 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       });
       students.forEach(student => {
         const flag = flagsByStudent.get(student.id);
-        if (!flag) return;
-        student.followUpCandidate = true;
-        student.candidateReasons = flag.reasons;
+        student.followUpCandidate = Boolean(flag);
+        student.candidateReasons = flag?.reasons || [];
+        student.lowScoreReasons = student.candidateReasons.filter(reason => reason.type === 'low_scores');
+        const weeklyScores = weeklyScoresByStudent.get(student.id) || [];
+        const priorityIds = new Set(student.lowScoreReasons.flatMap(reason => reason.scores.map(score => score.scoreId)));
+        const priority = weeklyScores.filter(row => priorityIds.has(String(row.scoreId)));
+        const selected = [...priority, ...weeklyScores.filter(row => !priorityIds.has(String(row.scoreId)))].slice(0, 20);
+        student.academicScores = selected.map(row => ({
+          scoreId: String(row.scoreId), subjectName: row.subjectName, title: row.title,
+          date: String(row.itemDate).slice(0, 10), score: Number(row.score), maxScore: Number(row.maxScore)
+        }));
+        student.academicScoresOmitted = Math.max(0, weeklyScores.length - selected.length);
         student.academicRecords = [...(latestGradesByStudent.get(student.id)?.values() || [])]
           .map(grade => ({
             gradeId: String(grade.gradeId), subjectId: String(grade.subjectId), subjectName: grade.subjectName,
@@ -446,5 +496,5 @@ async function getWeeklyEvidence(req, res, next) {
 
 module.exports = {
   DEFAULT_WEEK, WEEKDAY_LABELS, addDays, buildWeeklyEvidence, getWeeklyEvidence, getWeeklySettings,
-  isoWeekday, normalizeWeekSettings, reportWeekRange, updateWeeklySettings
+  isoWeekday, normalizeWeekSettings, reportWeekRange, reportSubmissionStatus, updateWeeklySettings
 };

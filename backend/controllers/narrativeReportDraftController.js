@@ -68,8 +68,9 @@ function sourceReferences(student) {
   });
   student.journal.sources.filter(source => ['submitted', 'reviewed'].includes(source.status)).slice(-3)
     .forEach(source => add('journal_entry', source.entryId));
-  if (student.followUpCandidate) student.academicRecords.slice(0, 20)
+  student.academicRecords
     .forEach(source => add('published_final_grade', source.gradeId));
+  (student.academicScores || []).forEach(score => add('student_score', score.scoreId));
   return [...new Map(references.map(ref => [`${ref.type}:${ref.id}`, ref])).values()];
 }
 
@@ -184,13 +185,16 @@ async function processWeeklyGeneration(req, {
       const reason = skipReason(existing, sectionId, selection.regenerate);
       if (reason) outcome = { status: 'skipped', reason };
       else {
+        if ((student.lowScoreReasons || []).reduce((count, flag) => count + flag.scores.length, 0) > 20) {
+          throw createError('More than 20 flagged academic scores are recorded this week. Review them before generating this report.', 422);
+        }
         const teacherNote = Object.hasOwn(selection.notes, student.id)
           ? selection.notes[student.id].trim() : existing?.teacherNote || '';
         const draft = await generate({ student, reportWeek: evidence.reportWeek, teacherNote });
         outcome = await saveDraft({ database, req, student, evidence, draft, teacherNote, regenerate: selection.regenerate });
       }
     } catch (error) {
-      outcome = { status: 'error', message: [429, 503].includes(error.status)
+      outcome = { status: 'error', message: [422, 429, 503].includes(error.status)
         ? error.message : 'Draft generation failed for this learner.' };
     }
     results.push({ studentId: student.id, ...outcome, processed: results.length + 1, total: selection.students.length });

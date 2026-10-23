@@ -1113,12 +1113,13 @@
               <div class="flag-card-top"><div class="flag-av" style="background:var(--blue-mid)">${escape(student.initials || '?')}</div>
                 <div class="flag-info"><div class="flag-name">${escape(student.name)}</div>
                   <div class="flag-detail">${escape(student.grade)} · ${escape(student.sectionName)}</div></div></div>
-              <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${reason.type === 'grade' ? 'gold' : 'red'}"><i data-lucide="${reason.type === 'grade' ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
+              <div class="flag-reason-row">${student.reasons.map(reason => `<span class="badge badge-${['grade', 'low_scores'].includes(reason.type) ? 'gold' : 'red'}"><i data-lucide="${['grade', 'low_scores'].includes(reason.type) ? 'trending-down' : 'calendar-days'}" aria-hidden="true"></i> ${escape(reason.type === 'grade'
                 ? `${reason.subject}: ${reason.grade}`
+                : reason.type === 'low_scores' ? `${reason.subject}: 3 low scores this report week`
                 : reason.type === 'consecutive' ? `${reason.count} missed ${reason.subject} meeting dates in a row`
                   : `${reason.count} dates with a recorded ${reason.includesExcused ? 'subject absence (including excused)' : 'unexcused subject absence'}`)}</span>`).join('')}</div>
             </div>`).join('')
-            : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or grade criteria.' });
+            : window.EDUGNAY_CONFIG.renderPanelEmptyState({ icon: 'user-round-check', title: 'No flagged students', text: 'No students currently meet the attendance or academic criteria.' });
       }
       lucide.createIcons();
     }

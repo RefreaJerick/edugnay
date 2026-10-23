@@ -222,10 +222,21 @@ test('migration backfills version one and makes release rows append-only', () =>
 test('admin release history view is read-only and parses as JavaScript', () => {
   const root = path.join(__dirname, '../..');
   const page = fs.readFileSync(path.join(root, 'views/admin/edugnay-admin-reports.html'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'assets/css/admin/reports.css'), 'utf8');
+  const reviewController = fs.readFileSync(path.join(root, 'backend/controllers/narrativeReportReviewController.js'), 'utf8');
   const routes = fs.readFileSync(path.join(root, 'backend/routes/reports.js'), 'utf8');
   assert.match(routes, /router\.get\('\/weekly-release-history', requireSchoolUser, requireRoles\('school_admin'\)/);
   assert.match(page, /id="school-release-list"/);
   assert.match(page, /id="school-release-detail"/);
+  assert.match(page, /aria-pressed="false" data-release-report-id/);
+  assert.match(page, /Current parent version/);
+  assert.match(page, /school-release-corrections/);
+  assert.match(page, /renderPanelEmptyState\(\{ icon: 'files', title: 'No released reports yet'/);
+  assert.match(page, /requestId !== schoolReleaseHistoryRequest/);
+  assert.match(styles, /\.school-release-item\[aria-pressed="true"\]/);
+  assert.match(styles, /\.school-release-actions[^}]*background: var\(--blue-xpale\)/);
+  assert.match(styles, /\.school-release-correction[^}]*background: var\(--white\)/);
+  assert.match(reviewController, /DATE_FORMAT\(reports\.report_week_start_date, '%Y-%m-%d'\) AS weekStartDate/);
   assert.match(page, /\/reports\/weekly-release-history/);
   for (const script of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
     if (script[1].trim()) assert.doesNotThrow(() => new vm.Script(script[1]));
@@ -240,6 +251,7 @@ test('teacher correction UI keeps regeneration disabled and parent UI labels upd
   const teacherStyles = fs.readFileSync(path.join(root, 'assets/css/adviser/narrative-reports.css'), 'utf8');
   assert.match(teacher, /'regenerate-report'\)\.hidden = !editable \|\| Boolean\(report\.releasedAt\)/);
   assert.match(teacher, /report\.pendingCorrection[\s\S]*?Parents still see the last released version/);
+  assert.match(teacherStyles, /\.report-history-correction p \{[^}]*font-size: 12px;[^}]*line-height: 1\.55;/);
   assert.match(teacher, /\/weekly-drafts\/\$\{encodeURIComponent\(report\.id\)\}\/reopen/);
   assert.match(teacherPage, /id="report-reopen-reason" maxlength="500"/);
   const historySection = teacherPage.match(/<section class="review-section report-history-section"[\s\S]*?<\/section>/)?.[0];

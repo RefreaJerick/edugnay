@@ -2051,12 +2051,12 @@
                     <span class="school-toggle-control" aria-hidden="true"></span>
                   </label>
                   <label class="school-toggle-row">
-                    <span class="school-toggle-copy"><strong>Enable AI-assisted Narrative Reports</strong><small>Advisers review summaries built from verified attendance, journal, assignment, and progress records before parents can view them.</small></span>
+                    <span class="school-toggle-copy"><strong>Show Narrative Reports</strong><small>Make report pages available to advisers and parents. Turning this off hides the pages and pauses new generation without deleting saved reports.</small></span>
                     <input class="school-toggle-input" type="checkbox" name="narrativeReportsEnabled" ${narrativeReportsEnabled ? 'checked' : ''}>
                     <span class="school-toggle-control" aria-hidden="true"></span>
                   </label>
-                  <label class="school-toggle-row">
-                    <span class="school-toggle-copy"><strong>Approve sending learner evidence to the AI service</strong><small>Includes attendance, assignments, published grades for follow-up candidates, adviser notes, and journal reflections. Required before generating reports; you can revoke approval to stop future requests.</small></span>
+                  <label class="school-toggle-row school-report-ai-toggle">
+                    <span class="school-toggle-copy"><strong>Allow AI to generate new drafts</strong><small>Approve sending learner evidence to the external AI service, including attendance, assignments, published grades for follow-up candidates, adviser notes, and journal reflections. Turning this off stops future AI requests; existing reports remain available.</small><small id="reportAiApprovalStatus" class="school-report-ai-status" aria-live="polite"></small></span>
                     <input class="school-toggle-input" type="checkbox" name="aiEvidenceApproved" ${aiEvidenceApproved ? 'checked' : ''}>
                     <span class="school-toggle-control" aria-hidden="true"></span>
                   </label>
@@ -2119,6 +2119,8 @@
       const journalSubjectBlock = document.getElementById('journalSubjectBlock');
       const journalHistoryBlock = document.getElementById('journalHistoryBlock');
       const narrativeToggle = document.querySelector('#schoolPortalForm [name="narrativeReportsEnabled"]');
+      const aiApprovalToggle = document.querySelector('#schoolPortalForm [name="aiEvidenceApproved"]');
+      const aiApprovalStatus = document.getElementById('reportAiApprovalStatus');
       const reportWeekBlock = document.getElementById('reportWeekSettingsBlock');
       const reportWeekStartDay = document.getElementById('reportWeekStartDay');
       const reportWeekEndDay = document.getElementById('reportWeekEndDay');
@@ -2130,6 +2132,11 @@
         }
         if (reportWeekStartDay) reportWeekStartDay.disabled = !isNarrativeReportsEnabled;
         if (reportWeekEndDay) reportWeekEndDay.disabled = !isNarrativeReportsEnabled;
+        if (aiApprovalStatus) aiApprovalStatus.textContent = !isNarrativeReportsEnabled
+          ? aiApprovalToggle?.checked
+            ? 'Approval is saved, but no evidence is sent while Narrative Reports are off.'
+            : 'No evidence is sent while Narrative Reports are off.'
+          : '';
       };
       const syncJournalSections = () => {
         const isJournalEnabled = Boolean(journalToggle?.checked);
@@ -2142,6 +2149,7 @@
       };
       journalToggle?.addEventListener('change', syncJournalSections);
       narrativeToggle?.addEventListener('change', syncReportWeekSettings);
+      aiApprovalToggle?.addEventListener('change', syncReportWeekSettings);
       syncJournalSections();
       syncReportWeekSettings();
       if (window.lucide) lucide.createIcons();
