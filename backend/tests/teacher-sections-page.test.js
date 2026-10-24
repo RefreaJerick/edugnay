@@ -8,6 +8,7 @@ const commonSource = fs.readFileSync(path.join(__dirname, '../../assets/js/shell
 const dashboardSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
 const sectionsSource = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-sections.html'), 'utf8');
 const sectionsStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/teacher/sections.css'), 'utf8');
+const modalStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
 const sharedStyles = fs.readFileSync(path.join(__dirname, '../../assets/css/styles.css'), 'utf8');
 const sfSource = fs.readFileSync(path.join(__dirname, '../../assets/js/teacher/sf-templates.js'), 'utf8');
 
@@ -444,16 +445,25 @@ test('assignment modal follows the selected subject and saves its ID', () => {
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
-      dataset: {}, replaceChildren() {}, addEventListener() {}, value: '', textContent: '', hidden: false
+      dataset: {}, children: [], listeners: {},
+      replaceChildren(...children) { this.children = children; },
+      addEventListener(type, callback) { this.listeners[type] = callback; },
+      value: '', textContent: '', hidden: false
     });
     return elements.get(id);
   };
+  const window = { location: {
+    href: 'http://127.0.0.1:5500/views/teacher/edugnay-teacher-sections.html?sectionId=4',
+    assign(href) { this.href = href; }
+  } };
   const context = {
     document: {
       getElementById: element,
       createElement: () => ({ value: '', textContent: '' }),
       querySelectorAll: () => []
     },
+    URL,
+    window,
     CURRENT_SUBJECT: 'English',
     CURRENT_SUBJECT_ID: '17',
     CURRENT_SUBJECT_ASSIGNMENT: { subjectId: '17', subjectName: 'English' },
@@ -463,12 +473,74 @@ test('assignment modal follows the selected subject and saves its ID', () => {
   vm.runInNewContext(`${updateSource}; updateSectionSubjectControl();`, context);
   assert.equal(element('assignSubjectInput').value, 'English');
   assert.equal(element('sectionSubjectSelect').value, '17');
+  assert.equal(element('sectionSubjectSelect').hidden, true);
+
+  context.CURRENT_TEACHER_SUBJECT_ASSIGNMENTS = [
+    { subjectId: '17', subjectName: 'English' },
+    { subjectId: '18', subjectName: 'Araling Panlipunan' }
+  ];
+  context.CURRENT_SUBJECT_ID = '18';
+  context.CURRENT_SUBJECT = 'Araling Panlipunan';
+  vm.runInNewContext('updateSectionSubjectControl();', context);
+  assert.equal(element('sectionSubjectSelect').hidden, false);
+  assert.deepEqual(element('sectionSubjectSelect').children.map(option => option.textContent), ['English', 'Araling Panlipunan']);
+  element('sectionSubjectSelect').listeners.change();
+  assert.equal(new URL(window.location.href).searchParams.get('subjectId'), '18');
 
   context.CURRENT_SUBJECT_ASSIGNMENT = null;
   context.CURRENT_SUBJECT_ID = '';
   context.CURRENT_SUBJECT = 'Subject unavailable';
   vm.runInNewContext('updateSectionSubjectControl();', context);
   assert.equal(element('assignSubjectInput').value, '');
+});
+
+test('section subject dropdown follows its navy and gold header style on desktop and phones', () => {
+  assert.match(sectionsSource, /id="sectionSubjectSelect" class="section-subject-select"[^>]*hidden/);
+  assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-input\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.1\) !important;[^}]*color:\s*var\(--white\) !important;/s);
+  assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*#f7d980;/s);
+  assert.match(sectionsStyles, /@media \(max-width: 420px\)[\s\S]*?\.section-header \.section-subject \.searchable-select:not\(\[hidden\]\)\s*\{[^}]*flex:\s*1 1 200px;/);
+  assert.match(modalStyles, /\.searchable-select-menu\s*\{[^}]*background:\s*var\(--white\);/s);
+});
+
+test('custom selects use the filled down triangle shown in the dropdown reference', () => {
+  assert.match(modalStyles, /\.searchable-select-control::after\s*\{[^}]*border-top:\s*6px solid var\(--gray-400\);[^}]*border-right:\s*5px solid transparent;[^}]*border-left:\s*5px solid transparent;/s);
+  assert.doesNotMatch(modalStyles.match(/\.searchable-select-control::after\s*\{([^}]*)\}/s)[1], /rotate\(/);
+  assert.match(modalStyles, /\.searchable-select\.is-open \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*var\(--blue-mid\);[^}]*transform:\s*rotate\(180deg\);/s);
+});
+
+test('custom select click toggles the menu without focus closing the first click', () => {
+  const triggerSource = commonSource.match(/function bindSelectTriggerEvents\(input, state\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(triggerSource, 'custom select trigger handlers should be available');
+
+  const inputHandlers = {};
+  const documentHandlers = {};
+  const context = vm.createContext({
+    document: { addEventListener(type, callback) { documentHandlers[type] = callback; } },
+    openSelect(state) { state.open = true; },
+    closeSelect(state) { state.open = false; }
+  });
+  vm.runInContext(`${triggerSource}; globalThis.bindSelectTriggerEvents = bindSelectTriggerEvents;`, context);
+
+  const input = { addEventListener(type, callback) { inputHandlers[type] = callback; } };
+  const state = { open: false, pointerDown: false };
+  context.bindSelectTriggerEvents(input, state);
+
+  inputHandlers.pointerdown();
+  inputHandlers.focus();
+  assert.equal(state.open, false, 'pointer focus should wait for the click to open the menu');
+  documentHandlers.pointerup();
+  inputHandlers.click();
+  assert.equal(state.open, true, 'the first click should open the menu');
+
+  inputHandlers.pointerdown();
+  documentHandlers.pointerup();
+  inputHandlers.click();
+  assert.equal(state.open, false, 'the next click should close the menu');
+
+  inputHandlers.focus();
+  assert.equal(state.open, true, 'keyboard focus should keep opening the menu');
+  inputHandlers.click();
+  assert.equal(state.open, false, 'clicking an already open menu should close it');
 });
 
 test('assignment creation uses the selected subject ID even if a label is stale', async () => {

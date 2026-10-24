@@ -3605,6 +3605,13 @@ function applyCurrentDateToGradingBanners() {
    without changing the form field contract. */
 (function initializeSearchableSelectSupport() {
   const states = new WeakMap();
+  let opened = null;
+  if (!document.querySelector('link[href*="modal-system.css"]') && document.currentScript?.src) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = new URL('../css/modal-system.css', document.currentScript.src).href;
+    document.head.appendChild(stylesheet);
+  }
 
   function normalize(value) {
     return String(value || '').trim().toLocaleLowerCase();
@@ -3615,9 +3622,9 @@ function applyCurrentDateToGradingBanners() {
       .map(option => ({
         value: option.value,
         label: option.textContent.trim(),
-        disabled: option.disabled
+        disabled: option.disabled || option.parentElement?.disabled === true
       }))
-      .filter(option => option.value && option.label);
+      .filter(option => option.label);
   }
 
   function initialsFor(label) {
@@ -3635,14 +3642,19 @@ function applyCurrentDateToGradingBanners() {
 
   function syncInput(state) {
     const selected = getOptionRecords(state).find(option => option.value === state.select.value);
+    state.wrapper.hidden = state.select.hidden || window.getComputedStyle(state.select).display === 'none';
+    if (state.wrapper.hidden && state.open) closeSelect(state);
     state.input.disabled = state.select.disabled;
-    state.input.required = state.required;
-    state.input.setAttribute('aria-required', String(state.required));
+    state.input.setAttribute('aria-required', String(state.select.required));
     state.wrapper.classList.toggle('is-disabled', state.select.disabled);
+    state.wrapper.classList.toggle('is-invalid', state.select.required && !state.select.value && state.wrapper.classList.contains('is-invalid'));
+    state.searchable = state.people || getOptionRecords(state).filter(option => option.value).length > 10;
+    state.input.readOnly = !state.searchable;
+    state.input.setAttribute('aria-autocomplete', state.searchable ? 'list' : 'none');
 
     if (!state.open) {
       state.input.value = selected?.label || '';
-      state.input.placeholder = state.placeholder;
+      state.input.placeholder = state.select.options[0]?.textContent.trim() || state.placeholder;
     }
   }
 
@@ -3667,13 +3679,13 @@ function applyCurrentDateToGradingBanners() {
 
   function renderOptions(state, query = '') {
     const term = normalize(query);
-    const options = getOptionRecords(state).filter(option => (
-      !option.disabled && (!term || normalize(option.label).includes(term))
-    ));
+    const options = getOptionRecords(state).filter(option =>
+      (option.value || option.value === state.select.value) &&
+      (!term || normalize(option.label).includes(term)));
 
     state.visibleOptions = options;
     state.activeIndex = -1;
-    state.menu.innerHTML = '';
+    state.menu.replaceChildren();
     state.input.removeAttribute('aria-activedescendant');
 
     if (!options.length) {
@@ -3692,11 +3704,11 @@ function applyCurrentDateToGradingBanners() {
       item.dataset.value = option.value;
       item.setAttribute('role', 'option');
       item.setAttribute('aria-selected', String(option.value === state.select.value));
+      if (option.disabled) {
+        item.setAttribute('aria-disabled', 'true');
+        item.classList.add('is-disabled');
+      }
       if (option.value === state.select.value) item.classList.add('is-selected');
-
-      const avatar = document.createElement('span');
-      avatar.className = 'searchable-select-option-avatar';
-      avatar.textContent = initialsFor(copy.main);
 
       const text = document.createElement('span');
       text.className = 'searchable-select-option-copy';
@@ -3713,7 +3725,13 @@ function applyCurrentDateToGradingBanners() {
         text.appendChild(meta);
       }
 
-      item.append(avatar, text);
+      if (state.people) {
+        const avatar = document.createElement('span');
+        avatar.className = 'searchable-select-option-avatar';
+        avatar.textContent = initialsFor(copy.main);
+        item.appendChild(avatar);
+      }
+      item.appendChild(text);
       item.addEventListener('mousedown', event => event.preventDefault());
       item.addEventListener('click', () => chooseOption(state, option.value));
       state.menu.appendChild(item);
@@ -3723,29 +3741,61 @@ function applyCurrentDateToGradingBanners() {
   function openSelect(state) {
     if (state.select.disabled) return;
     if (!state.open) {
+      if (opened && opened !== state) closeSelect(opened);
+      opened = state;
       state.open = true;
       state.wrapper.classList.add('is-open');
+      state.menu.classList.add('is-open');
       state.input.setAttribute('aria-expanded', 'true');
-      state.input.placeholder = state.searchPlaceholder;
-      state.input.value = '';
+      state.input.placeholder = state.searchable ? state.searchPlaceholder : state.placeholder;
+      if (state.searchable) state.input.value = '';
       renderOptions(state, '');
+      positionMenu(state);
     }
   }
 
   function closeSelect(state) {
+    if (opened === state) opened = null;
     state.open = false;
     state.wrapper.classList.remove('is-open');
+    state.menu.classList.remove('is-open');
     state.input.setAttribute('aria-expanded', 'false');
     state.input.removeAttribute('aria-activedescendant');
     syncInput(state);
+  }
+
+  function bindSelectTriggerEvents(input, state) {
+    input.addEventListener('pointerdown', () => { state.pointerDown = true; });
+    document.addEventListener('pointerup', () => { state.pointerDown = false; });
+    document.addEventListener('pointercancel', () => { state.pointerDown = false; });
+    input.addEventListener('focus', () => {
+      if (!state.pointerDown) openSelect(state);
+    });
+    input.addEventListener('click', () => {
+      if (state.open) closeSelect(state);
+      else openSelect(state);
+    });
+  }
+
+  function positionMenu(state) {
+    if (!state.open) return;
+    const rect = state.wrapper.getBoundingClientRect();
+    const availableBelow = window.innerHeight - rect.bottom;
+    const above = availableBelow < 230 && rect.top > availableBelow;
+    state.menu.style.left = `${Math.max(8, rect.left)}px`;
+    state.menu.style.width = `${Math.min(rect.width, window.innerWidth - 16)}px`;
+    state.menu.style.top = above ? 'auto' : `${rect.bottom + 5}px`;
+    state.menu.style.bottom = above ? `${window.innerHeight - rect.top + 5}px` : 'auto';
+    state.menu.style.maxHeight = `${Math.max(80, Math.min(224, above ? rect.top - 16 : availableBelow - 16))}px`;
   }
 
   function chooseOption(state, value) {
     const option = getOptionRecords(state).find(record => record.value === value);
     if (!option || option.disabled) return;
     state.select.value = option.value;
-    state.select.dispatchEvent(new Event('change', { bubbles: true }));
     closeSelect(state);
+    state.select.dispatchEvent(new Event('change', { bubbles: true }));
+    state.input.focus();
   }
 
   function handleKeydown(state, event) {
@@ -3754,6 +3804,14 @@ function applyCurrentDateToGradingBanners() {
         event.preventDefault();
         closeSelect(state);
       }
+      return;
+    }
+
+    if (event.key === 'Tab') { closeSelect(state); return; }
+    if (event.key === 'Home' || event.key === 'End') {
+      if (!state.open) return;
+      event.preventDefault();
+      setActiveOption(state, event.key === 'Home' ? 0 : state.visibleOptions.length - 1);
       return;
     }
 
@@ -3766,10 +3824,14 @@ function applyCurrentDateToGradingBanners() {
 
     if (event.key === 'Enter' && state.open) {
       const option = state.visibleOptions[state.activeIndex >= 0 ? state.activeIndex : 0];
-      if (option) {
+      if (option && !option.disabled) {
         event.preventDefault();
         chooseOption(state, option.value);
       }
+    }
+    if ((event.key === ' ' || event.key === 'Enter') && !state.open && !state.searchable) {
+      event.preventDefault();
+      openSelect(state);
     }
   }
 
@@ -3777,7 +3839,7 @@ function applyCurrentDateToGradingBanners() {
     const select = typeof selectOrSelector === 'string'
       ? document.querySelector(selectOrSelector)
       : selectOrSelector;
-    if (!select || select.tagName !== 'SELECT') return null;
+    if (!select || select.tagName !== 'SELECT' || select.multiple || select.size > 1 || select.dataset.nativeSelect === 'true') return null;
     if (states.has(select)) return states.get(select);
 
     const wrapper = document.createElement('div');
@@ -3786,7 +3848,8 @@ function applyCurrentDateToGradingBanners() {
     const menu = document.createElement('div');
     const baseId = select.id || `searchable-select-${Math.random().toString(36).slice(2)}`;
 
-    wrapper.className = 'searchable-select';
+    const people = Boolean(settings.people || settings.avatar || settings.searchPlaceholder || select.id === 'teacherSelect');
+    wrapper.className = `searchable-select ${people ? 'searchable-select-people' : 'searchable-select-plain'}`;
     wrapper.dataset.searchableSelect = 'true';
     control.className = 'searchable-select-control';
     input.className = 'searchable-select-input';
@@ -3796,12 +3859,14 @@ function applyCurrentDateToGradingBanners() {
     input.spellcheck = false;
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-haspopup', 'listbox');
-    input.setAttribute('aria-autocomplete', 'list');
     input.setAttribute('aria-expanded', 'false');
     input.setAttribute('aria-controls', `${baseId}-options`);
-    input.setAttribute('aria-label', settings.ariaLabel || select.getAttribute('aria-label') || 'Select an option');
+    const label = select.labels?.[0];
+    input.setAttribute('aria-label', settings.ariaLabel || select.getAttribute('aria-label') || label?.textContent.trim() || 'Select an option');
+    if (select.hasAttribute('aria-describedby')) input.setAttribute('aria-describedby', select.getAttribute('aria-describedby'));
 
     menu.className = 'searchable-select-menu';
+    if (!people) menu.classList.add('searchable-select-plain-menu');
     menu.id = `${baseId}-options`;
     menu.setAttribute('role', 'listbox');
 
@@ -3814,7 +3879,9 @@ function applyCurrentDateToGradingBanners() {
       searchPlaceholder: settings.searchPlaceholder || 'Search options...',
       emptyText: settings.emptyText || 'No matching options',
       required: select.required,
+      people,
       open: false,
+      pointerDown: false,
       activeIndex: -1,
       visibleOptions: []
     };
@@ -3822,16 +3889,14 @@ function applyCurrentDateToGradingBanners() {
     select.classList.add('searchable-select-native');
     select.tabIndex = -1;
     select.setAttribute('aria-hidden', 'true');
-    /* Let the visible combobox own native validation while the original
-       select remains available for form submission and backend integration. */
-    select.required = false;
     select.parentNode.insertBefore(wrapper, select);
-    wrapper.append(control, select, menu);
+    wrapper.append(control, select);
+    document.body.appendChild(menu);
     control.appendChild(input);
 
-    input.addEventListener('focus', () => openSelect(state));
-    input.addEventListener('click', () => openSelect(state));
+    bindSelectTriggerEvents(input, state);
     input.addEventListener('input', () => {
+      if (!state.searchable) return;
       openSelect(state);
       renderOptions(state, input.value);
     });
@@ -3842,12 +3907,27 @@ function applyCurrentDateToGradingBanners() {
       }, 0);
     });
     select.addEventListener('change', () => {
+      wrapper.classList.remove('is-invalid');
       syncInput(state);
       if (state.open) renderOptions(state, input.value);
     });
-    document.addEventListener('click', event => {
-      if (!wrapper.contains(event.target)) closeSelect(state);
+    const valueProperty = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(select, 'value', {
+      configurable: true,
+      get() { return valueProperty.get.call(this); },
+      set(value) { valueProperty.set.call(this, value); syncInput(state); }
     });
+    select.addEventListener('invalid', event => {
+      event.preventDefault();
+      wrapper.classList.add('is-invalid');
+      input.focus();
+    });
+    select.form?.addEventListener('reset', () => window.setTimeout(() => syncInput(state), 0));
+    document.addEventListener('click', event => {
+      if (!wrapper.contains(event.target) && !menu.contains(event.target)) closeSelect(state);
+    });
+    window.addEventListener('resize', () => positionMenu(state));
+    window.addEventListener('scroll', () => positionMenu(state), true);
 
     if ('MutationObserver' in window) {
       const observer = new MutationObserver(() => {
@@ -3856,7 +3936,7 @@ function applyCurrentDateToGradingBanners() {
       });
       observer.observe(select, {
         attributes: true,
-        attributeFilter: ['disabled'],
+        attributeFilter: ['disabled', 'hidden', 'style', 'class'],
         childList: true,
         subtree: true
       });
@@ -3878,6 +3958,18 @@ function applyCurrentDateToGradingBanners() {
     syncInput(state);
     if (state.open) renderOptions(state, state.input.value);
   };
+  function enhanceSelects(root = document) {
+    if (root.matches?.('select')) createSearchableSelect(root);
+    root.querySelectorAll?.('select').forEach(select => createSearchableSelect(select));
+  }
+  function start() {
+    enhanceSelects();
+    new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === 1) enhanceSelects(node);
+    }))).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();
 
 function toggleNotifDropdown() {

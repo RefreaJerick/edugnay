@@ -321,8 +321,8 @@ body:has(.onboarding-page) {
 
 .onboarding-term-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  align-items: start;
   gap: 16px;
 }
 
@@ -331,12 +331,6 @@ body:has(.onboarding-page) {
   color: var(--gray-800);
   font-size: 13px;
   font-weight: 800;
-}
-
-.onboarding-term-head p {
-  margin: 4px 0 0;
-  color: var(--gray-400);
-  font-size: 10px;
 }
 
 .onboarding-period-list {
@@ -1456,7 +1450,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 }
 
 .onboarding-registration .onboarding-card {
-  width: min(860px, 100%);
+  width: min(700px, 100%);
 }
 
 .onboarding-registration .onboarding-form-title {

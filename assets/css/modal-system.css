@@ -246,6 +246,58 @@
 .searchable-select {
   position: relative;
   width: 100%;
+  min-width: 0;
+}
+
+.searchable-select[hidden] { display: none !important; }
+
+/* Toolbar selects used to size themselves beside search and action controls. */
+.toolbar .searchable-select,
+.filter-bar .searchable-select,
+.filter-row .searchable-select,
+.activity-filterbar .searchable-select,
+.assignment-toolbar .searchable-select,
+.search-toolbar .searchable-select {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.toolbar .searchable-select-input,
+.filter-bar .searchable-select-input,
+.filter-row .searchable-select-input,
+.activity-filterbar .searchable-select-input,
+.assignment-toolbar .searchable-select-input,
+.search-toolbar .searchable-select-input {
+  width: auto;
+  min-width: 145px;
+  min-height: 38px;
+  height: 38px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  background: var(--white) !important;
+  font-size: 13px !important;
+}
+
+.toolbar-filters .searchable-select-input {
+  min-width: 190px;
+}
+
+@media (max-width: 760px) {
+  .toolbar .searchable-select,
+  .filter-bar .searchable-select,
+  .filter-row .searchable-select,
+  .activity-filterbar .searchable-select,
+  .assignment-toolbar .searchable-select,
+  .search-toolbar .searchable-select,
+  .toolbar .searchable-select-input,
+  .filter-bar .searchable-select-input,
+  .filter-row .searchable-select-input,
+  .activity-filterbar .searchable-select-input,
+  .assignment-toolbar .searchable-select-input,
+  .search-toolbar .searchable-select-input {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .searchable-select-control {
@@ -285,19 +337,20 @@
 
 .searchable-select-control::after {
   position: absolute;
-  top: 50%;
+  top: calc(50% - 3px);
   right: 15px;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid var(--gray-400);
-  border-bottom: 1.5px solid var(--gray-400);
+  width: 0;
+  height: 0;
+  border-top: 6px solid var(--gray-400);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
   content: '';
   pointer-events: none;
-  transform: translateY(-65%) rotate(45deg);
 }
 
 .searchable-select.is-open .searchable-select-control::after {
-  border-color: var(--blue-mid);
+  border-top-color: var(--blue-mid);
+  transform: rotate(180deg);
 }
 
 .searchable-select-native {
@@ -314,11 +367,8 @@
 }
 
 .searchable-select-menu {
-  position: absolute;
-  z-index: 1000;
-  top: calc(100% + 6px);
-  right: 0;
-  left: 0;
+  position: fixed;
+  z-index: 10000;
   display: none;
   /* Keep a small breathing space before the dialog edge on compact screens. */
   max-height: 224px;
@@ -326,14 +376,38 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) var(--gray-50);
   border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm) 0px 0px var(--radius-sm);
+  border-radius: var(--radius-sm);
   background: var(--white);
   box-shadow: 0 12px 24px rgba(15, 32, 58, .12);
 }
 
-.searchable-select.is-open .searchable-select-menu {
+.searchable-select-menu::-webkit-scrollbar { width: 6px; }
+.searchable-select-menu::-webkit-scrollbar-track { background: var(--gray-50); border-radius: 6px; }
+.searchable-select-menu::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 6px; }
+.searchable-select-menu::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+.searchable-select-menu.is-open {
   display: block;
+}
+
+.searchable-select-plain .searchable-select-input {
+  cursor: pointer;
+}
+
+.searchable-select-option-copy {
+  flex: 1;
+}
+
+.searchable-select-plain-menu .searchable-select-option-main {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.searchable-select.is-invalid .searchable-select-input {
+  border-color: #d75151 !important;
 }
 
 .searchable-select-option {
@@ -350,6 +424,11 @@
 .searchable-select-option:hover,
 .searchable-select-option.is-active {
   background: var(--blue-xpale);
+}
+
+.searchable-select-option.is-disabled {
+  cursor: not-allowed;
+  opacity: .5;
 }
 
 .searchable-select-option.is-selected {
@@ -1321,7 +1400,7 @@ body .row-btn.delete > svg {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
+  scrollbar-color: var(--gray-300) var(--gray-50);
 }
 
 .journal-history-card {

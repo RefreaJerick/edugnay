@@ -13,9 +13,12 @@
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/admin/schools.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/academic-range-picker.js"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/journal-history-viewer.js"></script>
   <script src="../../assets/js/admin/shell.js"></script>
 </head>
@@ -728,14 +731,18 @@
                     <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
                   </div>
                   <div class="term-schedule-dates">
-                    <div class="school-field"><label>Start date</label><input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
-                    <div class="school-field"><label>End date</label><input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                    <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
+                      <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                      <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                    </div></div>
                   </div>
                 </div>` : `<div class="term-schedule-row" data-term-period>
                   <input type="hidden" data-term-period-id value="${window.EDUGNAY_CONFIG.escapeHtml(period.id)}">
                   <div class="school-field"><label>Grading period</label><input data-term-period-name value="${window.EDUGNAY_CONFIG.escapeHtml(period.name)}" readonly></div>
-                  <div class="school-field"><label>Start date</label><input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
-                  <div class="school-field"><label>End date</label><input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></div>
+                  <div class="school-field academic-range-group" data-academic-range><label>Date range</label><div class="academic-range-native-pair">
+                    <label>Start date<input data-term-period-start type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedStartDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                    <label>End date<input data-term-period-end type="date" value="${window.EDUGNAY_CONFIG.escapeHtml(period.plannedEndDate || '')}" ${period.status === 'upcoming' ? '' : 'disabled'} required></label>
+                  </div></div>
                   <span class="term-status ${period.status}">${period.status === 'closed' ? 'Closed' : period.status === 'active' ? 'Active' : 'Upcoming'}</span>
                 </div>`).join('')}
               </div>
@@ -745,6 +752,14 @@
         </div>`;
 
       const termsForm = document.getElementById('schoolAcademicTermsForm');
+      window.initAcademicRangePickers?.(termsForm, {
+        rowSelector: '[data-term-period]',
+        startSelector: '[data-term-period-start]',
+        endSelector: '[data-term-period-end]',
+        nameSelector: '[data-term-period-name]',
+        yearStartSelector: '#termSchoolYearStart',
+        yearEndSelector: '#termSchoolYearEnd'
+      });
       termsForm.addEventListener('submit', saveAcademicTerms);
       termsForm.addEventListener('input', () => {
         document.querySelectorAll('[data-term-action]').forEach(button => { button.disabled = true; });

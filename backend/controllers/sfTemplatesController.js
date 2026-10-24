@@ -291,7 +291,7 @@ async function getSf2Learners(database, schoolId, sectionId, month) {
 
 async function getSf5GradeData(database, schoolId, section, learners) {
   const [subjects] = await database.execute(
-    `SELECT DISTINCT subjects.id, subjects.name, subjects.code FROM section_teachers
+    `SELECT DISTINCT subjects.id, subjects.name, subjects.subject_code AS code FROM section_teachers
     INNER JOIN subjects ON subjects.id = section_teachers.subject_id AND subjects.school_id = section_teachers.school_id
     WHERE section_teachers.school_id = ? AND section_teachers.section_id = ?
     ORDER BY subjects.name, subjects.id`, [schoolId, section.id]

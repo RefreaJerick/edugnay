@@ -1,0 +1,593 @@
+/* Grading-period date range fields and their shared calendar. */
+.onboarding-academic-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, .9fr) minmax(0, 1.8fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.onboarding-school-year-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.onboarding-academic-layout .onboarding-academic-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 0;
+}
+
+.onboarding-academic-layout .onboarding-term-configurations {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.onboarding-period-row {
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 2fr);
+}
+
+.onboarding-academic-layout .onboarding-period-row {
+  grid-template-columns: minmax(100px, .65fr) minmax(0, 1.35fr);
+}
+
+.term-schedule-row:not(.term-schedule-card) {
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 2fr) 72px;
+}
+
+.term-schedule-dates {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.academic-range-group {
+  min-width: 0;
+}
+
+.academic-range-native-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.academic-range-native-pair[hidden] {
+  display: none;
+}
+
+.academic-range-native-pair label {
+  min-width: 0;
+}
+
+.academic-range-native-pair input {
+  margin-top: 6px;
+}
+
+.onboarding-field > .academic-range-field,
+.school-field > .academic-range-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm, var(--button-radius, 8px));
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font: 400 13px/1.35 'Plus Jakarta Sans', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.onboarding-field > .academic-range-field {
+  border-radius: var(--button-radius, 8px);
+}
+
+.academic-range-field span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academic-range-field svg {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  color: var(--gray-500, #64748b);
+}
+
+.academic-range-field.is-empty span {
+  color: var(--gray-500, #64748b);
+}
+
+.onboarding-field > .academic-range-field:disabled,
+.school-field > .academic-range-field:disabled {
+  border-color: var(--gray-200);
+  background: var(--gray-100, #f1f5f9);
+  color: var(--gray-500, #64748b);
+  cursor: not-allowed;
+  opacity: .8;
+}
+
+.onboarding-field > .academic-range-field:hover,
+.school-field > .academic-range-field:hover {
+  border-color: var(--gray-300);
+}
+
+.onboarding-field > .academic-range-field:focus-visible,
+.school-field > .academic-range-field:focus-visible,
+.onboarding-field > .academic-range-field[aria-expanded='true'],
+.school-field > .academic-range-field[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--blue-mid);
+  background: var(--white);
+  box-shadow: 0 0 0 3px var(--button-focus-ring);
+}
+
+.academic-range-popup {
+  position: fixed;
+  z-index: 3000;
+  box-sizing: border-box;
+  width: min(316px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  background: var(--white, #fff);
+  box-shadow: 0 16px 40px rgba(15, 34, 65, .18);
+  color: var(--gray-800);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.academic-range-popup[hidden] {
+  display: none;
+}
+
+.academic-range-popup::-webkit-scrollbar {
+  width: 6px;
+}
+
+.academic-range-popup::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.academic-range-popup::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: #94a3b8;
+}
+
+.academic-range-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+}
+
+.academic-range-heading strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.academic-range-heading span,
+.academic-range-selection span {
+  color: var(--gray-500, #64748b);
+  font-size: 11px;
+}
+
+.academic-range-navigation {
+  display: grid;
+  grid-template-columns: 30px 30px minmax(0, 1fr) 30px 30px;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.academic-range-navigation strong {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.academic-range-navigation button,
+.academic-range-days button {
+  border: 0;
+  background: transparent;
+  color: var(--gray-700, #334155);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.academic-range-navigation button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--blue-mid);
+}
+
+.academic-range-navigation button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.academic-range-navigation button:hover,
+.academic-range-days button:hover:not(:disabled) {
+  background: #eef5ff;
+}
+
+.academic-range-weekdays,
+.academic-range-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.academic-range-weekdays {
+  margin-bottom: 5px;
+  color: var(--gray-500, #64748b);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.academic-range-days button,
+.academic-range-days > span {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.academic-range-days button.is-in-range {
+  border-radius: 4px;
+  background: #e9f2ff;
+  color: var(--blue-mid);
+}
+
+.academic-range-days button.is-endpoint,
+.academic-range-days button.is-endpoint:hover {
+  background: var(--blue-mid);
+  color: #fff;
+}
+
+.academic-range-days button.is-today:not(.is-endpoint) {
+  outline: 1px solid var(--blue-mid);
+  outline-offset: -2px;
+}
+
+.academic-range-days button:disabled {
+  color: var(--gray-400);
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.academic-range-popup button:focus-visible {
+  outline: 2px solid var(--blue-mid);
+  outline-offset: 2px;
+}
+
+.academic-range-selection {
+  display: grid;
+  gap: 3px;
+  margin: 13px 0;
+  padding: 10px 12px;
+  border: 1px solid #d8e8ff;
+  border-radius: 8px;
+  background: #f5f9ff;
+}
+
+.academic-range-selection strong {
+  color: var(--blue-mid);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academic-range-error {
+  margin: -3px 0 10px;
+  color: #b42318;
+  font-size: 11px;
+}
+
+.academic-range-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.academic-range-actions button {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  background: var(--white, #fff);
+  color: var(--gray-700, #334155);
+  cursor: pointer;
+  font: 600 12px 'Plus Jakarta Sans', sans-serif;
+}
+
+.academic-range-actions .academic-range-apply {
+  border-color: var(--blue-mid);
+  background: var(--blue-mid);
+  color: #fff;
+}
+
+.academic-range-actions button:hover:not(:disabled) {
+  filter: brightness(.96);
+}
+
+.academic-range-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.academic-range-popup [hidden] {
+  display: none !important;
+}
+
+.academic-range-popup.is-time-only .academic-date-time {
+  margin-top: 2px;
+}
+
+.academic-date-control {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.academic-date-control[hidden] {
+  display: none !important;
+}
+
+.academic-date-native-input {
+  position: absolute !important;
+  z-index: -1 !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.academic-date-control > .academic-date-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font: 400 13px/1.35 'Plus Jakarta Sans', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.academic-date-control > .academic-date-field.is-compact {
+  min-height: 38px;
+  padding: 9px 14px;
+  background: var(--white, #fff);
+}
+
+.academic-date-field > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academic-date-field > svg {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  color: var(--gray-500, #64748b);
+}
+
+.academic-date-field.is-empty > span {
+  color: var(--gray-500, #64748b);
+}
+
+.academic-date-control > .academic-date-field:hover:not(:disabled) {
+  border-color: var(--gray-300);
+}
+
+.academic-date-control > .academic-date-field:focus-visible,
+.academic-date-control > .academic-date-field[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--blue-mid);
+  background: var(--white, #fff);
+  box-shadow: 0 0 0 3px var(--button-focus-ring, rgba(29, 92, 180, .14));
+}
+
+.academic-date-control.is-disabled > .academic-date-field,
+.academic-date-control > .academic-date-field:disabled {
+  border-color: var(--gray-200);
+  background: var(--gray-100, #f1f5f9);
+  color: var(--gray-500, #64748b);
+  cursor: not-allowed;
+  opacity: .8;
+}
+
+.academic-date-control.has-error > .academic-date-field,
+.academic-date-control > .academic-date-field[aria-invalid='true'] {
+  border-color: #d92d20;
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, .1);
+}
+
+.academic-date-error {
+  display: block;
+  margin-top: 5px;
+  color: #b42318;
+  font-size: 11px;
+}
+
+.academic-date-error[hidden] {
+  display: none;
+}
+
+.academic-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 8px 0;
+}
+
+.academic-month-grid button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-700, #334155);
+  cursor: pointer;
+  font: 600 11px 'Plus Jakarta Sans', sans-serif;
+}
+
+.academic-month-grid button:hover:not(:disabled) {
+  background: #eef5ff;
+}
+
+.academic-month-grid button.is-endpoint,
+.academic-month-grid button.is-endpoint:hover {
+  background: var(--blue-mid);
+  color: #fff;
+}
+
+.academic-month-grid button:disabled {
+  color: var(--gray-400);
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.academic-date-time {
+  display: grid;
+  grid-template-columns: minmax(54px, 1fr) 8px minmax(54px, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.academic-date-time > label {
+  display: grid;
+  gap: 4px;
+  color: var(--gray-500, #64748b);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.academic-date-time input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font: 600 12px 'Plus Jakarta Sans', sans-serif;
+}
+
+.academic-date-time input:focus-visible {
+  outline: none;
+  border-color: var(--blue-mid);
+  background: var(--white, #fff);
+  box-shadow: 0 0 0 3px var(--button-focus-ring, rgba(29, 92, 180, .14));
+}
+
+.academic-date-time > span {
+  padding-bottom: 10px;
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.academic-time-period {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 3px;
+  border: 1px solid var(--gray-200);
+  border-radius: 7px;
+  background: var(--gray-50);
+}
+
+.academic-time-period button {
+  min-width: 34px;
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  font: 700 10px 'Plus Jakarta Sans', sans-serif;
+}
+
+.academic-time-period button.is-active {
+  background: #e8f1ff;
+  color: var(--blue-mid);
+}
+
+.academic-date-clear {
+  margin-right: auto;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--blue-mid) !important;
+}
+
+@media (max-width: 380px) {
+  .academic-date-time {
+    grid-template-columns: minmax(48px, 1fr) 5px minmax(48px, 1fr) auto;
+    gap: 5px;
+  }
+
+  .academic-time-period button {
+    min-width: 30px;
+  }
+}
+
+@media (max-width: 860px) {
+  .onboarding-academic-layout {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 600px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .onboarding-academic-layout .onboarding-period-row,
+  .onboarding-period-row,
+  .term-schedule-row:not(.term-schedule-card),
+  .academic-range-native-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

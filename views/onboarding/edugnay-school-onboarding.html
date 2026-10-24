@@ -10,9 +10,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/onboarding.css">
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/academic-range-picker.js"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
 </head>
 <body data-public-page="true">
   <main class="onboarding-page onboarding-registration-page">
@@ -232,21 +235,25 @@
                 <h3>Academic terms</h3>
               </div>
             </div>
-            <div class="onboarding-grid onboarding-academic-grid">
-              <div class="onboarding-field">
-                <label for="schoolYear">School year</label>
-                <input id="schoolYear" name="schoolYear" type="text" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required />
+            <div class="onboarding-academic-layout">
+              <div class="onboarding-school-year-card">
+                <div class="onboarding-grid onboarding-academic-grid">
+                  <div class="onboarding-field">
+                    <label for="schoolYear">School year</label>
+                    <input id="schoolYear" name="schoolYear" type="text" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required />
+                  </div>
+                  <div class="onboarding-field">
+                    <label for="schoolYearStartDate">School-year start date</label>
+                    <input id="schoolYearStartDate" name="schoolYearStartDate" type="date" required />
+                  </div>
+                  <div class="onboarding-field">
+                    <label for="schoolYearEndDate">School-year end date</label>
+                    <input id="schoolYearEndDate" name="schoolYearEndDate" type="date" required />
+                  </div>
+                </div>
               </div>
-              <div class="onboarding-field">
-                <label for="schoolYearStartDate">School-year start date</label>
-                <input id="schoolYearStartDate" name="schoolYearStartDate" type="date" required />
-              </div>
-              <div class="onboarding-field">
-                <label for="schoolYearEndDate">School-year end date</label>
-                <input id="schoolYearEndDate" name="schoolYearEndDate" type="date" required />
-              </div>
+              <div class="onboarding-term-configurations" id="academicTermConfigurations"></div>
             </div>
-            <div class="onboarding-term-configurations" id="academicTermConfigurations"></div>
             <div class="onboarding-level-error" id="academicTermsError" role="alert" hidden></div>
           </section>
 
@@ -678,7 +685,7 @@
 
         return `<section class="onboarding-term-card" data-term-level="${level}">
           <div class="onboarding-term-head">
-            <div><h4>${levelInfo?.label || level}</h4><p>Configure this school level independently.</p></div>
+            <h4>${levelInfo?.label || level}</h4>
             <div class="onboarding-field onboarding-term-type">
               <label for="periodType-${level}">Period structure</label>
               <select id="periodType-${level}" data-period-type>${typeOptions}</select>
@@ -690,13 +697,12 @@
                 <label>Grading period</label>
                 <input data-period-name value="${period.name}" readonly />
               </div>
-              <div class="onboarding-field">
-                <label>Start date</label>
-                <input data-period-start type="date" value="${period.plannedStartDate || ''}" required />
-              </div>
-              <div class="onboarding-field">
-                <label>End date</label>
-                <input data-period-end type="date" value="${period.plannedEndDate || ''}" required />
+              <div class="onboarding-field academic-range-group" data-academic-range>
+                <label>Date range</label>
+                <div class="academic-range-native-pair">
+                  <label>Start date<input data-period-start type="date" value="${period.plannedStartDate || ''}" required /></label>
+                  <label>End date<input data-period-end type="date" value="${period.plannedEndDate || ''}" required /></label>
+                </div>
               </div>
             </div>`).join('')}
           </div>
@@ -709,6 +715,14 @@
         termDrafts[level] = { gradingPeriodType: select.value, academicPeriods: [] };
         renderAcademicTermConfigurations();
       }));
+      window.initAcademicRangePickers?.(container, {
+        rowSelector: '[data-period-row]',
+        startSelector: '[data-period-start]',
+        endSelector: '[data-period-end]',
+        nameSelector: '[data-period-name]',
+        yearStartSelector: '#schoolYearStartDate',
+        yearEndSelector: '#schoolYearEndDate'
+      });
     }
 
     function collectAcademicTermConfigs(values) {

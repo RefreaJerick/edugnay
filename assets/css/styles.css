@@ -2515,7 +2515,7 @@ html.profile-chip-page .tb-profile-name { overflow: hidden; text-overflow: ellip
 .tb-notif-panel .tb-notif-list {
   padding: 0;
   background: var(--white);
-  scrollbar-color: var(--gray-300) transparent;
+  scrollbar-color: var(--gray-300) var(--gray-50);
   scrollbar-width: thin;
 }
 
@@ -3583,3 +3583,88 @@ input[type="checkbox"]:not(.school-toggle-input):disabled {
 @media (max-width: 560px) {
   .app-toast { right: 16px; bottom: 16px; left: 16px; max-width: none; }
 }
+
+/* Only scrollable content inside a page gets the dropdown scrollbar.
+   Leave html/body, the sidebar, and intentionally hidden tab scrollbars alone. */
+:is(
+  .tb-notif-list, .push-settings-dialog, .searchable-select-menu,
+  .modal-body, .entry-modal, .entry-modal-body, .review-body,
+  .parent-report-modal-body, .journal-history-list, .settings-drawer-body,
+  .student-multi-list, .student-dropdown, .gen-student-notes,
+  .publish-preview-list, .qr-attendance-list, .qr-attendance-final-list,
+  .transfer-review-content, .sc-list, .deped-subject-review-body,
+  .subject-grading-editor-body, .school-k10-restore-confirmation,
+  .flag-grid-scroll, .flag-grid-single, .import-preview-scroll,
+  .csv-preview-scroll, .credential-batch-list, .sf-template-choices,
+  .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
+  .onboarding-form-area, .table-wrap, .school-account-table-wrap,
+  .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) var(--gray-50);
+}
+
+:is(
+  .tb-notif-list, .push-settings-dialog, .searchable-select-menu,
+  .modal-body, .entry-modal, .entry-modal-body, .review-body,
+  .parent-report-modal-body, .journal-history-list, .settings-drawer-body,
+  .student-multi-list, .student-dropdown, .gen-student-notes,
+  .publish-preview-list, .qr-attendance-list, .qr-attendance-final-list,
+  .transfer-review-content, .sc-list, .deped-subject-review-body,
+  .subject-grading-editor-body, .school-k10-restore-confirmation,
+  .flag-grid-scroll, .flag-grid-single, .import-preview-scroll,
+  .csv-preview-scroll, .credential-batch-list, .sf-template-choices,
+  .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
+  .onboarding-form-area, .table-wrap, .school-account-table-wrap,
+  .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+)::-webkit-scrollbar { width: 6px; height: 6px; }
+
+:is(
+  .tb-notif-list, .push-settings-dialog, .searchable-select-menu,
+  .modal-body, .entry-modal, .entry-modal-body, .review-body,
+  .parent-report-modal-body, .journal-history-list, .settings-drawer-body,
+  .student-multi-list, .student-dropdown, .gen-student-notes,
+  .publish-preview-list, .qr-attendance-list, .qr-attendance-final-list,
+  .transfer-review-content, .sc-list, .deped-subject-review-body,
+  .subject-grading-editor-body, .school-k10-restore-confirmation,
+  .flag-grid-scroll, .flag-grid-single, .import-preview-scroll,
+  .csv-preview-scroll, .credential-batch-list, .sf-template-choices,
+  .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
+  .onboarding-form-area, .table-wrap, .school-account-table-wrap,
+  .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+)::-webkit-scrollbar-track { background: var(--gray-50); border-radius: 6px; }
+
+:is(
+  .tb-notif-list, .push-settings-dialog, .searchable-select-menu,
+  .modal-body, .entry-modal, .entry-modal-body, .review-body,
+  .parent-report-modal-body, .journal-history-list, .settings-drawer-body,
+  .student-multi-list, .student-dropdown, .gen-student-notes,
+  .publish-preview-list, .qr-attendance-list, .qr-attendance-final-list,
+  .transfer-review-content, .sc-list, .deped-subject-review-body,
+  .subject-grading-editor-body, .school-k10-restore-confirmation,
+  .flag-grid-scroll, .flag-grid-single, .import-preview-scroll,
+  .csv-preview-scroll, .credential-batch-list, .sf-template-choices,
+  .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
+  .onboarding-form-area, .table-wrap, .school-account-table-wrap,
+  .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+)::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 6px; }
+
+:is(
+  .tb-notif-list, .push-settings-dialog, .searchable-select-menu,
+  .modal-body, .entry-modal, .entry-modal-body, .review-body,
+  .parent-report-modal-body, .journal-history-list, .settings-drawer-body,
+  .student-multi-list, .student-dropdown, .gen-student-notes,
+  .publish-preview-list, .qr-attendance-list, .qr-attendance-final-list,
+  .transfer-review-content, .sc-list, .deped-subject-review-body,
+  .subject-grading-editor-body, .school-k10-restore-confirmation,
+  .flag-grid-scroll, .flag-grid-single, .import-preview-scroll,
+  .csv-preview-scroll, .credential-batch-list, .sf-template-choices,
+  .sf-validation-modal-body, .sf-workbook-viewport, .sf-grade-breakdown-list,
+  .onboarding-form-area, .table-wrap, .school-account-table-wrap,
+  .school-shs-weight-table-wrap, .school-k10-grading-table-wrap,
+  .sf-main-sheet-tabs, .sf-sheet-tabs, .sf-generated-form-tabs, .day-strip
+)::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }

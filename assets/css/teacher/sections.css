@@ -112,6 +112,56 @@
   display: none;
 }
 
+/* The shared select enhancer replaces the visible native control with an
+   input inside this wrapper. Keep that control in the section header palette. */
+.section-header .section-subject .searchable-select:not([hidden]) {
+  flex: 0 1 220px;
+  width: 220px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.section-header .section-subject .searchable-select-control {
+  width: 100%;
+}
+
+.section-header .section-subject .searchable-select-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 36px !important;
+  height: 36px;
+  padding: 7px 34px 7px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: var(--radius-sm) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--white) !important;
+  font-size: 12px !important;
+  font-weight: 700;
+}
+
+.section-header .section-subject .searchable-select-input:hover:not(:focus):not(:disabled) {
+  border-color: rgba(247, 217, 128, 0.7) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.section-header .section-subject .searchable-select-input:focus {
+  border-color: #f7d980 !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none !important;
+}
+
+.section-header .section-subject .searchable-select-input:focus-visible {
+  box-shadow: 0 0 0 3px rgba(247, 217, 128, 0.25) !important;
+}
+
+.section-header .section-subject .searchable-select-control::after {
+  border-top-color: #f7d980;
+}
+
+.section-header .section-subject .searchable-select.is-open .searchable-select-control::after {
+  border-top-color: #f7d980;
+}
+
 .section-context-unavailable {
   display: grid;
   justify-items: center;
@@ -2791,6 +2841,15 @@ thead tr:hover .comp-delete-btn {
 
   .section-name {
     font-size: 17px;
+  }
+
+  .section-header .section-subject {
+    flex-wrap: wrap;
+  }
+
+  .section-header .section-subject .searchable-select:not([hidden]) {
+    flex: 1 1 200px;
+    width: 100%;
   }
 
   .section-meta,

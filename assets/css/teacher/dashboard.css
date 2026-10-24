@@ -722,7 +722,7 @@ tbody td {
 .teacher-notif-panel .tb-notif-list {
   padding: 0;
   background: var(--white);
-  scrollbar-color: var(--gray-300) transparent;
+  scrollbar-color: var(--gray-300) var(--gray-50);
   scrollbar-width: thin;
 }
 

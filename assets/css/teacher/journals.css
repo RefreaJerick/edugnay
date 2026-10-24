@@ -314,6 +314,15 @@
   background-color: var(--gray-50);
 }
 
+.settings-row-2 .academic-date-control {
+  width: 180px;
+  max-width: 100%;
+}
+
+.settings-row-2 .academic-date-field.is-compact {
+  background-color: var(--gray-50);
+}
+
 .settings-row-2 .settings-select {
   background-color: var(--gray-50) !important;
 }

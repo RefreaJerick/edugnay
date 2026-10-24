@@ -167,7 +167,10 @@ const database = {
     }] : [])];
     if (/FROM section_students/.test(sql)) return [learnerRows || [learner]];
     if (/FROM student_parent_links/.test(sql)) return [[]];
-    if (/FROM section_teachers/.test(sql)) return [[{ id: 11, name: 'English' }]];
+    if (/FROM section_teachers/.test(sql)) {
+      assert.match(sql, /subjects\.subject_code AS code/);
+      return [[{ id: 11, name: 'English' }]];
+    }
     if (/FROM academic_terms/.test(sql)) return [sf9ConfiguredTerms || [{ id: 21, name: 'Quarter 1' }]];
     if (/FROM users/.test(sql)) return values[0] === 3 && values[1] === 1 ? [[{ displayName: sf9AdviserName }]] : [[]];
     if (/INSERT INTO audit_logs/.test(sql)) {

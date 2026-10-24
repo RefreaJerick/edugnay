@@ -13,9 +13,11 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/journal-history-viewer.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
 </head>
 <body data-page-title="Student Journals">
 
@@ -143,8 +145,8 @@
             </select>
           </div>
           <div class="settings-field">
-            <label class="settings-field-label">Deadline</label>
-            <input class="settings-input" type="time" id="settings-deadline" value="23:59"/>
+            <label class="settings-field-label" for="settings-deadline">Deadline</label>
+            <input class="settings-input" type="time" id="settings-deadline" value="23:59" data-academic-date-compact="true"/>
           </div>
         </div>
         <div class="settings-row-2">

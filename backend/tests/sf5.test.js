@@ -257,6 +257,7 @@ test('SF5 preview permits a closed year only for an adviser, rejects stale previ
   let academicYearStatus = 'closed';
   let sectionSql = '';
   let rosterQuery = null;
+  let subjectSql = '';
   const database = { async execute(sql, values = []) {
     if (sql.includes('SELECT sf_templates_enabled')) return [[{ sfTemplatesEnabled: 1 }]];
     if (sql.includes('FROM school_form_templates')) return [[{ id: 5, formCode: 'SF5', formName: 'Report on Promotion & Level of Proficiency',
@@ -270,7 +271,10 @@ test('SF5 preview permits a closed year only for an adviser, rejects stale previ
     if (sql.includes('FROM published_final_grades')) return [[published(1, 11, 21, 90)]];
     if (sql.includes('FROM section_students')) { rosterQuery = { sql, values }; return [[learner(1)]]; }
     if (sql.includes('FROM student_parent_links')) return [[]];
-    if (sql.includes('FROM section_teachers')) return [[subjects[0]]];
+    if (sql.includes('FROM section_teachers')) {
+      subjectSql = sql;
+      return [[subjects[0]]];
+    }
     if (sql.includes('FROM academic_terms')) return [[terms[0]]];
     writes += 1;
     throw new Error(`Unexpected write: ${sql}`);
@@ -288,6 +292,8 @@ test('SF5 preview permits a closed year only for an adviser, rejects stale previ
   };
   const preview = await invoke(controller.previewTemplate, request());
   assert.equal(preview.error, undefined);
+  assert.match(subjectSql, /subjects\.subject_code AS code/);
+  assert.doesNotMatch(subjectSql, /subjects\.code\b/);
   assert.equal(preview.result.mappedCells.find(cell => cell.cellAddress === 'F13')?.value, '',
     JSON.stringify(preview.result.issues));
   assert.equal(preview.result.editableCells.find(cell => cell.cellAddress === 'F13')?.type, 'number');
