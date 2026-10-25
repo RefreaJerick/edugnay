@@ -69,19 +69,25 @@
     return /^\d{4}-\d{2}-\d{2}/.test(value || '') ? value.slice(0, 10) : '';
   }
 
+  function selectedHour(state) {
+    if (!Number.isInteger(state.hour12) || state.hour12 < 1 || state.hour12 > 12
+      || !['am', 'pm'].includes(state.period)) return NaN;
+    return state.hour12 % 12 + (state.period === 'pm' ? 12 : 0);
+  }
+
   function valueFor(state) {
     if (state.cleared) return '';
     if (state.type === 'month') return state.monthValue || '';
     if (state.type === 'time') {
-      if (!Number.isInteger(state.hour) || state.hour < 0 || state.hour > 23
-        || !Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) return '';
-      return `${String(state.hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
+      const hour = selectedHour(state);
+      if (!Number.isInteger(hour) || !Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) return '';
+      return `${String(hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
     }
     if (!validDate(state.date)) return '';
     if (state.type === 'date') return state.date;
-    if (!Number.isInteger(state.hour) || state.hour < 0 || state.hour > 23
-      || !Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) return '';
-    return `${state.date}T${String(state.hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
+    const hour = selectedHour(state);
+    if (!Number.isInteger(hour) || !Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) return '';
+    return `${state.date}T${String(hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
   }
 
   function inBounds(value, min, max) {
@@ -133,9 +139,9 @@
       <div class="academic-range-days" role="group" aria-label="Calendar dates"></div>
       <div class="academic-month-grid" role="group" aria-label="Months" hidden></div>
       <div class="academic-date-time" hidden>
-        <label>Hour<input type="number" data-time-hour min="1" max="12" inputmode="numeric"></label>
+        <label>Hour<input type="number" data-time-hour min="1" max="12" inputmode="numeric" placeholder="hh"></label>
         <span aria-hidden="true">:</span>
-        <label>Minute<input type="number" data-time-minute min="0" max="59" inputmode="numeric"></label>
+        <label>Minute<input type="number" data-time-minute min="0" max="59" inputmode="numeric" placeholder="mm"></label>
         <div class="academic-time-period" role="group" aria-label="AM or PM"><button type="button" data-time-period="am">AM</button><button type="button" data-time-period="pm">PM</button></div>
       </div>
       <div class="academic-range-selection"><span data-date-selection-label>Selected date</span><strong data-date-selection aria-live="polite"></strong></div>
@@ -199,14 +205,19 @@
     return date;
   }
 
+  function setTimeDraft(state, parsed) {
+    state.hour12 = parsed ? parsed.hour % 12 || 12 : NaN;
+    state.minute = parsed?.minute ?? NaN;
+    state.period = parsed ? (parsed.hour >= 12 ? 'pm' : 'am') : '';
+    state.timeTouched = false;
+  }
+
   function loadDraft(state) {
     const value = state.input.value;
     state.cleared = !value;
     if (state.type === 'time') {
-      const parsed = parseTime(value);
       state.date = today();
-      state.hour = parsed?.hour ?? 9;
-      state.minute = parsed?.minute ?? 0;
+      setTimeDraft(state, parseTime(value));
       return;
     }
     if (state.type === 'month' && validMonth(value)) {
@@ -217,8 +228,7 @@
     if (state.type === 'datetime-local') {
       const parsed = parseDateTime(value);
       state.date = parsed?.date || currentDateFor(state.input);
-      state.hour = parsed?.hour ?? 9;
-      state.minute = parsed?.minute ?? 0;
+      setTimeDraft(state, parsed);
       return;
     }
     state.date = validDate(value) ? value : currentDateFor(state.input);
@@ -245,11 +255,11 @@
   }
 
   function timeFromDraft(state) {
-    const hour24 = Number.isInteger(state.hour) ? state.hour : -1;
-    if (hour24 < 0 || hour24 > 23 || !Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) {
-      return { hour12: '', minute: '', period: 'am' };
-    }
-    return { hour12: String(hour24 % 12 || 12), minute: String(state.minute).padStart(2, '0'), period: hour24 >= 12 ? 'pm' : 'am' };
+    return {
+      hour12: Number.isInteger(state.hour12) && state.hour12 >= 1 && state.hour12 <= 12 ? String(state.hour12) : '',
+      minute: Number.isInteger(state.minute) && state.minute >= 0 && state.minute <= 59 ? String(state.minute).padStart(2, '0') : '',
+      period: state.period || ''
+    };
   }
 
   function draftSummary(state) {
@@ -267,12 +277,23 @@
 
   function validationMessage(state, value) {
     if (state.error) return state.error;
+    if ((state.type === 'time' || state.type === 'datetime-local') && !value) {
+      if (!state.timeTouched) return '';
+      if (!Number.isInteger(state.hour12) || state.hour12 < 1 || state.hour12 > 12) return 'Enter an hour from 1 to 12.';
+      if (!Number.isInteger(state.minute) || state.minute < 0 || state.minute > 59) return 'Enter a minute from 00 to 59.';
+      if (!state.period) return 'Choose AM or PM.';
+      return 'Enter a valid time.';
+    }
     if (state.input.required && !value && state.cleared) return state.type === 'time' ? 'Choose a time before continuing.' : 'Choose a date before continuing.';
-    if ((state.type === 'datetime-local' || state.type === 'time') && !value && !state.cleared) return 'Enter a valid time.';
     if (value && !isValidValue(state, value)) {
       return state.type === 'time' ? 'Choose a valid time within the allowed range.' : 'Choose a value within the allowed date and time limits.';
     }
     return '';
+  }
+
+  function canApply(state, value) {
+    if ((state.type === 'time' || state.type === 'datetime-local') && !value && !state.input.value) return false;
+    return isValidValue(state, value);
   }
 
   function render(focusActive = false) {
@@ -357,7 +378,7 @@
     }
 
     const value = valueFor(state);
-    const valid = isValidValue(state, value);
+    const valid = canApply(state, value);
     const error = popup.querySelector('[data-date-error]');
     const message = validationMessage(state, value);
     error.textContent = message;
@@ -409,9 +430,9 @@
     }
     const period = event.target.closest('[data-time-period]');
     if (period) {
-      const hour = Number.isInteger(active.hour) ? active.hour : 9;
-      active.hour = period.dataset.timePeriod === 'pm' ? (hour % 12) + 12 : hour % 12;
+      active.period = period.dataset.timePeriod;
       active.cleared = false;
+      active.timeTouched = true;
       active.error = '';
       render();
       period.focus();
@@ -420,6 +441,7 @@
     const action = event.target.closest('[data-date-action]')?.dataset.dateAction;
     if (action === 'clear') {
       active.cleared = true;
+      if (active.type === 'time' || active.type === 'datetime-local') setTimeDraft(active, null);
       active.error = '';
       render();
     } else if (action === 'cancel') close();
@@ -431,14 +453,19 @@
     if (event.target.matches('[data-time-hour]')) {
       const entered = event.target.value === '' ? NaN : Number(event.target.value);
       if (Number.isInteger(entered) && entered >= 1 && entered <= 12) {
-        const wasPm = active.hour >= 12;
-        active.hour = (entered % 12) + (wasPm ? 12 : 0);
-      } else active.hour = NaN;
+        active.hour12 = entered;
+        const minuteInput = popup.querySelector('[data-time-minute]');
+        if (minuteInput.value === '') {
+          active.minute = 0;
+          minuteInput.value = '00';
+        }
+      } else active.hour12 = NaN;
     } else if (event.target.matches('[data-time-minute]')) {
       const entered = event.target.value === '' ? NaN : Number(event.target.value);
       active.minute = Number.isInteger(entered) && entered >= 0 && entered <= 59 ? entered : NaN;
     } else return;
     active.cleared = false;
+    active.timeTouched = true;
     active.error = '';
     const value = valueFor(active);
     popup.querySelector('[data-date-selection]').textContent = draftSummary(active);
@@ -446,7 +473,7 @@
     const error = popup.querySelector('[data-date-error]');
     error.textContent = message;
     error.hidden = !message;
-    popup.querySelector('[data-date-action="apply"]').disabled = !isValidValue(active, value);
+    popup.querySelector('[data-date-action="apply"]').disabled = !canApply(active, value);
   }
 
   function moveMonth(delta) {

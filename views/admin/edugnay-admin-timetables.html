@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timetables | Academix</title>
+  <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/academic-range-picker.css"><link rel="stylesheet" href="../../assets/css/timetables.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script>
+  <script src="../../assets/js/academic-date-picker.js"></script><script src="../../assets/js/admin/shell.js"></script>
+  <script src="../../assets/js/timetables.js"></script>
+</head>
+<body data-page-title="Timetables">
+<div class="shell">
+  <div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-crest"><img src="../../assets/images/edUgnay-logo.png" alt="School logo"></div><div><div class="brand-name">Acade<span>Mix</span></div><div class="brand-sub">School portal</div></div></div>
+    <div class="nav-section"><div class="nav-section-label">Main</div>
+      <a href="edugnay-admin-dashboard.html" class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard"></i></div><span class="nav-label">Dashboard</span></a>
+      <a href="edugnay-admin-users.html" class="nav-item"><div class="nav-icon"><i data-lucide="users"></i></div><span class="nav-label">Manage Users</span></a>
+      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-timetables.html" class="nav-item active"><div class="nav-icon"><i data-lucide="calendar-days"></i></div><span class="nav-label">Timetables</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Reports</div>
+      <a href="edugnay-admin-reports.html" class="nav-item"><div class="nav-icon"><i data-lucide="bar-chart-2"></i></div><span class="nav-label">System Reports</span></a>
+      <a href="edugnay-admin-announcements.html" class="nav-item"><div class="nav-icon"><i data-lucide="megaphone"></i></div><span class="nav-label">Announcements</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Settings</div>
+      <a href="edugnay-admin-schools.html" class="nav-item"><div class="nav-icon"><i data-lucide="building-2"></i></div><span class="nav-label">School Settings</span></a>
+      <a href="edugnay-admin-system-config.html" class="nav-item"><div class="nav-icon"><i data-lucide="settings"></i></div><span class="nav-label">System Config</span></a>
+      <a href="edugnay-admin-archive.html" class="nav-item"><div class="nav-icon"><i data-lucide="archive"></i></div><span class="nav-label">Archive Data</span></a>
+    </div>
+    <div class="nav-section"><div class="nav-section-label">Account</div><a href="edugnay-admin-profile.html" class="nav-item"><div class="nav-icon"><i data-lucide="user-round"></i></div><span class="nav-label">My Profile</span></a></div>
+  </aside>
+  <header class="topbar"><div class="topbar-left"><button class="hamburger" type="button" aria-label="Open navigation" onclick="toggleDrawer(true)"><i data-lucide="menu"></i></button><div class="topbar-context"><div class="topbar-context-copy"><strong>Timetables</strong></div></div></div>
+    <div class="topbar-right"><div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none"></span></button><div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><span class="tb-notif-panel-title">Notifications</span><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">Mark all read</button></div><div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty">No notifications yet.</div></div><div class="tb-notif-panel-foot"><a href="edugnay-admin-notifications.html">View all notifications</a></div></div></div>
+      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar admin"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Admin</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-admin-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
+    </div></header>
+  <script>restoreProfileChip();</script>
+  <main class="main"><div class="timetable-page" id="timetable-page" data-role="admin">
+    <section class="timetable-card timetable-filters-card" aria-label="Timetable filters"><div class="timetable-toolbar">
+      <div class="timetable-toolbar-filters">
+      <div class="timetable-field"><label for="timetable-year">School year</label><select id="timetable-year"></select></div>
+      <div class="timetable-field"><label for="timetable-section">Section</label><select id="timetable-section"><option value="">All sections</option></select></div>
+      <div class="timetable-field"><label for="timetable-teacher">Teacher</label><select id="timetable-teacher"><option value="">All teachers</option></select></div>
+      </div>
+      <div class="timetable-toolbar-actions"><button class="timetable-button" id="timetable-add" type="button" disabled><i data-lucide="plus" aria-hidden="true"></i> Add meeting</button></div>
+    </div></section>
+    <p class="timetable-empty" id="timetable-error-banner" role="alert" hidden></p><p class="timetable-empty" id="timetable-empty-year" hidden>No school year has been configured yet.</p>
+    <div id="timetable-board" hidden>
+      <section class="timetable-card" aria-label="Weekly timetable"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><div><h2>Weekly schedule</h2><p>Select a meeting to edit its details.</p></div></div><div class="timetable-week-controls"><button class="timetable-button secondary" id="timetable-prev" type="button" aria-label="Previous week"><i data-lucide="chevron-left" aria-hidden="true"></i></button><span class="timetable-week-label" id="timetable-week-label"></span><button class="timetable-button secondary" id="timetable-next" type="button" aria-label="Next week"><i data-lucide="chevron-right" aria-hidden="true"></i></button><button class="timetable-button secondary timetable-today" id="timetable-today" type="button" disabled>Today</button></div></div><div class="timetable-grid" id="timetable-grid"></div></section>
+      <section class="timetable-card" aria-label="Unscheduled assignments"><div class="timetable-heading"><div class="timetable-heading-title"><span class="timetable-heading-icon" aria-hidden="true"><i data-lucide="book-open"></i></span><div><h2>Unscheduled subjects</h2><p>These subject assignments have no class meeting yet.</p></div></div><span class="badge badge-gray" id="timetable-unscheduled-count"></span></div><div class="timetable-unscheduled" id="timetable-unscheduled"></div></section>
+    </div>
+  </div></main>
+</div>
+<div class="modal-backdrop timetable-dialog-overlay" id="timetable-dialog-overlay" hidden><div class="modal timetable-dialog" id="timetable-dialog" role="dialog" aria-modal="true" aria-labelledby="timetable-dialog-title">
+  <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="timetable-dialog-title" tabindex="-1">Add class meeting</h2><p class="modal-sub">Changes appear in the timetable after you save.</p></div></div><button class="modal-close" id="timetable-close" type="button" aria-label="Close meeting dialog"><i data-lucide="x" aria-hidden="true"></i></button></div>
+  <form id="timetable-form">
+    <div class="modal-body timetable-dialog-body">
+    <div class="timetable-dialog-row"><div class="timetable-field"><label for="timetable-dialog-section">Section</label><select id="timetable-dialog-section" required><option value="">Choose a section</option></select></div><div class="timetable-field"><label for="timetable-assignment">Subject</label><select id="timetable-assignment" name="assignmentId" required disabled><option value="">Choose a subject</option></select></div></div>
+    <div class="timetable-field"><label for="timetable-assigned-teacher">Assigned teacher</label><input id="timetable-assigned-teacher" type="text" placeholder="Choose a subject first" readonly></div>
+    <div class="timetable-dialog-row"><div class="timetable-field"><label for="timetable-weekday">Day</label><select id="timetable-weekday" name="weekday" required><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="7">Sunday</option></select></div><div class="timetable-field"><label for="timetable-room">Room (optional)</label><input id="timetable-room" name="room" maxlength="100" autocomplete="off" placeholder="e.g. Room 204"></div></div>
+    <div class="timetable-dialog-row"><div class="timetable-field"><label for="timetable-start-time">Start time</label><input id="timetable-start-time" name="startTime" type="time" required></div><div class="timetable-field"><label for="timetable-end-time">End time</label><input id="timetable-end-time" name="endTime" type="time" required></div></div>
+    <div class="timetable-dialog-row"><div class="timetable-field"><label for="timetable-start-date">Effective from</label><input id="timetable-start-date" name="startDate" type="date" required></div><div class="timetable-field"><label for="timetable-end-date">Effective until</label><input id="timetable-end-date" name="endDate" type="date" required></div></div>
+    <p class="timetable-error" id="timetable-error" role="alert"></p>
+    </div>
+    <div class="modal-foot timetable-dialog-actions"><button class="row-btn remove" id="timetable-delete" type="button" hidden>Remove</button><button class="btn btn-cancel" id="timetable-cancel" type="button">Cancel</button><button class="btn btn-save" id="timetable-save" type="submit">Save meeting</button></div>
+  </form>
+</div></div>
+<div class="modal-backdrop timetable-confirm-overlay" id="timetable-confirm-overlay" hidden><section class="modal timetable-confirm-dialog" id="timetable-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="timetable-confirm-title" aria-describedby="timetable-confirm-message">
+  <div class="modal-head"><div class="modal-heading"><span class="modal-heading-icon danger" aria-hidden="true"><i data-lucide="calendar-x"></i></span><div class="modal-heading-copy"><h2 class="modal-title" id="timetable-confirm-title" tabindex="-1">Remove class meeting?</h2><p class="modal-sub">Review this change before continuing.</p></div></div><button class="modal-close" id="timetable-confirm-close" type="button" aria-label="Cancel meeting removal"><i data-lucide="x" aria-hidden="true"></i></button></div>
+  <div class="modal-body"><p class="confirm-remove-message" id="timetable-confirm-message">This scheduled meeting will be removed from the timetable. You can add it again later.</p></div>
+  <div class="modal-foot timetable-confirm-actions"><button class="btn btn-cancel" id="timetable-delete-cancel" type="button">Cancel</button><button class="row-btn remove" id="timetable-delete-confirm" type="button">Remove meeting</button></div>
+</section></div>
+</body>
+</html>

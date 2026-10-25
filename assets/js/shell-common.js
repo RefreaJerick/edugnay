@@ -1984,6 +1984,12 @@ async function loadApiCalendarNotices() {
 
 window.EDUGNAY_API = {
   request: requestApi,
+  getTimetable: (academicYearId) => requestApi(`/timetables${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ''}`),
+  getTimetableYears: () => requestApi('/timetables/years').then(result => result.years || []),
+  saveTimetableMeeting: (assignmentId, meetingId, values) => requestApi(`/timetables/assignments/${encodeURIComponent(assignmentId)}/meetings${meetingId ? `/${encodeURIComponent(meetingId)}` : ''}`, {
+    method: meetingId ? 'PATCH' : 'POST', body: JSON.stringify(values)
+  }),
+  deleteTimetableMeeting: meetingId => requestApi(`/timetables/meetings/${encodeURIComponent(meetingId)}`, { method: 'DELETE' }),
   requestFile: requestApiFile,
   requestMultipart: requestApiMultipart,
   isBackendAvailable: Boolean(EDUGNAY_API_BASE_URL),

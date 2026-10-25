@@ -10,7 +10,8 @@ const styles = fs.readFileSync(path.join(root, 'assets/css/academic-range-picker
 const context = { window: {}, Event: class Event { constructor(type, options) { this.type = type; this.options = options; } } };
 const instrumented = source.replace(/\}\)\(\);\s*$/, `window.__academicDatePickerTest = {
   validDate, validMonth, parseDateTime, parseTime, displayDate, displayDateTime, displayTime, inBounds, valueFor,
-  isValidValue, loadDraft, draftSummary, apply, close, onPopupKeydown, sync, wrapValueSetter,
+  isValidValue, loadDraft, setTimeDraft, timeFromDraft, draftSummary, validationMessage, canApply,
+  apply, close, onPopupInput, onPopupKeydown, sync, wrapValueSetter,
   setState(state, element) { active = state; popup = element; }
 };
 })();`);
@@ -20,6 +21,7 @@ const picker = context.window.__academicDatePickerTest;
 function fakeState(type, value, draft) {
   const events = [];
   const attributes = {};
+  const hour = draft.hour;
   const button = {
     isConnected: true,
     setAttribute(name, value) { attributes[name] = value; },
@@ -30,8 +32,10 @@ function fakeState(type, value, draft) {
     type,
     date: draft.date,
     monthValue: draft.monthValue,
-    hour: draft.hour,
+    hour12: draft.hour12 ?? (Number.isInteger(hour) ? hour % 12 || 12 : NaN),
     minute: draft.minute,
+    period: draft.period ?? (Number.isInteger(hour) ? (hour >= 12 ? 'pm' : 'am') : ''),
+    timeTouched: false,
     cleared: false,
     input: {
       type,
@@ -72,6 +76,113 @@ test('time-only values keep HH:mm storage and display in 12-hour form', () => {
   assert.equal(state.cleared, true);
   assert.equal(picker.valueFor(state), '');
   assert.equal(picker.draftSummary(state), 'Select a time');
+  assert.deepEqual({ ...picker.timeFromDraft(state) }, { hour12: '', minute: '', period: '' });
+  assert.equal(picker.validationMessage(state, ''), '');
+  assert.equal(picker.canApply(state, ''), false);
+  assert.match(source, /const selected = button\.dataset\.timePeriod === time\.period;[\s\S]*?button\.setAttribute\('aria-pressed', String\(selected\)\)/);
+});
+
+test('empty date-and-time drafts have no selected time, while saved times restore every part', () => {
+  const empty = fakeState('datetime-local', '', {});
+  picker.loadDraft(empty);
+  assert.deepEqual({ ...picker.timeFromDraft(empty) }, { hour12: '', minute: '', period: '' });
+  assert.equal(picker.draftSummary(empty), 'Select date and time');
+  assert.equal(picker.validationMessage(empty, ''), '');
+  assert.equal(picker.canApply(empty, ''), false);
+
+  for (const [type, value, parts] of [
+    ['time', '00:05', { hour12: '12', minute: '05', period: 'am' }],
+    ['time', '12:00', { hour12: '12', minute: '00', period: 'pm' }],
+    ['time', '23:59', { hour12: '11', minute: '59', period: 'pm' }],
+    ['datetime-local', '2027-10-04T13:45', { hour12: '1', minute: '45', period: 'pm' }]
+  ]) {
+    const state = fakeState(type, value, {});
+    picker.loadDraft(state);
+    assert.deepEqual({ ...picker.timeFromDraft(state) }, parts);
+    assert.equal(picker.valueFor(state), value);
+    assert.equal(picker.canApply(state, value), true);
+  }
+});
+
+function fakeTimePopup() {
+  const hour = { value: '', matches(selector) { return selector === '[data-time-hour]'; } };
+  const minute = { value: '', matches(selector) { return selector === '[data-time-minute]'; } };
+  const selected = { textContent: '' };
+  const error = { textContent: '', hidden: true };
+  const apply = { disabled: true };
+  const controls = {
+    '[data-time-minute]': minute,
+    '[data-date-selection]': selected,
+    '[data-date-error]': error,
+    '[data-date-action="apply"]': apply
+  };
+  return { hour, minute, selected, error, apply, hidden: false, querySelector(selector) { return controls[selector]; } };
+}
+
+test('entering an hour defaults blank minutes to 00 but still requires an explicit AM or PM', () => {
+  const state = fakeState('time', '', {});
+  picker.loadDraft(state);
+  const popup = fakeTimePopup();
+  picker.setState(state, popup);
+  popup.hour.value = '9';
+  picker.onPopupInput({ target: popup.hour });
+  assert.equal(popup.minute.value, '00');
+  assert.equal(picker.valueFor(state), '');
+  assert.equal(popup.error.textContent, 'Choose AM or PM.');
+  assert.equal(popup.apply.disabled, true);
+
+  state.period = 'am';
+  assert.equal(picker.valueFor(state), '09:00');
+  assert.equal(picker.canApply(state, picker.valueFor(state)), true);
+  picker.apply();
+  assert.equal(state.input.value, '09:00');
+  assert.deepEqual(state.events, ['input', 'change']);
+});
+
+test('empty date-and-time inputs also require AM or PM before Apply', () => {
+  const state = fakeState('datetime-local', '', {});
+  picker.loadDraft(state);
+  state.date = '2027-10-04';
+  const popup = fakeTimePopup();
+  picker.setState(state, popup);
+  popup.hour.value = '12';
+  picker.onPopupInput({ target: popup.hour });
+  assert.equal(popup.minute.value, '00');
+  assert.equal(picker.valueFor(state), '');
+  assert.equal(popup.error.textContent, 'Choose AM or PM.');
+  assert.equal(popup.apply.disabled, true);
+
+  state.period = 'pm';
+  assert.equal(picker.valueFor(state), '2027-10-04T12:00');
+  picker.apply();
+  assert.equal(state.input.value, '2027-10-04T12:00');
+  assert.deepEqual(state.events, ['input', 'change']);
+});
+
+test('minute-first and PM-first entry never fill an hour, and invalid minutes stay invalid', () => {
+  const state = fakeState('time', '', {});
+  picker.loadDraft(state);
+  const popup = fakeTimePopup();
+  picker.setState(state, popup);
+  popup.minute.value = '5';
+  picker.onPopupInput({ target: popup.minute });
+  assert.equal(picker.timeFromDraft(state).hour12, '');
+  assert.equal(popup.error.textContent, 'Enter an hour from 1 to 12.');
+  assert.equal(popup.apply.disabled, true);
+
+  state.period = 'pm';
+  assert.equal(picker.valueFor(state), '');
+  popup.hour.value = '9';
+  picker.onPopupInput({ target: popup.hour });
+  assert.equal(popup.minute.value, '5');
+  assert.equal(picker.valueFor(state), '21:05');
+
+  popup.minute.value = '60';
+  picker.onPopupInput({ target: popup.minute });
+  assert.equal(picker.valueFor(state), '');
+  assert.equal(popup.error.textContent, 'Enter a minute from 00 to 59.');
+  assert.equal(popup.apply.disabled, true);
+  assert.match(source, /active\.period = period\.dataset\.timePeriod;[\s\S]*?active\.timeTouched = true;/);
 });
 
 test('month values and date bounds use the input formats and include their endpoints', () => {
@@ -128,6 +239,12 @@ test('Cancel discards draft values and required fields cannot apply an empty cho
   assert.equal(time.input.value, '11:30');
   assert.deepEqual(time.events, []);
 
+  const dateTime = fakeState('datetime-local', '2027-10-04T11:30', { date: '2027-10-05', hour: 17, minute: 15 });
+  picker.setState(dateTime, popup);
+  picker.close();
+  assert.equal(dateTime.input.value, '2027-10-04T11:30');
+  assert.deepEqual(dateTime.events, []);
+
   const empty = fakeState('date', '', { date: '2027-10-02' });
   empty.cleared = true;
   assert.equal(picker.isValidValue(empty, picker.valueFor(empty)), false);
@@ -143,10 +260,23 @@ test('Cancel discards draft values and required fields cannot apply an empty cho
   const optionalTimeClear = fakeState('time', '23:59', { hour: 9, minute: 0 });
   optionalTimeClear.input.required = false;
   optionalTimeClear.cleared = true;
+  picker.setTimeDraft(optionalTimeClear, null);
+  assert.deepEqual({ ...picker.timeFromDraft(optionalTimeClear) }, { hour12: '', minute: '', period: '' });
+  assert.equal(picker.canApply(optionalTimeClear, ''), true);
   picker.setState(optionalTimeClear, popup);
   picker.apply();
   assert.equal(optionalTimeClear.input.value, '');
   assert.deepEqual(optionalTimeClear.events, ['input', 'change']);
+
+  const optionalDateTimeClear = fakeState('datetime-local', '2027-10-04T23:59', { date: '2027-10-04', hour: 23, minute: 59 });
+  optionalDateTimeClear.input.required = false;
+  optionalDateTimeClear.cleared = true;
+  picker.setTimeDraft(optionalDateTimeClear, null);
+  assert.deepEqual({ ...picker.timeFromDraft(optionalDateTimeClear) }, { hour12: '', minute: '', period: '' });
+  picker.setState(optionalDateTimeClear, popup);
+  picker.apply();
+  assert.equal(optionalDateTimeClear.input.value, '');
+  assert.deepEqual(optionalDateTimeClear.events, ['input', 'change']);
 });
 
 test('Escape cancels a time-only draft and keeps the previously saved value', () => {

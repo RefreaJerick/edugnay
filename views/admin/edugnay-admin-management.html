@@ -595,21 +595,8 @@
 
       </a>
 
-      <!-- Collapsible group replaces the four separate Sections / Subjects /
-           Assign Teachers / Assign Students links now merged into this page -->
-      <div class="nav-group open" id="classMgmtGroup">
-        <div class="nav-group-toggle active" onclick="toggleNavGroup(this.parentElement)">
-          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
-          <span>Class Management</span>
-          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="nav-children">
-          <a class="nav-child active" data-tab="sections" onclick="goToMgmtTab('sections', this)">Sections</a>
-          <a class="nav-child" data-tab="subjects" onclick="goToMgmtTab('subjects', this)">Subjects</a>
-          <a class="nav-child" data-tab="teachers" onclick="goToMgmtTab('teachers', this)">Assign Teachers</a>
-          <a class="nav-child" data-tab="students" onclick="goToMgmtTab('students', this)">Assign Students</a>
-        </div>
-      </div>
+      <a href="edugnay-admin-management.html" class="nav-item active" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
     </div>
 
     <div class="nav-section">
@@ -1008,28 +995,16 @@ function switchMgmtTab(tab, el) {
   if (el) el.classList.add('active');
   else document.querySelector('.mgmt-tab[data-tab="' + tab + '"]').classList.add('active');
 
-  document.querySelectorAll('.nav-child').forEach(c => c.classList.remove('active'));
-  const navChild = document.querySelector('.nav-child[data-tab="' + tab + '"]');
-  if (navChild) navChild.classList.add('active');
-
   const pageTitle = document.getElementById('pageTitle');
   if (pageTitle) pageTitle.textContent = 'Class Management · ' + mgmtTitles[tab];
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-function goToMgmtTab(tab, el) {
-  switchMgmtTab(tab, document.querySelector('.mgmt-tab[data-tab="' + tab + '"]'));
-  document.querySelectorAll('.nav-child').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  toggleDrawer(false);
-}
-
 const tab = localStorage.getItem("managementTab");
 
 if (tab) {
-    const link = document.querySelector(`[data-tab="${tab}"]`);
-    goToMgmtTab(tab, link);
-    localStorage.removeItem("managementTab");
+  if (Object.prototype.hasOwnProperty.call(mgmtTitles, tab)) switchMgmtTab(tab);
+  localStorage.removeItem("managementTab");
 }
 
 /* ══════════════════════════════════════════════

@@ -220,10 +220,6 @@ document.addEventListener('edugnay:calendar-notices-updated', async () => {
   renderTopbarNotifs();
 });
 
-function toggleNavGroup(group) {
-  group.classList.toggle('open');
-}
-
 /* ── ACTIVE NAV ITEM ON CLICK ── */
 document.addEventListener('DOMContentLoaded', async () => {
   try { await window.EDUGNAY_SCHOOL_READY; }

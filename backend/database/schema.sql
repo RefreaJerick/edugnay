@@ -513,6 +513,7 @@ CREATE TABLE IF NOT EXISTS section_teachers (
   subject_id BIGINT UNSIGNED NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_section_teachers_assignment (section_id, teacher_user_id, subject_id),
+  UNIQUE KEY uq_section_teachers_school_id (school_id, id),
   KEY idx_section_teachers_teacher (teacher_user_id),
   CONSTRAINT fk_section_teachers_section
     FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE RESTRICT,
@@ -526,6 +527,33 @@ CREATE TABLE IF NOT EXISTS section_teachers (
     FOREIGN KEY (school_id, teacher_user_id) REFERENCES users(school_id, id) ON DELETE RESTRICT,
   CONSTRAINT fk_section_teachers_tenant_subject
     FOREIGN KEY (school_id, subject_id) REFERENCES subjects(school_id, id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS scheduled_classes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  assignment_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_scheduled_class_assignment (assignment_id),
+  UNIQUE KEY uq_scheduled_class_school_id (school_id, id),
+  CONSTRAINT fk_scheduled_class_tenant_assignment FOREIGN KEY (school_id, assignment_id) REFERENCES section_teachers(school_id, id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS timetable_meetings (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id BIGINT UNSIGNED NOT NULL,
+  scheduled_class_id BIGINT UNSIGNED NOT NULL,
+  weekday TINYINT UNSIGNED NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  room VARCHAR(100) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_timetable_class (scheduled_class_id),
+  KEY idx_timetable_conflicts (school_id, weekday, start_time, end_time),
+  CONSTRAINT fk_timetable_tenant_class FOREIGN KEY (school_id, scheduled_class_id) REFERENCES scheduled_classes(school_id, id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- =========================================================

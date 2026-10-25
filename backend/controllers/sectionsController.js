@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { avatarFields } = require('../config/avatars');
 const { writeAuditLog } = require('../utils/auditLog');
+const { assertTeacherScheduleAvailable } = require('./timetablesController');
 
 const SECTION_STATUSES = new Set(['active', 'archived']);
 
@@ -778,6 +779,14 @@ async function removeTeacherAssignment(req, res, next) {
     if (!assignments.length) throw createError('Teacher assignment was not found.', 404);
     await connection.beginTransaction();
     transactionStarted = true;
+    await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [section.academicYearId, req.user.schoolId]);
+    const [scheduled] = await connection.execute(
+      `SELECT m.id FROM timetable_meetings m
+       JOIN scheduled_classes c ON c.id = m.scheduled_class_id AND c.school_id = m.school_id
+       WHERE c.school_id = ? AND c.assignment_id = ? LIMIT 1`,
+      [req.user.schoolId, assignmentId]
+    );
+    if (scheduled.length) throw createError('Remove this subject assignment’s scheduled meetings in Timetables first.', 409);
     const [result] = await connection.execute('DELETE FROM section_teachers WHERE id = ? AND section_id = ?', [assignmentId, sectionId]);
     if (!result.affectedRows) throw createError('Teacher assignment was not found.', 404);
     await writeAuditLog(connection, req, 'teacher_unassigned', 'section_teacher', assignmentId, { summary: `${assignments[0].teacherName} · ${section.name} · ${assignments[0].subjectName}` });
@@ -796,6 +805,7 @@ async function updateTeacherAssignment(req, res, next) {
     const teacherId = parseId(req.body.teacherId, 'teacher ID');
     const section = await findOwnedSection(req.user.schoolId, sectionId, connection);
     if (!section || section.status !== 'active') throw createError('An active section was not found.', 404);
+    assertSectionYearWritable(section);
     assertShsPlacementReviewed(section);
     const [teachers] = await connection.execute("SELECT id, display_name AS displayName FROM users WHERE id=? AND school_id=? AND role='teacher' AND account_status='active' LIMIT 1", [teacherId, req.user.schoolId]);
     if (!teachers.length) throw createError('The teacher was not found in this school.', 404);
@@ -803,6 +813,8 @@ async function updateTeacherAssignment(req, res, next) {
     if (!currentRows.length) throw createError('Teacher assignment was not found.', 404);
     await connection.beginTransaction();
     transactionStarted = true;
+    await connection.execute('SELECT id FROM academic_years WHERE id = ? AND school_id = ? FOR UPDATE', [section.academicYearId, req.user.schoolId]);
+    await assertTeacherScheduleAvailable(connection, req.user.schoolId, section.academicYearId, assignmentId, sectionId, teacherId);
     const [result] = await connection.execute('UPDATE section_teachers SET teacher_user_id=? WHERE id=? AND section_id=?', [teacherId, assignmentId, sectionId]);
     if (!result.affectedRows) throw createError('Teacher assignment was not found.', 404);
     await writeAuditLog(connection, req, 'teacher_assignment_updated', 'section_teacher', assignmentId, { summary: `${currentRows[0].previousTeacher} → ${teachers[0].displayName} · ${section.name} · ${currentRows[0].subjectName}` });

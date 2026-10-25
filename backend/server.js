@@ -37,6 +37,7 @@ const archiveRoutes = require('./routes/archive');
 const gradingPeriodReopenRoutes = require('./routes/gradingPeriodReopen');
 const usersRoutes = require('./routes/users');
 const userImportRoutes = require('./routes/userImport');
+const timetablesRoutes = require('./routes/timetables');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -79,6 +80,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/qr-attendance', qrAttendanceRoutes);
 app.use('/api/profile', profilesRoutes);
 app.use('/api/sections', sectionsRoutes);
+app.use('/api/timetables', timetablesRoutes);
 app.use('/api/subjects', subjectsRoutes);
 app.use('/api/assignments', assignmentsRoutes);
 app.use('/api', gradesRoutes);

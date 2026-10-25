@@ -517,6 +517,11 @@
   font: 600 12px 'Plus Jakarta Sans', sans-serif;
 }
 
+.academic-date-time input::placeholder {
+  color: var(--gray-400);
+  opacity: 1;
+}
+
 .academic-date-time input:focus-visible {
   outline: none;
   border-color: var(--blue-mid);

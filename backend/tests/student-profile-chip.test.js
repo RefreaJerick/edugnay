@@ -235,7 +235,7 @@ test('every signed-in portal header restores its chip before main content', () =
       checked += 1;
     }
   }
-  assert.equal(checked, 41);
+  assert.equal(checked, 44);
 
   const styles = fs.readFileSync(path.join(root, 'assets/css/styles.css'), 'utf8');
   assert.match(styles, /html\.profile-chip-page \.tb-profile-trigger \{ width: 215px; \}/);

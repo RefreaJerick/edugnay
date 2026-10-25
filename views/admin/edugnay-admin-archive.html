@@ -121,26 +121,8 @@
       <a href="edugnay-admin-dashboard.html"       class="nav-item"><div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div><span class="nav-label">Dashboard</span></a>
       <a href="edugnay-admin-users.html"           class="nav-item"><div class="nav-icon"><i data-lucide="users"            style="width:16px;height:16px;"></i></div><span class="nav-label">Manage Users</span></a>
 
-      <div class="nav-group" id="classMgmtGroup">
-        <div class="nav-group-toggle" onclick="toggleNavGroup(this.parentElement)">
-          <div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div>
-          <span>Class Management</span>
-          <i data-lucide="chevron-right" class="nav-chevron" style="width:15px;height:15px;"></i>
-        </div>
-        <div class="nav-children">
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','sections')">Sections</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','subjects')">Subjects</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','teachers')">Assign Teachers</a>
-
-          <a class="nav-child" href="./edugnay-admin-management.html"
-            onclick="localStorage.setItem('managementTab','students')">Assign Students</a>
-        </div>
-      </div>
+      <a href="edugnay-admin-management.html" class="nav-item" onclick="localStorage.removeItem('managementTab')"><div class="nav-icon"><i data-lucide="school" style="width:16px;height:16px;"></i></div><span class="nav-label">Class Management</span></a>
+      <a href="edugnay-admin-timetables.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">Timetables</span></a>
     </div>
 
     <div class="nav-section">

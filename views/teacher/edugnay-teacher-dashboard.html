@@ -12,11 +12,13 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
   <link rel="stylesheet" href="../../assets/css/teacher/dashboard.css">
+  <link rel="stylesheet" href="../../assets/css/timetables.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/teacher/shell.js"></script>
+  <script src="../../assets/js/timetables.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
 </head>
@@ -226,6 +228,7 @@
             <div class="nav-icon"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i></div>
             <span class="nav-label">Dashboard</span>
           </a>
+          <a href="edugnay-teacher-schedules.html" class="nav-item"><div class="nav-icon"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i></div><span class="nav-label">My Schedules</span></a>
 
           <!-- My Sections (expandable) -->
           <div class="nav-group" id="sections-group">
@@ -379,6 +382,7 @@
 
           <!-- TEACHER SUMMARY CARDS -->
           <div class="stat-grid teacher-summary-grid" id="teacher-summary-cards" aria-label="Teacher summary"></div>
+          <section class="timetable-preview" aria-label="Upcoming teaching schedule"><div class="timetable-preview-head"><h2>My Schedules</h2><a href="edugnay-teacher-schedules.html">View full schedule →</a></div><div class="timetable-preview-list" aria-live="polite">Loading your classes...</div></section>
 
           <!-- My Sections -->
           <div class="panel panel-sections">

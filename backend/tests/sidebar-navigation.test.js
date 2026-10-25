@@ -398,6 +398,81 @@ test('admin Settings navigation is static, consistent, and correctly active on e
   assert.doesNotMatch(adminShell, /ensureAdminConfigurationNav/);
 });
 
+test('every admin sidebar has one direct Class Management link and no submenu', () => {
+  const filenames = fs.readdirSync(adminViews).filter(filename => filename.endsWith('.html'));
+  for (const filename of filenames) {
+    const html = fs.readFileSync(path.join(adminViews, filename), 'utf8');
+    const start = html.indexOf('<aside class="sidebar"');
+    assert.notEqual(start, -1, filename);
+    const sidebar = html.slice(start, html.indexOf('</aside>', start));
+    const links = [...sidebar.matchAll(/<a\b[^>]*href="(?:\.\/)?edugnay-admin-management\.html"[^>]*>[\s\S]*?<\/a>/g)];
+    assert.equal(links.length, 1, filename);
+    assert.match(links[0][0], /class="nav-item(?: active)?"/);
+    assert.match(links[0][0], /onclick="localStorage\.removeItem\('managementTab'\)"/);
+    assert.match(links[0][0], /<span class="nav-label">Class Management<\/span>/);
+    assert.equal(links[0][0].includes('class="nav-item active"'), filename === 'edugnay-admin-management.html', filename);
+    assert.doesNotMatch(sidebar, /classMgmtGroup|nav-group-toggle|nav-children|nav-child|nav-chevron/, filename);
+    assert.ok(sidebar.indexOf('Manage Users') < sidebar.indexOf('Class Management'), filename);
+    assert.ok(sidebar.indexOf('Class Management') < sidebar.indexOf('Timetables'), filename);
+  }
+  const adminShell = fs.readFileSync(path.join(root, 'assets/js/admin/shell.js'), 'utf8');
+  assert.doesNotMatch(adminShell, /function toggleNavGroup/);
+});
+
+test('Class Management tabs still switch and School Settings can open Subjects', () => {
+  const html = fs.readFileSync(path.join(adminViews, 'edugnay-admin-management.html'), 'utf8');
+  const schoolSettings = fs.readFileSync(path.join(adminViews, 'edugnay-admin-schools.html'), 'utf8');
+  for (const tab of ['sections', 'subjects', 'teachers', 'students']) {
+    assert.match(html, new RegExp(`class="mgmt-tab(?: active)?" data-tab="${tab}"`));
+    assert.match(html, new RegExp(`id="panel-${tab}"`));
+  }
+  assert.match(html, /class="mgmt-panel active" id="panel-sections"/);
+  assert.match(schoolSettings, /href="edugnay-admin-management\.html" onclick="localStorage\.setItem\('managementTab','subjects'\)"/);
+
+  const start = html.indexOf('const mgmtTitles = {');
+  const end = html.indexOf('function updateSectionFormFields()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  function loadTabs(savedTab) {
+    const makeItem = active => {
+      const classes = new Set(active ? ['active'] : []);
+      return { classList: { add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name) } };
+    };
+    const names = ['sections', 'subjects', 'teachers', 'students'];
+    const tabs = Object.fromEntries(names.map(name => [name, makeItem(name === 'sections')]));
+    const panels = Object.fromEntries(names.map(name => [name, makeItem(name === 'sections')]));
+    const pageTitle = { textContent: '' };
+    let stored = savedTab;
+    const context = {
+      document: {
+        querySelectorAll: selector => selector === '.mgmt-tab' ? Object.values(tabs) : Object.values(panels),
+        querySelector: selector => tabs[selector.match(/data-tab="([^"]+)"/)?.[1]],
+        getElementById: id => id === 'pageTitle' ? pageTitle : panels[id.slice('panel-'.length)]
+      },
+      localStorage: { getItem: () => stored, removeItem: () => { stored = null; } },
+      window: { scrollTo() {} }
+    };
+    vm.runInNewContext(source, context);
+    return { tabs, panels, pageTitle, context, stored: () => stored };
+  }
+
+  const direct = loadTabs(null);
+  assert.equal(direct.tabs.sections.classList.contains('active'), true);
+  direct.context.switchMgmtTab('teachers', direct.tabs.teachers);
+  assert.equal(direct.tabs.teachers.classList.contains('active'), true);
+  assert.equal(direct.panels.teachers.classList.contains('active'), true);
+  assert.equal(direct.tabs.sections.classList.contains('active'), false);
+
+  const subjects = loadTabs('subjects');
+  assert.equal(subjects.tabs.subjects.classList.contains('active'), true);
+  assert.equal(subjects.panels.subjects.classList.contains('active'), true);
+  assert.match(subjects.pageTitle.textContent, /Subjects$/);
+  assert.equal(subjects.stored(), null);
+  const invalid = loadTabs('unknown');
+  assert.equal(invalid.tabs.sections.classList.contains('active'), true);
+  assert.equal(invalid.stored(), null);
+});
+
 test('teacher sidebar uses a school- and teacher-scoped session snapshot before refreshing navigation', () => {
   const filenames = fs.readdirSync(teacherViews).filter(filename => filename.endsWith('.html'));
   const pages = filenames.filter(filename => fs.readFileSync(path.join(teacherViews, filename), 'utf8')
