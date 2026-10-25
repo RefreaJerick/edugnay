@@ -10,7 +10,7 @@
   min-width: 0;
   border: 1px solid var(--panel-border);
   border-radius: var(--panel-radius);
-  background: var(--white);
+  background: var(--theme-surface);
   overflow: hidden;
   box-shadow: none;
 }
@@ -90,7 +90,7 @@
   place-items: center;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .school-settings-icon svg {
@@ -185,7 +185,7 @@
   border-color: var(--blue-pale);
   border-bottom-color: var(--white);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .school-tab {
@@ -216,7 +216,7 @@
 .school-tab.active {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   box-shadow: none;
 }
 
@@ -335,7 +335,7 @@
   padding: 16px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .term-tracker {
@@ -374,7 +374,7 @@
   place-items: center;
   border: 1px solid var(--gray-200);
   border-radius: 50%;
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-400);
 }
 
@@ -386,11 +386,11 @@
 .term-tracker-item.closed .term-tracker-marker {
   border-color: var(--green-border);
   background: var(--green-pale);
-  color: var(--green-darker);
+  color: var(--theme-success-deep);
 }
 
 .term-tracker-item.active .term-tracker-marker {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-mid);
   color: var(--white);
 }
@@ -400,7 +400,7 @@
   z-index: 1;
   min-width: 0;
   padding-top: 1px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .term-tracker-copy strong,
@@ -431,11 +431,11 @@
 }
 
 .term-tracker-item.active .term-tracker-copy small {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .term-tracker-item.closed .term-tracker-copy small {
-  color: var(--green-darker);
+  color: var(--theme-success-deep);
 }
 
 .term-current-card {
@@ -456,7 +456,7 @@
 
 .term-current-label {
   display: block;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .6px;
@@ -611,7 +611,7 @@
 .term-modal-alert {
   border-color: var(--orange-border);
   background: var(--orange-pale);
-  color: var(--orange-dark);
+  color: var(--theme-warning-strong);
   font-size: 10px;
   line-height: 1.5;
 }
@@ -622,7 +622,7 @@
   gap: 8px;
   border-color: var(--green-border);
   background: var(--green-pale);
-  color: var(--green-darker);
+  color: var(--theme-success-deep);
   font-size: 10px;
   font-weight: 700;
 }
@@ -645,7 +645,7 @@
   border: 1px solid var(--orange-border);
   border-radius: var(--radius-sm);
   background: var(--orange-pale);
-  color: var(--orange-dark);
+  color: var(--theme-warning-strong);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -719,8 +719,8 @@
 .school-field select:focus,
 .school-field textarea:focus {
   outline: none;
-  border-color: var(--blue-mid);
-  background: var(--white);
+  border-color: var(--theme-accent-text);
+  background: var(--theme-surface);
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
@@ -745,7 +745,7 @@
   padding: 0 10px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-700);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 11px;
@@ -756,13 +756,13 @@
 
 .school-field input[type='file']:not(:focus):hover {
   border-color: var(--blue-pale);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .school-field input[type='file']::file-selector-button:hover {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .school-logo-preview {
@@ -1019,7 +1019,7 @@
 
 .school-attendance-code[data-tone='present'] .school-attendance-code-mark {
   background: var(--green-pale);
-  color: var(--green-darker);
+  color: var(--theme-success-deep);
 }
 
 .school-attendance-code[data-tone='absent'] .school-attendance-code-mark {
@@ -1029,12 +1029,12 @@
 
 .school-attendance-code[data-tone='late'] .school-attendance-code-mark {
   background: var(--orange-pale);
-  color: var(--orange-dark);
+  color: var(--theme-warning-strong);
 }
 
 .school-attendance-code[data-tone='excused'] .school-attendance-code-mark {
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .icon-button {
@@ -1045,7 +1045,7 @@
   place-items: center;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-500);
   cursor: pointer;
 }
@@ -1094,7 +1094,7 @@
   padding: 10px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .check-item input {
@@ -1158,7 +1158,7 @@
   padding: 11px 12px;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue);
+  color: var(--theme-blue-deep);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1194,7 +1194,7 @@
 
 .holiday-date {
   grid-column: 1 / -1;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 11px;
   font-weight: 800;
 }
@@ -1444,7 +1444,7 @@
   overflow-x: auto;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-shs-weight-table {
@@ -1534,8 +1534,8 @@
   padding: 12px 14px;
   border: 1px solid #f6d37a;
   border-radius: 10px;
-  background: #fff8e6;
-  color: #805000;
+  background: var(--surface-warning-soft);
+  color: var(--theme-warning-olive);
   font-size: 13px;
 }
 
@@ -1621,9 +1621,9 @@
 
 .subject-grading-component-card {
   padding: 16px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 12px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .subject-grading-component-grid {
@@ -1769,7 +1769,7 @@
   gap: 6px;
   max-width: 100%;
   padding: 4px 7px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 7px;
   background: var(--gray-50, #f7f9fc);
   color: var(--gray-700, #46566d);
@@ -1806,7 +1806,7 @@
 
 .school-k10-grading-exam-summary > span + span {
   padding-left: 7px;
-  border-left: 1px solid var(--gray-200, #dbe3ef);
+  border-left: 1px solid var(--gray-200, var(--theme-border-muted));
 }
 
 .school-k10-grading-no-match,
@@ -1873,7 +1873,7 @@
   gap: 12px;
   min-width: 0;
   padding: 9px 11px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 8px;
   background: var(--gray-50, #f7f9fc);
   font-size: 13px;
@@ -1937,9 +1937,9 @@
   gap: 8px;
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 9px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .subject-grading-exam-part {
@@ -2131,7 +2131,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 9px 10px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 8px;
   background: var(--gray-50, #f7f9fc);
 }
@@ -2196,7 +2196,7 @@
   gap: 10px;
   margin-bottom: 16px;
   padding: 15px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 10px;
   background: var(--gray-50, #f7f9fc);
 }
@@ -2231,7 +2231,7 @@
   padding: 8px 10px;
   border: 1px solid var(--gray-300, #ccd6e4);
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   color: var(--gray-800, #26364d);
   font: inherit;
 }
@@ -2273,8 +2273,8 @@
   width: 30px;
   height: 30px;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
   box-shadow: 0 2px 7px rgba(29, 92, 180, .09);
 }
 
@@ -2288,9 +2288,9 @@
   gap: 12px;
   min-width: 0;
   padding: 15px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 11px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-k10-section-heading {
@@ -2359,7 +2359,7 @@
   padding: 0 12px;
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-k10-group-component-grid label,
@@ -2480,7 +2480,7 @@
 .school-k10-group-exam-setup {
   margin: 0;
   padding: 15px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-k10-group-exam-setup .school-k10-section-heading {
@@ -2614,7 +2614,7 @@
   padding: 18px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .school-k10-final-rules-form {
@@ -2669,8 +2669,8 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
   box-shadow: 0 2px 7px rgba(29, 92, 180, 0.09);
 }
 
@@ -2728,9 +2728,9 @@
 .school-k10-final-rules-grid > div {
   min-width: 0;
   padding: 13px 15px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-k10-final-rules-grid dt {
@@ -3073,9 +3073,9 @@
 .school-k10-restore-grid > section {
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--gray-200, #dbe3ef);
+  border: 1px solid var(--gray-200, var(--theme-border-muted));
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .school-k10-restore-subject + .school-k10-restore-subject {

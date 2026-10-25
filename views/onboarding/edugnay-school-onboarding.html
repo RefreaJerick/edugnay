@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Create organization account | Academix</title>
@@ -16,6 +17,7 @@
   <script src="../../assets/js/shell-common.js"></script>
   <script src="../../assets/js/academic-range-picker.js"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 <body data-public-page="true">
   <main class="onboarding-page onboarding-registration-page">
@@ -25,6 +27,15 @@
         <span>Acade<span>Mix</span></span>
       </a>
       <nav class="onboarding-topbar-actions" aria-label="Onboarding navigation">
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+            <div class="tb-theme-heading">Appearance</div>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+          </div>
+        </div>
         <a class="onboarding-topbar-signin" href="../../index.html">Sign in</a>
       </nav>
     </header>

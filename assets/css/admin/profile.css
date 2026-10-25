@@ -57,7 +57,7 @@
   visibility: visible;
 }
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;

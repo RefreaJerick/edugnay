@@ -110,7 +110,7 @@
     PANEL SHELL (page-local, not shared)
 ══════════════════════════════ */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -125,7 +125,7 @@
   border-bottom: 1px solid var(--gray-100);
   flex-wrap: wrap;
   gap: 10px;
-  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
+  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
 }
 
 .panel-title {
@@ -152,7 +152,7 @@
   height: 36px;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,7 +238,7 @@
   visibility: visible;
 }
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;

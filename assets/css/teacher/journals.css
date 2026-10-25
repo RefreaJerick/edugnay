@@ -9,7 +9,7 @@
 }
 
 .summary-item {
-  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
+  background: linear-gradient(145deg, var(--theme-surface) 0%, var(--surface-blue-faint) 100%);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 18px 22px;
@@ -57,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 6px;
@@ -109,7 +109,7 @@
 
 /* ── PANEL ── */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -126,7 +126,7 @@
   border-bottom: 1px solid var(--gray-100);
   flex-wrap: wrap;
   gap: 10px;
-  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
+  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
 }
 
 .panel-title {
@@ -192,7 +192,7 @@
   width: 100%;
   max-width: 420px;
   height: 100%;
-  background: var(--white);
+  background: var(--theme-surface);
   display: flex;
   flex-direction: column;
   box-shadow: -12px 0 40px rgba(11, 31, 58, 0.18);
@@ -286,9 +286,9 @@
 }
 
 .settings-textarea:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .settings-char-count {
@@ -328,7 +328,7 @@
 }
 
 .settings-row-2 .settings-select:focus {
-  background-color: var(--white) !important;
+  background-color: var(--theme-surface) !important;
 }
 
 .settings-field-label {
@@ -343,7 +343,7 @@
 .settings-input {
   width: 100%;
   padding: 9px 12px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -360,7 +360,7 @@
 
 .settings-select:focus,
 .settings-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
 }
 
 #settings-minwords {
@@ -432,7 +432,7 @@
   width: 18px;
   height: 18px;
   border-radius: var(--radius-circle);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s;
 }
@@ -550,14 +550,14 @@
 }
 
 .search-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .filter-select {
   padding: 9px 14px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -574,7 +574,7 @@
 }
 
 .filter-select:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
 }
 
 /* ── TABLE ── */
@@ -677,11 +677,11 @@ tbody td.center {
 }
 
 .score-pass {
-  color: #16a34a;
+  color: var(--theme-success-text);
 }
 
 .score-warn {
-  color: #d97706;
+  color: var(--theme-warning-strong);
 }
 
 .score-none {
@@ -724,7 +724,7 @@ tbody td.center {
 }
 
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 580px;
@@ -826,7 +826,7 @@ tbody td.center {
 .prompt-label {
   font-size: 9.5px;
   font-weight: 700;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 4px;
@@ -834,7 +834,7 @@ tbody td.center {
 
 .prompt-text {
   font-size: 13.5px;
-  color: var(--blue);
+  color: var(--theme-blue-deep);
   line-height: 1.6;
   font-style: italic;
   overflow-wrap: anywhere;
@@ -889,7 +889,7 @@ tbody td.center {
   width: 80px;
   padding: 9px 12px;
   text-align: center;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -901,7 +901,7 @@ tbody td.center {
 }
 
 .score-num-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
 }
 
@@ -978,12 +978,12 @@ tbody td.center {
 
 .btn-mark {
   background: var(--green-pale);
-  color: #15803d;
-  border: 1.5px solid #bbf7d0;
+  color: var(--theme-success-deep);
+  border: 1.5px solid var(--green-border);
 }
 
 .btn-mark:hover {
-  background: #bbf7d0;
+  background: var(--green-border);
 }
 
 /* nav arrows in modal */
@@ -1140,7 +1140,7 @@ tbody tr.reviewed td {
   align-items: center;
   gap: 14px;
   padding: 20px 22px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-left: 0;
   border-bottom: 1px solid var(--gray-200);
 }
@@ -1161,11 +1161,11 @@ tbody tr.reviewed td {
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-md);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .settings-drawer-eyebrow {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 9.5px;
   letter-spacing: 1.1px;
 }
@@ -1208,7 +1208,7 @@ tbody tr.reviewed td {
   padding: 16px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 3px 12px rgba(16, 40, 80, .04);
 }
 
@@ -1218,7 +1218,7 @@ tbody tr.reviewed td {
 
 .settings-block-label {
   margin-bottom: 9px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10px;
   letter-spacing: .85px;
 }
@@ -1248,7 +1248,7 @@ tbody tr.reviewed td {
 
 .settings-select:focus,
 .settings-input:focus {
-  background-color: var(--white);
+  background-color: var(--theme-surface);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
 }
 
@@ -1266,7 +1266,7 @@ tbody tr.reviewed td {
 
 .settings-drawer-foot {
   padding: 14px 20px 18px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-top: 1px solid var(--gray-200);
 }
 

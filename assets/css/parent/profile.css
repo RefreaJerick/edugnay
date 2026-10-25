@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 5px;
@@ -98,7 +98,7 @@
     PANEL SHELL
 ══════════════════════════════ */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -144,7 +144,7 @@
   height: 36px;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -297,7 +297,7 @@
 }
 
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;

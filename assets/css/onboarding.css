@@ -51,7 +51,7 @@ body:has(.onboarding-page) {
   flex: 0 0 auto;
   border: 1px solid var(--panel-border);
   border-radius: var(--panel-radius);
-  background: var(--white);
+  background: var(--theme-surface);
   overflow: hidden;
   box-shadow: none;
 }
@@ -81,7 +81,7 @@ body:has(.onboarding-page) {
   flex: 0 0 auto;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-form-head h2 {
@@ -109,7 +109,7 @@ body:has(.onboarding-page) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 12.5px;
   font-weight: 700;
@@ -124,7 +124,7 @@ body:has(.onboarding-page) {
 }
 
 .onboarding-back:hover {
-  color: var(--blue);
+  color: var(--theme-blue-deep);
 }
 
 .onboarding-back:focus-visible,
@@ -140,7 +140,7 @@ body:has(.onboarding-page) {
   gap: 12px;
   padding: 10px var(--panel-head-px);
   border-bottom: 1px solid var(--panel-divider);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .onboarding-step {
@@ -171,7 +171,7 @@ body:has(.onboarding-page) {
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10px;
   font-weight: 800;
 }
@@ -216,7 +216,7 @@ body:has(.onboarding-page) {
   overflow: hidden;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 4px 14px rgba(16, 40, 80, .055);
 }
 
@@ -353,7 +353,7 @@ body:has(.onboarding-page) {
 }
 
 .onboarding-period-name input[readonly] {
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-700);
   font-weight: 700;
 }
@@ -423,8 +423,8 @@ body:has(.onboarding-page) {
 .onboarding-field input:focus,
 .onboarding-field select:focus,
 .onboarding-field textarea:focus {
-  border-color: var(--blue-mid);
-  background-color: var(--white);
+  border-color: var(--theme-accent-text);
+  background-color: var(--theme-surface);
   box-shadow: 0 0 0 3px var(--button-focus-ring);
 }
 
@@ -475,8 +475,8 @@ body:has(.onboarding-page) {
   flex: 0 0 auto;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-settings-note-icon svg {
@@ -517,7 +517,7 @@ body:has(.onboarding-page) {
   padding: 0 10px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-700);
   font: inherit;
   font-size: 11px;
@@ -528,13 +528,13 @@ body:has(.onboarding-page) {
 
 .onboarding-field input[type='file']:not(:focus):hover {
   border-color: var(--blue-pale);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .onboarding-field input[type='file']::file-selector-button:hover {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-logo-preview {
@@ -930,7 +930,7 @@ body:has(.onboarding-pending-page) {
   min-height: 68px;
   padding: 12px clamp(18px, 5vw, 72px);
   border-bottom: 1px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .onboarding-topbar-brand,
@@ -942,7 +942,7 @@ body:has(.onboarding-pending-page) {
 .onboarding-topbar-brand {
   gap: 9px;
   min-width: 0;
-  color: var(--navy);
+  color: var(--theme-text);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 18px;
   font-weight: 800;
@@ -978,12 +978,12 @@ body:has(.onboarding-pending-page) {
 }
 
 .onboarding-topbar-signin {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-topbar-signin:hover,
 .onboarding-topbar-signin:focus-visible {
-  color: var(--blue);
+  color: var(--theme-blue-deep);
 }
 
 .onboarding-topbar-signin:focus-visible {
@@ -993,7 +993,7 @@ body:has(.onboarding-pending-page) {
 
 .onboarding-showcase-shell {
   border-bottom: 1px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .onboarding-showcase-inner {
@@ -1037,7 +1037,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 
 .onboarding-showcase-kicker {
   margin: 0 0 8px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 11px;
   font-weight: 800;
@@ -1092,7 +1092,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 }
 
 .onboarding-showcase-action-primary {
-  border-color: var(--navy);
+  border-color: var(--theme-text);
   background: var(--navy);
   color: var(--white);
 }
@@ -1168,7 +1168,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 .onboarding-feature-tab[aria-selected='true'] {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   box-shadow: none;
 }
 
@@ -1178,7 +1178,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   overflow: hidden;
   border: 1px solid var(--gray-200);
   border-radius: var(--panel-radius);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 10px 26px rgba(15, 37, 69, .08);
   text-align: left;
 }
@@ -1193,7 +1193,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   grid-area: 1 / 1;
   grid-template-columns: minmax(220px, .34fr) minmax(0, 1fr);
   min-width: 0;
-  background: var(--white);
+  background: var(--theme-surface);
   text-align: left;
   opacity: 0;
   visibility: hidden;
@@ -1270,7 +1270,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
   aspect-ratio: 1897 / 1198;
   border: 1px dashed var(--gray-300);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-500);
   text-align: center;
 }
@@ -1292,7 +1292,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 .onboarding-showcase-placeholder svg {
   width: 26px;
   height: 26px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-showcase-placeholder strong {
@@ -1349,7 +1349,7 @@ body.onboarding-reveal-ready .onboarding-reveal.is-visible {
 .onboarding-showcase-benefits svg {
   width: 16px;
   height: 16px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .onboarding-registration-transition {

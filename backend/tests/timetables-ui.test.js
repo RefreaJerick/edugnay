@@ -35,7 +35,7 @@ test('schedule pages share the Attendance-style week navigation and wide two-col
   }
   assert.match(css, /\.timetable-week-controls\s*\{[^}]*gap: 4px;[^}]*padding: 4px;[^}]*border: 1px solid var\(--gray-200\);[^}]*background: var\(--gray-50\)/);
   assert.match(css, /\.timetable-week-controls \.timetable-button\s*\{[^}]*width: 30px; height: 30px;[^}]*border: 0;[^}]*background: transparent/);
-  assert.match(css, /\.timetable-week-controls \.timetable-button:hover:not\(:disabled\)\s*\{[^}]*background: var\(--white\); color: var\(--blue-mid\)/);
+  assert.match(css, /\.timetable-week-controls \.timetable-button:hover:not\(:disabled\)\s*\{[^}]*background: var\(--theme-surface\); color: var\(--theme-accent-text\)/);
   assert.match(css, /@media \(min-width: 1280px\)\s*\{[\s\S]*?\.timetable-page\s*\{[^}]*grid-template-columns: 260px minmax\(0, 1fr\)/);
   assert.match(css, /\.timetable-page > \.timetable-empty:not\(\[hidden\]\), \.timetable-page > #timetable-board:not\(\[hidden\]\)\s*\{\s*grid-column: 2/);
   assert.match(css, /\.timetable-toolbar, \.timetable-toolbar-filters\s*\{[^}]*flex-direction: column/);
@@ -165,7 +165,7 @@ test('two- and four-column weeks show a muted, non-interactive next Monday witho
 
 test('today uses a navy date badge and is announced only when the selected week contains today', () => {
   const css = read('assets/css/timetables.css');
-  assert.match(css, /\.timetable-day\.today\s*\{\s*background: var\(--white\)/);
+  assert.match(css, /\.timetable-day\.today\s*\{\s*background: var\(--theme-surface\)/);
   assert.match(css, /\.timetable-day\.today \.timetable-day-head time\s*\{[^}]*border-radius: 999px;[^}]*background: var\(--navy\); color: var\(--white\)/);
 
   const source = read('assets/js/timetables.js').replace(
@@ -212,6 +212,83 @@ test('teacher and student dashboards link to their full schedules', () => {
     const html = read(`views/${role}/edugnay-${role}-dashboard.html`);
     assert.match(html, /class="timetable-preview"/);
     assert.match(html, new RegExp(`href="edugnay-${role}-schedules.html"`));
+    assert.match(html, /<h2 id="[^"]+">Today's Schedule<\/h2>/);
+    assert.match(html, /class="timetable-preview-icon" aria-hidden="true"/);
+    assert.match(html, /class="panel-action" href="edugnay-(?:teacher|student)-schedules\.html">View all/);
+    const previous = role === 'teacher' ? 'id="teacher-summary-cards"' : 'class="grading-banner"';
+    const following = role === 'teacher' ? 'class="panel panel-sections"' : 'id="student-journal-feature"';
+    assert.ok(html.indexOf(previous) < html.indexOf('class="timetable-preview"'));
+    assert.ok(html.indexOf('class="timetable-preview"') < html.indexOf(following));
+  }
+  const css = read('assets/css/timetables.css');
+  assert.match(css, /\.timetable-preview\s*\{ margin: 0; \}/);
+  assert.match(css, /\.timetable-preview-icon\s*\{[^}]*background: var\(--blue-xpale\); color: var\(--theme-accent-text\)/);
+  assert.match(css, /\.timetable-preview-item\s*\{[^}]*grid-template-columns: 170px minmax\(0, 1fr\)/);
+  assert.match(css, /@media \(max-width: 560px\)[^\n]*\.timetable-preview-item \{ grid-template-columns: 82px minmax\(0, 1fr\)/);
+  assert.match(css, /\.timetable-preview-copy\s*\{[^}]*overflow-wrap: anywhere/);
+});
+
+test('dashboard schedule previews contain no temporary sample content', () => {
+  for (const role of ['student', 'teacher']) {
+    const html = read(`views/${role}/edugnay-${role}-dashboard.html`);
+    assert.match(html, /Today's Schedule/);
+    assert.doesNotMatch(html, /timetable-preview-sample|Sample preview|Sample Teacher/);
+  }
+  assert.doesNotMatch(read('assets/js/timetables.js'), /previewSchedule|timetable-preview-sample/);
+});
+
+test('dashboard preview shows every class today in time order with role-specific details', async () => {
+  const source = read('assets/js/timetables.js').replace(
+    "  document.addEventListener('DOMContentLoaded', () => {",
+    "  globalThis.initDashboardPreview = initPreview;\n  document.addEventListener('DOMContentLoaded', () => {"
+  );
+  const meetings = [
+    { weekday: 1, startDate: '2026-10-01', endDate: '2026-12-31', startTime: '16:00', endTime: '17:00', subjectName: 'Science', gradeName: 'Grade 8', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: null },
+    { weekday: 1, startDate: '2026-10-01', endDate: '2026-12-31', startTime: '08:00', endTime: '09:00', subjectName: 'Technology and Livelihood Education (TLE)', gradeName: 'Grade 8', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: 'Lab 1' },
+    { weekday: 1, startDate: '2026-10-01', endDate: '2026-12-31', startTime: '10:00', endTime: '11:00', subjectName: 'Math & Arts', gradeName: 'Grade 8', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: null },
+    { weekday: 1, startDate: '2026-10-26', endDate: '2026-10-26', startTime: '12:00', endTime: '13:00', subjectName: 'History', gradeName: 'Grade 8', sectionName: 'St. Peter', teacherName: 'Maya Santos', room: null },
+    { weekday: 2, startDate: '2026-10-01', endDate: '2026-12-31', startTime: '09:00', endTime: '10:00', subjectName: 'Tomorrow', teacherName: 'Another Teacher' },
+    { weekday: 1, startDate: '2026-11-01', endDate: '2026-12-31', startTime: '13:00', endTime: '14:00', subjectName: 'Not effective yet' },
+    { weekday: 1, startDate: '2026-10-01', endDate: '2026-10-25', startTime: '14:00', endTime: '15:00', subjectName: 'Expired' }
+  ];
+  async function render(role, data = meetings, fail = false, search = '') {
+    const list = { innerHTML: '', setAttribute(name, value) { this[name] = value; } };
+    const preview = { hidden: false, querySelector: () => list };
+    const NativeDate = Date;
+    class FixedDate extends NativeDate { constructor(...args) { super(...(args.length ? args : ['2026-10-26T18:00:00'])); } }
+    const context = { Date: FixedDate, URLSearchParams, document: { addEventListener() {} }, window: {
+      location: { pathname: `/views/${role}/edugnay-${role}-dashboard.html`, search },
+      EDUGNAY_API: { getCurrentUser: async () => ({ role }), getTimetable: async () => {
+        if (fail) throw new Error('Offline');
+        return { meetings: data };
+      } },
+      EDUGNAY_CONFIG: { renderPanelEmptyState: ({ title }) => `<div class="panel-empty-state">${title}</div>` }
+    } };
+    vm.runInNewContext(source, context);
+    await context.initDashboardPreview(preview);
+    return list.innerHTML;
+  }
+
+  for (const role of ['student', 'teacher']) {
+    const html = await render(role);
+    assert.equal((html.match(/role="listitem"/g) || []).length, 4);
+    assert.ok(html.indexOf('Technology and Livelihood') < html.indexOf('Math &amp; Arts'));
+    assert.ok(html.indexOf('Math &amp; Arts') < html.indexOf('History'));
+    assert.ok(html.indexOf('History') < html.indexOf('Science'));
+    assert.match(html, /8:00 AM/);
+    assert.match(html, /9:00 AM/);
+    assert.doesNotMatch(html, /Tomorrow|Not effective yet|Expired|Oct 26/);
+    assert.match(html, /Lab 1/);
+    if (role === 'student') {
+      assert.match(html, /Maya Santos/);
+      assert.doesNotMatch(html, /Grade 8|St\. Peter/);
+    } else {
+      assert.match(html, /Grade 8 · St\. Peter/);
+      assert.doesNotMatch(html, /Maya Santos/);
+    }
+    assert.match(await render(role, []), /No classes today/);
+    assert.match(await render(role, [], false, '?previewSchedule=1'), /No classes today/);
+    assert.match(await render(role, [], true), /Schedule unavailable/);
   }
 });
 
@@ -333,7 +410,7 @@ test('timetable events separate subject, time, class, and optional role details'
   assert.match(noRoom, /timetable-event-class">Grade 12 · St\. Peter Senior High/);
   assert.match(noRoom, /^<div class="timetable-event">/);
   assert.match(css, /\.timetable-event-subject\s*\{[^}]*font-size: 12px; font-weight: 800/);
-  assert.match(css, /\.timetable-event-time\s*\{[^}]*color: var\(--blue-mid\);[^}]*font-weight: 700/);
+  assert.match(css, /\.timetable-event-time\s*\{[^}]*color: var\(--theme-accent-text\);[^}]*font-weight: 700/);
   assert.match(css, /\.timetable-event-class, \.timetable-event-meta\s*\{[^}]*min-width: 0;[^}]*color: var\(--gray-600\)/);
   assert.match(css, /\.timetable-event\s*\{[^}]*overflow-wrap: anywhere/);
 });
@@ -498,7 +575,7 @@ test('schedule pages use the compact toolbar, icon headers, neutral count pill, 
   assert.match(css, /\.timetable-toolbar-actions\s*\{[^}]*gap: 12px; margin-left: 24px/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.timetable-toolbar\s*\{[^}]*flex-direction: column/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.timetable-toolbar-actions \.timetable-button\s*\{\s*width: 100%/);
-  assert.match(css, /\.timetable-unscheduled-item\s*\{[^}]*padding: 16px;[^}]*border-radius: var\(--radius-md\);[^}]*background: var\(--white\)/);
+  assert.match(css, /\.timetable-unscheduled-item\s*\{[^}]*padding: 16px;[^}]*border-radius: var\(--radius-md\);[^}]*background: var\(--theme-surface\)/);
   assert.match(css, /@media \(max-width: 1180px\)[\s\S]*?\.timetable-unscheduled\s*\{\s*grid-template-columns: repeat\(2/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.timetable-unscheduled\s*\{\s*grid-template-columns: 1fr/);
 });

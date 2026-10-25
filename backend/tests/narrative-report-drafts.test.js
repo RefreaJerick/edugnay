@@ -6,8 +6,45 @@ const test = require('node:test');
 const { buildModelEvidence, generateNarrativeDraft, validateDraft } = require('../services/narrativeReportAi');
 const {
   MAX_GENERATION_BATCH, generateWeeklyDrafts, processWeeklyGeneration,
-  loadWeeklyDrafts, readWeeklyDrafts, sourceReferences
+  loadWeeklyDrafts, readWeeklyDrafts, countPendingDrafts, sourceReferences
 } = require('../controllers/narrativeReportDraftController');
+
+test('pending report count is limited to active-year drafts in current advisory sections', async () => {
+  const calls = [];
+  const database = { async execute(sql, values) {
+    calls.push({ sql, values });
+    return [calls.length === 1 ? [{ reportsEnabled: 1 }] : [{ pendingCount: 2 }]];
+  } };
+  assert.deepEqual(await countPendingDrafts({ database, schoolId: 1, teacherId: 3 }), { pendingCount: 2 });
+  assert.deepEqual(calls.map(call => call.values), [[1], [1, 3]]);
+  const query = calls[1].sql;
+  assert.match(query, /reports\.school_id = \? AND sections\.adviser_user_id = \?/);
+  assert.match(query, /sections\.status = 'active' AND academic_years\.status = 'active'/);
+  assert.match(query, /reports\.report_status = 'draft' AND reports\.report_week_start_date IS NOT NULL/);
+  assert.match(query, /reports\.report_week_end_date >= academic_years\.start_date/);
+  assert.match(query, /reports\.report_week_start_date <= academic_years\.end_date/);
+  assert.match(query, /sections\.id = reports\.section_id AND sections\.school_id = reports\.school_id/);
+  assert.match(query, /academic_years\.id = sections\.academic_year_id/);
+
+  const routes = fs.readFileSync(path.join(__dirname, '../routes/reports.js'), 'utf8');
+  assert.match(routes, /router\.get\('\/weekly-drafts\/pending-count', requireSchoolUser, requireRoles\('teacher'\)/);
+});
+
+test('pending report count returns zero for no drafts and rejects disabled reports', async () => {
+  const noDrafts = { async execute(sql) {
+    return [sql.includes('FROM school_portal_features') ? [{ reportsEnabled: 1 }] : [{ pendingCount: 0 }]];
+  } };
+  assert.deepEqual(await countPendingDrafts({ database: noDrafts, schoolId: 1, teacherId: 3 }), { pendingCount: 0 });
+
+  let countQueried = false;
+  const disabled = { async execute(sql) {
+    if (sql.includes('FROM narrative_reports')) countQueried = true;
+    return [[{ reportsEnabled: 0 }]];
+  } };
+  await assert.rejects(countPendingDrafts({ database: disabled, schoolId: 1, teacherId: 3 }),
+    error => error.status === 403 && /not enabled/.test(error.message));
+  assert.equal(countQueried, false);
+});
 
 function learner(id, followUpCandidate = false) {
   return {

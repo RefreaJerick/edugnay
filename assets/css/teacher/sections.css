@@ -94,7 +94,7 @@
 }
 
 .section-header select.section-subject-select:not([multiple]):focus {
-  border-color: #f7d980 !important;
+  border-color: var(--theme-border-gold-strong) !important;
   background-color: rgba(255, 255, 255, 0.16) !important;
   box-shadow: none;
 }
@@ -104,7 +104,7 @@
 }
 
 .section-header .section-subject-select option {
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-800);
 }
 
@@ -145,7 +145,7 @@
 }
 
 .section-header .section-subject .searchable-select-input:focus {
-  border-color: #f7d980 !important;
+  border-color: var(--theme-border-gold-strong) !important;
   background: rgba(255, 255, 255, 0.16) !important;
   box-shadow: none !important;
 }
@@ -171,7 +171,7 @@
   padding: 32px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-600);
   text-align: center;
 }
@@ -183,7 +183,7 @@
   height: 48px;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .section-context-unavailable h2 {
@@ -297,11 +297,11 @@
 .top-btn.danger {
   background: var(--red-pale);
   color: var(--red);
-  border: 1.5px solid #fca5a5;
+  border: 1.5px solid var(--theme-border-error-strong);
 }
 
 .top-btn.danger:hover {
-  background: #fecaca;
+  background: var(--red-border-soft);
 }
 
 /* ═══════════════════════════════
@@ -311,7 +311,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 6px;
@@ -373,7 +373,7 @@
     SHARED PANEL
 ═══════════════════════════════ */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -390,7 +390,7 @@
   border-bottom: 1px solid var(--gray-100);
   flex-wrap: wrap;
   gap: 10px;
-  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--white) 70%); */
+  /* background: linear-gradient(100deg, var(--blue-xpale) 0%, var(--theme-surface) 70%); */
 }
 
 .panel-title {
@@ -478,7 +478,7 @@ tbody td.sticky-col {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 2px 0 6px rgba(0, 0, 0, 0.04);
 }
 
@@ -550,14 +550,14 @@ tbody tr:hover td.sticky-col {
 }
 
 .search-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .filter-select {
   padding: 10px 14px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -605,15 +605,15 @@ tbody tr:hover td.sticky-col {
   font-weight: 600;
   cursor: pointer;
   border: 1.5px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-500);
   transition: all 0.15s;
   user-select: none;
 }
 
 .cat-tab:hover {
-  border-color: var(--blue-mid);
-  color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
+  color: var(--theme-accent-text);
 }
 
 .cat-tab.active {
@@ -728,7 +728,7 @@ tbody tr:hover td.sticky-col {
 .score-comp-menu-trigger:focus-visible,
 .score-comp-menu-trigger[aria-expanded="true"] {
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .score-component-menu {
@@ -738,7 +738,7 @@ tbody tr:hover td.sticky-col {
   padding: 5px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
 }
 
@@ -775,7 +775,7 @@ tbody tr:hover td.sticky-col {
   flex: 0 0 36px;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 #teacherDeleteConfirmModal .ctx-label {
@@ -880,8 +880,8 @@ thead tr:hover .comp-delete-btn {
 }
 
 .score-input:focus {
-  border-color: var(--blue-mid);
-  background: var(--white);
+  border-color: var(--theme-accent-text);
+  background: var(--theme-surface);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
 }
 
@@ -898,7 +898,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .computed-avg {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .computed-final {
@@ -908,11 +908,11 @@ thead tr:hover .comp-delete-btn {
 }
 
 .grade-pass {
-  color: #16a34a;
+  color: var(--theme-success-text);
 }
 
 .grade-warn {
-  color: #d97706;
+  color: var(--theme-warning-strong);
 }
 
 .grade-fail {
@@ -960,7 +960,7 @@ thead tr:hover .comp-delete-btn {
 #quarterLockBanner.is-reopened { border-color: var(--green-border); }
 #quarterLockBanner.is-reopened .publish-banner-icon {
   background: var(--green-pale);
-  color: var(--green-darker);
+  color: var(--theme-success-deep);
 }
 
 .publish-banner-left {
@@ -999,8 +999,8 @@ thead tr:hover .comp-delete-btn {
   justify-content: center;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
   box-shadow: 0 2px 7px rgba(29, 92, 180, 0.09);
 }
 
@@ -1014,9 +1014,9 @@ thead tr:hover .comp-delete-btn {
 }
 
 .publish-preview-feedback.error {
-  border-color: #fecaca;
-  background: #fef2f2;
-  color: #b91c1c;
+  border-color: var(--red-border-soft);
+  background: var(--surface-error-pale);
+  color: var(--theme-error-text);
 }
 
 .publish-preview-list {
@@ -1043,7 +1043,7 @@ thead tr:hover .comp-delete-btn {
   padding: 12px 14px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   font-size: 13px;
 }
 
@@ -1058,8 +1058,8 @@ thead tr:hover .comp-delete-btn {
   color: var(--gray-800);
 }
 
-.publish-preview-row .grade-pass { color: #16a34a; }
-.publish-preview-row .grade-warn { color: #d97706; }
+.publish-preview-row .grade-pass { color: var(--theme-success-text); }
+.publish-preview-row .grade-warn { color: var(--theme-warning-strong); }
 .publish-preview-row .grade-fail { color: var(--red); }
 
 .publish-preview-grade {
@@ -1093,14 +1093,14 @@ thead tr:hover .comp-delete-btn {
   justify-content: center;
   flex: 0 0 34px;
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 2px 7px rgba(16, 40, 80, 0.08);
 }
 
 .publish-info-title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--theme-blue-deep);
   line-height: 1.25;
 }
 
@@ -1166,7 +1166,7 @@ thead tr:hover .comp-delete-btn {
 
 .date-input {
   padding: 9px 14px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -1177,7 +1177,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .date-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
 }
 
 /* Attendance summary bar */
@@ -1232,7 +1232,7 @@ thead tr:hover .comp-delete-btn {
   font-weight: 700;
   cursor: pointer;
   border: 1.5px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   transition: all 0.15s;
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
@@ -1262,7 +1262,7 @@ thead tr:hover .comp-delete-btn {
 .att-btn.E.selected {
   background: var(--blue-mid);
   color: white;
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
 }
 
 .attendance-status-cell .att-btn-group {
@@ -1289,9 +1289,9 @@ thead tr:hover .comp-delete-btn {
 }
 
 .attendance-remarks-input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, .1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .attendance-list-footer {
@@ -1335,7 +1335,7 @@ thead tr:hover .comp-delete-btn {
   border: 0;
   padding: 0;
   background: none;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font: inherit;
   font-weight: 700;
   text-decoration: underline;
@@ -1371,14 +1371,14 @@ thead tr:hover .comp-delete-btn {
   font-weight: 600;
   cursor: pointer;
   border: 1.5px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-500);
   transition: all 0.15s;
 }
 
 .att-hist-tab.active {
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   border-color: var(--blue-pale);
 }
 
@@ -1419,7 +1419,7 @@ thead tr:hover .comp-delete-btn {
 
 .att-P {
   background: var(--green-pale);
-  color: #15803d;
+  color: var(--theme-success-deep);
 }
 
 .att-A {
@@ -1429,12 +1429,12 @@ thead tr:hover .comp-delete-btn {
 
 .att-L {
   background: var(--orange-pale);
-  color: #92400e;
+  color: var(--theme-warning-text);
 }
 
 .att-E {
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .att-empty {
@@ -1527,7 +1527,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;
@@ -1628,9 +1628,9 @@ thead tr:hover .comp-delete-btn {
 
 .form-input:focus,
 .form-select:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .form-row-2 {
@@ -1659,7 +1659,7 @@ thead tr:hover .comp-delete-btn {
   padding: 12px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-700);
   font: inherit;
   text-align: center;
@@ -1669,7 +1669,7 @@ thead tr:hover .comp-delete-btn {
   white-space: normal;
   overflow-wrap: anywhere;
   border-color: var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .comp-type-opt:hover {
@@ -1790,13 +1790,13 @@ thead tr:hover .comp-delete-btn {
 .publish-warn-title {
   font-size: 13px;
   font-weight: 700;
-  color: #92400e;
+  color: var(--theme-warning-text);
   margin-bottom: 2px;
 }
 
 .publish-warn-text {
   font-size: 12px;
-  color: #78350f;
+  color: var(--theme-warning-dark);
   line-height: 1.5;
 }
 
@@ -1822,7 +1822,7 @@ thead tr:hover .comp-delete-btn {
 .file-drop-zone:hover,
 .file-drop-zone:focus-within,
 .file-drop-zone.is-dragover {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-xpale);
 }
 
@@ -1869,7 +1869,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .file-drop-help.is-uploading {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-weight: 600;
 }
 
@@ -1885,8 +1885,8 @@ thead tr:hover .comp-delete-btn {
   padding: 10px 12px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
 }
 
 .material-selected-file[hidden] {
@@ -1928,7 +1928,7 @@ thead tr:hover .comp-delete-btn {
   flex: 0 0 auto;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-500);
   cursor: pointer;
 }
@@ -1951,7 +1951,7 @@ thead tr:hover .comp-delete-btn {
 .materials-panel-feedback {
   margin: 16px 20px 0;
   padding: 10px 12px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--green-border);
   border-radius: var(--radius-sm);
   background: var(--green-pale);
   color: var(--green);
@@ -1960,7 +1960,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .materials-panel-feedback.is-error {
-  border-color: #fecaca;
+  border-color: var(--red-border-soft);
   background: var(--red-pale);
   color: var(--red);
 }
@@ -1972,7 +1972,7 @@ thead tr:hover .comp-delete-btn {
 
 /* ── Assignments ── */
 .assignment-card {
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 14px 18px;
@@ -1988,7 +1988,7 @@ thead tr:hover .comp-delete-btn {
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2113,7 +2113,7 @@ thead tr:hover .comp-delete-btn {
   height: 16px;
   flex: 0 0 auto;
   margin-top: 2px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .qr-attendance-rule strong,
@@ -2229,7 +2229,7 @@ thead tr:hover .comp-delete-btn {
 .qr-scanner-sound-toggle svg {
   width: 14px;
   height: 14px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .qr-scanner-sound-toggle input:disabled,
@@ -2243,7 +2243,7 @@ thead tr:hover .comp-delete-btn {
 }
 
 .qr-scanner-status.active {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .qr-scanner-status.success {
@@ -2278,7 +2278,7 @@ thead tr:hover .comp-delete-btn {
   padding: 14px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .qr-attendance-review-head {
@@ -2309,7 +2309,7 @@ thead tr:hover .comp-delete-btn {
 
 .qr-attendance-progress {
   flex: 0 0 auto;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10.5px;
   font-weight: 700;
 }
@@ -2553,7 +2553,7 @@ thead tr:hover .comp-delete-btn {
   padding: 0;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-600);
   cursor: pointer;
 }
@@ -2575,7 +2575,7 @@ thead tr:hover .comp-delete-btn {
   padding: 5px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: 0 8px 22px rgba(16, 40, 80, 0.14);
 }
 
@@ -2602,7 +2602,7 @@ thead tr:hover .comp-delete-btn {
 
 .assignment-menu-item:hover {
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .assignment-menu-item.delete {
@@ -2661,7 +2661,7 @@ thead tr:hover .comp-delete-btn {
   min-height: 68vh;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .assignment-submission-preview-frame[hidden] {
@@ -2741,7 +2741,7 @@ thead tr:hover .comp-delete-btn {
   height: 30px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2752,14 +2752,14 @@ thead tr:hover .comp-delete-btn {
 
 .status-btn.submitted.selected {
   background: var(--green-pale);
-  border-color: #16a34a;
-  color: #16a34a;
+  border-color: var(--theme-success-text);
+  color: var(--theme-success-text);
 }
 
 .status-btn.pending.selected {
   background: var(--orange-pale);
-  border-color: #d97706;
-  color: #d97706;
+  border-color: var(--theme-warning-strong);
+  color: var(--theme-warning-strong);
 }
 
 .status-btn.not-submitted.selected {
@@ -2879,7 +2879,7 @@ thead tr:hover .comp-delete-btn {
 
 .panel-head {
   padding: 17px 20px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .panel-title {
@@ -2908,7 +2908,7 @@ thead tr:hover .comp-delete-btn {
 .date-input,
 .filter-select {
   min-height: 38px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-sm);
 }
 
@@ -2916,7 +2916,7 @@ thead tr:hover .comp-delete-btn {
 .score-toolbar .search-input:focus,
 .date-input:focus,
 .filter-select:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29, 92, 180, 0.1);
 }
 
@@ -2948,7 +2948,7 @@ tbody tr:hover td.sticky-col {
 
 .att-summary {
   padding: 10px 20px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .att-summary-item {
@@ -3209,11 +3209,11 @@ tbody tr:hover td.sticky-col {
     padding: 10px;
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-sm);
-    background: var(--white);
+    background: var(--theme-surface);
   }
 
   .attendance-entry-table .attendance-entry-row:hover {
-    background: var(--white);
+    background: var(--theme-surface);
   }
 
   .attendance-entry-table .attendance-entry-row td {
@@ -3311,7 +3311,7 @@ tbody tr:hover td.sticky-col {
 }
 
 #studentTable tbody tr[data-student-id]:hover .student-name-button {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .student-name-button:focus-visible {
@@ -3402,7 +3402,7 @@ tbody tr:hover td.sticky-col {
 }
 
 .teacher-student-contact-grid a {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   text-decoration: none;
 }
 
@@ -3427,7 +3427,7 @@ tbody tr:hover td.sticky-col {
   display: grid;
   justify-items: center;
   gap: 12px;
-  color: var(--red-dark);
+  color: var(--theme-danger-dark);
 }
 
 .teacher-student-details-message p {
@@ -3472,8 +3472,8 @@ tbody tr:hover td.sticky-col {
   height: 34px;
   flex: 0 0 34px;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
   box-shadow: 0 2px 7px rgba(29, 92, 180, 0.09);
 }
 
@@ -3490,11 +3490,11 @@ tbody tr:hover td.sticky-col {
 .transfer-review-notice.is-error {
   border-color: var(--red-border);
   background: var(--red-pale);
-  color: var(--red-dark);
+  color: var(--theme-danger-dark);
 }
 
 .transfer-review-notice.is-error .transfer-review-notice-icon {
-  color: var(--red-dark);
+  color: var(--theme-danger-dark);
 }
 
 .transfer-review-modal {
@@ -3522,7 +3522,7 @@ tbody tr:hover td.sticky-col {
   padding: 12px 14px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-600);
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -3611,4 +3611,4 @@ tbody tr:hover td.sticky-col {
   line-height: 1.45;
 }
 
-.transfer-publish-review input { margin-top: 3px; accent-color: var(--blue-mid); }
+.transfer-publish-review input { margin-top: 3px; accent-color: var(--theme-accent-text); }

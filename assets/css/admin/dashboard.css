@@ -37,7 +37,7 @@
   justify-content: space-between;
   min-height: 68px;
   padding: 16px 18px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -55,7 +55,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   box-shadow: none;
 }
 
@@ -71,7 +71,7 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   padding: 14px 16px 16px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .week-day {
@@ -84,7 +84,7 @@
   padding: 10px 4px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: none;
 }
 
@@ -122,9 +122,9 @@
 .panel-meta {
   font-size: 10px;
   font-weight: 800;
-  color: #92400e;
+  color: var(--theme-warning-text);
   background: var(--orange-pale);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--orange-border);
   border-radius: var(--radius-pill);
   padding: 4px 8px;
 }
@@ -138,7 +138,7 @@
 }
 
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -163,7 +163,7 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   cursor: pointer;
   text-decoration: none;
   transition: color 0.15s;
@@ -204,7 +204,7 @@
   padding: 12px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: linear-gradient(145deg, var(--white) 0%, #fbfcff 100%);
+  background: linear-gradient(145deg, var(--theme-surface) 0%, var(--surface-cool-faint) 100%);
 }
 .act-icon {
   width: 36px;
@@ -217,11 +217,11 @@
   margin-top: 1px;
 }
 .act-icon.green  { background: var(--green-pale);  color: var(--green); }
-.act-icon.blue   { background: var(--blue-xpale);  color: var(--blue-mid); }
+.act-icon.blue   { background: var(--blue-xpale);  color: var(--theme-accent-text); }
 .act-icon.gold   { background: var(--gold-pale);   color: var(--gold); }
-.act-icon.orange { background: #fff1e6;            color: var(--orange); }
-.act-icon.red    { background: #fef2f2;            color: var(--red); }
-.act-icon.purple { background: var(--purple-pale); color: var(--purple); }
+.act-icon.orange { background: var(--surface-orange-icon);            color: var(--orange); }
+.act-icon.red    { background: var(--surface-error-pale);            color: var(--red); }
+.act-icon.purple { background: var(--purple-pale); color: var(--theme-purple-text); }
 .act-body {
   flex: 1;
   min-width: 0;
@@ -323,7 +323,7 @@
   visibility: visible;
 }
 .student-modal-backdrop .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;
@@ -391,7 +391,7 @@
 .student-modal-backdrop .ctx-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -420,7 +420,7 @@
 }
 .student-modal-backdrop .form-select {
   width: 100%;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   padding: 11px 14px;
@@ -435,7 +435,7 @@
   background-position: right 12px center;
 }
 .student-modal-backdrop .form-select:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29,92,180,0.1);
 }
 .student-modal-backdrop .student-preview {
@@ -519,7 +519,7 @@
   visibility: visible;
 }
 .announcement-modal-backdrop .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 520px;
@@ -593,7 +593,7 @@
 }
 .announcement-modal-backdrop .form-input, .announcement-modal-backdrop .form-select, .announcement-modal-backdrop .form-textarea {
   width: 100%;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   padding: 11px 14px;
@@ -607,7 +607,7 @@
   color: var(--gray-300);
 }
 .announcement-modal-backdrop .form-input:focus, .announcement-modal-backdrop .form-select:focus, .announcement-modal-backdrop .form-textarea:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29,92,180,0.1);
 }
 .announcement-modal-backdrop .modal-foot {
@@ -662,7 +662,7 @@
   transition: border-color 0.2s, background 0.2s;
 }
 .image-upload-area:hover,
-.image-upload-area.dragover { border-color: var(--blue-mid); background: var(--blue-xpale); }
+.image-upload-area.dragover { border-color: var(--theme-accent-text); background: var(--blue-xpale); }
 
 .upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--gray-400); text-align: center; pointer-events: none; }
 .upload-placeholder i { color: var(--gray-300); }
@@ -689,7 +689,7 @@
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200);
-  background: var(--white);
+  background: var(--theme-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -701,12 +701,12 @@
   user-select: none;
 }
 .priority-opt:hover {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
 }
 .priority-opt.selected {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 .priority-opt.p-high.selected {
   border-color: var(--red);
@@ -716,7 +716,7 @@
 .priority-opt.p-event.selected {
   border-color: var(--gold);
   background: var(--gold-pale);
-  color: #92400e;
+  color: var(--theme-warning-text);
 }
 .priority-opt.p-low.selected {
   border-color: var(--gray-400);
@@ -745,7 +745,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 .admin-topbar-context-copy {
   display: flex;
@@ -804,7 +804,7 @@
   position: relative;
   z-index: 2;
   padding: 14px 20px 8px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 .panel-activity .activity-item {
   display: grid;
@@ -843,9 +843,9 @@
   background: var(--gray-50);
 }
 .aud-opt.checked {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 .aud-opt:nth-child(2).checked {
   border-color: var(--gold);
@@ -860,11 +860,11 @@
 .aud-opt:nth-child(4).checked {
   border-color: var(--purple);
   background: var(--purple-pale);
-  color: var(--purple);
+  color: var(--theme-purple-text);
 }
 .aud-opt:nth-child(4).checked .aud-opt-icon {
-  background: #f3e8ff !important;
-  color: #7c3aed !important;
+  background: var(--purple-pale) !important;
+  color: var(--theme-purple-text) !important;
 }
 .aud-opt-icon {
   width: 24px;
@@ -917,7 +917,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 #announcementModalBackdrop .modal-title {
@@ -937,7 +937,7 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 #announcementModalBackdrop .modal-close:hover {
@@ -948,7 +948,7 @@
 
 #announcementModalBackdrop .modal-body {
   /* padding: 18px !important; */
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 #announcementModalBackdrop .form-group {
@@ -980,7 +980,7 @@
 #announcementModalBackdrop .form-input:focus,
 #announcementModalBackdrop .form-select:focus,
 #announcementModalBackdrop .form-textarea:focus {
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 #announcementModalBackdrop .priority-opts,
@@ -1021,7 +1021,7 @@
   gap: 8px;
   padding: 14px 18px 18px;
   flex: 0 0 auto;
-  background: var(--white);
+  background: var(--theme-surface);
   border-top: 1px solid var(--gray-200);
 }
 

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>System Configuration | Academix</title>
@@ -17,6 +18,7 @@
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 <body data-page-title="System Configuration">
 
@@ -115,7 +117,16 @@
         </div>
       </div>
 
-      <div class="tb-profile">
+      <div class="tb-theme" data-theme-control>
+        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+        <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+          <div class="tb-theme-heading">Appearance</div>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+        </div>
+      </div>
+        <div class="tb-profile">
         <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
           <div class="tb-avatar admin"></div>
           <div class="tb-profile-info">

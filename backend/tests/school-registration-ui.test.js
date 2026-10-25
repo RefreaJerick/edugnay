@@ -452,7 +452,9 @@ test('report dashboards do not present unavailable reports as empty backend coun
   const teacherDashboard = fs.readFileSync(path.join(__dirname, '../../views/teacher/edugnay-teacher-dashboard.html'), 'utf8');
   const parentDashboard = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
   const parentReports = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-reports.html'), 'utf8');
-  assert.doesNotMatch(teacherDashboard, /TEACHER_ADVISORY_REPORTS|PENDING_REPORTS|Reports to Confirm/);
+  assert.match(teacherDashboard, /EDUGNAY_API\.request\('\/reports\/weekly-drafts\/pending-count'\)/);
+  assert.match(teacherDashboard, /label: 'Reports to Confirm'/);
+  assert.match(teacherDashboard, /value: TEACHER_PENDING_REPORTS_ERROR \? '—' : TEACHER_PENDING_REPORTS/);
   assert.match(parentDashboard, /showEmptyReport\('Reports unavailable'/);
   assert.match(parentDashboard, /No shared report yet/);
   assert.doesNotMatch(parentReports, /reports\[\]|frontend report generation|frontend report array/);

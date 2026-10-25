@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Accounts | Academix</title>
@@ -19,6 +20,7 @@
   <script src="../../assets/js/shell-common.js?v=5"></script>
   <script src="../../assets/js/admin/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
 <body data-page-title="User Accounts">
@@ -78,10 +80,10 @@
                   <div class="role-opt-icon" style="background:var(--gold-pale);color:var(--gold);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
                 </button>
                 <button type="button" class="role-opt" data-role="stud" aria-pressed="false" onclick="selectAccountRole('stud')">
-                  <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
+                  <div class="role-opt-icon" style="background:var(--surface-success-pale);color:var(--theme-success-text);"><i data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Student</span>
                 </button>
                 <button type="button" class="role-opt" data-role="parents" aria-pressed="false" onclick="selectAccountRole('parents')">
-                  <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
+                  <div class="role-opt-icon" style="background:var(--purple-pale);color:var(--theme-purple-text);"><i data-lucide="heart-handshake" style="width:14px;height:14px;"></i></div><span>Parent</span>
                 </button>
               </div>
             </div>
@@ -330,11 +332,11 @@
                     data-lucide="book-open" style="width:14px;height:14px;"></i></div><span>Teacher</span>
               </button>
               <button type="button" class="role-opt" data-role="stud" aria-pressed="false" onclick="selectImportRole('stud')">
-                <div class="role-opt-icon" style="background:#f0fdf4;color:#16a34a;"><i data-lucide="book-open"
+                <div class="role-opt-icon" style="background:var(--surface-success-pale);color:var(--theme-success-text);"><i data-lucide="book-open"
                     style="width:14px;height:14px;"></i></div><span>Student</span>
               </button>
               <button type="button" class="role-opt" data-role="parents" aria-pressed="false" onclick="selectImportRole('parents')">
-                <div class="role-opt-icon" style="background:#fdf4ff;color:#7c3aed;"><i data-lucide="heart-handshake"
+                <div class="role-opt-icon" style="background:var(--purple-pale);color:var(--theme-purple-text);"><i data-lucide="heart-handshake"
                     style="width:14px;height:14px;"></i></div><span>Parent</span>
               </button>
             </div>
@@ -538,6 +540,15 @@
           </div>
         </div>
 
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+            <div class="tb-theme-heading">Appearance</div>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+          </div>
+        </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar admin"></div>

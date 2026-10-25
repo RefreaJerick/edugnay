@@ -317,7 +317,43 @@ async function listWeeklyDrafts(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function countPendingDrafts({ database, schoolId, teacherId }) {
+  const [features] = await database.execute(
+    'SELECT narrative_reports_enabled AS reportsEnabled FROM school_portal_features WHERE school_id = ?',
+    [Number(schoolId)]
+  );
+  if (Number(features[0]?.reportsEnabled) !== 1) {
+    throw createError('Narrative Reports are not enabled for this school.', 403);
+  }
+
+  const [rows] = await database.execute(
+    `SELECT COUNT(*) AS pendingCount FROM narrative_reports AS reports
+    INNER JOIN sections ON sections.id = reports.section_id AND sections.school_id = reports.school_id
+    INNER JOIN academic_years ON academic_years.id = sections.academic_year_id
+      AND academic_years.school_id = sections.school_id
+    WHERE reports.school_id = ? AND sections.adviser_user_id = ?
+      AND sections.status = 'active' AND academic_years.status = 'active'
+      AND reports.report_status = 'draft' AND reports.report_week_start_date IS NOT NULL
+      AND reports.report_week_end_date IS NOT NULL
+      AND reports.report_week_end_date >= academic_years.start_date
+      AND reports.report_week_start_date <= academic_years.end_date`,
+    [Number(schoolId), Number(teacherId)]
+  );
+  return { pendingCount: Number(rows[0]?.pendingCount) || 0 };
+}
+
+async function getPendingDraftCount(req, res, next) {
+  try {
+    const result = await countPendingDrafts({
+      database: getDatabase(), schoolId: req.user?.schoolId, teacherId: req.user?.id
+    });
+    res.set('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (error) { next(error); }
+}
+
 module.exports = {
-  MAX_GENERATION_BATCH, generateWeeklyDrafts, listWeeklyDrafts, loadWeeklyDrafts, processWeeklyGeneration, readWeeklyDrafts,
+  MAX_GENERATION_BATCH, generateWeeklyDrafts, listWeeklyDrafts, loadWeeklyDrafts, countPendingDrafts, getPendingDraftCount,
+  processWeeklyGeneration, readWeeklyDrafts,
   selectedStudents, sourceReferences
 };

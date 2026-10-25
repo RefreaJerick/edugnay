@@ -55,7 +55,7 @@
 
 .platform-school-accounts .main .cat-tab.active .tab-count {
   background: var(--blue-pale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .platform-school-accounts .school-account-toolbar {
@@ -91,7 +91,7 @@
   padding: 9px 12px 9px 34px;
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-800);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13px;
@@ -108,9 +108,9 @@
 }
 
 .platform-school-accounts .school-account-search input:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: var(--input-focus-shadow);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .platform-school-accounts .school-account-result-count {
@@ -128,8 +128,8 @@
   padding: 8px 11px;
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
   font: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -222,14 +222,14 @@
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--gray-50);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .platform-school-accounts .school-account-logo img {
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--white);
+  background: var(--theme-surface);
   object-fit: contain;
 }
 
@@ -263,14 +263,14 @@
 
 .platform-school-accounts .platform-account-modal {
   width: min(100%, 560px);
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-800);
 }
 
 /* The platform page does not load a portal-specific modal stylesheet, so keep
    the shared dialog surface and button foundation explicit here. */
 .platform-school-accounts .platform-account-modal .modal-body {
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .platform-school-accounts .platform-status-confirm-modal #schoolStatusConfirmContext {
@@ -291,8 +291,8 @@
   flex: 0 0 40px;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
 }
 
 .platform-school-accounts #schoolStatusConfirmContext .ctx-icon svg {
@@ -312,7 +312,7 @@
 
 .platform-school-accounts #schoolStatusConfirmContext.confirm-remove-context {
   border-color: var(--red-border);
-  background: #fff7f7;
+  background: var(--surface-risk);
 }
 
 .platform-school-accounts #schoolStatusConfirmContext.confirm-remove-context .ctx-icon {
@@ -340,7 +340,7 @@
   padding: 14px 16px;
   border: 1px solid var(--red-border);
   border-radius: var(--radius-md);
-  background: #fff7f7;
+  background: var(--surface-risk);
 }
 
 .platform-school-accounts #schoolDeleteConfirmModal .school-delete-context .ctx-icon {
@@ -475,14 +475,14 @@
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   background: var(--gray-50);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .platform-school-accounts .account-review-logo img {
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--white);
+  background: var(--theme-surface);
   object-fit: contain;
 }
 
@@ -561,7 +561,7 @@
   place-items: center;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .platform-school-accounts .account-review-section-icon svg {

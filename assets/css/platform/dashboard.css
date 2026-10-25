@@ -28,7 +28,7 @@
   justify-content: space-between;
   min-height: 68px;
   padding: 16px 18px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -46,7 +46,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   box-shadow: none;
 }
 
@@ -62,7 +62,7 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
   padding: 14px 16px 16px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .platform-dashboard .week-day {
@@ -75,7 +75,7 @@
   padding: 10px 4px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: none;
 }
 
@@ -141,7 +141,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -165,7 +165,7 @@
   border: 1px solid var(--orange-border);
   border-radius: var(--radius-pill);
   background: var(--orange-pale);
-  color: var(--gold-dark);
+  color: var(--theme-warning-text);
   font-size: 10px;
   font-weight: 800;
 }
@@ -196,7 +196,7 @@
   position: relative;
   z-index: 2;
   padding: 14px 20px 8px;
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-400);
   font-size: 10.5px;
   font-weight: 800;
@@ -231,11 +231,11 @@
 }
 
 .platform-dashboard .act-icon.green { background: var(--green-pale); color: var(--green); }
-.platform-dashboard .act-icon.blue { background: var(--blue-xpale); color: var(--blue-mid); }
+.platform-dashboard .act-icon.blue { background: var(--blue-xpale); color: var(--theme-accent-text); }
 .platform-dashboard .act-icon.gold { background: var(--gold-pale); color: var(--gold); }
 .platform-dashboard .act-icon.orange { background: var(--orange-pale); color: var(--orange); }
 .platform-dashboard .act-icon.red { background: var(--red-pale); color: var(--red); }
-.platform-dashboard .act-icon.purple { background: var(--purple-pale); color: var(--purple); }
+.platform-dashboard .act-icon.purple { background: var(--purple-pale); color: var(--theme-purple-text); }
 
 .platform-dashboard .act-body {
   min-width: 0;
@@ -348,7 +348,7 @@
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--gray-50);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .platform-dashboard .school-logo img {
@@ -356,7 +356,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .platform-dashboard .school-logo.has-logo > i,
@@ -391,7 +391,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 11px;
   font-weight: 700;
   text-decoration: none;

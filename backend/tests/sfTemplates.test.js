@@ -321,7 +321,7 @@ test('template library search covers template fields and works with both filters
   assert.match(workbookAdapter, /'sf8-health-nutrition-v1': \{[\s\S]*?previewRows: 121,[\s\S]*?mergeCount: 132/);
   assert.match(styles, /grid-template-columns: minmax\(0, 2fr\) repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.sf-filters \{[\s\S]*?background: transparent;/);
-  assert.match(styles, /\.sf-library-search-control input:focus \{[\s\S]*?border-color: var\(--blue-mid\);[\s\S]*?box-shadow:/);
+  assert.match(styles, /\.sf-library-search-control input:focus \{[\s\S]*?border-color: var\(--theme-accent-text\);[\s\S]*?box-shadow:/);
   assert.match(styles, /@media \(max-width: 760px\) \{[\s\S]*?\.sf-filters \{\s*grid-template-columns: 1fr;/);
   assert.deepEqual(codesFor('sf2'), ['SF2']);
   assert.deepEqual(codesFor('attendance report'), ['SF2']);

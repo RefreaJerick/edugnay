@@ -9,7 +9,7 @@
 }
 /* ── CONFIG NAV ── */
 .config-nav {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -42,7 +42,7 @@
 }
 .config-nav-item.active {
   background: var(--blue-xpale);
-  border-left-color: var(--blue-mid);
+  border-left-color: var(--theme-accent-text);
 }
 .config-nav-icon {
   width: 28px;
@@ -59,7 +59,7 @@
 }
 .config-nav-item.active .config-nav-icon {
   background: var(--blue-pale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 .config-nav-label {
   font-size: 12px;
@@ -67,7 +67,7 @@
   color: var(--gray-600);
 }
 .config-nav-item.active .config-nav-label {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 /* ── CONFIG SECTIONS ── */
 .config-sections {
@@ -77,7 +77,7 @@
 }
 /* ── CONFIG PANEL ── */
 .config-panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -166,9 +166,9 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-input:focus, .form-select:focus {
-  border-color: var(--blue-mid);
+  border-color: var(--theme-accent-text);
   box-shadow: 0 0 0 3px rgba(29,92,180,0.1);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 .form-input::placeholder {
   color: var(--gray-300);
@@ -283,8 +283,8 @@
   transition: border-color 0.2s;
 }
 .trigger-input:focus {
-  border-color: var(--blue-mid);
-  background: var(--white);
+  border-color: var(--theme-accent-text);
+  background: var(--theme-surface);
 }
 .trigger-unit {
   font-size: 12px;
@@ -311,12 +311,12 @@
 .warn-title {
   font-size: 13px;
   font-weight: 700;
-  color: #92400e;
+  color: var(--theme-warning-text);
   margin-bottom: 2px;
 }
 .warn-text {
   font-size: 12px;
-  color: #78350f;
+  color: var(--theme-warning-dark);
   line-height: 1.5;
 }
 /* ── SAVE FOOTER ── */
@@ -343,7 +343,7 @@
   transition: all 0.15s;
 }
 .btn-cancel {
-  background: var(--white);
+  background: var(--theme-surface);
   color: var(--gray-600);
   border: 1.5px solid var(--gray-200);
 }
@@ -361,10 +361,10 @@
 .btn-danger {
   background: var(--red-pale);
   color: var(--red);
-  border: 1.5px solid #fca5a5;
+  border: 1.5px solid var(--theme-border-error-strong);
 }
 .btn-danger:hover {
-  background: #fecaca;
+  background: var(--red-border-soft);
 }
 /* ── GRADING PERIOD REOPEN REQUESTS ── */
 .reopen-filters {
@@ -392,7 +392,7 @@
 .reopen-filter.active {
   border-color: var(--blue-pale);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .reopen-request-row {
@@ -416,7 +416,7 @@
   flex: 0 0 auto;
   border-radius: var(--radius-sm);
   background: var(--gold-pale);
-  color: #92400e;
+  color: var(--theme-warning-text);
 }
 
 .reopen-request-icon svg,
@@ -459,7 +459,7 @@
 
 .reopen-request-note {
   margin-top: 7px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .reopen-request-deadline {
@@ -479,7 +479,7 @@
 }
 
 .reopen-reject-btn {
-  border-color: #fecaca !important;
+  border-color: var(--red-border-soft) !important;
   color: var(--red) !important;
 }
 
@@ -549,7 +549,7 @@
 .reopen-modal-error {
   margin-top: 12px;
   padding: 9px 10px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--red-border-soft);
   border-radius: var(--radius-xs);
   background: var(--red-pale);
   color: var(--red);

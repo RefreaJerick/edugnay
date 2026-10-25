@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard | Academix</title>
@@ -20,6 +21,7 @@
   <script src="../../assets/js/student/shell.js"></script>
   <script src="../../assets/js/timetables.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
 <body data-page-title="Dashboard">
@@ -141,6 +143,15 @@
           </div>
         </div>
 
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+            <div class="tb-theme-heading">Appearance</div>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+          </div>
+        </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar student"></div>
@@ -190,13 +201,18 @@
             </div>
           </div>
 
+          <!-- Today's schedule -->
+          <section class="timetable-preview" aria-labelledby="student-today-schedule-title">
+            <div class="timetable-preview-head">
+              <div class="timetable-preview-heading"><span class="timetable-preview-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><h2 id="student-today-schedule-title">Today's Schedule</h2></div>
+              <a class="panel-action" href="edugnay-student-schedules.html">View all <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="timetable-preview-list" aria-live="polite">Loading today's classes...</div>
+          </section>
           <!-- Weekly journal — configured school subject, separate from learning materials -->
-          <!-- if (school.journalsEnabled) { -->
-          <section class="timetable-preview" aria-label="Upcoming class schedule"><div class="timetable-preview-head"><h2>My Schedules</h2><a href="edugnay-student-schedules.html">View full schedule →</a></div><div class="timetable-preview-list" aria-live="polite">Loading your classes...</div></section>
           <section class="journal-feature" id="student-journal-feature" aria-labelledby="weeklyJournalTitle">
             <div class="journal-card" id="student-journal-card"></div>
           </section>
-          <!-- } end conditional -->
 
           <!-- Assignments -->
           <section class="panel panel-upcoming-assignments" aria-labelledby="dashboardAssignmentsTitle">

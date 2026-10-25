@@ -6,7 +6,8 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'views/student/edugnay-student-attendance.html'), 'utf8');
-const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(match => match[1]).find(Boolean);
+const script = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+  .map(match => match[1]).find(source => source.includes('async function loadAttendance()'));
 const shared = fs.readFileSync(path.join(root, 'assets/js/attendance-history.js'), 'utf8');
 const sharedShell = fs.readFileSync(path.join(root, 'assets/js/shell-common.js'), 'utf8');
 

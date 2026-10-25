@@ -60,7 +60,7 @@ test('score component cards keep icons neutral until selected and space exam-par
   }
   assert.match(sectionsSource, /data-lucide="\$\{presentation\.icon\}"/);
   assert.match(sectionsSource, /aria-pressed="\$\{index === 0\}"/);
-  assert.match(sectionsStyles, /\.comp-type-opt\s*\{[^}]*background:\s*var\(--white\)/);
+  assert.match(sectionsStyles, /\.comp-type-opt\s*\{[^}]*background:\s*var\(--theme-surface\)/);
   assert.match(sectionsStyles, /\.comp-type-opt:hover\s*\{[^}]*background:\s*var\(--gray-50\)/);
   assert.match(sectionsStyles, /\.comp-type-opt\.selected\s*\{[^}]*background:\s*var\(--pill-background/);
   assert.match(sectionsStyles, /\.comp-type-icon\s*\{[^}]*color:\s*inherit/);
@@ -112,7 +112,7 @@ test('score component category labels keep their colors without pill styling', (
   assert.match(sectionsSource, /comp-head-type ' \+ \(typeClass\[c\.cat\] \|\| 'type-ww'\)/);
   assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*display:\s*block;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
   assert.match(sectionsStyles, /\.comp-head-cell \.comp-head-type\s*\{[^}]*overflow-wrap:\s*anywhere;/);
-  for (const [tone, color] of [['type-ww', '--purple'], ['type-pt', '--blue-mid'], ['type-qa', '--green-darker']]) {
+  for (const [tone, color] of [['type-ww', '--theme-purple-text'], ['type-pt', '--theme-accent-text'], ['type-qa', '--theme-success-deep']]) {
     assert.match(sharedStyles, new RegExp(`\\.comp-head-type\\.${tone}\\s*\\{[^}]*--pill-color:\\s*var\\(${color}\\)`));
   }
 });
@@ -132,7 +132,7 @@ test('Publish Grades method note uses an accessible info banner with separate me
   assert.match(sectionsSource, /id="publishGradeMethodText"/);
   assert.match(sectionsSource, /methodText\.textContent = methodDescription/);
   assert.match(sectionsStyles, /\.publish-grade-method-note\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center/);
-  assert.match(sectionsStyles, /\.publish-method-icon\s*\{[^}]*background:\s*var\(--white\);[^}]*color:\s*var\(--blue-mid\)/);
+  assert.match(sectionsStyles, /\.publish-method-icon\s*\{[^}]*background:\s*var\(--theme-surface\);[^}]*color:\s*var\(--theme-accent-text\)/);
 });
 
 test('published teacher grades use the configured passing threshold for their status color', () => {
@@ -499,13 +499,13 @@ test('section subject dropdown follows its navy and gold header style on desktop
   assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-input\s*\{[^}]*background:\s*rgba\(255, 255, 255, 0\.1\) !important;[^}]*color:\s*var\(--white\) !important;/s);
   assert.match(sectionsStyles, /\.section-header \.section-subject \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*#f7d980;/s);
   assert.match(sectionsStyles, /@media \(max-width: 420px\)[\s\S]*?\.section-header \.section-subject \.searchable-select:not\(\[hidden\]\)\s*\{[^}]*flex:\s*1 1 200px;/);
-  assert.match(modalStyles, /\.searchable-select-menu\s*\{[^}]*background:\s*var\(--white\);/s);
+  assert.match(modalStyles, /\.searchable-select-menu\s*\{[^}]*background:\s*var\(--theme-surface\);/s);
 });
 
 test('custom selects use the filled down triangle shown in the dropdown reference', () => {
   assert.match(modalStyles, /\.searchable-select-control::after\s*\{[^}]*border-top:\s*6px solid var\(--gray-400\);[^}]*border-right:\s*5px solid transparent;[^}]*border-left:\s*5px solid transparent;/s);
   assert.doesNotMatch(modalStyles.match(/\.searchable-select-control::after\s*\{([^}]*)\}/s)[1], /rotate\(/);
-  assert.match(modalStyles, /\.searchable-select\.is-open \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*var\(--blue-mid\);[^}]*transform:\s*rotate\(180deg\);/s);
+  assert.match(modalStyles, /\.searchable-select\.is-open \.searchable-select-control::after\s*\{[^}]*border-top-color:\s*var\(--theme-accent-text\);[^}]*transform:\s*rotate\(180deg\);/s);
 });
 
 test('custom select click toggles the menu without focus closing the first click', () => {

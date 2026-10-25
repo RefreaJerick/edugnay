@@ -15,6 +15,7 @@ router.get('/weekly-settings', requireSchoolUser, requireRoles('school_admin', '
 router.patch('/weekly-settings', requireRoles('school_admin'), narrativeReportEvidenceController.updateWeeklySettings);
 router.get('/weekly-evidence', requireSchoolUser, requireRoles('teacher'), narrativeReportEvidenceController.getWeeklyEvidence);
 router.get('/weekly-drafts', requireSchoolUser, requireRoles('teacher'), narrativeReportDraftController.listWeeklyDrafts);
+router.get('/weekly-drafts/pending-count', requireSchoolUser, requireRoles('teacher'), narrativeReportDraftController.getPendingDraftCount);
 router.post('/weekly-drafts/generate', requireSchoolUser, requireRoles('teacher'), narrativeReportDraftController.generateWeeklyDrafts);
 router.patch('/weekly-drafts/:reportId', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.saveReview);
 router.post('/weekly-drafts/:reportId/confirm', requireSchoolUser, requireRoles('teacher'), narrativeReportReviewController.confirmReview);

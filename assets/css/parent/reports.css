@@ -2,7 +2,7 @@
 .latest-report-hero {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--blue-xpale) 0%, var(--white) 72%);
+  background: linear-gradient(135deg, var(--blue-xpale) 0%, var(--theme-surface) 72%);
   border: 1px solid var(--blue-pale);
   border-radius: var(--panel-radius);
   padding: 24px 26px;
@@ -51,7 +51,7 @@
 }
 
 .lr-eyebrow {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -62,7 +62,7 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 18px;
   font-weight: 800;
-  color: var(--navy);
+  color: var(--theme-text);
   line-height: 1.25;
   margin-top: 4px;
 }
@@ -104,7 +104,7 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 7px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .45px;
@@ -123,7 +123,7 @@
   line-height: 1.55;
 }
 
-.parent-recommended-actions li::marker { color: var(--blue-mid); }
+.parent-recommended-actions li::marker { color: var(--theme-accent-text); }
 
 .report-correction-notice {
   display: inline-block;
@@ -132,7 +132,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -170,7 +170,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   font-size: 10px;
   font-weight: 700;
 }
@@ -221,7 +221,7 @@
   width: 18px;
   height: 18px;
   border-radius: var(--radius-circle);
-  background: var(--white);
+  background: var(--theme-surface);
   border: 3px solid var(--blue-mid);
   display: flex;
   align-items: center;
@@ -237,7 +237,7 @@
 }
 
 .report-card {
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -307,7 +307,7 @@
   gap: 5px;
   font-size: 11.5px;
   font-weight: 700;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -446,12 +446,12 @@
 }
 
 .rc-foot {
-  background: #fbfdff;
+  background: var(--theme-surface-tint);
 }
 
 .rm-text {
   padding: 17px 18px;
-  background: #fbfdff;
+  background: var(--theme-surface-tint);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   line-height: 1.85;

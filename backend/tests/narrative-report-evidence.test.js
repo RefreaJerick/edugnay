@@ -65,7 +65,7 @@ test('report week settings validate weekdays and support a week that crosses Sun
   assert.throws(() => reportWeekRange('2026-10-20', { weekStartDay: 1, weekEndDay: 6 }), /must start on Monday/);
 });
 
-test('weekly evidence keeps the full configured week but stops evidence at today', async () => {
+test('weekly evidence keeps the configured week and stops at today or the week end', async () => {
   const today = dateInSchoolZone();
   const weekStart = startOfCurrentMondayWeek();
   const weekEnd = addDays(weekStart, 5);
@@ -89,7 +89,10 @@ test('weekly evidence keeps the full configured week but stops evidence at today
     query: { sectionId: '22', startDate: weekStart }
   }, database);
   assert.equal(result.error, undefined);
-  assert.deepEqual(result.body.reportWeek, { startDate: weekStart, endDate: weekEnd, dataThroughDate: today });
+  assert.deepEqual(result.body.reportWeek, {
+    startDate: weekStart, endDate: weekEnd,
+    dataThroughDate: today < weekEnd ? today : weekEnd
+  });
 
   const futureWeek = await invoke(getWeeklyEvidence, {
     user: { id: 8, schoolId: 4, role: 'teacher' },

@@ -54,7 +54,7 @@
   min-height: 76px;
   padding: 13px 20px;
   border-bottom: 1px solid var(--gray-100);
-  background: var(--white);
+  background: var(--theme-surface);
   color: inherit;
   text-decoration: none;
   transition: background .16s ease;
@@ -83,7 +83,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .assignment-preview-row.submitted .assignment-preview-date {
@@ -95,7 +95,7 @@
 .assignment-preview-row.not_submitted .assignment-preview-date {
   border-color: var(--red-pale);
   background: var(--red-pale);
-  color: var(--red-dark);
+  color: var(--theme-danger-dark);
 }
 
 .assignment-preview-month {
@@ -146,7 +146,7 @@
 }
 
 .assignment-preview-row:hover .assignment-preview-arrow {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   transform: translateX(2px);
 }
 
@@ -213,7 +213,7 @@
   justify-content: space-between;
   min-height: 68px;
   padding: 16px 18px;
-  background: var(--white);
+  background: var(--theme-surface);
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -231,7 +231,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   box-shadow: none;
 }
 
@@ -247,7 +247,7 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   padding: 14px 16px 16px;
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .week-day {
@@ -260,7 +260,7 @@
   padding: 10px 4px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
   box-shadow: none;
 }
 
@@ -298,7 +298,7 @@
 
 /* ── Panel — identical to teacher/admin panel pattern ── */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -329,7 +329,7 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   cursor: pointer;
   text-decoration: none;
   transition: color 0.15s;
@@ -411,7 +411,7 @@
 .journal-feature {
   border: 1px solid var(--purple-border);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--white) 72%);
+  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--theme-surface) 72%);
   box-shadow: 0 4px 16px rgba(16, 40, 80, 0.04);
   overflow: hidden;
 }
@@ -446,7 +446,7 @@
 .journal-eyebrow {
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--purple);
+  color: var(--theme-purple-text);
   text-transform: uppercase;
   letter-spacing: 0.6px;
   margin-bottom: 3px;

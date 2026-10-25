@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard | Academix</title>
@@ -21,6 +22,7 @@
   <script src="../../assets/js/timetables.js"></script>
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
   <link rel="stylesheet" href="../../assets/css/academic-range-picker.css">
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 
 <body data-page-title="Dashboard">
@@ -332,6 +334,15 @@
           </div>
         </div>
 
+        <div class="tb-theme" data-theme-control>
+          <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+          <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+            <div class="tb-theme-heading">Appearance</div>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+            <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+          </div>
+        </div>
         <div class="tb-profile">
           <button class="tb-profile-trigger" id="tbProfileTrigger" onclick="toggleProfileDropdown()">
             <div class="tb-avatar faculty"></div>
@@ -382,7 +393,13 @@
 
           <!-- TEACHER SUMMARY CARDS -->
           <div class="stat-grid teacher-summary-grid" id="teacher-summary-cards" aria-label="Teacher summary"></div>
-          <section class="timetable-preview" aria-label="Upcoming teaching schedule"><div class="timetable-preview-head"><h2>My Schedules</h2><a href="edugnay-teacher-schedules.html">View full schedule →</a></div><div class="timetable-preview-list" aria-live="polite">Loading your classes...</div></section>
+          <section class="timetable-preview" aria-labelledby="teacher-today-schedule-title">
+            <div class="timetable-preview-head">
+              <div class="timetable-preview-heading"><span class="timetable-preview-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><h2 id="teacher-today-schedule-title">Today's Schedule</h2></div>
+              <a class="panel-action" href="edugnay-teacher-schedules.html">View all <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="timetable-preview-list" aria-live="polite">Loading today's classes...</div>
+          </section>
 
           <!-- My Sections -->
           <div class="panel panel-sections">
@@ -483,7 +500,7 @@
   <script>
     lucide.createIcons();
 
-    // Dashboard records come from the backend. Narrative reporting is unavailable until integration.
+    // Dashboard records come from the backend.
     const TEACHER_DASHBOARD_API_ENABLED = window.EDUGNAY_API?.isBackendAvailable === true;
     let DASHBOARD_TEACHER_ID = '';
     let DASHBOARD_TEACHER_TODOS = [];
@@ -509,6 +526,9 @@
     ];
     let TEACHER_FLAGS = TEACHER_FLAGS_PREVIEW ? SAMPLE_FLAGGED_STUDENTS : [];
     let TEACHER_FLAGS_ERROR = '';
+    let TEACHER_ADVISORY_SECTIONS = [];
+    let TEACHER_PENDING_REPORTS = 0;
+    let TEACHER_PENDING_REPORTS_ERROR = '';
     const dashboardPeriod = document.querySelector('.grading-period-card [data-active-academic-period]');
 
     function getTeacherSectionSub(section) {
@@ -520,8 +540,6 @@
     function getTeacherSectionStudentCount(sectionId) {
       return TEACHER_SECTIONS.find(section => section.sectionId === String(sectionId))?.studentCount || 0;
     }
-
-    const TEACHER_CAN_REVIEW_REPORTS = teacherCanAccess('reports');
 
     const TEACHER_SUMMARY_CARDS = [
       {
@@ -537,14 +555,7 @@
         label: 'Sections Handled',
         sub: 'Assigned for the current term',
         records: TEACHER_SECTIONS,
-      },
-      ...(!TEACHER_CAN_REVIEW_REPORTS ? [{
-            tone: 'red',
-            icon: 'alert-triangle',
-            label: 'Needs Attention',
-            sub: 'Flagged students to review',
-            records: [],
-          }] : [])
+      }
     ];
 
     let TEACHER_DASHBOARD_ANNOUNCEMENTS = [];
@@ -1028,19 +1039,25 @@
         TEACHER_SUMMARY_CARDS[0].sub = TEACHER_SECTIONS_ERROR || 'Across assigned sections';
         TEACHER_SUMMARY_CARDS[1].value = TEACHER_SECTIONS_ERROR ? '—' : TEACHER_SECTIONS.length;
         TEACHER_SUMMARY_CARDS[1].sub = TEACHER_SECTIONS_ERROR || 'Assigned for the current term';
-        const attentionCard = TEACHER_SUMMARY_CARDS.find(card => card.label === 'Needs Attention');
-        if (attentionCard) {
-          attentionCard.value = TEACHER_FLAGS_ERROR ? '—' : TEACHER_FLAGS.length;
-          attentionCard.sub = TEACHER_FLAGS_ERROR || 'Students meeting attendance or grade criteria';
-        }
-        summaryList.innerHTML = TEACHER_SUMMARY_CARDS.map(card => `
+        const reportsCard = TEACHER_ADVISORY_SECTIONS.length > 0 &&
+          window.EDUGNAY_CONFIG.isNarrativeReportsEnabled();
+        const finalCard = reportsCard ? {
+          tone: 'gold', icon: 'hourglass', label: 'Reports to Confirm',
+          value: TEACHER_PENDING_REPORTS_ERROR ? '—' : TEACHER_PENDING_REPORTS,
+          sub: TEACHER_PENDING_REPORTS_ERROR || 'Ready for your review'
+        } : {
+          tone: 'red', icon: 'alert-triangle', label: 'Needs Attention',
+          value: TEACHER_FLAGS_ERROR ? '—' : TEACHER_FLAGS.length,
+          sub: TEACHER_FLAGS_ERROR || 'Flagged students.'
+        };
+        summaryList.innerHTML = [...TEACHER_SUMMARY_CARDS, finalCard].map(card => `
           <div class="stat-card ${card.tone}">
             <div class="stat-card-top">
               <div class="stat-card-icon"><i data-lucide="${card.icon}" style="width:20px;height:20px;"></i></div>
             </div>
             <div class="stat-card-num">${card.value === undefined ? card.records.length : card.value}</div>
             <div class="stat-card-label">${card.label}</div>
-            <div class="stat-card-sub">${card.sub}</div>
+            <div class="stat-card-sub">${window.EDUGNAY_CONFIG.escapeHtml(card.sub)}</div>
           </div>`).join('');
       }
 
@@ -1278,6 +1295,23 @@
         }
       } else {
         TEACHER_SECTIONS_ERROR = 'The backend is required to load your assigned sections.';
+      }
+      if (TEACHER_DASHBOARD_API_ENABLED) {
+        try {
+          TEACHER_ADVISORY_SECTIONS = await window.EDUGNAY_CONFIG.getMyAdvisorySections();
+        } catch (error) {
+          TEACHER_ADVISORY_SECTIONS = TEACHER_SECTIONS.filter(section => section.isAdviser);
+          TEACHER_PENDING_REPORTS_ERROR = error.message || 'Reports could not be loaded.';
+        }
+        if (TEACHER_ADVISORY_SECTIONS.length && window.EDUGNAY_CONFIG.isNarrativeReportsEnabled() &&
+          !TEACHER_PENDING_REPORTS_ERROR) {
+          try {
+            const result = await window.EDUGNAY_API.request('/reports/weekly-drafts/pending-count');
+            TEACHER_PENDING_REPORTS = result.pendingCount;
+          } catch (error) {
+            TEACHER_PENDING_REPORTS_ERROR = error.message || 'Reports could not be loaded.';
+          }
+        }
       }
       if (TEACHER_FLAGS_PREVIEW) {
         TEACHER_FLAGS = SAMPLE_FLAGGED_STUDENTS;

@@ -238,7 +238,7 @@ test('admin release history view is read-only and parses as JavaScript', () => {
   assert.match(page, /requestId !== schoolReleaseHistoryRequest/);
   assert.match(styles, /\.school-release-item\[aria-pressed="true"\]/);
   assert.match(styles, /\.school-release-actions[^}]*background: var\(--blue-xpale\)/);
-  assert.match(styles, /\.school-release-correction[^}]*background: var\(--white\)/);
+  assert.match(styles, /\.school-release-correction[^}]*background: var\(--theme-surface\)/);
   assert.match(reviewController, /DATE_FORMAT\(reports\.report_week_start_date, '%Y-%m-%d'\) AS weekStartDate/);
   assert.match(page, /\/reports\/weekly-release-history/);
   for (const script of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
@@ -275,7 +275,7 @@ test('teacher correction UI keeps regeneration visible and parent UI labels upda
   assert.match(teacher, /report-history-summary[\s\S]*?escape\(item\.summary\)/);
   assert.match(teacher, /item\.parentActions\.length \? `<section class="report-history-actions"/);
   assert.match(teacher, /report-history-corrections[\s\S]*?escape\(item\.reason\)/);
-  assert.match(teacherStyles, /#review-modal \.report-history-entry\s*\{[^}]*background:\s*var\(--white\)/s);
+  assert.match(teacherStyles, /#review-modal \.report-history-entry\s*\{[^}]*background:\s*var\(--theme-surface\)/s);
   assert.match(teacherStyles, /#review-modal \.report-history-actions\s*\{[^}]*background:\s*var\(--blue-xpale\)/s);
   assert.match(teacherStyles, /#review-modal \.report-history-heading\s*\{[^}]*display:\s*flex/s);
   assert.match(teacherStyles, /#review-modal \.report-history-heading\s*\{[^}]*margin-bottom:\s*0/s);

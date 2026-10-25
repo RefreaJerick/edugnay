@@ -51,7 +51,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--white);
+  background: var(--theme-surface);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 5px;
@@ -100,7 +100,7 @@
         PANEL SHELL — identical to teacher/profile.css
     ══════════════════════════════ */
 .panel {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -146,7 +146,7 @@
   height: 36px;
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -231,7 +231,7 @@
 }
 
 .info-cell {
-  background: var(--white);
+  background: var(--theme-surface);
   padding: 14px 24px;
 }
 
@@ -357,7 +357,7 @@
   place-items: center;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--theme-surface);
 }
 
 .student-attendance-qr-preview img {
@@ -407,7 +407,7 @@
   height: 15px;
   flex: 0 0 auto;
   margin-top: 1px;
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .modal-backdrop {
@@ -430,7 +430,7 @@
 }
 
 .modal {
-  background: var(--white);
+  background: var(--theme-surface);
   border-radius: var(--radius-md);
   width: 100%;
   max-width: 480px;

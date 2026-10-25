@@ -113,7 +113,7 @@
   border: 1px solid var(--blue-pale);
   border-radius: var(--radius-sm);
   background: var(--blue-xpale);
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .grade-subject-list {
@@ -175,11 +175,11 @@
 }
 
 .grade-subject-score.is-published .grade-score-value {
-  color: var(--blue-mid);
+  color: var(--theme-accent-text);
 }
 
 .grade-subject-score.is-passing .grade-score-value {
-  color: var(--green-dark);
+  color: var(--theme-success-text);
 }
 
 .grade-subject-score.is-below-passing .grade-score-value {
@@ -208,8 +208,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--blue-mid);
+  background: var(--theme-surface);
+  color: var(--theme-accent-text);
 }
 
 .grades-note-copy {

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="../../assets/js/theme.js"></script>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>My Schedules | Academix</title>
   <link rel="icon" href="../../assets/images/edUgnay-logo-circle.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css"><link rel="stylesheet" href="../../assets/css/modal-system.css"><link rel="stylesheet" href="../../assets/css/timetables.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script><script src="../../assets/js/api-config.js"></script><script src="../../assets/js/shell-common.js"></script><script src="../../assets/js/teacher/shell.js"></script><script src="../../assets/js/timetable-export.js"></script><script src="../../assets/js/timetables.js"></script>
+  <link rel="stylesheet" href="../../assets/css/theme.css">
 </head>
 <body data-page-title="My Schedules">
 <div class="shell"><div class="sidebar-overlay" onclick="toggleDrawer(false)"></div>
@@ -23,7 +25,16 @@
   </aside>
   <header class="topbar"><div class="topbar-left"><button class="hamburger" type="button" aria-label="Open navigation" onclick="toggleDrawer(true)"><i data-lucide="menu"></i></button><div class="topbar-context"><div class="topbar-context-copy"><strong>My Schedules</strong></div></div></div>
     <div class="topbar-right"><div class="tb-notif"><button class="tb-notif-btn" id="tbNotifTrigger" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()"><i data-lucide="bell"></i><span class="tb-notif-dot" id="tbNotifDot" style="display:none"></span></button><div class="tb-notif-panel" id="tbNotifPanel"><div class="tb-notif-panel-head"><span class="tb-notif-panel-title">Notifications</span><button class="tb-notif-mark-read" type="button" onclick="markAllNotifRead()">Mark all read</button></div><div class="tb-notif-list" id="tbNotifList"><div class="tb-notif-empty" id="tbNotifEmpty">No notifications yet.</div></div><div class="tb-notif-panel-foot"><a href="edugnay-teacher-notifications.html">View all notifications</a></div></div></div>
-      <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar faculty"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Faculty</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-teacher-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
+      <div class="tb-theme" data-theme-control>
+        <button class="tb-theme-trigger" type="button" data-theme-trigger aria-label="Appearance: Light" aria-expanded="false" aria-controls="academix-theme-menu" title="Appearance"><i data-lucide="palette" aria-hidden="true"></i></button>
+        <div class="tb-theme-menu" id="academix-theme-menu" data-theme-menu role="group" aria-label="Appearance" hidden>
+          <div class="tb-theme-heading">Appearance</div>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="light" checked><span><i data-lucide="sun" aria-hidden="true"></i>Light</span></label>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="dark"><span><i data-lucide="moon" aria-hidden="true"></i>Dark</span></label>
+          <label class="tb-theme-choice"><input type="radio" name="academix-theme" value="system"><span><i data-lucide="monitor" aria-hidden="true"></i>System</span></label>
+        </div>
+      </div>
+        <div class="tb-profile"><button class="tb-profile-trigger" id="tbProfileTrigger" type="button" onclick="toggleProfileDropdown()"><div class="tb-avatar faculty"></div><div class="tb-profile-info"><div class="tb-profile-name">Loading account...</div><div class="tb-profile-role">Faculty</div></div><i data-lucide="chevron-down" class="tb-chevron"></i></button><div class="tb-dropdown" id="tbProfileDropdown"><a class="tb-dropdown-item" href="edugnay-teacher-profile.html">My Profile</a><div class="tb-dropdown-divider"></div><a class="tb-dropdown-item danger" href="#" onclick="event.preventDefault(); confirmLogout();">Sign Out</a></div></div>
     </div></header>
   <script>restoreProfileChip();</script>
   <main class="main"><div class="timetable-page" id="timetable-page" data-role="teacher">

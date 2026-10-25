@@ -228,9 +228,9 @@ test('teacher page gates parent release separately from confirmation', () => {
   assert.match(page, /class="report-selection-title" id="report-selection-title">Report selection<\/h2>/);
   assert.match(page, /<span class="search-icon" aria-hidden="true"><i data-lucide="search"><\/i><\/span><input class="search-input" id="report-search"/);
   assert.match(styles, /\.reports-context-controls select\s*\{[^}]*border:\s*1\.5px solid var\(--gray-200\);[^}]*background-color:\s*var\(--gray-50\);[^}]*font-size:\s*13px;[^}]*font-weight:\s*400;[^}]*appearance:\s*none;/s);
-  assert.match(styles, /\.reports-context-controls select:focus\s*\{[^}]*border-color:\s*var\(--blue-mid\);[^}]*box-shadow:\s*0 0 0 3px/s);
+  assert.match(styles, /\.reports-context-controls select:focus\s*\{[^}]*border-color:\s*var\(--theme-accent-text\);[^}]*box-shadow:\s*0 0 0 3px/s);
   assert.match(styles, /\.search-icon svg\s*\{[^}]*width:\s*14px;[^}]*height:\s*14px;/s);
-  assert.match(styles, /\.search-input\s*\{[^}]*background:\s*var\(--white\);/s);
+  assert.match(styles, /\.search-input\s*\{[^}]*background:\s*var\(--theme-surface\);/s);
   assert.match(styles, /\.reports-overview\s*\{[^}]*grid-template-columns:\s*minmax\(300px,\s*\.9fr\)\s+minmax\(0,\s*1\.1fr\);/s);
   assert.match(styles, /\.reports-overview \.summary-strip\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*margin-bottom:\s*0;/s);
   assert.match(styles, /@media \(max-width: 1232px\)\s*\{[^}]*\.reports-overview \{ grid-template-columns: minmax\(0, 1fr\); \}/s);

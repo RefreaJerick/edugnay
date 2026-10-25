@@ -38,7 +38,7 @@ test('bounded SF-style choice panels scroll within assignment dialogs without ch
 
 test('student choices retain the school-level selected and keyboard-focus styling', () => {
   const css = fs.readFileSync(path.join(__dirname, '../../assets/css/modal-system.css'), 'utf8');
-  assert.match(css, /\.student-multi-option:has\(input:checked\)\s*\{[^}]*border-color:\s*var\(--blue-mid\);[^}]*background:\s*var\(--blue-xpale\);/);
+  assert.match(css, /\.student-multi-option:has\(input:checked\)\s*\{[^}]*border-color:\s*var\(--theme-accent-text\);[^}]*background:\s*var\(--blue-xpale\);/);
   assert.match(css, /\.student-multi-option:has\(input:focus-visible\)\s*\{[^}]*box-shadow:/);
   assert.match(css, /\.student-multi-identity > \*\s*\{[^}]*overflow-wrap:\s*anywhere;/);
 });
