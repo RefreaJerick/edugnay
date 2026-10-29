@@ -41,7 +41,7 @@ function createPage(api) {
       EDUGNAY_AVATAR: { html: person => `<span>${String(person.displayName || '')}</span>` },
       EDUGNAY_CONFIG: {
         escapeHtml: value => String(value),
-        renderPanelEmptyState: ({ title }) => title
+        renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`
       }
     },
     lucide: { createIcons() {} }
@@ -57,6 +57,9 @@ function createPage(api) {
 }
 
 test('parent attendance uses API children, records, and school date', async () => {
+  assert.match(html, /css\/timetables\.css/);
+  assert.match(html, /class="timetable-week-controls"/);
+  assert.match(html, /id="cal-today"/);
   const page = createPage({
     isBackendAvailable: true,
     getParentChildren: async () => [
@@ -94,10 +97,48 @@ test('parent attendance uses API children, records, and school date', async () =
   page.selectChild('5');
   assert.equal(page.elements.get('summary-strip').hidden, true);
   assert.equal(page.elements.get('summary-strip').textContent, '');
-  assert.match(page.elements.get('cal-grid').innerHTML, /No attendance calendar/);
+  assert.match(page.elements.get('cal-month-label').textContent, /October 2026/);
+  const emptyCalendar = page.elements.get('cal-grid').innerHTML;
+  assert.equal((emptyCalendar.match(/data-attendance-day=/g) || []).length, 31);
+  assert.match(emptyCalendar, /class="cal-day [^"]*today"/);
+  assert.doesNotMatch(emptyCalendar, /cal-day recorded|cal-day-dot|No attendance calendar/);
+  assert.equal(page.elements.get('cal-prev').disabled, false);
+  assert.equal(page.elements.get('cal-next').disabled, false);
+  assert.equal(page.elements.get('cal-today').disabled, true);
+  page.elements.get('cal-next').listeners.click();
+  assert.match(page.elements.get('cal-month-label').textContent, /November 2026/);
+  assert.equal(page.elements.get('cal-today').disabled, false);
+  page.elements.get('cal-today').listeners.click();
+  assert.match(page.elements.get('cal-month-label').textContent, /October 2026/);
+  assert.equal(page.elements.get('cal-today').disabled, true);
+  page.elements.get('cal-grid').listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '16' } }) } });
+  assert.equal(page.elements.get('dayDetailModal').classList.contains('open'), true);
+  assert.match(page.elements.get('day-detail-modal-content').innerHTML, /No attendance records: No subject attendance is available for this day\./);
   page.selectChild('4');
   assert.equal(page.elements.get('summary-strip').hidden, false);
   assert.match(page.elements.get('summary-strip').innerHTML, /attendance-stat-label-full">Subject sessions present/);
+});
+
+test('parent attendance and dashboard retain SHS class records', async () => {
+  const record = { studentId: '4', subjectId: null, electiveClassId: '88',
+    subjectName: 'Creative Writing', className: 'Class A', date: '2026-10-18', status: 'late' };
+  const page = createPage({ isBackendAvailable: true,
+    getParentChildren: async () => [{ studentId: '4', displayName: 'Juan', sectionName: 'A' }],
+    getParentAttendance: async () => ({ currentDate: '2026-10-18', records: [record] })
+  });
+  await page.load();
+  assert.match(page.elements.get('cal-grid').innerHTML, /cal-day recorded today/);
+  page.elements.get('cal-grid').listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '18' } }) } });
+  assert.match(page.elements.get('day-detail-modal-content').innerHTML, /Creative Writing · Class A/);
+
+  const dashboard = fs.readFileSync(path.join(__dirname, '../../views/parent/edugnay-parent-dashboard.html'), 'utf8');
+  const helper = dashboard.match(/function getDashboardAttendance[\s\S]*?(?=\n\s*const CHILD_DASHBOARD_RECORDS)/)?.[0];
+  assert.ok(helper);
+  const context = vm.createContext({ backendAttendanceRecords: [record],
+    ATTENDANCE_SUBJECT_META: {} });
+  const result = vm.runInContext(`${helper}\ngetDashboardAttendance('4', '2026-10-18')`, context);
+  assert.equal(result.subjects.length, 1);
+  assert.equal(result.subjects[0].name, 'Creative Writing · Class A');
 });
 
 test('failed attendance request clears children and offers retry without sample data', async () => {
@@ -144,6 +185,9 @@ test('parent with no linked children sees the empty state', async () => {
   assert.equal(page.elements.get('attendance-load-state').hidden, true);
   assert.equal(page.elements.get('summary-strip').hidden, false);
   assert.equal(page.elements.get('summary-strip').textContent, 'Select a linked child to view attendance.');
+  assert.equal(page.elements.get('cal-prev').disabled, true);
+  assert.equal(page.elements.get('cal-next').disabled, true);
+  assert.equal(page.elements.get('cal-today').disabled, true);
 });
 
 test('missing API configuration shows an error instead of demo attendance', async () => {

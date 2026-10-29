@@ -178,10 +178,8 @@
       writable,
       onScoreInput: input => saveScore(input, data, scope, writable, reload),
       empty: {
-        noItems: data.scope.policy
-          ? { icon: 'clipboard-list', title: 'No assessments yet', text: 'Add an assessment to begin recording grades.' }
-          : { icon: 'triangle-alert', title: 'Grading rules unavailable', text: data.scope.policyBlockReason || 'Ask the school administrator to review the grading setup.' },
-        noStudents: { icon: 'users', title: 'No students enrolled', text: 'Confirmed class placements will appear here.' }
+        noItems: data.scope.policy ? undefined
+          : { icon: 'triangle-alert', title: 'Grading rules unavailable', text: data.scope.policyBlockReason || 'Ask the school administrator to review the grading setup.' }
       }
     });
   }
@@ -362,7 +360,9 @@
       window.AcademixElectiveClass?.updateHeaderGradeStatus?.(data);
     }
     const status = host.querySelector('#scoreSaveStatus');
-    status.textContent = writable ? 'Scores save when you leave a score field.' : 'Scores are read-only for this class or grading period.';
+    const hasScoreRows = Boolean(items.length && students.length);
+    status.textContent = !hasScoreRows ? 'No scores to save'
+      : writable ? 'Scores save when you leave a score field.' : 'Scores are read-only for this class or grading period.';
     const retry = host.querySelector('#scoreSaveRetry');
     retry.hidden = true;
     configureAddAssessmentModal(data, scope, writable, reload);

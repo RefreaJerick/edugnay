@@ -295,7 +295,11 @@
 
       list.innerHTML = subjects.map(subject => {
         const recorded = subject.finalGrade !== null && subject.finalGrade !== undefined && Number.isFinite(Number(subject.finalGrade));
-        const subtitle = recorded ? formatPublishedInfo(subject) : 'Not published';
+        const subtitle = recorded
+          ? formatPublishedInfo(subject)
+          : subject.electiveClassId && subject.sectionName
+            ? subject.sectionName + ' · Not published'
+            : 'Not published';
         return '<article class="grade-subject-row">' +
           '<div class="grade-subject-copy">' +
             '<div class="grade-subject-name">' + escapeHtml(subject.subjectName || 'Subject') + '</div>' +

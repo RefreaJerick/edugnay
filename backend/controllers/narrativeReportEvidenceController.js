@@ -227,7 +227,7 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           DATE_FORMAT(sessions.attendance_date, '%Y-%m-%d') AS attendanceDate,
           sessions.subject_id AS subjectId, COALESCE(subjects.name, 'All subjects') AS subjectName,
           records.id AS recordId, records.student_user_id AS studentId,
-          records.attendance_status AS attendanceStatus
+          records.attendance_status AS attendanceStatus, records.remarks
         FROM attendance_sessions AS sessions
         LEFT JOIN subjects ON subjects.id = sessions.subject_id AND subjects.school_id = sessions.school_id
         LEFT JOIN attendance_records AS records ON records.attendance_session_id = sessions.id
@@ -265,10 +265,51 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         const source = {
           recordId: String(record.recordId), sessionId: session.id, date: session.date,
           subjectId: session.subjectId, subjectName: session.subjectName,
-          status: record.attendanceStatus
+          status: record.attendanceStatus,
+          remark: ['absent', 'late', 'excused'].includes(record.attendanceStatus) ? record.remarks?.trim() || null : null
         };
         attendance.sources.push(source);
       }));
+
+      let shsAttendanceRows = [];
+      if (section.schoolLevelCode === 'shs' && process.env.SHS_SELECTION_ENABLED === 'true') {
+        [shsAttendanceRows] = await database.execute(
+          `SELECT records.id AS recordId, records.student_user_id AS studentId,
+            sessions.id AS sessionId, DATE_FORMAT(sessions.attendance_date, '%Y-%m-%d') AS date,
+            sessions.shs_elective_class_id AS electiveClassId,
+            offerings.subject_name AS subjectName, classes.class_name AS className,
+            records.attendance_status AS status, records.remarks AS remark
+          FROM attendance_records AS records
+          INNER JOIN attendance_sessions AS sessions ON sessions.id = records.attendance_session_id
+            AND sessions.school_id = records.school_id AND sessions.status = 'confirmed'
+          INNER JOIN shs_elective_classes AS classes ON classes.id = sessions.shs_elective_class_id
+            AND classes.school_id = sessions.school_id
+          INNER JOIN shs_offerings AS offerings ON offerings.id = classes.offering_id
+            AND offerings.school_id = classes.school_id AND offerings.academic_year_id = ?
+          WHERE records.school_id = ? AND records.student_user_id IN (${placeholders})
+            AND sessions.attendance_date BETWEEN ? AND ?
+            AND EXISTS (SELECT 1 FROM shs_elective_class_students AS members
+              WHERE members.school_id = records.school_id AND members.elective_class_id = classes.id
+                AND members.student_user_id = records.student_user_id
+                AND (members.withdrawn_at IS NULL OR sessions.attendance_date <= DATE(members.withdrawn_at)))
+          ORDER BY sessions.attendance_date, sessions.id, records.student_user_id`,
+          [section.academicYearId, schoolId, ...studentIds, evidenceStartDate, evidenceEndDate]
+        );
+        shsAttendanceRows.forEach(row => {
+          const student = byStudent.get(String(row.studentId));
+          if (!student || !dateWithinEnrollment(row.date, student)) return;
+          const attendance = student.attendance;
+          attendance.confirmedSessions++;
+          attendance.recordedSessions++;
+          if (Object.hasOwn(attendance, row.status)) attendance[row.status]++;
+          attendance.sources.push({
+            recordId: String(row.recordId), sessionId: String(row.sessionId), date: row.date,
+            electiveClassId: String(row.electiveClassId), subjectName: row.subjectName,
+            className: row.className, status: row.status,
+            remark: ['absent', 'late', 'excused'].includes(row.status) ? row.remark?.trim() || null : null
+          });
+        });
+      }
 
       const [assignmentRows] = await database.execute(
         `SELECT assignments.id AS assignmentId, assignments.title,
@@ -310,6 +351,54 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           dueDate: row.dueDate, status, submittedAt: status === 'submitted' ? row.submittedAt || null : null
         });
       });
+
+      if (section.schoolLevelCode === 'shs' && process.env.SHS_SELECTION_ENABLED === 'true') {
+        const [shsAssignmentRows] = await database.execute(
+          `SELECT assignments.id AS assignmentId, assignments.title,
+            assignments.shs_elective_class_id AS electiveClassId,
+            offerings.subject_name AS subjectName, classes.class_name AS className,
+            assignments.online_submission_enabled AS onlineSubmissionEnabled,
+            DATE_FORMAT(assignments.due_at, '%Y-%m-%d') AS dueDate,
+            members.student_user_id AS studentId,
+            submissions.id AS submissionId, submissions.submission_status AS savedStatus,
+            submissions.file_path AS filePath,
+            DATE_FORMAT(submissions.submitted_at, '%Y-%m-%dT%H:%i:%s') AS submittedAt,
+            DATE_FORMAT(submissions.updated_at, '%Y-%m-%dT%H:%i:%s') AS statusUpdatedAt
+          FROM assignments
+          INNER JOIN shs_elective_classes AS classes ON classes.id = assignments.shs_elective_class_id
+            AND classes.school_id = assignments.school_id
+          INNER JOIN shs_offerings AS offerings ON offerings.id = classes.offering_id
+            AND offerings.school_id = classes.school_id AND offerings.academic_year_id = ?
+          INNER JOIN shs_elective_class_students AS members ON members.school_id = assignments.school_id
+            AND members.elective_class_id = classes.id AND members.student_user_id IN (${placeholders})
+            AND (members.withdrawn_at IS NULL OR DATE(assignments.due_at) <= DATE(members.withdrawn_at))
+          LEFT JOIN assignment_submissions AS submissions ON submissions.school_id = assignments.school_id
+            AND submissions.assignment_id = assignments.id AND submissions.student_user_id = members.student_user_id
+          WHERE assignments.school_id = ? AND assignments.status = 'published'
+            AND assignments.due_at IS NOT NULL AND DATE(assignments.due_at) BETWEEN ? AND ?
+          ORDER BY assignments.due_at, offerings.subject_name, assignments.title, members.student_user_id`,
+          [section.academicYearId, ...studentIds, schoolId, evidenceStartDate, evidenceEndDate]
+        );
+        const seenAssignments = new Set();
+        shsAssignmentRows.forEach(row => {
+          const student = byStudent.get(String(row.studentId));
+          const key = `${row.assignmentId}:${row.studentId}`;
+          if (!student || seenAssignments.has(key) || !dateWithinEnrollment(row.dueDate, student)) return;
+          seenAssignments.add(key);
+          const status = reportSubmissionStatus(row, evidenceEndDate);
+          student.assignments.total++;
+          if (status === 'submitted') student.assignments.submitted++;
+          else if (status === 'not_submitted') student.assignments.notSubmitted++;
+          else student.assignments.pending++;
+          student.assignments.sources.push({
+            assignmentId: String(row.assignmentId),
+            submissionId: status === 'submitted' && row.submissionId != null ? String(row.submissionId) : null,
+            electiveClassId: String(row.electiveClassId), className: row.className,
+            subjectName: row.subjectName, title: row.title, dueDate: row.dueDate,
+            status, submittedAt: status === 'submitted' ? row.submittedAt || null : null
+          });
+        });
+      }
 
       if (journalApplicable) {
         const [journalRows] = await database.execute(
@@ -398,6 +487,66 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         ORDER BY items.recorded_at DESC, items.id DESC`,
         [sectionId, section.academicYearId, schoolId, ...studentIds, evidenceStartDate, evidenceEndDate, evidenceEndDate]
       );
+      let shsGradeRows = [];
+      let shsScoreRows = [];
+      if (section.schoolLevelCode === 'shs' && process.env.SHS_SELECTION_ENABLED === 'true') {
+        [shsGradeRows] = await database.execute(
+          `SELECT grades.id AS gradeId, grades.student_user_id AS studentId,
+            grades.shs_elective_class_id AS electiveClassId,
+            offerings.subject_name AS subjectName, classes.class_name AS className,
+            grades.final_grade AS finalGrade,
+            DATE_FORMAT(grades.published_at, '%Y-%m-%dT%H:%i:%s') AS publishedAt,
+            terms.sequence_number AS termSequence, terms.name AS termName,
+            levels.level_code AS levelCode, levels.id AS schoolLevelId,
+            levels.passing_grade_threshold AS levelPassingGradeThreshold,
+            grade_levels.grade_code AS gradeCode
+          FROM published_final_grades AS grades
+          INNER JOIN shs_elective_classes AS classes ON classes.id = grades.shs_elective_class_id
+            AND classes.school_id = grades.school_id
+          INNER JOIN shs_offerings AS offerings ON offerings.id = classes.offering_id
+            AND offerings.school_id = classes.school_id AND offerings.academic_year_id = ?
+          INNER JOIN school_grade_levels AS grade_levels ON grade_levels.id = offerings.grade_level_id
+            AND grade_levels.school_id = offerings.school_id
+          INNER JOIN school_levels AS levels ON levels.id = grade_levels.school_level_id
+            AND levels.school_id = grade_levels.school_id AND levels.level_code = 'shs'
+          INNER JOIN academic_terms AS terms ON terms.id = grades.academic_term_id
+            AND terms.academic_year_id = offerings.academic_year_id AND terms.school_level_id = levels.id
+          WHERE grades.school_id = ? AND grades.student_user_id IN (${placeholders})
+            AND DATE(grades.published_at) BETWEEN ? AND ?
+            AND EXISTS (SELECT 1 FROM shs_elective_class_students AS members
+              WHERE members.school_id = grades.school_id AND members.elective_class_id = classes.id
+                AND members.student_user_id = grades.student_user_id)
+          ORDER BY terms.sequence_number, grades.published_at, grades.id`,
+          [section.academicYearId, schoolId, ...studentIds, evidenceStartDate, evidenceEndDate]
+        );
+        [shsScoreRows] = await database.execute(
+          `SELECT scores.id AS scoreId, scores.student_user_id AS studentId, items.id AS itemId,
+            items.shs_elective_class_id AS electiveClassId,
+            offerings.subject_name AS subjectName, classes.class_name AS className,
+            items.title, items.max_score AS maxScore, scores.score,
+            DATE_FORMAT(items.recorded_at, '%Y-%m-%d') AS itemDate
+          FROM student_scores AS scores
+          INNER JOIN grading_items AS items ON items.id = scores.grading_item_id
+            AND items.school_id = scores.school_id AND items.max_score > 0
+          INNER JOIN shs_elective_classes AS classes ON classes.id = items.shs_elective_class_id
+            AND classes.school_id = items.school_id
+          INNER JOIN shs_offerings AS offerings ON offerings.id = classes.offering_id
+            AND offerings.school_id = classes.school_id AND offerings.academic_year_id = ?
+          INNER JOIN academic_terms AS terms ON terms.id = items.academic_term_id
+            AND terms.academic_year_id = offerings.academic_year_id
+          WHERE scores.school_id = ? AND scores.student_user_id IN (${placeholders})
+            AND scores.score IS NOT NULL AND DATE(items.recorded_at) BETWEEN ? AND ?
+            AND DATE(scores.recorded_at) <= ?
+            AND EXISTS (SELECT 1 FROM shs_elective_class_students AS members
+              WHERE members.school_id = scores.school_id AND members.elective_class_id = classes.id
+                AND members.student_user_id = scores.student_user_id
+                AND (members.withdrawn_at IS NULL OR DATE(items.recorded_at) <= DATE(members.withdrawn_at)))
+          ORDER BY items.recorded_at DESC, items.id DESC`,
+          [section.academicYearId, schoolId, ...studentIds, evidenceStartDate, evidenceEndDate, evidenceEndDate]
+        );
+      }
+      const allGradeRows = gradeRows.concat(shsGradeRows);
+      const allScoreRows = scoreRows.concat(shsScoreRows);
       const [riskSettingsRows] = await database.execute(
         `SELECT max_unexcused_absences AS maxUnexcusedAbsences,
           consecutive_absences_alert AS consecutiveAbsencesAlert,
@@ -417,15 +566,19 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
           studentId: student.id, name: student.displayName, initials: student.initials,
           sectionId: String(sectionId), sectionName: section.sectionName, grade: section.gradeLevelName
         })),
-        attendance: riskAttendance.filter(row => {
+        attendance: riskAttendance.concat(shsAttendanceRows.map(row => ({
+          studentId: row.studentId, sectionId: null, subjectId: null,
+          electiveClassId: row.electiveClassId, date: row.date,
+          status: row.status, subjectName: row.subjectName, className: row.className
+        }))).filter(row => {
           const student = byStudent.get(String(row.studentId));
           return student && dateWithinEnrollment(row.date, student);
         }),
-        grades: gradeRows.filter(row => {
+        grades: allGradeRows.filter(row => {
           const learner = byStudent.get(String(row.studentId));
           return learner && dateWithinEnrollment(String(row.publishedAt).slice(0, 10), learner);
         }),
-        scores: scoreRows.filter(row => {
+        scores: allScoreRows.filter(row => {
           const learner = byStudent.get(String(row.studentId));
           return learner && dateWithinEnrollment(String(row.itemDate).slice(0, 10), learner);
         }),
@@ -435,22 +588,23 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
       });
       const flagsByStudent = new Map(flags.map(flag => [flag.studentId, flag]));
       const weeklyScoresByStudent = new Map();
-      scoreRows.forEach(row => {
+      allScoreRows.forEach(row => {
         const learner = byStudent.get(String(row.studentId));
         if (!learner || !dateWithinEnrollment(String(row.itemDate).slice(0, 10), learner)) return;
         if (!weeklyScoresByStudent.has(learner.id)) weeklyScoresByStudent.set(learner.id, []);
         weeklyScoresByStudent.get(learner.id).push(row);
       });
       const latestGradesByStudent = new Map();
-      gradeRows.forEach(grade => {
+      allGradeRows.forEach(grade => {
         const studentId = String(grade.studentId);
         const learner = byStudent.get(studentId);
         if (!learner || !dateWithinEnrollment(String(grade.publishedAt).slice(0, 10), learner)) return;
         const subjects = latestGradesByStudent.get(studentId) || new Map();
-        const current = subjects.get(String(grade.subjectId));
+        const gradeKey = grade.electiveClassId ? `class:${grade.electiveClassId}` : `subject:${grade.subjectId}`;
+        const current = subjects.get(gradeKey);
         if (!current || Number(grade.termSequence) > Number(current.termSequence) ||
           Number(grade.termSequence) === Number(current.termSequence) && String(grade.publishedAt) > String(current.publishedAt)) {
-          subjects.set(String(grade.subjectId), grade);
+          subjects.set(gradeKey, grade);
         }
         latestGradesByStudent.set(studentId, subjects);
       });
@@ -464,13 +618,17 @@ async function buildWeeklyEvidence({ schoolId: schoolValue, teacherId: teacherVa
         const priority = weeklyScores.filter(row => priorityIds.has(String(row.scoreId)));
         const selected = [...priority, ...weeklyScores.filter(row => !priorityIds.has(String(row.scoreId)))].slice(0, 20);
         student.academicScores = selected.map(row => ({
-          scoreId: String(row.scoreId), subjectName: row.subjectName, title: row.title,
+          scoreId: String(row.scoreId), subjectName: row.subjectName,
+          ...(row.electiveClassId ? { electiveClassId: String(row.electiveClassId), className: row.className } : {}),
+          title: row.title,
           date: String(row.itemDate).slice(0, 10), score: Number(row.score), maxScore: Number(row.maxScore)
         }));
         student.academicScoresOmitted = Math.max(0, weeklyScores.length - selected.length);
         student.academicRecords = [...(latestGradesByStudent.get(student.id)?.values() || [])]
           .map(grade => ({
-            gradeId: String(grade.gradeId), subjectId: String(grade.subjectId), subjectName: grade.subjectName,
+            gradeId: String(grade.gradeId), subjectId: grade.subjectId == null ? null : String(grade.subjectId),
+            ...(grade.electiveClassId ? { electiveClassId: String(grade.electiveClassId), className: grade.className } : {}),
+            subjectName: grade.subjectName,
             finalGrade: Number(grade.finalGrade), termName: grade.termName, publishedAt: grade.publishedAt
           }))
           .sort((a, b) => a.subjectName.localeCompare(b.subjectName));

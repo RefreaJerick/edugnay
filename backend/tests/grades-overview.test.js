@@ -11,6 +11,8 @@ let savedRules = {};
 let extraEnrollmentRows = [];
 let extraTerms = [];
 let publishedGrades;
+let electiveClassRows = [];
+let electiveClassQuery = '';
 const student = { id: 101, displayName: 'Juan Dela Cruz' };
 const section = {
   sectionId: 8,
@@ -76,6 +78,8 @@ function resetScenario() {
   extraEnrollmentRows = [];
   extraTerms = [];
   publishedGrades = basePublishedGrades;
+  electiveClassRows = [];
+  electiveClassQuery = '';
 }
 
 const database = {
@@ -97,6 +101,12 @@ const database = {
     if (sql.includes('FROM published_final_grades AS grades')) return [[{ gradeCount: 1 }]];
     if (sql.includes('FROM section_students') && sql.includes('section_teachers')) return [subjects];
     if (sql.includes('FROM section_students') && sql.includes('academic_terms')) return [[...terms, ...extraTerms]];
+    if (sql.includes('FROM shs_elective_class_students memberships')) {
+      electiveClassQuery = sql;
+      return [electiveClassRows
+        .filter(row => !row.withdrawnAt)
+        .filter(row => !/classes\.is_active\s*=\s*1/i.test(sql) || row.isActive !== false)];
+    }
     if (sql.includes('FROM section_students')) {
       const current = { ...section, gradeCode, schoolLevelCode, schoolId: 1 };
       const historical = { ...historicalSection, gradeCode, schoolLevelCode, schoolId: 1 };
@@ -104,6 +114,13 @@ const database = {
         ? [current, historical, ...extraEnrollmentRows]
         : [historical, ...extraEnrollmentRows]];
     }
+    if (sql.includes('FROM published_final_grades p')) return [publishedGrades.filter(grade => grade.electiveClassId != null).map(grade => ({
+      schoolId: 1,
+      schoolLevelId: 3,
+      schoolLevelCode: 'shs',
+      gradeCode: 'grade-11',
+      ...grade
+    }))];
     if (sql.includes('FROM published_final_grades')) return [publishedGrades.map(grade => ({
       schoolId: 1,
       schoolLevelId: 2,
@@ -131,6 +148,27 @@ async function callOverview({ role = 'student', id = 101, query = {} } = {}) {
   return result;
 }
 
+async function withShsSelectionEnabled(callback) {
+  const previousValue = process.env.SHS_SELECTION_ENABLED;
+  process.env.SHS_SELECTION_ENABLED = 'true';
+  try {
+    return await callback();
+  } finally {
+    if (previousValue === undefined) delete process.env.SHS_SELECTION_ENABLED;
+    else process.env.SHS_SELECTION_ENABLED = previousValue;
+  }
+}
+
+function confirmedElectiveClass(classId, className, termId = 40, termName = 'Semester 1', sequenceNumber = 1, termStatus = 'active') {
+  return {
+    classId, academicYearId: 4, academicYearLabel: '2026-2027', academicYearStatus: 'active',
+    academicYearStartDate: '2026-06-01', schoolLevelId: 3, gradingPeriodType: 'semestral',
+    passingGradeThreshold: '75.00', gradeCode: 'grade-11', subjectName: 'Contemporary Literature 1',
+    className, academicTermId: termId, academicTermName: termName,
+    academicTermSequenceNumber: sequenceNumber, academicTermStatus: termStatus
+  };
+}
+
 test.beforeEach(resetScenario);
 
 test('student grade overview returns assigned subjects, configured terms, and published snapshots only', async () => {
@@ -153,6 +191,39 @@ test('student grade overview returns assigned subjects, configured terms, and pu
   assert.equal(result.data.overview.publishedGrades.length, 1);
   assert.equal(result.data.overview.publishedGrades[0].finalGrade, 78);
   assert.equal(result.data.overview.publishedGrades[0].passingGradeThreshold, 75);
+});
+
+test('confirmed SHS placements are returned for students and linked parents while withdrawn classes are excluded', async () => {
+  electiveClassRows = [
+    confirmedElectiveClass(51, 'Capstone QA AE011'),
+    { ...confirmedElectiveClass(52, 'Capstone QA AE012'), isActive: false },
+    { ...confirmedElectiveClass(53, 'Withdrawn class'), withdrawnAt: '2026-10-01 09:00:00' }
+  ];
+
+  await withShsSelectionEnabled(async () => {
+    const studentResult = await callOverview();
+    const parentResult = await callOverview({ role: 'parent', id: 7, query: { studentId: '101' } });
+    const studentClasses = studentResult.data.overview.academicYears.find(year => year.id === '4').electiveClasses;
+    const parentClasses = parentResult.data.overview.academicYears.find(year => year.id === '4').electiveClasses;
+
+    assert.equal(studentResult.error, null);
+    assert.equal(parentResult.error, null);
+    assert.deepEqual(studentClasses.map(item => [item.classId, item.subjectName, item.className]), [
+      ['51', 'Contemporary Literature 1', 'Capstone QA AE011'],
+      ['52', 'Contemporary Literature 1', 'Capstone QA AE012']
+    ]);
+    assert.deepEqual(parentClasses.map(item => item.classId), ['51', '52']);
+    assert.deepEqual(studentClasses[0].terms.map(term => [term.id, term.name, term.status]), [['40', 'Semester 1', 'active']]);
+    assert.doesNotMatch(electiveClassQuery, /classes\.is_active\s*=\s*1/i);
+  });
+});
+
+test('pending choices without active class membership do not enter the grade overview', async () => {
+  await withShsSelectionEnabled(async () => {
+    const result = await callOverview();
+    const year = result.data.overview.academicYears.find(item => item.id === '4');
+    assert.deepEqual(year.electiveClasses, []);
+  });
 });
 
 test('parent grade overview requires a linked student', async () => {

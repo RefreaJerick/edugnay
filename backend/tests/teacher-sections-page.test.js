@@ -134,6 +134,44 @@ test('score component headers abbreviate standard categories while retaining ful
   assert.match(sectionsSource, /renderScoreTable: renderSharedScoreTable/);
 });
 
+test('shared score table uses one empty state for missing components and missing students', () => {
+  const renderer = extractSourceBetween(sectionsSource,
+    'function renderSharedScoreTable(', '\n\n    window.TeacherClassViews =');
+  assert.ok(renderer);
+
+  function renderEmpty(items, students) {
+    const elements = new Map([
+      ['#scoreTheadRow', { innerHTML: '' }],
+      ['#scoreTbody', { innerHTML: '' }],
+      ['#scoreListFooter', { textContent: '' }]
+    ]);
+    const states = [];
+    const context = vm.createContext({ window: {
+      EDUGNAY_CONFIG: {
+        escapeHtml: value => String(value),
+        renderPanelEmptyState: state => { states.push(state); return '<div class="empty"></div>'; }
+      },
+      lucide: { createIcons() {} }
+    } });
+    const host = { querySelector: selector => elements.get(selector) };
+    context.host = host;
+    context.items = items;
+    context.students = students;
+    vm.runInContext(`${renderer}; renderSharedScoreTable({ host, items, students });`, context);
+    return { state: states[0], footer: elements.get('#scoreListFooter').textContent };
+  }
+
+  const noComponents = renderEmpty([], []);
+  assert.equal(noComponents.state.title, 'No score components yet');
+  assert.equal(noComponents.state.text, 'Add score components for this grading period to begin recording grades.');
+  assert.equal(noComponents.footer, 'No students enrolled');
+
+  const noStudents = renderEmpty([{ id: '1', title: 'Quiz', maxScore: 10, categoryCode: 'WW' }], []);
+  assert.equal(noStudents.state.title, 'No students enrolled');
+  assert.equal(noStudents.state.text, 'Students enrolled in this class will appear here.');
+  assert.equal(noStudents.footer, 'No students enrolled');
+});
+
 test('score component headers suppress duplicate exam-part labels and retain distinct labels', () => {
   const helperSource = extractSourceBetween(sectionsSource,
     'function getDistinctExamPartName(componentName, examPartName) {', '\n    function renderScoreTable(');

@@ -17,7 +17,7 @@
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js?v=7"></script>
-  <script src="../../assets/js/teacher/shs-gradebook.js?v=12"></script>
+  <script src="../../assets/js/teacher/shs-gradebook.js?v=13"></script>
   <script src="../../assets/js/academic-date-picker.js"></script>
   <script src="../../assets/js/teacher/shell.js?v=4"></script>
   <script src="../../assets/js/teacher/elective-class.js?v=13" defer></script>
@@ -2696,8 +2696,8 @@
       }).join('') + metricHeaders.map(metric => `<th class="center ${window.EDUGNAY_CONFIG.escapeHtml(metric.className || '')}" style="${window.EDUGNAY_CONFIG.escapeHtml(metric.style || '')}" title="${window.EDUGNAY_CONFIG.escapeHtml(metric.title || metric.label)}">${window.EDUGNAY_CONFIG.escapeHtml(metric.label)}</th>`).join('');
       const colspan = 1 + items.length + metricHeaders.length;
       if (!items.length || !students.length) {
-        const state = !items.length ? empty.noItems || { icon: 'clipboard-list', title: 'No assessments yet', text: 'Add an assessment to begin recording grades.' }
-          : empty.noStudents || { icon: 'users', title: 'No students enrolled', text: 'Confirmed class placements will appear here.' };
+        const state = !items.length ? empty.noItems || { icon: 'clipboard-list', title: 'No score components yet', text: 'Add score components for this grading period to begin recording grades.' }
+          : empty.noStudents || { icon: 'users', title: 'No students enrolled', text: 'Students enrolled in this class will appear here.' };
         tbody.innerHTML = `<tr class="panel-empty-row"><td colspan="${colspan}">${window.EDUGNAY_CONFIG.renderPanelEmptyState(state)}</td></tr>`;
         const footer = host.querySelector('#scoreListFooter');
         if (footer) footer.textContent = students.length ? `${students.length} students enrolled` : 'No students enrolled';
@@ -3502,11 +3502,8 @@
         title: weightedScoreOnly ? 'Weighted grade calculated from current scores.' : 'Calculated final grade based on current scores.',
         style: 'min-width:148px;background:var(--navy);color:var(--gold);'
       });
-      const title = BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured
-        ? 'Grading rules need configuration' : 'No score components yet';
-      const emptyText = BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured
-        ? 'Ask School Admin to apply DepEd defaults or configure this subject before recording scores.'
-        : 'Add score components for this grading period to begin recording grades.';
+      const gradingRulesNeedConfiguration = BACKEND_SUBJECT_GRADING_CONFIG?.applicable
+        && !BACKEND_SUBJECT_GRADING_CONFIG.configured;
       window.TeacherClassViews.renderScoreTable({
         host: document.querySelector('#content-scores .panel'),
         items: scoreItems,
@@ -3524,8 +3521,11 @@
         onScoreInput: input => computeRow(input, true),
         scoreEvent: 'input',
         empty: {
-          noItems: { icon: BACKEND_SUBJECT_GRADING_CONFIG?.applicable && !BACKEND_SUBJECT_GRADING_CONFIG.configured ? 'triangle-alert' : 'clipboard-list', title, text: emptyText },
-          noStudents: { icon: 'users', title: 'No student scores yet', text: 'Student score records will appear here when they are available.' }
+          noItems: gradingRulesNeedConfiguration ? {
+            icon: 'triangle-alert',
+            title: 'Grading rules need configuration',
+            text: 'Ask School Admin to apply DepEd defaults or configure this subject before recording scores.'
+          } : undefined
         }
       });
       tbody.querySelectorAll('.score-input').forEach(inp => computeRow(inp));

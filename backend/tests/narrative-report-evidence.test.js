@@ -8,6 +8,7 @@ const {
   addDays, getWeeklyEvidence, getWeeklySettings, normalizeWeekSettings,
   reportWeekRange, reportSubmissionStatus, updateWeeklySettings
 } = require('../controllers/narrativeReportEvidenceController');
+const { buildModelEvidence } = require('../services/narrativeReportAi');
 
 test('assignment completion respects the evidence cutoff and later status changes', () => {
   const dueDate = '2026-10-20';
@@ -277,6 +278,108 @@ test('weekly evidence summarizes confirmed attendance, assignments, journal text
   assert.match(rosterQuery.sql, /students\.avatar_version AS avatarVersion/);
   assert.ok(calls.every(call => call.values.includes(4)), 'every evidence query is scoped to the adviser school');
   assert.equal(result.headers['Cache-Control'], 'no-store');
+});
+
+test('SHS weekly evidence includes placed classes and only meaningful attendance remarks', async () => {
+  const previousFlag = process.env.SHS_SELECTION_ENABLED;
+  process.env.SHS_SELECTION_ENABLED = 'true';
+  const weekStart = addDays(startOfCurrentMondayWeek(), -7);
+  const weekEnd = addDays(weekStart, 5);
+  const date = addDays(weekStart, 1);
+  const calls = [];
+  const database = { async execute(sql, values = []) {
+    calls.push({ sql, values });
+    if (sql.includes('FROM sections')) return [[{
+      sectionId: 22, sectionName: 'Grade 11 A', academicYearId: 9, schoolLevelId: 3,
+      gradeLevelId: 7, academicYearStartDate: addDays(weekStart, -100),
+      academicYearEndDate: addDays(weekEnd, 100), academicYearLabel: '2026-2027',
+      gradeLevelName: 'Grade 11', schoolLevelCode: 'shs', reportsEnabled: 1,
+      journalsEnabled: 0, weekStartDay: 1, weekEndDay: 6
+    }]];
+    if (sql.includes('FROM section_students')) return [[
+      { studentId: 101, displayName: 'Ari Student', enrolledDate: addDays(weekStart, -20), withdrawnDate: null },
+      { studentId: 102, displayName: 'Bea Student', enrolledDate: addDays(weekStart, -20), withdrawnDate: null }
+    ]];
+    if (sql.includes('LEFT JOIN attendance_records AS records')) return [[{
+      sessionId: 201, attendanceDate: date, subjectId: 11, subjectName: 'Core English',
+      recordId: 301, studentId: 101, attendanceStatus: 'late', remarks: 'Bus broke down'
+    }]];
+    if (sql.includes('FROM attendance_records AS records') && sql.includes('shs_elective_classes')) return [[
+      { recordId: 302, studentId: 101, sessionId: 202, date, electiveClassId: 88,
+        subjectName: 'Creative Writing', className: 'Class A', status: 'absent', remark: 'Family appointment' },
+      { recordId: 303, studentId: 101, sessionId: 203, date, electiveClassId: 89,
+        subjectName: 'Field Experience', className: 'Class B', status: 'present', remark: 'Ignore this' },
+      { recordId: 304, studentId: 101, sessionId: 204, date, electiveClassId: 90,
+        subjectName: 'Work Immersion', className: 'Class C', status: 'excused', remark: 'Approved appointment' },
+      { recordId: 305, studentId: 999, sessionId: 205, date, electiveClassId: 91,
+        subjectName: 'Work Immersion', className: 'Other class', status: 'absent', remark: 'Other learner' }
+    ]];
+    if (sql.includes('FROM assignments') && sql.includes('shs_elective_classes')) return [[{
+      assignmentId: 401, studentId: 101, electiveClassId: 88,
+      subjectName: 'Creative Writing', className: 'Class A', title: 'Essay',
+      onlineSubmissionEnabled: 0, dueDate: date, submissionId: null, savedStatus: null
+    }]];
+    if (sql.includes('FROM assignments')) return [[]];
+    if (sql.includes('FROM attendance_sessions AS sessions') && sql.includes('INNER JOIN attendance_records')) return [[]];
+    if (sql.includes('FROM published_final_grades AS grades') && sql.includes('shs_elective_classes')) return [[
+      { gradeId: 501, studentId: 101, electiveClassId: 88, subjectName: 'Creative Writing', className: 'Class A',
+        finalGrade: 85, publishedAt: `${date}T10:00:00`, termSequence: 1, termName: 'Term 1',
+        levelCode: 'shs', schoolLevelId: 3, levelPassingGradeThreshold: 75, gradeCode: 'grade-11' },
+      { gradeId: 502, studentId: 101, electiveClassId: 89, subjectName: 'Field Experience', className: 'Class B',
+        finalGrade: 90, publishedAt: `${date}T11:00:00`, termSequence: 1, termName: 'Term 1',
+        levelCode: 'shs', schoolLevelId: 3, levelPassingGradeThreshold: 75, gradeCode: 'grade-11' },
+      { gradeId: 503, studentId: 101, electiveClassId: 90, subjectName: 'Work Immersion', className: 'Class C',
+        finalGrade: 88, publishedAt: `${date}T12:00:00`, termSequence: 1, termName: 'Term 1',
+        levelCode: 'shs', schoolLevelId: 3, levelPassingGradeThreshold: 75, gradeCode: 'grade-11' }
+    ]];
+    if (sql.includes('FROM published_final_grades AS grades')) return [[]];
+    if (sql.includes('FROM student_scores AS scores') && sql.includes('shs_elective_classes')) return [[
+      { scoreId: 601, studentId: 101, itemId: 701, electiveClassId: 88, subjectName: 'Creative Writing',
+        className: 'Class A', title: 'Essay', maxScore: 10, score: 6, itemDate: date },
+      { scoreId: 602, studentId: 101, itemId: 702, electiveClassId: 89, subjectName: 'Field Experience',
+        className: 'Class B', title: 'Reading', maxScore: 10, score: 6, itemDate: date },
+      { scoreId: 603, studentId: 101, itemId: 703, electiveClassId: 90, subjectName: 'Work Immersion',
+        className: 'Class C', title: 'Journal', maxScore: 10, score: 6, itemDate: date }
+    ]];
+    if (sql.includes('FROM student_scores AS scores')) return [[]];
+    if (sql.includes('FROM school_attendance_settings')) return [[{
+      maxUnexcusedAbsences: 99, consecutiveAbsencesAlert: 99, countExcusedAbsences: 0
+    }]];
+    if (sql.includes('FROM school_year_final_grade_rules')) return [[]];
+    throw new Error(`Unexpected query: ${sql}`);
+  } };
+  try {
+    const result = await invoke(getWeeklyEvidence, {
+      user: { id: 8, schoolId: 4, role: 'teacher' },
+      query: { sectionId: '22', startDate: weekStart }
+    }, database);
+    assert.equal(result.error, undefined);
+    const ari = result.body.students.find(student => student.id === '101');
+    const bea = result.body.students.find(student => student.id === '102');
+    assert.equal(ari.attendance.recordedSessions, 4);
+    assert.equal(ari.attendance.absent, 1);
+    assert.equal(ari.attendance.excused, 1);
+    assert.equal(ari.attendance.sources.find(source => source.recordId === '302').remark, 'Family appointment');
+    assert.equal(ari.attendance.sources.find(source => source.recordId === '303').remark, null);
+    assert.equal(ari.assignments.total, 1);
+    assert.equal(ari.academicRecords.length, 3);
+    assert.deepEqual(ari.academicRecords.map(item => item.electiveClassId), ['88', '89', '90']);
+    assert.equal(ari.academicScores.length, 3);
+    assert.equal(ari.followUpCandidate, false, 'low scores in separate classes must not merge');
+    assert.equal(bea.attendance.recordedSessions, 0);
+    assert.equal(bea.assignments.total, 0);
+    const aiEvidence = buildModelEvidence(ari, result.body.reportWeek, null);
+    assert.equal(aiEvidence.attendance.remarks.length, 3);
+    assert.match(aiEvidence.academicRecords[0].subject, /Class A/);
+    assert.ok(calls.some(call => call.sql.includes('FROM published_final_grades AS grades')
+      && call.sql.includes('shs_elective_classes') && call.sql.includes('DATE(grades.published_at) BETWEEN ? AND ?')
+      && call.values.includes(weekStart) && call.values.includes(weekEnd)));
+    assert.ok(calls.filter(call => call.sql.includes('shs_elective_classes')).every(call =>
+      call.values.includes(9) && call.values.includes(4)));
+  } finally {
+    if (previousFlag === undefined) delete process.env.SHS_SELECTION_ENABLED;
+    else process.env.SHS_SELECTION_ENABLED = previousFlag;
+  }
 });
 
 test('journal evidence is collected only for configured JHS sections', async () => {

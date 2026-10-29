@@ -13,11 +13,12 @@
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/timetables.css">
   <link rel="stylesheet" href="../../assets/css/parent/attendance.css">
   <script src="../../assets/vendor/lucide/lucide-1.62.0.min.js"></script>
   <script src="../../assets/js/api-config.js"></script>
   <script src="../../assets/js/shell-common.js"></script>
-  <script src="../../assets/js/attendance-history.js"></script>
+  <script src="../../assets/js/attendance-history.js?v=20261029-attendance-navigation"></script>
   <script src="../../assets/js/parent/shell.js"></script>
   <link rel="stylesheet" href="../../assets/css/parent/child-switcher.css">
   <link rel="stylesheet" href="../../assets/css/modal-system.css">
@@ -197,14 +198,15 @@
               <div class="panel-title">Monthly Calendar</div>
               <div class="panel-sub" id="cal-panel-sub">Tap a day to see subject-level detail</div>
             </div>
-            <div class="cal-nav">
-              <button class="cal-nav-btn" id="cal-prev" type="button">
+            <div class="timetable-week-controls">
+              <button class="timetable-button secondary" id="cal-prev" type="button" aria-label="Previous month">
                 <i data-lucide="chevron-left" style="width:15px;height:15px;"></i>
               </button>
-              <div class="cal-month-label" id="cal-month-label">Attendance history</div>
-              <button class="cal-nav-btn" id="cal-next" type="button">
+              <span class="timetable-week-label" id="cal-month-label">Attendance history</span>
+              <button class="timetable-button secondary" id="cal-next" type="button" aria-label="Next month">
                 <i data-lucide="chevron-right" style="width:15px;height:15px;"></i>
               </button>
+              <button class="timetable-button secondary timetable-today" id="cal-today" type="button" aria-label="Go to current month" disabled>Today</button>
             </div>
           </div>
 

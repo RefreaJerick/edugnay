@@ -359,7 +359,10 @@
         const gradeValue = recorded
           ? Number(subject.finalGrade).toLocaleString('en-PH', { maximumFractionDigits: 2 })
           : '—';
-        const subtitle = recorded ? formatPublishedDate(subject.publishedAt) : 'Not published';
+        const gradeStatus = recorded ? formatPublishedDate(subject.publishedAt) : 'Not published';
+        const subtitle = subject.electiveClassId && subject.sectionName
+          ? `${subject.sectionName} · ${gradeStatus}`
+          : gradeStatus;
         return `<article class="grade-subject-row">
           <div class="grade-subject-copy">
             <div class="grade-subject-name">${window.EDUGNAY_CONFIG.escapeHtml(subject.subjectName || 'Subject')}</div>

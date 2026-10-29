@@ -73,7 +73,72 @@ async function loadPublishedElectiveGrades(database, user, { studentId, academic
     values
   );
   return rows.map(row => ({ ...row, scopeType: 'elective', sectionId: null, subjectId: null,
-    sectionName: `Elective class: ${row.className}` }));
+    sectionName: row.className }));
+}
+
+async function loadConfirmedElectiveClasses(database, schoolId, studentId) {
+  if (process.env.SHS_SELECTION_ENABLED !== 'true') return [];
+
+  const [rows] = await database.execute(
+    `SELECT classes.id AS classId, offerings.academic_year_id AS academicYearId,
+      years.label AS academicYearLabel, years.status AS academicYearStatus,
+      DATE_FORMAT(years.start_date, '%Y-%m-%d') AS academicYearStartDate,
+      school_levels.id AS schoolLevelId, school_levels.grading_period_type AS gradingPeriodType,
+      school_levels.passing_grade_threshold AS passingGradeThreshold,
+      grade_levels.grade_code AS gradeCode, offerings.subject_name AS subjectName,
+      classes.class_name AS className, terms.id AS academicTermId,
+      terms.name AS academicTermName, terms.sequence_number AS academicTermSequenceNumber,
+      terms.status AS academicTermStatus
+     FROM shs_elective_class_students memberships
+     INNER JOIN shs_elective_classes classes ON classes.id = memberships.elective_class_id
+       AND classes.school_id = memberships.school_id
+     INNER JOIN shs_offerings offerings ON offerings.id = classes.offering_id
+       AND offerings.school_id = classes.school_id
+     INNER JOIN academic_years years ON years.id = offerings.academic_year_id
+       AND years.school_id = offerings.school_id
+     INNER JOIN school_grade_levels grade_levels ON grade_levels.id = offerings.grade_level_id
+       AND grade_levels.school_id = offerings.school_id
+     INNER JOIN school_levels ON school_levels.id = grade_levels.school_level_id
+       AND school_levels.school_id = grade_levels.school_id AND school_levels.level_code = 'shs'
+     LEFT JOIN academic_terms terms ON terms.school_id = years.school_id
+       AND terms.academic_year_id = years.id AND terms.school_level_id = school_levels.id
+     WHERE memberships.school_id = ? AND memberships.student_user_id = ?
+       AND memberships.withdrawn_at IS NULL AND YEAR(years.start_date) >= 2026
+       AND grade_levels.grade_code IN ('grade-11', 'grade-12')
+     ORDER BY years.start_date DESC, terms.sequence_number, offerings.subject_name, classes.class_name`,
+    [schoolId, studentId]
+  );
+
+  const classesByKey = new Map();
+  rows.forEach(row => {
+    const key = `${row.academicYearId}:${row.classId}`;
+    if (!classesByKey.has(key)) {
+      classesByKey.set(key, {
+        classId: String(row.classId),
+        academicYearId: String(row.academicYearId),
+        academicYearLabel: row.academicYearLabel,
+        academicYearStatus: row.academicYearStatus,
+        academicYearStartDate: row.academicYearStartDate,
+        schoolLevelId: String(row.schoolLevelId),
+        gradingPeriodType: row.gradingPeriodType,
+        passingGradeThreshold: row.passingGradeThreshold == null ? null : Number(row.passingGradeThreshold),
+        gradeCode: row.gradeCode,
+        subjectName: row.subjectName,
+        className: row.className,
+        terms: []
+      });
+    }
+    const electiveClass = classesByKey.get(key);
+    if (row.academicTermId && !electiveClass.terms.some(term => term.id === String(row.academicTermId))) {
+      electiveClass.terms.push({
+        id: String(row.academicTermId),
+        name: row.academicTermName,
+        sequenceNumber: Number(row.academicTermSequenceNumber),
+        status: row.academicTermStatus
+      });
+    }
+  });
+  return [...classesByKey.values()];
 }
 
 async function getTeacherSectionSubject(connection, teacherId, sectionId, subjectId, schoolId) {
@@ -516,7 +581,8 @@ async function getFinalGradesOverview(req, res, next) {
           label: row.academicYearLabel,
           status: row.academicYearStatus,
           startDate: row.academicYearStartDate,
-          sections: []
+          sections: [],
+          electiveClasses: []
         };
         academicYearMap.set(yearId, year);
         academicYears.push(year);
@@ -630,6 +696,24 @@ async function getFinalGradesOverview(req, res, next) {
 
     const electiveGradeRows = await loadPublishedElectiveGrades(database, user, { studentId });
     const allGradeRows = gradeRows.concat(electiveGradeRows);
+    const confirmedElectiveClasses = await loadConfirmedElectiveClasses(database, schoolId, studentId);
+    confirmedElectiveClasses.forEach(electiveClass => {
+      const yearId = String(electiveClass.academicYearId);
+      let year = academicYearMap.get(yearId);
+      if (!year) {
+        year = {
+          id: yearId,
+          label: electiveClass.academicYearLabel,
+          status: electiveClass.academicYearStatus,
+          startDate: electiveClass.academicYearStartDate,
+          sections: [],
+          electiveClasses: []
+        };
+        academicYearMap.set(yearId, year);
+        academicYears.push(year);
+      }
+      year.electiveClasses.push(electiveClass);
+    });
     const k10PassingThresholds = await getOverviewK10PassingThresholds(database, schoolId, [
       ...enrollmentRows,
       ...gradeRows

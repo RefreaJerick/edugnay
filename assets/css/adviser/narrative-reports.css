@@ -1444,7 +1444,7 @@
   padding: 18px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  background: var(--gray-50);
+  background: var(--panel-bg);
 }
 .report-selection-title { margin: 0; color: var(--gray-800); font-size: 13px; font-weight: 700; }
 .report-selection-head p { margin: 4px 0 0; color: var(--gray-400); font-size: 11px; line-height: 1.4; }

@@ -118,45 +118,6 @@
   margin-top: 2px;
 }
 
-/* ── Calendar nav ── */
-.cal-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cal-nav-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--gray-200);
-  background: var(--theme-surface);
-  color: var(--gray-600);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.cal-nav-btn:hover {
-  background: var(--gray-100);
-}
-
-.cal-nav-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.cal-month-label {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--gray-800);
-  min-width: 100px;
-  text-align: center;
-}
-
 /* ── Calendar grid ── */
 .calendar-wrap {
   padding: 16px 18px 20px;
@@ -477,13 +438,6 @@
 
   .legend-item {
     font-size: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .cal-nav {
-    width: 100%;
-    justify-content: space-between;
   }
 }
 
@@ -899,32 +853,6 @@
 .attendance-calendar-panel .panel-sub {
   margin-top: 4px;
   font-size: 11px;
-}
-
-.attendance-calendar-panel .cal-nav {
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  background: var(--gray-50);
-}
-
-.attendance-calendar-panel .cal-nav-btn {
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-.attendance-calendar-panel .cal-nav-btn:hover:not(:disabled) {
-  background: var(--theme-surface);
-  color: var(--theme-accent-text);
-}
-
-.attendance-calendar-panel .cal-month-label {
-  min-width: 112px;
-  font-size: 12.5px;
 }
 
 .attendance-calendar-panel .calendar-wrap {

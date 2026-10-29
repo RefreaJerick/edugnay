@@ -41,7 +41,7 @@ function createPage(api, attendanceEnabled = true) {
       EDUGNAY_API: api,
       EDUGNAY_SCHOOL_READY: Promise.resolve(),
       EDUGNAY_API_PORTAL_FEATURES: { attendanceEnabled },
-      EDUGNAY_CONFIG: { escapeHtml: value => String(value), renderPanelEmptyState: ({ title }) => title, isAttendanceEnabled: () => true },
+      EDUGNAY_CONFIG: { escapeHtml: value => String(value), renderPanelEmptyState: ({ title, text }) => `${title}: ${text}`, isAttendanceEnabled: () => true },
       lucide: { createIcons() {} },
       location: { replace: value => redirected.push(value) }
     },
@@ -56,6 +56,9 @@ function createPage(api, attendanceEnabled = true) {
 test('student page uses the parent attendance layout without a child switcher', () => {
   assert.match(html, /parent\/attendance\.css/);
   assert.match(html, /attendance-history\.js/);
+  assert.match(html, /css\/timetables\.css/);
+  assert.match(html, /class="timetable-week-controls"/);
+  assert.match(html, /id="cal-today"/);
   assert.match(html, /id="summary-strip"/);
   assert.match(html, /id="cal-grid"/);
   assert.match(html, /id="flagged-list"/);
@@ -95,6 +98,8 @@ test('student sees subject-session counts, calendar, flagged days, and day detai
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /English/);
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /badge-green/);
   assert.doesNotMatch(page.elements.get('day-detail-modal-content').innerHTML, /day-detail-banner|subject-dot|ddb-icon/);
+  grid.listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '5' } }) } });
+  assert.match(page.elements.get('day-detail-modal-content').innerHTML, /No attendance records: No subject attendance is available for this day\./);
   vm.runInContext('attendanceHistory.selectDay(2)', page.context);
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /Math/);
   assert.match(page.elements.get('day-detail-modal-content').innerHTML, /badge-red/);
@@ -114,6 +119,24 @@ test('student sees subject-session counts, calendar, flagged days, and day detai
   assert.equal(page.elements.get('attendance-load-state').hidden, true);
 });
 
+test('student attendance includes SHS classes without a section subject ID', async () => {
+  const page = createPage({ isBackendAvailable: true, getStudentAttendance: async () => ({
+    currentDate: '2026-10-18', records: [
+      { subjectId: null, electiveClassId: '88', subjectName: 'Creative Writing', className: 'Class A',
+        date: '2026-10-18', status: 'absent' },
+      { subjectId: null, electiveClassId: '89', subjectName: 'Creative Writing', className: 'Class B',
+        date: '2026-10-18', status: 'present' }
+    ]
+  }) });
+  await page.load();
+  assert.match(page.elements.get('cal-grid').innerHTML, /cal-day recorded today/);
+  assert.match(page.elements.get('summary-strip').innerHTML, /Subject sessions absent/);
+  page.elements.get('cal-grid').listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '18' } }) } });
+  const detail = page.elements.get('day-detail-modal-content').innerHTML;
+  assert.match(detail, /Creative Writing · Class A/);
+  assert.match(detail, /Creative Writing · Class B/);
+});
+
 test('student empty, failure, and retry states do not show sample attendance', async () => {
   let fail = false;
   let records = [];
@@ -127,7 +150,18 @@ test('student empty, failure, and retry states do not show sample attendance', a
   await page.load();
   assert.equal(page.elements.get('summary-strip').hidden, true);
   assert.equal(page.elements.get('summary-strip').textContent, '');
-  assert.match(page.elements.get('cal-grid').innerHTML, /No attendance calendar/);
+  assert.match(page.elements.get('cal-month-label').textContent, /October 2026/);
+  const emptyCalendar = page.elements.get('cal-grid').innerHTML;
+  assert.equal((emptyCalendar.match(/data-attendance-day=/g) || []).length, 31);
+  assert.match(emptyCalendar, /class="cal-day [^"]*today"/);
+  assert.doesNotMatch(emptyCalendar, /cal-day recorded|cal-day-dot|No attendance calendar/);
+  page.elements.get('cal-grid').listeners.click({ target: { closest: () => ({ dataset: { attendanceDay: '2' } }) } });
+  assert.equal(page.elements.get('dayDetailModal').classList.contains('open'), true);
+  assert.match(page.elements.get('dayDetailModalTitle').textContent, /Friday, October 2/);
+  assert.match(page.elements.get('day-detail-modal-content').innerHTML, /No attendance records: No subject attendance is available for this day\./);
+  assert.equal(page.elements.get('cal-prev').disabled, false);
+  assert.equal(page.elements.get('cal-next').disabled, false);
+  assert.equal(page.elements.get('cal-today').disabled, true);
   records = [{ subjectId: '1', subjectName: 'English', date: '2026-10-02', status: 'present' }];
   await page.load();
   assert.equal(page.elements.get('summary-strip').hidden, false);
@@ -145,6 +179,24 @@ test('student empty, failure, and retry states do not show sample attendance', a
   const unavailable = createPage({ isBackendAvailable: false });
   await unavailable.load();
   assert.match(unavailable.elements.get('attendance-load-message').textContent, /not configured/);
+  assert.equal(unavailable.elements.get('cal-prev').disabled, true);
+  assert.equal(unavailable.elements.get('cal-next').disabled, true);
+  assert.equal(unavailable.elements.get('cal-today').disabled, true);
+});
+
+test('student attendance month navigation crosses year boundaries and Today returns to the school month', async () => {
+  const page = createPage({ isBackendAvailable: true,
+    getStudentAttendance: async () => ({ currentDate: '2026-12-18', records: [] }) });
+  await page.load();
+  page.elements.get('cal-next').listeners.click();
+  assert.match(page.elements.get('cal-month-label').textContent, /January 2027/);
+  assert.equal(page.elements.get('cal-today').disabled, false);
+  page.elements.get('cal-prev').listeners.click();
+  assert.match(page.elements.get('cal-month-label').textContent, /December 2026/);
+  page.elements.get('cal-next').listeners.click();
+  page.elements.get('cal-today').listeners.click();
+  assert.match(page.elements.get('cal-month-label').textContent, /December 2026/);
+  assert.equal(page.elements.get('cal-today').disabled, true);
 });
 
 test('student page remains available when the legacy attendance flag is disabled', async () => {

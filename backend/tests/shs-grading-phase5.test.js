@@ -99,6 +99,60 @@ test('SHS score table passes policy metrics to the shared renderer', () => {
   vm.runInNewContext(`${source}; renderTable({}, data, {}, true, () => {});`, { ...context, data });
   assert.equal(Array.from(rendered.metricHeaders, item => item.label).join('|'), 'WW Avg|Final Grade');
   assert.equal(Array.from(rendered.getMetrics(data.students[0]), item => item.value).join('|'), '85|87');
+  assert.equal(rendered.empty.noItems, undefined);
+  assert.equal(rendered.empty.noStudents, undefined);
+
+  data.scope.policy = null;
+  data.scope.policyBlockReason = 'Ask the school administrator to review the grading setup.';
+  vm.runInNewContext(`${source}; renderTable({}, data, {}, true, () => {});`, { ...context, data });
+  assert.equal(rendered.empty.noItems.title, 'Grading rules unavailable');
+  assert.equal(rendered.empty.noItems.text, data.scope.policyBlockReason);
+});
+
+test('SHS score footer explains saving only when score rows exist', () => {
+  const gradebook = read('assets/js/teacher/shs-gradebook.js');
+  const source = gradebook.match(/function render\(host, data, scope, reload\) \{[\s\S]*?\n  \}\n\n  async function mount/)?.[0]
+    .replace(/\n\n  async function mount$/, '');
+  assert.ok(source, 'SHS gradebook renderer should exist');
+
+  function renderStatus(items, students, termStatus = 'active') {
+    const nodes = new Map();
+    const node = key => {
+      if (!nodes.has(key)) nodes.set(key, { textContent: '', innerHTML: '', hidden: false, disabled: false, value: '', title: '' });
+      return nodes.get(key);
+    };
+    const host = { querySelector: selector => node(selector) };
+    const context = vm.createContext({
+      window: {
+        TeacherClassViews: { updateSectionHeaderFromGradebook() {} },
+        lucide: { createIcons() {} },
+        openModal() {}
+      },
+      document: { getElementById: id => node(id) },
+      escapeHtml: value => String(value),
+      setVisible: (target, visible) => { target.hidden = !visible; },
+      renderCategoryTabs() {},
+      applyFilters() {},
+      renderTable() {},
+      configureAddAssessmentModal() {},
+      openPublishPreview() {}
+    });
+    const data = {
+      scope: { kind: 'core', subjectName: 'English', className: 'Section A', yearLabel: '2026–2027', yearStatus: 'active', policy: { components: [] } },
+      term: { id: '1', name: 'Term 1', status: termStatus },
+      terms: [{ id: '1', name: 'Term 1', status: termStatus }],
+      items, students, published: []
+    };
+    context.host = host;
+    context.data = data;
+    vm.runInContext(`${source}; render(host, data, {}, () => {});`, context);
+    return node('#scoreSaveStatus').textContent;
+  }
+
+  assert.equal(renderStatus([], []), 'No scores to save');
+  assert.equal(renderStatus([{ id: '1' }], []), 'No scores to save');
+  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }]), 'Scores save when you leave a score field.');
+  assert.equal(renderStatus([{ id: '1' }], [{ studentId: '1' }], 'closed'), 'Scores are read-only for this class or grading period.');
 });
 test('SHS grading chooses the method from the class academic year, not the device date', () => {
   const controller = read('backend/controllers/shsGradesController.js');

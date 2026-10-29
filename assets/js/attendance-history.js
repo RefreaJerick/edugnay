@@ -15,7 +15,7 @@
     function months() {
       const result = {};
       for (const record of records) {
-        if (!record.subjectId || !/^\d{4}-\d{2}-\d{2}$/.test(record.date || '')) continue;
+        if (!(record.subjectId || record.electiveClassId) || !/^\d{4}-\d{2}-\d{2}$/.test(record.date || '')) continue;
         const key = record.date.slice(0, 7);
         const day = Number(record.date.slice(8));
         if (!day) continue;
@@ -49,32 +49,34 @@
         </div>`).join('');
     }
 
-    function renderCalendar(allMonths, month) {
-      const keys = Object.keys(allMonths).sort();
+    function renderCalendar(month) {
       const grid = element('cal-grid');
       const prev = element('cal-prev');
       const next = element('cal-next');
-      if (!month) {
+      if (!selected || loading || error) {
         element('cal-month-label').textContent = 'Attendance history';
         prev.disabled = true;
         next.disabled = true;
+        element('cal-today').disabled = true;
         grid.innerHTML = empty('calendar', loading ? 'Loading attendance' : error ? 'Attendance unavailable' : 'No attendance calendar',
           error ? 'Try loading the attendance records again.' : selected ? 'No subject attendance has been recorded.' : 'Attendance dates will appear here when a child account is linked.');
         return;
       }
       const [year, monthNumber] = monthKey.split('-').map(Number);
       element('cal-month-label').textContent = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      prev.disabled = keys.indexOf(monthKey) === 0;
-      next.disabled = keys.indexOf(monthKey) === keys.length - 1;
+      prev.disabled = false;
+      next.disabled = false;
+      element('cal-today').disabled = monthKey === today.slice(0, 7);
       const firstDay = new Date(year, monthNumber - 1, 1).getDay();
       const offset = firstDay === 0 ? 6 : firstDay - 1;
       let cells = '<div class="cal-day empty"></div>'.repeat(offset);
+      const entries = month || {};
       for (let day = 1; day <= new Date(year, monthNumber, 0).getDate(); day++) {
         const date = `${monthKey}-${String(day).padStart(2, '0')}`;
         const weekday = new Date(year, monthNumber - 1, day).getDay();
         const weekend = weekday === 0 || weekday === 6;
         const future = date > today;
-        const entry = month[day];
+        const entry = entries[day];
         const status = future ? 'future' : entry ? 'recorded' : weekend ? 'weekend' : '';
         const disabled = future || (weekend && !entry);
         cells += `<button class="cal-day ${status} ${date === today ? 'today' : ''}" ${disabled ? 'disabled' : ''} data-attendance-day="${day}" type="button"><div class="cal-day-num">${day}</div>${entry && !future ? '<div class="cal-day-dot"></div>' : ''}</button>`;
@@ -104,16 +106,22 @@
 
     function renderDetail(month) {
       const subjects = month?.[selectedDay];
-      if (!subjects) return;
       const [year, monthNumber] = monthKey.split('-').map(Number);
       element('dayDetailModalTitle').textContent = new Date(year, monthNumber - 1, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      if (!subjects?.length) {
+        element('day-detail-modal-content').innerHTML = empty('calendar-x', 'No attendance records', 'No subject attendance is available for this day.');
+        icons();
+        return;
+      }
       const badges = {
         present: ['green', 'check', 'Present'], late: ['orange', 'clock', 'Late'],
         pending: ['gray', 'minus', 'Pending'], excused: ['blue', '', 'Excused'], absent: ['red', 'x', 'Absent']
       };
       element('day-detail-modal-content').innerHTML = `<div>${subjects.map(record => {
         const [tone, icon, label] = badges[record.status] || badges.absent;
-        return `<div class="subject-att-row"><div class="subject-att-name">${escape(record.subjectName || 'Subject')}</div><span class="badge badge-${tone}">${icon ? `<i data-lucide="${icon}" style="width:8px;height:8px;"></i> ` : ''}${label}</span></div>`;
+        const name = record.electiveClassId && record.className
+          ? `${record.subjectName || 'Subject'} · ${record.className}` : record.subjectName || 'Subject';
+        return `<div class="subject-att-row"><div class="subject-att-name">${escape(name)}</div><span class="badge badge-${tone}">${icon ? `<i data-lucide="${icon}" style="width:8px;height:8px;"></i> ` : ''}${label}</span></div>`;
       }).join('')}</div>`;
       icons();
     }
@@ -128,25 +136,38 @@
       const allMonths = months();
       const month = allMonths[monthKey];
       renderSummary(month);
-      renderCalendar(allMonths, month);
+      renderCalendar(month);
       renderFlagged(month);
       icons();
     }
 
     function closeDetail() { element('dayDetailModal').classList.remove('open'); }
     function selectDay(day) {
-      const month = months()[monthKey];
-      if (!month?.[day]) return;
+      if (!selected || loading || error) return;
+      const [year, monthNumber] = monthKey.split('-').map(Number);
+      const date = `${monthKey}-${String(day).padStart(2, '0')}`;
+      const weekday = new Date(year, monthNumber - 1, day).getDay();
+      const entry = months()[monthKey]?.[day];
+      if (date > today || ((weekday === 0 || weekday === 6) && !entry)) return;
+      const month = months()[monthKey] || {};
       selectedDay = day;
       renderDetail(month);
       element('dayDetailModal').classList.add('open');
     }
     function changeMonth(direction) {
-      const keys = Object.keys(months()).sort();
-      const next = keys[keys.indexOf(monthKey) + direction];
-      if (!next) return;
-      monthKey = next;
+      if (!selected || loading || error || !monthKey) return;
+      const [year, monthNumber] = monthKey.split('-').map(Number);
+      const next = new Date(Date.UTC(year, monthNumber - 1 + direction, 1));
+      monthKey = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
       selectedDay = null;
+      closeDetail();
+      render();
+    }
+    function goToToday() {
+      if (!selected || loading || error || !today) return;
+      monthKey = today.slice(0, 7);
+      selectedDay = null;
+      closeDetail();
       render();
     }
     function setRecords(values, currentDate, hasStudent = true) {
@@ -155,7 +176,7 @@
       selected = hasStudent;
       loading = false;
       error = '';
-      monthKey = Object.keys(months()).sort().at(-1) || currentDate.slice(0, 7);
+      monthKey = currentDate.slice(0, 7);
       selectedDay = null;
       closeDetail();
       render();
@@ -171,6 +192,7 @@
     }
     element('cal-prev').addEventListener('click', () => changeMonth(-1));
     element('cal-next').addEventListener('click', () => changeMonth(1));
+    element('cal-today').addEventListener('click', goToToday);
     element('dayDetailModal').addEventListener('click', event => { if (event.target === element('dayDetailModal')) closeDetail(); });
     element('dayDetailModal').querySelector('.modal-close').addEventListener('click', closeDetail);
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDetail(); });

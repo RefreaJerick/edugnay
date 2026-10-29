@@ -324,9 +324,11 @@
       const records = backendAttendanceRecords.filter(record => record.studentId === studentId && record.date === date);
       if (!records.length) return null;
 
-      const subjects = records.filter(record => record.subjectId).map(record => {
+      const subjects = records.filter(record => record.subjectId || record.electiveClassId).map(record => {
         const subject = ATTENDANCE_SUBJECT_META[record.subjectId] || { name: record.subjectName || 'Subject', color: 'var(--blue-mid)' };
-        return { name: record.subjectName || subject.name, status: record.status, color: subject.color };
+        const name = record.electiveClassId && record.className
+          ? `${record.subjectName || 'Subject'} · ${record.className}` : record.subjectName || subject.name;
+        return { name, status: record.status, color: subject.color };
       });
       return { subjects };
     }

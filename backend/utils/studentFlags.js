@@ -18,7 +18,8 @@ function lowScoreReasons(scores = []) {
   const bySubject = new Map();
   for (const score of scores) {
     if (score.score == null || !Number.isFinite(Number(score.score)) || !(Number(score.maxScore) > 0)) continue;
-    const key = `${score.studentId}:${score.subjectId}`;
+    const key = score.electiveClassId
+      ? `${score.studentId}:class:${score.electiveClassId}` : `${score.studentId}:subject:${score.subjectId}`;
     if (!bySubject.has(key)) bySubject.set(key, []);
     bySubject.get(key).push(score);
   }
@@ -29,7 +30,9 @@ function lowScoreReasons(scores = []) {
     if (latest.length !== 3 || !latest.every(item => Number(item.score) / Number(item.maxScore) < .75)) continue;
     const studentId = String(latest[0].studentId);
     if (!reasons.has(studentId)) reasons.set(studentId, []);
-    reasons.get(studentId).push({ type: 'low_scores', subject: latest[0].subjectName, count: 3,
+    reasons.get(studentId).push({ type: 'low_scores',
+      subject: latest[0].className ? `${latest[0].subjectName} · ${latest[0].className}` : latest[0].subjectName,
+      count: 3,
       scores: latest.map(item => ({ scoreId: String(item.scoreId), itemId: String(item.itemId), title: item.title,
         date: String(item.itemDate).slice(0, 10), score: Number(item.score), maxScore: Number(item.maxScore) })) });
   }
@@ -56,7 +59,8 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
     day.absent ||= record.status === 'absent';
     day.excused ||= record.status === 'excused';
     days.set(dayKey, day);
-    const subjectKey = `${id}:${record.sectionId}:${record.subjectId}`;
+    const subjectKey = record.electiveClassId
+      ? `${id}:class:${record.electiveClassId}` : `${id}:${record.sectionId}:${record.subjectId}`;
     if (!subjectRecords.has(subjectKey)) subjectRecords.set(subjectKey, []);
     subjectRecords.get(subjectKey).push(record);
   }
@@ -73,9 +77,11 @@ function buildStudentFlags({ students, attendance, grades, rules, settings, year
   for (const records of subjectRecords.values()) {
     const count = consecutiveMissedMeetingDates(records).length;
     const student = studentMap.get(String(records[0].studentId));
-    if (count >= consecutive && student.sectionId === String(records[0].sectionId)) {
+    if (count >= consecutive && (records[0].electiveClassId || student.sectionId === String(records[0].sectionId))) {
       student.reasons.push({
-        type: 'consecutive', count, threshold: consecutive, subject: records[0].subjectName
+        type: 'consecutive', count, threshold: consecutive,
+        subject: records[0].className
+          ? `${records[0].subjectName} · ${records[0].className}` : records[0].subjectName
       });
     }
   }

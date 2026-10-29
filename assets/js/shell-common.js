@@ -1139,34 +1139,25 @@ function buildApiFinalGradeYears(overview) {
 
   return years.map(year => {
     const periodsByKey = new Map();
-    (year.sections || []).forEach(section => {
-      const termsBySequence = new Map((section.terms || []).map(term => [Number(term.sequenceNumber), term]));
-      const counts = { quarterly: 4, semestral: 2, semester: 2, trimestral: 3, three_term: 3 };
-      const configuredCount = counts[section.gradingPeriodType] || 0;
-      const periodCount = year.status === 'closed' && termsBySequence.size
-        ? termsBySequence.size
-        : Math.max(configuredCount, termsBySequence.size);
-
-      for (let sequenceNumber = 1; sequenceNumber <= periodCount; sequenceNumber += 1) {
-        const term = termsBySequence.get(sequenceNumber);
-        const periodType = section.gradingPeriodType || 'period';
-        const periodKey = periodType + ':' + sequenceNumber;
-        if (!periodsByKey.has(periodKey)) {
-          const names = { quarterly: 'Quarter', semestral: 'Semester', semester: 'Semester', trimestral: 'Trimester', three_term: 'Term' };
-          periodsByKey.set(periodKey, {
-            id: year.id + ':' + periodKey,
-            label: term?.name || (names[periodType] || 'Period') + ' ' + sequenceNumber,
-            sequenceNumber,
-            status: 'unconfigured',
-            disabled: true,
-            termIds: [],
-            subjects: []
-          });
-        }
-
-        const period = periodsByKey.get(periodKey);
-        if (!term) continue;
-        if (!period.termIds.includes(term.id)) period.termIds.push(term.id);
+    const counts = { quarterly: 4, semestral: 2, semester: 2, trimestral: 3, three_term: 3 };
+    const names = { quarterly: 'Quarter', semestral: 'Semester', semester: 'Semester', trimestral: 'Trimester', three_term: 'Term' };
+    const ensurePeriod = (periodType, sequenceNumber, term) => {
+      const periodKey = periodType + ':' + sequenceNumber;
+      if (!periodsByKey.has(periodKey)) {
+        periodsByKey.set(periodKey, {
+          id: year.id + ':' + periodKey,
+          label: term?.name || (names[periodType] || 'Period') + ' ' + sequenceNumber,
+          sequenceNumber,
+          status: 'unconfigured',
+          disabled: true,
+          termIds: [],
+          subjects: []
+        });
+      }
+      const period = periodsByKey.get(periodKey);
+      if (term) {
+        const termId = String(term.id);
+        if (!period.termIds.includes(termId)) period.termIds.push(termId);
         if (term.status === 'active') {
           period.status = 'active';
           period.disabled = false;
@@ -1176,12 +1167,29 @@ function buildApiFinalGradeYears(overview) {
         } else if (term.status === 'upcoming' && period.status === 'unconfigured') {
           period.status = 'upcoming';
         }
+      }
+      return period;
+    };
+
+    (year.sections || []).forEach(section => {
+      const termsBySequence = new Map((section.terms || []).map(term => [Number(term.sequenceNumber), term]));
+      const configuredCount = counts[section.gradingPeriodType] || 0;
+      const periodCount = year.status === 'closed' && termsBySequence.size
+        ? termsBySequence.size
+        : Math.max(configuredCount, termsBySequence.size);
+
+      for (let sequenceNumber = 1; sequenceNumber <= periodCount; sequenceNumber += 1) {
+        const term = termsBySequence.get(sequenceNumber);
+        const periodType = section.gradingPeriodType || 'period';
+        const period = ensurePeriod(periodType, sequenceNumber, term);
+        if (!term) continue;
 
         (section.subjects || []).forEach(subject => {
-          const grade = grades.find(item => item.sectionId === section.id
-            && item.academicYearId === year.id
-            && item.academicTermId === term.id
-            && item.subjectId === subject.subjectId);
+          const grade = grades.find(item => item.electiveClassId == null
+            && String(item.sectionId) === String(section.id)
+            && String(item.academicYearId) === String(year.id)
+            && String(item.academicTermId) === String(term.id)
+            && String(item.subjectId) === String(subject.subjectId));
           period.subjects.push({
             sectionId: section.id,
             subjectId: subject.subjectId,
@@ -1195,27 +1203,58 @@ function buildApiFinalGradeYears(overview) {
       }
     });
 
-    grades.filter(grade => grade.academicYearId === year.id).forEach(grade => {
+    (year.electiveClasses || []).forEach(electiveClass => {
+      const termsBySequence = new Map((electiveClass.terms || []).map(term => [Number(term.sequenceNumber), term]));
+      const periodType = electiveClass.gradingPeriodType || 'period';
+      const configuredCount = counts[periodType] || 0;
+      const periodCount = year.status === 'closed' && termsBySequence.size
+        ? termsBySequence.size
+        : Math.max(configuredCount, termsBySequence.size);
+
+      for (let sequenceNumber = 1; sequenceNumber <= periodCount; sequenceNumber += 1) {
+        const term = termsBySequence.get(sequenceNumber);
+        if (!term) continue;
+        const period = ensurePeriod(periodType, sequenceNumber, term);
+        const grade = grades.find(item => String(item.electiveClassId) === String(electiveClass.classId)
+          && String(item.academicYearId) === String(year.id)
+          && String(item.academicTermId) === String(term.id));
+        if (period.subjects.some(subject => String(subject.electiveClassId || '') === String(electiveClass.classId))) continue;
+        period.subjects.push({
+          sectionId: null,
+          subjectId: null,
+          electiveClassId: String(electiveClass.classId),
+          subjectName: electiveClass.subjectName,
+          sectionName: electiveClass.className,
+          finalGrade: grade ? grade.finalGrade : null,
+          passingGradeThreshold: grade?.passingGradeThreshold ?? electiveClass.passingGradeThreshold,
+          publishedAt: grade?.publishedAt || null
+        });
+      }
+    });
+
+    grades.filter(grade => String(grade.academicYearId) === String(year.id)).forEach(grade => {
       const periodType = grade.gradingPeriodType || 'period';
       const sequenceNumber = Number(grade.academicTermSequenceNumber || 1);
       const periodKey = periodType + ':' + sequenceNumber;
-      let period = Array.from(periodsByKey.values()).find(item => item.termIds.includes(grade.academicTermId));
+      let period = Array.from(periodsByKey.values()).find(item => item.termIds.includes(String(grade.academicTermId)));
       if (!period) {
-        const names = { quarterly: 'Quarter', semestral: 'Semester', semester: 'Semester', trimestral: 'Trimester', three_term: 'Term' };
         period = {
           id: year.id + ':' + periodKey,
           label: grade.academicTermName || (names[periodType] || 'Period') + ' ' + sequenceNumber,
           sequenceNumber,
           status: 'history',
           disabled: false,
-          termIds: [grade.academicTermId],
+          termIds: [String(grade.academicTermId)],
           subjects: []
         };
         periodsByKey.set(periodKey, period);
       }
-      if (period.subjects.some(subject => grade.electiveClassId
-        ? subject.electiveClassId === grade.electiveClassId
-        : subject.sectionId === grade.sectionId && subject.subjectId === grade.subjectId)) return;
+      const isDuplicate = period.subjects.some(subject => grade.electiveClassId != null
+        ? String(subject.electiveClassId || '') === String(grade.electiveClassId)
+        : subject.electiveClassId == null
+          && String(subject.sectionId) === String(grade.sectionId)
+          && String(subject.subjectId) === String(grade.subjectId));
+      if (isDuplicate) return;
       period.subjects.push({
         sectionId: grade.sectionId,
         subjectId: grade.subjectId,
@@ -1265,6 +1304,16 @@ async function getApiFinalGradesOverview(studentId) {
     academicYears: (overview.academicYears || []).map(year => ({
       ...year,
       id: String(year.id),
+      electiveClasses: (year.electiveClasses || []).map(electiveClass => ({
+        ...electiveClass,
+        classId: String(electiveClass.classId),
+        academicYearId: String(electiveClass.academicYearId),
+        terms: (electiveClass.terms || []).map(term => ({
+          ...term,
+          id: String(term.id),
+          sequenceNumber: Number(term.sequenceNumber)
+        }))
+      })),
       sections: (year.sections || []).map(section => ({
         ...section,
         id: String(section.id),
@@ -1298,8 +1347,9 @@ async function getApiFinalGradesOverview(studentId) {
     publishedGrades: (overview.publishedGrades || []).map(grade => ({
       ...grade,
       id: String(grade.id),
-      sectionId: String(grade.sectionId),
-      subjectId: String(grade.subjectId),
+      sectionId: grade.sectionId == null ? null : String(grade.sectionId),
+      subjectId: grade.subjectId == null ? null : String(grade.subjectId),
+      electiveClassId: grade.electiveClassId == null ? null : String(grade.electiveClassId),
       academicTermId: String(grade.academicTermId),
       academicYearId: String(grade.academicYearId),
       academicTermSequenceNumber: Number(grade.academicTermSequenceNumber),
